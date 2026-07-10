@@ -15,6 +15,7 @@ export interface ItemRecord {
 export const STORAGE_KEY = 'major-item-data'
 export const MAX_LATENCIES = 10
 export const OUTLIER_MS = 30_000
+export const STALE_MS = 60_000  // answer discarded above this (idle / walked away)
 export const DAY_MS = 86_400_000
 
 // Latency thresholds per answer mode

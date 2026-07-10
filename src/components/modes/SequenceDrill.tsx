@@ -197,7 +197,7 @@ export function SequenceDrill({ answerMode }: Props) {
               subMode === m ? 'bg-violet-600 text-white' : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
-            {m === 'encoding' ? '→ Enkod' : '← Dekod'}
+            {m === 'encoding' ? '→ Encode' : '← Decode'}
           </button>
         ))}
       </div>
@@ -226,7 +226,7 @@ export function SequenceDrill({ answerMode }: Props) {
               </div>
               <div className="text-center space-y-1">
                 <p className="text-xs text-zinc-600 uppercase tracking-widest">
-                  Par {encoding.currentIndex + 1} av {encoding.sequence.length}
+                  Pair {encoding.currentIndex + 1} of {encoding.sequence.length}
                 </p>
                 <div className="text-[6rem] font-black text-violet-400 tabular-nums leading-none">
                   {encoding.sequence[encoding.currentIndex]}
@@ -245,7 +245,7 @@ export function SequenceDrill({ answerMode }: Props) {
                     onAnswer={handleEncodingAnswer}
                     answeredCorrect={encoding.answeredCorrect}
                     correctAnswer={words[encoding.sequence[encoding.currentIndex]]}
-                    placeholder="Skriv ordet..."
+                    placeholder="Type the word..."
                   />
                 )}
               </div>
@@ -253,7 +253,7 @@ export function SequenceDrill({ answerMode }: Props) {
           ) : (
             <div className="w-full max-w-md space-y-4">
               <h3 className="text-xl font-bold text-zinc-100 text-center">
-                {correctCount === encoding.sequence.length ? '🎉 Perfekt!' : `${correctCount}/${encoding.sequence.length} riktige`}
+                {correctCount === encoding.sequence.length ? '🎉 Perfect!' : `${correctCount}/${encoding.sequence.length} correct`}
               </h3>
               <div className="space-y-2">
                 {encoding.sequence.map((num, i) => (
@@ -267,12 +267,12 @@ export function SequenceDrill({ answerMode }: Props) {
                 ))}
               </div>
               <div className="text-center text-zinc-500 font-mono text-sm">
-                Tallrekke: {encoding.sequence.join('')}
+                Sequence: {encoding.sequence.join('')}
               </div>
               <button
                 onClick={() => setEncoding(newEncoding())}
                 className="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold transition-colors"
-              >Ny sekvens</button>
+              >New sequence</button>
             </div>
           )}
         </div>
@@ -285,7 +285,7 @@ export function SequenceDrill({ answerMode }: Props) {
           {/* Delay selector — only during study */}
           {decoding.phase === 'study' && (
             <div className="flex flex-wrap items-center gap-2 self-start">
-              <span className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Forsinkelse</span>
+              <span className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Delay</span>
               {(['none', 'short', 'distraction'] as DelayMode[]).map(d => (
                 <button
                   key={d}
@@ -294,7 +294,7 @@ export function SequenceDrill({ answerMode }: Props) {
                     delayMode === d ? 'bg-violet-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
                   }`}
                 >
-                  {d === 'none' ? 'Ingen' : d === 'short' ? `Kort (${COUNTDOWN_SECONDS}s)` : 'Distraksjon'}
+                  {d === 'none' ? 'None' : d === 'short' ? `Short (${COUNTDOWN_SECONDS}s)` : 'Distraction'}
                 </button>
               ))}
             </div>
@@ -304,7 +304,7 @@ export function SequenceDrill({ answerMode }: Props) {
           {decoding.phase === 'study' && (
             <>
               <div className="text-center space-y-2">
-                <p className="text-xs text-zinc-600 uppercase tracking-widest">Husk denne sekvensen</p>
+                <p className="text-xs text-zinc-600 uppercase tracking-widest">Remember this sequence</p>
                 <div className="flex flex-wrap gap-3 justify-center">
                   {decoding.sequence.map((num, i) => (
                     <span key={i} className="text-2xl font-bold text-zinc-100 bg-zinc-800 border border-zinc-700 px-4 py-2 rounded-xl">
@@ -318,7 +318,7 @@ export function SequenceDrill({ answerMode }: Props) {
                 onClick={handleReady}
                 className="px-8 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold transition-colors"
               >
-                {delayMode === 'none' ? 'Klar til å svare →' : 'Skjul og start forsinkelse →'}
+                {delayMode === 'none' ? 'Ready to answer →' : 'Hide and start delay →'}
               </button>
             </>
           )}
@@ -326,15 +326,15 @@ export function SequenceDrill({ answerMode }: Props) {
           {/* COUNTDOWN */}
           {decoding.phase === 'countdown' && (
             <div className="flex flex-col items-center gap-6 py-8">
-              <p className="text-xs text-zinc-500 uppercase tracking-wider">Sekvensen er skjult</p>
+              <p className="text-xs text-zinc-500 uppercase tracking-wider">Sequence hidden</p>
               <div className="text-[6rem] font-black text-violet-400 tabular-nums leading-none">
                 {decoding.countdown}
               </div>
-              <p className="text-zinc-500 text-sm">sekunder igjen</p>
+              <p className="text-zinc-500 text-sm">seconds remaining</p>
               <button
                 onClick={() => setDecoding(d => ({ ...d, phase: 'recall' }))}
                 className="px-5 py-2 rounded-lg bg-zinc-800 text-zinc-400 hover:text-zinc-200 text-sm transition-colors"
-              >Hopp over</button>
+              >Skip</button>
             </div>
           )}
 
@@ -343,7 +343,7 @@ export function SequenceDrill({ answerMode }: Props) {
             <div className="flex flex-col items-center gap-6 w-full max-w-md">
               <div className="w-full space-y-1">
                 <div className="flex justify-between text-xs text-zinc-600">
-                  <span>Distraksjonsoppgave</span>
+                  <span>Distraction task</span>
                   <span>{decoding.distractorIdx + 1}/3</span>
                 </div>
                 <div className="flex gap-1">
@@ -355,7 +355,7 @@ export function SequenceDrill({ answerMode }: Props) {
                 </div>
               </div>
               <div className="text-center space-y-1">
-                <p className="text-xs text-zinc-600 uppercase tracking-widest">Hva er lydene for</p>
+                <p className="text-xs text-zinc-600 uppercase tracking-widest">What are the sounds for</p>
                 <div className="text-[6rem] font-black text-violet-400 tabular-nums leading-none">
                   {decoding.distractors[decoding.distractorIdx]?.digit}
                 </div>
@@ -376,10 +376,10 @@ export function SequenceDrill({ answerMode }: Props) {
           {decoding.phase === 'recall' && (
             <div className="flex flex-col items-center gap-4 w-full max-w-md">
               <div className="text-center space-y-1">
-                <p className="text-xs text-zinc-600 uppercase tracking-widest">Dekod sekvensen</p>
+                <p className="text-xs text-zinc-600 uppercase tracking-widest">Decode the sequence</p>
                 {decoding.delayUsed !== 'none' && (
                   <p className="text-xs text-zinc-600 italic">
-                    {decoding.delayUsed === 'distraction' ? '(etter distraksjon)' : `(etter ${COUNTDOWN_SECONDS}s forsinkelse)`}
+                    {decoding.delayUsed === 'distraction' ? '(after distraction)' : `(after ${COUNTDOWN_SECONDS}s delay)`}
                   </p>
                 )}
               </div>
@@ -387,7 +387,7 @@ export function SequenceDrill({ answerMode }: Props) {
                 onAnswer={handleDecodingAnswer}
                 answeredCorrect={decoding.answeredCorrect}
                 correctAnswer={decoding.sequence.join('')}
-                placeholder={`Skriv ${decoding.sequence.length * 2}-sifret tall...`}
+                placeholder={`Type a ${decoding.sequence.length * 2}-digit number...`}
               />
             </div>
           )}
@@ -405,17 +405,17 @@ export function SequenceDrill({ answerMode }: Props) {
                 ))}
               </div>
               <div className="text-zinc-500 font-mono text-sm">
-                Riktig svar: {decoding.sequence.join('')}
+                Correct answer: {decoding.sequence.join('')}
               </div>
               {decoding.delayUsed !== 'none' && (
                 <p className="text-xs text-zinc-600 italic">
-                  Forsinkelse brukt: {decoding.delayUsed === 'distraction' ? 'distraksjon' : `${COUNTDOWN_SECONDS}s nedtelling`}
+                  Delay used: {decoding.delayUsed === 'distraction' ? 'distraction' : `${COUNTDOWN_SECONDS}s countdown`}
                 </p>
               )}
               <button
                 onClick={() => setDecoding(newDecoding())}
                 className="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold transition-colors"
-              >Ny sekvens</button>
+              >New sequence</button>
             </div>
           )}
         </div>

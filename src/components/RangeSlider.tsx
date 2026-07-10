@@ -48,7 +48,7 @@ export function RangeSlider({ low, high, onChange, min = 0, max = 99 }: Props) {
             className="absolute -translate-x-1/2 text-xs text-zinc-500 mt-4 whitespace-nowrap transition-[left] duration-75"
             style={{ left: `${lowPct}%` }}
           >
-            kun {fmt(low)}
+            only {fmt(low)}
           </span>
         )}
       </div>

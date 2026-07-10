@@ -1,51 +1,48 @@
-import { loadStore, medianMs, FAST_MS, SLOW_MS, type ItemRecord } from '../data/itemStore'
+import { loadStore, medianMs } from '../data/itemStore'
+import { recallColor, RECALL_SLOW_MS } from '../data/typingSpeed'
 import type { Direction } from '../types'
-import type { AnswerMode } from '../types'
 
 export interface RoundStat {
   correct: number
   wrong: number
-  lastMs?: number
+  lastMs?: number      // recall-adjusted (typing time removed)
+  latencies: number[]  // this round only, recall-adjusted
+  hintCount: number    // this round only
 }
 
 interface Props {
   stats: Record<string, RoundStat>
   pool: string[]
   dir: Direction
-  answerMode: AnswerMode
+  low?: number
+  high?: number
+  onRestart?: () => void
 }
 
-function latencyColor(ms: number, answerMode: AnswerMode): string {
-  if (ms <= FAST_MS[answerMode]) return 'text-green-400'
-  if (ms >= SLOW_MS[answerMode]) return 'text-red-400'
-  return 'text-yellow-400'
-}
-
-function LatencyTag({ latencies, answerMode }: { latencies: number[]; answerMode: AnswerMode }) {
+// Latencies are recall-adjusted (typing time removed), so we judge them all on
+// one recall scale regardless of the current answer mode.
+function LatencyTag({ latencies }: { latencies: number[] }) {
   const median = medianMs(latencies)
   if (median === null) return <span className="text-xs text-zinc-700 tabular-nums w-9 text-right">—</span>
   return (
-    <span className={`text-xs font-mono tabular-nums w-9 text-right ${latencyColor(median, answerMode)}`}>
+    <span
+      className={`text-xs font-mono tabular-nums w-9 text-right ${recallColor(median)}`}
+      title="Recall time (typing time removed)"
+    >
       {(median / 1000).toFixed(1)}s
     </span>
   )
 }
 
-// Sort uses store median (stable history) so rank is consistent with the latency tag display.
-// Turtle icon (isSlowCorrect) separately uses lastMs for immediate per-answer feedback.
-function sortedPool(
-  pool: string[],
-  stats: Record<string, RoundStat>,
-  store: Record<string, ItemRecord>,
-  dir: Direction,
-  answerMode: AnswerMode,
-): string[] {
-  const storeMedian = (n: string) => medianMs(store[`${dir}:${n}`]?.latencies ?? [])
+// Sort worst-first: 0 = has wrongs this round, 1 = slow-but-correct
+// (round recall median >= slow), 2 = fine, 3 = untested this round.
+function sortedPool(pool: string[], stats: Record<string, RoundStat>): string[] {
+  const roundMedian = (n: string) => medianMs(stats[n]?.latencies ?? [])
   const rank = (n: string, s: RoundStat | undefined): number => {
     if (!s) return 3
     if (s.wrong > 0) return 0
-    const m = storeMedian(n)
-    if (m !== null && m >= SLOW_MS[answerMode]) return 1
+    const m = roundMedian(n)
+    if (m !== null && m >= RECALL_SLOW_MS) return 1
     return 2
   }
   return [...pool].sort((a, b) => {
@@ -58,42 +55,55 @@ function sortedPool(
       if (rateB !== rateA) return rateB - rateA
       return sb.wrong - sa.wrong
     }
-    if (ra === 1) return (storeMedian(b) ?? 0) - (storeMedian(a) ?? 0)
+    if (ra === 1) return (roundMedian(b) ?? 0) - (roundMedian(a) ?? 0)
     return 0
   })
 }
 
-export function RoundStatsPanel({ stats, pool, dir, answerMode }: Props) {
+export function RoundStatsPanel({ stats, pool, dir, low, high, onRestart }: Props) {
   const store = loadStore()
   const tested = pool.filter(n => stats[n])
 
-  // Median latency across all tested numbers (rolling window from store)
-  const allLatencies = tested.flatMap(n => store[`${dir}:${n}`]?.latencies ?? [])
-  const sessionMedian = medianMs(allLatencies)
+  // Median recall latency across all numbers tested this round
+  const allLatencies = tested.flatMap(n => stats[n]?.latencies ?? [])
+  const roundMedian = medianMs(allLatencies)
 
-  const ordered = sortedPool(pool, stats, store, dir, answerMode)
+  const ordered = sortedPool(pool, stats)
+  const heading = low !== undefined && high !== undefined
+    ? `Round ${String(low).padStart(2, '0')}–${String(high).padStart(2, '0')}`
+    : 'Round'
 
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Runde</p>
-        <span className="text-xs text-zinc-600 tabular-nums">{tested.length}/{pool.length}</span>
+        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">{heading}</p>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-zinc-600 tabular-nums">{tested.length}/{pool.length}</span>
+          {onRestart && (
+            <button
+              onClick={onRestart}
+              className="text-xs text-zinc-500 hover:text-zinc-200 transition-colors"
+              title="Restart round"
+            >↺</button>
+          )}
+        </div>
       </div>
 
-      {sessionMedian !== null && (
-        <p className={`text-xs font-mono mb-3 ${latencyColor(sessionMedian, answerMode)}`}>
-          ⏱ {(sessionMedian / 1000).toFixed(1)}s median
+      {roundMedian !== null && (
+        <p className={`text-xs font-mono mb-3 ${recallColor(roundMedian)}`}>
+          ⏱ {(roundMedian / 1000).toFixed(1)}s median
         </p>
       )}
-      {sessionMedian === null && <div className="mb-3" />}
+      {roundMedian === null && <div className="mb-3" />}
 
       <div className="space-y-0.5">
         {ordered.map(n => {
           const s = stats[n]
-          const item = store[`${dir}:${n}`]
-          const latencies = item?.latencies ?? []
+          const latencies = s?.latencies ?? []
+          const allTime = store[`${dir}:${n}`]
+          const allTimeTotal = allTime ? allTime.correct + allTime.wrong : 0
           const isSlowCorrect = s && s.wrong === 0 && s.correct > 0
-            && s.lastMs !== undefined && s.lastMs >= SLOW_MS[answerMode]
+            && s.lastMs !== undefined && s.lastMs >= RECALL_SLOW_MS
 
           return (
             <div
@@ -113,15 +123,20 @@ export function RoundStatsPanel({ stats, pool, dir, answerMode }: Props) {
                 <span className="flex items-center gap-1.5 text-xs tabular-nums">
                   <span className="text-green-400">✓{s.correct}</span>
                   {s.wrong > 0 && <span className="text-red-400">✗{s.wrong}</span>}
-                  {(item?.hintCount ?? 0) > 0 && <span title={`${item!.hintCount} hint brukt`}>💡</span>}
-                  {isSlowCorrect && <span title="Treg men riktig">🐢</span>}
+                  {s.hintCount > 0 && <span title={`${s.hintCount} hint(s) used this round`}>💡</span>}
+                  {isSlowCorrect && <span title="Slow but correct">🐢</span>}
                 </span>
               ) : (
                 <span className="text-xs text-zinc-700">—</span>
               )}
 
-              <span className="ml-auto">
-                <LatencyTag latencies={latencies} answerMode={answerMode} />
+              <span className="ml-auto flex items-center gap-2">
+                {allTimeTotal > 0 && (
+                  <span className="text-[10px] text-zinc-600 tabular-nums" title="All-time correct / total">
+                    ∞ {allTime.correct}/{allTimeTotal}
+                  </span>
+                )}
+                <LatencyTag latencies={latencies} />
               </span>
             </div>
           )

@@ -17,65 +17,65 @@ const MODES: ModeCard[] = [
   {
     id: 'encoding',
     emoji: '🧠',
-    title: 'Enkoding',
-    subtitle: 'Tall → Ord',
-    description: 'Se et tall 00–99, husk det tilhørende ordet',
+    title: 'Encoding',
+    subtitle: 'Number → Word',
+    description: 'See a number 00–99, recall its associated word',
     accent: 'group-hover:border-violet-500/60 group-hover:shadow-violet-900/20',
   },
   {
     id: 'decoding',
     emoji: '🔍',
-    title: 'Dekoding',
-    subtitle: 'Ord → Tall',
-    description: 'Se et ord, husk hvilket tall det representerer',
+    title: 'Decoding',
+    subtitle: 'Word → Number',
+    description: 'See a word, recall which number it represents',
     accent: 'group-hover:border-blue-500/60 group-hover:shadow-blue-900/20',
   },
   {
     id: 'repetition',
     emoji: '🔁',
-    title: 'Repetisjon',
-    subtitle: 'Fordelt repetisjon',
-    description: 'Øv på det som er klart — SM-2 planlegger neste økt automatisk',
+    title: 'Repetition',
+    subtitle: 'Spaced repetition',
+    description: 'Practice what\'s due — SM-2 schedules the next session automatically',
     accent: 'group-hover:border-violet-500/60 group-hover:shadow-violet-900/20',
   },
   {
     id: 'sound-key',
     emoji: '🔢',
-    title: 'Lydnøkkel',
-    subtitle: 'Siffer → Lyder',
-    description: 'Hva er lydene for hvert siffer 0–9?',
+    title: 'Sound Key',
+    subtitle: 'Digit → Sounds',
+    description: 'What are the sounds for each digit 0–9?',
     accent: 'group-hover:border-emerald-500/60 group-hover:shadow-emerald-900/20',
   },
   {
     id: 'reverse-sound-key',
     emoji: '🔤',
-    title: 'Omvendt lydnøkkel',
-    subtitle: 'Lyd → Siffer',
-    description: 'Hvilken lyd tilhører hvilket siffer?',
+    title: 'Reverse Sound Key',
+    subtitle: 'Sound → Digit',
+    description: 'Which sound belongs to which digit?',
     accent: 'group-hover:border-teal-500/60 group-hover:shadow-teal-900/20',
   },
   {
     id: 'sequence',
     emoji: '🔗',
-    title: 'Sekvenser',
-    subtitle: 'Lange tallrekker',
-    description: 'Enkod og dekod tallrekker par for par',
+    title: 'Sequences',
+    subtitle: 'Long number sequences',
+    description: 'Encode and decode number sequences pair by pair',
     accent: 'group-hover:border-orange-500/60 group-hover:shadow-orange-900/20',
   },
   {
     id: 'speed-round',
     emoji: '⚡',
-    title: 'Hurtigrunde',
-    subtitle: '60 sekunder',
-    description: 'Hvor mange enkodinger klarer du på 60 sekunder?',
+    title: 'Speed Round',
+    subtitle: '60 seconds',
+    description: 'How many encodings can you do in 60 seconds?',
     accent: 'group-hover:border-yellow-500/60 group-hover:shadow-yellow-900/20',
   },
   {
     id: 'weak-spots',
     emoji: '🎯',
-    title: 'Svake punkter',
-    subtitle: 'Dine verste tall',
-    description: 'Drill på tallene du gjør flest feil på',
+    title: 'Weak Spots',
+    subtitle: 'Your worst numbers',
+    description: 'Drill on the numbers you make the most mistakes on',
     accent: 'group-hover:border-red-500/60 group-hover:shadow-red-900/20',
   },
 ]
@@ -96,11 +96,11 @@ export function ModeSelector({ onSelectMode }: Props) {
       {total > 0 && (
         <div className="bg-zinc-900 rounded-xl border border-zinc-800 px-5 py-4 flex items-center justify-between">
           <div>
-            <p className="text-xs text-zinc-500 uppercase tracking-wider">Totalt øvd</p>
-            <p className="text-2xl font-bold text-zinc-100 mt-0.5">{total.toLocaleString()} svar</p>
+            <p className="text-xs text-zinc-500 uppercase tracking-wider">Total practiced</p>
+            <p className="text-2xl font-bold text-zinc-100 mt-0.5">{total.toLocaleString()} answers</p>
           </div>
           <div className="text-right">
-            <p className="text-xs text-zinc-500 uppercase tracking-wider">Nøyaktighet</p>
+            <p className="text-xs text-zinc-500 uppercase tracking-wider">Accuracy</p>
             <p className="text-2xl font-bold text-violet-400 mt-0.5">
               {Math.round((correct / total) * 100)}%
             </p>

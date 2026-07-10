@@ -37,14 +37,14 @@ export function WordListGrid() {
     <div className="space-y-4">
       <div className="flex items-center justify-between text-sm">
         <span className="text-zinc-500">
-          {overrideCount > 0 ? `${overrideCount} ord endret fra standard` : 'Klikk et ord for å redigere'}
+          {overrideCount > 0 ? `${overrideCount} word${overrideCount !== 1 ? 's' : ''} changed from default` : 'Click a word to edit'}
         </span>
         {overrideCount > 0 && (
           <button
             onClick={resetAll}
             className="text-red-400 hover:text-red-300 transition-colors flex items-center gap-1.5"
           >
-            ↺ Tilbakestill alle
+            ↺ Reset all
           </button>
         )}
       </div>
@@ -85,7 +85,7 @@ export function WordListGrid() {
                     <button
                       onClick={e => { e.stopPropagation(); resetOverride(key) }}
                       className="text-yellow-500 hover:text-yellow-300 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="Tilbakestill til standard"
+                      title="Reset to default"
                     >
                       ↺
                     </button>
@@ -115,7 +115,7 @@ export function WordListGrid() {
       </div>
 
       <p className="text-xs text-zinc-600 text-center">
-        Gul = endret fra standard · Farget prikk = treningshistorikk (grønn/gul/rød)
+        Yellow = changed from default · Coloured dot = training history (green/yellow/red)
       </p>
     </div>
   )

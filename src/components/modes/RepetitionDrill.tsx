@@ -37,14 +37,14 @@ function makeDecOptions(num: string, words: Record<string, string>): string[] {
 
 function relativeTime(ms: number): string {
   const diff = ms - Date.now()
-  if (diff <= 0) return 'snart'
+  if (diff <= 0) return 'soon'
   const m = Math.floor(diff / 60_000)
   const h = Math.floor(diff / 3_600_000)
   const d = Math.floor(diff / 86_400_000)
-  if (d > 0) return `om ${d} dag${d > 1 ? 'er' : ''}`
-  if (h > 0) return `om ${h} time${h > 1 ? 'r' : ''}`
-  if (m > 0) return `om ${m} minutt${m > 1 ? 'er' : ''}`
-  return 'om et øyeblikk'
+  if (d > 0) return `in ${d} day${d > 1 ? 's' : ''}`
+  if (h > 0) return `in ${h} hour${h > 1 ? 's' : ''}`
+  if (m > 0) return `in ${m} minute${m > 1 ? 's' : ''}`
+  return 'in a moment'
 }
 
 interface Props { answerMode: AnswerMode }
@@ -135,17 +135,17 @@ export function RepetitionDrill({ answerMode }: Props) {
     return (
       <div className="flex flex-col items-center gap-6 py-16 text-center">
         <div className="text-5xl">🎉</div>
-        <h2 className="text-xl font-bold text-zinc-100">Ingenting å repetere akkurat nå</h2>
+        <h2 className="text-xl font-bold text-zinc-100">Nothing to repeat right now</h2>
         {nextMs && (
           <p className="text-zinc-400">
-            Neste repetisjon: <span className="text-violet-400 font-semibold">{relativeTime(nextMs)}</span>
+            Next repetition: <span className="text-violet-400 font-semibold">{relativeTime(nextMs)}</span>
           </p>
         )}
         <button
           onClick={() => window.location.reload()}
           className="mt-2 px-5 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium transition-colors"
         >
-          Oppdater
+          Refresh
         </button>
       </div>
     )
@@ -167,8 +167,8 @@ export function RepetitionDrill({ answerMode }: Props) {
       {/* Progress */}
       <div className="w-full max-w-md space-y-1.5">
         <div className="flex justify-between text-xs text-zinc-600 tabular-nums">
-          <span>{done} av {totalInitial} fullført</span>
-          <span>{remaining} igjen</span>
+          <span>{done} of {totalInitial} done</span>
+          <span>{remaining} remaining</span>
         </div>
         <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
           <div
@@ -183,7 +183,7 @@ export function RepetitionDrill({ answerMode }: Props) {
       {/* Direction label */}
       <div className="text-center space-y-2">
         <p className="text-xs text-zinc-600 uppercase tracking-widest">
-          {isEnc ? 'Hva er ordet for' : 'Hvilket tall er'}
+          {isEnc ? 'What is the word for' : 'Which number is'}
         </p>
         {isEnc ? (
           <div className="text-[7rem] sm:text-[9rem] font-black text-violet-400 tabular-nums leading-none tracking-tight">
@@ -219,7 +219,7 @@ export function RepetitionDrill({ answerMode }: Props) {
             onAnswer={handleAnswer}
             answeredCorrect={answeredCorrect}
             correctAnswer={correctAnswer}
-            placeholder={isEnc ? 'Skriv ordet...' : 'Skriv tallet (00–99)...'}
+            placeholder={isEnc ? 'Type the word...' : 'Type the number (00–99)...'}
           />
         )}
         {answered !== null && lastMs !== null && (

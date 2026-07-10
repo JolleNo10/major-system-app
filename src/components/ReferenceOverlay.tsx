@@ -30,7 +30,7 @@ export function ReferenceOverlay({ onClose }: Props) {
                 : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
             }`}
           >
-            🔑 Lydnøkkel
+            🔑 Sound Key
           </button>
           <button
             onClick={() => setTab('word-list')}
@@ -40,13 +40,13 @@ export function ReferenceOverlay({ onClose }: Props) {
                 : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
             }`}
           >
-            📋 Ordliste
+            📋 Word List
           </button>
         </div>
         <button
           onClick={onClose}
           className="w-9 h-9 flex items-center justify-center rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors text-xl"
-          title="Lukk (Esc)"
+          title="Close (Esc)"
         >
           ×
         </button>
@@ -60,13 +60,13 @@ export function ReferenceOverlay({ onClose }: Props) {
             <p className="text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-3">Dev</p>
             <button
               onClick={() => {
-                if (confirm('Nullstill alle repetisjon-skjemaer? Ord og statistikk beholdes.')) {
+                if (confirm('Reset all repetition schedules? Words and statistics will be kept.')) {
                   clearSchedules()
                 }
               }}
               className="px-4 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-500 hover:text-zinc-300 hover:border-zinc-500 text-xs font-medium transition-colors"
             >
-              Nullstill repetisjon-skjemaer
+              Reset repetition schedules
             </button>
           </div>
         </div>

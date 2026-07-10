@@ -9,7 +9,8 @@ import { RangeSlider } from '../RangeSlider'
 import { RoundStatsPanel } from '../RoundStatsPanel'
 import type { RoundStat } from '../RoundStatsPanel'
 import { HintButton } from '../HintButton'
-import { loadStore, itemKey, medianMs, FAST_MS, SLOW_MS } from '../../data/itemStore'
+import { loadStore, itemKey, medianMs, OUTLIER_MS, STALE_MS } from '../../data/itemStore'
+import { adjustLatency, recallColor, RECALL_SLOW_MS } from '../../data/typingSpeed'
 import type { AnswerMode } from '../../types'
 
 // Weight formula: 1 + wrongRate×3 + easePenalty×1 + slow×0.5; unseen=1.5
@@ -25,7 +26,7 @@ function pickWeighted(available: string[], answerMode: AnswerMode): string {
     const wrongRate = total > 0 ? item.wrong / total : 0
     const easePenalty = Math.max(0, (DEFAULT_EASE - (item.ease ?? DEFAULT_EASE)) / (DEFAULT_EASE - MIN_EASE))
     const median = medianMs(item.latencies)
-    const slow = median !== null && median >= SLOW_MS[answerMode] ? 0.5 : 0
+    const slow = median !== null && median >= RECALL_SLOW_MS ? 0.5 : 0
     return 1 + wrongRate * 3 + easePenalty * 1 + slow
   })
   const sum = weights.reduce((a, b) => a + b, 0)
@@ -92,20 +93,21 @@ export function EncodingDrill({ answerMode, pool: customPool }: Props) {
   const [bestStreak, setBestStreak] = useState(0)
   const [lastMs, setLastMs] = useState<number | null>(null)
   const [hintUsed, setHintUsed] = useState(false)
+  const [paused, setPaused] = useState(false)
+  const [discarded, setDiscarded] = useState(false)
 
-  // Latency timer — starts when question renders
+  // Active-elapsed timer: excludes paused spans. timerStartRef = last resume;
+  // activeElapsedRef = active ms accumulated before the current running segment.
   const timerStartRef = useRef(Date.now())
+  const activeElapsedRef = useRef(0)
+  const everPausedRef = useRef(false)
+
   useEffect(() => {
     timerStartRef.current = Date.now()
+    activeElapsedRef.current = 0
+    everPausedRef.current = false
+    setPaused(false)
   }, [question.number])
-
-  const isFirstRender = useRef(true)
-  useEffect(() => {
-    if (isFirstRender.current) { isFirstRender.current = false; return }
-    setQuestion(makeQuestion(pool, words, answerMode))
-    setAnswered(null)
-    setAnsweredCorrect(null)
-  }, [pool]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const next = useCallback((exclude: string) => {
     setQuestion(makeQuestion(pool, words, answerMode, exclude))
@@ -113,44 +115,97 @@ export function EncodingDrill({ answerMode, pool: customPool }: Props) {
     setAnsweredCorrect(null)
     setLastMs(null)
     setHintUsed(false)
+    setDiscarded(false)
   }, [pool, words, answerMode])
 
-  // Keyboard shortcut: h reveals hint (blocked when typing in an input)
+  const resetRound = useCallback(() => {
+    setRoundStats({})
+    setSessionCorrect(0)
+    setSessionWrong(0)
+    setStreak(0)
+    setBestStreak(0)
+    setPaused(false)
+    setAnswered(null)
+    setAnsweredCorrect(null)
+    setLastMs(null)
+    setHintUsed(false)
+    setDiscarded(false)
+    setQuestion(makeQuestion(pool, words, answerMode))
+  }, [pool, words, answerMode])
+
+  // Range change (new segment) → fresh round
+  const isFirstRender = useRef(true)
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return }
+    resetRound()
+  }, [pool]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const togglePause = useCallback(() => {
+    if (answered !== null) return
+    setPaused(p => {
+      if (!p) {
+        activeElapsedRef.current += Date.now() - timerStartRef.current
+        everPausedRef.current = true
+        return true
+      }
+      timerStartRef.current = Date.now()
+      return false
+    })
+  }, [answered])
+
+  // Keyboard: h reveals hint, p toggles pause (blocked when typing in an input)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement) return
       if ((e.key === 'h' || e.key === 'H') && !hintUsed) setHintUsed(true)
+      if (e.key === 'p' || e.key === 'P') togglePause()
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [hintUsed])
+  }, [hintUsed, togglePause])
 
   const handleAnswer = useCallback((value: string) => {
-    if (answered !== null) return
-    const ms = Date.now() - timerStartRef.current
+    if (answered !== null || paused) return
+    const ms = activeElapsedRef.current + (Date.now() - timerStartRef.current)
     const correct = value.trim().toLowerCase() === question.correctWord.toLowerCase()
     setAnswered(value)
     setAnsweredCorrect(correct)
     setLastMs(ms)
-    recordFull('enc', question.number, correct, ms, answerMode, hintUsed)
+
+    // Idle / walked-away answer (and pause wasn't used) → discard, don't record
+    if (!everPausedRef.current && ms > STALE_MS) {
+      setDiscarded(true)
+      setTimeout(() => next(question.number), 1500)
+      return
+    }
+
+    const chars = answerMode === 'typing' ? question.correctWord.length : 0
+    const adjusted = adjustLatency(ms, answerMode, chars)
+    recordFull('enc', question.number, correct, ms, answerMode, hintUsed, chars)
     if (correct) {
       setSessionCorrect(c => c + 1)
-      setStreak(s => { const next = s + 1; setBestStreak(b => Math.max(b, next)); return next })
+      setStreak(s => { const n = s + 1; setBestStreak(b => Math.max(b, n)); return n })
     } else {
       setSessionWrong(w => w + 1)
       setStreak(0)
     }
     setRoundStats(prev => {
-      const entry = prev[question.number] ?? { correct: 0, wrong: 0 }
+      const entry = prev[question.number] ?? { correct: 0, wrong: 0, latencies: [], hintCount: 0 }
+      const validMs = ms > 0 && ms < OUTLIER_MS
       return {
         ...prev,
-        [question.number]: correct
-          ? { ...entry, correct: entry.correct + 1, lastMs: ms }
-          : { ...entry, wrong: entry.wrong + 1, lastMs: ms },
+        [question.number]: {
+          ...entry,
+          correct: entry.correct + (correct ? 1 : 0),
+          wrong: entry.wrong + (correct ? 0 : 1),
+          lastMs: adjusted,
+          latencies: validMs ? [...entry.latencies, adjusted] : entry.latencies,
+          hintCount: entry.hintCount + (hintUsed ? 1 : 0),
+        },
       }
     })
     setTimeout(() => next(question.number), 1500)
-  }, [answered, question, answerMode, recordFull, next])
+  }, [answered, paused, question, answerMode, recordFull, next, hintUsed])
 
   const panelCls = 'bg-zinc-900 border border-zinc-800 rounded-xl p-4'
 
@@ -158,7 +213,7 @@ export function EncodingDrill({ answerMode, pool: customPool }: Props) {
     <>
       {showStats && (
         <div className="hidden xl:block fixed left-0 top-14 bottom-0 w-56 bg-zinc-900 border-r border-zinc-800 overflow-y-auto z-30 p-4">
-          <RoundStatsPanel stats={roundStats} pool={pool} dir="enc" answerMode={answerMode} />
+          <RoundStatsPanel stats={roundStats} pool={pool} dir="enc" low={low} high={high} onRestart={resetRound} />
         </div>
       )}
       {showKey && (
@@ -170,21 +225,31 @@ export function EncodingDrill({ answerMode, pool: customPool }: Props) {
       <div className="flex flex-col items-center gap-8 py-4">
         {!customPool && (
           <div className="w-full max-w-md space-y-3">
-            <div className="flex justify-between">
+            <div className="flex justify-between items-center">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowStats(s => !s)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    showStats ? 'bg-zinc-700 text-zinc-100 border border-zinc-500' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700'
+                  }`}
+                  title="Show/hide round stats"
+                >📊</button>
+                <button
+                  onClick={() => setShowKey(k => !k)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    showKey ? 'bg-zinc-700 text-zinc-100 border border-zinc-500' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700'
+                  }`}
+                  title="Show/hide sound key"
+                >🔑</button>
+              </div>
               <button
-                onClick={() => setShowStats(s => !s)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  showStats ? 'bg-zinc-700 text-zinc-100 border border-zinc-500' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700'
+                onClick={togglePause}
+                disabled={answered !== null}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                  paused ? 'bg-violet-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700'
                 }`}
-                title="Vis/skjul runde-statistikk"
-              >📊</button>
-              <button
-                onClick={() => setShowKey(k => !k)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  showKey ? 'bg-zinc-700 text-zinc-100 border border-zinc-500' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700'
-                }`}
-                title="Vis/skjul lydnøkkel"
-              >🔑</button>
+                title="Pause / resume (p)"
+              >{paused ? '▶ Resume' : '⏸'}</button>
             </div>
             <RangeSlider low={low} high={high} onChange={(l, h) => { setLow(l); setHigh(h) }} />
           </div>
@@ -192,7 +257,7 @@ export function EncodingDrill({ answerMode, pool: customPool }: Props) {
 
         {showStats && (
           <div className={`xl:hidden w-full max-w-md ${panelCls}`}>
-            <RoundStatsPanel stats={roundStats} pool={pool} dir="enc" answerMode={answerMode} />
+            <RoundStatsPanel stats={roundStats} pool={pool} dir="enc" low={low} high={high} onRestart={resetRound} />
           </div>
         )}
         {showKey && (
@@ -204,20 +269,30 @@ export function EncodingDrill({ answerMode, pool: customPool }: Props) {
         <ScoreBar correct={sessionCorrect} wrong={sessionWrong} streak={streak} bestStreak={bestStreak} />
 
         <div className="text-center space-y-2">
-          <p className="text-xs text-zinc-600 uppercase tracking-widest">Hva er ordet for</p>
-          <div className="text-[7rem] sm:text-[9rem] font-black text-violet-400 tabular-nums leading-none tracking-tight">
+          <p className="text-xs text-zinc-600 uppercase tracking-widest">What is the word for</p>
+          <div className={`text-[7rem] sm:text-[9rem] font-black text-violet-400 tabular-nums leading-none tracking-tight ${paused ? 'blur-md select-none' : ''}`}>
             {question.number}
           </div>
         </div>
 
-        <HintButton
-          word={question.correctWord}
-          revealed={hintUsed}
-          onReveal={() => setHintUsed(true)}
-        />
+        {!paused && (
+          <HintButton
+            word={question.correctWord}
+            revealed={hintUsed}
+            onReveal={() => setHintUsed(true)}
+          />
+        )}
 
         <div className="w-full max-w-md space-y-2">
-          {answerMode === 'multiple-choice' ? (
+          {paused ? (
+            <div className="text-center space-y-3 py-6">
+              <p className="text-zinc-400 text-sm">Paused — timer stopped</p>
+              <button
+                onClick={togglePause}
+                className="px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-medium transition-colors"
+              >▶ Resume</button>
+            </div>
+          ) : answerMode === 'multiple-choice' ? (
             <MultipleChoice
               options={question.options}
               correctAnswer={question.correctWord}
@@ -229,17 +304,21 @@ export function EncodingDrill({ answerMode, pool: customPool }: Props) {
               onAnswer={handleAnswer}
               answeredCorrect={answeredCorrect}
               correctAnswer={question.correctWord}
-              placeholder="Skriv ordet..."
+              placeholder="Type the word..."
             />
           )}
           {answered !== null && lastMs !== null && (
-            <p className={`text-center text-sm font-mono tabular-nums ${
-              lastMs <= FAST_MS[answerMode] ? 'text-green-400'
-              : lastMs >= SLOW_MS[answerMode] ? 'text-red-400'
-              : 'text-yellow-400'
-            }`}>
-              {(lastMs / 1000).toFixed(1)}s
-            </p>
+            discarded ? (
+              <p className="text-center text-sm text-zinc-500">
+                ⏱ Not counted — timer ran too long (use ⏸ Pause)
+              </p>
+            ) : (
+              <p className={`text-center text-sm font-mono tabular-nums ${
+                recallColor(adjustLatency(lastMs, answerMode, answerMode === 'typing' ? question.correctWord.length : 0))
+              }`}>
+                {(lastMs / 1000).toFixed(1)}s
+              </p>
+            )
           )}
         </div>
       </div>

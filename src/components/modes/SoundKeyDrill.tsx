@@ -64,7 +64,7 @@ export function SoundKeyDrill({ answerMode }: Props) {
       <ScoreBar correct={sessionCorrect} wrong={sessionWrong} />
 
       <div className="text-center space-y-2">
-        <p className="text-xs text-zinc-600 uppercase tracking-widest">Hvilke lyder representerer</p>
+        <p className="text-xs text-zinc-600 uppercase tracking-widest">Which sounds does</p>
         <div className="text-[8rem] sm:text-[10rem] font-black text-violet-400 tabular-nums leading-none">
           {question.digit}
         </div>
@@ -83,7 +83,7 @@ export function SoundKeyDrill({ answerMode }: Props) {
             onAnswer={handleAnswer}
             answeredCorrect={answeredCorrect}
             correctAnswer={entry.display}
-            placeholder="Skriv lydene (f.eks. s, z)..."
+            placeholder="Type the sounds (e.g. s, z)..."
           />
         )}
       </div>

@@ -3,7 +3,7 @@ import { SOUND_KEY } from '../data/soundKey'
 export function SoundKeyPanel() {
   return (
     <div className="space-y-0.5">
-      <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Lydnøkkel</p>
+      <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Sound Key</p>
       {SOUND_KEY.map(({ digit, display, hint }) => (
         <div
           key={digit}

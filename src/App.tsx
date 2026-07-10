@@ -14,15 +14,15 @@ import { WeakSpots } from './components/modes/WeakSpots'
 import { RepetitionDrill } from './components/modes/RepetitionDrill'
 
 const MODE_TITLES: Record<Mode, string> = {
-  home: 'Majorsystemet',
-  encoding: 'Enkoding',
-  decoding: 'Dekoding',
-  'sound-key': 'Lydnøkkel',
-  'reverse-sound-key': 'Omvendt lydnøkkel',
-  sequence: 'Sekvenser',
-  'speed-round': 'Hurtigrunde',
-  'weak-spots': 'Svake punkter',
-  'repetition': 'Repetisjon',
+  home: 'Major System',
+  encoding: 'Encoding',
+  decoding: 'Decoding',
+  'sound-key': 'Sound Key',
+  'reverse-sound-key': 'Reverse Sound Key',
+  sequence: 'Sequences',
+  'speed-round': 'Speed Round',
+  'weak-spots': 'Weak Spots',
+  'repetition': 'Repetition',
 }
 
 export default function App() {
@@ -50,7 +50,7 @@ export default function App() {
             <button
               onClick={goHome}
               className="flex items-center gap-1.5 text-zinc-400 hover:text-zinc-100 transition-colors text-sm font-medium shrink-0"
-              title="Tilbake (Esc)"
+              title="Back (Esc)"
             >
               <span className="text-lg">←</span>
             </button>
@@ -68,11 +68,11 @@ export default function App() {
             )}
             <button
               onClick={() => setShowReference(true)}
-              title="Referanse"
+              title="Reference"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 hover:border-violet-500 transition-colors text-sm font-medium text-zinc-300 hover:text-zinc-100"
             >
               <span>📚</span>
-              <span className="hidden sm:inline">Referanse</span>
+              <span className="hidden sm:inline">Reference</span>
             </button>
           </div>
         </div>

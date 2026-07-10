@@ -57,14 +57,14 @@ export function MultipleChoice({ options, correctAnswer, onAnswer, answered }: P
             className="w-full py-10 rounded-xl border-2 border-dashed border-zinc-700 bg-zinc-900 hover:border-violet-500 hover:bg-zinc-800 transition-all text-zinc-400 hover:text-zinc-100 text-sm font-medium flex flex-col items-center gap-2"
           >
             <span className="text-2xl">👁</span>
-            <span>Trykk for å vise alternativer</span>
-            <span className="text-xs text-zinc-600">eller trykk Space / Enter</span>
+            <span>Press to show options</span>
+            <span className="text-xs text-zinc-600">or press Space / Enter</span>
           </button>
           <button
             onClick={toggle}
             className="self-center text-xs text-zinc-600 hover:text-zinc-400 transition-colors py-1"
           >
-            Alltid vis alternativer
+            Always show options
           </button>
         </>
       ) : (
@@ -109,7 +109,7 @@ export function MultipleChoice({ options, correctAnswer, onAnswer, answered }: P
               onClick={toggle}
               className="self-center text-xs text-zinc-600 hover:text-zinc-400 transition-colors py-1"
             >
-              {hide ? 'Alltid vis alternativer' : 'Skjul alternativer til tenking'}
+              {hide ? 'Always show options' : 'Hide options to think'}
             </button>
           )}
         </>

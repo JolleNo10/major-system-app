@@ -7,7 +7,7 @@ interface Props {
   placeholder?: string
 }
 
-export function TypingInput({ onAnswer, answeredCorrect, correctAnswer, placeholder = 'Skriv svaret...' }: Props) {
+export function TypingInput({ onAnswer, answeredCorrect, correctAnswer, placeholder = 'Type the answer...' }: Props) {
   const [value, setValue] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -70,7 +70,7 @@ export function TypingInput({ onAnswer, answeredCorrect, correctAnswer, placehol
 
       {answeredCorrect === false && (
         <div className="px-4 py-3 rounded-lg bg-green-500/10 border border-green-500/30 text-sm">
-          <span className="text-zinc-400">Riktig svar: </span>
+          <span className="text-zinc-400">Correct answer: </span>
           <span className="text-green-300 font-bold">{correctAnswer}</span>
         </div>
       )}

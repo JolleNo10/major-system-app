@@ -1,6 +1,6 @@
 import { SOUND_KEY } from '../data/soundKey'
 
-const SILENT = ['Vokaler (a, e, i, o, u)', 'h', 'w', 'y', 'c (mykt)', 'q', 'x']
+const SILENT = ['Vowels (a, e, i, o, u)', 'h', 'w', 'y', 'c (mykt)', 'q', 'x']
 
 export function SoundKeyTable() {
   return (
@@ -9,9 +9,9 @@ export function SoundKeyTable() {
         <table className="w-full">
           <thead>
             <tr className="bg-zinc-800/60">
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500">Siffer</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500">Lyder</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500">Husketips</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500">Digit</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500">Sounds</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500">Memory tips</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-800/60">
@@ -34,7 +34,7 @@ export function SoundKeyTable() {
 
       <div className="bg-zinc-800/30 rounded-xl border border-zinc-800 p-5">
         <p className="text-sm font-semibold text-zinc-400 mb-3 uppercase tracking-wider">
-          Bokstaver som ignoreres
+          Letters that are ignored
         </p>
         <div className="flex flex-wrap gap-2">
           {SILENT.map(l => (
@@ -44,7 +44,7 @@ export function SoundKeyTable() {
           ))}
         </div>
         <p className="text-xs text-zinc-600 mt-3">
-          Kun konsonantlyder teller. Stille bokstaver, vokaler og disse ignoreres.
+          Only consonant sounds count. Silent letters, vowels and these are ignored.
         </p>
       </div>
     </div>

@@ -110,12 +110,12 @@ export function SpeedRound({ answerMode }: Props) {
       <div className="flex flex-col items-center gap-8 py-8">
         <div className="text-center space-y-3">
           <div className="text-6xl">⚡</div>
-          <h2 className="text-2xl font-bold text-zinc-100">Hurtigrunde</h2>
+          <h2 className="text-2xl font-bold text-zinc-100">Speed Round</h2>
           <p className="text-zinc-400 max-w-xs">
-            Enkod så mange tall som mulig på {DURATION} sekunder. Tall → Ord.
+            Encode as many numbers as possible in {DURATION} seconds. Number → Word.
           </p>
           {personalBest > 0 && (
-            <p className="text-violet-400 font-semibold">Personlig rekord: {personalBest} ✓</p>
+            <p className="text-violet-400 font-semibold">Personal best: {personalBest} ✓</p>
           )}
         </div>
         <button
@@ -134,27 +134,27 @@ export function SpeedRound({ answerMode }: Props) {
       <div className="flex flex-col items-center gap-6 py-8">
         <div className="text-6xl">{isNewBest ? '🏆' : '⏱'}</div>
         <h2 className="text-2xl font-bold text-zinc-100">
-          {isNewBest ? 'Ny personlig rekord!' : 'Tid er ute!'}
+          {isNewBest ? 'New personal best!' : "Time's up!"}
         </h2>
         <div className="flex gap-8 text-center">
           <div>
             <div className="text-4xl font-black text-green-400">{correct}</div>
-            <div className="text-sm text-zinc-500">riktige</div>
+            <div className="text-sm text-zinc-500">correct</div>
           </div>
           <div>
             <div className="text-4xl font-black text-red-400">{wrong}</div>
-            <div className="text-sm text-zinc-500">feil</div>
+            <div className="text-sm text-zinc-500">wrong</div>
           </div>
           <div>
             <div className="text-4xl font-black text-violet-400">{personalBest}</div>
-            <div className="text-sm text-zinc-500">rekord</div>
+            <div className="text-sm text-zinc-500">record</div>
           </div>
         </div>
         <button
           onClick={start}
           className="px-8 py-4 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-lg font-bold transition-colors"
         >
-          Prøv igjen
+          Try again
         </button>
       </div>
     )
@@ -180,7 +180,7 @@ export function SpeedRound({ answerMode }: Props) {
       </div>
 
       <div className="text-center space-y-1">
-        <p className="text-xs text-zinc-600 uppercase tracking-widest">Hva er ordet for</p>
+        <p className="text-xs text-zinc-600 uppercase tracking-widest">What is the word for</p>
         <div className="text-[7rem] font-black text-violet-400 tabular-nums leading-none">
           {question.number}
         </div>
@@ -199,7 +199,7 @@ export function SpeedRound({ answerMode }: Props) {
             onAnswer={handleAnswer}
             answeredCorrect={answeredCorrect}
             correctAnswer={question.correct}
-            placeholder="Skriv ordet..."
+            placeholder="Type the word..."
           />
         )}
       </div>

@@ -34,9 +34,9 @@ export function WeakSpots({ answerMode }: Props) {
     return (
       <div className="flex flex-col items-center gap-4 py-16 text-center">
         <div className="text-5xl">🎯</div>
-        <h2 className="text-xl font-bold text-zinc-100">Ingen data ennå</h2>
+        <h2 className="text-xl font-bold text-zinc-100">No data yet</h2>
         <p className="text-zinc-400 max-w-xs">
-          Øv på enkoding eller dekoding først, så kan vi finne dine svake punkter.
+          Practice encoding or decoding first, then we can find your weak spots.
         </p>
       </div>
     )
@@ -48,12 +48,12 @@ export function WeakSpots({ answerMode }: Props) {
     <div className="flex flex-col gap-4">
       {!hasWeakData && (
         <div className="bg-zinc-800/60 border border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-400 text-center">
-          Ikke nok feil-data ennå — viser tilfeldige tall
+          Not enough error data yet — showing random numbers
         </div>
       )}
       {hasWeakData && (
         <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-sm text-zinc-300 text-center">
-          🎯 Fokuserer på dine {pool.length} svakeste tall
+          🎯 Focusing on your {pool.length} weakest numbers
         </div>
       )}
       <EncodingDrill answerMode={answerMode} pool={pool} />

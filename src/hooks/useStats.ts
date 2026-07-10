@@ -5,6 +5,7 @@ import {
   type ItemRecord,
 } from '../data/itemStore'
 import { gradeAnswer, applySm2 } from '../data/sm2'
+import { adjustLatency, recordTypingSpeed } from '../data/typingSpeed'
 
 const LEGACY_KEY = 'major-stats'
 
@@ -99,6 +100,7 @@ export function useStats() {
     ms: number,
     answerMode: AnswerMode,
     hintUsed = false,
+    chars = 0,
   ) => {
     // Keep legacy store in sync for ModeSelector totals
     recordAnswer(num, correct)
@@ -113,11 +115,16 @@ export function useStats() {
       hintCount: (item.hintCount ?? 0) + (hintUsed ? 1 : 0),
     }
 
+    // Compensate for typing time so long words aren't judged slow (see typingSpeed).
+    const adjusted = adjustLatency(ms, answerMode, chars)
+
     if (ms > 0 && ms < OUTLIER_MS) {
-      item = { ...item, latencies: [...item.latencies, ms].slice(-MAX_LATENCIES) }
+      item = { ...item, latencies: [...item.latencies, adjusted].slice(-MAX_LATENCIES) }
+      if (answerMode === 'typing' && correct) recordTypingSpeed(ms, chars)
     }
 
-    let grade = gradeAnswer(correct, ms, answerMode)
+    // Grade the recall time (typing removed) against the recall/MC thresholds.
+    let grade = gradeAnswer(correct, adjusted, 'multiple-choice')
     // Assisted correct answer is not mastery — cap at 3 so item stays in rotation
     if (hintUsed && correct) grade = Math.min(grade, 3)
     item = applySm2(item, grade)

@@ -58,7 +58,7 @@ export function ReverseSoundKeyDrill({ answerMode }: Props) {
       <ScoreBar correct={sessionCorrect} wrong={sessionWrong} />
 
       <div className="text-center space-y-2">
-        <p className="text-xs text-zinc-600 uppercase tracking-widest">Hvilket siffer representerer lyden</p>
+        <p className="text-xs text-zinc-600 uppercase tracking-widest">Which digit represents the sound</p>
         <div className="text-[6rem] sm:text-[8rem] font-black text-zinc-100 leading-none font-mono">
           {question.sound}
         </div>
@@ -77,7 +77,7 @@ export function ReverseSoundKeyDrill({ answerMode }: Props) {
             onAnswer={handleAnswer}
             answeredCorrect={answeredCorrect}
             correctAnswer={correctStr}
-            placeholder="Skriv sifferet (0–9)..."
+            placeholder="Type the digit (0–9)..."
           />
         )}
       </div>
