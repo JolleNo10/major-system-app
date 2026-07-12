@@ -75,6 +75,19 @@ time, judging fast/slow on the remaining **recall time**. So a long word typed a
 speed is treated the same as a short one — length is factored out. Multiple choice has no typing
 and is never adjusted.
 
+### Set mastery
+
+While practising a round, a **Set mastery** meter shows how much of the whole selected range you
+know well. A number counts as *mastered* once you answer it correctly, un-hinted, and within the
+mastery speed limit **twice in a row** (recall time, typing already discounted). Selection never
+repeats a number back-to-back, so those answers always have another question in between. A wrong
+or too-slow answer resets it. Mastered numbers appear less often so the round converges on what
+you still need. When the whole set is mastered, a banner offers **Next set**, which advances the
+range window by its width (e.g. 00–09 → 10–19) and starts a fresh round.
+
+The mastery **speed limit is adjustable** in Settings (⚙️ in the header) — raise it so answers
+that aren't slow still count as mastered, or lower it to require fast/green recall.
+
 ### Pause & idle answers
 
 Press **⏸** (or the `p` key) to pause — the timer stops so a break never skews your times.
@@ -93,6 +106,7 @@ sorted worst-first:
 - **Xs** — median recall time this round (typing time removed; green < 1.2s, yellow, red > 2s)
 - **🐢** — answered correctly but slowly (by recall time)
 - **💡** — a hint was used for this number *this round*
+- **✅** — mastered this round (correct + within the speed limit, twice in a row)
 - **∞ c/total** — dimmed all-time score from the persistent store (survives resets)
 - **🔥N** — current streak; **best N** shows the round's best when the streak is broken
 

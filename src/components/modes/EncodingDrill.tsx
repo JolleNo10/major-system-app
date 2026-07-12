@@ -11,23 +11,30 @@ import type { RoundStat } from '../RoundStatsPanel'
 import { HintButton } from '../HintButton'
 import { loadStore, itemKey, medianMs, OUTLIER_MS, STALE_MS } from '../../data/itemStore'
 import { adjustLatency, recallColor, RECALL_SLOW_MS } from '../../data/typingSpeed'
+import { masteryProgress, masteryFastMs } from '../../utils/roundMastery'
+import { useSettings } from '../../context/SettingsContext'
 import type { AnswerMode } from '../../types'
 
 // Weight formula: 1 + wrongRate×3 + easePenalty×1 + slow×0.5; unseen=1.5
 // easePenalty: 0 at SM-2 ease=2.5 (default), 1 at ease=1.3 (minimum) — long-term difficulty signal
-function pickWeighted(available: string[], answerMode: AnswerMode): string {
+function pickWeighted(available: string[], answerMode: AnswerMode, masteredSet: Set<string>): string {
   if (available.length === 1) return available[0]
   const store = loadStore()
   const DEFAULT_EASE = 2.5, MIN_EASE = 1.3
   const weights = available.map(num => {
     const item = store[itemKey('enc', num)]
-    if (!item || item.lastSeenAt === 0) return 1.5
-    const total = item.correct + item.wrong
-    const wrongRate = total > 0 ? item.wrong / total : 0
-    const easePenalty = Math.max(0, (DEFAULT_EASE - (item.ease ?? DEFAULT_EASE)) / (DEFAULT_EASE - MIN_EASE))
-    const median = medianMs(item.latencies)
-    const slow = median !== null && median >= RECALL_SLOW_MS ? 0.5 : 0
-    return 1 + wrongRate * 3 + easePenalty * 1 + slow
+    const base = (!item || item.lastSeenAt === 0)
+      ? 1.5
+      : (() => {
+          const total = item.correct + item.wrong
+          const wrongRate = total > 0 ? item.wrong / total : 0
+          const easePenalty = Math.max(0, (DEFAULT_EASE - (item.ease ?? DEFAULT_EASE)) / (DEFAULT_EASE - MIN_EASE))
+          const median = medianMs(item.latencies)
+          const slow = median !== null && median >= RECALL_SLOW_MS ? 0.5 : 0
+          return 1 + wrongRate * 3 + easePenalty * 1 + slow
+        })()
+    // De-prioritise numbers already mastered this round so practice converges on the rest
+    return masteredSet.has(num) ? base * 0.25 : base
   })
   const sum = weights.reduce((a, b) => a + b, 0)
   let r = Math.random() * sum
@@ -47,9 +54,9 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
-function makeQuestion(pool: string[], words: Record<string, string>, answerMode: AnswerMode, exclude?: string) {
+function makeQuestion(pool: string[], words: Record<string, string>, answerMode: AnswerMode, masteredSet: Set<string>, exclude?: string) {
   const available = pool.length > 1 ? pool.filter(n => n !== exclude) : pool
-  const number = pickWeighted(available, answerMode)
+  const number = pickWeighted(available, answerMode, masteredSet)
   const correctWord = words[number]
 
   const allNums = Object.keys(words)
@@ -69,6 +76,7 @@ interface Props {
 export function EncodingDrill({ answerMode, pool: customPool }: Props) {
   const { words } = useWords()
   const { recordFull } = useStats()
+  const { settings } = useSettings()
 
   const [low, setLow] = useState(0)
   const [high, setHigh] = useState(99)
@@ -84,7 +92,7 @@ export function EncodingDrill({ answerMode, pool: customPool }: Props) {
     return allNums
   }, [allNums, customPool, low, high])
 
-  const [question, setQuestion] = useState(() => makeQuestion(pool, words, answerMode))
+  const [question, setQuestion] = useState(() => makeQuestion(pool, words, answerMode, new Set<string>()))
   const [answered, setAnswered] = useState<string | null>(null)
   const [answeredCorrect, setAnsweredCorrect] = useState<boolean | null>(null)
   const [sessionCorrect, setSessionCorrect] = useState(0)
@@ -101,6 +109,7 @@ export function EncodingDrill({ answerMode, pool: customPool }: Props) {
   const timerStartRef = useRef(Date.now())
   const activeElapsedRef = useRef(0)
   const everPausedRef = useRef(false)
+  const masteredSetRef = useRef<Set<string>>(new Set()) // latest mastered set, for selection
 
   useEffect(() => {
     timerStartRef.current = Date.now()
@@ -110,7 +119,7 @@ export function EncodingDrill({ answerMode, pool: customPool }: Props) {
   }, [question.number])
 
   const next = useCallback((exclude: string) => {
-    setQuestion(makeQuestion(pool, words, answerMode, exclude))
+    setQuestion(makeQuestion(pool, words, answerMode, masteredSetRef.current, exclude))
     setAnswered(null)
     setAnsweredCorrect(null)
     setLastMs(null)
@@ -130,7 +139,8 @@ export function EncodingDrill({ answerMode, pool: customPool }: Props) {
     setLastMs(null)
     setHintUsed(false)
     setDiscarded(false)
-    setQuestion(makeQuestion(pool, words, answerMode))
+    masteredSetRef.current = new Set()
+    setQuestion(makeQuestion(pool, words, answerMode, new Set<string>()))
   }, [pool, words, answerMode])
 
   // Range change (new segment) → fresh round
@@ -190,8 +200,9 @@ export function EncodingDrill({ answerMode, pool: customPool }: Props) {
       setStreak(0)
     }
     setRoundStats(prev => {
-      const entry = prev[question.number] ?? { correct: 0, wrong: 0, latencies: [], hintCount: 0 }
+      const entry = prev[question.number] ?? { correct: 0, wrong: 0, latencies: [], hintCount: 0, attempts: [] }
       const validMs = ms > 0 && ms < OUTLIER_MS
+      const attempt = { ok: correct, recallMs: adjusted, hinted: hintUsed }
       return {
         ...prev,
         [question.number]: {
@@ -201,11 +212,22 @@ export function EncodingDrill({ answerMode, pool: customPool }: Props) {
           lastMs: adjusted,
           latencies: validMs ? [...entry.latencies, adjusted] : entry.latencies,
           hintCount: entry.hintCount + (hintUsed ? 1 : 0),
+          attempts: [...entry.attempts, attempt].slice(-5),
         },
       }
     })
     setTimeout(() => next(question.number), 1500)
   }, [answered, paused, question, answerMode, recordFull, next, hintUsed])
+
+  // Round mastery — how well the full selected set is known
+  const { mastered, total, masteredSet } = masteryProgress(pool, roundStats, masteryFastMs(settings.masteryLatencyFactor))
+  masteredSetRef.current = masteredSet
+  const setComplete = total > 0 && mastered === total
+  const width = high - low + 1
+  const nextLow = high < 99 ? high + 1 : 0
+  const nextHigh = high < 99 ? Math.min(99, high + width) : Math.min(99, width - 1)
+  const fmt2 = (v: number) => String(v).padStart(2, '0')
+  const startNextSet = () => { setLow(nextLow); setHigh(nextHigh) }
 
   const panelCls = 'bg-zinc-900 border border-zinc-800 rounded-xl p-4'
 
@@ -229,14 +251,14 @@ export function EncodingDrill({ answerMode, pool: customPool }: Props) {
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowStats(s => !s)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  className={`flex items-center justify-center min-h-[40px] min-w-[40px] px-3 rounded-lg text-sm font-medium transition-colors ${
                     showStats ? 'bg-zinc-700 text-zinc-100 border border-zinc-500' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700'
                   }`}
                   title="Show/hide round stats"
                 >📊</button>
                 <button
                   onClick={() => setShowKey(k => !k)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  className={`flex items-center justify-center min-h-[40px] min-w-[40px] px-3 rounded-lg text-sm font-medium transition-colors ${
                     showKey ? 'bg-zinc-700 text-zinc-100 border border-zinc-500' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700'
                   }`}
                   title="Show/hide sound key"
@@ -245,7 +267,7 @@ export function EncodingDrill({ answerMode, pool: customPool }: Props) {
               <button
                 onClick={togglePause}
                 disabled={answered !== null}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                className={`flex items-center justify-center min-h-[40px] min-w-[40px] px-3 rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                   paused ? 'bg-violet-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700'
                 }`}
                 title="Pause / resume (p)"
@@ -267,6 +289,37 @@ export function EncodingDrill({ answerMode, pool: customPool }: Props) {
         )}
 
         <ScoreBar correct={sessionCorrect} wrong={sessionWrong} streak={streak} bestStreak={bestStreak} />
+
+        {!customPool && total > 0 && (
+          <div className="w-full max-w-md -mt-4">
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-zinc-500">Set mastery</span>
+              <span className={setComplete ? 'text-green-400 font-semibold' : 'text-zinc-400 tabular-nums'}>{mastered}/{total}</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+              <div
+                className={`h-full transition-all ${setComplete ? 'bg-green-500' : 'bg-violet-600'}`}
+                style={{ width: `${(mastered / total) * 100}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {!customPool && setComplete && (
+          <div className="w-full max-w-md rounded-xl border border-green-600/40 bg-green-500/10 p-4 text-center space-y-3">
+            <p className="text-green-300 font-semibold">🎉 You know this whole set — ready to move on.</p>
+            <div className="flex justify-center gap-2 flex-wrap">
+              <button
+                onClick={startNextSet}
+                className="flex items-center min-h-[40px] px-4 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-medium transition-colors"
+              >Next set {fmt2(nextLow)}–{fmt2(nextHigh)} →</button>
+              <button
+                onClick={resetRound}
+                className="flex items-center min-h-[40px] px-4 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-medium transition-colors"
+              >Keep practising</button>
+            </div>
+          </div>
+        )}
 
         <div className="text-center space-y-2">
           <p className="text-xs text-zinc-600 uppercase tracking-widest">What is the word for</p>

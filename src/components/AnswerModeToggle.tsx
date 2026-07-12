@@ -10,7 +10,7 @@ export function AnswerModeToggle({ mode, onToggle }: Props) {
     <button
       onClick={onToggle}
       title={mode === 'multiple-choice' ? 'Switch to typing' : 'Switch to multiple choice'}
-      className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 hover:border-violet-500 transition-colors text-sm font-medium text-zinc-300 hover:text-zinc-100"
+      className="flex items-center justify-center gap-2 px-3 min-h-[40px] min-w-[40px] rounded-lg bg-zinc-800 border border-zinc-700 hover:border-violet-500 transition-colors text-sm font-medium text-zinc-300 hover:text-zinc-100"
     >
       {mode === 'multiple-choice' ? (
         <>

@@ -1,7 +1,7 @@
 import type { AllStats, Direction, AnswerMode } from '../types'
 import {
   loadStore, saveStore, getItem, setItem, itemKey,
-  medianMs, SLOW_MS, OUTLIER_MS, MAX_LATENCIES,
+  medianMs, SLOW_MS, OUTLIER_MS, MAX_LATENCIES, pushAttempt,
   type ItemRecord,
 } from '../data/itemStore'
 import { gradeAnswer, applySm2 } from '../data/sm2'
@@ -117,6 +117,10 @@ export function useStats() {
 
     // Compensate for typing time so long words aren't judged slow (see typingSpeed).
     const adjusted = adjustLatency(ms, answerMode, chars)
+
+    // Timestamped per-answer log (pruned to the retention window) — the basis for
+    // age-based decay and recent-accuracy stats.
+    item = { ...item, attempts: pushAttempt(item.attempts, { at: Date.now(), ok: correct, ms: adjusted }) }
 
     if (ms > 0 && ms < OUTLIER_MS) {
       item = { ...item, latencies: [...item.latencies, adjusted].slice(-MAX_LATENCIES) }

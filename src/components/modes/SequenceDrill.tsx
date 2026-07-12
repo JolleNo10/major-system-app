@@ -1,12 +1,22 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import { useWords } from '../../context/WordsContext'
 import { MultipleChoice } from '../MultipleChoice'
 import { TypingInput } from '../TypingInput'
-import { SOUND_KEY } from '../../data/soundKey'
 import type { AnswerMode } from '../../types'
 
-const DELAY_KEY = 'major-seq-delay'
-const COUNTDOWN_SECONDS = 15
+// Sequence memory drill:
+//   setup  → pick length (2–20) + study mode
+//   study  → encode/memorise each number (number-only self-paced, or word-quiz)
+//   recall → type the whole word sequence back from memory (one field)
+//   result → per-position scoring
+
+const LEN_KEY = 'major-seq-length'
+const MODE_KEY = 'major-seq-studymode'
+const MIN_LEN = 2
+const MAX_LEN = 20
+
+type Phase = 'setup' | 'study' | 'recall' | 'result'
+type StudyMode = 'number-only' | 'word-quiz'
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
@@ -17,7 +27,7 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
-function generateSequence(words: Record<string, string>, length = 3): string[] {
+function generateSequence(words: Record<string, string>, length: number): string[] {
   return shuffle(Object.keys(words)).slice(0, length)
 }
 
@@ -27,397 +37,265 @@ function getMcOptions(number: string, words: Record<string, string>): string[] {
   return shuffle([correct, ...others.map(n => words[n])])
 }
 
-type DelayMode = 'none' | 'short' | 'distraction'
-type SubMode = 'encoding' | 'decoding'
-type DecodePhase = 'study' | 'countdown' | 'distraction' | 'recall' | 'result'
-
-interface DistractorQ {
-  digit: number
-  display: string
-  options: string[]
-}
-
-function makeDistractors(count = 3): DistractorQ[] {
-  return shuffle(SOUND_KEY).slice(0, count).map(entry => {
-    const others = shuffle(SOUND_KEY.filter(e => e.digit !== entry.digit)).slice(0, 2)
-    return {
-      digit: entry.digit,
-      display: entry.display,
-      options: shuffle([entry.display, ...others.map(e => e.display)]),
-    }
-  })
-}
-
-interface EncodingState {
-  sequence: string[]
-  currentIndex: number
-  answers: Array<{ word: string; correct: boolean }>
-  answered: string | null
-  answeredCorrect: boolean | null
-  options: string[]
-}
-
-interface DecodingState {
-  sequence: string[]
-  phase: DecodePhase
-  answered: string | null
-  answeredCorrect: boolean | null
-  countdown: number
-  distractors: DistractorQ[]
-  distractorIdx: number
-  distractorAnswered: string | null
-  delayUsed: DelayMode
-}
-
 interface Props {
   answerMode: AnswerMode
 }
 
 export function SequenceDrill({ answerMode }: Props) {
   const { words } = useWords()
-  const [subMode, setSubMode] = useState<SubMode>('encoding')
-  const sequenceLen = 3
 
-  const [delayMode, setDelayMode] = useState<DelayMode>(() => {
-    const saved = localStorage.getItem(DELAY_KEY)
-    return saved === 'short' || saved === 'distraction' ? saved : 'none'
+  const [length, setLength] = useState<number>(() => {
+    const v = parseInt(localStorage.getItem(LEN_KEY) ?? '', 10)
+    return Number.isFinite(v) && v >= MIN_LEN && v <= MAX_LEN ? v : 5
   })
+  const [studyMode, setStudyMode] = useState<StudyMode>(() =>
+    localStorage.getItem(MODE_KEY) === 'word-quiz' ? 'word-quiz' : 'number-only')
 
-  const persistDelay = (d: DelayMode) => {
-    setDelayMode(d)
-    localStorage.setItem(DELAY_KEY, d)
-  }
+  const [phase, setPhase] = useState<Phase>('setup')
+  const [sequence, setSequence] = useState<string[]>([])
+  const [studyIdx, setStudyIdx] = useState(0)
+  const [revealWord, setRevealWord] = useState(false)
 
-  // ── Encoding ────────────────────────────────────────────────────────────────
+  // word-quiz per-step feedback
+  const [quizAnswered, setQuizAnswered] = useState<string | null>(null)
+  const [quizCorrect, setQuizCorrect] = useState<boolean | null>(null)
+  const [quizOptions, setQuizOptions] = useState<string[]>([])
 
-  const newEncoding = useCallback((): EncodingState => {
-    const sequence = generateSequence(words, sequenceLen)
-    return {
-      sequence, currentIndex: 0, answers: [],
-      answered: null, answeredCorrect: null,
-      options: getMcOptions(sequence[0], words),
-    }
-  }, [words])
+  // recall
+  const [recallText, setRecallText] = useState('')
+  const [submitted, setSubmitted] = useState<string[]>([])
 
-  const [encoding, setEncoding] = useState<EncodingState>(newEncoding)
+  const start = useCallback(() => {
+    localStorage.setItem(LEN_KEY, String(length))
+    localStorage.setItem(MODE_KEY, studyMode)
+    const seq = generateSequence(words, length)
+    setSequence(seq)
+    setStudyIdx(0)
+    setRevealWord(false)
+    setQuizAnswered(null)
+    setQuizCorrect(null)
+    setQuizOptions(getMcOptions(seq[0], words))
+    setRecallText('')
+    setSubmitted([])
+    setPhase('study')
+  }, [length, studyMode, words])
 
-  const handleEncodingAnswer = useCallback((value: string) => {
-    setEncoding(prev => {
-      if (prev.answered !== null) return prev
-      const correct = value.toLowerCase().trim() === words[prev.sequence[prev.currentIndex]].toLowerCase()
-      const newAnswers = [...prev.answers, { word: value, correct }]
-      setTimeout(() => {
-        setEncoding(cur => {
-          const nextIndex = cur.currentIndex + 1
-          if (nextIndex >= cur.sequence.length) {
-            return { ...cur, currentIndex: nextIndex, answered: null, answeredCorrect: null }
-          }
-          return {
-            ...cur, currentIndex: nextIndex, answered: null, answeredCorrect: null,
-            options: getMcOptions(cur.sequence[nextIndex], words),
-          }
-        })
-      }, 1200)
-      return { ...prev, answered: value, answeredCorrect: correct, answers: newAnswers }
+  const advanceStudy = useCallback(() => {
+    setStudyIdx(prev => {
+      const next = prev + 1
+      if (next >= sequence.length) {
+        setPhase('recall')
+        return prev
+      }
+      setRevealWord(false)
+      setQuizAnswered(null)
+      setQuizCorrect(null)
+      setQuizOptions(getMcOptions(sequence[next], words))
+      return next
     })
-  }, [words])
+  }, [sequence, words])
 
-  // ── Decoding ─────────────────────────────────────────────────────────────────
+  const handleQuizAnswer = useCallback((value: string) => {
+    if (quizAnswered !== null) return
+    const correct = value.toLowerCase().trim() === words[sequence[studyIdx]].toLowerCase()
+    setQuizAnswered(value)
+    setQuizCorrect(correct)
+    setTimeout(advanceStudy, 1200)
+  }, [quizAnswered, words, sequence, studyIdx, advanceStudy])
 
-  const newDecoding = useCallback((): DecodingState => ({
-    sequence: generateSequence(words, sequenceLen),
-    phase: 'study',
-    answered: null, answeredCorrect: null,
-    countdown: COUNTDOWN_SECONDS,
-    distractors: makeDistractors(3),
-    distractorIdx: 0, distractorAnswered: null,
-    delayUsed: 'none',
-  }), [words])
+  const submitRecall = useCallback(() => {
+    const tokens = recallText.trim().split(/\s+/).filter(Boolean)
+    setSubmitted(tokens)
+    setPhase('result')
+  }, [recallText])
 
-  const [decoding, setDecoding] = useState<DecodingState>(newDecoding)
+  const correctCount = sequence.reduce((acc, num, i) => {
+    const typed = submitted[i] ?? ''
+    return acc + (typed.toLowerCase() === words[num].toLowerCase() ? 1 : 0)
+  }, 0)
 
-  // Countdown ticker
-  useEffect(() => {
-    if (decoding.phase !== 'countdown') return
-    if (decoding.countdown <= 0) {
-      setDecoding(d => ({ ...d, phase: 'recall' }))
-      return
-    }
-    const t = setTimeout(() => setDecoding(d => ({ ...d, countdown: d.countdown - 1 })), 1000)
-    return () => clearTimeout(t)
-  }, [decoding.phase, decoding.countdown])
-
-  const handleReady = useCallback(() => {
-    setDecoding(prev => {
-      if (delayMode === 'none') return { ...prev, phase: 'recall', delayUsed: 'none' }
-      if (delayMode === 'short') return { ...prev, phase: 'countdown', countdown: COUNTDOWN_SECONDS, delayUsed: 'short' }
-      return { ...prev, phase: 'distraction', distractors: makeDistractors(3), distractorIdx: 0, distractorAnswered: null, delayUsed: 'distraction' }
-    })
-  }, [delayMode])
-
-  const handleDistractorAnswer = useCallback((value: string) => {
-    setDecoding(prev => {
-      if (prev.distractorAnswered !== null) return prev
-      const correct = value === prev.distractors[prev.distractorIdx].display
-      setTimeout(() => {
-        setDecoding(cur => {
-          const next = cur.distractorIdx + 1
-          if (next >= cur.distractors.length) return { ...cur, phase: 'recall', distractorAnswered: null }
-          return { ...cur, distractorIdx: next, distractorAnswered: null }
-        })
-      }, correct ? 600 : 1200)
-      return { ...prev, distractorAnswered: value }
-    })
-  }, [])
-
-  const handleDecodingAnswer = useCallback((value: string) => {
-    setDecoding(prev => {
-      if (prev.answered !== null) return prev
-      const correct = value.trim() === prev.sequence.join('')
-      return { ...prev, answered: value, answeredCorrect: correct, phase: 'result' }
-    })
-  }, [])
-
-  const encodingDone = encoding.currentIndex >= encoding.sequence.length
-  const correctCount = encoding.answers.filter(a => a.correct).length
+  const panelCls = 'bg-zinc-900 border border-zinc-800 rounded-xl'
 
   return (
-    <div className="flex flex-col gap-6 py-4">
-      {/* Sub-mode tabs */}
-      <div className="flex gap-2 bg-zinc-800/60 p-1 rounded-xl self-start">
-        {(['encoding', 'decoding'] as SubMode[]).map(m => (
-          <button
-            key={m}
-            onClick={() => {
-              setSubMode(m)
-              if (m === 'encoding') setEncoding(newEncoding())
-              else setDecoding(newDecoding())
-            }}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              subMode === m ? 'bg-violet-600 text-white' : 'text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            {m === 'encoding' ? '→ Encode' : '← Decode'}
-          </button>
-        ))}
-      </div>
+    <div className="flex flex-col items-center gap-6 py-4">
 
-      {/* ── Encoding sub-mode ── */}
-      {subMode === 'encoding' && (
-        <div className="flex flex-col items-center gap-6">
-          {!encodingDone ? (
+      {/* ── SETUP ── */}
+      {phase === 'setup' && (
+        <div className={`w-full max-w-md space-y-6 p-6 ${panelCls}`}>
+          <div className="space-y-3">
+            <div className="flex justify-between items-baseline">
+              <span className="text-sm font-medium text-zinc-300">Sequence length</span>
+              <span className="text-2xl font-black text-violet-400 tabular-nums">{length}</span>
+            </div>
+            <input
+              type="range"
+              min={MIN_LEN}
+              max={MAX_LEN}
+              step={1}
+              value={length}
+              onChange={e => setLength(parseInt(e.target.value, 10))}
+              className="w-full accent-violet-500"
+            />
+            <div className="flex justify-between text-xs text-zinc-600 tabular-nums">
+              <span>{MIN_LEN}</span><span>{MAX_LEN}</span>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <span className="text-sm font-medium text-zinc-300">Study mode</span>
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                ['number-only', 'Number only', 'Encode in your head'],
+                ['word-quiz', 'Word quiz', 'Answer each word'],
+              ] as [StudyMode, string, string][]).map(([m, label, sub]) => (
+                <button
+                  key={m}
+                  onClick={() => setStudyMode(m)}
+                  className={`flex flex-col items-start px-4 py-3 rounded-lg border text-left transition-colors ${
+                    studyMode === m
+                      ? 'bg-violet-600/20 border-violet-500 text-zinc-100'
+                      : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500'
+                  }`}
+                >
+                  <span className="font-semibold text-sm">{label}</span>
+                  <span className="text-xs text-zinc-500">{sub}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button
+            onClick={start}
+            className="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold transition-colors"
+          >Start →</button>
+        </div>
+      )}
+
+      {/* ── STUDY ── */}
+      {phase === 'study' && (
+        <div className="flex flex-col items-center gap-6 w-full max-w-md">
+          {/* Progress */}
+          <div className="flex gap-1.5 items-center flex-wrap justify-center">
+            {sequence.map((_, i) => (
+              <div key={i} className={`h-1.5 w-8 rounded-full transition-all ${
+                i < studyIdx ? 'bg-green-500' : i === studyIdx ? 'bg-violet-500' : 'bg-zinc-700'
+              }`} />
+            ))}
+          </div>
+
+          <p className="text-xs text-zinc-600 uppercase tracking-widest">
+            Number {studyIdx + 1} of {sequence.length}
+          </p>
+          <div className="text-[6rem] font-black text-violet-400 tabular-nums leading-none">
+            {sequence[studyIdx]}
+          </div>
+
+          {studyMode === 'number-only' ? (
             <>
-              <div className="flex gap-2 items-center">
-                {encoding.sequence.map((_, i) => (
-                  <div key={i} className={`h-1.5 w-10 rounded-full transition-all ${
-                    i < encoding.currentIndex
-                      ? encoding.answers[i]?.correct ? 'bg-green-500' : 'bg-red-500'
-                      : i === encoding.currentIndex ? 'bg-violet-500' : 'bg-zinc-700'
-                  }`} />
-                ))}
-              </div>
-              <div className="flex gap-2 items-center">
-                {encoding.sequence.map((num, i) => (
-                  <span key={i} className={`text-3xl font-black tabular-nums transition-all ${
-                    i === encoding.currentIndex ? 'text-violet-400 scale-125 mx-1'
-                    : i < encoding.currentIndex ? 'text-zinc-600' : 'text-zinc-700'
-                  }`}>{num}</span>
-                ))}
-              </div>
-              <div className="text-center space-y-1">
-                <p className="text-xs text-zinc-600 uppercase tracking-widest">
-                  Pair {encoding.currentIndex + 1} of {encoding.sequence.length}
-                </p>
-                <div className="text-[6rem] font-black text-violet-400 tabular-nums leading-none">
-                  {encoding.sequence[encoding.currentIndex]}
-                </div>
-              </div>
-              <div className="w-full max-w-md">
-                {answerMode === 'multiple-choice' ? (
-                  <MultipleChoice
-                    options={encoding.options}
-                    correctAnswer={words[encoding.sequence[encoding.currentIndex]]}
-                    onAnswer={handleEncodingAnswer}
-                    answered={encoding.answered}
-                  />
+              <div className="min-h-[3rem] flex items-center">
+                {revealWord ? (
+                  <span className="text-3xl font-bold text-zinc-100">{words[sequence[studyIdx]]}</span>
                 ) : (
-                  <TypingInput
-                    onAnswer={handleEncodingAnswer}
-                    answeredCorrect={encoding.answeredCorrect}
-                    correctAnswer={words[encoding.sequence[encoding.currentIndex]]}
-                    placeholder="Type the word..."
-                  />
+                  <button
+                    onClick={() => setRevealWord(true)}
+                    className="px-4 min-h-[40px] rounded-lg bg-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700 text-sm font-medium transition-colors"
+                  >💡 reveal word</button>
                 )}
               </div>
+              <button
+                onClick={advanceStudy}
+                className="w-full max-w-xs py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold transition-colors"
+              >{studyIdx + 1 >= sequence.length ? 'Done — recall →' : 'Next →'}</button>
             </>
           ) : (
-            <div className="w-full max-w-md space-y-4">
-              <h3 className="text-xl font-bold text-zinc-100 text-center">
-                {correctCount === encoding.sequence.length ? '🎉 Perfect!' : `${correctCount}/${encoding.sequence.length} correct`}
-              </h3>
-              <div className="space-y-2">
-                {encoding.sequence.map((num, i) => (
-                  <div key={i} className={`flex items-center justify-between px-4 py-3 rounded-lg border ${
-                    encoding.answers[i]?.correct ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'
-                  }`}>
-                    <span className="font-mono text-zinc-400">{num}</span>
-                    <span className="text-zinc-100 font-semibold">{words[num]}</span>
-                    <span>{encoding.answers[i]?.correct ? '✓' : '✗'}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="text-center text-zinc-500 font-mono text-sm">
-                Sequence: {encoding.sequence.join('')}
-              </div>
-              <button
-                onClick={() => setEncoding(newEncoding())}
-                className="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold transition-colors"
-              >New sequence</button>
+            <div className="w-full">
+              {answerMode === 'multiple-choice' ? (
+                <MultipleChoice
+                  key={studyIdx}
+                  options={quizOptions}
+                  correctAnswer={words[sequence[studyIdx]]}
+                  onAnswer={handleQuizAnswer}
+                  answered={quizAnswered}
+                />
+              ) : (
+                <TypingInput
+                  key={studyIdx}
+                  onAnswer={handleQuizAnswer}
+                  answeredCorrect={quizCorrect}
+                  correctAnswer={words[sequence[studyIdx]]}
+                  placeholder="Type the word..."
+                />
+              )}
             </div>
           )}
         </div>
       )}
 
-      {/* ── Decoding sub-mode ── */}
-      {subMode === 'decoding' && (
-        <div className="flex flex-col items-center gap-6">
+      {/* ── RECALL ── */}
+      {phase === 'recall' && (
+        <div className="flex flex-col items-center gap-4 w-full max-w-md">
+          <div className="text-center space-y-1">
+            <p className="text-xs text-zinc-600 uppercase tracking-widest">Recall the sequence</p>
+            <p className="text-sm text-zinc-400">Type all {sequence.length} words in order</p>
+          </div>
+          <textarea
+            autoFocus
+            value={recallText}
+            onChange={e => setRecallText(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submitRecall() }}
+            rows={Math.min(6, Math.ceil(sequence.length / 3))}
+            placeholder="rein tak sofa …  (space-separated)"
+            className="w-full px-5 py-4 rounded-xl border border-zinc-700 focus:border-violet-500 bg-zinc-800 outline-none text-lg text-zinc-100 placeholder-zinc-600 resize-none"
+          />
+          <button
+            onClick={submitRecall}
+            disabled={!recallText.trim()}
+            className="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold transition-colors"
+          >Check →</button>
+          <p className="text-xs text-zinc-600">Tip: ⌘/Ctrl + Enter to submit</p>
+        </div>
+      )}
 
-          {/* Delay selector — only during study */}
-          {decoding.phase === 'study' && (
-            <div className="flex flex-wrap items-center gap-2 self-start">
-              <span className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Delay</span>
-              {(['none', 'short', 'distraction'] as DelayMode[]).map(d => (
-                <button
-                  key={d}
-                  onClick={() => persistDelay(d)}
-                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-                    delayMode === d ? 'bg-violet-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
-                  }`}
-                >
-                  {d === 'none' ? 'None' : d === 'short' ? `Short (${COUNTDOWN_SECONDS}s)` : 'Distraction'}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* STUDY — show words to memorise */}
-          {decoding.phase === 'study' && (
-            <>
-              <div className="text-center space-y-2">
-                <p className="text-xs text-zinc-600 uppercase tracking-widest">Remember this sequence</p>
-                <div className="flex flex-wrap gap-3 justify-center">
-                  {decoding.sequence.map((num, i) => (
-                    <span key={i} className="text-2xl font-bold text-zinc-100 bg-zinc-800 border border-zinc-700 px-4 py-2 rounded-xl">
-                      {words[num]}
+      {/* ── RESULT ── */}
+      {phase === 'result' && (
+        <div className="w-full max-w-md space-y-4">
+          <h3 className="text-xl font-bold text-center text-zinc-100">
+            {correctCount === sequence.length ? '🎉 Perfect!' : `${correctCount}/${sequence.length} correct`}
+          </h3>
+          <div className="space-y-1.5">
+            {sequence.map((num, i) => {
+              const expected = words[num]
+              const typed = submitted[i] ?? ''
+              const ok = typed.toLowerCase() === expected.toLowerCase()
+              return (
+                <div key={i} className={`flex items-center gap-3 px-4 py-2.5 rounded-lg border ${
+                  ok ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'
+                }`}>
+                  <span className="font-mono text-sm text-violet-400 tabular-nums w-6 shrink-0">{num}</span>
+                  <span className="font-semibold text-zinc-100 shrink-0">{expected}</span>
+                  {!ok && (
+                    <span className="text-sm text-red-300 ml-auto truncate">
+                      you: {typed || '—'}
                     </span>
-                  ))}
+                  )}
+                  <span className={`${ok ? 'text-green-400' : 'text-red-400'} ${ok ? 'ml-auto' : ''} shrink-0`}>
+                    {ok ? '✓' : '✗'}
+                  </span>
                 </div>
-                <p className="text-xs text-zinc-600 font-mono">{decoding.sequence.join('')}</p>
-              </div>
-              <button
-                onClick={handleReady}
-                className="px-8 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold transition-colors"
-              >
-                {delayMode === 'none' ? 'Ready to answer →' : 'Hide and start delay →'}
-              </button>
-            </>
-          )}
-
-          {/* COUNTDOWN */}
-          {decoding.phase === 'countdown' && (
-            <div className="flex flex-col items-center gap-6 py-8">
-              <p className="text-xs text-zinc-500 uppercase tracking-wider">Sequence hidden</p>
-              <div className="text-[6rem] font-black text-violet-400 tabular-nums leading-none">
-                {decoding.countdown}
-              </div>
-              <p className="text-zinc-500 text-sm">seconds remaining</p>
-              <button
-                onClick={() => setDecoding(d => ({ ...d, phase: 'recall' }))}
-                className="px-5 py-2 rounded-lg bg-zinc-800 text-zinc-400 hover:text-zinc-200 text-sm transition-colors"
-              >Skip</button>
-            </div>
-          )}
-
-          {/* DISTRACTION — 3 Lydnøkkel mini-questions */}
-          {decoding.phase === 'distraction' && (
-            <div className="flex flex-col items-center gap-6 w-full max-w-md">
-              <div className="w-full space-y-1">
-                <div className="flex justify-between text-xs text-zinc-600">
-                  <span>Distraction task</span>
-                  <span>{decoding.distractorIdx + 1}/3</span>
-                </div>
-                <div className="flex gap-1">
-                  {decoding.distractors.map((_, i) => (
-                    <div key={i} className={`h-1 flex-1 rounded-full ${
-                      i < decoding.distractorIdx ? 'bg-green-500' : i === decoding.distractorIdx ? 'bg-violet-500' : 'bg-zinc-700'
-                    }`} />
-                  ))}
-                </div>
-              </div>
-              <div className="text-center space-y-1">
-                <p className="text-xs text-zinc-600 uppercase tracking-widest">What are the sounds for</p>
-                <div className="text-[6rem] font-black text-violet-400 tabular-nums leading-none">
-                  {decoding.distractors[decoding.distractorIdx]?.digit}
-                </div>
-              </div>
-              <div className="w-full">
-                <MultipleChoice
-                  key={decoding.distractorIdx}
-                  options={decoding.distractors[decoding.distractorIdx]?.options ?? []}
-                  correctAnswer={decoding.distractors[decoding.distractorIdx]?.display ?? ''}
-                  onAnswer={handleDistractorAnswer}
-                  answered={decoding.distractorAnswered}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* RECALL */}
-          {decoding.phase === 'recall' && (
-            <div className="flex flex-col items-center gap-4 w-full max-w-md">
-              <div className="text-center space-y-1">
-                <p className="text-xs text-zinc-600 uppercase tracking-widest">Decode the sequence</p>
-                {decoding.delayUsed !== 'none' && (
-                  <p className="text-xs text-zinc-600 italic">
-                    {decoding.delayUsed === 'distraction' ? '(after distraction)' : `(after ${COUNTDOWN_SECONDS}s delay)`}
-                  </p>
-                )}
-              </div>
-              <TypingInput
-                onAnswer={handleDecodingAnswer}
-                answeredCorrect={decoding.answeredCorrect}
-                correctAnswer={decoding.sequence.join('')}
-                placeholder={`Type a ${decoding.sequence.length * 2}-digit number...`}
-              />
-            </div>
-          )}
-
-          {/* RESULT */}
-          {decoding.phase === 'result' && (
-            <div className="w-full max-w-md space-y-4 text-center">
-              <div className="text-5xl">{decoding.answeredCorrect ? '🎉' : '❌'}</div>
-              <div className="space-y-2">
-                {decoding.sequence.map((num, i) => (
-                  <div key={i} className="flex items-center justify-between px-4 py-3 rounded-lg border border-zinc-700 bg-zinc-800/40">
-                    <span className="font-bold text-zinc-100">{words[num]}</span>
-                    <span className="font-mono text-violet-400">{num}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="text-zinc-500 font-mono text-sm">
-                Correct answer: {decoding.sequence.join('')}
-              </div>
-              {decoding.delayUsed !== 'none' && (
-                <p className="text-xs text-zinc-600 italic">
-                  Delay used: {decoding.delayUsed === 'distraction' ? 'distraction' : `${COUNTDOWN_SECONDS}s countdown`}
-                </p>
-              )}
-              <button
-                onClick={() => setDecoding(newDecoding())}
-                className="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold transition-colors"
-              >New sequence</button>
-            </div>
-          )}
+              )
+            })}
+          </div>
+          <p className="text-center text-zinc-500 font-mono text-sm">{sequence.join(' ')}</p>
+          <div className="flex gap-2">
+            <button
+              onClick={start}
+              className="flex-1 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold transition-colors"
+            >Try again</button>
+            <button
+              onClick={() => setPhase('setup')}
+              className="flex-1 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold transition-colors"
+            >Change settings</button>
+          </div>
         </div>
       )}
     </div>

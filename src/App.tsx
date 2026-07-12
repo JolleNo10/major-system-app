@@ -4,6 +4,8 @@ import { useAnswerMode } from './hooks/useAnswerMode'
 import { ModeSelector } from './components/ModeSelector'
 import { AnswerModeToggle } from './components/AnswerModeToggle'
 import { ReferenceOverlay } from './components/ReferenceOverlay'
+import { SettingsOverlay } from './components/SettingsOverlay'
+import { StatsOverlay } from './components/StatsOverlay'
 import { EncodingDrill } from './components/modes/EncodingDrill'
 import { DecodingDrill } from './components/modes/DecodingDrill'
 import { SoundKeyDrill } from './components/modes/SoundKeyDrill'
@@ -28,18 +30,22 @@ const MODE_TITLES: Record<Mode, string> = {
 export default function App() {
   const [mode, setMode] = useState<Mode>('home')
   const [showReference, setShowReference] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+  const [showStats, setShowStats] = useState(false)
   const { mode: answerMode, toggle: toggleAnswerMode } = useAnswerMode()
 
   const goHome = useCallback(() => setMode('home'), [])
   const closeRef = useCallback(() => setShowReference(false), [])
+  const closeSettings = useCallback(() => setShowSettings(false), [])
+  const closeStats = useCallback(() => setShowStats(false), [])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && mode !== 'home' && !showReference) goHome()
+      if (e.key === 'Escape' && mode !== 'home' && !showReference && !showSettings && !showStats) goHome()
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [mode, showReference, goHome])
+  }, [mode, showReference, showSettings, showStats, goHome])
 
   return (
     <div className="min-h-dvh bg-zinc-950 flex flex-col">
@@ -49,10 +55,10 @@ export default function App() {
           {mode !== 'home' ? (
             <button
               onClick={goHome}
-              className="flex items-center gap-1.5 text-zinc-400 hover:text-zinc-100 transition-colors text-sm font-medium shrink-0"
+              className="flex items-center justify-center min-h-[40px] min-w-[40px] -ml-2 text-zinc-400 hover:text-zinc-100 transition-colors shrink-0"
               title="Back (Esc)"
             >
-              <span className="text-lg">←</span>
+              <span className="text-xl">←</span>
             </button>
           ) : (
             <span className="text-xl shrink-0">🧠</span>
@@ -67,12 +73,26 @@ export default function App() {
               <AnswerModeToggle mode={answerMode} onToggle={toggleAnswerMode} />
             )}
             <button
+              onClick={() => setShowStats(true)}
+              title="Stats"
+              className="flex items-center justify-center min-h-[40px] min-w-[40px] rounded-lg bg-zinc-800 border border-zinc-700 hover:border-violet-500 transition-colors text-zinc-300 hover:text-zinc-100"
+            >
+              <span>📊</span>
+            </button>
+            <button
               onClick={() => setShowReference(true)}
               title="Reference"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 hover:border-violet-500 transition-colors text-sm font-medium text-zinc-300 hover:text-zinc-100"
+              className="flex items-center justify-center gap-1.5 px-3 min-h-[40px] min-w-[40px] rounded-lg bg-zinc-800 border border-zinc-700 hover:border-violet-500 transition-colors text-sm font-medium text-zinc-300 hover:text-zinc-100"
             >
               <span>📚</span>
               <span className="hidden sm:inline">Reference</span>
+            </button>
+            <button
+              onClick={() => setShowSettings(true)}
+              title="Settings"
+              className="flex items-center justify-center min-h-[40px] min-w-[40px] rounded-lg bg-zinc-800 border border-zinc-700 hover:border-violet-500 transition-colors text-zinc-300 hover:text-zinc-100"
+            >
+              <span>⚙️</span>
             </button>
           </div>
         </div>
@@ -93,6 +113,12 @@ export default function App() {
 
       {/* Reference overlay */}
       {showReference && <ReferenceOverlay onClose={closeRef} />}
+
+      {/* Settings overlay */}
+      {showSettings && <SettingsOverlay onClose={closeSettings} />}
+
+      {/* Stats overlay */}
+      {showStats && <StatsOverlay onClose={closeStats} />}
     </div>
   )
 }

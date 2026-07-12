@@ -190,7 +190,7 @@ export function RepetitionDrill({ answerMode }: Props) {
             {current.num}
           </div>
         ) : (
-          <div className="text-6xl sm:text-7xl font-black text-zinc-100 leading-tight tracking-tight">
+          <div className="text-5xl sm:text-7xl font-black text-zinc-100 leading-tight tracking-tight break-words max-w-full px-2">
             {words[current.num]}
           </div>
         )}

@@ -1,5 +1,11 @@
 import type { Direction, AnswerMode } from '../types'
 
+export interface Attempt {
+  at: number    // epoch ms when answered
+  ok: boolean   // correct?
+  ms: number    // recall-adjusted latency (typing time removed)
+}
+
 export interface ItemRecord {
   correct: number
   wrong: number
@@ -10,6 +16,7 @@ export interface ItemRecord {
   dueAt: number         // epoch ms, 0 = new / due immediately
   lastSeenAt: number    // epoch ms, 0 = never seen
   reps: number          // consecutive successful reps
+  attempts?: Attempt[]  // timestamped per-answer log, pruned to HISTORY_RETENTION_DAYS
 }
 
 export const STORAGE_KEY = 'major-item-data'
@@ -17,6 +24,14 @@ export const MAX_LATENCIES = 10
 export const OUTLIER_MS = 30_000
 export const STALE_MS = 60_000  // answer discarded above this (idle / walked away)
 export const DAY_MS = 86_400_000
+
+// Per-answer history retention. 90 days ≈ 6 half-lives of a ~2-week forgetting
+// curve (so nothing meaningfully weighted is dropped) and spans several reviews
+// of a mature SM-2 item. HISTORY_HALFLIFE_DAYS is the decay used when weighting
+// older answers/mistakes by age. HISTORY_MAX is a hard guardrail on array size.
+export const HISTORY_RETENTION_DAYS = 90
+export const HISTORY_HALFLIFE_DAYS = 14
+export const HISTORY_MAX = 200
 
 // Latency thresholds per answer mode
 export const FAST_MS: Record<AnswerMode, number> = {
@@ -38,6 +53,15 @@ const DEFAULTS: ItemRecord = {
   dueAt: 0,
   lastSeenAt: 0,
   reps: 0,
+  attempts: [],
+}
+
+// Append an attempt and drop anything older than the retention window (with a
+// hard cap on length as a safety net for pathological same-day drilling).
+export function pushAttempt(attempts: Attempt[] | undefined, attempt: Attempt): Attempt[] {
+  const cutoff = attempt.at - HISTORY_RETENTION_DAYS * DAY_MS
+  const kept = [...(attempts ?? []), attempt].filter(a => a.at >= cutoff)
+  return kept.length > HISTORY_MAX ? kept.slice(kept.length - HISTORY_MAX) : kept
 }
 
 export function itemKey(dir: Direction, num: string): string {

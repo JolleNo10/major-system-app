@@ -1,13 +1,22 @@
 import { loadStore, medianMs } from '../data/itemStore'
 import { recallColor, RECALL_SLOW_MS } from '../data/typingSpeed'
+import { isMastered, masteryProgress, masteryFastMs } from '../utils/roundMastery'
+import { useSettings } from '../context/SettingsContext'
 import type { Direction } from '../types'
+
+export interface RoundAttempt {
+  ok: boolean       // correct
+  recallMs: number  // recall-adjusted latency (typing time removed)
+  hinted: boolean   // a hint was used
+}
 
 export interface RoundStat {
   correct: number
   wrong: number
-  lastMs?: number      // recall-adjusted (typing time removed)
-  latencies: number[]  // this round only, recall-adjusted
-  hintCount: number    // this round only
+  lastMs?: number         // recall-adjusted (typing time removed)
+  latencies: number[]     // this round only, recall-adjusted
+  hintCount: number       // this round only
+  attempts: RoundAttempt[] // last ~5 attempts this round (for mastery)
 }
 
 interface Props {
@@ -73,6 +82,10 @@ export function RoundStatsPanel({ stats, pool, dir, low, high, onRestart }: Prop
     ? `Round ${String(low).padStart(2, '0')}–${String(high).padStart(2, '0')}`
     : 'Round'
 
+  const { settings } = useSettings()
+  const fastMs = masteryFastMs(settings.masteryLatencyFactor)
+  const { mastered, total } = masteryProgress(pool, stats, fastMs)
+
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
@@ -90,11 +103,13 @@ export function RoundStatsPanel({ stats, pool, dir, low, high, onRestart }: Prop
       </div>
 
       {roundMedian !== null && (
-        <p className={`text-xs font-mono mb-3 ${recallColor(roundMedian)}`}>
+        <p className={`text-xs font-mono mb-1 ${recallColor(roundMedian)}`}>
           ⏱ {(roundMedian / 1000).toFixed(1)}s median
         </p>
       )}
-      {roundMedian === null && <div className="mb-3" />}
+      <p className={`text-xs font-medium mb-3 ${mastered === total && total > 0 ? 'text-green-400' : 'text-zinc-500'}`}>
+        ✅ Mastered {mastered}/{total}
+      </p>
 
       <div className="space-y-0.5">
         {ordered.map(n => {
@@ -104,6 +119,7 @@ export function RoundStatsPanel({ stats, pool, dir, low, high, onRestart }: Prop
           const allTimeTotal = allTime ? allTime.correct + allTime.wrong : 0
           const isSlowCorrect = s && s.wrong === 0 && s.correct > 0
             && s.lastMs !== undefined && s.lastMs >= RECALL_SLOW_MS
+          const mastered_n = isMastered(s, fastMs)
 
           return (
             <div
@@ -125,6 +141,7 @@ export function RoundStatsPanel({ stats, pool, dir, low, high, onRestart }: Prop
                   {s.wrong > 0 && <span className="text-red-400">✗{s.wrong}</span>}
                   {s.hintCount > 0 && <span title={`${s.hintCount} hint(s) used this round`}>💡</span>}
                   {isSlowCorrect && <span title="Slow but correct">🐢</span>}
+                  {mastered_n && <span title="Mastered this round (spaced fast recall)">✅</span>}
                 </span>
               ) : (
                 <span className="text-xs text-zinc-700">—</span>

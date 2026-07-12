@@ -59,7 +59,7 @@ export function ReverseSoundKeyDrill({ answerMode }: Props) {
 
       <div className="text-center space-y-2">
         <p className="text-xs text-zinc-600 uppercase tracking-widest">Which digit represents the sound</p>
-        <div className="text-[6rem] sm:text-[8rem] font-black text-zinc-100 leading-none font-mono">
+        <div className="text-7xl sm:text-[8rem] font-black text-zinc-100 leading-none font-mono break-words max-w-full px-2">
           {question.sound}
         </div>
       </div>
