@@ -136,6 +136,12 @@ export function WordListGrid() {
                 }
               `}
               onClick={() => !isEditing && startEdit(key)}
+              role={isEditing ? undefined : 'button'}
+              tabIndex={isEditing ? undefined : 0}
+              aria-label={isEditing ? undefined : `Edit ${key}: ${words[key]}`}
+              onKeyDown={e => {
+                if (!isEditing && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); startEdit(key) }
+              }}
             >
               <div className="flex items-start justify-between mb-1">
                 <span className="text-xs font-mono text-zinc-600">{key}</span>
@@ -145,7 +151,7 @@ export function WordListGrid() {
                       className={`w-1.5 h-1.5 rounded-full ${
                         accuracy >= 0.8 ? 'bg-green-500' : accuracy >= 0.5 ? 'bg-yellow-500' : 'bg-red-500'
                       }`}
-                      title={`${s.correct}✓ ${s.wrong}✗`}
+                      title={`${accuracy >= 0.8 ? 'Strong' : accuracy >= 0.5 ? 'OK' : 'Weak'} — ${s.correct}✓ ${s.wrong}✗`}
                     />
                   )}
                   {(isTrial || isSaved) && (
@@ -153,6 +159,7 @@ export function WordListGrid() {
                       onClick={e => { e.stopPropagation(); resetOverride(key) }}
                       className={`${isTrial ? 'text-yellow-500 hover:text-yellow-300' : 'text-violet-400 hover:text-violet-300'} text-sm leading-none px-1 -mr-0.5 opacity-70 group-hover:opacity-100 transition-opacity`}
                       title={isTrial ? 'Discard pending edit' : 'Revert to shipped default'}
+                      aria-label={isTrial ? `Discard pending edit for ${key}` : `Revert ${key} to shipped default`}
                     >
                       ↺
                     </button>

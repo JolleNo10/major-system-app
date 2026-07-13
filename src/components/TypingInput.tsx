@@ -5,9 +5,10 @@ interface Props {
   answeredCorrect: boolean | null
   correctAnswer: string
   placeholder?: string
+  numeric?: boolean
 }
 
-export function TypingInput({ onAnswer, answeredCorrect, correctAnswer, placeholder = 'Type the answer...' }: Props) {
+export function TypingInput({ onAnswer, answeredCorrect, correctAnswer, placeholder = 'Type the answer...', numeric = false }: Props) {
   const [value, setValue] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -40,10 +41,12 @@ export function TypingInput({ onAnswer, answeredCorrect, correctAnswer, placehol
         <input
           ref={inputRef}
           type="text"
+          inputMode={numeric ? 'numeric' : 'text'}
           value={value}
           onChange={e => answeredCorrect === null && setValue(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && submit()}
           placeholder={placeholder}
+          aria-label={placeholder}
           disabled={answeredCorrect !== null}
           className={`flex-1 px-5 py-4 bg-zinc-800 outline-none text-xl font-medium placeholder-zinc-600
             ${answeredCorrect === true ? 'text-green-300' : ''}

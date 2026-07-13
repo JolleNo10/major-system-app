@@ -257,7 +257,7 @@ export function SequenceDrill({ answerMode }: Props) {
             disabled={!recallText.trim()}
             className="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold transition-colors"
           >Check →</button>
-          <p className="text-xs text-zinc-600">Tip: ⌘/Ctrl + Enter to submit</p>
+          <p className="text-xs text-zinc-500">Tip: ⌘/Ctrl + Enter to submit</p>
         </div>
       )}
 

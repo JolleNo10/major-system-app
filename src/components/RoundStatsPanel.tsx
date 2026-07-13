@@ -97,6 +97,7 @@ export function RoundStatsPanel({ stats, pool, dir, low, high, onRestart }: Prop
               onClick={onRestart}
               className="text-xs text-zinc-500 hover:text-zinc-200 transition-colors"
               title="Restart round"
+              aria-label="Restart round"
             >↺</button>
           )}
         </div>

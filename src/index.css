@@ -21,6 +21,13 @@
   animation: fade-in 0.15s ease-out;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .animate-shake,
+  .animate-fade-in {
+    animation: none;
+  }
+}
+
 * {
   -webkit-font-smoothing: antialiased;
 }

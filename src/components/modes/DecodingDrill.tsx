@@ -251,6 +251,7 @@ export function DecodingDrill({ answerMode, pool: customPool }: Props) {
                     showStats ? 'bg-zinc-700 text-zinc-100 border border-zinc-500' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700'
                   }`}
                   title="Show/hide round stats"
+                  aria-label="Round stats"
                 >📊</button>
                 <button
                   onClick={() => setShowKey(k => !k)}
@@ -258,6 +259,7 @@ export function DecodingDrill({ answerMode, pool: customPool }: Props) {
                     showKey ? 'bg-zinc-700 text-zinc-100 border border-zinc-500' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700'
                   }`}
                   title="Show/hide sound key"
+                  aria-label="Sound key"
                 >🔑</button>
               </div>
               <button
@@ -267,6 +269,7 @@ export function DecodingDrill({ answerMode, pool: customPool }: Props) {
                   paused ? 'bg-violet-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700'
                 }`}
                 title="Pause / resume (p)"
+                aria-label={paused ? 'Resume' : 'Pause'}
               >{paused ? '▶ Resume' : '⏸'}</button>
             </div>
             <RangeSlider low={low} high={high} onChange={(l, h) => { setLow(l); setHigh(h) }} />
@@ -346,6 +349,7 @@ export function DecodingDrill({ answerMode, pool: customPool }: Props) {
               answeredCorrect={answeredCorrect}
               correctAnswer={question.number}
               placeholder="Type the number (00–99)..."
+              numeric
             />
           )}
           {answered !== null && lastMs !== null && (

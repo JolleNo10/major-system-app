@@ -78,6 +78,7 @@ export function ReverseSoundKeyDrill({ answerMode }: Props) {
             answeredCorrect={answeredCorrect}
             correctAnswer={correctStr}
             placeholder="Type the digit (0–9)..."
+            numeric
           />
         )}
       </div>

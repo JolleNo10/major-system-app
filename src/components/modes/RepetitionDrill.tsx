@@ -219,6 +219,7 @@ export function RepetitionDrill({ answerMode }: Props) {
             answeredCorrect={answeredCorrect}
             correctAnswer={correctAnswer}
             placeholder={isEnc ? 'Type the word...' : 'Type the number (00–99)...'}
+            numeric={!isEnc}
           />
         )}
         {answered !== null && lastMs !== null && (

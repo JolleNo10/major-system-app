@@ -63,11 +63,11 @@ export function MultipleChoice({ options, correctAnswer, onAnswer, answered }: P
           >
             <span className="text-2xl">👁</span>
             <span>Press to show options</span>
-            <span className="text-xs text-zinc-600">or press Space / Enter</span>
+            <span className="text-xs text-zinc-500">or press Space / Enter</span>
           </button>
           <button
             onClick={toggle}
-            className="self-center text-xs text-zinc-600 hover:text-zinc-400 transition-colors py-1"
+            className="self-center text-xs text-zinc-500 hover:text-zinc-300 transition-colors py-1"
           >
             Always show options
           </button>
@@ -112,7 +112,7 @@ export function MultipleChoice({ options, correctAnswer, onAnswer, answered }: P
           {answered === null && (
             <button
               onClick={toggle}
-              className="self-center text-xs text-zinc-600 hover:text-zinc-400 transition-colors py-1"
+              className="self-center text-xs text-zinc-500 hover:text-zinc-300 transition-colors py-1"
             >
               {hide ? 'Always show options' : 'Hide options to think'}
             </button>
