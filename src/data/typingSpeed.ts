@@ -1,5 +1,6 @@
 import type { AnswerMode } from '../types'
 import { FAST_MS, SLOW_MS } from './itemStore'
+import { safeSet } from '../utils/storage'
 
 // Typing speed compensation.
 //
@@ -9,7 +10,12 @@ import { FAST_MS, SLOW_MS } from './itemStore'
 // time — which is what we actually want to judge fast/slow by. Multiple-choice
 // involves no typing, so it is never adjusted.
 
-const KEY = 'major-typing-speed'
+// Separate estimates for word typing (letters) vs number typing (digits): a
+// user's per-char speed differs between the two, and decode answers are always
+// 2 digits, so they must not be judged by the word-typing estimate.
+const WORD_KEY = 'major-typing-speed'
+const DIGIT_KEY = 'major-typing-speed-digit'
+const keyFor = (chars: number) => (chars >= 3 ? WORD_KEY : DIGIT_KEY)
 const DEFAULT_MS_PER_CHAR = 160
 const MIN_MS_PER_CHAR = 50
 const MAX_MS_PER_CHAR = 500
@@ -25,37 +31,33 @@ function clamp(v: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, v))
 }
 
-export function getMsPerChar(): number {
+export function getMsPerChar(chars: number): number {
   try {
-    const v = parseFloat(localStorage.getItem(KEY) ?? '')
+    const v = parseFloat(localStorage.getItem(keyFor(chars)) ?? '')
     return Number.isFinite(v) && v > 0 ? v : DEFAULT_MS_PER_CHAR
   } catch {
     return DEFAULT_MS_PER_CHAR
   }
 }
 
-// Update the typing-speed estimate from a correct typed answer. ms/char
-// over-counts (it still contains recall time), so we track toward the floor:
-// adapt down fast when a sample is faster, drift up only slowly otherwise.
-// Only fed by multi-character answers (word typing), not 2-digit numbers.
+// Update the per-char estimate from a correct typed answer. ms/char over-counts
+// (it still contains recall time), so we track toward the floor: adapt down fast
+// when a sample is faster, drift up only slowly otherwise. Routed to the word or
+// digit track by answer length.
 export function recordTypingSpeed(rawMs: number, chars: number): void {
-  if (chars < 3 || rawMs <= 0) return
+  if (chars < 1 || rawMs <= 0) return
   const perChar = rawMs / chars
-  const prev = getMsPerChar()
+  const prev = getMsPerChar(chars)
   const alpha = perChar < prev ? ALPHA_DOWN : ALPHA_UP
   const next = clamp(prev + (perChar - prev) * alpha, MIN_MS_PER_CHAR, MAX_MS_PER_CHAR)
-  try {
-    localStorage.setItem(KEY, String(Math.round(next)))
-  } catch {
-    /* ignore */
-  }
+  safeSet(keyFor(chars), String(Math.round(next)))
 }
 
 // Raw latency with the expected typing time removed → recall time.
 // Floored at 20% of raw so we never over-subtract into "instant".
 export function adjustLatency(rawMs: number, answerMode: AnswerMode, chars: number): number {
   if (answerMode !== 'typing' || chars <= 0) return rawMs
-  const typingMs = getMsPerChar() * chars
+  const typingMs = getMsPerChar(chars) * chars
   return Math.max(rawMs - typingMs, Math.round(rawMs * 0.2))
 }
 

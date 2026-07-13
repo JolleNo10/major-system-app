@@ -112,7 +112,9 @@ export function DecodingDrill({ answerMode, pool: customPool }: Props) {
     activeElapsedRef.current = 0
     everPausedRef.current = false
     setPaused(false)
-  }, [question.number])
+    // Depend on the question object (fresh each pick) not question.number, so a
+    // one-number range (pool of 1) still resets the timer every round.
+  }, [question])
 
   const next = useCallback((exclude: string) => {
     setQuestion(makeQuestion(pool, words, masteredSetRef.current, exclude))
@@ -170,7 +172,8 @@ export function DecodingDrill({ answerMode, pool: customPool }: Props) {
   const handleAnswer = useCallback((value: string) => {
     if (answered !== null || paused) return
     const ms = activeElapsedRef.current + (Date.now() - timerStartRef.current)
-    const correct = value.trim() === question.number
+    // Accept a single digit for 0–9 (e.g. "7" for "07")
+    const correct = value.trim().padStart(2, '0') === question.number
     setAnswered(value)
     setAnsweredCorrect(correct)
     setLastMs(ms)

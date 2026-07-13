@@ -136,6 +136,7 @@ export function useStats() {
     item = applySm2(item, grade)
 
     saveStore(setItem(store, dir, num, item))
+    return grade
   }
 
   const getWeakNumbers = (limit = 10): string[] => {

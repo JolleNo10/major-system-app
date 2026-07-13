@@ -117,7 +117,9 @@ export function EncodingDrill({ answerMode, pool: customPool }: Props) {
     activeElapsedRef.current = 0
     everPausedRef.current = false
     setPaused(false)
-  }, [question.number])
+    // Depend on the question object (fresh each pick) not question.number, so a
+    // one-number range (pool of 1) still resets the timer every round.
+  }, [question])
 
   const next = useCallback((exclude: string) => {
     setQuestion(makeQuestion(pool, words, answerMode, masteredSetRef.current, exclude))

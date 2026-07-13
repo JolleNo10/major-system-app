@@ -1,8 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useWords } from '../../context/WordsContext'
 import { useStats, buildRepQueue, getNextDueMs } from '../../hooks/useStats'
-import { loadStore, getItem, saveStore, setItem, FAST_MS, SLOW_MS } from '../../data/itemStore'
-import { gradeAnswer, applySm2 } from '../../data/sm2'
+import { FAST_MS, SLOW_MS } from '../../data/itemStore'
 import { MultipleChoice } from '../MultipleChoice'
 import { TypingInput } from '../TypingInput'
 import { ScoreBar } from '../ScoreBar'
@@ -94,22 +93,21 @@ export function RepetitionDrill({ answerMode }: Props) {
     if (!current || answered !== null) return
     const ms = Date.now() - timerStartRef.current
 
+    const answer = current.dir === 'enc' ? words[current.num] : current.num
     const correct =
       current.dir === 'enc'
-        ? value.trim().toLowerCase() === words[current.num].toLowerCase()
-        : value.trim() === current.num
+        ? value.trim().toLowerCase() === answer.toLowerCase()
+        : value.trim().padStart(2, '0') === current.num // accept "7" for "07"
 
     setAnswered(value)
     setAnsweredCorrect(correct)
     setLastMs(ms)
 
-    // Persist to store
-    recordFull(current.dir, current.num, correct, ms, answerMode, current.dir === 'enc' ? hintUsed : false)
-
-    // Compute grade to decide whether to re-queue (mirror hint capping from recordFull)
+    // Persist to store with typing-time compensation, and reuse the exact grade
+    // it applied so the re-queue decision matches the SM-2 due date just written.
     const hintApplied = current.dir === 'enc' && hintUsed
-    let grade = gradeAnswer(correct, ms, answerMode)
-    if (hintApplied && correct) grade = Math.min(grade, 3)
+    const chars = answerMode === 'typing' ? answer.length : 0
+    const grade = recordFull(current.dir, current.num, correct, ms, answerMode, hintApplied, chars)
 
     if (correct) setSessionCorrect(c => c + 1)
     else setSessionWrong(w => w + 1)

@@ -45,8 +45,12 @@ export function SpeedRound({ answerMode }: Props) {
   const [personalBest, setPersonalBest] = useState(() => {
     try { return parseInt(localStorage.getItem(BEST_KEY) ?? '0') } catch { return 0 }
   })
+  const [beatBest, setBeatBest] = useState(false)
 
   const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Clear any pending advance timeout on unmount.
+  useEffect(() => () => { if (advanceTimer.current) clearTimeout(advanceTimer.current) }, [])
 
   useEffect(() => {
     if (gameState !== 'running') return
@@ -84,7 +88,9 @@ export function SpeedRound({ answerMode }: Props) {
     if (gameState === 'done') {
       if (advanceTimer.current) clearTimeout(advanceTimer.current)
       setCorrect(c => {
-        if (c > personalBest) {
+        const beat = c > personalBest
+        setBeatBest(beat)
+        if (beat) {
           setPersonalBest(c)
           safeSet(BEST_KEY, String(c))
         }
@@ -100,6 +106,7 @@ export function SpeedRound({ answerMode }: Props) {
     setQuestion(makeQuestion(words))
     setAnswered(null)
     setAnsweredCorrect(null)
+    setBeatBest(false)
     setGameState('running')
   }
 
@@ -130,7 +137,7 @@ export function SpeedRound({ answerMode }: Props) {
   }
 
   if (gameState === 'done') {
-    const isNewBest = correct >= personalBest && correct > 0
+    const isNewBest = beatBest
     return (
       <div className="flex flex-col items-center gap-6 py-8">
         <div className="text-6xl">{isNewBest ? '🏆' : '⏱'}</div>
