@@ -7,18 +7,19 @@ import {
 import { addAttempt } from '../data/attemptStore'
 import { gradeAnswer, applySm2 } from '../data/sm2'
 import { adjustLatency, recordTypingSpeed } from '../data/typingSpeed'
-import { safeSet } from '../utils/storage'
-
-const LEGACY_KEY = 'major-stats'
-
-// ── Legacy store (ModeSelector totals + SpeedRound compat) ───────────────────
+// ── Direction-less per-number aggregates ─────────────────────────────────────
+// Derived on demand from the modern item store (enc + dec summed) for the
+// ModeSelector totals and the WordListGrid accuracy dots.
 
 export function getStats(): AllStats {
-  try {
-    return JSON.parse(localStorage.getItem(LEGACY_KEY) ?? '{}')
-  } catch {
-    return {}
+  const store = loadStore()
+  const out: AllStats = {}
+  for (const [k, item] of Object.entries(store)) {
+    const num = k.slice(k.indexOf(':') + 1) // "enc:07" → "07"
+    const prev = out[num] ?? { correct: 0, wrong: 0 }
+    out[num] = { correct: prev.correct + item.correct, wrong: prev.wrong + item.wrong }
   }
+  return out
 }
 
 // ── Free functions (safe outside React) ──────────────────────────────────────
@@ -83,17 +84,6 @@ export function getNextDueMs(allNums: string[]): number | null {
 // ── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useStats() {
-  // Legacy — for SpeedRound (no direction / latency)
-  const recordAnswer = (key: string, correct: boolean) => {
-    const stats = getStats()
-    const entry = stats[key] ?? { correct: 0, wrong: 0 }
-    stats[key] = {
-      correct: entry.correct + (correct ? 1 : 0),
-      wrong: entry.wrong + (correct ? 0 : 1),
-    }
-    safeSet(LEGACY_KEY, JSON.stringify(stats))
-  }
-
   // Full: direction + latency + SM-2
   const recordFull = (
     dir: Direction,
@@ -104,8 +94,6 @@ export function useStats() {
     hintUsed = false,
     chars = 0,
   ) => {
-    // Keep legacy store in sync for ModeSelector totals
-    recordAnswer(num, correct)
 
     const store = loadStore()
     let item: ItemRecord = getItem(store, dir, num)
@@ -142,21 +130,6 @@ export function useStats() {
   const getWeakNumbers = (limit = 10): string[] => {
     const store = loadStore()
     const encKeys = Object.keys(store).filter(k => k.startsWith('enc:'))
-
-    if (!encKeys.length) {
-      // Fall back to legacy store (no latency data yet)
-      const stats = getStats()
-      return Object.entries(stats)
-        .filter(([, s]) => s.wrong > 0)
-        .sort(([, a], [, b]) => {
-          const rA = a.wrong / (a.correct + a.wrong)
-          const rB = b.wrong / (b.correct + b.wrong)
-          return rB - rA || b.wrong - a.wrong
-        })
-        .slice(0, limit)
-        .map(([k]) => k)
-    }
-
     const slowThreshold = SLOW_MS['multiple-choice']
 
     return encKeys
@@ -177,5 +150,5 @@ export function useStats() {
       .map(({ num }) => num)
   }
 
-  return { recordAnswer, recordFull, getWeakNumbers }
+  return { recordFull, getWeakNumbers }
 }

@@ -14,5 +14,3 @@ if (errors.length) {
 export const WORDS: Record<string, string> = Object.fromEntries(
   rows.map(r => [r.number, r.def]),
 )
-
-export const ALL_NUMBERS = Object.keys(WORDS)
