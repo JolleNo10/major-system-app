@@ -16,7 +16,6 @@ export interface ItemRecord {
   dueAt: number         // epoch ms, 0 = new / due immediately
   lastSeenAt: number    // epoch ms, 0 = never seen
   reps: number          // consecutive successful reps
-  attempts?: Attempt[]  // timestamped per-answer log, pruned to HISTORY_RETENTION_DAYS
 }
 
 export const STORAGE_KEY = 'major-item-data'
@@ -53,15 +52,6 @@ const DEFAULTS: ItemRecord = {
   dueAt: 0,
   lastSeenAt: 0,
   reps: 0,
-  attempts: [],
-}
-
-// Append an attempt and drop anything older than the retention window (with a
-// hard cap on length as a safety net for pathological same-day drilling).
-export function pushAttempt(attempts: Attempt[] | undefined, attempt: Attempt): Attempt[] {
-  const cutoff = attempt.at - HISTORY_RETENTION_DAYS * DAY_MS
-  const kept = [...(attempts ?? []), attempt].filter(a => a.at >= cutoff)
-  return kept.length > HISTORY_MAX ? kept.slice(kept.length - HISTORY_MAX) : kept
 }
 
 export function itemKey(dir: Direction, num: string): string {
