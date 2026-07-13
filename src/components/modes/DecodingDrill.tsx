@@ -13,6 +13,7 @@ import { adjustLatency, recallColor } from '../../data/typingSpeed'
 import { masteryProgress, masteryFastMs } from '../../utils/roundMastery'
 import { isOverlayOpen } from '../../utils/overlayGuard'
 import { shuffle, pickDistractors, pickWeighted } from '../../utils/quiz'
+import { useAnswerTimer } from '../../hooks/useAnswerTimer'
 import { useSettings } from '../../context/SettingsContext'
 import type { AnswerMode } from '../../types'
 
@@ -57,23 +58,10 @@ export function DecodingDrill({ answerMode, pool: customPool }: Props) {
   const [streak, setStreak] = useState(0)
   const [bestStreak, setBestStreak] = useState(0)
   const [lastMs, setLastMs] = useState<number | null>(null)
-  const [paused, setPaused] = useState(false)
   const [discarded, setDiscarded] = useState(false)
 
-  // Active-elapsed timer: excludes paused spans (see EncodingDrill).
-  const timerStartRef = useRef(Date.now())
-  const activeElapsedRef = useRef(0)
-  const everPausedRef = useRef(false)
+  const { paused, togglePause, elapsedMs, wasPaused } = useAnswerTimer(question, answered)
   const masteredSetRef = useRef<Set<string>>(new Set()) // latest mastered set, for selection
-
-  useEffect(() => {
-    timerStartRef.current = Date.now()
-    activeElapsedRef.current = 0
-    everPausedRef.current = false
-    setPaused(false)
-    // Depend on the question object (fresh each pick) not question.number, so a
-    // one-number range (pool of 1) still resets the timer every round.
-  }, [question])
 
   const next = useCallback((exclude: string) => {
     setQuestion(makeQuestion(pool, words, masteredSetRef.current, exclude))
@@ -89,7 +77,6 @@ export function DecodingDrill({ answerMode, pool: customPool }: Props) {
     setSessionWrong(0)
     setStreak(0)
     setBestStreak(0)
-    setPaused(false)
     setAnswered(null)
     setAnsweredCorrect(null)
     setLastMs(null)
@@ -105,19 +92,6 @@ export function DecodingDrill({ answerMode, pool: customPool }: Props) {
     resetRound()
   }, [pool]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const togglePause = useCallback(() => {
-    if (answered !== null) return
-    setPaused(p => {
-      if (!p) {
-        activeElapsedRef.current += Date.now() - timerStartRef.current
-        everPausedRef.current = true
-        return true
-      }
-      timerStartRef.current = Date.now()
-      return false
-    })
-  }, [answered])
-
   // Keyboard: p toggles pause (blocked when typing in an input or behind an overlay)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -130,7 +104,7 @@ export function DecodingDrill({ answerMode, pool: customPool }: Props) {
 
   const handleAnswer = useCallback((value: string) => {
     if (answered !== null || paused) return
-    const ms = activeElapsedRef.current + (Date.now() - timerStartRef.current)
+    const ms = elapsedMs()
     // Accept a single digit for 0–9 (e.g. "7" for "07")
     const correct = value.trim().padStart(2, '0') === question.number
     setAnswered(value)
@@ -138,7 +112,7 @@ export function DecodingDrill({ answerMode, pool: customPool }: Props) {
     setLastMs(ms)
 
     // Idle / walked-away answer (and pause wasn't used) → discard, don't record
-    if (!everPausedRef.current && ms > STALE_MS) {
+    if (!wasPaused() && ms > STALE_MS) {
       setDiscarded(true)
       setTimeout(() => next(question.number), 1500)
       return
