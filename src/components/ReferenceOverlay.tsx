@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { SoundKeyTable } from './SoundKeyTable'
 import { WordListGrid } from './WordListGrid'
 import { clearSchedules } from '../data/itemStore'
+import { useOverlay } from '../hooks/useOverlay'
 
 interface Props {
   onClose: () => void
@@ -9,17 +10,11 @@ interface Props {
 
 export function ReferenceOverlay({ onClose }: Props) {
   const [tab, setTab] = useState<'sound-key' | 'word-list'>('sound-key')
-
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [onClose])
+  const ref = useRef<HTMLDivElement>(null)
+  useOverlay(ref, onClose)
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-zinc-950 animate-fade-in">
+    <div ref={ref} role="dialog" aria-modal="true" aria-label="Reference" tabIndex={-1} className="fixed inset-0 z-50 flex flex-col bg-zinc-950 animate-fade-in outline-none">
       <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-zinc-800 shrink-0">
         <div className="flex gap-2">
           <button
@@ -47,6 +42,7 @@ export function ReferenceOverlay({ onClose }: Props) {
           onClick={onClose}
           className="w-9 h-9 flex items-center justify-center rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors text-xl"
           title="Close (Esc)"
+          aria-label="Close"
         >
           ×
         </button>

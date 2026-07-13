@@ -7,6 +7,7 @@ import { MultipleChoice } from '../MultipleChoice'
 import { TypingInput } from '../TypingInput'
 import { ScoreBar } from '../ScoreBar'
 import { HintButton } from '../HintButton'
+import { isOverlayOpen } from '../../utils/overlayGuard'
 import type { AnswerMode, Direction } from '../../types'
 
 interface QueueItem { dir: Direction; num: string }
@@ -82,7 +83,7 @@ export function RepetitionDrill({ answerMode }: Props) {
   useEffect(() => {
     if (!current || current.dir !== 'enc') return
     const handler = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement) return
+      if (e.target instanceof HTMLInputElement || isOverlayOpen()) return
       if ((e.key === 'h' || e.key === 'H') && !hintUsed) setHintUsed(true)
     }
     window.addEventListener('keydown', handler)

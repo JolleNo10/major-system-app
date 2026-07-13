@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { safeSet } from '../utils/storage'
+import { isOverlayOpen } from '../utils/overlayGuard'
 
 const HIDE_KEY = 'major-hide-options'
 
@@ -37,6 +38,7 @@ export function MultipleChoice({ options, correctAnswer, onAnswer, answered }: P
   useEffect(() => {
     if (answered !== null) return
     const handler = (e: KeyboardEvent) => {
+      if (isOverlayOpen()) return
       if (!revealed && (e.key === ' ' || e.key === 'Enter')) {
         e.preventDefault()
         setRevealed(true)

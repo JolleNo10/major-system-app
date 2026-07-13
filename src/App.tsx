@@ -57,6 +57,7 @@ export default function App() {
               onClick={goHome}
               className="flex items-center justify-center min-h-[40px] min-w-[40px] -ml-2 text-zinc-400 hover:text-zinc-100 transition-colors shrink-0"
               title="Back (Esc)"
+              aria-label="Back"
             >
               <span className="text-xl">←</span>
             </button>
@@ -75,24 +76,27 @@ export default function App() {
             <button
               onClick={() => setShowStats(true)}
               title="Stats"
+              aria-label="Stats"
               className="flex items-center justify-center min-h-[40px] min-w-[40px] rounded-lg bg-zinc-800 border border-zinc-700 hover:border-violet-500 transition-colors text-zinc-300 hover:text-zinc-100"
             >
-              <span>📊</span>
+              <span aria-hidden="true">📊</span>
             </button>
             <button
               onClick={() => setShowReference(true)}
               title="Reference"
+              aria-label="Reference"
               className="flex items-center justify-center gap-1.5 px-3 min-h-[40px] min-w-[40px] rounded-lg bg-zinc-800 border border-zinc-700 hover:border-violet-500 transition-colors text-sm font-medium text-zinc-300 hover:text-zinc-100"
             >
-              <span>📚</span>
+              <span aria-hidden="true">📚</span>
               <span className="hidden sm:inline">Reference</span>
             </button>
             <button
               onClick={() => setShowSettings(true)}
               title="Settings"
+              aria-label="Settings"
               className="flex items-center justify-center min-h-[40px] min-w-[40px] rounded-lg bg-zinc-800 border border-zinc-700 hover:border-violet-500 transition-colors text-zinc-300 hover:text-zinc-100"
             >
-              <span>⚙️</span>
+              <span aria-hidden="true">⚙️</span>
             </button>
           </div>
         </div>

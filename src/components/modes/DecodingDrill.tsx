@@ -11,6 +11,7 @@ import type { RoundStat } from '../RoundStatsPanel'
 import { loadStore, itemKey, medianMs, OUTLIER_MS, STALE_MS } from '../../data/itemStore'
 import { adjustLatency, recallColor, RECALL_SLOW_MS } from '../../data/typingSpeed'
 import { masteryProgress, masteryFastMs } from '../../utils/roundMastery'
+import { isOverlayOpen } from '../../utils/overlayGuard'
 import { useSettings } from '../../context/SettingsContext'
 import type { AnswerMode } from '../../types'
 
@@ -156,10 +157,10 @@ export function DecodingDrill({ answerMode, pool: customPool }: Props) {
     })
   }, [answered])
 
-  // Keyboard: p toggles pause (blocked when typing in an input)
+  // Keyboard: p toggles pause (blocked when typing in an input or behind an overlay)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement) return
+      if (e.target instanceof HTMLInputElement || isOverlayOpen()) return
       if (e.key === 'p' || e.key === 'P') togglePause()
     }
     window.addEventListener('keydown', handler)

@@ -12,6 +12,7 @@ import { HintButton } from '../HintButton'
 import { loadStore, itemKey, medianMs, OUTLIER_MS, STALE_MS } from '../../data/itemStore'
 import { adjustLatency, recallColor, RECALL_SLOW_MS } from '../../data/typingSpeed'
 import { masteryProgress, masteryFastMs } from '../../utils/roundMastery'
+import { isOverlayOpen } from '../../utils/overlayGuard'
 import { useSettings } from '../../context/SettingsContext'
 import type { AnswerMode } from '../../types'
 
@@ -163,10 +164,11 @@ export function EncodingDrill({ answerMode, pool: customPool }: Props) {
     })
   }, [answered])
 
-  // Keyboard: h reveals hint, p toggles pause (blocked when typing in an input)
+  // Keyboard: h reveals hint, p toggles pause (blocked when typing in an input
+  // or when an overlay is covering the drill)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement) return
+      if (e.target instanceof HTMLInputElement || isOverlayOpen()) return
       if ((e.key === 'h' || e.key === 'H') && !hintUsed) setHintUsed(true)
       if (e.key === 'p' || e.key === 'P') togglePause()
     }
