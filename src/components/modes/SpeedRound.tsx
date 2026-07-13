@@ -3,26 +3,18 @@ import { useWords } from '../../context/WordsContext'
 import { MultipleChoice } from '../MultipleChoice'
 import { TypingInput } from '../TypingInput'
 import { safeSet } from '../../utils/storage'
+import { shuffle, pickDistractors } from '../../utils/quiz'
 import type { AnswerMode } from '../../types'
 
 const DURATION = 60
 const BEST_KEY = 'major-speed-best'
-
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr]
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[a[i], a[j]] = [a[j], a[i]]
-  }
-  return a
-}
 
 function makeQuestion(words: Record<string, string>, exclude?: string) {
   const all = Object.keys(words)
   const available = all.length > 1 ? all.filter(n => n !== exclude) : all
   const number = available[Math.floor(Math.random() * available.length)]
   const correct = words[number]
-  const others = shuffle(all.filter(n => n !== number)).slice(0, 2)
+  const others = pickDistractors(number, all)
   const options = shuffle([correct, ...others.map(n => words[n])])
   return { number, correct, options }
 }

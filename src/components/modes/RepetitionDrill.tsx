@@ -7,32 +7,19 @@ import { TypingInput } from '../TypingInput'
 import { ScoreBar } from '../ScoreBar'
 import { HintButton } from '../HintButton'
 import { isOverlayOpen } from '../../utils/overlayGuard'
+import { shuffle, pickDistractors } from '../../utils/quiz'
 import type { AnswerMode, Direction } from '../../types'
 
 interface QueueItem { dir: Direction; num: string }
 
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr]
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[a[i], a[j]] = [a[j], a[i]]
-  }
-  return a
-}
-
 function makeEncOptions(num: string, words: Record<string, string>): string[] {
-  const correct = words[num]
-  const allNums = Object.keys(words)
-  const sameDecade = shuffle(allNums.filter(n => n[0] === num[0] && n !== num))
-  const others = shuffle(allNums.filter(n => n[0] !== num[0]))
-  return shuffle([correct, ...[...sameDecade, ...others].slice(0, 2).map(n => words[n])])
+  const others = pickDistractors(num, Object.keys(words))
+  return shuffle([words[num], ...others.map(n => words[n])])
 }
 
 function makeDecOptions(num: string, words: Record<string, string>): string[] {
-  const allNums = Object.keys(words)
-  const sameDecade = shuffle(allNums.filter(n => n[0] === num[0] && n !== num))
-  const others = shuffle(allNums.filter(n => n[0] !== num[0]))
-  return shuffle([num, ...[...sameDecade, ...others].slice(0, 2)])
+  const others = pickDistractors(num, Object.keys(words))
+  return shuffle([num, ...others])
 }
 
 function relativeTime(ms: number): string {

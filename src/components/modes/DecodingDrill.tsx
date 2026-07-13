@@ -8,61 +8,20 @@ import { SoundKeyPanel } from '../SoundKeyPanel'
 import { RangeSlider } from '../RangeSlider'
 import { RoundStatsPanel } from '../RoundStatsPanel'
 import type { RoundStat } from '../RoundStatsPanel'
-import { loadStore, itemKey, medianMs, OUTLIER_MS, STALE_MS } from '../../data/itemStore'
-import { adjustLatency, recallColor, RECALL_SLOW_MS } from '../../data/typingSpeed'
+import { OUTLIER_MS, STALE_MS } from '../../data/itemStore'
+import { adjustLatency, recallColor } from '../../data/typingSpeed'
 import { masteryProgress, masteryFastMs } from '../../utils/roundMastery'
 import { isOverlayOpen } from '../../utils/overlayGuard'
+import { shuffle, pickDistractors, pickWeighted } from '../../utils/quiz'
 import { useSettings } from '../../context/SettingsContext'
 import type { AnswerMode } from '../../types'
 
-function pickWeighted(available: string[], masteredSet: Set<string>): string {
-  if (available.length === 1) return available[0]
-  const store = loadStore()
-  const DEFAULT_EASE = 2.5, MIN_EASE = 1.3
-  const weights = available.map(num => {
-    const item = store[itemKey('dec', num)]
-    const base = (!item || item.lastSeenAt === 0)
-      ? 1.5
-      : (() => {
-          const total = item.correct + item.wrong
-          const wrongRate = total > 0 ? item.wrong / total : 0
-          const easePenalty = Math.max(0, (DEFAULT_EASE - (item.ease ?? DEFAULT_EASE)) / (DEFAULT_EASE - MIN_EASE))
-          const median = medianMs(item.latencies)
-          const slow = median !== null && median >= RECALL_SLOW_MS ? 0.5 : 0
-          return 1 + wrongRate * 3 + easePenalty * 1 + slow
-        })()
-    // De-prioritise numbers already mastered this round so practice converges on the rest
-    return masteredSet.has(num) ? base * 0.25 : base
-  })
-  const sum = weights.reduce((a, b) => a + b, 0)
-  let r = Math.random() * sum
-  for (let i = 0; i < available.length; i++) {
-    r -= weights[i]
-    if (r <= 0) return available[i]
-  }
-  return available[available.length - 1]
-}
-
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr]
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[a[i], a[j]] = [a[j], a[i]]
-  }
-  return a
-}
-
 function makeQuestion(pool: string[], words: Record<string, string>, masteredSet: Set<string>, exclude?: string) {
   const available = pool.length > 1 ? pool.filter(n => n !== exclude) : pool
-  const number = pickWeighted(available, masteredSet)
+  const number = pickWeighted('dec', available, masteredSet)
   const word = words[number]
-
-  const allNums = Object.keys(words)
-  const sameDecade = shuffle(allNums.filter(n => n[0] === number[0] && n !== number))
-  const others = shuffle(allNums.filter(n => n[0] !== number[0]))
-  const distNums = [...sameDecade, ...others].slice(0, 2)
+  const distNums = pickDistractors(number, Object.keys(words))
   const options = shuffle([number, ...distNums])
-
   return { number, word, options }
 }
 

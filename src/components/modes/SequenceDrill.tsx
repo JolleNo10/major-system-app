@@ -3,6 +3,7 @@ import { useWords } from '../../context/WordsContext'
 import { MultipleChoice } from '../MultipleChoice'
 import { TypingInput } from '../TypingInput'
 import { safeSet } from '../../utils/storage'
+import { shuffle, pickDistractors } from '../../utils/quiz'
 import type { AnswerMode } from '../../types'
 
 function readLS(key: string): string | null {
@@ -23,23 +24,13 @@ const MAX_LEN = 20
 type Phase = 'setup' | 'study' | 'recall' | 'result'
 type StudyMode = 'number-only' | 'word-quiz'
 
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr]
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[a[i], a[j]] = [a[j], a[i]]
-  }
-  return a
-}
-
 function generateSequence(words: Record<string, string>, length: number): string[] {
   return shuffle(Object.keys(words)).slice(0, length)
 }
 
 function getMcOptions(number: string, words: Record<string, string>): string[] {
-  const correct = words[number]
-  const others = shuffle(Object.keys(words).filter(n => n !== number)).slice(0, 2)
-  return shuffle([correct, ...others.map(n => words[n])])
+  const others = pickDistractors(number, Object.keys(words))
+  return shuffle([words[number], ...others.map(n => words[n])])
 }
 
 interface Props {

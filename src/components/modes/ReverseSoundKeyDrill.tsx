@@ -3,16 +3,8 @@ import { ALL_SOUNDS, SOUND_KEY } from '../../data/soundKey'
 import { MultipleChoice } from '../MultipleChoice'
 import { TypingInput } from '../TypingInput'
 import { ScoreBar } from '../ScoreBar'
+import { shuffle } from '../../utils/quiz'
 import type { AnswerMode } from '../../types'
-
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr]
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[a[i], a[j]] = [a[j], a[i]]
-  }
-  return a
-}
 
 function makeQuestion(excludeSound?: string) {
   const available = excludeSound
