@@ -1,4 +1,5 @@
 import type { Direction, AnswerMode } from '../types'
+import { safeSet } from '../utils/storage'
 
 export interface Attempt {
   at: number    // epoch ms when answered
@@ -67,7 +68,7 @@ export function loadStore(): Record<string, ItemRecord> {
 }
 
 export function saveStore(store: Record<string, ItemRecord>): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(store))
+  safeSet(STORAGE_KEY, JSON.stringify(store))
 }
 
 export function getItem(store: Record<string, ItemRecord>, dir: Direction, num: string): ItemRecord {

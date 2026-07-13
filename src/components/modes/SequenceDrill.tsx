@@ -2,7 +2,12 @@ import { useState, useCallback } from 'react'
 import { useWords } from '../../context/WordsContext'
 import { MultipleChoice } from '../MultipleChoice'
 import { TypingInput } from '../TypingInput'
+import { safeSet } from '../../utils/storage'
 import type { AnswerMode } from '../../types'
+
+function readLS(key: string): string | null {
+  try { return localStorage.getItem(key) } catch { return null }
+}
 
 // Sequence memory drill:
 //   setup  → pick length (2–20) + study mode
@@ -45,11 +50,11 @@ export function SequenceDrill({ answerMode }: Props) {
   const { words } = useWords()
 
   const [length, setLength] = useState<number>(() => {
-    const v = parseInt(localStorage.getItem(LEN_KEY) ?? '', 10)
+    const v = parseInt(readLS(LEN_KEY) ?? '', 10)
     return Number.isFinite(v) && v >= MIN_LEN && v <= MAX_LEN ? v : 5
   })
   const [studyMode, setStudyMode] = useState<StudyMode>(() =>
-    localStorage.getItem(MODE_KEY) === 'word-quiz' ? 'word-quiz' : 'number-only')
+    readLS(MODE_KEY) === 'word-quiz' ? 'word-quiz' : 'number-only')
 
   const [phase, setPhase] = useState<Phase>('setup')
   const [sequence, setSequence] = useState<string[]>([])
@@ -66,8 +71,8 @@ export function SequenceDrill({ answerMode }: Props) {
   const [submitted, setSubmitted] = useState<string[]>([])
 
   const start = useCallback(() => {
-    localStorage.setItem(LEN_KEY, String(length))
-    localStorage.setItem(MODE_KEY, studyMode)
+    safeSet(LEN_KEY, String(length))
+    safeSet(MODE_KEY, studyMode)
     const seq = generateSequence(words, length)
     setSequence(seq)
     setStudyIdx(0)

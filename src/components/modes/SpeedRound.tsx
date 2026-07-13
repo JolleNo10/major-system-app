@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useWords } from '../../context/WordsContext'
 import { MultipleChoice } from '../MultipleChoice'
 import { TypingInput } from '../TypingInput'
+import { safeSet } from '../../utils/storage'
 import type { AnswerMode } from '../../types'
 
 const DURATION = 60
@@ -42,7 +43,7 @@ export function SpeedRound({ answerMode }: Props) {
   const [answered, setAnswered] = useState<string | null>(null)
   const [answeredCorrect, setAnsweredCorrect] = useState<boolean | null>(null)
   const [personalBest, setPersonalBest] = useState(() => {
-    return parseInt(localStorage.getItem(BEST_KEY) ?? '0')
+    try { return parseInt(localStorage.getItem(BEST_KEY) ?? '0') } catch { return 0 }
   })
 
   const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -85,7 +86,7 @@ export function SpeedRound({ answerMode }: Props) {
       setCorrect(c => {
         if (c > personalBest) {
           setPersonalBest(c)
-          localStorage.setItem(BEST_KEY, String(c))
+          safeSet(BEST_KEY, String(c))
         }
         return c
       })

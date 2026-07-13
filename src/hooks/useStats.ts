@@ -7,6 +7,7 @@ import {
 import { addAttempt } from '../data/attemptStore'
 import { gradeAnswer, applySm2 } from '../data/sm2'
 import { adjustLatency, recordTypingSpeed } from '../data/typingSpeed'
+import { safeSet } from '../utils/storage'
 
 const LEGACY_KEY = 'major-stats'
 
@@ -90,7 +91,7 @@ export function useStats() {
       correct: entry.correct + (correct ? 1 : 0),
       wrong: entry.wrong + (correct ? 0 : 1),
     }
-    localStorage.setItem(LEGACY_KEY, JSON.stringify(stats))
+    safeSet(LEGACY_KEY, JSON.stringify(stats))
   }
 
   // Full: direction + latency + SM-2

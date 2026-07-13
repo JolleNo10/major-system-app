@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
 import { WORDS } from '../data/words'
 import type { WordRow } from '../data/wordsCsv'
+import { safeSet, safeRemove } from '../utils/storage'
 
 // Three layers, each overriding the one above:
 //   shipped (WORDS, from words.csv)  →  saved (localStorage)  →  trial overrides (localStorage)
@@ -20,8 +21,8 @@ function load(key: string): Words {
 }
 
 function persistMap(key: string, map: Words) {
-  if (Object.keys(map).length) localStorage.setItem(key, JSON.stringify(map))
-  else localStorage.removeItem(key)
+  if (Object.keys(map).length) safeSet(key, JSON.stringify(map))
+  else safeRemove(key)
 }
 
 interface WordsContextValue {
@@ -61,7 +62,7 @@ export function WordsProvider({ children }: { children: ReactNode }) {
   }, [updateOverrides])
 
   const resetTrials = useCallback(() => {
-    setOverrides({}); localStorage.removeItem(OVERRIDES_KEY)
+    setOverrides({}); safeRemove(OVERRIDES_KEY)
   }, [])
 
   const persist = useCallback(() => {
@@ -76,14 +77,14 @@ export function WordsProvider({ children }: { children: ReactNode }) {
         persistMap(SAVED_KEY, next)
         return next
       })
-      localStorage.removeItem(OVERRIDES_KEY)
+      safeRemove(OVERRIDES_KEY)
       return {}
     })
   }, [])
 
   const resetFactory = useCallback(() => {
-    setOverrides({}); localStorage.removeItem(OVERRIDES_KEY)
-    setSaved({}); localStorage.removeItem(SAVED_KEY)
+    setOverrides({}); safeRemove(OVERRIDES_KEY)
+    setSaved({}); safeRemove(SAVED_KEY)
   }, [])
 
   const importSaved = useCallback((rows: WordRow[]) => {

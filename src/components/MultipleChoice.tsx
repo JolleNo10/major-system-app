@@ -1,13 +1,16 @@
 import { useEffect, useState, useCallback } from 'react'
+import { safeSet } from '../utils/storage'
 
 const HIDE_KEY = 'major-hide-options'
 
 function useHideOptions() {
-  const [hide, setHide] = useState(() => localStorage.getItem(HIDE_KEY) === 'true')
+  const [hide, setHide] = useState(() => {
+    try { return localStorage.getItem(HIDE_KEY) === 'true' } catch { return false }
+  })
   const toggle = useCallback(() => {
     setHide(h => {
       const next = !h
-      localStorage.setItem(HIDE_KEY, String(next))
+      safeSet(HIDE_KEY, String(next))
       return next
     })
   }, [])
