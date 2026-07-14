@@ -83,21 +83,28 @@ export function PiDrill({ answerMode }: Props) {
   const [nqResults, setNqResults] = useState<NqResult[]>([])
   const historyEndRef = useRef<HTMLDivElement>(null)
 
+  const [wqResults, setWqResults] = useState<NqResult[]>([])
+  const wqHistoryEndRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     historyEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }, [nqResults.length])
 
-  // ── pair grid selection ───────────────────────────────────────────────────
-  const handlePairClick = useCallback((pair: number) => {
+  useEffect(() => {
+    wqHistoryEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }, [wqResults.length])
+
+  // ── segment grid selection ────────────────────────────────────────────────
+  const handleSegmentClick = useCallback((segIdx: number) => {
+    const firstPair = segIdx * PAIRS_PER_ROW + 1
+    const lastPair  = (segIdx + 1) * PAIRS_PER_ROW
     if (selEnd !== null || selAnchor === null) {
-      // Both already set (or nothing): start fresh
-      setSelAnchor(pair)
+      setSelAnchor(firstPair)
       setSelEnd(null)
-    } else if (pair >= selAnchor) {
-      setSelEnd(pair)
+    } else if (firstPair >= selAnchor) {
+      setSelEnd(lastPair)
     } else {
-      // Clicked before anchor: move anchor
-      setSelAnchor(pair)
+      setSelAnchor(firstPair)
     }
   }, [selAnchor, selEnd])
 
@@ -118,6 +125,7 @@ export function PiDrill({ answerMode }: Props) {
       setWqAnswered(null)
       setWqCorrect(null)
       setWqOptions(wordMcOptions(seq[0], words))
+      setWqResults([])
       setRecallText('')
       setSubmitted([])
       setPhase('study')
@@ -152,6 +160,7 @@ export function PiDrill({ answerMode }: Props) {
     const correct = value.toLowerCase().trim() === words[sequence[studyIdx]]?.toLowerCase()
     setWqAnswered(value)
     setWqCorrect(correct)
+    setWqResults(prev => [...prev, { typed: value, ok: correct }])
     setTimeout(advanceStudy, 1200)
   }, [wqAnswered, words, sequence, studyIdx, advanceStudy])
 
@@ -241,43 +250,35 @@ export function PiDrill({ answerMode }: Props) {
             </div>
           </div>
 
-          {/* Pi digit grid — 5 pairs per row = 10 digits per row */}
+          {/* Pi digit grid — one button per 10-digit segment */}
           <div className="space-y-2">
             <span className="text-sm font-medium text-zinc-300">Select segment</span>
-            <div className="space-y-1">
-              {Array.from({ length: Math.ceil(PI_PAIRS.length / PAIRS_PER_ROW) }, (_, rowIdx) => {
-                const firstPair = rowIdx * PAIRS_PER_ROW + 1
-                const rowPairs = PI_PAIRS.slice(rowIdx * PAIRS_PER_ROW, (rowIdx + 1) * PAIRS_PER_ROW)
+            <div className="grid grid-cols-2 gap-1.5">
+              {Array.from({ length: Math.ceil(PI_PAIRS.length / PAIRS_PER_ROW) }, (_, segIdx) => {
+                const firstPair = segIdx * PAIRS_PER_ROW + 1
+                const lastPair  = (segIdx + 1) * PAIRS_PER_ROW
+                const startDigit = segIdx * PAIRS_PER_ROW * 2 + 1
+                const endDigit   = (segIdx + 1) * PAIRS_PER_ROW * 2
+                const inRange = selAnchor !== null && selEnd !== null &&
+                                firstPair <= selEnd && lastPair >= selAnchor
+                const isAnchor = selEnd === null && selAnchor !== null &&
+                                 firstPair <= selAnchor && lastPair >= selAnchor
+                const digits = PI_PAIRS.slice(segIdx * PAIRS_PER_ROW, (segIdx + 1) * PAIRS_PER_ROW).join(' ')
                 return (
-                  <div key={rowIdx} className="flex items-center gap-1.5">
-                    <span className="text-[10px] text-zinc-700 tabular-nums w-10 shrink-0 text-right leading-none">
-                      {rowIdx * PAIRS_PER_ROW * 2 + 1}–{(rowIdx + 1) * PAIRS_PER_ROW * 2}
-                    </span>
-                    <div className="flex gap-1">
-                      {rowPairs.map((pair, i) => {
-                        const pairNum = firstPair + i
-                        const inRange = selAnchor !== null && selEnd !== null &&
-                                        pairNum >= selAnchor && pairNum <= selEnd
-                        const isAnchor = pairNum === selAnchor && selEnd === null
-                        return (
-                          <button
-                            key={pairNum}
-                            onClick={() => handlePairClick(pairNum)}
-                            className={`flex flex-col items-center justify-center w-11 h-10 rounded-lg border transition-colors ${
-                              inRange
-                                ? 'bg-cyan-600/25 border-cyan-500/60 text-cyan-300'
-                                : isAnchor
-                                ? 'bg-amber-600/20 border-amber-500/60 text-amber-300'
-                                : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200 hover:border-zinc-500'
-                            }`}
-                          >
-                            <span className="text-[9px] opacity-50 leading-none tabular-nums">{pairNum}</span>
-                            <span className="text-sm font-bold tabular-nums leading-snug">{pair}</span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
+                  <button
+                    key={segIdx}
+                    onClick={() => handleSegmentClick(segIdx)}
+                    className={`flex flex-col items-start px-3 py-2 rounded-lg border transition-colors ${
+                      inRange
+                        ? 'bg-cyan-600/25 border-cyan-500/60 text-cyan-300'
+                        : isAnchor
+                        ? 'bg-amber-600/20 border-amber-500/60 text-amber-300'
+                        : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200 hover:border-zinc-500'
+                    }`}
+                  >
+                    <span className="text-[9px] opacity-60 leading-none tabular-nums">π {startDigit}–{endDigit}</span>
+                    <span className="font-mono text-xs tabular-nums leading-snug mt-0.5">{digits}</span>
+                  </button>
                 )
               })}
             </div>
@@ -359,7 +360,7 @@ export function PiDrill({ answerMode }: Props) {
               >{studyIdx + 1 >= sequence.length ? 'Done — recall →' : 'Next →'}</button>
             </>
           ) : (
-            <div className="w-full">
+            <div className="w-full space-y-3">
               {answerMode === 'multiple-choice' ? (
                 <MultipleChoice
                   key={studyIdx}
@@ -376,6 +377,22 @@ export function PiDrill({ answerMode }: Props) {
                   correctAnswer={words[sequence[studyIdx]]}
                   placeholder="Type the word..."
                 />
+              )}
+              {wqResults.length > 0 && (
+                <div className="w-full max-h-48 overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-900/60">
+                  <div className="p-2 space-y-0.5">
+                    {wqResults.map((r, i) => (
+                      <div key={i} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm ${r.ok ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+                        <span className="text-zinc-600 tabular-nums text-xs w-8 shrink-0">#{sessionAnchor + i}</span>
+                        <span className={`font-mono tabular-nums font-bold w-6 shrink-0 ${r.ok ? 'text-green-400' : 'text-red-400'}`}>{sequence[i]}</span>
+                        <span className="text-zinc-200 text-sm font-semibold shrink-0">{words[sequence[i]]}</span>
+                        {!r.ok && <span className="ml-auto text-xs text-red-400 shrink-0">→ {r.typed}</span>}
+                        <span className={`${r.ok ? 'ml-auto' : ''} text-xs shrink-0 ${r.ok ? 'text-green-500' : 'text-red-500'}`}>{r.ok ? '✓' : '✗'}</span>
+                      </div>
+                    ))}
+                    <div ref={wqHistoryEndRef} />
+                  </div>
+                </div>
               )}
             </div>
           )}
