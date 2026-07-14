@@ -13,12 +13,11 @@ import type { AnswerMode } from '../../types'
 
 const SEL_START_KEY = 'major-pi-sel-start'
 const SEL_END_KEY = 'major-pi-sel-end'
-const STUDYMODE_KEY = 'major-pi-studymode'
 const DRILLTYPE_KEY = 'major-pi-drilltype'
+const MAX_PAIRS_KEY = 'major-pi-max-pairs'
 
-const PAIRS_PER_ROW = 5
+const PAIRS_PER_ROW = 10
 
-type StudyMode = 'number-only' | 'word-quiz'
 type DrillType = 'word-chain' | 'number-quiz'
 type Phase = 'setup' | 'study' | 'recall' | 'number-quiz' | 'result'
 
@@ -45,10 +44,13 @@ interface Props {
 export function PiDrill({ answerMode }: Props) {
   const { words } = useWords()
 
-  const [studyMode, setStudyMode] = useState<StudyMode>(() =>
-    readLS(STUDYMODE_KEY) === 'word-quiz' ? 'word-quiz' : 'number-only')
   const [drillType, setDrillType] = useState<DrillType>(() =>
     readLS(DRILLTYPE_KEY) === 'number-quiz' ? 'number-quiz' : 'word-chain')
+
+  const [maxPiPairs, setMaxPiPairs] = useState<number>(() => {
+    const v = parseInt(readLS(MAX_PAIRS_KEY) ?? '', 10)
+    return v >= 10 && v <= PI_PAIRS.length ? v : 50
+  })
 
   // Range selection: anchor = first clicked pair (1-indexed), end = second clicked pair
   const [selAnchor, setSelAnchor] = useState<number | null>(() => {
@@ -68,7 +70,6 @@ export function PiDrill({ answerMode }: Props) {
 
   // ── word-chain state ──────────────────────────────────────────────────────
   const [studyIdx, setStudyIdx] = useState(0)
-  const [revealWord, setRevealWord] = useState(false)
   const [wqAnswered, setWqAnswered] = useState<string | null>(null)
   const [wqCorrect, setWqCorrect] = useState<boolean | null>(null)
   const [wqOptions, setWqOptions] = useState<string[]>([])
@@ -113,15 +114,14 @@ export function PiDrill({ answerMode }: Props) {
     if (selAnchor === null || selEnd === null) return
     safeSet(SEL_START_KEY, String(selAnchor))
     safeSet(SEL_END_KEY, String(selEnd))
-    safeSet(STUDYMODE_KEY, studyMode)
     safeSet(DRILLTYPE_KEY, drillType)
+    safeSet(MAX_PAIRS_KEY, String(maxPiPairs))
     const seq = PI_PAIRS.slice(selAnchor - 1, selEnd)
     setSequence(seq)
     setSessionAnchor(selAnchor)
 
     if (drillType === 'word-chain') {
       setStudyIdx(0)
-      setRevealWord(false)
       setWqAnswered(null)
       setWqCorrect(null)
       setWqOptions(wordMcOptions(seq[0], words))
@@ -137,7 +137,7 @@ export function PiDrill({ answerMode }: Props) {
       setNqResults([])
       setPhase('number-quiz')
     }
-  }, [selAnchor, selEnd, studyMode, drillType, words])
+  }, [selAnchor, selEnd, drillType, maxPiPairs, words])
 
   // ── word-chain handlers ───────────────────────────────────────────────────
   const advanceStudy = useCallback(() => {
@@ -147,7 +147,6 @@ export function PiDrill({ answerMode }: Props) {
         setPhase('recall')
         return prev
       }
-      setRevealWord(false)
       setWqAnswered(null)
       setWqCorrect(null)
       setWqOptions(wordMcOptions(sequence[next], words))
@@ -174,7 +173,7 @@ export function PiDrill({ answerMode }: Props) {
   const advanceNumberQuiz = useCallback((typed: string, ok: boolean) => {
     setNqResults(prev => [...prev, { typed, ok }])
     const nextIdx = nqIdx + 1
-    const delay = ok ? 500 : 1200
+    const delay = ok ? 100 : 1200
     if (nextIdx >= sequence.length) {
       setTimeout(() => setPhase('result'), delay)
     } else {
@@ -219,12 +218,14 @@ export function PiDrill({ answerMode }: Props) {
     </div>
   )
 
+  const numButtons = Math.ceil(maxPiPairs / PAIRS_PER_ROW)
+
   return (
     <div className="flex flex-col items-center gap-6 py-4">
 
       {/* ── SETUP ── */}
       {phase === 'setup' && (
-        <div className={`w-full max-w-md space-y-6 p-6 ${panelCls}`}>
+        <div className={`w-full max-w-lg space-y-6 p-6 ${panelCls}`}>
 
           {/* Drill type */}
           <div className="space-y-2">
@@ -250,11 +251,30 @@ export function PiDrill({ answerMode }: Props) {
             </div>
           </div>
 
-          {/* Pi digit grid — one button per 10-digit segment */}
+          {/* Pi digit grid — one button per 20-digit segment */}
           <div className="space-y-2">
-            <span className="text-sm font-medium text-zinc-300">Select segment</span>
-            <div className="grid grid-cols-2 gap-1.5">
-              {Array.from({ length: Math.ceil(PI_PAIRS.length / PAIRS_PER_ROW) }, (_, segIdx) => {
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-zinc-300">Select segment</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-zinc-500">Max π digits</span>
+                <input
+                  type="range"
+                  min={10}
+                  max={PI_PAIRS.length}
+                  step={10}
+                  value={maxPiPairs}
+                  onChange={e => {
+                    const v = +e.target.value
+                    setMaxPiPairs(v)
+                    if (selEnd !== null && selEnd > v) setSelEnd(v)
+                  }}
+                  className="w-24 accent-cyan-500"
+                />
+                <span className="text-cyan-400 tabular-nums text-xs w-8 text-right">{maxPiPairs * 2}</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-4 gap-1.5">
+              {Array.from({ length: numButtons }, (_, segIdx) => {
                 const firstPair = segIdx * PAIRS_PER_ROW + 1
                 const lastPair  = (segIdx + 1) * PAIRS_PER_ROW
                 const startDigit = segIdx * PAIRS_PER_ROW * 2 + 1
@@ -263,12 +283,14 @@ export function PiDrill({ answerMode }: Props) {
                                 firstPair <= selEnd && lastPair >= selAnchor
                 const isAnchor = selEnd === null && selAnchor !== null &&
                                  firstPair <= selAnchor && lastPair >= selAnchor
-                const digits = PI_PAIRS.slice(segIdx * PAIRS_PER_ROW, (segIdx + 1) * PAIRS_PER_ROW).join(' ')
+                const half = PAIRS_PER_ROW / 2
+                const line1 = PI_PAIRS.slice(segIdx * PAIRS_PER_ROW, segIdx * PAIRS_PER_ROW + half).join(' ')
+                const line2 = PI_PAIRS.slice(segIdx * PAIRS_PER_ROW + half, (segIdx + 1) * PAIRS_PER_ROW).join(' ')
                 return (
                   <button
                     key={segIdx}
                     onClick={() => handleSegmentClick(segIdx)}
-                    className={`flex flex-col items-start px-3 py-2 rounded-lg border transition-colors ${
+                    className={`flex flex-col items-start px-2 py-1.5 rounded-lg border transition-colors ${
                       inRange
                         ? 'bg-cyan-600/25 border-cyan-500/60 text-cyan-300'
                         : isAnchor
@@ -276,8 +298,9 @@ export function PiDrill({ answerMode }: Props) {
                         : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200 hover:border-zinc-500'
                     }`}
                   >
-                    <span className="text-[9px] opacity-60 leading-none tabular-nums">π {startDigit}–{endDigit}</span>
-                    <span className="font-mono text-xs tabular-nums leading-snug mt-0.5">{digits}</span>
+                    <span className="text-[8px] opacity-60 leading-none tabular-nums">π {startDigit}–{endDigit}</span>
+                    <span className="font-mono text-[8px] tabular-nums leading-snug mt-0.5">{line1}</span>
+                    <span className="font-mono text-[8px] tabular-nums leading-snug">{line2}</span>
                   </button>
                 )
               })}
@@ -286,7 +309,7 @@ export function PiDrill({ answerMode }: Props) {
             {/* Selection info */}
             <p className="text-xs text-center pt-1 min-h-[1.25rem]">
               {selAnchor === null ? (
-                <span className="text-zinc-700">Click a pair to start selecting</span>
+                <span className="text-zinc-700">Click a segment to start selecting</span>
               ) : selEnd === null ? (
                 <span className="text-amber-400/80">Pair {selAnchor} — click another to set end</span>
               ) : (
@@ -297,32 +320,6 @@ export function PiDrill({ answerMode }: Props) {
             </p>
           </div>
 
-          {/* Study mode (word-chain only) */}
-          {drillType === 'word-chain' && (
-            <div className="space-y-2">
-              <span className="text-sm font-medium text-zinc-300">Study mode</span>
-              <div className="grid grid-cols-2 gap-2">
-                {([
-                  ['number-only', 'Number only', 'Encode in your head'],
-                  ['word-quiz', 'Word quiz', 'Answer each word'],
-                ] as [StudyMode, string, string][]).map(([m, label, sub]) => (
-                  <button
-                    key={m}
-                    onClick={() => setStudyMode(m)}
-                    className={`flex flex-col items-start px-4 py-3 rounded-lg border text-left transition-colors ${
-                      studyMode === m
-                        ? 'bg-cyan-600/20 border-cyan-500 text-zinc-100'
-                        : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500'
-                    }`}
-                  >
-                    <span className="font-semibold text-sm">{label}</span>
-                    <span className="text-xs text-zinc-500">{sub}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
           <button
             onClick={start}
             disabled={selAnchor === null || selEnd === null}
@@ -331,7 +328,7 @@ export function PiDrill({ answerMode }: Props) {
         </div>
       )}
 
-      {/* ── STUDY (word-chain) ── */}
+      {/* ── STUDY (word-chain, word-quiz only) ── */}
       {phase === 'study' && (
         <div className="flex flex-col items-center gap-6 w-full max-w-md">
           {progressDots(studyIdx)}
@@ -342,60 +339,41 @@ export function PiDrill({ answerMode }: Props) {
           <div className="text-[6rem] font-black text-cyan-400 tabular-nums leading-none">
             {sequence[studyIdx]}
           </div>
-          {studyMode === 'number-only' ? (
-            <>
-              <div className="min-h-[3rem] flex items-center">
-                {revealWord ? (
-                  <span className="text-3xl font-bold text-zinc-100">{words[sequence[studyIdx]]}</span>
-                ) : (
-                  <button
-                    onClick={() => setRevealWord(true)}
-                    className="px-4 min-h-[40px] rounded-lg bg-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700 text-sm font-medium transition-colors"
-                  >💡 reveal word</button>
-                )}
-              </div>
-              <button
-                onClick={advanceStudy}
-                className="w-full max-w-xs py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold transition-colors"
-              >{studyIdx + 1 >= sequence.length ? 'Done — recall →' : 'Next →'}</button>
-            </>
-          ) : (
-            <div className="w-full space-y-3">
-              {answerMode === 'multiple-choice' ? (
-                <MultipleChoice
-                  key={studyIdx}
-                  options={wqOptions}
-                  correctAnswer={words[sequence[studyIdx]]}
-                  onAnswer={handleWordQuizAnswer}
-                  answered={wqAnswered}
-                />
-              ) : (
-                <TypingInput
-                  key={studyIdx}
-                  onAnswer={handleWordQuizAnswer}
-                  answeredCorrect={wqCorrect}
-                  correctAnswer={words[sequence[studyIdx]]}
-                  placeholder="Type the word..."
-                />
-              )}
-              {wqResults.length > 0 && (
-                <div className="w-full max-h-48 overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-900/60">
-                  <div className="p-2 space-y-0.5">
-                    {wqResults.map((r, i) => (
-                      <div key={i} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm ${r.ok ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
-                        <span className="text-zinc-600 tabular-nums text-xs w-8 shrink-0">#{sessionAnchor + i}</span>
-                        <span className={`font-mono tabular-nums font-bold w-6 shrink-0 ${r.ok ? 'text-green-400' : 'text-red-400'}`}>{sequence[i]}</span>
-                        <span className="text-zinc-200 text-sm font-semibold shrink-0">{words[sequence[i]]}</span>
-                        {!r.ok && <span className="ml-auto text-xs text-red-400 shrink-0">→ {r.typed}</span>}
-                        <span className={`${r.ok ? 'ml-auto' : ''} text-xs shrink-0 ${r.ok ? 'text-green-500' : 'text-red-500'}`}>{r.ok ? '✓' : '✗'}</span>
-                      </div>
-                    ))}
-                    <div ref={wqHistoryEndRef} />
-                  </div>
+          <div className="w-full space-y-3">
+            {answerMode === 'multiple-choice' ? (
+              <MultipleChoice
+                key={studyIdx}
+                options={wqOptions}
+                correctAnswer={words[sequence[studyIdx]]}
+                onAnswer={handleWordQuizAnswer}
+                answered={wqAnswered}
+              />
+            ) : (
+              <TypingInput
+                key={studyIdx}
+                onAnswer={handleWordQuizAnswer}
+                answeredCorrect={wqCorrect}
+                correctAnswer={words[sequence[studyIdx]]}
+                placeholder="Type the word..."
+              />
+            )}
+            {wqResults.length > 0 && (
+              <div className="w-full max-h-48 overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-900/60">
+                <div className="p-2 space-y-0.5">
+                  {wqResults.map((r, i) => (
+                    <div key={i} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm ${r.ok ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+                      <span className="text-zinc-600 tabular-nums text-xs w-8 shrink-0">#{sessionAnchor + i}</span>
+                      <span className={`font-mono tabular-nums font-bold w-6 shrink-0 ${r.ok ? 'text-green-400' : 'text-red-400'}`}>{sequence[i]}</span>
+                      <span className="text-zinc-200 text-sm font-semibold shrink-0">{words[sequence[i]]}</span>
+                      {!r.ok && <span className="ml-auto text-xs text-red-400 shrink-0">→ {r.typed}</span>}
+                      <span className={`${r.ok ? 'ml-auto' : ''} text-xs shrink-0 ${r.ok ? 'text-green-500' : 'text-red-500'}`}>{r.ok ? '✓' : '✗'}</span>
+                    </div>
+                  ))}
+                  <div ref={wqHistoryEndRef} />
                 </div>
-              )}
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
