@@ -43,6 +43,20 @@ export function pickWeighted(dir: Direction, available: string[], masteredSet: S
         })()
     return masteredSet.has(num) ? base * 0.25 : base
   })
+  // Guarantee unmastered items get ≥ TARGET of all draws when the pool is mixed.
+  const hasUnmastered = available.some(n => !masteredSet.has(n))
+  if (masteredSet.size > 0 && hasUnmastered) {
+    const unmasteredTotal = weights.reduce((s, w, i) => masteredSet.has(available[i]) ? s : s + w, 0)
+    const masteredTotal   = weights.reduce((s, w, i) => masteredSet.has(available[i]) ? s + w : s, 0)
+    const TARGET = 0.75
+    const maxMastered = unmasteredTotal * (TARGET / (1 - TARGET))
+    if (masteredTotal > maxMastered) {
+      const scale = maxMastered / masteredTotal
+      for (let i = 0; i < available.length; i++) {
+        if (masteredSet.has(available[i])) weights[i] *= scale
+      }
+    }
+  }
   const sum = weights.reduce((a, b) => a + b, 0)
   let r = Math.random() * sum
   for (let i = 0; i < available.length; i++) {
