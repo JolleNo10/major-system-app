@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useWords } from '../../context/WordsContext'
+import { useSettings } from '../../context/SettingsContext'
 import { MultipleChoice } from '../MultipleChoice'
 import { TypingInput } from '../TypingInput'
 import { safeSet } from '../../utils/storage'
@@ -43,13 +44,16 @@ interface Props {
 
 export function PiDrill({ answerMode }: Props) {
   const { words } = useWords()
+  const { settings } = useSettings()
+  const settingsMaxPairs = Math.floor(settings.maxPiDigits / 2)
 
   const [drillType, setDrillType] = useState<DrillType>(() =>
     readLS(DRILLTYPE_KEY) === 'number-quiz' ? 'number-quiz' : 'word-chain')
 
   const [maxPiPairs, setMaxPiPairs] = useState<number>(() => {
     const v = parseInt(readLS(MAX_PAIRS_KEY) ?? '', 10)
-    return v >= 10 && v <= PI_PAIRS.length ? v : 50
+    const cap = Math.floor(settings.maxPiDigits / 2)
+    return v >= 10 && v <= cap ? v : cap
   })
 
   // Range selection: anchor = first clicked pair (1-indexed), end = second clicked pair
@@ -73,8 +77,6 @@ export function PiDrill({ answerMode }: Props) {
   const [wqAnswered, setWqAnswered] = useState<string | null>(null)
   const [wqCorrect, setWqCorrect] = useState<boolean | null>(null)
   const [wqOptions, setWqOptions] = useState<string[]>([])
-  const [recallText, setRecallText] = useState('')
-  const [submitted, setSubmitted] = useState<string[]>([])
 
   // ── number-quiz state ─────────────────────────────────────────────────────
   const [nqIdx, setNqIdx] = useState(0)
@@ -94,6 +96,10 @@ export function PiDrill({ answerMode }: Props) {
   useEffect(() => {
     wqHistoryEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }, [wqResults.length])
+
+  useEffect(() => {
+    if (maxPiPairs > settingsMaxPairs) setMaxPiPairs(settingsMaxPairs)
+  }, [settingsMaxPairs, maxPiPairs])
 
   // ── segment grid selection ────────────────────────────────────────────────
   const handleSegmentClick = useCallback((segIdx: number) => {
@@ -124,10 +130,7 @@ export function PiDrill({ answerMode }: Props) {
       setStudyIdx(0)
       setWqAnswered(null)
       setWqCorrect(null)
-      setWqOptions(wordMcOptions(seq[0], words))
       setWqResults([])
-      setRecallText('')
-      setSubmitted([])
       setPhase('study')
     } else {
       setNqIdx(0)
@@ -137,14 +140,14 @@ export function PiDrill({ answerMode }: Props) {
       setNqResults([])
       setPhase('number-quiz')
     }
-  }, [selAnchor, selEnd, drillType, maxPiPairs, words])
+  }, [selAnchor, selEnd, drillType, maxPiPairs])
 
   // ── word-chain handlers ───────────────────────────────────────────────────
-  const advanceStudy = useCallback(() => {
+  const advanceRecall = useCallback(() => {
     setStudyIdx(prev => {
       const next = prev + 1
       if (next >= sequence.length) {
-        setPhase('recall')
+        setPhase('result')
         return prev
       }
       setWqAnswered(null)
@@ -160,14 +163,9 @@ export function PiDrill({ answerMode }: Props) {
     setWqAnswered(value)
     setWqCorrect(correct)
     setWqResults(prev => [...prev, { typed: value, ok: correct }])
-    setTimeout(advanceStudy, 1200)
-  }, [wqAnswered, words, sequence, studyIdx, advanceStudy])
-
-  const submitRecall = useCallback(() => {
-    const tokens = recallText.trim().split(/\s+/).filter(Boolean)
-    setSubmitted(tokens)
-    setPhase('result')
-  }, [recallText])
+    const delay = correct ? 100 : 1200
+    setTimeout(advanceRecall, delay)
+  }, [wqAnswered, words, sequence, studyIdx, advanceRecall])
 
   // ── number-quiz handlers ──────────────────────────────────────────────────
   const advanceNumberQuiz = useCallback((typed: string, ok: boolean) => {
@@ -195,10 +193,7 @@ export function PiDrill({ answerMode }: Props) {
   }, [nqAnswered, sequence, nqIdx, advanceNumberQuiz])
 
   // ── result counts ─────────────────────────────────────────────────────────
-  const wordCorrectCount = sequence.reduce((acc, num, i) => {
-    const typed = submitted[i] ?? ''
-    return acc + (typed.toLowerCase() === words[num]?.toLowerCase() ? 1 : 0)
-  }, 0)
+  const wordCorrectCount = wqResults.filter(r => r.ok).length
   const nqCorrectCount = nqResults.filter(r => r.ok).length
 
   const panelCls = 'bg-zinc-900 border border-zinc-800 rounded-xl'
@@ -260,7 +255,7 @@ export function PiDrill({ answerMode }: Props) {
                 <input
                   type="range"
                   min={10}
-                  max={PI_PAIRS.length}
+                  max={settingsMaxPairs}
                   step={10}
                   value={maxPiPairs}
                   onChange={e => {
@@ -328,13 +323,46 @@ export function PiDrill({ answerMode }: Props) {
         </div>
       )}
 
-      {/* ── STUDY (word-chain, word-quiz only) ── */}
+      {/* ── STUDY (word-chain — memorise the chain) ── */}
       {phase === 'study' && (
-        <div className="flex flex-col items-center gap-6 w-full max-w-md">
-          {progressDots(studyIdx)}
+        <div className="w-full max-w-md space-y-4">
           <div className="text-center space-y-1">
-            <p className="text-xs text-zinc-600 uppercase tracking-widest">Pair {sessionAnchor + studyIdx} of π</p>
-            <p className="text-xs text-zinc-700">decimal digits {(sessionAnchor + studyIdx - 1) * 2 + 1}–{(sessionAnchor + studyIdx - 1) * 2 + 2}</p>
+            <p className="text-xs text-zinc-600 uppercase tracking-widest">Memorise the chain</p>
+            <p className="text-sm text-zinc-500">
+              π digits {(sessionAnchor - 1) * 2 + 1}–{(sessionAnchor + sequence.length - 2) * 2 + 2} · {sequence.length} pairs
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            {sequence.map((num, i) => (
+              <div key={i} className="flex items-center gap-3 px-4 py-2.5 rounded-lg border border-zinc-800 bg-zinc-900">
+                <span className="text-xs text-zinc-600 tabular-nums w-8 shrink-0">#{sessionAnchor + i}</span>
+                <span className="font-mono text-cyan-400 tabular-nums font-bold w-6 shrink-0">{num}</span>
+                <span className="font-semibold text-zinc-100">{words[num]}</span>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => {
+              setStudyIdx(0)
+              setWqAnswered(null)
+              setWqCorrect(null)
+              setWqOptions(wordMcOptions(sequence[0], words))
+              setPhase('recall')
+            }}
+            className="w-full py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold transition-colors"
+          >Start recall →</button>
+        </div>
+      )}
+
+      {/* ── RECALL (word-chain — per-item quiz) ── */}
+      {phase === 'recall' && (
+        <div className="flex flex-col items-center gap-6 w-full max-w-md">
+          {progressDots(studyIdx, wqResults)}
+          <div className="text-center space-y-1">
+            <p className="text-xs text-zinc-600 uppercase tracking-widest">Recall the chain</p>
+            <p className="text-xs text-zinc-700">
+              Pair {sessionAnchor + studyIdx} of π · decimal digits {(sessionAnchor + studyIdx - 1) * 2 + 1}–{(sessionAnchor + studyIdx - 1) * 2 + 2}
+            </p>
           </div>
           <div className="text-[6rem] font-black text-cyan-400 tabular-nums leading-none">
             {sequence[studyIdx]}
@@ -374,31 +402,6 @@ export function PiDrill({ answerMode }: Props) {
               </div>
             )}
           </div>
-        </div>
-      )}
-
-      {/* ── RECALL (word-chain) ── */}
-      {phase === 'recall' && (
-        <div className="flex flex-col items-center gap-4 w-full max-w-md">
-          <div className="text-center space-y-1">
-            <p className="text-xs text-zinc-600 uppercase tracking-widest">Recall the chain</p>
-            <p className="text-sm text-zinc-400">Type all {sequence.length} words in order</p>
-          </div>
-          <textarea
-            autoFocus
-            value={recallText}
-            onChange={e => setRecallText(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submitRecall() }}
-            rows={Math.min(6, Math.ceil(sequence.length / 3))}
-            placeholder="tyre, towel, pin …  (space-separated)"
-            className="w-full px-5 py-4 rounded-xl border border-zinc-700 focus:border-cyan-500 bg-zinc-800 outline-none text-lg text-zinc-100 placeholder-zinc-600 resize-none"
-          />
-          <button
-            onClick={submitRecall}
-            disabled={!recallText.trim()}
-            className="w-full py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold transition-colors"
-          >Check →</button>
-          <p className="text-xs text-zinc-500">Tip: ⌘/Ctrl + Enter to submit</p>
         </div>
       )}
 
@@ -474,8 +477,8 @@ export function PiDrill({ answerMode }: Props) {
           <div className="space-y-1.5">
             {sequence.map((num, i) => {
               const expected = words[num]
-              const typed = submitted[i] ?? ''
-              const ok = typed.toLowerCase() === expected?.toLowerCase()
+              const r = wqResults[i]
+              const ok = r?.ok ?? false
               return (
                 <div key={i} className={`flex items-center gap-3 px-4 py-2.5 rounded-lg border ${
                   ok ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'
@@ -483,7 +486,7 @@ export function PiDrill({ answerMode }: Props) {
                   <span className="text-xs text-zinc-600 tabular-nums w-8 shrink-0">#{sessionAnchor + i}</span>
                   <span className="font-mono text-sm text-cyan-400 tabular-nums w-6 shrink-0">{num}</span>
                   <span className="font-semibold text-zinc-100 shrink-0">{expected}</span>
-                  {!ok && <span className="text-sm text-red-300 ml-auto truncate">you: {typed || '—'}</span>}
+                  {!ok && <span className="text-sm text-red-300 ml-auto truncate">you: {r?.typed || '—'}</span>}
                   <span className={`${ok ? 'text-green-400 ml-auto' : 'text-red-400'} shrink-0`}>{ok ? '✓' : '✗'}</span>
                 </div>
               )

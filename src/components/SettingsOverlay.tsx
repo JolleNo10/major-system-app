@@ -2,10 +2,12 @@ import { useRef } from 'react'
 import { useSettings } from '../context/SettingsContext'
 import {
   MASTERY_FACTOR_MIN, MASTERY_FACTOR_MAX, MASTERY_FACTOR_STEP, DEFAULT_SETTINGS,
+  MAX_PI_DIGITS_MIN, MAX_PI_DIGITS_STEP,
 } from '../data/settings'
 import { masteryFastMs, MASTERY_REPS } from '../utils/roundMastery'
 import { RECALL_SLOW_MS } from '../data/typingSpeed'
 import { useOverlay } from '../hooks/useOverlay'
+import { PI_PAIRS } from '../data/piDigits'
 
 interface Props {
   onClose: () => void
@@ -78,6 +80,29 @@ export function SettingsOverlay({ onClose }: Props) {
                 Reset to default
               </button>
             )}
+          </section>
+
+          <section>
+            <div className="flex items-baseline justify-between mb-1">
+              <h3 className="font-semibold text-zinc-100">Max π digits available</h3>
+              <span className="text-sm font-mono tabular-nums text-cyan-300">{settings.maxPiDigits}</span>
+            </div>
+            <p className="text-sm text-zinc-500 mb-4">
+              Upper bound for the segment slider in the Pi drill. Raise this as more pi digit data is added.
+            </p>
+            <input
+              type="range"
+              min={MAX_PI_DIGITS_MIN}
+              max={PI_PAIRS.length * 2}
+              step={MAX_PI_DIGITS_STEP}
+              value={settings.maxPiDigits}
+              onChange={e => update({ maxPiDigits: +e.target.value })}
+              className="w-full h-2 accent-cyan-600 cursor-pointer touch-none"
+            />
+            <div className="flex justify-between text-xs text-zinc-600 mt-1">
+              <span>{MAX_PI_DIGITS_MIN}</span>
+              <span>{PI_PAIRS.length * 2}</span>
+            </div>
           </section>
 
         </div>
