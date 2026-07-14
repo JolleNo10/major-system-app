@@ -8,6 +8,8 @@ export type Mode =
   | 'speed-round'
   | 'weak-spots'
   | 'repetition'
+  | 'pi-digits'
+  | 'cards'
 
 export type AnswerMode = 'multiple-choice' | 'typing'
 

@@ -13,7 +13,7 @@ interface ModeCard {
   accent: string
 }
 
-const MODES: ModeCard[] = [
+const PRACTICE_MODES: ModeCard[] = [
   {
     id: 'encoding',
     emoji: '🧠',
@@ -80,6 +80,25 @@ const MODES: ModeCard[] = [
   },
 ]
 
+const CHALLENGE_MODES: ModeCard[] = [
+  {
+    id: 'pi-digits',
+    emoji: '𝝅',
+    title: 'Digits of π',
+    subtitle: 'Sequential chain',
+    description: 'Memorise the digits of π as a chain of major system words',
+    accent: 'group-hover:border-cyan-500/60 group-hover:shadow-cyan-900/20',
+  },
+  {
+    id: 'cards',
+    emoji: '🃏',
+    title: 'Card Deck',
+    subtitle: 'Encode 52 cards',
+    description: 'Each card maps to a number — drill the word for every card in the deck',
+    accent: 'group-hover:border-rose-500/60 group-hover:shadow-rose-900/20',
+  },
+]
+
 interface Props {
   onSelectMode: (mode: Mode) => void
 }
@@ -109,7 +128,7 @@ export function ModeSelector({ onSelectMode }: Props) {
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {MODES.map(mode => (
+        {PRACTICE_MODES.map(mode => (
           <button
             key={mode.id}
             onClick={() => onSelectMode(mode.id)}
@@ -128,6 +147,26 @@ export function ModeSelector({ onSelectMode }: Props) {
             <div className="text-sm text-zinc-500">{mode.description}</div>
           </button>
         ))}
+      </div>
+
+      <div className="space-y-3">
+        <p className="text-xs text-zinc-500 uppercase tracking-widest font-semibold">Challenges</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {CHALLENGE_MODES.map(mode => (
+            <button
+              key={mode.id}
+              onClick={() => onSelectMode(mode.id)}
+              className={`group relative text-left p-5 rounded-xl border border-zinc-800 bg-zinc-900 hover:bg-zinc-800/80 transition-all duration-200 shadow-lg hover:shadow-xl ${mode.accent}`}
+            >
+              <div className="text-3xl mb-3">{mode.emoji}</div>
+              <div className="font-bold text-zinc-100 text-base">{mode.title}</div>
+              <div className="text-xs text-cyan-400 font-semibold mb-1.5 uppercase tracking-wide">
+                {mode.subtitle}
+              </div>
+              <div className="text-sm text-zinc-500">{mode.description}</div>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   )

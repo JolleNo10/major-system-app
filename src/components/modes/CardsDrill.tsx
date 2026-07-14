@@ -1,0 +1,222 @@
+import { useState, useCallback, useRef } from 'react'
+import { useWords } from '../../context/WordsContext'
+import { useStats } from '../../hooks/useStats'
+import { useSettings } from '../../context/SettingsContext'
+import { useAnswerTimer } from '../../hooks/useAnswerTimer'
+import { MultipleChoice } from '../MultipleChoice'
+import { TypingInput } from '../TypingInput'
+import { ScoreBar } from '../ScoreBar'
+import { OUTLIER_MS, STALE_MS } from '../../data/itemStore'
+import { adjustLatency, recallColor } from '../../data/typingSpeed'
+import { masteryProgress, masteryFastMs } from '../../utils/roundMastery'
+import { shuffle, pickDistractors, pickWeighted } from '../../utils/quiz'
+import { CARDS, CARD_NUMBERS } from '../../data/cards'
+import type { Card } from '../../data/cards'
+import type { RoundStat } from '../RoundStatsPanel'
+import type { AnswerMode } from '../../types'
+
+interface Question {
+  card: Card
+  correctWord: string
+  options: string[]
+}
+
+function makeQuestion(
+  lastNumber: string | undefined,
+  words: Record<string, string>,
+  masteredSet: Set<string>,
+): Question {
+  const available = lastNumber
+    ? CARD_NUMBERS.filter(n => n !== lastNumber)
+    : CARD_NUMBERS
+  const number = pickWeighted('enc', available, masteredSet)
+  const card = CARDS.find(c => c.number === number)!
+  const correctWord = words[number]
+  const distNums = pickDistractors(number, CARD_NUMBERS)
+  const options = shuffle([correctWord, ...distNums.map(n => words[n])])
+  return { card, correctWord, options }
+}
+
+interface Props {
+  answerMode: AnswerMode
+}
+
+export function CardsDrill({ answerMode }: Props) {
+  const { words } = useWords()
+  const { recordFull } = useStats()
+  const { settings } = useSettings()
+
+  const [roundStats, setRoundStats] = useState<Record<string, RoundStat>>({})
+  const [question, setQuestion] = useState<Question>(() =>
+    makeQuestion(undefined, words, new Set<string>()))
+  const [answered, setAnswered] = useState<string | null>(null)
+  const [answeredCorrect, setAnsweredCorrect] = useState<boolean | null>(null)
+  const [sessionCorrect, setSessionCorrect] = useState(0)
+  const [sessionWrong, setSessionWrong] = useState(0)
+  const [streak, setStreak] = useState(0)
+  const [bestStreak, setBestStreak] = useState(0)
+  const [lastMs, setLastMs] = useState<number | null>(null)
+  const [discarded, setDiscarded] = useState(false)
+
+  const { paused, togglePause, elapsedMs, wasPaused } = useAnswerTimer(question, answered)
+  const masteredSetRef = useRef<Set<string>>(new Set())
+
+  const next = useCallback((lastNumber: string) => {
+    setQuestion(makeQuestion(lastNumber, words, masteredSetRef.current))
+    setAnswered(null)
+    setAnsweredCorrect(null)
+    setLastMs(null)
+    setDiscarded(false)
+  }, [words])
+
+  const handleAnswer = useCallback((value: string) => {
+    if (answered !== null || paused) return
+    const ms = elapsedMs()
+    const correct = value.trim().toLowerCase() === question.correctWord.toLowerCase()
+    setAnswered(value)
+    setAnsweredCorrect(correct)
+    setLastMs(ms)
+
+    if (!wasPaused() && ms > STALE_MS) {
+      setDiscarded(true)
+      setTimeout(() => next(question.card.number), 1500)
+      return
+    }
+
+    const chars = answerMode === 'typing' ? question.correctWord.length : 0
+    const adjusted = adjustLatency(ms, answerMode, chars)
+    recordFull('enc', question.card.number, correct, ms, answerMode, false, chars)
+
+    if (correct) {
+      setSessionCorrect(c => c + 1)
+      setStreak(s => { const n = s + 1; setBestStreak(b => Math.max(b, n)); return n })
+    } else {
+      setSessionWrong(w => w + 1)
+      setStreak(0)
+    }
+
+    setRoundStats(prev => {
+      const num = question.card.number
+      const entry = prev[num] ?? { correct: 0, wrong: 0, latencies: [], hintCount: 0, attempts: [] }
+      const validMs = ms > 0 && ms < OUTLIER_MS
+      const attempt = { ok: correct, recallMs: adjusted, hinted: false }
+      return {
+        ...prev,
+        [num]: {
+          ...entry,
+          correct: entry.correct + (correct ? 1 : 0),
+          wrong: entry.wrong + (correct ? 0 : 1),
+          lastMs: adjusted,
+          latencies: validMs ? [...entry.latencies, adjusted] : entry.latencies,
+          hintCount: entry.hintCount,
+          attempts: [...entry.attempts, attempt].slice(-5),
+        },
+      }
+    })
+    setTimeout(() => next(question.card.number), 1500)
+  }, [answered, paused, question, answerMode, recordFull, next])
+
+  const { mastered, total, masteredSet } = masteryProgress(
+    CARD_NUMBERS, roundStats, masteryFastMs(settings.masteryLatencyFactor))
+  masteredSetRef.current = masteredSet
+
+  const { card } = question
+  const colorCls = card.red ? 'text-rose-500' : 'text-zinc-100'
+
+  return (
+    <div className="flex flex-col items-center gap-8 py-4">
+      <ScoreBar
+        correct={sessionCorrect}
+        wrong={sessionWrong}
+        streak={streak}
+        bestStreak={bestStreak}
+      />
+
+      {total > 0 && (
+        <div className="w-full max-w-md -mt-4">
+          <div className="flex justify-between text-xs mb-1">
+            <span className="text-zinc-500">Cards mastered this session</span>
+            <span className="text-zinc-400 tabular-nums">{mastered}/{total}</span>
+          </div>
+          <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+            <div
+              className="h-full bg-rose-600 transition-all"
+              style={{ width: `${(mastered / total) * 100}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Card face */}
+      <div className="flex flex-col items-center gap-3">
+        <p className="text-xs text-zinc-600 uppercase tracking-widest">What is the word for</p>
+        <div className={`relative flex flex-col items-center justify-center w-36 h-52 rounded-2xl bg-zinc-100 shadow-2xl border-2 border-zinc-300 select-none ${paused ? 'opacity-0' : ''}`}>
+          {/* corner rank + suit */}
+          <div className={`absolute top-2.5 left-3 flex flex-col items-center leading-none ${colorCls}`}>
+            <span className="text-base font-black">{card.rank}</span>
+            <span className="text-sm">{card.suit}</span>
+          </div>
+          {/* centre */}
+          <span className={`text-6xl ${colorCls}`}>{card.suit}</span>
+          <span className={`text-3xl font-black mt-0.5 ${colorCls}`}>{card.rank}</span>
+          {/* bottom corner (rotated) */}
+          <div className={`absolute bottom-2.5 right-3 flex flex-col items-center leading-none rotate-180 ${colorCls}`}>
+            <span className="text-base font-black">{card.rank}</span>
+            <span className="text-sm">{card.suit}</span>
+          </div>
+        </div>
+        <p className="text-xs text-zinc-600 font-mono tabular-nums">= {card.number}</p>
+      </div>
+
+      {paused ? (
+        <div className="text-center space-y-3 py-4">
+          <p className="text-zinc-400 text-sm">Paused — timer stopped</p>
+          <button
+            onClick={togglePause}
+            className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-medium transition-colors"
+          >▶ Resume</button>
+        </div>
+      ) : (
+        <div className="w-full max-w-md space-y-2">
+          {answerMode === 'multiple-choice' ? (
+            <MultipleChoice
+              options={question.options}
+              correctAnswer={question.correctWord}
+              onAnswer={handleAnswer}
+              answered={answered}
+            />
+          ) : (
+            <TypingInput
+              onAnswer={handleAnswer}
+              answeredCorrect={answeredCorrect}
+              correctAnswer={question.correctWord}
+              placeholder="Type the word..."
+            />
+          )}
+          {answered !== null && lastMs !== null && (
+            discarded ? (
+              <p className="text-center text-sm text-zinc-500">
+                ⏱ Not counted — timer ran too long (use ⏸ Pause)
+              </p>
+            ) : (
+              <p className={`text-center text-sm font-mono tabular-nums ${
+                recallColor(adjustLatency(lastMs, answerMode, answerMode === 'typing' ? question.correctWord.length : 0))
+              }`}>
+                {(lastMs / 1000).toFixed(1)}s
+              </p>
+            )
+          )}
+        </div>
+      )}
+
+      <button
+        onClick={togglePause}
+        disabled={answered !== null}
+        className={`flex items-center min-h-[40px] px-4 rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+          paused ? 'bg-rose-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700'
+        }`}
+        title="Pause / resume (p)"
+      >{paused ? '▶ Resume' : '⏸ Pause'}</button>
+    </div>
+  )
+}
