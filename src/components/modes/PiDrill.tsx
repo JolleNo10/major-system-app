@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { useWords } from '../../context/WordsContext'
 import { MultipleChoice } from '../MultipleChoice'
 import { TypingInput } from '../TypingInput'
@@ -15,7 +15,7 @@ const LEN_KEY = 'major-pi-length'
 const STUDYMODE_KEY = 'major-pi-studymode'
 const DRILLTYPE_KEY = 'major-pi-drilltype'
 
-const PRESETS = [5, 10, 20, 50] as const
+const PRESETS = [10, 20, 30, 40, 50, 60, 70, 80, 90] as const
 type StudyMode = 'number-only' | 'word-quiz'
 type DrillType = 'word-chain' | 'number-quiz'
 type Phase = 'setup' | 'study' | 'recall' | 'number-quiz' | 'result'
@@ -33,6 +33,8 @@ function numberMcOptions(number: string, pool: string[]): string[] {
   const others = pickDistractors(number, pool)
   return shuffle([number, ...others])
 }
+
+interface NqResult { typed: string; ok: boolean }
 
 interface Props {
   answerMode: AnswerMode
@@ -67,7 +69,13 @@ export function PiDrill({ answerMode }: Props) {
   const [nqAnswered, setNqAnswered] = useState<string | null>(null)
   const [nqAnsweredCorrect, setNqAnsweredCorrect] = useState<boolean | null>(null)
   const [nqOptions, setNqOptions] = useState<string[]>([])
-  const [nqResults, setNqResults] = useState<{ typed: string; ok: boolean }[]>([])
+  const [nqResults, setNqResults] = useState<NqResult[]>([])
+  const historyEndRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll history to bottom as answers accumulate
+  useEffect(() => {
+    historyEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }, [nqResults.length])
 
   // ── start ─────────────────────────────────────────────────────────────────
   const start = useCallback(() => {
@@ -158,13 +166,20 @@ export function PiDrill({ answerMode }: Props) {
   const nqCorrectCount = nqResults.filter(r => r.ok).length
 
   const panelCls = 'bg-zinc-900 border border-zinc-800 rounded-xl'
-  const progressDots = (idx: number) => (
-    <div className="flex gap-1.5 items-center flex-wrap justify-center">
-      {sequence.map((_, i) => (
-        <div key={i} className={`h-1.5 w-8 rounded-full transition-all ${
-          i < idx ? 'bg-green-500' : i === idx ? 'bg-cyan-500' : 'bg-zinc-700'
-        }`} />
-      ))}
+
+  // Progress dots — results-aware for number-quiz
+  const progressDots = (idx: number, results?: NqResult[]) => (
+    <div className="flex gap-1 items-center flex-wrap justify-center">
+      {sequence.map((_, i) => {
+        let color = 'bg-zinc-700'
+        if (i === idx) color = 'bg-cyan-500'
+        else if (i < idx) {
+          color = results
+            ? (results[i]?.ok ? 'bg-green-500' : 'bg-red-500')
+            : 'bg-green-500'
+        }
+        return <div key={i} className={`h-1.5 w-6 rounded-full transition-all ${color}`} />
+      })}
     </div>
   )
 
@@ -202,12 +217,12 @@ export function PiDrill({ answerMode }: Props) {
           {/* Length */}
           <div className="space-y-3">
             <span className="text-sm font-medium text-zinc-300">How many pairs?</span>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {PRESETS.map(p => (
                 <button
                   key={p}
                   onClick={() => setLength(p)}
-                  className={`py-3 rounded-lg border text-center font-bold transition-colors ${
+                  className={`py-2.5 rounded-lg border text-center font-bold transition-colors ${
                     length === p
                       ? 'bg-cyan-600/20 border-cyan-500 text-cyan-300'
                       : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500'
@@ -332,15 +347,18 @@ export function PiDrill({ answerMode }: Props) {
 
       {/* ── NUMBER QUIZ ── */}
       {phase === 'number-quiz' && (
-        <div className="flex flex-col items-center gap-6 w-full max-w-md">
-          {progressDots(nqIdx)}
+        <div className="flex flex-col items-center gap-5 w-full max-w-md">
+          {progressDots(nqIdx, nqResults)}
+
           <div className="text-center space-y-1">
             <p className="text-xs text-zinc-600 uppercase tracking-widest">What are the digits?</p>
             <p className="text-xs text-zinc-700">decimal digits {nqIdx * 2 + 1}–{nqIdx * 2 + 2} of π</p>
           </div>
+
           <div className="text-[4rem] font-black text-zinc-400 tabular-nums leading-none">
             Pair {nqIdx + 1}
           </div>
+
           <div className="w-full">
             {answerMode === 'multiple-choice' ? (
               <MultipleChoice
@@ -360,10 +378,38 @@ export function PiDrill({ answerMode }: Props) {
               />
             )}
           </div>
+
+          {/* Running history of answered pairs */}
+          {nqResults.length > 0 && (
+            <div className="w-full max-h-48 overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-900/60">
+              <div className="p-2 space-y-0.5">
+                {nqResults.map((r, i) => (
+                  <div key={i} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm ${
+                    r.ok ? 'bg-green-500/10' : 'bg-red-500/10'
+                  }`}>
+                    <span className="text-zinc-600 tabular-nums text-xs w-6 shrink-0">#{i + 1}</span>
+                    <span className={`font-mono tabular-nums font-bold w-6 shrink-0 ${r.ok ? 'text-green-400' : 'text-red-400'}`}>
+                      {sequence[i]}
+                    </span>
+                    <span className="text-zinc-500 text-xs truncate">{words[sequence[i]]}</span>
+                    {!r.ok && (
+                      <span className="ml-auto text-xs text-red-400 tabular-nums shrink-0">
+                        → {r.typed}
+                      </span>
+                    )}
+                    <span className={`${r.ok ? 'ml-auto' : ''} text-xs shrink-0 ${r.ok ? 'text-green-500' : 'text-red-500'}`}>
+                      {r.ok ? '✓' : '✗'}
+                    </span>
+                  </div>
+                ))}
+                <div ref={historyEndRef} />
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* ── RESULT ── */}
+      {/* ── RESULT (word-chain) ── */}
       {phase === 'result' && drillType === 'word-chain' && (
         <div className="w-full max-w-md space-y-4">
           <h3 className="text-xl font-bold text-center text-zinc-100">
@@ -394,6 +440,7 @@ export function PiDrill({ answerMode }: Props) {
         </div>
       )}
 
+      {/* ── RESULT (number-quiz) ── */}
       {phase === 'result' && drillType === 'number-quiz' && (
         <div className="w-full max-w-md space-y-4">
           <h3 className="text-xl font-bold text-center text-zinc-100">
@@ -410,7 +457,7 @@ export function PiDrill({ answerMode }: Props) {
                   <span className="text-xs text-zinc-600 tabular-nums w-5 shrink-0">#{i + 1}</span>
                   <span className="font-mono text-sm text-cyan-400 tabular-nums w-6 shrink-0">{num}</span>
                   <span className="text-zinc-400 text-sm shrink-0">{words[num]}</span>
-                  {!ok && <span className="text-sm text-red-300 ml-auto tabular-nums">you: {r?.typed || '—'}</span>}
+                  {!ok && <span className="text-sm text-red-300 ml-auto tabular-nums shrink-0">you: {r?.typed || '—'}</span>}
                   <span className={`${ok ? 'text-green-400 ml-auto' : 'text-red-400'} shrink-0`}>{ok ? '✓' : '✗'}</span>
                 </div>
               )
