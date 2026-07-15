@@ -11,11 +11,14 @@ import { adjustLatency, recallColor } from '../../data/typingSpeed'
 import { masteryProgress, masteryFastMs } from '../../utils/roundMastery'
 import { shuffle, pickDistractors, pickWeighted } from '../../utils/quiz'
 import { CARDS, CARD_NUMBERS } from '../../data/cards'
-import type { Card } from '../../data/cards'
+import type { Card, Suit } from '../../data/cards'
 import type { RoundStat } from '../RoundStatsPanel'
 import type { AnswerMode } from '../../types'
 
 const CARDS_DRILLTYPE_KEY = 'major-cards-drilltype'
+const CARDS_SUITS_KEY = 'major-cards-suits'
+
+const ALL_SUITS: Suit[] = ['♣', '♦', '♥', '♠']
 
 type CardsDrillType = 'card-to-word' | 'card-to-number'
 
@@ -25,18 +28,36 @@ interface Question {
   options: string[]
 }
 
+function numbersForSuits(suits: Set<Suit>): string[] {
+  return CARDS.filter(c => suits.has(c.suit)).map(c => c.number)
+}
+
+function loadSuits(): Set<Suit> {
+  try {
+    const v = localStorage.getItem(CARDS_SUITS_KEY)
+    if (v) {
+      const parsed = JSON.parse(v) as string[]
+      const valid = parsed.filter((s): s is Suit => (ALL_SUITS as string[]).includes(s))
+      if (valid.length > 0) return new Set(valid)
+    }
+  } catch {}
+  return new Set(ALL_SUITS)
+}
+
 function makeQuestion(
   lastNumber: string | undefined,
+  cardNumbers: string[],
   words: Record<string, string>,
   masteredSet: Set<string>,
   drillType: CardsDrillType,
 ): Question {
   const available = lastNumber
-    ? CARD_NUMBERS.filter(n => n !== lastNumber)
-    : CARD_NUMBERS
-  const number = pickWeighted('enc', available, masteredSet)
+    ? cardNumbers.filter(n => n !== lastNumber)
+    : cardNumbers
+  const pool = available.length > 0 ? available : cardNumbers
+  const number = pickWeighted('enc', pool, masteredSet)
   const card = CARDS.find(c => c.number === number)!
-  const distNums = pickDistractors(number, CARD_NUMBERS)
+  const distNums = pickDistractors(number, cardNumbers)
 
   if (drillType === 'card-to-number') {
     return { card, correctAnswer: number, options: shuffle([number, ...distNums]) }
@@ -44,6 +65,20 @@ function makeQuestion(
 
   const correctAnswer = words[number]
   return { card, correctAnswer, options: shuffle([correctAnswer, ...distNums.map(n => words[n])]) }
+}
+
+function resetSession() {
+  return {
+    roundStats: {} as Record<string, RoundStat>,
+    answered: null as string | null,
+    answeredCorrect: null as boolean | null,
+    sessionCorrect: 0,
+    sessionWrong: 0,
+    streak: 0,
+    bestStreak: 0,
+    lastMs: null as number | null,
+    discarded: false,
+  }
 }
 
 interface Props {
@@ -60,9 +95,13 @@ export function CardsDrill({ answerMode }: Props) {
     catch { return 'card-to-word' }
   })
 
+  const [activeSuits, setActiveSuits] = useState<Set<Suit>>(loadSuits)
+
+  const activeNumbers = numbersForSuits(activeSuits)
+
   const [roundStats, setRoundStats] = useState<Record<string, RoundStat>>({})
   const [question, setQuestion] = useState<Question>(() =>
-    makeQuestion(undefined, words, new Set<string>(), drillType))
+    makeQuestion(undefined, activeNumbers, words, new Set<string>(), drillType))
   const [answered, setAnswered] = useState<string | null>(null)
   const [answeredCorrect, setAnsweredCorrect] = useState<boolean | null>(null)
   const [sessionCorrect, setSessionCorrect] = useState(0)
@@ -76,12 +115,12 @@ export function CardsDrill({ answerMode }: Props) {
   const masteredSetRef = useRef<Set<string>>(new Set())
 
   const next = useCallback((lastNumber: string) => {
-    setQuestion(makeQuestion(lastNumber, words, masteredSetRef.current, drillType))
+    setQuestion(makeQuestion(lastNumber, activeNumbers, words, masteredSetRef.current, drillType))
     setAnswered(null)
     setAnsweredCorrect(null)
     setLastMs(null)
     setDiscarded(false)
-  }, [words, drillType])
+  }, [activeNumbers, words, drillType])
 
   const handleAnswer = useCallback((value: string) => {
     if (answered !== null || paused) return
@@ -136,25 +175,50 @@ export function CardsDrill({ answerMode }: Props) {
   const switchDrillType = useCallback((newType: CardsDrillType) => {
     try { localStorage.setItem(CARDS_DRILLTYPE_KEY, newType) } catch {}
     setDrillType(newType)
-    setSessionCorrect(0)
-    setSessionWrong(0)
-    setStreak(0)
-    setBestStreak(0)
-    setRoundStats({})
-    setLastMs(null)
-    setDiscarded(false)
+    const s = resetSession()
+    setRoundStats(s.roundStats)
+    setAnswered(s.answered)
+    setAnsweredCorrect(s.answeredCorrect)
+    setSessionCorrect(s.sessionCorrect)
+    setSessionWrong(s.sessionWrong)
+    setStreak(s.streak)
+    setBestStreak(s.bestStreak)
+    setLastMs(s.lastMs)
+    setDiscarded(s.discarded)
     masteredSetRef.current = new Set()
-    setQuestion(makeQuestion(undefined, words, new Set(), newType))
-    setAnswered(null)
-    setAnsweredCorrect(null)
-  }, [words])
+    setQuestion(makeQuestion(undefined, activeNumbers, words, new Set(), newType))
+  }, [activeNumbers, words])
+
+  const toggleSuit = useCallback((suit: Suit) => {
+    setActiveSuits(prev => {
+      if (prev.has(suit) && prev.size === 1) return prev  // keep at least one
+      const next = new Set(prev)
+      if (next.has(suit)) next.delete(suit)
+      else next.add(suit)
+      try { localStorage.setItem(CARDS_SUITS_KEY, JSON.stringify([...next])) } catch {}
+      const nums = numbersForSuits(next)
+      const s = resetSession()
+      setRoundStats(s.roundStats)
+      setAnswered(s.answered)
+      setAnsweredCorrect(s.answeredCorrect)
+      setSessionCorrect(s.sessionCorrect)
+      setSessionWrong(s.sessionWrong)
+      setStreak(s.streak)
+      setBestStreak(s.bestStreak)
+      setLastMs(s.lastMs)
+      setDiscarded(s.discarded)
+      masteredSetRef.current = new Set()
+      setQuestion(makeQuestion(undefined, nums, words, new Set(), drillType))
+      return next
+    })
+  }, [words, drillType])
 
   const { mastered, total, masteredSet } = masteryProgress(
-    CARD_NUMBERS, roundStats, masteryFastMs(settings.masteryLatencyFactor))
+    activeNumbers, roundStats, masteryFastMs(settings.masteryLatencyFactor))
   masteredSetRef.current = masteredSet
 
   const { card } = question
-  const colorCls = card.red ? 'text-rose-500' : 'text-zinc-100'
+  const colorCls = card.red ? 'text-rose-500' : 'text-zinc-900'
 
   return (
     <div className="flex flex-col items-center gap-8 py-4">
@@ -175,6 +239,30 @@ export function CardsDrill({ answerMode }: Props) {
             }`}
           >{label}</button>
         ))}
+      </div>
+
+      {/* Suit filter */}
+      <div className="flex items-center gap-2 -mt-4">
+        <span className="text-xs text-zinc-500 mr-1">Suits:</span>
+        {ALL_SUITS.map(suit => {
+          const active = activeSuits.has(suit)
+          const isRed = suit === '♥' || suit === '♦'
+          return (
+            <button
+              key={suit}
+              onClick={() => toggleSuit(suit)}
+              title={active ? `Remove ${suit}` : `Add ${suit}`}
+              className={`w-9 h-9 rounded-lg text-lg font-bold transition-colors ${
+                active
+                  ? isRed
+                    ? 'bg-rose-600/20 text-rose-400 border border-rose-600'
+                    : 'bg-zinc-700 text-zinc-100 border border-zinc-500'
+                  : 'bg-zinc-900 text-zinc-600 border border-zinc-800'
+              }`}
+            >{suit}</button>
+          )
+        })}
+        <span className="text-xs text-zinc-600 ml-1 tabular-nums">{activeNumbers.length} cards</span>
       </div>
 
       <ScoreBar
