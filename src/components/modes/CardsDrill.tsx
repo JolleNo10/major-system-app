@@ -15,9 +15,13 @@ import type { Card } from '../../data/cards'
 import type { RoundStat } from '../RoundStatsPanel'
 import type { AnswerMode } from '../../types'
 
+const CARDS_DRILLTYPE_KEY = 'major-cards-drilltype'
+
+type CardsDrillType = 'card-to-word' | 'card-to-number'
+
 interface Question {
   card: Card
-  correctWord: string
+  correctAnswer: string
   options: string[]
 }
 
@@ -25,16 +29,21 @@ function makeQuestion(
   lastNumber: string | undefined,
   words: Record<string, string>,
   masteredSet: Set<string>,
+  drillType: CardsDrillType,
 ): Question {
   const available = lastNumber
     ? CARD_NUMBERS.filter(n => n !== lastNumber)
     : CARD_NUMBERS
   const number = pickWeighted('enc', available, masteredSet)
   const card = CARDS.find(c => c.number === number)!
-  const correctWord = words[number]
   const distNums = pickDistractors(number, CARD_NUMBERS)
-  const options = shuffle([correctWord, ...distNums.map(n => words[n])])
-  return { card, correctWord, options }
+
+  if (drillType === 'card-to-number') {
+    return { card, correctAnswer: number, options: shuffle([number, ...distNums]) }
+  }
+
+  const correctAnswer = words[number]
+  return { card, correctAnswer, options: shuffle([correctAnswer, ...distNums.map(n => words[n])]) }
 }
 
 interface Props {
@@ -46,9 +55,14 @@ export function CardsDrill({ answerMode }: Props) {
   const { recordFull } = useStats()
   const { settings } = useSettings()
 
+  const [drillType, setDrillType] = useState<CardsDrillType>(() => {
+    try { return localStorage.getItem(CARDS_DRILLTYPE_KEY) === 'card-to-number' ? 'card-to-number' : 'card-to-word' }
+    catch { return 'card-to-word' }
+  })
+
   const [roundStats, setRoundStats] = useState<Record<string, RoundStat>>({})
   const [question, setQuestion] = useState<Question>(() =>
-    makeQuestion(undefined, words, new Set<string>()))
+    makeQuestion(undefined, words, new Set<string>(), drillType))
   const [answered, setAnswered] = useState<string | null>(null)
   const [answeredCorrect, setAnsweredCorrect] = useState<boolean | null>(null)
   const [sessionCorrect, setSessionCorrect] = useState(0)
@@ -62,17 +76,17 @@ export function CardsDrill({ answerMode }: Props) {
   const masteredSetRef = useRef<Set<string>>(new Set())
 
   const next = useCallback((lastNumber: string) => {
-    setQuestion(makeQuestion(lastNumber, words, masteredSetRef.current))
+    setQuestion(makeQuestion(lastNumber, words, masteredSetRef.current, drillType))
     setAnswered(null)
     setAnsweredCorrect(null)
     setLastMs(null)
     setDiscarded(false)
-  }, [words])
+  }, [words, drillType])
 
   const handleAnswer = useCallback((value: string) => {
     if (answered !== null || paused) return
     const ms = elapsedMs()
-    const correct = value.trim().toLowerCase() === question.correctWord.toLowerCase()
+    const correct = value.trim().toLowerCase() === question.correctAnswer.toLowerCase()
     setAnswered(value)
     setAnsweredCorrect(correct)
     setLastMs(ms)
@@ -83,9 +97,12 @@ export function CardsDrill({ answerMode }: Props) {
       return
     }
 
-    const chars = answerMode === 'typing' ? question.correctWord.length : 0
+    const chars = answerMode === 'typing' ? question.correctAnswer.length : 0
     const adjusted = adjustLatency(ms, answerMode, chars)
-    recordFull('enc', question.card.number, correct, ms, answerMode, false, chars)
+
+    if (drillType === 'card-to-word') {
+      recordFull('enc', question.card.number, correct, ms, answerMode, false, chars)
+    }
 
     if (correct) {
       setSessionCorrect(c => c + 1)
@@ -114,7 +131,23 @@ export function CardsDrill({ answerMode }: Props) {
       }
     })
     setTimeout(() => next(question.card.number), 1500)
-  }, [answered, paused, question, answerMode, recordFull, next])
+  }, [answered, paused, question, answerMode, drillType, recordFull, next])
+
+  const switchDrillType = useCallback((newType: CardsDrillType) => {
+    try { localStorage.setItem(CARDS_DRILLTYPE_KEY, newType) } catch {}
+    setDrillType(newType)
+    setSessionCorrect(0)
+    setSessionWrong(0)
+    setStreak(0)
+    setBestStreak(0)
+    setRoundStats({})
+    setLastMs(null)
+    setDiscarded(false)
+    masteredSetRef.current = new Set()
+    setQuestion(makeQuestion(undefined, words, new Set(), newType))
+    setAnswered(null)
+    setAnsweredCorrect(null)
+  }, [words])
 
   const { mastered, total, masteredSet } = masteryProgress(
     CARD_NUMBERS, roundStats, masteryFastMs(settings.masteryLatencyFactor))
@@ -125,6 +158,25 @@ export function CardsDrill({ answerMode }: Props) {
 
   return (
     <div className="flex flex-col items-center gap-8 py-4">
+
+      {/* Drill type toggle */}
+      <div className="flex gap-1 p-1 rounded-lg bg-zinc-800">
+        {([
+          ['card-to-word', 'Card → Word'],
+          ['card-to-number', 'Card → Number'],
+        ] as [CardsDrillType, string][]).map(([t, label]) => (
+          <button
+            key={t}
+            onClick={() => drillType !== t && switchDrillType(t)}
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              drillType === t
+                ? 'bg-rose-600 text-white'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+          >{label}</button>
+        ))}
+      </div>
+
       <ScoreBar
         correct={sessionCorrect}
         wrong={sessionWrong}
@@ -149,7 +201,9 @@ export function CardsDrill({ answerMode }: Props) {
 
       {/* Card face */}
       <div className="flex flex-col items-center gap-3">
-        <p className="text-xs text-zinc-600 uppercase tracking-widest">What is the word for</p>
+        <p className="text-xs text-zinc-600 uppercase tracking-widest">
+          {drillType === 'card-to-word' ? 'What is the word for' : 'What is the number for'}
+        </p>
         <div className={`relative flex flex-col items-center justify-center w-36 h-52 rounded-2xl bg-zinc-100 shadow-2xl border-2 border-zinc-300 select-none ${paused ? 'opacity-0' : ''}`}>
           {/* corner rank + suit */}
           <div className={`absolute top-2.5 left-3 flex flex-col items-center leading-none ${colorCls}`}>
@@ -165,7 +219,9 @@ export function CardsDrill({ answerMode }: Props) {
             <span className="text-sm">{card.suit}</span>
           </div>
         </div>
-        <p className="text-xs text-zinc-600 font-mono tabular-nums">= {card.number}</p>
+        {drillType === 'card-to-word' && (
+          <p className="text-xs text-zinc-600 font-mono tabular-nums">= {card.number}</p>
+        )}
       </div>
 
       {paused ? (
@@ -181,7 +237,7 @@ export function CardsDrill({ answerMode }: Props) {
           {answerMode === 'multiple-choice' ? (
             <MultipleChoice
               options={question.options}
-              correctAnswer={question.correctWord}
+              correctAnswer={question.correctAnswer}
               onAnswer={handleAnswer}
               answered={answered}
             />
@@ -189,8 +245,8 @@ export function CardsDrill({ answerMode }: Props) {
             <TypingInput
               onAnswer={handleAnswer}
               answeredCorrect={answeredCorrect}
-              correctAnswer={question.correctWord}
-              placeholder="Type the word..."
+              correctAnswer={question.correctAnswer}
+              placeholder={drillType === 'card-to-number' ? 'Type the number (e.g. 14)' : 'Type the word...'}
             />
           )}
           {answered !== null && lastMs !== null && (
@@ -200,7 +256,7 @@ export function CardsDrill({ answerMode }: Props) {
               </p>
             ) : (
               <p className={`text-center text-sm font-mono tabular-nums ${
-                recallColor(adjustLatency(lastMs, answerMode, answerMode === 'typing' ? question.correctWord.length : 0))
+                recallColor(adjustLatency(lastMs, answerMode, answerMode === 'typing' ? question.correctAnswer.length : 0))
               }`}>
                 {(lastMs / 1000).toFixed(1)}s
               </p>
