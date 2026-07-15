@@ -6,15 +6,16 @@ import { shuffle } from '../../utils/quiz'
 const SUIT_LETTERS: Record<string, Suit> = {
   C: '♣', D: '♦', H: '♥', S: '♠',
 }
+const DECK_MEMO_ANSWER_KEY = 'major-deck-memo-answer'
+
+type RecallMode = 'card' | 'word'
 
 function parseCard(raw: string, deck: Card[]): Card | null {
   const s = raw.trim().toUpperCase()
   if (s.length < 2) return null
-  const suitChar = s.slice(-1)
-  const rank = s.slice(0, -1)
-  const suit = SUIT_LETTERS[suitChar]
+  const suit = SUIT_LETTERS[s.slice(-1)]
   if (!suit) return null
-  return deck.find(c => c.rank === rank && c.suit === suit) ?? null
+  return deck.find(c => c.rank === s.slice(0, -1) && c.suit === suit) ?? null
 }
 
 function buildDeck(activeNumbers: string[]): Card[] {
@@ -39,6 +40,22 @@ function CardFace({ card, className = '' }: { card: Card; className?: string }) 
   )
 }
 
+function RecallModeToggle({ mode, onChange }: { mode: RecallMode; onChange: (m: RecallMode) => void }) {
+  return (
+    <div className="flex gap-1 p-1 rounded-lg bg-zinc-800 self-center">
+      {(['card', 'word'] as RecallMode[]).map(m => (
+        <button
+          key={m}
+          onClick={() => onChange(m)}
+          className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+            mode === m ? 'bg-rose-600 text-white' : 'text-zinc-400 hover:text-zinc-200'
+          }`}
+        >{m === 'card' ? 'Answer: Card' : 'Answer: Word'}</button>
+      ))}
+    </div>
+  )
+}
+
 type Phase = 'memo' | 'recall' | 'done'
 type AnswerState = 'pending' | 'correct' | 'wrong'
 
@@ -55,7 +72,16 @@ export function DeckMemoDrill({ activeNumbers, words }: Props) {
   const [input, setInput] = useState('')
   const [answerState, setAnswerState] = useState<AnswerState>('pending')
   const [results, setResults] = useState<boolean[]>([])
+  const [recallMode, setRecallMode] = useState<RecallMode>(() => {
+    try { return localStorage.getItem(DECK_MEMO_ANSWER_KEY) === 'word' ? 'word' : 'card' }
+    catch { return 'card' }
+  })
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const changeRecallMode = useCallback((m: RecallMode) => {
+    setRecallMode(m)
+    try { localStorage.setItem(DECK_MEMO_ANSWER_KEY, m) } catch {}
+  }, [])
 
   useEffect(() => {
     if (phase === 'recall' && answerState === 'pending') {
@@ -65,8 +91,14 @@ export function DeckMemoDrill({ activeNumbers, words }: Props) {
 
   const handleSubmit = useCallback(() => {
     if (answerState !== 'pending' || phase !== 'recall') return
-    const matched = parseCard(input, deck)
-    const correct = matched?.number === deck[recallPos].number
+    const target = deck[recallPos]
+    let correct: boolean
+    if (recallMode === 'card') {
+      const matched = parseCard(input, deck)
+      correct = matched?.number === target.number
+    } else {
+      correct = input.trim().toLowerCase() === words[target.number].toLowerCase()
+    }
     setAnswerState(correct ? 'correct' : 'wrong')
     setResults(prev => [...prev, correct])
     setInput('')
@@ -79,7 +111,7 @@ export function DeckMemoDrill({ activeNumbers, words }: Props) {
         setAnswerState('pending')
       }
     }, correct ? 1400 : 2000)
-  }, [answerState, phase, input, deck, recallPos])
+  }, [answerState, phase, input, deck, recallPos, recallMode, words])
 
   const restart = useCallback((reshuffle: boolean) => {
     if (reshuffle) setDeck(buildDeck(activeNumbers))
@@ -152,6 +184,8 @@ export function DeckMemoDrill({ activeNumbers, words }: Props) {
           >Next →</button>
         )}
 
+        <RecallModeToggle mode={recallMode} onChange={changeRecallMode} />
+
         <p className="text-xs text-zinc-700">Space / → to advance</p>
       </div>
     )
@@ -170,6 +204,8 @@ export function DeckMemoDrill({ activeNumbers, words }: Props) {
             {recallPos + 1} / {deck.length} &middot; {correctCount} ✓
           </span>
         </div>
+
+        <RecallModeToggle mode={recallMode} onChange={changeRecallMode} />
 
         {/* Card slot */}
         {answerState === 'pending' && (
@@ -195,12 +231,12 @@ export function DeckMemoDrill({ activeNumbers, words }: Props) {
           <p className="text-green-400 text-sm font-medium">Correct!</p>
         )}
         {answerState === 'wrong' && (
-          <p className="text-red-400 text-sm">
-            Wrong — was{' '}
-            <span className="font-mono font-bold">
-              {correctCard.rank}{correctCard.suit}
-            </span>
-            {' '}({words[correctCard.number]})
+          <p className="text-red-400 text-sm text-center">
+            {recallMode === 'card' ? (
+              <>Wrong — was <span className="font-mono font-bold">{correctCard.rank}{correctCard.suit}</span> ({words[correctCard.number]})</>
+            ) : (
+              <>Wrong — was <span className="font-semibold">{words[correctCard.number]}</span> ({correctCard.rank}{correctCard.suit})</>
+            )}
           </p>
         )}
 
@@ -209,9 +245,9 @@ export function DeckMemoDrill({ activeNumbers, words }: Props) {
             <input
               ref={inputRef}
               value={input}
-              onChange={e => setInput(e.target.value.toUpperCase())}
+              onChange={e => setInput(recallMode === 'card' ? e.target.value.toUpperCase() : e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit() } }}
-              placeholder="e.g. AC, 10H, KS"
+              placeholder={recallMode === 'card' ? 'e.g. AC, 10H, KS' : 'Type the word...'}
               className="flex-1 px-3 py-2.5 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-violet-500 font-mono text-base tracking-wider"
               autoComplete="off"
               spellCheck={false}
@@ -229,7 +265,7 @@ export function DeckMemoDrill({ activeNumbers, words }: Props) {
             <div
               key={i}
               className={`w-2.5 h-2.5 rounded-full ${ok ? 'bg-green-500' : 'bg-red-500'}`}
-              title={`${deck[i].rank}${deck[i].suit}`}
+              title={`${deck[i].rank}${deck[i].suit} — ${words[deck[i].number]}`}
             />
           ))}
           {answerState === 'pending' && (
@@ -259,13 +295,12 @@ export function DeckMemoDrill({ activeNumbers, words }: Props) {
         <p className="text-zinc-400 text-sm mt-1">{pct}% correct</p>
       </div>
 
-      {/* Result dots — click to see the card that slot was */}
       <div className="flex gap-1.5 flex-wrap justify-center max-w-sm">
         {results.map((ok, i) => (
           <div
             key={i}
             className={`w-3 h-3 rounded-full ${ok ? 'bg-green-500' : 'bg-red-500'}`}
-            title={`Card ${i + 1}: ${deck[i].rank}${deck[i].suit} (${words[deck[i].number]})`}
+            title={`Card ${i + 1}: ${deck[i].rank}${deck[i].suit} — ${words[deck[i].number]}`}
           />
         ))}
       </div>
