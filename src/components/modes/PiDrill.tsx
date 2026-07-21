@@ -36,7 +36,7 @@ function numberMcOptions(number: string, pool: string[]): string[] {
   return shuffle([number, ...others])
 }
 
-interface NqResult { typed: string; ok: boolean }
+interface NqResult { typed: string; ok: boolean; ms?: number }
 
 interface Props {
   answerMode: AnswerMode
@@ -85,6 +85,7 @@ export function PiDrill({ answerMode }: Props) {
   const [nqAnsweredCorrect, setNqAnsweredCorrect] = useState<boolean | null>(null)
   const [nqOptions, setNqOptions] = useState<string[]>([])
   const [nqResults, setNqResults] = useState<NqResult[]>([])
+  const nqStartedAtRef = useRef<number>(0)
   const historyEndRef = useRef<HTMLDivElement>(null)
 
   const [wqResults, setWqResults] = useState<NqResult[]>([])
@@ -139,6 +140,7 @@ export function PiDrill({ answerMode }: Props) {
       setNqAnsweredCorrect(null)
       setNqOptions(numberMcOptions(seq[0], seq))
       setNqResults([])
+      nqStartedAtRef.current = performance.now()
       setPhase('number-quiz')
     }
   }, [selAnchor, selEnd, drillType, maxPiPairs])
@@ -170,8 +172,8 @@ export function PiDrill({ answerMode }: Props) {
   }, [wqAnswered, words, sequence, studyIdx, advanceRecall])
 
   // ── number-quiz handlers ──────────────────────────────────────────────────
-  const advanceNumberQuiz = useCallback((typed: string, ok: boolean) => {
-    setNqResults(prev => [...prev, { typed, ok }])
+  const advanceNumberQuiz = useCallback((typed: string, ok: boolean, ms: number) => {
+    setNqResults(prev => [...prev, { typed, ok, ms }])
     const nextIdx = nqIdx + 1
     const delay = ok ? 100 : 1200
     if (nextIdx >= sequence.length) {
@@ -181,6 +183,7 @@ export function PiDrill({ answerMode }: Props) {
         setNqAnswered(null)
         setNqAnsweredCorrect(null)
         setNqOptions(numberMcOptions(sequence[nextIdx], sequence))
+        nqStartedAtRef.current = performance.now()
         setNqIdx(nextIdx)
       }, delay)
     }
@@ -189,14 +192,26 @@ export function PiDrill({ answerMode }: Props) {
   const handleNumberAnswer = useCallback((value: string) => {
     if (nqAnswered !== null) return
     const ok = value.trim() === sequence[nqIdx]
+    const ms = Math.max(0, performance.now() - nqStartedAtRef.current)
     setNqAnswered(value)
     setNqAnsweredCorrect(ok)
-    advanceNumberQuiz(value, ok)
+    advanceNumberQuiz(value, ok, ms)
   }, [nqAnswered, sequence, nqIdx, advanceNumberQuiz])
 
   // ── result counts ─────────────────────────────────────────────────────────
   const wordCorrectCount = wqResults.filter(r => r.ok).length
   const nqCorrectCount = nqResults.filter(r => r.ok).length
+  const nqTotalMs = nqResults.reduce((sum, r) => sum + (r.ms ?? 0), 0)
+  const nqTotalSec = nqTotalMs / 1000
+  const nqAnsweredCount = nqResults.length
+  const nqPairsPerSec = nqTotalSec > 0 ? nqAnsweredCount / nqTotalSec : 0
+  const nqAvgMs = nqAnsweredCount > 0 ? nqTotalMs / nqAnsweredCount : 0
+  const nqSlowestMs = nqResults.reduce((max, r) => Math.max(max, r.ms ?? 0), 0)
+  const nqAccuracy = nqAnsweredCount > 0 ? Math.round((nqCorrectCount / nqAnsweredCount) * 100) : 0
+  const nqMistakes = nqAnsweredCount - nqCorrectCount
+
+  const formatSec = (ms: number) => `${(ms / 1000).toFixed(ms < 10_000 ? 2 : 1)}s`
+  const formatRate = (rate: number) => rate.toFixed(rate < 10 ? 2 : 1)
 
   const panelCls = 'bg-zinc-900 border border-zinc-800 rounded-xl'
 
@@ -517,6 +532,21 @@ export function PiDrill({ answerMode }: Props) {
           <h3 className="text-xl font-bold text-center text-zinc-100">
             {nqCorrectCount === sequence.length ? `🎉 Perfect! ${nqCorrectCount}/${sequence.length} correct` : `${nqCorrectCount}/${sequence.length} correct`}
           </h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {([
+              ['Total time', formatSec(nqTotalMs)],
+              ['Pairs/sec', formatRate(nqPairsPerSec)],
+              ['Avg / pair', formatSec(nqAvgMs)],
+              ['Slowest', formatSec(nqSlowestMs)],
+              ['Accuracy', `${nqAccuracy}%`],
+              ['Mistakes', String(nqMistakes)],
+            ] as [string, string][]).map(([label, value]) => (
+              <div key={label} className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2">
+                <div className="text-[10px] uppercase tracking-wider text-zinc-600">{label}</div>
+                <div className="mt-0.5 font-mono text-lg font-bold tabular-nums text-zinc-100">{value}</div>
+              </div>
+            ))}
+          </div>
           <div className="space-y-1.5">
             {sequence.map((num, i) => {
               const r = nqResults[i]
@@ -528,6 +558,9 @@ export function PiDrill({ answerMode }: Props) {
                   <span className="text-xs text-zinc-600 tabular-nums w-8 shrink-0">#{sessionAnchor + i}</span>
                   <span className="font-mono text-sm text-cyan-400 tabular-nums w-6 shrink-0">{num}</span>
                   <span className="text-zinc-400 text-sm shrink-0">{words[num]}</span>
+                  {r?.ms !== undefined && (
+                    <span className="text-[10px] text-zinc-600 tabular-nums shrink-0">{formatSec(r.ms)}</span>
+                  )}
                   {!ok && <span className="text-sm text-red-300 ml-auto tabular-nums shrink-0">you: {r?.typed || '—'}</span>}
                   <span className={`${ok ? 'text-green-400 ml-auto' : 'text-red-400'} shrink-0`}>{ok ? '✓' : '✗'}</span>
                 </div>
