@@ -8,6 +8,7 @@ import { OUTLIER_MS, STALE_MS } from '../../data/itemStore'
 import { adjustLatency, recallColor } from '../../data/typingSpeed'
 import { masteryProgress, masteryFastMs } from '../../utils/roundMastery'
 import { shuffle, pickDistractors, pickWeighted } from '../../utils/quiz'
+import { matchesAnswer } from '../../utils/answerMatch'
 import { CARDS } from '../../data/cards'
 import type { Card, Suit } from '../../data/cards'
 import type { RoundStat } from '../RoundStatsPanel'
@@ -153,7 +154,7 @@ export function CardsDrill({
   const handleAnswer = useCallback((value: string) => {
     if (answered !== null || paused) return
     const ms = elapsedMs()
-    const correct = value.trim().toLowerCase() === question.correctAnswer.toLowerCase()
+    const correct = matchesAnswer(value, question.correctAnswer)
     setAnswered(value)
     setAnsweredCorrect(correct)
     setLastMs(ms)

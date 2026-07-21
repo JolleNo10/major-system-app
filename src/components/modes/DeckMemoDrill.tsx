@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { CARDS } from '../../data/cards'
 import type { Card, Suit } from '../../data/cards'
 import { shuffle } from '../../utils/quiz'
+import { matchesAnswer } from '../../utils/answerMatch'
 import { isOverlayOpen } from '../../utils/overlayGuard'
 
 const SUIT_LETTERS: Record<string, Suit> = {
@@ -98,7 +99,7 @@ export function DeckMemoDrill({ activeNumbers, words }: Props) {
       const matched = parseCard(input, deck)
       correct = matched?.number === target.number
     } else {
-      correct = input.trim().toLowerCase() === words[target.number].toLowerCase()
+      correct = matchesAnswer(input, words[target.number])
     }
     setAnswerState(correct ? 'correct' : 'wrong')
     setResults(prev => [...prev, correct])
