@@ -97,6 +97,14 @@ const CHALLENGE_MODES: ModeCard[] = [
     description: 'Each card maps to a number — drill the word for every card in the deck',
     accent: 'group-hover:border-rose-500/60 group-hover:shadow-rose-900/20',
   },
+  {
+    id: 'themed-cards',
+    emoji: '🎭',
+    title: 'Themed Deck',
+    subtitle: 'A person per card',
+    description: 'Each suit is its own cast — recall the person for every card',
+    accent: 'group-hover:border-fuchsia-500/60 group-hover:shadow-fuchsia-900/20',
+  },
 ]
 
 interface Props {

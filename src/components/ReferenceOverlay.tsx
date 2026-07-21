@@ -1,8 +1,11 @@
 import { useState, useRef } from 'react'
 import { SoundKeyTable } from './SoundKeyTable'
 import { WordListGrid } from './WordListGrid'
+import { useWords } from '../context/WordsContext'
 import { clearSchedules } from '../data/itemStore'
 import { useOverlay } from '../hooks/useOverlay'
+
+const MAJOR_KEYS = Array.from({ length: 100 }, (_, i) => i.toString().padStart(2, '0'))
 
 interface Props {
   onClose: () => void
@@ -11,6 +14,7 @@ interface Props {
 export function ReferenceOverlay({ onClose }: Props) {
   const [tab, setTab] = useState<'sound-key' | 'word-list'>('sound-key')
   const ref = useRef<HTMLDivElement>(null)
+  const words = useWords()
   useOverlay(ref, onClose)
 
   return (
@@ -50,7 +54,7 @@ export function ReferenceOverlay({ onClose }: Props) {
 
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
-          {tab === 'sound-key' ? <SoundKeyTable /> : <WordListGrid />}
+          {tab === 'sound-key' ? <SoundKeyTable /> : <WordListGrid store={words} keys={MAJOR_KEYS} />}
 
           <div className="mt-10 pt-6 border-t border-zinc-800/60">
             <p className="text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-3">Dev</p>

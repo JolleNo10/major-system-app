@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { CARDS } from '../../data/cards'
 import type { Card, Suit } from '../../data/cards'
 import { shuffle } from '../../utils/quiz'
+import { isOverlayOpen } from '../../utils/overlayGuard'
 
 const SUIT_LETTERS: Record<string, Suit> = {
   C: '♣', D: '♦', H: '♥', S: '♠',
@@ -127,6 +128,7 @@ export function DeckMemoDrill({ activeNumbers, words }: Props) {
   useEffect(() => {
     if (phase !== 'memo') return
     const handler = (e: KeyboardEvent) => {
+      if (isOverlayOpen()) return
       if (e.key === ' ' || e.key === 'ArrowRight' || e.key === 'Enter') {
         e.preventDefault()
         if (memoPos < deck.length - 1) {

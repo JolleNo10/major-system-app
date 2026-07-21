@@ -15,7 +15,8 @@ import { SpeedRound } from './components/modes/SpeedRound'
 import { WeakSpots } from './components/modes/WeakSpots'
 import { RepetitionDrill } from './components/modes/RepetitionDrill'
 import { PiDrill } from './components/modes/PiDrill'
-import { CardsDrill } from './components/modes/CardsDrill'
+import { MajorCardsDrill } from './components/modes/MajorCardsDrill'
+import { ThemedCardsDrill } from './components/modes/ThemedCardsDrill'
 
 const MODE_TITLES: Record<Mode, string> = {
   home: 'Major System',
@@ -29,6 +30,7 @@ const MODE_TITLES: Record<Mode, string> = {
   'repetition': 'Repetition',
   'pi-digits': 'Digits of π',
   'cards': 'Card Deck',
+  'themed-cards': 'Themed Deck',
 }
 
 export default function App() {
@@ -118,7 +120,8 @@ export default function App() {
         {mode === 'weak-spots' && <WeakSpots answerMode={answerMode} />}
         {mode === 'repetition' && <RepetitionDrill answerMode={answerMode} />}
         {mode === 'pi-digits' && <PiDrill answerMode={answerMode} />}
-        {mode === 'cards' && <CardsDrill answerMode={answerMode} />}
+        {mode === 'cards' && <MajorCardsDrill answerMode={answerMode} />}
+        {mode === 'themed-cards' && <ThemedCardsDrill answerMode={answerMode} />}
       </main>
 
       {/* Reference overlay */}

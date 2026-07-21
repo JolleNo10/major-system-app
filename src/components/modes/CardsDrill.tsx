@@ -1,6 +1,4 @@
 import { useState, useCallback, useRef } from 'react'
-import { useWords } from '../../context/WordsContext'
-import { useStats } from '../../hooks/useStats'
 import { useSettings } from '../../context/SettingsContext'
 import { useAnswerTimer } from '../../hooks/useAnswerTimer'
 import { MultipleChoice } from '../MultipleChoice'
@@ -13,15 +11,28 @@ import { shuffle, pickDistractors, pickWeighted } from '../../utils/quiz'
 import { CARDS } from '../../data/cards'
 import type { Card, Suit } from '../../data/cards'
 import type { RoundStat } from '../RoundStatsPanel'
-import type { AnswerMode } from '../../types'
+import type { AnswerMode, Direction } from '../../types'
 import { DeckMemoDrill } from './DeckMemoDrill'
-
-const CARDS_DRILLTYPE_KEY = 'major-cards-drilltype'
-const CARDS_SUITS_KEY = 'major-cards-suits'
 
 const ALL_SUITS: Suit[] = ['♣', '♦', '♥', '♠']
 
 type CardsDrillType = 'card-to-word' | 'card-to-number' | 'deck-memo'
+
+const DRILL_LABELS: Record<CardsDrillType, string> = {
+  'card-to-word': 'Card → Word',
+  'card-to-number': 'Card → Number',
+  'deck-memo': 'Deck Memo',
+}
+
+type RecordFn = (
+  dir: Direction,
+  num: string,
+  correct: boolean,
+  ms: number,
+  answerMode: AnswerMode,
+  hintUsed?: boolean,
+  chars?: number,
+) => void
 
 interface Question {
   card: Card
@@ -33,9 +44,9 @@ function numbersForSuits(suits: Set<Suit>): string[] {
   return CARDS.filter(c => suits.has(c.suit)).map(c => c.number)
 }
 
-function loadSuits(): Set<Suit> {
+function loadSuits(key: string): Set<Suit> {
   try {
-    const v = localStorage.getItem(CARDS_SUITS_KEY)
+    const v = localStorage.getItem(key)
     if (v) {
       const parsed = JSON.parse(v) as string[]
       const valid = parsed.filter((s): s is Suit => (ALL_SUITS as string[]).includes(s))
@@ -84,19 +95,35 @@ function resetSession() {
 
 interface Props {
   answerMode: AnswerMode
+  words: Record<string, string>
+  drillTypes?: CardsDrillType[]
+  onRecord?: RecordFn
+  storagePrefix?: string
+  onEditWords?: () => void
 }
 
-export function CardsDrill({ answerMode }: Props) {
-  const { words } = useWords()
-  const { recordFull } = useStats()
+export function CardsDrill({
+  answerMode,
+  words,
+  drillTypes = ['card-to-word', 'card-to-number', 'deck-memo'],
+  onRecord,
+  storagePrefix = 'major-cards',
+  onEditWords,
+}: Props) {
   const { settings } = useSettings()
 
+  const drilltypeKey = `${storagePrefix}-drilltype`
+  const suitsKey = `${storagePrefix}-suits`
+
   const [drillType, setDrillType] = useState<CardsDrillType>(() => {
-    try { return localStorage.getItem(CARDS_DRILLTYPE_KEY) === 'card-to-number' ? 'card-to-number' : 'card-to-word' }
-    catch { return 'card-to-word' }
+    try {
+      const v = localStorage.getItem(drilltypeKey)
+      if (v && (drillTypes as string[]).includes(v)) return v as CardsDrillType
+    } catch {}
+    return drillTypes[0]
   })
 
-  const [activeSuits, setActiveSuits] = useState<Set<Suit>>(loadSuits)
+  const [activeSuits, setActiveSuits] = useState<Set<Suit>>(() => loadSuits(suitsKey))
 
   const activeNumbers = numbersForSuits(activeSuits)
 
@@ -141,7 +168,7 @@ export function CardsDrill({ answerMode }: Props) {
     const adjusted = adjustLatency(ms, answerMode, chars)
 
     if (drillType === 'card-to-word') {
-      recordFull('enc', question.card.number, correct, ms, answerMode, false, chars)
+      onRecord?.('enc', question.card.number, correct, ms, answerMode, false, chars)
     }
 
     if (correct) {
@@ -171,10 +198,10 @@ export function CardsDrill({ answerMode }: Props) {
       }
     })
     setTimeout(() => next(question.card.number), 1500)
-  }, [answered, paused, question, answerMode, drillType, recordFull, next])
+  }, [answered, paused, question, answerMode, drillType, onRecord, next])
 
   const switchDrillType = useCallback((newType: CardsDrillType) => {
-    try { localStorage.setItem(CARDS_DRILLTYPE_KEY, newType) } catch {}
+    try { localStorage.setItem(drilltypeKey, newType) } catch {}
     setDrillType(newType)
     const s = resetSession()
     setRoundStats(s.roundStats)
@@ -188,7 +215,7 @@ export function CardsDrill({ answerMode }: Props) {
     setDiscarded(s.discarded)
     masteredSetRef.current = new Set()
     setQuestion(makeQuestion(undefined, activeNumbers, words, new Set(), newType))
-  }, [activeNumbers, words])
+  }, [activeNumbers, words, drilltypeKey])
 
   const toggleSuit = useCallback((suit: Suit) => {
     setActiveSuits(prev => {
@@ -196,7 +223,7 @@ export function CardsDrill({ answerMode }: Props) {
       const next = new Set(prev)
       if (next.has(suit)) next.delete(suit)
       else next.add(suit)
-      try { localStorage.setItem(CARDS_SUITS_KEY, JSON.stringify([...next])) } catch {}
+      try { localStorage.setItem(suitsKey, JSON.stringify([...next])) } catch {}
       const nums = numbersForSuits(next)
       const s = resetSession()
       setRoundStats(s.roundStats)
@@ -212,7 +239,7 @@ export function CardsDrill({ answerMode }: Props) {
       setQuestion(makeQuestion(undefined, nums, words, new Set(), drillType))
       return next
     })
-  }, [words, drillType])
+  }, [words, drillType, suitsKey])
 
   const { mastered, total, masteredSet } = masteryProgress(
     activeNumbers, roundStats, masteryFastMs(settings.masteryLatencyFactor))
@@ -225,22 +252,27 @@ export function CardsDrill({ answerMode }: Props) {
     <div className="flex flex-col items-center gap-8 py-4">
 
       {/* Drill type toggle */}
-      <div className="flex gap-1 p-1 rounded-lg bg-zinc-800">
-        {([
-          ['card-to-word', 'Card → Word'],
-          ['card-to-number', 'Card → Number'],
-          ['deck-memo', 'Deck Memo'],
-        ] as [CardsDrillType, string][]).map(([t, label]) => (
+      <div className="flex items-center gap-3 flex-wrap justify-center">
+        <div className="flex gap-1 p-1 rounded-lg bg-zinc-800">
+          {drillTypes.map(t => (
+            <button
+              key={t}
+              onClick={() => drillType !== t && switchDrillType(t)}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                drillType === t
+                  ? 'bg-rose-600 text-white'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >{DRILL_LABELS[t]}</button>
+          ))}
+        </div>
+        {onEditWords && (
           <button
-            key={t}
-            onClick={() => drillType !== t && switchDrillType(t)}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-              drillType === t
-                ? 'bg-rose-600 text-white'
-                : 'text-zinc-400 hover:text-zinc-200'
-            }`}
-          >{label}</button>
-        ))}
+            onClick={onEditWords}
+            className="px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 hover:border-violet-500 text-sm font-medium text-zinc-300 hover:text-zinc-100 transition-colors"
+            title="Edit the deck's word list"
+          >📇 Edit words</button>
+        )}
       </div>
 
       {/* Suit filter */}

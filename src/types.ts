@@ -10,6 +10,7 @@ export type Mode =
   | 'repetition'
   | 'pi-digits'
   | 'cards'
+  | 'themed-cards'
 
 export type AnswerMode = 'multiple-choice' | 'typing'
 
