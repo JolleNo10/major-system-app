@@ -85,6 +85,8 @@ for real = Export → replace the file → commit by hand.
 - **Read this file first in fresh contexts and keep it updated** when workflow, architecture, commands,
   or persistent repo expectations change.
 - **Verify in Docker** (`tsc -b`, `vitest run`, `vite build`) — there is no host node toolchain.
+- **Dev server runs through Docker/Vite on a Windows bind mount.** Vite uses slow polling in
+  `vite.config.ts`; after watcher config changes, run `docker compose up -d --build` or restart `app`.
 - **Commit + push each completed, verified change to `main`** (one logical change per commit). `.gitignore`
   covers `node_modules/`/`dist/`; keep build artifacts (`package-lock.json`, `tsconfig.tsbuildinfo`) out.
 - **All localStorage writes go through `utils/storage`** (`safeSet`/`safeRemove`) — private-mode/quota safe.
