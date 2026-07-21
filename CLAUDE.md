@@ -49,6 +49,12 @@ persist, resetFactory, importSaved }`; `persist()` folds trials→saved. Import/
 CSV format (`wordsCsv.ts`, validated). The browser can't write the repo, so updating `words.csv`
 for real = Export → replace the file → commit by hand.
 
+**The 3-layer store is a factory** (`context/createWordStore.ts` → `{ Provider, useStore }`). Two
+instances: `WordsContext` (major `WORDS`, keys `major-word-*`) and `CardWordsContext` (Themed Deck
+`CARD_WORDS` from `cardWords.csv`, keys `major-cardword-*`, `useCardWords()`) — the Themed Deck word
+list is fully separate from the major list. `WordListGrid` is prop-driven (`store`/`keys`/`renderLabel`/
+`groups`/`showAccuracy`/`exportName`) so both lists reuse the same editor.
+
 ## Scoring & spaced repetition
 - `sm2.ts` — `gradeAnswer(correct, ms, mode)` → 2 (wrong) / 3 (slow) / 4 / 5 (fast); `applySm2(item, grade)`
   updates ease/interval/due (SM-2). Grades use the **recall-adjusted** ms on the multiple-choice scale.
@@ -63,23 +69,30 @@ for real = Export → replace the file → commit by hand.
 
 ## Module map
 - `src/App.tsx` — header (mode title, AnswerModeToggle, 📊/📚/⚙️ overlay triggers) + `<main>` mode switch + overlays.
-- `src/main.tsx` — mounts `SettingsProvider > WordsProvider > App`; calls `initAttempts()` (opens IndexedDB + one-time migration of any legacy in-blob attempts).
+- `src/main.tsx` — mounts `SettingsProvider > WordsProvider > CardWordsProvider > App`; calls `initAttempts()` (opens IndexedDB + one-time migration of any legacy in-blob attempts).
 - `src/types.ts` — `Mode`, `AnswerMode`, `Direction`, `NumberStats`/`AllStats`.
-- **`components/modes/`** (8 drills): `EncodingDrill`, `DecodingDrill` (share `useAnswerTimer` + `utils/quiz`),
+- **`components/modes/`**: `EncodingDrill`, `DecodingDrill` (share `useAnswerTimer` + `utils/quiz`),
   `SoundKeyDrill`, `ReverseSoundKeyDrill`, `SequenceDrill` (setup→study→recall→result),
-  `SpeedRound`, `WeakSpots` (feeds a weak-number `pool` into `EncodingDrill`), `RepetitionDrill` (SM-2 due queue).
+  `SpeedRound`, `WeakSpots` (feeds a weak-number `pool` into `EncodingDrill`), `RepetitionDrill` (SM-2 due queue),
+  `PiDrill`. **Cards:** `CardsDrill` is prop-driven (`words`/`drillTypes`/`onRecord`/`storagePrefix`/`onEditWords`)
+  and hosts Card→Word / Card→Number / `DeckMemoDrill`; two thin wrappers select the word source —
+  `MajorCardsDrill` (`cards` mode: `useWords` + records to global stats, all 3 drill types) and
+  `ThemedCardsDrill` (`themed-cards` mode: `useCardWords`, Card→Word + Deck Memo only, no stats, opens `CardWordsOverlay`).
 - **`components/`** — `ModeSelector` (home cards), `MultipleChoice`/`TypingInput` (answer inputs),
   `ScoreBar`, `RangeSlider` (dual-thumb number range, accessible), `RoundStatsPanel`, `HintButton` (vowel skeleton),
-  `SoundKeyTable`/`SoundKeyPanel`, `AnswerModeToggle`, and the 3 overlays: `ReferenceOverlay` (sound key +
-  `WordListGrid`), `SettingsOverlay` (mastery tolerance), `StatsOverlay` (worst-first ranking per direction).
+  `SoundKeyTable`/`SoundKeyPanel`, `AnswerModeToggle`, and the overlays: `ReferenceOverlay` (sound key +
+  major `WordListGrid`), `CardWordsOverlay` (Themed Deck word list, suit-grouped), `SettingsOverlay` (mastery tolerance),
+  `StatsOverlay` (worst-first ranking per direction).
 - **`hooks/`** — `useStats` (`recordFull` records item-data + attempts and returns its grade; `getStats`
   derives direction-less aggregates from item-data; `getWeakNumbers`, `buildRepQueue`, `getDueCount`,
   `getNextDueMs`), `useAnswerMode`, `useAnswerTimer` (active-elapsed timer/pause/STALE-discard),
   `useOverlay` (focus trap/return + Escape + registers `overlayGuard`).
 - **`utils/`** — `quiz` (`shuffle`, `pickDistractors` same-decade-biased, `pickWeighted(dir,…)`),
   `storage` (`safeSet`/`safeRemove`), `overlayGuard` (`isOverlayOpen`), `roundMastery`, `numberStats`, `vowelSkeleton`.
-- **`data/`** — `words.csv`+`words.ts`, `wordsCsv.ts`, `soundKey.ts`, `itemStore.ts` (ItemRecord + load/save +
-  thresholds `FAST_MS`/`SLOW_MS`), `attemptStore.ts` (IndexedDB), `sm2.ts`, `typingSpeed.ts`, `settings.ts`.
+- **`data/`** — `words.csv`+`words.ts`, `cardWords.csv`+`cardWords.ts` (Themed Deck, 52 cards; clubs 01–13 seed
+  from the major defaults), `wordsCsv.ts` (shared CSV parse/serialize), `cards.ts` (52-card deck), `soundKey.ts`,
+  `itemStore.ts` (ItemRecord + load/save + thresholds `FAST_MS`/`SLOW_MS`), `attemptStore.ts` (IndexedDB),
+  `sm2.ts`, `typingSpeed.ts`, `settings.ts`.
 
 ## Conventions & gotchas
 - **Read this file first in fresh contexts and keep it updated** when workflow, architecture, commands,
