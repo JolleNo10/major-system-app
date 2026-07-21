@@ -82,6 +82,8 @@ for real = Export → replace the file → commit by hand.
   thresholds `FAST_MS`/`SLOW_MS`), `attemptStore.ts` (IndexedDB), `sm2.ts`, `typingSpeed.ts`, `settings.ts`.
 
 ## Conventions & gotchas
+- **Read this file first in fresh contexts and keep it updated** when workflow, architecture, commands,
+  or persistent repo expectations change.
 - **Verify in Docker** (`tsc -b`, `vitest run`, `vite build`) — there is no host node toolchain.
 - **Commit + push each completed, verified change to `main`** (one logical change per commit). `.gitignore`
   covers `node_modules/`/`dist/`; keep build artifacts (`package-lock.json`, `tsconfig.tsbuildinfo`) out.

@@ -77,6 +77,7 @@ export function PiDrill({ answerMode }: Props) {
   const [wqAnswered, setWqAnswered] = useState<string | null>(null)
   const [wqCorrect, setWqCorrect] = useState<boolean | null>(null)
   const [wqOptions, setWqOptions] = useState<string[]>([])
+  const [wqNumberRevealed, setWqNumberRevealed] = useState(false)
 
   // ── number-quiz state ─────────────────────────────────────────────────────
   const [nqIdx, setNqIdx] = useState(0)
@@ -152,6 +153,7 @@ export function PiDrill({ answerMode }: Props) {
       }
       setWqAnswered(null)
       setWqCorrect(null)
+      setWqNumberRevealed(false)
       setWqOptions(wordMcOptions(sequence[next], words))
       return next
     })
@@ -346,6 +348,7 @@ export function PiDrill({ answerMode }: Props) {
               setStudyIdx(0)
               setWqAnswered(null)
               setWqCorrect(null)
+              setWqNumberRevealed(false)
               setWqOptions(wordMcOptions(sequence[0], words))
               setPhase('recall')
             }}
@@ -364,9 +367,18 @@ export function PiDrill({ answerMode }: Props) {
               Pair {sessionAnchor + studyIdx} of π · decimal digits {(sessionAnchor + studyIdx - 1) * 2 + 1}–{(sessionAnchor + studyIdx - 1) * 2 + 2}
             </p>
           </div>
-          <div className="text-[6rem] font-black text-cyan-400 tabular-nums leading-none">
-            {sequence[studyIdx]}
-          </div>
+          {wqNumberRevealed ? (
+            <div className="text-[6rem] font-black text-cyan-400 tabular-nums leading-none">
+              {sequence[studyIdx]}
+            </div>
+          ) : (
+            <button
+              onClick={() => setWqNumberRevealed(true)}
+              className="w-full py-10 rounded-xl border-2 border-dashed border-zinc-700 bg-zinc-900 hover:border-cyan-500 hover:bg-zinc-800 transition-all text-zinc-400 hover:text-zinc-100 text-sm font-medium"
+            >
+              Show number
+            </button>
+          )}
           <div className="w-full space-y-3">
             {answerMode === 'multiple-choice' ? (
               <MultipleChoice
@@ -503,7 +515,7 @@ export function PiDrill({ answerMode }: Props) {
       {phase === 'result' && drillType === 'number-quiz' && (
         <div className="w-full max-w-md space-y-4">
           <h3 className="text-xl font-bold text-center text-zinc-100">
-            {nqCorrectCount === sequence.length ? '🎉 Perfect!' : `${nqCorrectCount}/${sequence.length} correct`}
+            {nqCorrectCount === sequence.length ? `🎉 Perfect! ${nqCorrectCount}/${sequence.length} correct` : `${nqCorrectCount}/${sequence.length} correct`}
           </h3>
           <div className="space-y-1.5">
             {sequence.map((num, i) => {
