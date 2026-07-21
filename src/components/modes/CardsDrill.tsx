@@ -115,6 +115,7 @@ export function CardsDrill({
 
   const drilltypeKey = `${storagePrefix}-drilltype`
   const suitsKey = `${storagePrefix}-suits`
+  const deckCountKey = `${storagePrefix}-deck-count`
 
   const [drillType, setDrillType] = useState<CardsDrillType>(() => {
     try {
@@ -127,6 +128,18 @@ export function CardsDrill({
   const [activeSuits, setActiveSuits] = useState<Set<Suit>>(() => loadSuits(suitsKey))
 
   const activeNumbers = numbersForSuits(activeSuits)
+
+  const [deckCount, setDeckCount] = useState<number>(() => {
+    const nums = numbersForSuits(loadSuits(suitsKey))
+    try {
+      const v = localStorage.getItem(deckCountKey)
+      if (v) {
+        const n = parseInt(v, 10)
+        if (!isNaN(n) && n >= 2) return Math.min(n, nums.length)
+      }
+    } catch {}
+    return nums.length
+  })
 
   const [roundStats, setRoundStats] = useState<Record<string, RoundStat>>({})
   const [question, setQuestion] = useState<Question>(() =>
@@ -226,6 +239,7 @@ export function CardsDrill({
       else next.add(suit)
       try { localStorage.setItem(suitsKey, JSON.stringify([...next])) } catch {}
       const nums = numbersForSuits(next)
+      setDeckCount(prev => Math.min(prev, nums.length))
       const s = resetSession()
       setRoundStats(s.roundStats)
       setAnswered(s.answered)
@@ -301,11 +315,32 @@ export function CardsDrill({
       </div>
 
       {drillType === 'deck-memo' ? (
-        <DeckMemoDrill
-          key={[...activeSuits].sort().join('')}
-          activeNumbers={activeNumbers}
-          words={words}
-        />
+        <>
+          <div className="flex items-center gap-3 -mt-4">
+            <span className="text-xs text-zinc-500">Cards:</span>
+            <input
+              type="range"
+              min={2}
+              max={activeNumbers.length}
+              value={deckCount}
+              onChange={e => {
+                const n = Number(e.target.value)
+                setDeckCount(n)
+                try { localStorage.setItem(deckCountKey, String(n)) } catch {}
+              }}
+              className="w-36 accent-violet-500"
+            />
+            <span className="text-xs text-zinc-400 tabular-nums w-6 text-right">{deckCount}</span>
+          </div>
+          <DeckMemoDrill
+            key={[...activeSuits].sort().join('') + '-' + deckCount}
+            activeNumbers={activeNumbers}
+            words={words}
+            cardCount={deckCount}
+            historyKey={`${storagePrefix}-deck-memo-history`}
+            activeSuits={[...activeSuits]}
+          />
+        </>
       ) : (
         <>
           <ScoreBar

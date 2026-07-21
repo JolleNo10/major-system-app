@@ -4,11 +4,59 @@ import type { Card, Suit } from '../../data/cards'
 import { shuffle } from '../../utils/quiz'
 import { matchesAnswer } from '../../utils/answerMatch'
 import { isOverlayOpen } from '../../utils/overlayGuard'
+import { safeSet } from '../../utils/storage'
 
 const SUIT_LETTERS: Record<string, Suit> = {
   C: '♣', D: '♦', H: '♥', S: '♠',
 }
 const DECK_MEMO_ANSWER_KEY = 'major-deck-memo-answer'
+const MAX_HISTORY = 100
+
+interface DeckMemoRun {
+  at: number
+  score: number
+  total: number
+  suits: string[]
+  ms: number
+}
+
+function loadHistory(key: string | undefined): DeckMemoRun[] {
+  if (!key) return []
+  try {
+    const v = localStorage.getItem(key)
+    if (v) return JSON.parse(v) as DeckMemoRun[]
+  } catch {}
+  return []
+}
+
+function fmtDuration(ms: number): string {
+  const s = Math.round(ms / 1000)
+  if (s < 60) return `${s}s`
+  return `${Math.floor(s / 60)}m ${s % 60}s`
+}
+
+function fmtDate(at: number): string {
+  const d = new Date(at)
+  return (
+    d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
+    ' ' +
+    d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+  )
+}
+
+function suitKey(suits: string[]): string {
+  return [...suits].sort().join('')
+}
+
+function runPct(r: DeckMemoRun): number {
+  return Math.round((r.score / r.total) * 100)
+}
+
+function trendColor(pct: number): string {
+  if (pct >= 80) return 'bg-green-500'
+  if (pct >= 60) return 'bg-yellow-500'
+  return 'bg-red-500'
+}
 
 type RecallMode = 'card' | 'word'
 
@@ -20,8 +68,9 @@ function parseCard(raw: string, deck: Card[]): Card | null {
   return deck.find(c => c.rank === s.slice(0, -1) && c.suit === suit) ?? null
 }
 
-function buildDeck(activeNumbers: string[]): Card[] {
-  return shuffle(activeNumbers.map(n => CARDS.find(c => c.number === n)!))
+function buildDeck(activeNumbers: string[], count?: number): Card[] {
+  const all = shuffle(activeNumbers.map(n => CARDS.find(c => c.number === n)!))
+  return count !== undefined && count < all.length ? all.slice(0, count) : all
 }
 
 function CardFace({ card, className = '' }: { card: Card; className?: string }) {
@@ -64,10 +113,13 @@ type AnswerState = 'pending' | 'correct' | 'wrong'
 interface Props {
   activeNumbers: string[]
   words: Record<string, string>
+  cardCount?: number
+  historyKey?: string
+  activeSuits?: string[]
 }
 
-export function DeckMemoDrill({ activeNumbers, words }: Props) {
-  const [deck, setDeck] = useState<Card[]>(() => buildDeck(activeNumbers))
+export function DeckMemoDrill({ activeNumbers, words, cardCount, historyKey, activeSuits }: Props) {
+  const [deck, setDeck] = useState<Card[]>(() => buildDeck(activeNumbers, cardCount))
   const [phase, setPhase] = useState<Phase>('memo')
   const [memoPos, setMemoPos] = useState(0)
   const [recallPos, setRecallPos] = useState(0)
@@ -78,7 +130,28 @@ export function DeckMemoDrill({ activeNumbers, words }: Props) {
     try { return localStorage.getItem(DECK_MEMO_ANSWER_KEY) === 'word' ? 'word' : 'card' }
     catch { return 'card' }
   })
+  const [history, setHistory] = useState<DeckMemoRun[]>(() => loadHistory(historyKey))
+  const startTimeRef = useRef(Date.now())
+  const currentRunAtRef = useRef<number | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Save run when done phase is entered
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (phase !== 'done' || !historyKey) return
+    const at = Date.now()
+    currentRunAtRef.current = at
+    const run: DeckMemoRun = {
+      at,
+      score: results.filter(Boolean).length,
+      total: deck.length,
+      suits: activeSuits ?? [],
+      ms: at - startTimeRef.current,
+    }
+    const updated = [run, ...history].slice(0, MAX_HISTORY)
+    setHistory(updated)
+    safeSet(historyKey, JSON.stringify(updated))
+  }, [phase])
 
   const changeRecallMode = useCallback((m: RecallMode) => {
     setRecallMode(m)
@@ -116,14 +189,16 @@ export function DeckMemoDrill({ activeNumbers, words }: Props) {
   }, [answerState, phase, input, deck, recallPos, recallMode, words])
 
   const restart = useCallback((reshuffle: boolean) => {
-    if (reshuffle) setDeck(buildDeck(activeNumbers))
+    if (reshuffle) setDeck(buildDeck(activeNumbers, cardCount))
     setPhase('memo')
     setMemoPos(0)
     setRecallPos(0)
     setInput('')
     setAnswerState('pending')
     setResults([])
-  }, [activeNumbers])
+    startTimeRef.current = Date.now()
+    currentRunAtRef.current = null
+  }, [activeNumbers, cardCount])
 
   // Memo phase keyboard: Space / → / Enter advances
   useEffect(() => {
@@ -288,8 +363,20 @@ export function DeckMemoDrill({ activeNumbers, words }: Props) {
   const correct = results.filter(Boolean).length
   const pct = Math.round((correct / deck.length) * 100)
 
+  const thisSuitKey = suitKey(activeSuits ?? [])
+  const configHistory = history.filter(
+    r => r.total === deck.length && suitKey(r.suits) === thisSuitKey,
+  )
+  const bestRun = configHistory.reduce<DeckMemoRun | null>(
+    (b, r) => (!b || runPct(r) > runPct(b) ? r : b),
+    null,
+  )
+  const isNewBest = !bestRun || pct >= runPct(bestRun)
+
   return (
-    <div className="flex flex-col items-center gap-6 py-4">
+    <div className="flex flex-col items-center gap-6 py-4 w-full max-w-sm mx-auto">
+
+      {/* Score */}
       <div className="text-center">
         <p className="text-4xl font-bold tabular-nums">
           {correct}
@@ -298,7 +385,8 @@ export function DeckMemoDrill({ activeNumbers, words }: Props) {
         <p className="text-zinc-400 text-sm mt-1">{pct}% correct</p>
       </div>
 
-      <div className="flex gap-1.5 flex-wrap justify-center max-w-sm">
+      {/* Card dots */}
+      <div className="flex gap-1.5 flex-wrap justify-center">
         {results.map((ok, i) => (
           <div
             key={i}
@@ -308,7 +396,21 @@ export function DeckMemoDrill({ activeNumbers, words }: Props) {
         ))}
       </div>
 
-      <div className="flex gap-3 mt-2">
+      {/* Personal best for this config */}
+      {historyKey && (
+        isNewBest
+          ? <p className="text-violet-400 text-sm font-semibold">✨ New best for this config!</p>
+          : bestRun && (
+            <p className="text-zinc-500 text-xs">
+              Best ({deck.length} cards {thisSuitKey || '—'}):&nbsp;
+              {bestRun.score}/{bestRun.total} ({runPct(bestRun)}%)
+              &nbsp;·&nbsp;{fmtDate(bestRun.at)}
+            </p>
+          )
+      )}
+
+      {/* Restart buttons */}
+      <div className="flex gap-3">
         <button
           onClick={() => restart(false)}
           className="px-5 py-2.5 rounded-lg bg-zinc-700 hover:bg-zinc-600 text-zinc-200 font-medium transition-colors"
@@ -318,6 +420,65 @@ export function DeckMemoDrill({ activeNumbers, words }: Props) {
           className="px-5 py-2.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-medium transition-colors"
         >Reshuffle</button>
       </div>
+
+      {/* History */}
+      {historyKey && history.length > 0 && (
+        <div className="w-full space-y-3 pt-1">
+          <div className="flex items-center gap-2">
+            <div className="h-px flex-1 bg-zinc-800" />
+            <span className="text-xs text-zinc-600 uppercase tracking-widest">History</span>
+            <div className="h-px flex-1 bg-zinc-800" />
+          </div>
+
+          {/* Trend strip — same-config runs, most recent left */}
+          {configHistory.length > 1 && (
+            <div className="flex gap-0.5 flex-wrap">
+              {configHistory.slice(0, 30).map(r => (
+                <div
+                  key={r.at}
+                  className={`w-3 h-3 rounded-sm ${trendColor(runPct(r))} ${
+                    r.at === currentRunAtRef.current ? 'ring-1 ring-white/60' : ''
+                  }`}
+                  title={`${fmtDate(r.at)}: ${r.score}/${r.total} (${runPct(r)}%) · ${fmtDuration(r.ms)}`}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Run list — all configs, most recent first */}
+          <div className="space-y-0.5 max-h-56 overflow-y-auto pr-1">
+            {history.slice(0, 30).map(run => {
+              const rPct = runPct(run)
+              const isCurrent = run.at === currentRunAtRef.current
+              const isBestRun = run === bestRun
+              return (
+                <div
+                  key={run.at}
+                  className={`flex items-center gap-2 text-xs px-2 py-1 rounded border-l-2 ${
+                    isCurrent
+                      ? 'bg-violet-950/50 border-violet-500'
+                      : 'border-transparent'
+                  }`}
+                >
+                  <span className="text-zinc-500 shrink-0 w-28">{fmtDate(run.at)}</span>
+                  <span className="text-zinc-400 shrink-0">{run.suits.join('')}</span>
+                  <span className="text-zinc-600 shrink-0 tabular-nums">{run.total}</span>
+                  <span className={`tabular-nums font-medium flex-1 ${
+                    rPct >= 80 ? 'text-green-400' : rPct >= 60 ? 'text-yellow-400' : 'text-red-400'
+                  }`}>{run.score}/{run.total}</span>
+                  <span className="text-zinc-500 tabular-nums w-7 text-right">{rPct}%</span>
+                  <span
+                    className="text-zinc-700 tabular-nums w-8 text-right"
+                    title="Duration"
+                  >{fmtDuration(run.ms)}</span>
+                  {isBestRun && <span className="text-yellow-500 shrink-0" title="Personal best">★</span>}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
