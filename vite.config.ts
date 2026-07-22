@@ -13,7 +13,7 @@ export default defineConfig({
       manifest: {
         name: 'Majorsystemet',
         short_name: 'Major',
-        description: 'Norwegian Major System mnemonic trainer',
+        description: 'Major System mnemonic trainer',
         theme_color: '#09090b',
         background_color: '#09090b',
         display: 'standalone',

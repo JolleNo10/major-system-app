@@ -1,6 +1,6 @@
 # Majorsystemet
 
-Norwegian **Major System** mnemonic trainer. You practise mapping 2-digit numbers
+**Major System** mnemonic trainer. You practise mapping 2-digit numbers
 `00`–`99` to words (encoding) and back (decoding), plus sound-key and sequence drills.
 Stack: **Vite + React 19 + TypeScript + Tailwind v4**, single-page, **no backend**,
 **always dark** (zinc-950 base, violet-600 accent). Docker-only dev workflow.
