@@ -84,7 +84,7 @@ const CHALLENGE_MODES: ModeCard[] = [
   {
     id: 'pi-digits',
     emoji: '𝝅',
-    title: 'Digits of π',
+    title: 'Recite numbers',
     subtitle: 'Sequential chain',
     description: 'Memorise the digits of π as a chain of major system words',
     accent: 'group-hover:border-cyan-500/60 group-hover:shadow-cyan-900/20',

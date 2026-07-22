@@ -28,7 +28,7 @@ const MODE_TITLES: Record<Mode, string> = {
   'speed-round': 'Speed Round',
   'weak-spots': 'Weak Spots',
   'repetition': 'Repetition',
-  'pi-digits': 'Digits of π',
+  'pi-digits': 'Recite numbers',
   'cards': 'Card Deck',
   'themed-cards': 'Themed Deck',
 }

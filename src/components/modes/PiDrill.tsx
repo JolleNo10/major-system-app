@@ -212,6 +212,13 @@ export function PiDrill({ answerMode }: Props) {
 
   const formatSec = (ms: number) => `${(ms / 1000).toFixed(ms < 10_000 ? 2 : 1)}s`
   const formatRate = (rate: number) => rate.toFixed(rate < 10 ? 2 : 1)
+  const formatResultSummary = (correctPairs: number) => {
+    const totalPairs = sequence.length
+    const correctDigits = correctPairs * 2
+    const totalDigits = totalPairs * 2
+    const score = `${correctPairs}/${totalPairs} correct pairs - ${correctDigits}/${totalDigits} digits of pi`
+    return correctPairs === totalPairs ? `🎉 Perfect! ${score}` : score
+  }
 
   const panelCls = 'bg-zinc-900 border border-zinc-800 rounded-xl'
 
@@ -499,7 +506,7 @@ export function PiDrill({ answerMode }: Props) {
       {phase === 'result' && drillType === 'word-chain' && (
         <div className="w-full max-w-md space-y-4">
           <h3 className="text-xl font-bold text-center text-zinc-100">
-            {wordCorrectCount === sequence.length ? '🎉 Perfect!' : `${wordCorrectCount}/${sequence.length} correct`}
+            {formatResultSummary(wordCorrectCount)}
           </h3>
           <div className="space-y-1.5">
             {sequence.map((num, i) => {
@@ -530,7 +537,7 @@ export function PiDrill({ answerMode }: Props) {
       {phase === 'result' && drillType === 'number-quiz' && (
         <div className="w-full max-w-md space-y-4">
           <h3 className="text-xl font-bold text-center text-zinc-100">
-            {nqCorrectCount === sequence.length ? `🎉 Perfect! ${nqCorrectCount}/${sequence.length} correct` : `${nqCorrectCount}/${sequence.length} correct`}
+            {formatResultSummary(nqCorrectCount)}
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {([
