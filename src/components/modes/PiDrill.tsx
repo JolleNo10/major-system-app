@@ -3,8 +3,10 @@ import { useWords } from '../../context/WordsContext'
 import { useSettings } from '../../context/SettingsContext'
 import { MultipleChoice } from '../MultipleChoice'
 import { TypingInput } from '../TypingInput'
+import { PiBatchInput } from '../PiBatchInput'
 import { safeSet } from '../../utils/storage'
 import { shuffle, pickDistractors } from '../../utils/quiz'
+import { summarizeBatchTimings, type BatchTiming } from '../../utils/numericInput'
 import { PI_PAIRS } from '../../data/piDigits'
 import type { AnswerMode } from '../../types'
 
@@ -16,11 +18,13 @@ const SEL_START_KEY = 'major-pi-sel-start'
 const SEL_END_KEY = 'major-pi-sel-end'
 const DRILLTYPE_KEY = 'major-pi-drilltype'
 const MAX_PAIRS_KEY = 'major-pi-max-pairs'
+const ANSWER_SIZE_KEY = 'major-pi-answer-size'
 
 const PAIRS_PER_ROW = 10
 
 type DrillType = 'word-chain' | 'number-quiz'
 type Phase = 'setup' | 'study' | 'recall' | 'number-quiz' | 'result'
+type AnswerSize = 1 | 10
 
 function readLS(key: string): string | null {
   try { return localStorage.getItem(key) } catch { return null }
@@ -49,6 +53,8 @@ export function PiDrill({ answerMode }: Props) {
 
   const [drillType, setDrillType] = useState<DrillType>(() =>
     readLS(DRILLTYPE_KEY) === 'number-quiz' ? 'number-quiz' : 'word-chain')
+  const [answerSize, setAnswerSize] = useState<AnswerSize>(() =>
+    readLS(ANSWER_SIZE_KEY) === '10' ? 10 : 1)
 
   const [maxPiPairs, setMaxPiPairs] = useState<number>(() => {
     const v = parseInt(readLS(MAX_PAIRS_KEY) ?? '', 10)
@@ -85,7 +91,10 @@ export function PiDrill({ answerMode }: Props) {
   const [nqAnsweredCorrect, setNqAnsweredCorrect] = useState<boolean | null>(null)
   const [nqOptions, setNqOptions] = useState<string[]>([])
   const [nqResults, setNqResults] = useState<NqResult[]>([])
+  const [nqBatchCorrect, setNqBatchCorrect] = useState<boolean[] | null>(null)
+  const [nqBatchTimings, setNqBatchTimings] = useState<BatchTiming[]>([])
   const nqStartedAtRef = useRef<number>(0)
+  const previousAnswerModeRef = useRef(answerMode)
   const historyEndRef = useRef<HTMLDivElement>(null)
 
   const [wqResults, setWqResults] = useState<NqResult[]>([])
@@ -102,6 +111,18 @@ export function PiDrill({ answerMode }: Props) {
   useEffect(() => {
     if (maxPiPairs > settingsMaxPairs) setMaxPiPairs(settingsMaxPairs)
   }, [settingsMaxPairs, maxPiPairs])
+
+  useEffect(() => {
+    const modeChanged = previousAnswerModeRef.current !== answerMode
+    previousAnswerModeRef.current = answerMode
+    if (!modeChanged || phase !== 'number-quiz' || nqAnswered !== null) return
+
+    // Changing answer mode discards only the current, unsubmitted input.
+    setNqAnsweredCorrect(null)
+    setNqBatchCorrect(null)
+    setNqOptions(numberMcOptions(sequence[nqIdx], sequence))
+    nqStartedAtRef.current = performance.now()
+  }, [answerMode, phase, nqAnswered, nqIdx, sequence])
 
   // ── segment grid selection ────────────────────────────────────────────────
   const handleSegmentClick = useCallback((segIdx: number) => {
@@ -124,6 +145,7 @@ export function PiDrill({ answerMode }: Props) {
     safeSet(SEL_END_KEY, String(selEnd))
     safeSet(DRILLTYPE_KEY, drillType)
     safeSet(MAX_PAIRS_KEY, String(maxPiPairs))
+    safeSet(ANSWER_SIZE_KEY, String(answerSize))
     const seq = PI_PAIRS.slice(selAnchor - 1, selEnd)
     setSequence(seq)
     setSessionAnchor(selAnchor)
@@ -138,12 +160,14 @@ export function PiDrill({ answerMode }: Props) {
       setNqIdx(0)
       setNqAnswered(null)
       setNqAnsweredCorrect(null)
+      setNqBatchCorrect(null)
       setNqOptions(numberMcOptions(seq[0], seq))
       setNqResults([])
+      setNqBatchTimings([])
       nqStartedAtRef.current = performance.now()
       setPhase('number-quiz')
     }
-  }, [selAnchor, selEnd, drillType, maxPiPairs])
+  }, [selAnchor, selEnd, drillType, maxPiPairs, answerSize])
 
   // ── word-chain handlers ───────────────────────────────────────────────────
   const advanceRecall = useCallback(() => {
@@ -172,16 +196,26 @@ export function PiDrill({ answerMode }: Props) {
   }, [wqAnswered, words, sequence, studyIdx, advanceRecall])
 
   // ── number-quiz handlers ──────────────────────────────────────────────────
-  const advanceNumberQuiz = useCallback((typed: string, ok: boolean, ms: number) => {
-    setNqResults(prev => [...prev, { typed, ok, ms }])
-    const nextIdx = nqIdx + 1
-    const delay = ok ? 100 : 1200
+  const advanceNumberQuiz = useCallback((typedValues: string[], correctness: boolean[], ms: number) => {
+    const isSinglePair = typedValues.length === 1
+    setNqResults(prev => [
+      ...prev,
+      ...typedValues.map((typed, index) => ({
+        typed,
+        ok: correctness[index],
+        ms: isSinglePair ? ms : undefined,
+      })),
+    ])
+    setNqBatchTimings(prev => [...prev, { pairCount: typedValues.length, ms }])
+    const nextIdx = nqIdx + typedValues.length
+    const delay = correctness.every(Boolean) ? 100 : 1200
     if (nextIdx >= sequence.length) {
       setTimeout(() => setPhase('result'), delay)
     } else {
       setTimeout(() => {
         setNqAnswered(null)
         setNqAnsweredCorrect(null)
+        setNqBatchCorrect(null)
         setNqOptions(numberMcOptions(sequence[nextIdx], sequence))
         nqStartedAtRef.current = performance.now()
         setNqIdx(nextIdx)
@@ -195,18 +229,29 @@ export function PiDrill({ answerMode }: Props) {
     const ms = Math.max(0, performance.now() - nqStartedAtRef.current)
     setNqAnswered(value)
     setNqAnsweredCorrect(ok)
-    advanceNumberQuiz(value, ok, ms)
+    advanceNumberQuiz([value], [ok], ms)
+  }, [nqAnswered, sequence, nqIdx, advanceNumberQuiz])
+
+  const handleNumberBatchAnswer = useCallback((values: string[]) => {
+    if (nqAnswered !== null) return
+    const expected = sequence.slice(nqIdx, nqIdx + values.length)
+    const correctness = values.map((value, index) => value === expected[index])
+    const ms = Math.max(0, performance.now() - nqStartedAtRef.current)
+    setNqAnswered(values.join(' '))
+    setNqAnsweredCorrect(correctness.every(Boolean))
+    setNqBatchCorrect(correctness)
+    advanceNumberQuiz(values, correctness, ms)
   }, [nqAnswered, sequence, nqIdx, advanceNumberQuiz])
 
   // ── result counts ─────────────────────────────────────────────────────────
   const wordCorrectCount = wqResults.filter(r => r.ok).length
   const nqCorrectCount = nqResults.filter(r => r.ok).length
-  const nqTotalMs = nqResults.reduce((sum, r) => sum + (r.ms ?? 0), 0)
-  const nqTotalSec = nqTotalMs / 1000
+  const nqTimingStats = summarizeBatchTimings(nqBatchTimings)
+  const nqTotalMs = nqTimingStats.totalMs
   const nqAnsweredCount = nqResults.length
-  const nqPairsPerSec = nqTotalSec > 0 ? nqAnsweredCount / nqTotalSec : 0
-  const nqAvgMs = nqAnsweredCount > 0 ? nqTotalMs / nqAnsweredCount : 0
-  const nqSlowestMs = nqResults.reduce((max, r) => Math.max(max, r.ms ?? 0), 0)
+  const nqPairsPerSec = nqTimingStats.pairsPerSec
+  const nqAvgMs = nqTimingStats.averagePairMs
+  const nqSlowestMs = nqTimingStats.slowestBatchMs
   const nqAccuracy = nqAnsweredCount > 0 ? Math.round((nqCorrectCount / nqAnsweredCount) * 100) : 0
   const nqMistakes = nqAnsweredCount - nqCorrectCount
 
@@ -271,6 +316,30 @@ export function PiDrill({ answerMode }: Props) {
           </div>
 
           {/* Pi digit grid — one button per 20-digit segment */}
+          {drillType === 'number-quiz' && answerMode === 'typing' && (
+            <div className="space-y-2">
+              <span className="text-sm font-medium text-zinc-300">Pairs per answer</span>
+              <div className="grid grid-cols-2 gap-2">
+                {([1, 10] as AnswerSize[]).map(size => (
+                  <button
+                    key={size}
+                    onClick={() => {
+                      setAnswerSize(size)
+                      safeSet(ANSWER_SIZE_KEY, String(size))
+                    }}
+                    className={`px-4 py-3 rounded-lg border text-sm font-semibold transition-colors ${
+                      answerSize === size
+                        ? 'bg-cyan-600/20 border-cyan-500 text-zinc-100'
+                        : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500'
+                    }`}
+                  >
+                    {size === 1 ? '1 pair' : '10 pairs'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-zinc-300">Select segment</span>
@@ -441,17 +510,27 @@ export function PiDrill({ answerMode }: Props) {
 
       {/* ── NUMBER QUIZ ── */}
       {phase === 'number-quiz' && (
-        <div className="flex flex-col items-center gap-5 w-full max-w-md">
+        <div className={`flex flex-col items-center gap-5 w-full ${
+          answerMode === 'typing' && answerSize === 10 ? 'max-w-2xl' : 'max-w-md'
+        }`}>
           {progressDots(nqIdx, nqResults)}
 
           <div className="text-center space-y-1">
-            <p className="text-xs text-zinc-600 uppercase tracking-widest">What are the digits?</p>
-            <p className="text-xs text-zinc-700">decimal digits {(sessionAnchor + nqIdx - 1) * 2 + 1}–{(sessionAnchor + nqIdx - 1) * 2 + 2} of π</p>
+            <p className="text-xs text-zinc-600 uppercase tracking-widest">
+              {answerMode === 'typing' && answerSize === 10 ? 'What are the next digits?' : 'What are the digits?'}
+            </p>
+            <p className="text-xs text-zinc-700">
+              {answerMode === 'typing' && answerSize === 10
+                ? `pairs ${sessionAnchor + nqIdx}–${sessionAnchor + Math.min(nqIdx + 10, sequence.length) - 1} of π`
+                : `decimal digits ${(sessionAnchor + nqIdx - 1) * 2 + 1}–${(sessionAnchor + nqIdx - 1) * 2 + 2} of π`}
+            </p>
           </div>
 
-          <div className="text-[4rem] font-black text-zinc-400 tabular-nums leading-none">
-            Pair {sessionAnchor + nqIdx}
-          </div>
+          {!(answerMode === 'typing' && answerSize === 10) && (
+            <div className="text-[4rem] font-black text-zinc-400 tabular-nums leading-none">
+              Pair {sessionAnchor + nqIdx}
+            </div>
+          )}
 
           <div className="w-full">
             {answerMode === 'multiple-choice' ? (
@@ -462,6 +541,13 @@ export function PiDrill({ answerMode }: Props) {
                 onAnswer={handleNumberAnswer}
                 answered={nqAnswered}
               />
+            ) : answerSize === 10 ? (
+              <PiBatchInput
+                key={nqIdx}
+                expected={sequence.slice(nqIdx, nqIdx + 10)}
+                answeredCorrect={nqBatchCorrect}
+                onAnswer={handleNumberBatchAnswer}
+              />
             ) : (
               <TypingInput
                 key={nqIdx}
@@ -469,6 +555,7 @@ export function PiDrill({ answerMode }: Props) {
                 answeredCorrect={nqAnsweredCorrect}
                 correctAnswer={sequence[nqIdx]}
                 placeholder="e.g. 14"
+                numeric
               />
             )}
           </div>
@@ -544,7 +631,7 @@ export function PiDrill({ answerMode }: Props) {
               ['Total time', formatSec(nqTotalMs)],
               ['Pairs/sec', formatRate(nqPairsPerSec)],
               ['Avg / pair', formatSec(nqAvgMs)],
-              ['Slowest', formatSec(nqSlowestMs)],
+              [nqTimingStats.hasMultiPairBatch ? 'Slowest batch' : 'Slowest', formatSec(nqSlowestMs)],
               ['Accuracy', `${nqAccuracy}%`],
               ['Mistakes', String(nqMistakes)],
             ] as [string, string][]).map(([label, value]) => (

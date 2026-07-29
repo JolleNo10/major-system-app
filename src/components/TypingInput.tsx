@@ -1,4 +1,9 @@
 import { useRef, useEffect, useState } from 'react'
+import {
+  isCompleteNumericAnswer,
+  isNumericDraft,
+  isValidNumericInsertion,
+} from '../utils/numericInput'
 
 interface Props {
   onAnswer: (value: string) => void
@@ -24,9 +29,16 @@ export function TypingInput({ onAnswer, answeredCorrect, correctAnswer, placehol
   }, [])
 
   const submit = () => {
-    const trimmed = value.trim()
-    if (trimmed && answeredCorrect === null) onAnswer(trimmed)
+    const answer = numeric ? value : value.trim()
+    const valid = numeric
+      ? isCompleteNumericAnswer(answer, correctAnswer.length)
+      : Boolean(answer)
+    if (valid && answeredCorrect === null) onAnswer(answer)
   }
+
+  const canSubmit = numeric
+    ? isCompleteNumericAnswer(value, correctAnswer.length)
+    : Boolean(value.trim())
 
   const borderCls =
     answeredCorrect === null
@@ -42,9 +54,33 @@ export function TypingInput({ onAnswer, answeredCorrect, correctAnswer, placehol
           ref={inputRef}
           type="text"
           inputMode={numeric ? 'numeric' : 'text'}
+          pattern={numeric ? '[0-9]*' : undefined}
+          maxLength={numeric ? correctAnswer.length : undefined}
           value={value}
-          onChange={e => answeredCorrect === null && setValue(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && submit()}
+          onChange={e => {
+            if (answeredCorrect !== null) return
+            if (!numeric || isNumericDraft(e.target.value, correctAnswer.length)) {
+              setValue(e.target.value)
+            }
+          }}
+          onPaste={e => {
+            if (!numeric) return
+            const input = e.currentTarget
+            const valid = isValidNumericInsertion(
+              value,
+              e.clipboardData.getData('text'),
+              input.selectionStart ?? value.length,
+              input.selectionEnd ?? value.length,
+              correctAnswer.length,
+            )
+            if (!valid) e.preventDefault()
+          }}
+          onKeyDown={e => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              submit()
+            }
+          }}
           placeholder={placeholder}
           aria-label={placeholder}
           disabled={answeredCorrect !== null}
@@ -57,7 +93,7 @@ export function TypingInput({ onAnswer, answeredCorrect, correctAnswer, placehol
         {answeredCorrect === null && (
           <button
             onClick={submit}
-            disabled={!value.trim()}
+            disabled={!canSubmit}
             className="px-5 bg-zinc-700 hover:bg-violet-600 disabled:opacity-40 disabled:cursor-not-allowed text-zinc-300 hover:text-white transition-colors font-medium text-sm"
           >
             ↵

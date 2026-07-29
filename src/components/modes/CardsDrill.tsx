@@ -410,6 +410,7 @@ export function CardsDrill({
                   answeredCorrect={answeredCorrect}
                   correctAnswer={question.correctAnswer}
                   placeholder={drillType === 'card-to-number' ? 'Type the number (e.g. 14)' : 'Type the word...'}
+                  numeric={drillType === 'card-to-number'}
                 />
               )}
               {answered !== null && lastMs !== null && (
