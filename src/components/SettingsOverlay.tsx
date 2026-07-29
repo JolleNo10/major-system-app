@@ -8,12 +8,15 @@ import { masteryFastMs, MASTERY_REPS } from '../utils/roundMastery'
 import { RECALL_SLOW_MS } from '../data/typingSpeed'
 import { useOverlay } from '../hooks/useOverlay'
 import { PI_PAIRS } from '../data/piDigits'
+import { Switch } from './Switch'
+import type { PwaUpdate } from '../hooks/usePwaUpdate'
 
 interface Props {
   onClose: () => void
+  pwa: PwaUpdate
 }
 
-export function SettingsOverlay({ onClose }: Props) {
+export function SettingsOverlay({ onClose, pwa }: Props) {
   const { settings, update } = useSettings()
   const ref = useRef<HTMLDivElement>(null)
   useOverlay(ref, onClose)
@@ -22,6 +25,16 @@ export function SettingsOverlay({ onClose }: Props) {
   const limitS = (masteryFastMs(factor) / 1000).toFixed(1)
   const slowS = (RECALL_SLOW_MS / 1000).toFixed(1)
   const atSlow = masteryFastMs(factor) >= RECALL_SLOW_MS
+
+  const buildLabel = (() => {
+    const d = new Date(pwa.buildTime)
+    return isNaN(d.getTime()) ? pwa.buildTime : d.toLocaleString()
+  })()
+  const updateStatus = pwa.checking
+    ? 'Checking…'
+    : pwa.needRefresh
+      ? 'Update ready'
+      : 'Up to date'
 
   return (
     <div ref={ref} role="dialog" aria-modal="true" aria-label="Settings" tabIndex={-1} className="fixed inset-0 z-50 flex flex-col bg-zinc-950 animate-fade-in outline-none">
@@ -102,6 +115,53 @@ export function SettingsOverlay({ onClose }: Props) {
             <div className="flex justify-between text-xs text-zinc-600 mt-1">
               <span>{MAX_PI_DIGITS_MIN}</span>
               <span>{PI_PAIRS.length * 2}</span>
+            </div>
+          </section>
+
+          <section>
+            <div className="flex items-center justify-between gap-4 mb-1">
+              <h3 className="font-semibold text-zinc-100">Offline mode</h3>
+              <Switch
+                checked={settings.offlineMode}
+                onChange={v => update({ offlineMode: v })}
+                label="Offline mode"
+              />
+            </div>
+            <p className="text-sm text-zinc-500">
+              When on, the app won’t contact the server to check for updates, to conserve hosting
+              usage — it runs entirely from its offline cache. You can still update manually below.
+            </p>
+          </section>
+
+          <section>
+            <div className="flex items-baseline justify-between mb-1">
+              <h3 className="font-semibold text-zinc-100">App version</h3>
+              <span className="text-sm font-mono tabular-nums text-violet-300">{updateStatus}</span>
+            </div>
+            <p className="text-sm text-zinc-500 mb-1">
+              Version {pwa.version} · {pwa.buildCommit}
+            </p>
+            <p className="text-xs text-zinc-600 mb-4">
+              Built {buildLabel}
+              {pwa.lastChecked != null && ` · Last checked ${new Date(pwa.lastChecked).toLocaleTimeString()}`}
+            </p>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => { void pwa.checkForUpdate() }}
+                disabled={pwa.checking}
+                className="px-3 min-h-[36px] rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-zinc-100 hover:border-zinc-500 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {pwa.checking ? 'Checking…' : 'Check for updates'}
+              </button>
+              {pwa.needRefresh && (
+                <button
+                  onClick={() => { void pwa.updateNow() }}
+                  className="px-3 min-h-[36px] rounded-lg bg-violet-600 border border-violet-500 text-white hover:bg-violet-500 text-sm font-medium transition-colors"
+                >
+                  Update now
+                </button>
+              )}
             </div>
           </section>
 

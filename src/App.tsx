@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect } from 'react'
 import type { Mode } from './types'
 import { useAnswerMode } from './hooks/useAnswerMode'
+import { useSettings } from './context/SettingsContext'
+import { usePwaUpdate } from './hooks/usePwaUpdate'
 import { ModeSelector } from './components/ModeSelector'
 import { AnswerModeToggle } from './components/AnswerModeToggle'
 import { ReferenceOverlay } from './components/ReferenceOverlay'
@@ -39,6 +41,8 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false)
   const [showStats, setShowStats] = useState(false)
   const { mode: answerMode, toggle: toggleAnswerMode } = useAnswerMode()
+  const { settings } = useSettings()
+  const pwa = usePwaUpdate(settings.offlineMode)
 
   const goHome = useCallback(() => setMode('home'), [])
   const closeRef = useCallback(() => setShowReference(false), [])
@@ -128,7 +132,7 @@ export default function App() {
       {showReference && <ReferenceOverlay onClose={closeRef} />}
 
       {/* Settings overlay */}
-      {showSettings && <SettingsOverlay onClose={closeSettings} />}
+      {showSettings && <SettingsOverlay onClose={closeSettings} pwa={pwa} />}
 
       {/* Stats overlay */}
       {showStats && <StatsOverlay onClose={closeStats} />}

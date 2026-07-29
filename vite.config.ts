@@ -2,13 +2,34 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { execSync } from 'node:child_process'
+
+// Build identity baked in at build time (no runtime fetch). buildTime always
+// works; the git short SHA is best-effort (the build context includes .git).
+const buildTime = new Date().toISOString()
+let commit = 'unknown'
+try {
+  commit = execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
+    .toString()
+    .trim()
+} catch {
+  // no git / shallow clone — buildTime still identifies the build
+}
 
 export default defineConfig({
+  define: {
+    __BUILD_TIME__: JSON.stringify(buildTime),
+    __BUILD_COMMIT__: JSON.stringify(commit),
+    __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '0.0.0'),
+  },
   plugins: [
     tailwindcss(),
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // We register the SW in code (usePwaUpdate) so the offline toggle can gate
+      // update checks; 'prompt' keeps the new SW waiting until we apply it.
+      registerType: 'prompt',
+      injectRegister: null,
       includeAssets: ['icon-192.png', 'icon-512.png', 'apple-touch-icon.png'],
       manifest: {
         name: 'Majorsystemet',
@@ -27,6 +48,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        cleanupOutdatedCaches: true,
       },
     }),
   ],

@@ -7,6 +7,9 @@ export interface Settings {
   // Upper bound (in digits) for the "Max π digits" slider in the Pi drill setup.
   // Increase this as more pi digit data is added to piDigits.ts.
   maxPiDigits: number
+  // When true, the app makes no proactive update checks (runs from the SW cache)
+  // to conserve free-tier hosting usage. Manual "Check for updates" still works.
+  offlineMode: boolean
 }
 
 const KEY = 'major-settings'
@@ -14,6 +17,7 @@ const KEY = 'major-settings'
 export const DEFAULT_SETTINGS: Settings = {
   masteryLatencyFactor: 1.4, // ~1.7s recall — lenient enough that "not slow" counts
   maxPiDigits: 200,
+  offlineMode: false, // default: check for updates on launch
 }
 
 export const MASTERY_FACTOR_MIN = 1
