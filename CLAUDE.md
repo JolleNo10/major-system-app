@@ -34,7 +34,7 @@ docker run --rm -v "$(pwd)":/app -w /app node:20-alpine sh -c "npx tsc -b && npx
 | `major-system` (db) → `attempts` store | **IndexedDB** | Per-answer log `{id, key:"enc:07", at, ok, ms}`, pruned to 90 days / 200 per item. Written on every answer; read API exists but is not consumed yet (future age-decay/analytics) |
 | `major-word-saved` | localStorage | Committed custom words (layer 2) |
 | `major-word-overrides` | localStorage | Trial/pending word edits (layer 3, shown yellow) |
-| `major-settings` | localStorage | `{ masteryLatencyFactor }` |
+| `major-settings` | localStorage | `{ masteryLatencyFactor, maxPiDigits, offlineMode }` |
 | `major-typing-speed` / `-digit` | localStorage | Adaptive ms/char estimates, separate for word vs digit typing |
 | `major-answer-mode`, `major-hide-options`, `major-seq-length`, `major-seq-studymode`, `major-speed-best`, `major-attempts-migrated` | localStorage | Small UI/prefs flags |
 
@@ -80,13 +80,16 @@ list is fully separate from the major list. `WordListGrid` is prop-driven (`stor
   `ThemedCardsDrill` (`themed-cards` mode: `useCardWords`, Card→Word + Deck Memo only, no stats, opens `CardWordsOverlay`).
 - **`components/`** — `ModeSelector` (home cards), `MultipleChoice`/`TypingInput` (answer inputs),
   `ScoreBar`, `RangeSlider` (dual-thumb number range, accessible), `RoundStatsPanel`, `HintButton` (vowel skeleton),
-  `SoundKeyTable`/`SoundKeyPanel`, `AnswerModeToggle`, and the overlays: `ReferenceOverlay` (sound key +
-  major `WordListGrid`), `CardWordsOverlay` (Themed Deck word list, suit-grouped), `SettingsOverlay` (mastery tolerance),
+  `SoundKeyTable`/`SoundKeyPanel`, `AnswerModeToggle`, `Switch` (accessible on/off toggle), and the overlays:
+  `ReferenceOverlay` (sound key + major `WordListGrid`), `CardWordsOverlay` (Themed Deck word list, suit-grouped),
+  `SettingsOverlay` (mastery tolerance, max π digits, offline mode + app version/update controls),
   `StatsOverlay` (worst-first ranking per direction).
 - **`hooks/`** — `useStats` (`recordFull` records item-data + attempts and returns its grade; `getStats`
   derives direction-less aggregates from item-data; `getWeakNumbers`, `buildRepQueue`, `getDueCount`,
   `getNextDueMs`), `useAnswerMode`, `useAnswerTimer` (active-elapsed timer/pause/STALE-discard),
-  `useOverlay` (focus trap/return + Escape + registers `overlayGuard`).
+  `useOverlay` (focus trap/return + Escape + registers `overlayGuard`),
+  `usePwaUpdate` (wraps `virtual:pwa-register/react`; gates SW update checks on `settings.offlineMode`,
+  auto-applies updates from checks it initiates, exposes build version + manual check — called once in `App`).
 - **`utils/`** — `quiz` (`shuffle`, `pickDistractors` same-decade-biased, `pickWeighted(dir,…)`),
   `storage` (`safeSet`/`safeRemove`), `overlayGuard` (`isOverlayOpen`), `roundMastery`, `numberStats`, `vowelSkeleton`.
 - **`data/`** — `words.csv`+`words.ts`, `cardWords.csv`+`cardWords.ts` (Themed Deck, 52 cards; clubs 01–13 seed
@@ -105,6 +108,13 @@ list is fully separate from the major list. `WordListGrid` is prop-driven (`stor
 - **All localStorage writes go through `utils/storage`** (`safeSet`/`safeRemove`) — private-mode/quota safe.
 - **Full-screen overlays must use `useOverlay`** so the drills' global keydown handlers (which check
   `isOverlayOpen()`) don't fire behind them.
+- **PWA / offline** (`vite.config.ts` `VitePWA`, generateSW, `registerType: 'prompt'`, `injectRegister: null`).
+  The SW is registered in code by `usePwaUpdate` (not the plugin's auto-inject). The app has **zero runtime
+  network calls** — once installed it runs fully from the precache; the only server contact is SW update checks,
+  which `settings.offlineMode` gates. Build identity is baked at build time via `define` (`__BUILD_TIME__`,
+  `__BUILD_COMMIT__` (git short SHA, best-effort — needs git in the build image; the prod `Dockerfile`'s
+  `node:20` has it, but `node:20-alpine` does not → `unknown`), `__APP_VERSION__`), declared in `src/vite-env.d.ts`.
+  Serve over HTTPS/localhost (secure context) or the SW won't register.
 - **Known remaining work:** `EncodingDrill`/`DecodingDrill` are still ~90% duplicated (shared logic lives in
   `useAnswerTimer` + `utils/quiz`, but the JSX/component isn't merged); the IndexedDB `attempts` log is
   write-only (age-based decay in `numberStats` not wired yet — `HISTORY_HALFLIFE_DAYS` is the intended knob).
