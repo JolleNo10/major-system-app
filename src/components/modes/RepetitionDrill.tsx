@@ -7,20 +7,11 @@ import { TypingInput } from '../TypingInput'
 import { ScoreBar } from '../ScoreBar'
 import { HintButton } from '../HintButton'
 import { isOverlayOpen } from '../../utils/overlayGuard'
-import { shuffle, pickDistractors } from '../../utils/quiz'
+import { buildEncOptions, buildDecOptions } from '../../utils/quiz'
+import { matchesAnswer, matchesNumber } from '../../utils/answerMatch'
 import type { AnswerMode, Direction } from '../../types'
 
 interface QueueItem { dir: Direction; num: string }
-
-function makeEncOptions(num: string, words: Record<string, string>): string[] {
-  const others = pickDistractors(num, Object.keys(words))
-  return shuffle([words[num], ...others.map(n => words[n])])
-}
-
-function makeDecOptions(num: string, words: Record<string, string>): string[] {
-  const others = pickDistractors(num, Object.keys(words))
-  return shuffle([num, ...others])
-}
 
 function relativeTime(ms: number): string {
   const diff = ms - Date.now()
@@ -83,8 +74,8 @@ export function RepetitionDrill({ answerMode }: Props) {
     const answer = current.dir === 'enc' ? words[current.num] : current.num
     const correct =
       current.dir === 'enc'
-        ? value.trim().toLowerCase() === answer.toLowerCase()
-        : value.trim().padStart(2, '0') === current.num // accept "7" for "07"
+        ? matchesAnswer(value, answer)
+        : matchesNumber(value, current.num)
 
     setAnswered(value)
     setAnsweredCorrect(correct)
@@ -140,8 +131,8 @@ export function RepetitionDrill({ answerMode }: Props) {
   // ── Build question for current item ─────────────────────────────────────────
   const isEnc = current.dir === 'enc'
   const options = isEnc
-    ? makeEncOptions(current.num, words)
-    : makeDecOptions(current.num, words)
+    ? buildEncOptions(current.num, words)
+    : buildDecOptions(current.num, words)
   const correctAnswer = isEnc ? words[current.num] : current.num
 
   const remaining = queue.length

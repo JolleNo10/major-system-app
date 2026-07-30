@@ -9,6 +9,7 @@ import { adjustLatency, recallColor } from '../../data/typingSpeed'
 import { masteryProgress, masteryFastMs } from '../../utils/roundMastery'
 import { shuffle, pickDistractors, pickWeighted } from '../../utils/quiz'
 import { applyRoundAttempt, type RoundStat } from '../../utils/roundStats'
+import { readString, readJSON, safeSet } from '../../utils/storage'
 import { matchesAnswer } from '../../utils/answerMatch'
 import { CARDS } from '../../data/cards'
 import type { Card, Suit } from '../../data/cards'
@@ -46,15 +47,9 @@ function numbersForSuits(suits: Set<Suit>): string[] {
 }
 
 function loadSuits(key: string): Set<Suit> {
-  try {
-    const v = localStorage.getItem(key)
-    if (v) {
-      const parsed = JSON.parse(v) as string[]
-      const valid = parsed.filter((s): s is Suit => (ALL_SUITS as string[]).includes(s))
-      if (valid.length > 0) return new Set(valid)
-    }
-  } catch {}
-  return new Set(ALL_SUITS)
+  const parsed = readJSON<string[]>(key, [])
+  const valid = parsed.filter((s): s is Suit => (ALL_SUITS as string[]).includes(s))
+  return valid.length > 0 ? new Set(valid) : new Set(ALL_SUITS)
 }
 
 function makeQuestion(
@@ -118,10 +113,8 @@ export function CardsDrill({
   const deckCountKey = `${storagePrefix}-deck-count`
 
   const [drillType, setDrillType] = useState<CardsDrillType>(() => {
-    try {
-      const v = localStorage.getItem(drilltypeKey)
-      if (v && (drillTypes as string[]).includes(v)) return v as CardsDrillType
-    } catch {}
+    const v = readString(drilltypeKey)
+    if (v && (drillTypes as string[]).includes(v)) return v as CardsDrillType
     return drillTypes[0]
   })
 
@@ -131,13 +124,8 @@ export function CardsDrill({
 
   const [deckCount, setDeckCount] = useState<number>(() => {
     const nums = numbersForSuits(loadSuits(suitsKey))
-    try {
-      const v = localStorage.getItem(deckCountKey)
-      if (v) {
-        const n = parseInt(v, 10)
-        if (!isNaN(n) && n >= 2) return Math.min(n, nums.length)
-      }
-    } catch {}
+    const n = parseInt(readString(deckCountKey) ?? '', 10)
+    if (!isNaN(n) && n >= 2) return Math.min(n, nums.length)
     return nums.length
   })
 
@@ -200,7 +188,7 @@ export function CardsDrill({
   }, [answered, paused, question, answerMode, drillType, onRecord, next])
 
   const switchDrillType = useCallback((newType: CardsDrillType) => {
-    try { localStorage.setItem(drilltypeKey, newType) } catch {}
+    safeSet(drilltypeKey, newType)
     setDrillType(newType)
     const s = resetSession()
     setRoundStats(s.roundStats)
@@ -222,7 +210,7 @@ export function CardsDrill({
       const next = new Set(prev)
       if (next.has(suit)) next.delete(suit)
       else next.add(suit)
-      try { localStorage.setItem(suitsKey, JSON.stringify([...next])) } catch {}
+      safeSet(suitsKey, JSON.stringify([...next]))
       const nums = numbersForSuits(next)
       setDeckCount(prev => Math.min(prev, nums.length))
       const s = resetSession()
@@ -311,7 +299,7 @@ export function CardsDrill({
               onChange={e => {
                 const n = Number(e.target.value)
                 setDeckCount(n)
-                try { localStorage.setItem(deckCountKey, String(n)) } catch {}
+                safeSet(deckCountKey, String(n))
               }}
               className="w-36 accent-violet-500"
             />

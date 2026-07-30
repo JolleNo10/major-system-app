@@ -1,17 +1,12 @@
 import { useState } from 'react'
 import type { AnswerMode } from '../types'
-import { safeSet } from '../utils/storage'
+import { readString, safeSet } from '../utils/storage'
 
 const STORAGE_KEY = 'major-answer-mode'
 
 export function useAnswerMode() {
-  const [mode, setMode] = useState<AnswerMode>(() => {
-    try {
-      return localStorage.getItem(STORAGE_KEY) === 'typing' ? 'typing' : 'multiple-choice'
-    } catch {
-      return 'multiple-choice'
-    }
-  })
+  const [mode, setMode] = useState<AnswerMode>(() =>
+    readString(STORAGE_KEY) === 'typing' ? 'typing' : 'multiple-choice')
 
   const toggle = () => {
     const next: AnswerMode = mode === 'multiple-choice' ? 'typing' : 'multiple-choice'

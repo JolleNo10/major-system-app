@@ -4,8 +4,8 @@ import { useSettings } from '../../context/SettingsContext'
 import { MultipleChoice } from '../MultipleChoice'
 import { TypingInput } from '../TypingInput'
 import { PiBatchInput } from '../PiBatchInput'
-import { safeSet } from '../../utils/storage'
-import { shuffle, pickDistractors } from '../../utils/quiz'
+import { readString, safeSet } from '../../utils/storage'
+import { shuffle, pickDistractors, buildEncOptions } from '../../utils/quiz'
 import { summarizeBatchTimings, type BatchTiming } from '../../utils/numericInput'
 import { PI_PAIRS } from '../../data/piDigits'
 import type { AnswerMode } from '../../types'
@@ -26,15 +26,6 @@ type DrillType = 'word-chain' | 'number-quiz'
 type Phase = 'setup' | 'study' | 'recall' | 'number-quiz' | 'result'
 type AnswerSize = 1 | 10
 
-function readLS(key: string): string | null {
-  try { return localStorage.getItem(key) } catch { return null }
-}
-
-function wordMcOptions(number: string, words: Record<string, string>): string[] {
-  const others = pickDistractors(number, Object.keys(words))
-  return shuffle([words[number], ...others.map(n => words[n])])
-}
-
 function numberMcOptions(number: string, pool: string[]): string[] {
   const others = pickDistractors(number, pool)
   return shuffle([number, ...others])
@@ -52,23 +43,23 @@ export function PiDrill({ answerMode }: Props) {
   const settingsMaxPairs = Math.floor(settings.maxPiDigits / 2)
 
   const [drillType, setDrillType] = useState<DrillType>(() =>
-    readLS(DRILLTYPE_KEY) === 'number-quiz' ? 'number-quiz' : 'word-chain')
+    readString(DRILLTYPE_KEY) === 'number-quiz' ? 'number-quiz' : 'word-chain')
   const [answerSize, setAnswerSize] = useState<AnswerSize>(() =>
-    readLS(ANSWER_SIZE_KEY) === '10' ? 10 : 1)
+    readString(ANSWER_SIZE_KEY) === '10' ? 10 : 1)
 
   const [maxPiPairs, setMaxPiPairs] = useState<number>(() => {
-    const v = parseInt(readLS(MAX_PAIRS_KEY) ?? '', 10)
+    const v = parseInt(readString(MAX_PAIRS_KEY) ?? '', 10)
     const cap = Math.floor(settings.maxPiDigits / 2)
     return v >= 10 && v <= cap ? v : cap
   })
 
   // Range selection: anchor = first clicked pair (1-indexed), end = second clicked pair
   const [selAnchor, setSelAnchor] = useState<number | null>(() => {
-    const v = parseInt(readLS(SEL_START_KEY) ?? '', 10)
+    const v = parseInt(readString(SEL_START_KEY) ?? '', 10)
     return v >= 1 && v <= PI_PAIRS.length ? v : 1
   })
   const [selEnd, setSelEnd] = useState<number | null>(() => {
-    const v = parseInt(readLS(SEL_END_KEY) ?? '', 10)
+    const v = parseInt(readString(SEL_END_KEY) ?? '', 10)
     return v >= 1 && v <= PI_PAIRS.length ? v : 10
   })
 
@@ -180,7 +171,7 @@ export function PiDrill({ answerMode }: Props) {
       setWqAnswered(null)
       setWqCorrect(null)
       setWqNumberRevealed(false)
-      setWqOptions(wordMcOptions(sequence[next], words))
+      setWqOptions(buildEncOptions(sequence[next], words))
       return next
     })
   }, [sequence, words])
@@ -440,7 +431,7 @@ export function PiDrill({ answerMode }: Props) {
               setWqAnswered(null)
               setWqCorrect(null)
               setWqNumberRevealed(false)
-              setWqOptions(wordMcOptions(sequence[0], words))
+              setWqOptions(buildEncOptions(sequence[0], words))
               setPhase('recall')
             }}
             className="w-full py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold transition-colors"

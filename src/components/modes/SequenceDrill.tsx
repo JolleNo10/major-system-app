@@ -2,13 +2,9 @@ import { useState, useCallback } from 'react'
 import { useWords } from '../../context/WordsContext'
 import { MultipleChoice } from '../MultipleChoice'
 import { TypingInput } from '../TypingInput'
-import { safeSet } from '../../utils/storage'
-import { shuffle, pickDistractors } from '../../utils/quiz'
+import { readString, safeSet } from '../../utils/storage'
+import { shuffle, buildEncOptions } from '../../utils/quiz'
 import type { AnswerMode } from '../../types'
-
-function readLS(key: string): string | null {
-  try { return localStorage.getItem(key) } catch { return null }
-}
 
 // Sequence memory drill:
 //   setup  → pick length (2–20) + study mode
@@ -28,11 +24,6 @@ function generateSequence(words: Record<string, string>, length: number): string
   return shuffle(Object.keys(words)).slice(0, length)
 }
 
-function getMcOptions(number: string, words: Record<string, string>): string[] {
-  const others = pickDistractors(number, Object.keys(words))
-  return shuffle([words[number], ...others.map(n => words[n])])
-}
-
 interface Props {
   answerMode: AnswerMode
 }
@@ -41,11 +32,11 @@ export function SequenceDrill({ answerMode }: Props) {
   const { words } = useWords()
 
   const [length, setLength] = useState<number>(() => {
-    const v = parseInt(readLS(LEN_KEY) ?? '', 10)
+    const v = parseInt(readString(LEN_KEY) ?? '', 10)
     return Number.isFinite(v) && v >= MIN_LEN && v <= MAX_LEN ? v : 5
   })
   const [studyMode, setStudyMode] = useState<StudyMode>(() =>
-    readLS(MODE_KEY) === 'word-quiz' ? 'word-quiz' : 'number-only')
+    readString(MODE_KEY) === 'word-quiz' ? 'word-quiz' : 'number-only')
 
   const [phase, setPhase] = useState<Phase>('setup')
   const [sequence, setSequence] = useState<string[]>([])
@@ -70,7 +61,7 @@ export function SequenceDrill({ answerMode }: Props) {
     setRevealWord(false)
     setQuizAnswered(null)
     setQuizCorrect(null)
-    setQuizOptions(getMcOptions(seq[0], words))
+    setQuizOptions(buildEncOptions(seq[0], words))
     setRecallText('')
     setSubmitted([])
     setPhase('study')
@@ -86,7 +77,7 @@ export function SequenceDrill({ answerMode }: Props) {
       setRevealWord(false)
       setQuizAnswered(null)
       setQuizCorrect(null)
-      setQuizOptions(getMcOptions(sequence[next], words))
+      setQuizOptions(buildEncOptions(sequence[next], words))
       return next
     })
   }, [sequence, words])

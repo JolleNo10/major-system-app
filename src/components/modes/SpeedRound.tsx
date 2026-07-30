@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useWords } from '../../context/WordsContext'
 import { MultipleChoice } from '../MultipleChoice'
 import { TypingInput } from '../TypingInput'
-import { safeSet } from '../../utils/storage'
+import { readString, safeSet } from '../../utils/storage'
 import { shuffle, pickDistractors } from '../../utils/quiz'
 import type { AnswerMode } from '../../types'
 
@@ -34,9 +34,7 @@ export function SpeedRound({ answerMode }: Props) {
   const [question, setQuestion] = useState(() => makeQuestion(words))
   const [answered, setAnswered] = useState<string | null>(null)
   const [answeredCorrect, setAnsweredCorrect] = useState<boolean | null>(null)
-  const [personalBest, setPersonalBest] = useState(() => {
-    try { return parseInt(localStorage.getItem(BEST_KEY) ?? '0') } catch { return 0 }
-  })
+  const [personalBest, setPersonalBest] = useState(() => parseInt(readString(BEST_KEY) ?? '0') || 0)
   const [beatBest, setBeatBest] = useState(false)
 
   const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
