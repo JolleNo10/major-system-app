@@ -1,9 +1,9 @@
 import type { AllStats, Direction, AnswerMode } from '../types'
 import {
   loadStore, saveStore, getItem, setItem, itemKey,
-  medianMs, SLOW_MS, OUTLIER_MS, MAX_LATENCIES,
-  type ItemRecord,
+  medianMs, type ItemRecord,
 } from '../data/itemStore'
+import { SLOW_MS, OUTLIER_MS, MAX_LATENCIES } from '../data/scoring'
 import { addAttempt } from '../data/attemptStore'
 import { gradeAnswer, applySm2 } from '../data/sm2'
 import { adjustLatency, recordTypingSpeed } from '../data/typingSpeed'

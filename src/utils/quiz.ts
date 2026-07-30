@@ -1,5 +1,5 @@
 import { loadStore, itemKey, medianMs } from '../data/itemStore'
-import { RECALL_SLOW_MS } from '../data/typingSpeed'
+import { RECALL_SLOW_MS, DEFAULT_EASE, MIN_EASE } from '../data/scoring'
 import type { Direction } from '../types'
 
 // Shared quiz helpers used across the drills.
@@ -36,8 +36,6 @@ export function buildDecOptions(number: string, words: Record<string, string>): 
 // Weighted spaced-repetition pick for one direction. Weight rises with wrong
 // rate, SM-2 ease penalty, and slow median recall; unseen items get a flat 1.5;
 // already-mastered-this-round items are de-prioritised.
-const DEFAULT_EASE = 2.5
-const MIN_EASE = 1.3
 export function pickWeighted(dir: Direction, available: string[], masteredSet: Set<string>): string {
   if (available.length === 1) return available[0]
   const store = loadStore()

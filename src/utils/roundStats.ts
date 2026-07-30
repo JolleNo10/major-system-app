@@ -1,4 +1,4 @@
-import { OUTLIER_MS } from '../data/itemStore'
+import { OUTLIER_MS } from '../data/scoring'
 
 // Per-round, in-memory stats for a single number/card. Ephemeral (not persisted)
 // — SM-2 owns the durable per-item record; this drives the round mastery UI.

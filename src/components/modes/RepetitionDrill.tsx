@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useWords } from '../../context/WordsContext'
 import { useStats, buildRepQueue, getNextDueMs } from '../../hooks/useStats'
-import { FAST_MS, SLOW_MS } from '../../data/itemStore'
+import { FAST_MS, SLOW_MS } from '../../data/scoring'
 import { MultipleChoice } from '../MultipleChoice'
 import { TypingInput } from '../TypingInput'
 import { ScoreBar } from '../ScoreBar'

@@ -1,5 +1,6 @@
 import { loadStore, medianMs } from '../data/itemStore'
-import { recallColor, RECALL_SLOW_MS } from '../data/typingSpeed'
+import { RECALL_SLOW_MS } from '../data/scoring'
+import { recallColor } from '../utils/recallColor'
 import { isMastered, masteryProgress, masteryFastMs } from '../utils/roundMastery'
 import { useSettings } from '../context/SettingsContext'
 import type { RoundStat } from '../utils/roundStats'

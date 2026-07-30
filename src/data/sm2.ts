@@ -1,5 +1,6 @@
 import type { AnswerMode } from '../types'
-import { FAST_MS, SLOW_MS, DAY_MS, type ItemRecord } from './itemStore'
+import { DAY_MS, type ItemRecord } from './itemStore'
+import { FAST_MS, SLOW_MS, MIN_EASE } from './scoring'
 
 export function gradeAnswer(correct: boolean, ms: number, answerMode: AnswerMode): number {
   if (!correct) return 2
@@ -15,7 +16,7 @@ export function applySm2(item: ItemRecord, grade: number): ItemRecord {
       ...item,
       reps: 0,
       intervalDays: 0,
-      ease: Math.max(1.3, item.ease - 0.2),
+      ease: Math.max(MIN_EASE, item.ease - 0.2),
       dueAt: now,
       lastSeenAt: now,
     }
@@ -26,7 +27,7 @@ export function applySm2(item: ItemRecord, grade: number): ItemRecord {
     : reps === 2 ? 3
     : Math.round(item.intervalDays * item.ease)
   const ease = Math.max(
-    1.3,
+    MIN_EASE,
     item.ease + (0.1 - (5 - grade) * (0.08 + (5 - grade) * 0.02)),
   )
   return {

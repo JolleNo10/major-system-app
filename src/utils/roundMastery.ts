@@ -1,4 +1,4 @@
-import { RECALL_FAST_MS } from '../data/typingSpeed'
+import { RECALL_FAST_MS } from '../data/scoring'
 import type { RoundStat } from './roundStats'
 
 // "Known well" this round = answered correctly + fast enough + un-hinted on the

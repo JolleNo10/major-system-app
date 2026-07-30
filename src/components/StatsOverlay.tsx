@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { useWords } from '../context/WordsContext'
 import { rankByWeakness } from '../utils/numberStats'
-import { recallColor } from '../data/typingSpeed'
+import { recallColor } from '../utils/recallColor'
 import { useOverlay } from '../hooks/useOverlay'
 import type { Direction } from '../types'
 

@@ -1,5 +1,6 @@
 import type { Direction } from '../types'
-import { loadStore, getItem, medianMs, SLOW_MS } from '../data/itemStore'
+import { loadStore, getItem, medianMs } from '../data/itemStore'
+import { SLOW_MS, DEFAULT_EASE, MIN_EASE } from '../data/scoring'
 
 // All-time per-number weakness ranking for one direction.
 // "Worst" is biased toward RECENT performance, not lifetime history:
@@ -9,8 +10,6 @@ import { loadStore, getItem, medianMs, SLOW_MS } from '../data/itemStore'
 //   - residual — lifetime wrongRate, but DECAYED by the current correct streak so
 //     old mistakes fade as you relearn a number (and snap back on the next miss).
 // This keeps ~80% of the weight on recent behaviour vs the old 60% lifetime wrongRate.
-const DEFAULT_EASE = 2.5
-const MIN_EASE = 1.3
 const STREAK_THRESHOLD = 2      // reps that count as "currently solid" (for the 🔥 cue)
 const DECAY_PER_REP = 0.8       // residual halves ~every 3 consecutive correct answers
 

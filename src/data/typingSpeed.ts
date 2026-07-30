@@ -1,5 +1,4 @@
 import type { AnswerMode } from '../types'
-import { FAST_MS, SLOW_MS } from './itemStore'
 import { safeSet } from '../utils/storage'
 
 // Typing speed compensation.
@@ -21,11 +20,6 @@ const MIN_MS_PER_CHAR = 50
 const MAX_MS_PER_CHAR = 500
 const ALPHA_DOWN = 0.25  // adapt quickly toward a faster (lower) per-char time
 const ALPHA_UP = 0.05    // drift back up only slowly
-
-// Recall-time thresholds (typing time removed) — same scale as multiple choice,
-// which is pure recall with no typing.
-export const RECALL_FAST_MS = FAST_MS['multiple-choice']
-export const RECALL_SLOW_MS = SLOW_MS['multiple-choice']
 
 function clamp(v: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, v))
@@ -59,10 +53,4 @@ export function adjustLatency(rawMs: number, answerMode: AnswerMode, chars: numb
   if (answerMode !== 'typing' || chars <= 0) return rawMs
   const typingMs = getMsPerChar(chars) * chars
   return Math.max(rawMs - typingMs, Math.round(rawMs * 0.2))
-}
-
-export function recallColor(adjMs: number): string {
-  if (adjMs <= RECALL_FAST_MS) return 'text-green-400'
-  if (adjMs >= RECALL_SLOW_MS) return 'text-red-400'
-  return 'text-yellow-400'
 }

@@ -1,5 +1,6 @@
-import type { Direction, AnswerMode } from '../types'
+import type { Direction } from '../types'
 import { safeSet } from '../utils/storage'
+import { DEFAULT_EASE } from './scoring'
 
 export interface Attempt {
   at: number    // epoch ms when answered
@@ -20,35 +21,21 @@ export interface ItemRecord {
 }
 
 export const STORAGE_KEY = 'major-item-data'
-export const MAX_LATENCIES = 10
-export const OUTLIER_MS = 30_000
-export const STALE_MS = 60_000  // answer discarded above this (idle / walked away)
 export const DAY_MS = 86_400_000
 
-// Per-answer history retention. 90 days ≈ 6 half-lives of a ~2-week forgetting
-// curve (so nothing meaningfully weighted is dropped) and spans several reviews
-// of a mature SM-2 item. HISTORY_HALFLIFE_DAYS is the decay used when weighting
-// older answers/mistakes by age. HISTORY_MAX is a hard guardrail on array size.
+// Per-answer history retention (attemptStore GC). 90 days ≈ 6 half-lives of a
+// ~2-week forgetting curve (so nothing meaningfully weighted is dropped) and
+// spans several reviews of a mature SM-2 item. HISTORY_MAX is a hard guardrail
+// on array size. (The age-weighting half-life lives in data/scoring.ts.)
 export const HISTORY_RETENTION_DAYS = 90
-export const HISTORY_HALFLIFE_DAYS = 14
 export const HISTORY_MAX = 200
-
-// Latency thresholds per answer mode
-export const FAST_MS: Record<AnswerMode, number> = {
-  'multiple-choice': 1200,
-  'typing': 1500,
-}
-export const SLOW_MS: Record<AnswerMode, number> = {
-  'multiple-choice': 2000,
-  'typing': 2500,
-}
 
 const DEFAULTS: ItemRecord = {
   correct: 0,
   wrong: 0,
   latencies: [],
   hintCount: 0,
-  ease: 2.5,
+  ease: DEFAULT_EASE,
   intervalDays: 0,
   dueAt: 0,
   lastSeenAt: 0,
@@ -95,7 +82,7 @@ export function clearSchedules(): void {
   const store = loadStore()
   const cleared: Record<string, ItemRecord> = {}
   for (const [k, v] of Object.entries(store)) {
-    cleared[k] = { ...v, ease: 2.5, intervalDays: 0, dueAt: 0, lastSeenAt: 0, reps: 0 }
+    cleared[k] = { ...v, ease: DEFAULT_EASE, intervalDays: 0, dueAt: 0, lastSeenAt: 0, reps: 0 }
   }
   saveStore(cleared)
 }

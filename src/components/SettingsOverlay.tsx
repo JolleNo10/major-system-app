@@ -5,7 +5,7 @@ import {
   MAX_PI_DIGITS_MIN, MAX_PI_DIGITS_STEP,
 } from '../data/settings'
 import { masteryFastMs, MASTERY_REPS } from '../utils/roundMastery'
-import { RECALL_SLOW_MS } from '../data/typingSpeed'
+import { RECALL_SLOW_MS } from '../data/scoring'
 import { useOverlay } from '../hooks/useOverlay'
 import { PI_PAIRS } from '../data/piDigits'
 import { Switch } from './Switch'
