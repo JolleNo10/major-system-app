@@ -2,22 +2,8 @@ import { loadStore, medianMs } from '../data/itemStore'
 import { recallColor, RECALL_SLOW_MS } from '../data/typingSpeed'
 import { isMastered, masteryProgress, masteryFastMs } from '../utils/roundMastery'
 import { useSettings } from '../context/SettingsContext'
+import type { RoundStat } from '../utils/roundStats'
 import type { Direction } from '../types'
-
-export interface RoundAttempt {
-  ok: boolean       // correct
-  recallMs: number  // recall-adjusted latency (typing time removed)
-  hinted: boolean   // a hint was used
-}
-
-export interface RoundStat {
-  correct: number
-  wrong: number
-  lastMs?: number         // recall-adjusted (typing time removed)
-  latencies: number[]     // this round only, recall-adjusted
-  hintCount: number       // this round only
-  attempts: RoundAttempt[] // last ~5 attempts this round (for mastery)
-}
 
 interface Props {
   stats: Record<string, RoundStat>

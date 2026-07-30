@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { isMastered } from './roundMastery'
-import type { RoundStat, RoundAttempt } from '../components/RoundStatsPanel'
+import type { RoundStat, RoundAttempt } from './roundStats'
 
 const FAST = 1680
 

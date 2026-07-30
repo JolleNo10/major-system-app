@@ -4,14 +4,14 @@ import { useAnswerTimer } from '../../hooks/useAnswerTimer'
 import { MultipleChoice } from '../MultipleChoice'
 import { TypingInput } from '../TypingInput'
 import { ScoreBar } from '../ScoreBar'
-import { OUTLIER_MS, STALE_MS } from '../../data/itemStore'
+import { STALE_MS } from '../../data/itemStore'
 import { adjustLatency, recallColor } from '../../data/typingSpeed'
 import { masteryProgress, masteryFastMs } from '../../utils/roundMastery'
 import { shuffle, pickDistractors, pickWeighted } from '../../utils/quiz'
+import { applyRoundAttempt, type RoundStat } from '../../utils/roundStats'
 import { matchesAnswer } from '../../utils/answerMatch'
 import { CARDS } from '../../data/cards'
 import type { Card, Suit } from '../../data/cards'
-import type { RoundStat } from '../RoundStatsPanel'
 import type { AnswerMode, Direction } from '../../types'
 import { DeckMemoDrill } from './DeckMemoDrill'
 
@@ -193,24 +193,9 @@ export function CardsDrill({
       setStreak(0)
     }
 
-    setRoundStats(prev => {
-      const num = question.card.number
-      const entry = prev[num] ?? { correct: 0, wrong: 0, latencies: [], hintCount: 0, attempts: [] }
-      const validMs = ms > 0 && ms < OUTLIER_MS
-      const attempt = { ok: correct, recallMs: adjusted, hinted: false }
-      return {
-        ...prev,
-        [num]: {
-          ...entry,
-          correct: entry.correct + (correct ? 1 : 0),
-          wrong: entry.wrong + (correct ? 0 : 1),
-          lastMs: adjusted,
-          latencies: validMs ? [...entry.latencies, adjusted] : entry.latencies,
-          hintCount: entry.hintCount,
-          attempts: [...entry.attempts, attempt].slice(-5),
-        },
-      }
-    })
+    setRoundStats(prev => applyRoundAttempt(prev, question.card.number, {
+      ok: correct, rawMs: ms, adjustedMs: adjusted, hinted: false,
+    }))
     setTimeout(() => next(question.card.number), 1500)
   }, [answered, paused, question, answerMode, drillType, onRecord, next])
 

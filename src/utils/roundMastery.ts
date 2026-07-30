@@ -1,5 +1,5 @@
 import { RECALL_FAST_MS } from '../data/typingSpeed'
-import type { RoundStat } from '../components/RoundStatsPanel'
+import type { RoundStat } from './roundStats'
 
 // "Known well" this round = answered correctly + fast enough + un-hinted on the
 // last MASTERY_REPS attempts in a row. The speed bar is adjustable in Settings

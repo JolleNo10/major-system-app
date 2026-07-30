@@ -21,6 +21,18 @@ export function pickDistractors(target: string, allNums: string[], count = 2): s
   return [...sameDecade, ...others].slice(0, count)
 }
 
+// Multiple-choice option sets for the two number↔word directions. Both put the
+// correct answer in with same-decade-biased distractors, then shuffle.
+export function buildEncOptions(number: string, words: Record<string, string>): string[] {
+  const dist = pickDistractors(number, Object.keys(words))
+  return shuffle([words[number], ...dist.map(n => words[n])])
+}
+
+export function buildDecOptions(number: string, words: Record<string, string>): string[] {
+  const dist = pickDistractors(number, Object.keys(words))
+  return shuffle([number, ...dist])
+}
+
 // Weighted spaced-repetition pick for one direction. Weight rises with wrong
 // rate, SM-2 ease penalty, and slow median recall; unseen items get a flat 1.5;
 // already-mastered-this-round items are de-prioritised.

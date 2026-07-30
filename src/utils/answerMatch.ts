@@ -13,3 +13,9 @@ export function matchesAnswer(input: string, answer: string): boolean {
   const a = answer.trim().toLowerCase()
   return v === a || v === firstWord(a)
 }
+
+// Number matching for the decode direction. Zero-pads so a single digit is
+// accepted for 0–9 (e.g. "7" for "07").
+export function matchesNumber(input: string, number: string): boolean {
+  return input.trim().padStart(number.length, '0') === number
+}
