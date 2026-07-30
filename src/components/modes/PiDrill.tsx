@@ -8,6 +8,10 @@ import { readString, safeSet } from '../../utils/storage'
 import { shuffle, pickDistractors, buildEncOptions } from '../../utils/quiz'
 import { summarizeBatchTimings, type BatchTiming } from '../../utils/numericInput'
 import { PI_PAIRS } from '../../data/piDigits'
+import { addAttemptRaw } from '../../data/attemptStore'
+import {
+  loadPiSessions, addPiSession, bestFromStartReach, type PiSession,
+} from '../../data/piStats'
 import type { AnswerMode } from '../../types'
 
 // Two drill modes:
@@ -87,6 +91,10 @@ export function PiDrill({ answerMode }: Props) {
   const nqStartedAtRef = useRef<number>(0)
   const previousAnswerModeRef = useRef(answerMode)
   const historyEndRef = useRef<HTMLDivElement>(null)
+  const sessionRecordedRef = useRef(false)
+
+  // Persisted Pi run history (number-quiz only), for the setup panel + result.
+  const [piSessions, setPiSessions] = useState<PiSession[]>(() => loadPiSessions())
 
   const [wqResults, setWqResults] = useState<NqResult[]>([])
   const wqHistoryEndRef = useRef<HTMLDivElement>(null)
@@ -140,6 +148,7 @@ export function PiDrill({ answerMode }: Props) {
     const seq = PI_PAIRS.slice(selAnchor - 1, selEnd)
     setSequence(seq)
     setSessionAnchor(selAnchor)
+    sessionRecordedRef.current = false
 
     if (drillType === 'word-chain') {
       setStudyIdx(0)
@@ -189,6 +198,14 @@ export function PiDrill({ answerMode }: Props) {
   // ── number-quiz handlers ──────────────────────────────────────────────────
   const advanceNumberQuiz = useCallback((typedValues: string[], correctness: boolean[], ms: number) => {
     const isSinglePair = typedValues.length === 1
+    // Per-position weak-spot log (fire-and-forget), one attempt per answered pair.
+    // Runs for every answer so even abandoned runs contribute weak-spot data.
+    const at = Date.now()
+    const perPairMs = isSinglePair ? ms : ms / typedValues.length
+    typedValues.forEach((_, index) => {
+      const pos = sessionAnchor + nqIdx + index
+      void addAttemptRaw(`pi:${pos}`, { at, ok: correctness[index], ms: perPairMs })
+    })
     setNqResults(prev => [
       ...prev,
       ...typedValues.map((typed, index) => ({
@@ -212,7 +229,7 @@ export function PiDrill({ answerMode }: Props) {
         setNqIdx(nextIdx)
       }, delay)
     }
-  }, [nqIdx, sequence])
+  }, [nqIdx, sequence, sessionAnchor])
 
   const handleNumberAnswer = useCallback((value: string) => {
     if (nqAnswered !== null) return
@@ -245,6 +262,32 @@ export function PiDrill({ answerMode }: Props) {
   const nqSlowestMs = nqTimingStats.slowestBatchMs
   const nqAccuracy = nqAnsweredCount > 0 ? Math.round((nqCorrectCount / nqAnsweredCount) * 100) : 0
   const nqMistakes = nqAnsweredCount - nqCorrectCount
+  // Reach = consecutive correct pairs from the start of the range (hero metric).
+  const nqReach = (() => {
+    let n = 0
+    for (const r of nqResults) { if (r.ok) n++; else break }
+    return n
+  })()
+
+  // Record the session summary once, when a number-quiz run reaches its result.
+  useEffect(() => {
+    if (phase !== 'result' || drillType !== 'number-quiz' || sessionRecordedRef.current) return
+    sessionRecordedRef.current = true
+    addPiSession({
+      at: Date.now(),
+      anchor: sessionAnchor,
+      pairs: sequence.length,
+      correctPairs: nqCorrectCount,
+      reach: nqReach,
+      totalMs: nqTotalMs,
+      pairsPerSec: nqPairsPerSec,
+      accuracy: nqAccuracy,
+      answerMode,
+      answerSize,
+    })
+    setPiSessions(loadPiSessions())
+  }, [phase, drillType, sessionAnchor, sequence.length, nqCorrectCount, nqReach,
+      nqTotalMs, nqPairsPerSec, nqAccuracy, answerMode, answerSize])
 
   const formatSec = (ms: number) => `${(ms / 1000).toFixed(ms < 10_000 ? 2 : 1)}s`
   const formatRate = (rate: number) => rate.toFixed(rate < 10 ? 2 : 1)
@@ -404,6 +447,53 @@ export function PiDrill({ answerMode }: Props) {
             disabled={selAnchor === null || selEnd === null}
             className="w-full py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold transition-colors"
           >Start →</button>
+        </div>
+      )}
+
+      {/* ── PI RUN HISTORY (number-quiz only) ── */}
+      {phase === 'setup' && piSessions.length > 0 && (
+        <div className={`w-full max-w-lg space-y-4 p-6 ${panelCls}`}>
+          <div className="flex items-baseline justify-between">
+            <span className="text-sm font-medium text-zinc-300">Your runs</span>
+            <span className="text-xs text-zinc-600 tabular-nums">{piSessions.length} recorded</span>
+          </div>
+
+          {/* Best-run headline */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-lg border border-cyan-500/30 bg-cyan-600/10 px-3 py-2">
+              <div className="text-[10px] uppercase tracking-wider text-cyan-600">Best from π #1</div>
+              <div className="mt-0.5 font-mono text-lg font-bold tabular-nums text-cyan-300">
+                {bestFromStartReach(piSessions) * 2} digits of π
+              </div>
+            </div>
+            <div className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2">
+              <div className="text-[10px] uppercase tracking-wider text-zinc-600">Best pairs/sec</div>
+              <div className="mt-0.5 font-mono text-lg font-bold tabular-nums text-zinc-100">
+                {formatRate(Math.max(...piSessions.map(s => s.pairsPerSec)))}
+              </div>
+            </div>
+          </div>
+
+          {/* Recent runs */}
+          <div className="space-y-0.5">
+            {[...piSessions].slice(-8).reverse().map(s => (
+              <div key={s.at} className="flex items-center gap-2 px-2 py-1.5 rounded text-xs">
+                <span className="text-zinc-600 tabular-nums shrink-0 w-16">
+                  {new Date(s.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                </span>
+                <span className="font-mono text-zinc-400 tabular-nums shrink-0 w-20">
+                  π #{s.anchor}–{s.anchor + s.pairs - 1}
+                </span>
+                <span className="text-cyan-400 tabular-nums shrink-0" title="Reach (consecutive correct from start)">
+                  ⟶ {s.reach * 2}d
+                </span>
+                <span className="ml-auto flex items-center gap-2.5 tabular-nums shrink-0">
+                  <span className={s.accuracy === 100 ? 'text-green-400' : 'text-zinc-400'}>{s.accuracy}%</span>
+                  <span className="text-zinc-500 font-mono w-10 text-right">{formatRate(s.pairsPerSec)}/s</span>
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -619,6 +709,7 @@ export function PiDrill({ answerMode }: Props) {
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {([
+              ['Reach', `${nqReach * 2} digits`],
               ['Total time', formatSec(nqTotalMs)],
               ['Pairs/sec', formatRate(nqPairsPerSec)],
               ['Avg / pair', formatSec(nqAvgMs)],

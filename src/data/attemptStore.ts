@@ -89,12 +89,13 @@ async function migrateOnce(db: IDBDatabase): Promise<void> {
   }
 }
 
-// Append one attempt and prune this item's history (time window + hard cap).
-export async function addAttempt(dir: Direction, num: string, attempt: Attempt): Promise<void> {
+// Append one attempt under a raw key and prune that key's history
+// (time window + hard cap). `key` is any string namespace (e.g. "enc:07" or
+// "pi:42") — same store, indexes, and per-key pruning for all of them.
+export async function addAttemptRaw(key: string, attempt: Attempt): Promise<void> {
   if (!hasIdb) return
   try {
     const db = await getDb()
-    const key = itemKey(dir, num)
     const tx = db.transaction(STORE, 'readwrite')
     const os = tx.objectStore(STORE)
     os.add({ key, at: attempt.at, ok: attempt.ok, ms: attempt.ms } as AttemptRecord)
@@ -131,11 +132,15 @@ export async function addAttempt(dir: Direction, num: string, attempt: Attempt):
   }
 }
 
-export async function getAttempts(dir: Direction, num: string): Promise<Attempt[]> {
+// Item-keyed convenience wrapper (direction + number → "enc:07").
+export function addAttempt(dir: Direction, num: string, attempt: Attempt): Promise<void> {
+  return addAttemptRaw(itemKey(dir, num), attempt)
+}
+
+export async function getAttemptsForKey(key: string): Promise<Attempt[]> {
   if (!hasIdb) return []
   try {
     const db = await getDb()
-    const key = itemKey(dir, num)
     const idx = db.transaction(STORE, 'readonly').objectStore(STORE).index('by_key_at')
     const range = IDBKeyRange.bound([key], [key, []])
     const recs = await reqToPromise(idx.getAll(range))
@@ -143,6 +148,10 @@ export async function getAttempts(dir: Direction, num: string): Promise<Attempt[
   } catch {
     return []
   }
+}
+
+export function getAttempts(dir: Direction, num: string): Promise<Attempt[]> {
+  return getAttemptsForKey(itemKey(dir, num))
 }
 
 export async function getAllAttempts(): Promise<Array<{ key: string } & Attempt>> {

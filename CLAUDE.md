@@ -31,7 +31,8 @@ docker run --rm -v "$(pwd)":/app -w /app node:20-alpine sh -c "npx tsc -b && npx
 | Store | Where | Contents |
 |-------|-------|----------|
 | `major-item-data` | localStorage | `Record<"enc:NN"\|"dec:NN", ItemRecord>` — per-number/direction SM-2 stats (correct/wrong, rolling `latencies` (last 10), `ease`, `intervalDays`, `dueAt`, `lastSeenAt`, `reps`, `hintCount`) |
-| `major-system` (db) → `attempts` store | **IndexedDB** | Per-answer log `{id, key:"enc:07", at, ok, ms}`, pruned to 90 days / 200 per item. Written on every answer; read API exists but is not consumed yet (future age-decay/analytics) |
+| `major-system` (db) → `attempts` store | **IndexedDB** | Per-answer log `{id, key:"enc:07", at, ok, ms}`, pruned to 90 days / 200 per key. Written on every answer. Keys are usually `"enc:NN"`/`"dec:NN"` but the same store also holds Pi's `"pi:<position>"` per-position log (`data/piStats.ts`). Read via `getAllAttempts` (Pi weak-spots); the number-drill read path is otherwise unconsumed (future age-decay) |
+| `major-pi-sessions` | localStorage | Pi number-quiz run summaries (`PiSession[]`, capped 50) — reach, accuracy, pairs/sec per completed run (`data/piStats.ts`) |
 | `major-word-saved` | localStorage | Committed custom words (layer 2) |
 | `major-word-overrides` | localStorage | Trial/pending word edits (layer 3, shown yellow) |
 | `major-settings` | localStorage | `{ masteryLatencyFactor, maxPiDigits, offlineMode }` |
@@ -86,7 +87,9 @@ list is fully separate from the major list. `WordListGrid` is prop-driven (`stor
   `EncodingDrill`/`DecodingDrill` are ~25-line `DrillConfig` wrappers over it (direction, prompt styling,
   matcher, hint toggle). `SoundKeyDrill`, `ReverseSoundKeyDrill`, `SequenceDrill` (setup→study→recall→result),
   `SpeedRound`, `WeakSpots` (feeds a weak-number `pool` into `EncodingDrill`), `RepetitionDrill` (SM-2 due queue),
-  `PiDrill`. **Cards:** `CardsDrill` is prop-driven (`words`/`drillTypes`/`onRecord`/`storagePrefix`/`onEditWords`)
+  `PiDrill` (its **number-quiz** drill records metrics via `data/piStats.ts`: per-position attempts under `pi:<position>`
+  keys + a `PiSession` summary per run; setup screen shows a run-history/best-runs panel, result adds a Reach tile; word-chain records nothing).
+  **Cards:** `CardsDrill` is prop-driven (`words`/`drillTypes`/`onRecord`/`storagePrefix`/`onEditWords`)
   and hosts Card→Word / Card→Number / `DeckMemoDrill`; two thin wrappers select the word source —
   `MajorCardsDrill` (`cards` mode: `useWords` + records to global stats, all 3 drill types) and
   `ThemedCardsDrill` (`themed-cards` mode: `useCardWords`, Card→Word + Deck Memo only, no stats, opens `CardWordsOverlay`).
@@ -97,7 +100,7 @@ list is fully separate from the major list. `WordListGrid` is prop-driven (`stor
   button, and scroll body; callers pass `ariaLabel`/`header`/`maxWidth`/children (`TabButton` is the shared
   header tab). Overlays: `ReferenceOverlay` (sound key + major `WordListGrid`), `CardWordsOverlay` (Themed Deck
   word list, suit-grouped), `SettingsOverlay` (mastery tolerance, max π digits, offline mode + version/update),
-  `StatsOverlay` (worst-first ranking per direction).
+  `StatsOverlay` (worst-first ranking per direction, plus a **🥧 π tab** that async-loads Pi weak positions + run summary).
 - **`hooks/`** — `useStats` (`recordFull` records item-data + attempts and returns its grade; `getStats`
   derives direction-less aggregates from item-data; `buildRepQueue`, `getDueCount`, `getNextDueMs`),
   `useAnswerMode`, `useAnswerTimer` (active-elapsed timer/pause/STALE-discard),
@@ -112,7 +115,9 @@ list is fully separate from the major list. `WordListGrid` is prop-driven (`stor
 - **`data/`** — `words.csv`+`words.ts`, `cardWords.csv`+`cardWords.ts` (Themed Deck, 52 cards; clubs 01–13 seed
   from the major defaults), `wordsCsv.ts` (shared CSV parse/serialize), `cards.ts` (52-card deck), `soundKey.ts`,
   `scoring.ts` (all scoring/latency constants), `itemStore.ts` (ItemRecord + load/save + storage config),
-  `attemptStore.ts` (IndexedDB), `sm2.ts`, `typingSpeed.ts`, `settings.ts`.
+  `attemptStore.ts` (IndexedDB; `addAttempt`/`getAttempts` are item-keyed wrappers over the raw-key
+  `addAttemptRaw`/`getAttemptsForKey` primitives), `piStats.ts` (Pi run summaries + per-position aggregation),
+  `sm2.ts`, `typingSpeed.ts`, `settings.ts`.
 
 ## Conventions & gotchas
 - **Read this file first in fresh contexts and keep it updated** when workflow, architecture, commands,
@@ -135,8 +140,9 @@ list is fully separate from the major list. `WordListGrid` is prop-driven (`stor
   Serve over HTTPS/localhost (secure context) or the SW won't register.
 - **Known remaining work:** `PiDrill` (~640 lines) and `CardsDrill` still concentrate the complex nested
   conditionals and would benefit from extracting their phase/answer state into hooks; `RepetitionDrill`/`PiDrill`/
-  `SpeedRound` still use their own timing instead of `useAnswerTimer`. The IndexedDB `attempts` log is
-  write-only (age-based decay in `numberStats` not wired yet — `HISTORY_HALFLIFE_DAYS` is the intended knob).
+  `SpeedRound` still use their own timing instead of `useAnswerTimer`. Age-based decay in `numberStats` is not
+  wired yet (`HISTORY_HALFLIFE_DAYS` is the intended knob); the number-drill `attempts` read path stays unconsumed
+  (Pi's per-position log is the first consumer, via `getAllAttempts`).
 
 ## Ignore in context
 `node_modules/` `dist/` `.vite/`
