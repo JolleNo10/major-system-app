@@ -1,4 +1,3 @@
-import { useRef } from 'react'
 import { useSettings } from '../context/SettingsContext'
 import {
   MASTERY_FACTOR_MIN, MASTERY_FACTOR_MAX, MASTERY_FACTOR_STEP, DEFAULT_SETTINGS,
@@ -6,7 +5,7 @@ import {
 } from '../data/settings'
 import { masteryFastMs, MASTERY_REPS } from '../utils/roundMastery'
 import { RECALL_SLOW_MS } from '../data/scoring'
-import { useOverlay } from '../hooks/useOverlay'
+import { Overlay } from './Overlay'
 import { PI_PAIRS } from '../data/piDigits'
 import { Switch } from './Switch'
 import type { PwaUpdate } from '../hooks/usePwaUpdate'
@@ -18,8 +17,6 @@ interface Props {
 
 export function SettingsOverlay({ onClose, pwa }: Props) {
   const { settings, update } = useSettings()
-  const ref = useRef<HTMLDivElement>(null)
-  useOverlay(ref, onClose)
 
   const factor = settings.masteryLatencyFactor
   const limitS = (masteryFastMs(factor) / 1000).toFixed(1)
@@ -37,21 +34,13 @@ export function SettingsOverlay({ onClose, pwa }: Props) {
       : 'Up to date'
 
   return (
-    <div ref={ref} role="dialog" aria-modal="true" aria-label="Settings" tabIndex={-1} className="fixed inset-0 z-50 flex flex-col bg-zinc-950 animate-fade-in outline-none">
-      <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-zinc-800 shrink-0">
-        <h2 className="font-bold text-zinc-100 text-lg">⚙️ Settings</h2>
-        <button
-          onClick={onClose}
-          className="w-10 h-10 flex items-center justify-center rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors text-xl"
-          title="Close (Esc)"
-          aria-label="Close"
-        >
-          ×
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-xl mx-auto px-4 sm:px-6 py-6 space-y-8">
+    <Overlay
+      onClose={onClose}
+      ariaLabel="Settings"
+      header={<h2 className="font-bold text-zinc-100 text-lg">⚙️ Settings</h2>}
+      maxWidth="max-w-xl"
+      bodyClassName="space-y-8"
+    >
 
           <section>
             <div className="flex items-baseline justify-between mb-1">
@@ -164,9 +153,6 @@ export function SettingsOverlay({ onClose, pwa }: Props) {
               )}
             </div>
           </section>
-
-        </div>
-      </div>
-    </div>
+    </Overlay>
   )
 }

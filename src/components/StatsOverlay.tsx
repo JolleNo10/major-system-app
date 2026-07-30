@@ -1,8 +1,8 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useWords } from '../context/WordsContext'
 import { rankByWeakness } from '../utils/numberStats'
 import { recallColor } from '../utils/recallColor'
-import { useOverlay } from '../hooks/useOverlay'
+import { Overlay, TabButton } from './Overlay'
 import type { Direction } from '../types'
 
 interface Props {
@@ -12,45 +12,20 @@ interface Props {
 export function StatsOverlay({ onClose }: Props) {
   const { words } = useWords()
   const [tab, setTab] = useState<Direction>('enc')
-  const ref = useRef<HTMLDivElement>(null)
-  useOverlay(ref, onClose)
 
   const nums = Object.keys(words).sort()
   const ranked = rankByWeakness(tab, nums)
   const practiced = ranked.filter(s => s.tested).length
 
-  const tabBtn = (value: Direction, label: string) => (
-    <button
-      onClick={() => setTab(value)}
-      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-        tab === value
-          ? 'bg-violet-600 text-white'
-          : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
-      }`}
-    >
-      {label}
-    </button>
+  const header = (
+    <div className="flex gap-2">
+      <TabButton active={tab === 'enc'} onClick={() => setTab('enc')}>🔢 Encoding</TabButton>
+      <TabButton active={tab === 'dec'} onClick={() => setTab('dec')}>🔤 Decoding</TabButton>
+    </div>
   )
 
   return (
-    <div ref={ref} role="dialog" aria-modal="true" aria-label="Stats" tabIndex={-1} className="fixed inset-0 z-50 flex flex-col bg-zinc-950 animate-fade-in outline-none">
-      <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-zinc-800 shrink-0">
-        <div className="flex gap-2">
-          {tabBtn('enc', '🔢 Encoding')}
-          {tabBtn('dec', '🔤 Decoding')}
-        </div>
-        <button
-          onClick={onClose}
-          className="w-9 h-9 flex items-center justify-center rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors text-xl"
-          title="Close (Esc)"
-          aria-label="Close"
-        >
-          ×
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6">
+    <Overlay onClose={onClose} ariaLabel="Stats" header={header}>
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
               Worst first
@@ -90,8 +65,6 @@ export function StatsOverlay({ onClose }: Props) {
               </div>
             ))}
           </div>
-        </div>
-      </div>
-    </div>
+    </Overlay>
   )
 }

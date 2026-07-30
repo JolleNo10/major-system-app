@@ -1,7 +1,6 @@
-import { useRef } from 'react'
 import { WordListGrid } from './WordListGrid'
+import { Overlay } from './Overlay'
 import { useCardWords } from '../context/CardWordsContext'
-import { useOverlay } from '../hooks/useOverlay'
 import { CARDS, CARD_NUMBERS } from '../data/cards'
 import type { Suit } from '../data/cards'
 
@@ -34,36 +33,23 @@ interface Props {
 }
 
 export function CardWordsOverlay({ onClose }: Props) {
-  const ref = useRef<HTMLDivElement>(null)
   const words = useCardWords()
-  useOverlay(ref, onClose)
 
   return (
-    <div ref={ref} role="dialog" aria-modal="true" aria-label="Themed Deck words" tabIndex={-1} className="fixed inset-0 z-50 flex flex-col bg-zinc-950 animate-fade-in outline-none">
-      <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-zinc-800 shrink-0">
-        <span className="font-bold text-zinc-100">🃏 Themed Deck — Word List</span>
-        <button
-          onClick={onClose}
-          className="w-9 h-9 flex items-center justify-center rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors text-xl"
-          title="Close (Esc)"
-          aria-label="Close"
-        >
-          ×
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
-          <WordListGrid
-            store={words}
-            keys={CARD_NUMBERS}
-            groups={GROUPS}
-            renderLabel={renderLabel}
-            showAccuracy={false}
-            exportName="card-words.csv"
-          />
-        </div>
-      </div>
-    </div>
+    <Overlay
+      onClose={onClose}
+      ariaLabel="Themed Deck words"
+      header={<span className="font-bold text-zinc-100">🃏 Themed Deck — Word List</span>}
+      maxWidth="max-w-4xl"
+    >
+      <WordListGrid
+        store={words}
+        keys={CARD_NUMBERS}
+        groups={GROUPS}
+        renderLabel={renderLabel}
+        showAccuracy={false}
+        exportName="card-words.csv"
+      />
+    </Overlay>
   )
 }
