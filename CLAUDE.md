@@ -1,7 +1,8 @@
-# Majorsystemet
+# Mnemonics
 
-**Major System** mnemonic trainer. You practise mapping 2-digit numbers
-`00`–`99` to words (encoding) and back (decoding), plus sound-key and sequence drills.
+**Mnemonics** — a mnemonic training tool. Currently implements the **Major System**
+(mapping 2-digit numbers `00`–`99` to words) with dedicated **Applications** for Pi and Cards.
+Built to expand to additional mnemonic systems over time.
 Stack: **Vite + React 19 + TypeScript + Tailwind v4**, single-page, **no backend**,
 **always dark** (zinc-950 base, violet-600 accent). Docker-only dev workflow.
 
@@ -79,8 +80,9 @@ list is fully separate from the major list. `WordListGrid` is prop-driven (`stor
 - `src/App.tsx` — header (mode title, AnswerModeToggle, 📊/📚/⚙️ overlay triggers) + `<main>` that renders
   `MODES[mode].component`, + overlays. No per-mode render switch.
 - **`src/modes.tsx` — the mode registry** (`Record<DrillMode, ModeDef>`): each non-home `Mode` maps to its
-  header `title`, drill `component`, `group` (practice/challenge), `hideAnswerToggle`, and ModeSelector card
+  header `title`, drill `component`, `group` (`'major-system' | 'application'`), `hideAnswerToggle`, and ModeSelector card
   metadata. Single source of truth — TypeScript enforces every mode is fully wired. **Add a mode = one entry here.**
+  `HOME_TITLE` is `'Mnemonics'`.
 - `src/main.tsx` — mounts `SettingsProvider > WordsProvider > CardWordsProvider > App`; calls `initAttempts()` (opens IndexedDB + one-time migration of any legacy in-blob attempts).
 - `src/types.ts` — `Mode`, `AnswerMode`, `Direction`, `NumberStats`/`AllStats`.
 - **`components/modes/`**: `WordNumberDrill` is the shared config-driven engine for both directions;
@@ -93,7 +95,7 @@ list is fully separate from the major list. `WordListGrid` is prop-driven (`stor
   and hosts Card→Word / Card→Number / `DeckMemoDrill`; two thin wrappers select the word source —
   `MajorCardsDrill` (`cards` mode: `useWords` + records to global stats, all 3 drill types) and
   `ThemedCardsDrill` (`themed-cards` mode: `useCardWords`, Card→Word + Deck Memo only, no stats, opens `CardWordsOverlay`).
-- **`components/`** — `ModeSelector` (home cards), `MultipleChoice`/`TypingInput` (answer inputs),
+- **`components/`** — `ModeSelector` (home screen: **Systems** section for Major System drills, **Applications** section for Pi + Cards), `MultipleChoice`/`TypingInput` (answer inputs),
   `ScoreBar`, `RangeSlider` (dual-thumb number range, accessible), `RoundStatsPanel`, `HintButton` (vowel skeleton),
   `SoundKeyTable`/`SoundKeyPanel`, `AnswerModeToggle`, `Switch` (accessible on/off toggle). **Overlays share
   `Overlay` (`components/Overlay.tsx`)** — the `role="dialog"` shell, `useOverlay` wiring, header bar, close
