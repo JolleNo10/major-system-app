@@ -1,5 +1,5 @@
-import { loadStore, itemKey, medianMs } from '../data/itemStore'
-import { RECALL_SLOW_MS, DEFAULT_EASE, MIN_EASE } from '../data/scoring'
+import { loadStore, getItem } from '../data/itemStore'
+import { itemWeakness } from './numberStats'
 import type { Direction } from '../types'
 
 // Shared quiz helpers used across the drills.
@@ -33,24 +33,16 @@ export function buildDecOptions(number: string, words: Record<string, string>): 
   return shuffle([number, ...dist])
 }
 
-// Weighted spaced-repetition pick for one direction. Weight rises with wrong
-// rate, SM-2 ease penalty, and slow median recall; unseen items get a flat 1.5;
-// already-mastered-this-round items are de-prioritised.
+// Weighted spaced-repetition pick for one direction. Draw weight scales with the
+// shared per-number weakness score (see numberStats.itemWeakness); unseen items
+// get a flat baseline; already-mastered-this-round items are de-prioritised.
+const WEAKNESS_GAIN = 4  // maps weakness 0..1 → weight 1..5
 export function pickWeighted(dir: Direction, available: string[], masteredSet: Set<string>): string {
   if (available.length === 1) return available[0]
   const store = loadStore()
   const weights = available.map(num => {
-    const item = store[itemKey(dir, num)]
-    const base = (!item || item.lastSeenAt === 0)
-      ? 1.5
-      : (() => {
-          const total = item.correct + item.wrong
-          const wrongRate = total > 0 ? item.wrong / total : 0
-          const easePenalty = Math.max(0, (DEFAULT_EASE - (item.ease ?? DEFAULT_EASE)) / (DEFAULT_EASE - MIN_EASE))
-          const median = medianMs(item.latencies)
-          const slow = median !== null && median >= RECALL_SLOW_MS ? 0.5 : 0
-          return 1 + wrongRate * 3 + easePenalty * 1 + slow
-        })()
+    const item = getItem(store, dir, num)
+    const base = item.lastSeenAt === 0 ? 1.5 : 1 + itemWeakness(item) * WEAKNESS_GAIN
     return masteredSet.has(num) ? base * 0.25 : base
   })
   // Guarantee unmastered items get ≥ TARGET of all draws when the pool is mixed.

@@ -1,5 +1,5 @@
 import type { Direction } from '../types'
-import { loadStore, getItem, medianMs } from '../data/itemStore'
+import { loadStore, getItem, medianMs, type ItemRecord } from '../data/itemStore'
 import { SLOW_MS, DEFAULT_EASE, MIN_EASE } from '../data/scoring'
 
 // All-time per-number weakness ranking for one direction.
@@ -24,29 +24,36 @@ export interface NumberStat {
   onStreak: boolean  // currently on a STREAK_THRESHOLD+ correct run
 }
 
+// Single per-item weakness score (0..1, higher = worse), the one definition
+// used everywhere "weak" is measured — the Stats ranking, Weak Spots, and the
+// pickWeighted draw. Recency-biased: SM-2 ease penalty (recent difficulty) +
+// rolling recall latency + a lifetime wrongRate residual that decays with the
+// current correct streak so old mistakes fade as a number is relearned.
+export function itemWeakness(item: ItemRecord): number {
+  const total = item.correct + item.wrong
+  const wrongRate = total > 0 ? item.wrong / total : 0
+  const median = medianMs(item.latencies)
+  const normLatency = median ? Math.min(1, median / SLOW_MS['multiple-choice']) : 0
+  const easePenalty = Math.max(0, Math.min(1,
+    (DEFAULT_EASE - (item.ease ?? DEFAULT_EASE)) / (DEFAULT_EASE - MIN_EASE)))
+  const residual = wrongRate * Math.pow(DECAY_PER_REP, item.reps)
+  return easePenalty * 0.55 + normLatency * 0.25 + residual * 0.2
+}
+
 export function rankByWeakness(dir: Direction, nums: string[]): NumberStat[] {
   const store = loadStore()
-  const slowThreshold = SLOW_MS['multiple-choice']
 
   const stats: NumberStat[] = nums.map(num => {
     const item = getItem(store, dir, num)
     const total = item.correct + item.wrong
-    const median = medianMs(item.latencies)
-    const wrongRate = total > 0 ? item.wrong / total : 0
-    const normLatency = median ? Math.min(1, median / slowThreshold) : 0
-    const easePenalty = Math.max(0, Math.min(1,
-      (DEFAULT_EASE - (item.ease ?? DEFAULT_EASE)) / (DEFAULT_EASE - MIN_EASE)))
-    // Lifetime wrongRate decayed by demonstrated recent recall: forgets old
-    // mistakes as reps accrue, resets to full weight the moment reps drops to 0.
-    const residual = wrongRate * Math.pow(DECAY_PER_REP, item.reps)
 
     return {
       num,
       correct: item.correct,
       wrong: item.wrong,
       total,
-      median,
-      weakness: easePenalty * 0.55 + normLatency * 0.25 + residual * 0.2,
+      median: medianMs(item.latencies),
+      weakness: itemWeakness(item),
       tested: total > 0,
       onStreak: item.reps >= STREAK_THRESHOLD,
     }

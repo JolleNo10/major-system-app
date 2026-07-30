@@ -1,20 +1,27 @@
 import { useMemo } from 'react'
 import { useWords } from '../../context/WordsContext'
-import { useStats } from '../../hooks/useStats'
 import { EncodingDrill } from './EncodingDrill'
 import { shuffle } from '../../utils/quiz'
+import { rankByWeakness } from '../../utils/numberStats'
 import type { AnswerMode } from '../../types'
 
 interface Props {
   answerMode: AnswerMode
 }
 
+// Weakest tested encode numbers (shared itemWeakness ranking), top 10.
+function weakNumbers(allNums: string[]): string[] {
+  return rankByWeakness('enc', allNums)
+    .filter(s => s.tested && s.weakness > 0)
+    .slice(0, 10)
+    .map(s => s.num)
+}
+
 export function WeakSpots({ answerMode }: Props) {
   const { words } = useWords()
-  const { getWeakNumbers } = useStats()
 
   const pool = useMemo(() => {
-    const weak = getWeakNumbers(10)
+    const weak = weakNumbers(Object.keys(words))
     if (weak.length >= 5) return weak
     // Not enough data: supplement with random numbers
     const all = Object.keys(words)
@@ -34,7 +41,7 @@ export function WeakSpots({ answerMode }: Props) {
     )
   }
 
-  const hasWeakData = getWeakNumbers(1).length > 0
+  const hasWeakData = weakNumbers(Object.keys(words)).length > 0
 
   return (
     <div className="flex flex-col gap-4">

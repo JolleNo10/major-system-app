@@ -1,9 +1,8 @@
 import type { AllStats, Direction, AnswerMode } from '../types'
 import {
-  loadStore, saveStore, getItem, setItem, itemKey,
-  medianMs, type ItemRecord,
+  loadStore, saveStore, getItem, setItem, itemKey, type ItemRecord,
 } from '../data/itemStore'
-import { SLOW_MS, OUTLIER_MS, MAX_LATENCIES } from '../data/scoring'
+import { OUTLIER_MS, MAX_LATENCIES } from '../data/scoring'
 import { addAttempt } from '../data/attemptStore'
 import { gradeAnswer, applySm2 } from '../data/sm2'
 import { adjustLatency, recordTypingSpeed } from '../data/typingSpeed'
@@ -127,28 +126,5 @@ export function useStats() {
     return grade
   }
 
-  const getWeakNumbers = (limit = 10): string[] => {
-    const store = loadStore()
-    const encKeys = Object.keys(store).filter(k => k.startsWith('enc:'))
-    const slowThreshold = SLOW_MS['multiple-choice']
-
-    return encKeys
-      .map(k => {
-        const num = k.slice(4)
-        const item = store[k]
-        const total = item.correct + item.wrong
-        if (total === 0) return null
-        const wrongRate = item.wrong / total
-        const median = medianMs(item.latencies)
-        const normLatency = median ? Math.min(1, median / slowThreshold) : 0
-        // Combined weakness score: error rate weighted 60%, latency 40%
-        return { num, weakness: wrongRate * 0.6 + normLatency * 0.4 }
-      })
-      .filter((x): x is { num: string; weakness: number } => x !== null && x.weakness > 0)
-      .sort((a, b) => b.weakness - a.weakness)
-      .slice(0, limit)
-      .map(({ num }) => num)
-  }
-
-  return { recordFull, getWeakNumbers }
+  return { recordFull }
 }
