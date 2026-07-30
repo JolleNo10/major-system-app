@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import type { Mode } from './types'
+import { MODES, HOME_TITLE } from './modes'
 import { useAnswerMode } from './hooks/useAnswerMode'
 import { useSettings } from './context/SettingsContext'
 import { usePwaUpdate } from './hooks/usePwaUpdate'
@@ -8,32 +9,6 @@ import { AnswerModeToggle } from './components/AnswerModeToggle'
 import { ReferenceOverlay } from './components/ReferenceOverlay'
 import { SettingsOverlay } from './components/SettingsOverlay'
 import { StatsOverlay } from './components/StatsOverlay'
-import { EncodingDrill } from './components/modes/EncodingDrill'
-import { DecodingDrill } from './components/modes/DecodingDrill'
-import { SoundKeyDrill } from './components/modes/SoundKeyDrill'
-import { ReverseSoundKeyDrill } from './components/modes/ReverseSoundKeyDrill'
-import { SequenceDrill } from './components/modes/SequenceDrill'
-import { SpeedRound } from './components/modes/SpeedRound'
-import { WeakSpots } from './components/modes/WeakSpots'
-import { RepetitionDrill } from './components/modes/RepetitionDrill'
-import { PiDrill } from './components/modes/PiDrill'
-import { MajorCardsDrill } from './components/modes/MajorCardsDrill'
-import { ThemedCardsDrill } from './components/modes/ThemedCardsDrill'
-
-const MODE_TITLES: Record<Mode, string> = {
-  home: 'Major System',
-  encoding: 'Encoding',
-  decoding: 'Decoding',
-  'sound-key': 'Sound Key',
-  'reverse-sound-key': 'Reverse Sound Key',
-  sequence: 'Sequences',
-  'speed-round': 'Speed Round',
-  'weak-spots': 'Weak Spots',
-  'repetition': 'Repetition',
-  'pi-digits': 'Recite numbers',
-  'cards': 'Card Deck',
-  'themed-cards': 'Themed Deck',
-}
 
 export default function App() {
   const [mode, setMode] = useState<Mode>('home')
@@ -76,11 +51,11 @@ export default function App() {
           )}
 
           <span className="font-bold text-zinc-100 flex-1 truncate">
-            {MODE_TITLES[mode]}
+            {mode === 'home' ? HOME_TITLE : MODES[mode].title}
           </span>
 
           <div className="flex items-center gap-2 shrink-0">
-            {mode !== 'home' && mode !== 'speed-round' && (
+            {mode !== 'home' && !MODES[mode].hideAnswerToggle && (
               <AnswerModeToggle mode={answerMode} onToggle={toggleAnswerMode} />
             )}
             <button
@@ -114,18 +89,12 @@ export default function App() {
 
       {/* Main content */}
       <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-6">
-        {mode === 'home' && <ModeSelector onSelectMode={setMode} />}
-        {mode === 'encoding' && <EncodingDrill answerMode={answerMode} />}
-        {mode === 'decoding' && <DecodingDrill answerMode={answerMode} />}
-        {mode === 'sound-key' && <SoundKeyDrill answerMode={answerMode} />}
-        {mode === 'reverse-sound-key' && <ReverseSoundKeyDrill answerMode={answerMode} />}
-        {mode === 'sequence' && <SequenceDrill answerMode={answerMode} />}
-        {mode === 'speed-round' && <SpeedRound answerMode={answerMode} />}
-        {mode === 'weak-spots' && <WeakSpots answerMode={answerMode} />}
-        {mode === 'repetition' && <RepetitionDrill answerMode={answerMode} />}
-        {mode === 'pi-digits' && <PiDrill answerMode={answerMode} />}
-        {mode === 'cards' && <MajorCardsDrill answerMode={answerMode} />}
-        {mode === 'themed-cards' && <ThemedCardsDrill answerMode={answerMode} />}
+        {mode === 'home'
+          ? <ModeSelector onSelectMode={setMode} />
+          : (() => {
+              const Drill = MODES[mode].component
+              return <Drill answerMode={answerMode} />
+            })()}
       </main>
 
       {/* Reference overlay */}
