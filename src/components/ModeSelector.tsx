@@ -5,8 +5,8 @@ import { WORDS } from '../data/words'
 
 const ALL_NUMS = Object.keys(WORDS)
 
-const PRACTICE_MODES = MODE_ENTRIES.filter(([, def]) => def.group === 'practice')
-const CHALLENGE_MODES = MODE_ENTRIES.filter(([, def]) => def.group === 'challenge')
+const MAJOR_SYSTEM_MODES = MODE_ENTRIES.filter(([, def]) => def.group === 'major-system')
+const APPLICATION_MODES = MODE_ENTRIES.filter(([, def]) => def.group === 'application')
 
 interface Props {
   onSelectMode: (mode: Mode) => void
@@ -65,23 +65,29 @@ export function ModeSelector({ onSelectMode }: Props) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {PRACTICE_MODES.map(([id, def]) => (
-          <ModeButton
-            key={id}
-            id={id}
-            def={def}
-            subtitleColor="text-violet-400"
-            onSelect={onSelectMode}
-            badge={id === 'repetition' ? dueCount : undefined}
-          />
-        ))}
+      <div className="space-y-3">
+        <div className="flex items-baseline gap-2">
+          <p className="text-xs text-zinc-500 uppercase tracking-widest font-semibold">Systems</p>
+          <p className="text-xs text-zinc-600 font-medium">Major System</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {MAJOR_SYSTEM_MODES.map(([id, def]) => (
+            <ModeButton
+              key={id}
+              id={id}
+              def={def}
+              subtitleColor="text-violet-400"
+              onSelect={onSelectMode}
+              badge={id === 'repetition' ? dueCount : undefined}
+            />
+          ))}
+        </div>
       </div>
 
       <div className="space-y-3">
-        <p className="text-xs text-zinc-500 uppercase tracking-widest font-semibold">Challenges</p>
+        <p className="text-xs text-zinc-500 uppercase tracking-widest font-semibold">Applications</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {CHALLENGE_MODES.map(([id, def]) => (
+          {APPLICATION_MODES.map(([id, def]) => (
             <ModeButton key={id} id={id} def={def} subtitleColor="text-cyan-400" onSelect={onSelectMode} />
           ))}
         </div>

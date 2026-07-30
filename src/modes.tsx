@@ -22,7 +22,7 @@ export type DrillMode = Exclude<Mode, 'home'>
 export interface ModeDef {
   title: string                                        // header title
   component: ComponentType<{ answerMode: AnswerMode }> // drill rendered in <main>
-  group: 'practice' | 'challenge'                      // ModeSelector section
+  group: 'major-system' | 'application'                // ModeSelector section
   hideAnswerToggle?: boolean                           // header omits the MC/typing toggle
   // ModeSelector card
   emoji: string
@@ -31,13 +31,13 @@ export interface ModeDef {
   accent: string
 }
 
-export const HOME_TITLE = 'Major System'
+export const HOME_TITLE = 'Mnemonics'
 
 export const MODES: Record<DrillMode, ModeDef> = {
   encoding: {
     title: 'Encoding',
     component: EncodingDrill,
-    group: 'practice',
+    group: 'major-system',
     emoji: '🧠',
     subtitle: 'Number → Word',
     description: 'See a number 00–99, recall its associated word',
@@ -46,7 +46,7 @@ export const MODES: Record<DrillMode, ModeDef> = {
   decoding: {
     title: 'Decoding',
     component: DecodingDrill,
-    group: 'practice',
+    group: 'major-system',
     emoji: '🔍',
     subtitle: 'Word → Number',
     description: 'See a word, recall which number it represents',
@@ -55,7 +55,7 @@ export const MODES: Record<DrillMode, ModeDef> = {
   repetition: {
     title: 'Repetition',
     component: RepetitionDrill,
-    group: 'practice',
+    group: 'major-system',
     emoji: '🔁',
     subtitle: 'Spaced repetition',
     description: 'Practice what\'s due — SM-2 schedules the next session automatically',
@@ -64,7 +64,7 @@ export const MODES: Record<DrillMode, ModeDef> = {
   'sound-key': {
     title: 'Sound Key',
     component: SoundKeyDrill,
-    group: 'practice',
+    group: 'major-system',
     emoji: '🔢',
     subtitle: 'Digit → Sounds',
     description: 'What are the sounds for each digit 0–9?',
@@ -73,7 +73,7 @@ export const MODES: Record<DrillMode, ModeDef> = {
   'reverse-sound-key': {
     title: 'Reverse Sound Key',
     component: ReverseSoundKeyDrill,
-    group: 'practice',
+    group: 'major-system',
     emoji: '🔤',
     subtitle: 'Sound → Digit',
     description: 'Which sound belongs to which digit?',
@@ -82,7 +82,7 @@ export const MODES: Record<DrillMode, ModeDef> = {
   sequence: {
     title: 'Sequences',
     component: SequenceDrill,
-    group: 'practice',
+    group: 'major-system',
     emoji: '🔗',
     subtitle: 'Long number sequences',
     description: 'Encode and decode number sequences pair by pair',
@@ -91,7 +91,7 @@ export const MODES: Record<DrillMode, ModeDef> = {
   'speed-round': {
     title: 'Speed Round',
     component: SpeedRound,
-    group: 'practice',
+    group: 'major-system',
     hideAnswerToggle: true,
     emoji: '⚡',
     subtitle: '60 seconds',
@@ -101,7 +101,7 @@ export const MODES: Record<DrillMode, ModeDef> = {
   'weak-spots': {
     title: 'Weak Spots',
     component: WeakSpots,
-    group: 'practice',
+    group: 'major-system',
     emoji: '🎯',
     subtitle: 'Your worst numbers',
     description: 'Drill on the numbers you make the most mistakes on',
@@ -110,7 +110,7 @@ export const MODES: Record<DrillMode, ModeDef> = {
   'pi-digits': {
     title: 'Pi',
     component: PiDrill,
-    group: 'challenge',
+    group: 'application',
     emoji: '𝝅',
     subtitle: 'Memo · Recite',
     description: 'Memorise and recite the digits of π using major system words',
@@ -119,7 +119,7 @@ export const MODES: Record<DrillMode, ModeDef> = {
   cards: {
     title: 'Card Deck',
     component: MajorCardsDrill,
-    group: 'challenge',
+    group: 'application',
     emoji: '🃏',
     subtitle: 'Encode 52 cards',
     description: 'Each card maps to a number — drill the word for every card in the deck',
@@ -128,7 +128,7 @@ export const MODES: Record<DrillMode, ModeDef> = {
   'themed-cards': {
     title: 'Themed Deck',
     component: ThemedCardsDrill,
-    group: 'challenge',
+    group: 'application',
     emoji: '🎭',
     subtitle: 'A person per card',
     description: 'Each suit is its own cast — recall the person for every card',
