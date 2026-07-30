@@ -108,12 +108,12 @@ export const MODES: Record<DrillMode, ModeDef> = {
     accent: 'group-hover:border-red-500/60 group-hover:shadow-red-900/20',
   },
   'pi-digits': {
-    title: 'Recite numbers',
+    title: 'Pi',
     component: PiDrill,
     group: 'challenge',
     emoji: '𝝅',
-    subtitle: 'Sequential chain',
-    description: 'Memorise the digits of π as a chain of major system words',
+    subtitle: 'Memo · Recite',
+    description: 'Memorise and recite the digits of π using major system words',
     accent: 'group-hover:border-cyan-500/60 group-hover:shadow-cyan-900/20',
   },
   cards: {
