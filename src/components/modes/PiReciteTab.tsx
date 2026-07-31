@@ -1,6 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useWords } from '../../context/WordsContext'
-import { useSettings } from '../../context/SettingsContext'
 import { MultipleChoice } from '../MultipleChoice'
 import { TypingInput } from '../TypingInput'
 import { PiBatchInput } from '../PiBatchInput'
@@ -16,7 +15,6 @@ import type { AnswerMode } from '../../types'
 
 const SEL_START_KEY = 'major-pi-sel-start'
 const SEL_END_KEY = 'major-pi-sel-end'
-const MAX_PAIRS_KEY = 'major-pi-max-pairs'
 const ANSWER_SIZE_KEY = 'major-pi-answer-size'
 
 const PAIRS_PER_ROW = 10
@@ -30,21 +28,13 @@ function numberMcOptions(number: string, pool: string[]): string[] {
 }
 
 interface NqResult { typed: string; ok: boolean; ms?: number }
-interface Props { answerMode: AnswerMode }
+interface Props { answerMode: AnswerMode; maxPiPairs: number }
 
-export function PiReciteTab({ answerMode }: Props) {
+export function PiReciteTab({ answerMode, maxPiPairs }: Props) {
   const { words } = useWords()
-  const { settings } = useSettings()
-  const settingsMaxPairs = Math.floor(settings.maxPiDigits / 2)
 
   const [answerSize, setAnswerSize] = useState<AnswerSize>(() =>
     readString(ANSWER_SIZE_KEY) === '10' ? 10 : 1)
-
-  const [maxPiPairs, setMaxPiPairs] = useState<number>(() => {
-    const v = parseInt(readString(MAX_PAIRS_KEY) ?? '', 10)
-    const cap = Math.floor(settings.maxPiDigits / 2)
-    return v >= 10 && v <= cap ? v : cap
-  })
 
   const [selAnchor, setSelAnchor] = useState<number | null>(() => {
     const v = parseInt(readString(SEL_START_KEY) ?? '', 10)
@@ -78,10 +68,6 @@ export function PiReciteTab({ answerMode }: Props) {
   }, [nqResults.length])
 
   useEffect(() => {
-    if (maxPiPairs > settingsMaxPairs) setMaxPiPairs(settingsMaxPairs)
-  }, [settingsMaxPairs, maxPiPairs])
-
-  useEffect(() => {
     const modeChanged = previousAnswerModeRef.current !== answerMode
     previousAnswerModeRef.current = answerMode
     if (!modeChanged || phase !== 'number-quiz' || nqAnswered !== null) return
@@ -108,7 +94,6 @@ export function PiReciteTab({ answerMode }: Props) {
     if (selAnchor === null || selEnd === null) return
     safeSet(SEL_START_KEY, String(selAnchor))
     safeSet(SEL_END_KEY, String(selEnd))
-    safeSet(MAX_PAIRS_KEY, String(maxPiPairs))
     safeSet(ANSWER_SIZE_KEY, String(answerSize))
     const seq = PI_PAIRS.slice(selAnchor - 1, selEnd)
     setSequence(seq)
@@ -273,26 +258,7 @@ export function PiReciteTab({ answerMode }: Props) {
           )}
 
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-zinc-300">Select segment</span>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-zinc-500">Max π digits</span>
-                <input
-                  type="range"
-                  min={10}
-                  max={settingsMaxPairs}
-                  step={10}
-                  value={maxPiPairs}
-                  onChange={e => {
-                    const v = +e.target.value
-                    setMaxPiPairs(v)
-                    if (selEnd !== null && selEnd > v) setSelEnd(v)
-                  }}
-                  className="w-24 accent-cyan-500"
-                />
-                <span className="text-cyan-400 tabular-nums text-xs w-8 text-right">{maxPiPairs * 2}</span>
-              </div>
-            </div>
+            <span className="text-sm font-medium text-zinc-300">Select segment</span>
             <div className="grid grid-cols-4 gap-1.5">
               {Array.from({ length: numButtons }, (_, segIdx) => {
                 const firstPair = segIdx * PAIRS_PER_ROW + 1

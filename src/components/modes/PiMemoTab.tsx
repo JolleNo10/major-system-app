@@ -1,6 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useWords } from '../../context/WordsContext'
-import { useSettings } from '../../context/SettingsContext'
 import { MultipleChoice } from '../MultipleChoice'
 import { TypingInput } from '../TypingInput'
 import { readString, safeSet } from '../../utils/storage'
@@ -13,13 +12,12 @@ const PAIRS_PER_SEG = 10
 
 type Phase = 'setup' | 'study' | 'recall' | 'result'
 interface WqResult { typed: string; ok: boolean }
-interface Props { answerMode: AnswerMode }
+interface Props { answerMode: AnswerMode; maxPiPairs: number }
 
-export function PiMemoTab({ answerMode }: Props) {
+export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
   const { words } = useWords()
-  const { settings } = useSettings()
 
-  const maxSegs = Math.floor(Math.floor(settings.maxPiDigits / 2) / PAIRS_PER_SEG)
+  const maxSegs = Math.floor(maxPiPairs / PAIRS_PER_SEG)
 
   const [selectedSeg, setSelectedSeg] = useState<number | null>(() => {
     const v = parseInt(readString(MEMO_SEG_KEY) ?? '', 10)
