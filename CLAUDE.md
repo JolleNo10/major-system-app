@@ -37,6 +37,8 @@ docker run --rm -v "$(pwd)":/app -w /app node:20-alpine sh -c "npx tsc -b && npx
 | `major-word-saved` | localStorage | Committed custom words (layer 2) |
 | `major-word-overrides` | localStorage | Trial/pending word edits (layer 3, shown yellow) |
 | `major-soundkey-saved` / `-overrides` | localStorage | Editable sound-key layers (same 3-layer store), keyed by composite `"<digit>:<field>"` strings |
+| `major-pao-saved` / `-overrides` | localStorage | Editable PAO deck layers (same 3-layer store), keyed by composite `"<NN>:<field>"` (`field` = `person`\|`action`\|`object`) — the PAO Deck's Person/Action/Object per card `01`–`52` |
+| `major-pao-drilltype` / `-suits` / `-deck-count` / `-decode-field` / `-deck-memo-history` | localStorage | PAO Deck UI/session state (drill type, active suits, deck-memo card count, decode field selector, and the PAO deck-memo run history) |
 | `major-settings` | localStorage | `{ masteryLatencyFactor, maxPiDigits, offlineMode, piPairsPerAnswer }` (`piPairsPerAnswer` 1\|10 = Pi typing batch size, set in Settings; migrated once from the legacy `major-pi-answer-size` key) |
 | `major-typing-speed` / `-digit` | localStorage | Adaptive ms/char estimates, separate for word vs digit typing |
 | `major-answer-mode`, `major-hide-options`, `major-seq-length`, `major-seq-studymode`, `major-speed-best`, `major-attempts-migrated` | localStorage | Small UI/prefs flags |
@@ -53,10 +55,11 @@ CSV format (`wordsCsv.ts`, validated). The browser can't write the repo, so upda
 for real = Export → replace the file → commit by hand.
 
 **The 3-layer store is a factory** (`context/createWordStore.tsx` → `{ Provider, useStore }`; values are
-`Record<string,string>`). Three instances: `WordsContext` (major `WORDS`, keys `major-word-*`),
+`Record<string,string>`). Four instances: `WordsContext` (major `WORDS`, keys `major-word-*`),
 `CardWordsContext` (Themed Deck `CARD_WORDS` from `cardWords.csv`, keys `major-cardword-*`, `useCardWords()`),
-and `SoundKeyContext` (editable sound key, keys `major-soundkey-*`, `useSoundKeyStore()` + derived
-`useSoundKey()`). `WordListGrid` is prop-driven (`store`/`keys`/`renderLabel`/`groups`/`showAccuracy`/
+`SoundKeyContext` (editable sound key, keys `major-soundkey-*`, `useSoundKeyStore()` + derived
+`useSoundKey()`), and `PaoCardsContext` (PAO Deck triples from `paoCards.csv`, keys `major-pao-*`,
+`usePaoStore()` + derived `usePaoCards()`). `WordListGrid` is prop-driven (`store`/`keys`/`renderLabel`/`groups`/`showAccuracy`/
 `exportName`) so both word lists reuse the same editor. `importEffective(map)` on the store folds a
 key→effective map into `saved` (import shares it; `importSaved(rows)` delegates).
 
@@ -67,6 +70,15 @@ not stored), so `createWordStore` is reused; `data/soundKey.ts`
 derives the effective `SoundKeyEntry[]`/`ALL_SOUNDS`/`SOUND_TO_DIGIT` from the store via `buildSoundKey`
 etc. `SoundKeyGrid` (Reference → Sound Key tab) is the 3-column editor with the same Import/Export/Persist/
 Reset flow; the two sound-key drills + `SoundKeyPanel` read `useSoundKey()` so they reflect edits.
+
+**The PAO Deck is a fourth editable list** (`data/paoCards.csv` shipped — `number,person,action,object`,
+cards `01`–`52` — parsed by `paoCsv.ts`, a dedicated quoting-aware parser, **not** the shared `wordsCsv.ts`).
+Stored flat under composite keys `"<NN>:<field>"` (`person`/`action`/`object`), so `createWordStore` is reused
+(`PaoCardsContext`); `data/paoCards.ts` derives the effective `PaoCard[]` from the store via `buildPaoCards`.
+`PaoWordsGrid` (opened from the PAO Deck's "📇 Edit words" via `PaoWordsOverlay`) is the 3-column,
+suit-grouped editor with the same Import/Export/Persist/Reset flow. Independent of the Themed Deck list —
+the current Themed Deck is untouched. `utils/triples.ts` (`groupTriples`, `roleAt`) chunks a deck into
+Person/Action/Object triples (partial final group of 1–2 kept).
 
 ## Scoring & spaced repetition
 - **`data/scoring.ts` is the single home for all scoring/latency config** (dependency-free): `FAST_MS`/`SLOW_MS`,
@@ -94,7 +106,7 @@ Reset flow; the two sound-key drills + `SoundKeyPanel` read `useSoundKey()` so t
   header `title`, drill `component`, `group` (`'major-system' | 'application'`), `hideAnswerToggle`, and ModeSelector card
   metadata. Single source of truth — TypeScript enforces every mode is fully wired. **Add a mode = one entry here.**
   `HOME_TITLE` is `'Mnemonics'`.
-- `src/main.tsx` — mounts `SettingsProvider > WordsProvider > CardWordsProvider > App`; calls `initAttempts()` (opens IndexedDB + one-time migration of any legacy in-blob attempts).
+- `src/main.tsx` — mounts `SettingsProvider > WordsProvider > CardWordsProvider > PaoCardsProvider > SoundKeyProvider > App`; calls `initAttempts()` (opens IndexedDB + one-time migration of any legacy in-blob attempts).
 - `src/types.ts` — `Mode`, `AnswerMode`, `Direction`, `NumberStats`/`AllStats`.
 - **`components/modes/`**: `WordNumberDrill` is the shared config-driven engine for both directions;
   `EncodingDrill`/`DecodingDrill` are ~25-line `DrillConfig` wrappers over it (direction, prompt styling,
@@ -113,7 +125,15 @@ Reset flow; the two sound-key drills + `SoundKeyPanel` read `useSoundKey()` so t
   and hosts Card→Word / Card→Number / `DeckMemoDrill`; two thin wrappers select the word source —
   `MajorCardsDrill` (`cards` mode: `useWords` + records to global stats, all 3 drill types) and
   `ThemedCardsDrill` (`themed-cards` mode: `useCardWords`, Card→Word + Deck Memo only, no stats, opens `CardWordsOverlay`).
-- **`components/`** — `ModeSelector` (home screen: **Systems** section for Major System drills, **Applications** section for Pi + Cards), `MultipleChoice`/`TypingInput` (answer inputs),
+  **PAO Deck** (`pao-cards` mode) is a **separate** drill, not a `CardsDrill` wrapper (its triple shape doesn't fit
+  the single-string engine): `PaoCardsDrill` (`usePaoCards`) hosts a drill-type toggle (**Encode** / **Decode** / **Deck Memo**)
+  + ♣♦♥♠ suit chips. **Encode** = card → type all three fields (per-field ✓/✗, card correct only if all three match).
+  **Decode** = one field value (Person/Action/Object selector) → identify the card (MC card-face picks / typing the card code,
+  per the global answer toggle). Both are **session-only** (in-memory `roundStats` weighting, no persisted/global stats;
+  `pickWeighted('enc', …)` only reads draw weights). **Deck Memo** = `PaoDeckMemoDrill` (forked from `DeckMemoDrill` so the
+  shared one stays untouched): memorise the deck in P₁·A₂·O₃ triples, then blind card-order recall grouped in threes; keeps its
+  own run history under `major-pao-deck-memo-history`.
+- **`components/`** — `ModeSelector` (home screen: **Systems** section for Major System drills, **Applications** section for Pi + Cards + PAO Deck), `MultipleChoice`/`TypingInput` (answer inputs),
   `ScoreBar`, `RangeSlider` (dual-thumb number range, accessible), `RoundStatsPanel`, `HintButton` (vowel skeleton),
   `SoundKeyGrid` (editable sound-key table)/`SoundKeyPanel`, `AnswerModeToggle`, `Switch` (accessible on/off toggle). **Overlays share
   `Overlay` (`components/Overlay.tsx`)** — the `role="dialog"` shell, `useOverlay` wiring, header bar, close
@@ -131,9 +151,10 @@ Reset flow; the two sound-key drills + `SoundKeyPanel` read `useSoundKey()` so t
   `pickWeighted(dir,…)`), `roundStats` (`RoundStat`/`RoundAttempt` types + `applyRoundAttempt` reducer, shared
   by all drills), `answerMatch` (`matchesAnswer` word + `matchesNumber` digit), `recallColor` (UI latency color),
   `storage` (`safeSet`/`safeRemove` + guarded `readString`/`readJSON`), `overlayGuard` (`isOverlayOpen`),
-  `roundMastery`, `numberStats`, `vowelSkeleton`.
+  `roundMastery`, `numberStats`, `vowelSkeleton`, `triples` (`groupTriples`/`roleAt` — PAO 3-card grouping).
 - **`data/`** — `words.csv`+`words.ts`, `cardWords.csv`+`cardWords.ts` (Themed Deck, 52 cards; clubs 01–13 seed
-  from the major defaults), `wordsCsv.ts` (shared CSV parse/serialize), `cards.ts` (52-card deck), `soundKey.csv`+`soundKey.ts`+`soundKeyCsv.ts` (editable sound key),
+  from the major defaults), `paoCards.csv`+`paoCards.ts`+`paoCsv.ts` (PAO Deck, 52 person/action/object triples;
+  dedicated quoting-aware parser), `wordsCsv.ts` (shared CSV parse/serialize), `cards.ts` (52-card deck), `soundKey.csv`+`soundKey.ts`+`soundKeyCsv.ts` (editable sound key),
   `scoring.ts` (all scoring/latency constants), `itemStore.ts` (ItemRecord + load/save + storage config),
   `attemptStore.ts` (IndexedDB; `addAttempt`/`getAttempts` are item-keyed wrappers over the raw-key
   `addAttemptRaw`/`getAttemptsForKey` primitives), `piStats.ts` (Pi run summaries + per-position aggregation),

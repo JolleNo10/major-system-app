@@ -11,6 +11,7 @@ export type Mode =
   | 'pi-digits'
   | 'cards'
   | 'themed-cards'
+  | 'pao-cards'
 
 export type AnswerMode = 'multiple-choice' | 'typing'
 

@@ -11,6 +11,7 @@ import { RepetitionDrill } from './components/modes/RepetitionDrill'
 import { PiDrill } from './components/modes/PiDrill'
 import { MajorCardsDrill } from './components/modes/MajorCardsDrill'
 import { ThemedCardsDrill } from './components/modes/ThemedCardsDrill'
+import { PaoCardsDrill } from './components/modes/PaoCardsDrill'
 
 // Single source of truth for every non-home mode: its header title, the drill
 // component, and the ModeSelector card. Because it is Record<DrillMode, …>,
@@ -133,6 +134,15 @@ export const MODES: Record<DrillMode, ModeDef> = {
     subtitle: 'A person per card',
     description: 'Each suit is its own cast — recall the person for every card',
     accent: 'group-hover:border-fuchsia-500/60 group-hover:shadow-fuchsia-900/20',
+  },
+  'pao-cards': {
+    title: 'PAO Deck',
+    component: PaoCardsDrill,
+    group: 'application',
+    emoji: '🎬',
+    subtitle: 'Person · Action · Object',
+    description: 'Every card has a person, action and object — memorise the deck in 3-card images',
+    accent: 'group-hover:border-purple-500/60 group-hover:shadow-purple-900/20',
   },
 }
 

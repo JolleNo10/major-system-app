@@ -4,6 +4,7 @@ import './index.css'
 import App from './App'
 import { WordsProvider } from './context/WordsContext'
 import { CardWordsProvider } from './context/CardWordsContext'
+import { PaoCardsProvider } from './context/PaoCardsContext'
 import { SoundKeyProvider } from './context/SoundKeyContext'
 import { SettingsProvider } from './context/SettingsContext'
 import { initAttempts } from './data/attemptStore'
@@ -16,9 +17,11 @@ createRoot(document.getElementById('root')!).render(
     <SettingsProvider>
       <WordsProvider>
         <CardWordsProvider>
-          <SoundKeyProvider>
-            <App />
-          </SoundKeyProvider>
+          <PaoCardsProvider>
+            <SoundKeyProvider>
+              <App />
+            </SoundKeyProvider>
+          </PaoCardsProvider>
         </CardWordsProvider>
       </WordsProvider>
     </SettingsProvider>
