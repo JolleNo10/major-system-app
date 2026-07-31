@@ -139,7 +139,11 @@ export function PiNumberQuiz({
   const nqPairsPerSec = nqTimingStats.pairsPerSec
   const nqAvgMs = nqTimingStats.averagePairMs
   const nqSlowestMs = nqTimingStats.slowestBatchMs
-  const nqAccuracy = nqAnsweredCount > 0 ? Math.round((nqCorrectCount / nqAnsweredCount) * 100) : 0
+  // Only a flawless run reads 100%; otherwise cap at 99 so a single miss (e.g.
+  // 219/220 = 99.5%) can't round up to a misleading "100%" / green "perfect" run.
+  const nqAccuracy = nqAnsweredCount === 0 ? 0
+    : nqCorrectCount === nqAnsweredCount ? 100
+    : Math.min(99, Math.round((nqCorrectCount / nqAnsweredCount) * 100))
   const nqMistakes = nqAnsweredCount - nqCorrectCount
   const nqReach = (() => {
     let n = 0
