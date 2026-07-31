@@ -42,9 +42,11 @@ function ModeButton({
   )
 }
 
-function MajorSystemDrills({ onSelectMode, dueCount, onBack }: {
+function MajorSystemDrills({ onSelectMode, dueCount, total, correct, onBack }: {
   onSelectMode: (mode: Mode) => void
   dueCount: number
+  total: number
+  correct: number
   onBack: () => void
 }) {
   return (
@@ -55,6 +57,20 @@ function MajorSystemDrills({ onSelectMode, dueCount, onBack }: {
       >
         ← Systems
       </button>
+      {total > 0 && (
+        <div className="bg-zinc-900 rounded-xl border border-zinc-800 px-5 py-4 flex items-center justify-between">
+          <div>
+            <p className="text-xs text-zinc-500 uppercase tracking-wider">Total practiced</p>
+            <p className="text-2xl font-bold text-zinc-100 mt-0.5">{total.toLocaleString()} answers</p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-zinc-500 uppercase tracking-wider">Accuracy</p>
+            <p className="text-2xl font-bold text-violet-400 mt-0.5">
+              {Math.round((correct / total) * 100)}%
+            </p>
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {MAJOR_SYSTEM_MODES.map(([id, def]) => (
           <ModeButton
@@ -84,6 +100,8 @@ export function ModeSelector({ onSelectMode }: Props) {
       <MajorSystemDrills
         onSelectMode={onSelectMode}
         dueCount={dueCount}
+        total={total}
+        correct={correct}
         onBack={() => setSelectedSystem(null)}
       />
     )
@@ -91,21 +109,6 @@ export function ModeSelector({ onSelectMode }: Props) {
 
   return (
     <div className="space-y-6">
-      {total > 0 && (
-        <div className="bg-zinc-900 rounded-xl border border-zinc-800 px-5 py-4 flex items-center justify-between">
-          <div>
-            <p className="text-xs text-zinc-500 uppercase tracking-wider">Total practiced</p>
-            <p className="text-2xl font-bold text-zinc-100 mt-0.5">{total.toLocaleString()} answers</p>
-          </div>
-          <div className="text-right">
-            <p className="text-xs text-zinc-500 uppercase tracking-wider">Accuracy</p>
-            <p className="text-2xl font-bold text-violet-400 mt-0.5">
-              {Math.round((correct / total) * 100)}%
-            </p>
-          </div>
-        </div>
-      )}
-
       <div className="space-y-3">
         <p className="text-xs text-zinc-500 uppercase tracking-widest font-semibold">Systems</p>
         <button
