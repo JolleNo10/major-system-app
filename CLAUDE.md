@@ -32,7 +32,7 @@ docker run --rm -v "$(pwd)":/app -w /app node:20-alpine sh -c "npx tsc -b && npx
 | Store | Where | Contents |
 |-------|-------|----------|
 | `major-item-data` | localStorage | `Record<"enc:NN"\|"dec:NN", ItemRecord>` — per-number/direction SM-2 stats (correct/wrong, rolling `latencies` (last 10), `ease`, `intervalDays`, `dueAt`, `lastSeenAt`, `reps`, `hintCount`) |
-| `major-system` (db) → `attempts` store | **IndexedDB** | Per-answer log `{id, key:"enc:07", at, ok, ms}`, pruned to 90 days / 200 per key. Written on every answer. Keys are usually `"enc:NN"`/`"dec:NN"` but the same store also holds Pi's `"pi:<position>"` per-position log (`data/piStats.ts`). Read via `getAllAttempts` (Pi weak-spots); the number-drill read path is otherwise unconsumed (future age-decay) |
+| `major-system` (db) → `attempts` store | **IndexedDB** | Per-answer log `{id, key:"enc:07", at, ok, ms}`, pruned to 90 days / 200 per key. Written on every answer. Keys are usually `"enc:NN"`/`"dec:NN"` but the same store also holds Pi's `"pi:<position>"` per-position log and the Train tab's `"pi-chain:<segIdx>"` boundary-crossing log (`data/piStats.ts`). Read via `getAllAttempts` (Pi weak-spots + Train segment/boundary ranking); the number-drill read path is otherwise unconsumed (future age-decay) |
 | `major-pi-sessions` | localStorage | Pi number-quiz run summaries (`PiSession[]`, capped 50) — reach, accuracy, pairs/sec per completed run (`data/piStats.ts`) |
 | `major-word-saved` | localStorage | Committed custom words (layer 2) |
 | `major-word-overrides` | localStorage | Trial/pending word edits (layer 3, shown yellow) |
@@ -89,8 +89,15 @@ list is fully separate from the major list. `WordListGrid` is prop-driven (`stor
   `EncodingDrill`/`DecodingDrill` are ~25-line `DrillConfig` wrappers over it (direction, prompt styling,
   matcher, hint toggle). `SoundKeyDrill`, `ReverseSoundKeyDrill`, `SequenceDrill` (setup→study→recall→result),
   `SpeedRound`, `WeakSpots` (feeds a weak-number `pool` into `EncodingDrill`), `RepetitionDrill` (SM-2 due queue),
-  `PiDrill` (its **number-quiz** drill records metrics via `data/piStats.ts`: per-position attempts under `pi:<position>`
-  keys + a `PiSession` summary per run; setup screen shows a run-history/best-runs panel, result adds a Reach tile; word-chain records nothing).
+  `PiDrill` (three tabs: **Memo** / **Recite** / **Train**). `PiNumberQuiz` is the shared recite engine (fixed sequence + anchor →
+  number-quiz + result; single-pair or 10-pair batch, MC or typing), used by both Recite and Train. It records per-position
+  attempts under `pi:<position>` keys for every answered pair and (when `recordSession`) a `PiSession` summary per run.
+  **Recite** = user-selected range → `PiNumberQuiz` (records a session; setup shows run-history/best-runs). **Train** (`PiTrainTab`)
+  = weakness-targeted practice, two stats-driven sections each surfacing the worst 3 (worst-first, "new" for untested): weakest
+  **segments** (`rankPiSegments` rolls up the `pi:` log per 10-pair block → one-tap Recite run for that segment, records a session)
+  and weakest **chains** (`rankPiBoundaries` reads the `pi-chain:` log → recite a segment then bridge 20 pairs into the next;
+  crossing the boundary records `pi-chain:<segIdx>` for the first pair of the next segment via `recordPiChain`; **no** `PiSession`).
+  Word-chain (Memo) records nothing.
   **Cards:** `CardsDrill` is prop-driven (`words`/`drillTypes`/`onRecord`/`storagePrefix`/`onEditWords`)
   and hosts Card→Word / Card→Number / `DeckMemoDrill`; two thin wrappers select the word source —
   `MajorCardsDrill` (`cards` mode: `useWords` + records to global stats, all 3 drill types) and

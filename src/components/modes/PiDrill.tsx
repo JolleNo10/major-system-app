@@ -3,11 +3,14 @@ import { useSettings } from '../../context/SettingsContext'
 import { readString, safeSet } from '../../utils/storage'
 import { PiMemoTab } from './PiMemoTab'
 import { PiReciteTab } from './PiReciteTab'
+import { PiTrainTab } from './PiTrainTab'
 import type { AnswerMode } from '../../types'
 
 const TAB_KEY = 'major-pi-tab'
 const MAX_PAIRS_KEY = 'major-pi-max-pairs'
-type Tab = 'memo' | 'recite'
+type Tab = 'memo' | 'recite' | 'train'
+const TABS: Tab[] = ['memo', 'recite', 'train']
+const TAB_LABELS: Record<Tab, string> = { memo: 'Memo', recite: 'Recite', train: 'Train' }
 
 interface Props { answerMode: AnswerMode }
 
@@ -15,8 +18,10 @@ export function PiDrill({ answerMode }: Props) {
   const { settings } = useSettings()
   const settingsMaxPairs = Math.floor(settings.maxPiDigits / 2)
 
-  const [tab, setTab] = useState<Tab>(() =>
-    readString(TAB_KEY) === 'memo' ? 'memo' : 'recite')
+  const [tab, setTab] = useState<Tab>(() => {
+    const v = readString(TAB_KEY)
+    return v === 'memo' || v === 'train' ? v : 'recite'
+  })
 
   const [maxPiPairs, setMaxPiPairs] = useState<number>(() => {
     const v = parseInt(readString(MAX_PAIRS_KEY) ?? '', 10)
@@ -31,7 +36,7 @@ export function PiDrill({ answerMode }: Props) {
   return (
     <div className="flex flex-col items-center gap-0 py-4 w-full">
       <div className="flex gap-1 p-1 rounded-lg bg-zinc-800 mb-2">
-        {(['memo', 'recite'] as Tab[]).map(t => (
+        {TABS.map(t => (
           <button
             key={t}
             onClick={() => { setTab(t); safeSet(TAB_KEY, t) }}
@@ -41,7 +46,7 @@ export function PiDrill({ answerMode }: Props) {
                 : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
-            {t === 'memo' ? 'Memo' : 'Recite'}
+            {TAB_LABELS[t]}
           </button>
         ))}
       </div>
@@ -64,6 +69,8 @@ export function PiDrill({ answerMode }: Props) {
       </div>
       {tab === 'memo'
         ? <PiMemoTab answerMode={answerMode} maxPiPairs={maxPiPairs} />
+        : tab === 'train'
+        ? <PiTrainTab answerMode={answerMode} maxPiPairs={maxPiPairs} />
         : <PiReciteTab answerMode={answerMode} maxPiPairs={maxPiPairs} />
       }
     </div>
