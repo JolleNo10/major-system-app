@@ -3,18 +3,41 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { execSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 // Build identity baked in at build time (no runtime fetch). buildTime always
 // works; the git short SHA is best-effort (the build context includes .git).
-const buildTime = new Date().toISOString()
-let commit = 'unknown'
-try {
-  commit = execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
-    .toString()
-    .trim()
-} catch {
-  // no git / shallow clone — buildTime still identifies the build
+//
+// Read the SHA straight from .git first: the dev/prod containers bind-mount the
+// repo but don't necessarily ship a `git` binary, so shelling out to git leaves
+// the commit stuck at 'unknown' (the build identity then never changes). The
+// git CLI is only a fallback for exotic setups (e.g. a worktree gitdir file).
+function readGitCommit(): string {
+  try {
+    const gitDir = join(process.cwd(), '.git')
+    const head = readFileSync(join(gitDir, 'HEAD'), 'utf8').trim()
+    const ref = head.match(/^ref: (.+)$/)?.[1]
+    if (!ref) return head.slice(0, 7)              // detached HEAD → raw SHA
+    try {
+      return readFileSync(join(gitDir, ref), 'utf8').trim().slice(0, 7)
+    } catch {
+      // Loose ref missing → look it up in packed-refs.
+      const packed = readFileSync(join(gitDir, 'packed-refs'), 'utf8')
+      const line = packed.split('\n').find(l => l.endsWith(` ${ref}`))
+      if (line) return line.slice(0, 7)
+    }
+  } catch { /* fall through to the git CLI */ }
+  try {
+    return execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString().trim()
+  } catch {
+    return 'unknown'
+  }
 }
+
+const buildTime = new Date().toISOString()
+const commit = readGitCommit()
 
 export default defineConfig({
   define: {
