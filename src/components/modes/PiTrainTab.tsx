@@ -18,6 +18,7 @@ interface ActiveDrill {
   sequence: string[]
   anchor: number          // 1-indexed π position of sequence[0]
   boundary: number        // segment finished (chain only; -1 for segment drills)
+  anchorNote?: { pos: number; pair: string }  // given start-of-segment pair (chain only)
 }
 
 // A small badge describing why an item surfaced: wrong-rate %, or "new".
@@ -63,8 +64,18 @@ export function PiTrainTab({ answerMode, maxPiPairs }: Props) {
   }, [])
 
   const startChain = useCallback((b: PiBoundaryStat) => {
-    const seq = PI_PAIRS.slice(b.fromAnchor - 1, b.fromAnchor - 1 + 2 * PAIRS_PER_SEGMENT)
-    setDrill({ kind: 'chain', sequence: seq, anchor: b.fromAnchor, boundary: b.boundary })
+    // Give the first pair of the finished segment as a fixed anchor — the user
+    // needs to know where the run-up starts — then recite from its 2nd pair
+    // through the end of the next segment, crossing the boundary.
+    const quizStart = b.fromAnchor + 1
+    const seq = PI_PAIRS.slice(quizStart - 1, b.fromAnchor - 1 + 2 * PAIRS_PER_SEGMENT)
+    setDrill({
+      kind: 'chain',
+      sequence: seq,
+      anchor: quizStart,
+      boundary: b.boundary,
+      anchorNote: { pos: b.fromAnchor, pair: PI_PAIRS[b.fromAnchor - 1] },
+    })
     setRunNonce(n => n + 1)
     setPhase('quiz')
   }, [])
@@ -89,6 +100,18 @@ export function PiTrainTab({ answerMode, maxPiPairs }: Props) {
   if (phase === 'quiz' && drill) {
     return (
       <div className="flex flex-col items-center gap-6 py-4 w-full">
+        {drill.anchorNote && (
+          <div className="w-full max-w-md rounded-xl border border-cyan-500/30 bg-cyan-600/10 px-4 py-3 text-center">
+            <div className="text-[10px] uppercase tracking-wider text-cyan-600">Sequence starts here</div>
+            <div className="mt-0.5 flex items-baseline justify-center gap-2">
+              <span className="font-mono text-2xl font-bold tabular-nums text-cyan-300">{drill.anchorNote.pair}</span>
+              <span className="text-sm text-zinc-400">{words[drill.anchorNote.pair]}</span>
+            </div>
+            <div className="text-[10px] text-zinc-600 mt-0.5">
+              pair {drill.anchorNote.pos} (π {(drill.anchorNote.pos - 1) * 2 + 1}–{drill.anchorNote.pos * 2}) · recite onward across the boundary →
+            </div>
+          </div>
+        )}
         <PiNumberQuiz
           key={runNonce}
           answerMode={answerMode}
