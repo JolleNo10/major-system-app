@@ -64,15 +64,14 @@ export function PiTrainTab({ answerMode, maxPiPairs }: Props) {
   }, [])
 
   const startChain = useCallback((b: PiBoundaryStat) => {
-    // Give the first pair of the finished segment as a fixed anchor — the user
-    // needs to know where the run-up starts — then recite from its 2nd pair
-    // through the end of the next segment, crossing the boundary.
-    const quizStart = b.fromAnchor + 1
-    const seq = PI_PAIRS.slice(quizStart - 1, b.fromAnchor - 1 + 2 * PAIRS_PER_SEGMENT)
+    // Recite the full segment then bridge into the next (usual flow — every pair
+    // is answered). The anchor note just shows where the run-up starts, so the
+    // user knows which segment they're reciting; it doesn't change the quiz.
+    const seq = PI_PAIRS.slice(b.fromAnchor - 1, b.fromAnchor - 1 + 2 * PAIRS_PER_SEGMENT)
     setDrill({
       kind: 'chain',
       sequence: seq,
-      anchor: quizStart,
+      anchor: b.fromAnchor,
       boundary: b.boundary,
       anchorNote: { pos: b.fromAnchor, pair: PI_PAIRS[b.fromAnchor - 1] },
     })
