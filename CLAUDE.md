@@ -76,7 +76,8 @@ cards `01`–`52` — parsed by `paoCsv.ts`, a dedicated quoting-aware parser, *
 Stored flat under composite keys `"<NN>:<field>"` (`person`/`action`/`object`), so `createWordStore` is reused
 (`PaoCardsContext`); `data/paoCards.ts` derives the effective `PaoCard[]` from the store via `buildPaoCards`.
 `PaoWordsGrid` (opened from the PAO Deck's "📇 Edit words" via `PaoWordsOverlay`) is the 3-column,
-suit-grouped editor with the same Import/Export/Persist/Reset flow. Independent of the Themed Deck list —
+suit-grouped editor with the same Import/Export/Persist/Reset flow, plus a **"🎭 From Themed Deck"**
+button that seeds the Person column from the Themed Deck word list (`useCardWords`, person-only, via `importEffective`). Independent of the Themed Deck list —
 the current Themed Deck is untouched. `utils/triples.ts` (`groupTriples`, `roleAt`) chunks a deck into
 Person/Action/Object triples (partial final group of 1–2 kept).
 

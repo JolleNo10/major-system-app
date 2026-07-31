@@ -1,5 +1,6 @@
 import { Fragment, useRef, useState } from 'react'
 import { usePaoStore } from '../context/PaoCardsContext'
+import { useCardWords } from '../context/CardWordsContext'
 import { paoKey, PAO_FIELDS, type PaoField } from '../data/paoCards'
 import { parsePaoCsv, serializePaoCsv, type PaoRow } from '../data/paoCsv'
 import { CARDS } from '../data/cards'
@@ -27,6 +28,7 @@ export function PaoWordsGrid() {
     words, shipped, saved, overrides,
     setOverride, resetOverride, resetTrials, persist, resetFactory, importEffective,
   } = usePaoStore()
+  const { words: themedWords } = useCardWords()
 
   const [editing, setEditing] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
@@ -82,6 +84,21 @@ export function PaoWordsGrid() {
     }
     reader.readAsText(file)
     e.target.value = ''
+  }
+
+  // Seed every Person from the Themed Deck word list (one word per card = the P
+  // of PAO). Only the person column is touched; actions/objects are left as-is.
+  const importFromThemed = () => {
+    const map: Record<string, string> = {}
+    for (const c of CARDS) {
+      const w = (themedWords[c.number] ?? '').trim()
+      if (w) map[paoKey(c.number, 'person')] = w
+    }
+    const n = Object.keys(map).length
+    if (!n) return
+    if (!confirm(`Set every Person (${n} cards) from the Themed Deck word list? This overwrites the current persons; actions and objects are unchanged.`)) return
+    importEffective(map)
+    flash(`Imported ${n} person${n !== 1 ? 's' : ''} from the Themed Deck`)
   }
 
   const startEdit = (key: string) => { setEditing(key); setEditValue(words[key] ?? '') }
@@ -161,6 +178,7 @@ export function PaoWordsGrid() {
         </span>
         <div className="flex items-center gap-3">
           <input ref={fileInputRef} type="file" accept=".csv,.txt" className="hidden" onChange={handleImportFile} />
+          <button onClick={importFromThemed} className={btn} title="Set the Person column from the Themed Deck word list">🎭 From Themed Deck</button>
           <button onClick={() => fileInputRef.current?.click()} className={btn}>↑ Import</button>
           <button onClick={handleExport} className={btn}>↓ Export</button>
           {trialCount > 0 && (
