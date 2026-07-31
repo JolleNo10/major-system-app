@@ -7,16 +7,23 @@ describe('matchesAnswer', () => {
     expect(matchesAnswer('  tom cruise ', 'Tom Cruise')).toBe(true)
   })
 
-  it('accepts just the first name', () => {
+  it('accepts any word 2+ letters, not just the first', () => {
     expect(matchesAnswer('Tom', 'Tom Cruise')).toBe(true)
     expect(matchesAnswer('donald', 'Donald Trump')).toBe(true)
+    expect(matchesAnswer('Cruise', 'Tom Cruise')).toBe(true)
+    expect(matchesAnswer('sikte', 'i sikte bla bla')).toBe(true)
+    expect(matchesAnswer('bla', 'i sikte bla bla')).toBe(true)
   })
 
-  it('rejects wrong or partial-but-not-first-word input', () => {
-    expect(matchesAnswer('Cruise', 'Tom Cruise')).toBe(false)
+  it('rejects single-letter words and non-word input', () => {
+    expect(matchesAnswer('i', 'i sikte bla bla')).toBe(false)
     expect(matchesAnswer('Tom C', 'Tom Cruise')).toBe(false)
     expect(matchesAnswer('', 'Tom Cruise')).toBe(false)
     expect(matchesAnswer('Nemo', 'Mario')).toBe(false)
+  })
+
+  it('accepts a single-letter answer typed in full', () => {
+    expect(matchesAnswer('i', 'i')).toBe(true)
   })
 
   it('is a no-op for single-word answers', () => {
