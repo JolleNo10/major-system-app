@@ -15,10 +15,10 @@ const COLS: { field: PaoField; label: string; placeholder: string }[] = [
 ]
 
 const SUIT_GROUPS: { suit: Suit; label: string }[] = [
-  { suit: '♠', label: '♠ Spades' },
-  { suit: '♥', label: '♥ Hearts' },
-  { suit: '♦', label: '♦ Diamonds' },
   { suit: '♣', label: '♣ Clubs' },
+  { suit: '♦', label: '♦ Diamonds' },
+  { suit: '♥', label: '♥ Hearts' },
+  { suit: '♠', label: '♠ Spades' },
 ]
 
 const cardsForSuit = (suit: Suit) => CARDS.filter(c => c.suit === suit)
