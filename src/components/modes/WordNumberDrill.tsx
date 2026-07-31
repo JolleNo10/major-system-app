@@ -174,7 +174,61 @@ export function WordNumberDrill({ config, answerMode, pool: customPool }: Props)
   const fmt2 = (v: number) => String(v).padStart(2, '0')
   const startNextSet = () => { setLow(nextLow); setHigh(nextHigh) }
 
+  const [sessionPhase, setSessionPhase] = useState<'drilling' | 'summary'>('drilling')
+
+  // Intercept Escape before App.tsx's handler: show session summary when ≥5 answers recorded.
+  // Uses capture phase so it fires before the bubble-phase goHome handler in App.tsx.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || isOverlayOpen()) return
+      if (sessionPhase === 'drilling' && sessionCorrect + sessionWrong >= 5 && answered === null) {
+        e.stopImmediatePropagation()
+        setSessionPhase('summary')
+      }
+    }
+    window.addEventListener('keydown', handler, { capture: true })
+    return () => window.removeEventListener('keydown', handler, { capture: true })
+  }, [sessionPhase, sessionCorrect, sessionWrong, answered])
+
   const panelCls = 'bg-zinc-900 border border-zinc-800 rounded-xl p-4'
+
+  if (sessionPhase === 'summary') {
+    const totalAnswered = sessionCorrect + sessionWrong
+    const accuracy = totalAnswered > 0 ? Math.round((sessionCorrect / totalAnswered) * 100) : 0
+    return (
+      <div className="flex flex-col gap-6 py-8 max-w-md mx-auto">
+        <div className="text-center space-y-1">
+          <p className="text-xs text-zinc-500 uppercase tracking-widest">Session</p>
+          <p className="text-3xl font-bold text-zinc-100 tabular-nums">{totalAnswered} answers</p>
+        </div>
+        <div className="space-y-3 text-base">
+          <div className="flex justify-between items-baseline border-b border-zinc-800 pb-3">
+            <span className="text-zinc-400">Accuracy</span>
+            <span className="font-bold text-zinc-100 tabular-nums">{accuracy}%</span>
+          </div>
+          <div className="flex justify-between items-baseline border-b border-zinc-800 pb-3">
+            <span className="text-zinc-400">Best streak</span>
+            <span className="font-bold text-zinc-100 tabular-nums">{bestStreak}</span>
+          </div>
+          {total > 0 && (
+            <div className="flex justify-between items-baseline border-b border-zinc-800 pb-3">
+              <span className="text-zinc-400">Mastered this session</span>
+              <span className={`font-bold tabular-nums ${mastered > 0 ? 'text-green-400' : 'text-zinc-500'}`}>{mastered}</span>
+            </div>
+          )}
+        </div>
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={() => setSessionPhase('drilling')}
+            className="w-full min-h-[44px] rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-medium transition-colors"
+          >
+            Keep drilling
+          </button>
+          <p className="text-center text-sm text-zinc-500">Press Esc or tap ← to go home</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <>
@@ -189,9 +243,102 @@ export function WordNumberDrill({ config, answerMode, pool: customPool }: Props)
         </div>
       )}
 
-      <div className="flex flex-col items-center gap-8 py-4">
+      <div className="flex flex-col items-center gap-6 py-4">
+
+        {/* Question — dominant, first */}
+        <div className="text-center space-y-2">
+          <p className="text-xs text-zinc-600 uppercase tracking-widest">{config.promptLabel}</p>
+          <div className={`${config.promptClass} ${paused ? 'blur-md select-none' : ''}`}>
+            {question.prompt}
+          </div>
+        </div>
+
+        {config.showHint && !paused && (
+          <HintButton
+            word={question.answer}
+            revealed={hintUsed}
+            onReveal={() => setHintUsed(true)}
+          />
+        )}
+
+        {/* Answer area — immediately after the question */}
+        <div className="w-full max-w-md space-y-2">
+          {paused ? (
+            <div className="text-center space-y-3 py-6">
+              <p className="text-zinc-400 text-sm">Paused — timer stopped</p>
+              <button
+                onClick={togglePause}
+                className="px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-medium transition-colors"
+              >▶ Resume</button>
+            </div>
+          ) : answerMode === 'multiple-choice' ? (
+            <MultipleChoice
+              options={question.options}
+              correctAnswer={question.answer}
+              onAnswer={handleAnswer}
+              answered={answered}
+            />
+          ) : (
+            <TypingInput
+              onAnswer={handleAnswer}
+              answeredCorrect={answeredCorrect}
+              correctAnswer={question.answer}
+              placeholder={config.inputPlaceholder}
+              numeric={config.inputNumeric}
+            />
+          )}
+          {answered !== null && lastMs !== null && (
+            discarded ? (
+              <p className="text-center text-sm text-zinc-500">
+                Not counted — timer ran too long (use ⏸ Pause)
+              </p>
+            ) : (
+              <p className={`text-center text-sm font-mono tabular-nums ${
+                recallColor(adjustLatency(lastMs, answerMode, answerMode === 'typing' ? question.answer.length : 0))
+              }`}>
+                {(lastMs / 1000).toFixed(1)}s
+              </p>
+            )
+          )}
+        </div>
+
+        {/* Score and progress — natural eye rest after answering */}
+        <ScoreBar correct={sessionCorrect} wrong={sessionWrong} streak={streak} bestStreak={bestStreak} />
+
+        {!customPool && total > 0 && (
+          <div className="w-full max-w-md -mt-2">
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-zinc-500">Set mastery</span>
+              <span className={setComplete ? 'text-green-400 font-semibold' : 'text-zinc-400 tabular-nums'}>{mastered}/{total}</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+              <div
+                className={`h-full transition-all ${setComplete ? 'bg-green-500' : 'bg-violet-600'}`}
+                style={{ width: `${(mastered / total) * 100}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {!customPool && setComplete && (
+          <div className="w-full max-w-md rounded-xl border border-green-600/40 bg-green-500/10 p-4 text-center space-y-3">
+            <p className="text-green-300 font-semibold">🎉 You know this whole set — ready to move on.</p>
+            <div className="flex justify-center gap-2 flex-wrap">
+              <button
+                onClick={startNextSet}
+                className="flex items-center min-h-[40px] px-4 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-medium transition-colors"
+              >Next set {fmt2(nextLow)}–{fmt2(nextHigh)} →</button>
+              <button
+                onClick={resetRound}
+                className="flex items-center min-h-[40px] px-4 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-medium transition-colors"
+              >Keep practising</button>
+            </div>
+          </div>
+        )}
+
+        {/* Config — moved to bottom so it doesn't precede the question */}
         {!customPool && (
-          <div className="w-full max-w-md space-y-3">
+          <div className="w-full max-w-md space-y-3 pt-4 border-t border-zinc-800/60">
             <div className="flex justify-between items-center">
               <div className="flex gap-2">
                 <button
@@ -235,94 +382,6 @@ export function WordNumberDrill({ config, answerMode, pool: customPool }: Props)
             <SoundKeyPanel />
           </div>
         )}
-
-        <ScoreBar correct={sessionCorrect} wrong={sessionWrong} streak={streak} bestStreak={bestStreak} />
-
-        {!customPool && total > 0 && (
-          <div className="w-full max-w-md -mt-4">
-            <div className="flex justify-between text-xs mb-1">
-              <span className="text-zinc-500">Set mastery</span>
-              <span className={setComplete ? 'text-green-400 font-semibold' : 'text-zinc-400 tabular-nums'}>{mastered}/{total}</span>
-            </div>
-            <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
-              <div
-                className={`h-full transition-all ${setComplete ? 'bg-green-500' : 'bg-violet-600'}`}
-                style={{ width: `${(mastered / total) * 100}%` }}
-              />
-            </div>
-          </div>
-        )}
-
-        {!customPool && setComplete && (
-          <div className="w-full max-w-md rounded-xl border border-green-600/40 bg-green-500/10 p-4 text-center space-y-3">
-            <p className="text-green-300 font-semibold">🎉 You know this whole set — ready to move on.</p>
-            <div className="flex justify-center gap-2 flex-wrap">
-              <button
-                onClick={startNextSet}
-                className="flex items-center min-h-[40px] px-4 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-medium transition-colors"
-              >Next set {fmt2(nextLow)}–{fmt2(nextHigh)} →</button>
-              <button
-                onClick={resetRound}
-                className="flex items-center min-h-[40px] px-4 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-medium transition-colors"
-              >Keep practising</button>
-            </div>
-          </div>
-        )}
-
-        <div className="text-center space-y-2">
-          <p className="text-xs text-zinc-600 uppercase tracking-widest">{config.promptLabel}</p>
-          <div className={`${config.promptClass} ${paused ? 'blur-md select-none' : ''}`}>
-            {question.prompt}
-          </div>
-        </div>
-
-        {config.showHint && !paused && (
-          <HintButton
-            word={question.answer}
-            revealed={hintUsed}
-            onReveal={() => setHintUsed(true)}
-          />
-        )}
-
-        <div className="w-full max-w-md space-y-2">
-          {paused ? (
-            <div className="text-center space-y-3 py-6">
-              <p className="text-zinc-400 text-sm">Paused — timer stopped</p>
-              <button
-                onClick={togglePause}
-                className="px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-medium transition-colors"
-              >▶ Resume</button>
-            </div>
-          ) : answerMode === 'multiple-choice' ? (
-            <MultipleChoice
-              options={question.options}
-              correctAnswer={question.answer}
-              onAnswer={handleAnswer}
-              answered={answered}
-            />
-          ) : (
-            <TypingInput
-              onAnswer={handleAnswer}
-              answeredCorrect={answeredCorrect}
-              correctAnswer={question.answer}
-              placeholder={config.inputPlaceholder}
-              numeric={config.inputNumeric}
-            />
-          )}
-          {answered !== null && lastMs !== null && (
-            discarded ? (
-              <p className="text-center text-sm text-zinc-500">
-                ⏱ Not counted — timer ran too long (use ⏸ Pause)
-              </p>
-            ) : (
-              <p className={`text-center text-sm font-mono tabular-nums ${
-                recallColor(adjustLatency(lastMs, answerMode, answerMode === 'typing' ? question.answer.length : 0))
-              }`}>
-                {(lastMs / 1000).toFixed(1)}s
-              </p>
-            )
-          )}
-        </div>
       </div>
     </>
   )
