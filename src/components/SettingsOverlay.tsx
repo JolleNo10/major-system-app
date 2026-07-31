@@ -9,6 +9,7 @@ import { Overlay } from './Overlay'
 import { PI_PAIRS } from '../data/piDigits'
 import { Switch } from './Switch'
 import type { PwaUpdate } from '../hooks/usePwaUpdate'
+import type { ReactNode } from 'react'
 
 interface Props {
   onClose: () => void
@@ -39,9 +40,10 @@ export function SettingsOverlay({ onClose, pwa }: Props) {
       ariaLabel="Settings"
       header={<h2 className="font-bold text-zinc-100 text-lg">⚙️ Settings</h2>}
       maxWidth="max-w-xl"
-      bodyClassName="space-y-8"
+      bodyClassName="space-y-10"
     >
 
+          <SettingsGroup label="Major System">
           <section>
             <div className="flex items-baseline justify-between mb-1">
               <h3 className="font-semibold text-zinc-100">Mastery speed tolerance</h3>
@@ -83,7 +85,9 @@ export function SettingsOverlay({ onClose, pwa }: Props) {
               </button>
             )}
           </section>
+          </SettingsGroup>
 
+          <SettingsGroup label="Pi">
           <section>
             <div className="flex items-baseline justify-between mb-1">
               <h3 className="font-semibold text-zinc-100">Max π digits available</h3>
@@ -131,7 +135,9 @@ export function SettingsOverlay({ onClose, pwa }: Props) {
               ))}
             </div>
           </section>
+          </SettingsGroup>
 
+          <SettingsGroup label="App">
           <section>
             <div className="flex items-center justify-between gap-4 mb-1">
               <h3 className="font-semibold text-zinc-100">Offline mode</h3>
@@ -178,6 +184,19 @@ export function SettingsOverlay({ onClose, pwa }: Props) {
               )}
             </div>
           </section>
+          </SettingsGroup>
     </Overlay>
+  )
+}
+
+function SettingsGroup({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div>
+      <div className="flex items-center gap-3 mb-5">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">{label}</h2>
+        <div className="flex-1 h-px bg-zinc-800" />
+      </div>
+      <div className="space-y-8">{children}</div>
+    </div>
   )
 }
