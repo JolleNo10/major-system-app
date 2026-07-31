@@ -37,7 +37,7 @@ docker run --rm -v "$(pwd)":/app -w /app node:20-alpine sh -c "npx tsc -b && npx
 | `major-word-saved` | localStorage | Committed custom words (layer 2) |
 | `major-word-overrides` | localStorage | Trial/pending word edits (layer 3, shown yellow) |
 | `major-soundkey-saved` / `-overrides` | localStorage | Editable sound-key layers (same 3-layer store), keyed by composite `"<digit>:<field>"` strings |
-| `major-settings` | localStorage | `{ masteryLatencyFactor, maxPiDigits, offlineMode }` |
+| `major-settings` | localStorage | `{ masteryLatencyFactor, maxPiDigits, offlineMode, piPairsPerAnswer }` (`piPairsPerAnswer` 1\|10 = Pi typing batch size, set in Settings; migrated once from the legacy `major-pi-answer-size` key) |
 | `major-typing-speed` / `-digit` | localStorage | Adaptive ms/char estimates, separate for word vs digit typing |
 | `major-answer-mode`, `major-hide-options`, `major-seq-length`, `major-seq-studymode`, `major-speed-best`, `major-attempts-migrated` | localStorage | Small UI/prefs flags |
 
@@ -118,7 +118,7 @@ Reset flow; the two sound-key drills + `SoundKeyPanel` read `useSoundKey()` so t
   `Overlay` (`components/Overlay.tsx`)** — the `role="dialog"` shell, `useOverlay` wiring, header bar, close
   button, and scroll body; callers pass `ariaLabel`/`header`/`maxWidth`/children (`TabButton` is the shared
   header tab). Overlays: `ReferenceOverlay` (sound key + major `WordListGrid`), `CardWordsOverlay` (Themed Deck
-  word list, suit-grouped), `SettingsOverlay` (mastery tolerance, max π digits, offline mode + version/update),
+  word list, suit-grouped), `SettingsOverlay` (mastery tolerance, max π digits, Pi pairs-per-answer, offline mode + version/update),
   `StatsOverlay` (worst-first ranking per direction, plus a **🥧 π tab** that async-loads Pi weak positions + run summary).
 - **`hooks/`** — `useStats` (`recordFull` records item-data + attempts and returns its grade; `getStats`
   derives direction-less aggregates from item-data; `buildRepQueue`, `getDueCount`, `getNextDueMs`),

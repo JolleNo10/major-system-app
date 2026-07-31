@@ -108,6 +108,31 @@ export function SettingsOverlay({ onClose, pwa }: Props) {
           </section>
 
           <section>
+            <div className="flex items-baseline justify-between mb-1">
+              <h3 className="font-semibold text-zinc-100">Pairs per answer</h3>
+              <span className="text-sm font-mono tabular-nums text-cyan-300">{settings.piPairsPerAnswer}</span>
+            </div>
+            <p className="text-sm text-zinc-500 mb-3">
+              In the Pi drills' typing mode, answer one pair at a time or a whole 10-pair row at once. Ignored in multiple-choice.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {([1, 10] as const).map(size => (
+                <button
+                  key={size}
+                  onClick={() => update({ piPairsPerAnswer: size })}
+                  className={`px-4 py-3 rounded-lg border text-sm font-semibold transition-colors ${
+                    settings.piPairsPerAnswer === size
+                      ? 'bg-cyan-600/20 border-cyan-500 text-zinc-100'
+                      : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500'
+                  }`}
+                >
+                  {size === 1 ? '1 pair' : '10 pairs'}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section>
             <div className="flex items-center justify-between gap-4 mb-1">
               <h3 className="font-semibold text-zinc-100">Offline mode</h3>
               <Switch

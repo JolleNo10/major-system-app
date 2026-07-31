@@ -1,16 +1,13 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useWords } from '../../context/WordsContext'
-import { PiNumberQuiz, type AnswerSize } from './PiNumberQuiz'
-import { readString, safeSet } from '../../utils/storage'
+import { useSettings } from '../../context/SettingsContext'
+import { PiNumberQuiz } from './PiNumberQuiz'
 import { PI_PAIRS } from '../../data/piDigits'
 import {
   rankPiSegments, rankPiBoundaries, recordPiChain, PAIRS_PER_SEGMENT,
   type PiSegmentStat, type PiBoundaryStat,
 } from '../../data/piStats'
 import type { AnswerMode } from '../../types'
-
-// Shared with the Recite tab so "pairs per answer" is one preference.
-const ANSWER_SIZE_KEY = 'major-pi-answer-size'
 
 interface Props { answerMode: AnswerMode; maxPiPairs: number }
 
@@ -39,13 +36,12 @@ function WeaknessBadge({ tested, wrongRate }: { tested: boolean; wrongRate: numb
 
 export function PiTrainTab({ answerMode, maxPiPairs }: Props) {
   const { words } = useWords()
+  const { settings } = useSettings()
+  const answerSize = settings.piPairsPerAnswer
 
   const [phase, setPhase] = useState<Phase>('select')
   const [drill, setDrill] = useState<ActiveDrill | null>(null)
   const [runNonce, setRunNonce] = useState(0)
-
-  const [answerSize, setAnswerSize] = useState<AnswerSize>(() =>
-    readString(ANSWER_SIZE_KEY) === '10' ? 10 : 1)
 
   const [segments, setSegments] = useState<PiSegmentStat[]>([])
   const [boundaries, setBoundaries] = useState<PiBoundaryStat[]>([])
@@ -136,28 +132,6 @@ export function PiTrainTab({ answerMode, maxPiPairs }: Props) {
 
   return (
     <div className="flex flex-col items-center gap-6 py-4 w-full">
-
-      {/* PAIRS PER ANSWER (typing only) */}
-      {answerMode === 'typing' && (
-        <div className={`w-full max-w-lg space-y-2 p-6 ${panelCls}`}>
-          <span className="text-sm font-medium text-zinc-300">Pairs per answer</span>
-          <div className="grid grid-cols-2 gap-2">
-            {([1, 10] as AnswerSize[]).map(size => (
-              <button
-                key={size}
-                onClick={() => { setAnswerSize(size); safeSet(ANSWER_SIZE_KEY, String(size)) }}
-                className={`px-4 py-3 rounded-lg border text-sm font-semibold transition-colors ${
-                  answerSize === size
-                    ? 'bg-cyan-600/20 border-cyan-500 text-zinc-100'
-                    : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500'
-                }`}
-              >
-                {size === 1 ? '1 pair' : '10 pairs'}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* WEAK SEGMENTS */}
       <div className={`w-full max-w-lg space-y-3 p-6 ${panelCls}`}>

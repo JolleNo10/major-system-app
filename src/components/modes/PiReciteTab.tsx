@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { useWords } from '../../context/WordsContext'
-import { PiNumberQuiz, type AnswerSize } from './PiNumberQuiz'
+import { useSettings } from '../../context/SettingsContext'
+import { PiNumberQuiz } from './PiNumberQuiz'
 import { readString, safeSet } from '../../utils/storage'
 import { PI_PAIRS } from '../../data/piDigits'
 import { loadPiSessions, bestFromStartReach, type PiSession } from '../../data/piStats'
@@ -8,7 +9,6 @@ import type { AnswerMode } from '../../types'
 
 const SEL_START_KEY = 'major-pi-sel-start'
 const SEL_END_KEY = 'major-pi-sel-end'
-const ANSWER_SIZE_KEY = 'major-pi-answer-size'
 
 const PAIRS_PER_ROW = 10
 
@@ -17,9 +17,8 @@ interface Props { answerMode: AnswerMode; maxPiPairs: number }
 
 export function PiReciteTab({ answerMode, maxPiPairs }: Props) {
   const { words } = useWords()
-
-  const [answerSize, setAnswerSize] = useState<AnswerSize>(() =>
-    readString(ANSWER_SIZE_KEY) === '10' ? 10 : 1)
+  const { settings } = useSettings()
+  const answerSize = settings.piPairsPerAnswer
 
   const [selAnchor, setSelAnchor] = useState<number | null>(() => {
     const v = parseInt(readString(SEL_START_KEY) ?? '', 10)
@@ -54,12 +53,11 @@ export function PiReciteTab({ answerMode, maxPiPairs }: Props) {
     if (selAnchor === null || selEnd === null) return
     safeSet(SEL_START_KEY, String(selAnchor))
     safeSet(SEL_END_KEY, String(selEnd))
-    safeSet(ANSWER_SIZE_KEY, String(answerSize))
     setSequence(PI_PAIRS.slice(selAnchor - 1, selEnd))
     setSessionAnchor(selAnchor)
     setRunNonce(n => n + 1)
     setPhase('quiz')
-  }, [selAnchor, selEnd, answerSize])
+  }, [selAnchor, selEnd])
 
   const exitToSetup = useCallback(() => {
     setPiSessions(loadPiSessions())
@@ -78,30 +76,6 @@ export function PiReciteTab({ answerMode, maxPiPairs }: Props) {
       {/* SETUP */}
       {phase === 'setup' && (
         <div className={`w-full max-w-lg space-y-6 p-6 ${panelCls}`}>
-
-          {answerMode === 'typing' && (
-            <div className="space-y-2">
-              <span className="text-sm font-medium text-zinc-300">Pairs per answer</span>
-              <div className="grid grid-cols-2 gap-2">
-                {([1, 10] as AnswerSize[]).map(size => (
-                  <button
-                    key={size}
-                    onClick={() => {
-                      setAnswerSize(size)
-                      safeSet(ANSWER_SIZE_KEY, String(size))
-                    }}
-                    className={`px-4 py-3 rounded-lg border text-sm font-semibold transition-colors ${
-                      answerSize === size
-                        ? 'bg-cyan-600/20 border-cyan-500 text-zinc-100'
-                        : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500'
-                    }`}
-                  >
-                    {size === 1 ? '1 pair' : '10 pairs'}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
           <div className="space-y-2">
             <span className="text-sm font-medium text-zinc-300">Select segment</span>
