@@ -95,7 +95,7 @@ export function SettingsOverlay({ onClose, pwa }: Props) {
             <input
               type="range"
               min={MAX_PI_DIGITS_MIN}
-              max={PI_PAIRS.length * 2}
+              max={Math.min(PI_PAIRS.length * 2, 10000)}
               step={MAX_PI_DIGITS_STEP}
               value={settings.maxPiDigits}
               onChange={e => update({ maxPiDigits: +e.target.value })}
@@ -103,7 +103,7 @@ export function SettingsOverlay({ onClose, pwa }: Props) {
             />
             <div className="flex justify-between text-xs text-zinc-600 mt-1">
               <span>{MAX_PI_DIGITS_MIN}</span>
-              <span>{PI_PAIRS.length * 2}</span>
+              <span>{Math.min(PI_PAIRS.length * 2, 10000)}</span>
             </div>
           </section>
 
