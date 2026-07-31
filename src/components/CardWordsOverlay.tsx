@@ -12,10 +12,10 @@ function suitNumbers(suit: Suit): string[] {
 }
 
 const GROUPS: { label: string; keys: string[] }[] = [
-  { label: '♠ Spades — Actors', keys: suitNumbers('♠') },
-  { label: '♥ Hearts — Cartoon / anime / game characters', keys: suitNumbers('♥') },
-  { label: '♦ Diamonds — Musicians & public figures', keys: suitNumbers('♦') },
   { label: '♣ Clubs — Major words', keys: suitNumbers('♣') },
+  { label: '♦ Diamonds — Musicians & public figures', keys: suitNumbers('♦') },
+  { label: '♥ Hearts — Cartoon / anime / game characters', keys: suitNumbers('♥') },
+  { label: '♠ Spades — Actors', keys: suitNumbers('♠') },
 ]
 
 function renderLabel(number: string) {
