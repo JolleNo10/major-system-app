@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { SoundKeyTable } from './SoundKeyTable'
+import { SoundKeyGrid } from './SoundKeyGrid'
 import { WordListGrid } from './WordListGrid'
 import { Overlay, TabButton } from './Overlay'
 import { useWords } from '../context/WordsContext'
@@ -24,7 +24,7 @@ export function ReferenceOverlay({ onClose }: Props) {
 
   return (
     <Overlay onClose={onClose} ariaLabel="Reference" header={header} maxWidth="max-w-4xl">
-      {tab === 'sound-key' ? <SoundKeyTable /> : <WordListGrid store={words} keys={MAJOR_KEYS} />}
+      {tab === 'sound-key' ? <SoundKeyGrid /> : <WordListGrid store={words} keys={MAJOR_KEYS} />}
 
       <div className="mt-10 pt-6 border-t border-zinc-800/60">
         <p className="text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-3">Dev</p>

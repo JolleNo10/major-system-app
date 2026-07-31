@@ -20,6 +20,7 @@ export interface WordStoreValue {
   persist: () => void          // fold trials into saved
   resetFactory: () => void     // clear saved + trials → back to shipped
   importSaved: (rows: WordRow[]) => void
+  importEffective: (map: Words) => void  // fold a key→effective map into saved
 }
 
 function load(key: string): Words {
@@ -86,29 +87,33 @@ export function createWordStore(shipped: Words, savedKey: string, overridesKey: 
       setSaved({}); safeRemove(savedKey)
     }, [])
 
-    const importSaved = useCallback((rows: WordRow[]) => {
-      const affected = new Set(rows.map(r => r.number))
+    // Fold a key→effective map into saved: a value equal to shipped clears its
+    // saved entry; any pending trial for a folded key is dropped so the folded
+    // value becomes effective. Shared by CSV import (both word and sound-key).
+    const importEffective = useCallback((map: Words) => {
       updateSaved(prev => {
         const next = { ...prev }
-        for (const r of rows) {
-          const word = r.custom || r.def
-          if (word === shipped[r.number]) delete next[r.number]
-          else next[r.number] = word
+        for (const [k, v] of Object.entries(map)) {
+          if (v === shipped[k]) delete next[k]
+          else next[k] = v
         }
         return next
       })
-      // Clear any pending trial for imported numbers so the imported value is effective.
       updateOverrides(prev => {
         const next = { ...prev }
-        for (const n of affected) delete next[n]
+        for (const k of Object.keys(map)) delete next[k]
         return next
       })
     }, [updateSaved, updateOverrides])
 
+    const importSaved = useCallback((rows: WordRow[]) => {
+      importEffective(Object.fromEntries(rows.map(r => [r.number, r.custom || r.def])))
+    }, [importEffective])
+
     return (
       <Ctx.Provider value={{
         words, shipped, saved, overrides,
-        setOverride, resetOverride, resetTrials, persist, resetFactory, importSaved,
+        setOverride, resetOverride, resetTrials, persist, resetFactory, importSaved, importEffective,
       }}>
         {children}
       </Ctx.Provider>

@@ -1,10 +1,11 @@
-import { SOUND_KEY } from '../data/soundKey'
+import { useSoundKey } from '../context/SoundKeyContext'
 
 export function SoundKeyPanel() {
+  const { entries } = useSoundKey()
   return (
     <div className="space-y-0.5">
       <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Sound Key</p>
-      {SOUND_KEY.map(({ digit, display, hint }) => (
+      {entries.map(({ digit, display, hint }) => (
         <div
           key={digit}
           className="flex items-start gap-3 py-2 border-b border-zinc-800/50 last:border-0"

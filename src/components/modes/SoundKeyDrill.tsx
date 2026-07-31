@@ -1,20 +1,21 @@
 import { useState, useCallback } from 'react'
-import { SOUND_KEY } from '../../data/soundKey'
+import { useSoundKey } from '../../context/SoundKeyContext'
+import type { SoundKeyEntry } from '../../data/soundKey'
 import { MultipleChoice } from '../MultipleChoice'
 import { TypingInput } from '../TypingInput'
 import { ScoreBar } from '../ScoreBar'
 import { shuffle } from '../../utils/quiz'
 import type { AnswerMode } from '../../types'
 
-function makeQuestion(exclude?: number) {
-  const available = SOUND_KEY.filter(e => e.digit !== exclude)
+function makeQuestion(entries: SoundKeyEntry[], exclude?: number) {
+  const available = entries.filter(e => e.digit !== exclude)
   const entry = available[Math.floor(Math.random() * available.length)]
-  const others = shuffle(SOUND_KEY.filter(e => e.digit !== entry.digit)).slice(0, 2)
+  const others = shuffle(entries.filter(e => e.digit !== entry.digit)).slice(0, 2)
   const options = shuffle([entry.display, ...others.map(o => o.display)])
   return { digit: entry.digit, correctDisplay: entry.display, options }
 }
 
-function checkTypingAnswer(value: string, entry: typeof SOUND_KEY[0]): boolean {
+function checkTypingAnswer(value: string, entry: SoundKeyEntry): boolean {
   const v = value.trim().toLowerCase().replace(/\s/g, '')
   return entry.sounds.some(s => s === v) || v === entry.display.toLowerCase().replace(/\s/g, '')
 }
@@ -24,19 +25,20 @@ interface Props {
 }
 
 export function SoundKeyDrill({ answerMode }: Props) {
-  const [question, setQuestion] = useState(() => makeQuestion())
+  const { entries } = useSoundKey()
+  const [question, setQuestion] = useState(() => makeQuestion(entries))
   const [answered, setAnswered] = useState<string | null>(null)
   const [answeredCorrect, setAnsweredCorrect] = useState<boolean | null>(null)
   const [sessionCorrect, setSessionCorrect] = useState(0)
   const [sessionWrong, setSessionWrong] = useState(0)
 
-  const entry = SOUND_KEY.find(e => e.digit === question.digit)!
+  const entry = entries.find(e => e.digit === question.digit)!
 
   const next = useCallback((exclude: number) => {
-    setQuestion(makeQuestion(exclude))
+    setQuestion(makeQuestion(entries, exclude))
     setAnswered(null)
     setAnsweredCorrect(null)
-  }, [])
+  }, [entries])
 
   const handleAnswer = useCallback((value: string) => {
     if (answered !== null) return

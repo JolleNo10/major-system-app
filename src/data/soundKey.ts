@@ -1,3 +1,10 @@
+// The sound key ships in soundKey.csv (digit ↔ sounds/display/hint). It is
+// editable in-app (Reference → Sound Key) with the same 3-layer store + CSV
+// import/export as the word list. Effective entries are derived from that store
+// via useSoundKey(); nothing here is a live singleton beyond the shipped seed.
+import raw from './soundKey.csv?raw'
+import { parseSoundKeyCsv } from './soundKeyCsv'
+
 export interface SoundKeyEntry {
   digit: number
   sounds: string[]
@@ -5,29 +12,50 @@ export interface SoundKeyEntry {
   hint: string
 }
 
-export const SOUND_KEY: SoundKeyEntry[] = [
-  { digit: 0, sounds: ['s', 'z'],              display: 's, z',           hint: '"0" ligner en S som ligger ned' },
-  { digit: 1, sounds: ['t', 'd'],              display: 't, d',           hint: 'T og D har 1 loddrett strek' },
-  { digit: 2, sounds: ['n'],                   display: 'n',              hint: 'N har 2 loddrette streker' },
-  { digit: 3, sounds: ['m'],                   display: 'm',              hint: 'M har 3 loddrette streker' },
-  { digit: 4, sounds: ['r'],                   display: 'r',              hint: 'R – siste bokstav i "fouR"' },
-  { digit: 5, sounds: ['l'],                   display: 'l',              hint: 'L = 50 på romertall' },
-  { digit: 6, sounds: ['sj', 'kj', 'skj', 'tj'], display: 'sj, kj, skj, tj', hint: 'Sj-lyden, som i "sjef"' },
-  { digit: 7, sounds: ['k', 'g'],              display: 'k, g (hard)',    hint: 'K ser ut som 2 × 7' },
-  { digit: 8, sounds: ['f', 'v'],              display: 'f, v',           hint: 'F/V ser ut som en 8 på siden' },
-  { digit: 9, sounds: ['p', 'b'],              display: 'p, b',           hint: 'P er 9 speilvendt; B er 9 invertert' },
-]
-
 export interface SoundEntry {
   sound: string
   digit: number
   display: string
 }
 
-export const ALL_SOUNDS: SoundEntry[] = SOUND_KEY.flatMap(e =>
-  e.sounds.map(s => ({ sound: s, digit: e.digit, display: e.display }))
-)
+export const SOUND_KEY_FIELDS = ['sounds', 'display', 'hint'] as const
+export type SoundKeyField = typeof SOUND_KEY_FIELDS[number]
 
-export const SOUND_TO_DIGIT: Record<string, number> = Object.fromEntries(
-  SOUND_KEY.flatMap(e => e.sounds.map(s => [s, e.digit]))
-)
+// Store keys are composite so the flat createWordStore can hold one editable
+// string per (digit, field): e.g. "7:sounds", "7:display", "7:hint".
+export const skKey = (digit: number | string, field: SoundKeyField): string => `${digit}:${field}`
+
+export const parseSounds = (cell: string): string[] =>
+  cell.split(',').map(t => t.trim()).filter(Boolean)
+
+const { rows, errors } = parseSoundKeyCsv(raw)
+if (errors.length) {
+  // The seed is trusted data — surface problems loudly during dev/build.
+  throw new Error(`soundKey.csv is invalid:\n${errors.join('\n')}`)
+}
+
+// Shipped composite map: "<digit>:<field>" → effective shipped string.
+export const SHIPPED_SOUND_KEY: Record<string, string> = {}
+for (const r of rows) {
+  SHIPPED_SOUND_KEY[skKey(r.digit, 'sounds')] = r.sounds.custom || r.sounds.def
+  SHIPPED_SOUND_KEY[skKey(r.digit, 'display')] = r.display.custom || r.display.def
+  SHIPPED_SOUND_KEY[skKey(r.digit, 'hint')] = r.hint.custom || r.hint.def
+}
+
+// Rebuild the 0–9 entry list from a store's effective composite map.
+export function buildSoundKey(words: Record<string, string>): SoundKeyEntry[] {
+  return Array.from({ length: 10 }, (_, digit) => ({
+    digit,
+    sounds: parseSounds(words[skKey(digit, 'sounds')] ?? ''),
+    display: words[skKey(digit, 'display')] ?? '',
+    hint: words[skKey(digit, 'hint')] ?? '',
+  }))
+}
+
+export function buildAllSounds(entries: SoundKeyEntry[]): SoundEntry[] {
+  return entries.flatMap(e => e.sounds.map(s => ({ sound: s, digit: e.digit, display: e.display })))
+}
+
+export function buildSoundToDigit(entries: SoundKeyEntry[]): Record<string, number> {
+  return Object.fromEntries(entries.flatMap(e => e.sounds.map(s => [s, e.digit])))
+}

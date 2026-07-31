@@ -1,17 +1,18 @@
 import { useState, useCallback } from 'react'
-import { ALL_SOUNDS, SOUND_KEY } from '../../data/soundKey'
+import { useSoundKey } from '../../context/SoundKeyContext'
+import type { SoundKeyEntry, SoundEntry } from '../../data/soundKey'
 import { MultipleChoice } from '../MultipleChoice'
 import { TypingInput } from '../TypingInput'
 import { ScoreBar } from '../ScoreBar'
 import { shuffle } from '../../utils/quiz'
 import type { AnswerMode } from '../../types'
 
-function makeQuestion(excludeSound?: string) {
+function makeQuestion(entries: SoundKeyEntry[], allSounds: SoundEntry[], excludeSound?: string) {
   const available = excludeSound
-    ? ALL_SOUNDS.filter(e => e.sound !== excludeSound)
-    : ALL_SOUNDS
+    ? allSounds.filter(e => e.sound !== excludeSound)
+    : allSounds
   const entry = available[Math.floor(Math.random() * available.length)]
-  const otherDigits = shuffle(SOUND_KEY.filter(e => e.digit !== entry.digit)).slice(0, 2)
+  const otherDigits = shuffle(entries.filter(e => e.digit !== entry.digit)).slice(0, 2)
   const options = shuffle([String(entry.digit), ...otherDigits.map(e => String(e.digit))])
   return { sound: entry.sound, digit: entry.digit, options }
 }
@@ -21,7 +22,8 @@ interface Props {
 }
 
 export function ReverseSoundKeyDrill({ answerMode }: Props) {
-  const [question, setQuestion] = useState(() => makeQuestion())
+  const { entries, allSounds } = useSoundKey()
+  const [question, setQuestion] = useState(() => makeQuestion(entries, allSounds))
   const [answered, setAnswered] = useState<string | null>(null)
   const [answeredCorrect, setAnsweredCorrect] = useState<boolean | null>(null)
   const [sessionCorrect, setSessionCorrect] = useState(0)
@@ -30,10 +32,10 @@ export function ReverseSoundKeyDrill({ answerMode }: Props) {
   const correctStr = String(question.digit)
 
   const next = useCallback((excludeSound: string) => {
-    setQuestion(makeQuestion(excludeSound))
+    setQuestion(makeQuestion(entries, allSounds, excludeSound))
     setAnswered(null)
     setAnsweredCorrect(null)
-  }, [])
+  }, [entries, allSounds])
 
   const handleAnswer = useCallback((value: string) => {
     if (answered !== null) return
