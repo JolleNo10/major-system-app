@@ -9,11 +9,10 @@ const SILENT = ['Vowels (a, e, i, o, u)', 'h', 'w', 'y', 'c (mykt)', 'q', 'x']
 const DIGITS = Array.from({ length: 10 }, (_, i) => i)
 
 // A field can be left empty in the editor only when it's the free-form hint.
-const REQUIRED: Record<SoundKeyField, boolean> = { sounds: true, display: true, hint: false }
+const REQUIRED: Record<SoundKeyField, boolean> = { sounds: true, hint: false }
 
 const COLS: { field: SoundKeyField; label: string; placeholder: string }[] = [
   { field: 'sounds', label: 'Sounds', placeholder: 'e.g. s, z' },
-  { field: 'display', label: 'Display', placeholder: 'e.g. s, z' },
   { field: 'hint', label: 'Memory tip', placeholder: 'optional' },
 ]
 
@@ -45,7 +44,6 @@ export function SoundKeyGrid() {
     const rows: SoundKeyRow[] = DIGITS.map(d => ({
       digit: String(d),
       sounds: layered(d, 'sounds'),
-      display: layered(d, 'display'),
       hint: layered(d, 'hint'),
     }))
     const a = document.createElement('a')
@@ -68,7 +66,6 @@ export function SoundKeyGrid() {
         const map: Record<string, string> = {}
         for (const r of rows) {
           map[skKey(r.digit, 'sounds')] = r.sounds.custom || r.sounds.def
-          map[skKey(r.digit, 'display')] = r.display.custom || r.display.def
           map[skKey(r.digit, 'hint')] = r.hint.custom || r.hint.def
         }
         importEffective(map)
@@ -123,7 +120,7 @@ export function SoundKeyGrid() {
                 isTrial ? 'text-yellow-300 bg-yellow-600/10 hover:bg-yellow-600/20'
                 : isSaved ? 'text-violet-300 hover:bg-violet-600/10'
                 : 'text-zinc-300 hover:bg-zinc-800'
-              } ${field === 'sounds' || field === 'display' ? 'font-mono' : ''}`}
+              } ${field === 'sounds' ? 'font-mono' : ''}`}
               aria-label={`Edit ${field} for digit ${digit}: ${value || '(empty)'}`}
             >
               {value || <span className="text-zinc-600 italic">empty</span>}

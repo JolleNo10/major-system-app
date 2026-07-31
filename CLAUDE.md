@@ -61,8 +61,9 @@ and `SoundKeyContext` (editable sound key, keys `major-soundkey-*`, `useSoundKey
 key→effective map into `saved` (import shares it; `importSaved(rows)` delegates).
 
 **The sound key is editable too** (`data/soundKey.csv` shipped, parsed by `soundKeyCsv.ts` — a
-quoting-aware parser, since `display`/`hint` carry commas + quotes). Stored flat under composite keys
-`"<digit>:<field>"` (`sounds`/`display`/`hint`), so `createWordStore` is reused; `data/soundKey.ts`
+quoting-aware parser, since `sounds`/`hint` carry commas + quotes). Stored flat under composite keys
+`"<digit>:<field>"` (`sounds`/`hint`; the UI `display` string is derived from `sounds`, comma-joined,
+not stored), so `createWordStore` is reused; `data/soundKey.ts`
 derives the effective `SoundKeyEntry[]`/`ALL_SOUNDS`/`SOUND_TO_DIGIT` from the store via `buildSoundKey`
 etc. `SoundKeyGrid` (Reference → Sound Key tab) is the 3-column editor with the same Import/Export/Persist/
 Reset flow; the two sound-key drills + `SoundKeyPanel` read `useSoundKey()` so they reflect edits.

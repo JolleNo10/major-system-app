@@ -18,11 +18,12 @@ export interface SoundEntry {
   display: string
 }
 
-export const SOUND_KEY_FIELDS = ['sounds', 'display', 'hint'] as const
+export const SOUND_KEY_FIELDS = ['sounds', 'hint'] as const
 export type SoundKeyField = typeof SOUND_KEY_FIELDS[number]
 
 // Store keys are composite so the flat createWordStore can hold one editable
-// string per (digit, field): e.g. "7:sounds", "7:display", "7:hint".
+// string per (digit, field): e.g. "7:sounds", "7:hint". `display` is derived
+// from `sounds` (comma-joined), not stored, so it can't drift out of sync.
 export const skKey = (digit: number | string, field: SoundKeyField): string => `${digit}:${field}`
 
 export const parseSounds = (cell: string): string[] =>
@@ -38,18 +39,20 @@ if (errors.length) {
 export const SHIPPED_SOUND_KEY: Record<string, string> = {}
 for (const r of rows) {
   SHIPPED_SOUND_KEY[skKey(r.digit, 'sounds')] = r.sounds.custom || r.sounds.def
-  SHIPPED_SOUND_KEY[skKey(r.digit, 'display')] = r.display.custom || r.display.def
   SHIPPED_SOUND_KEY[skKey(r.digit, 'hint')] = r.hint.custom || r.hint.def
 }
 
 // Rebuild the 0–9 entry list from a store's effective composite map.
 export function buildSoundKey(words: Record<string, string>): SoundKeyEntry[] {
-  return Array.from({ length: 10 }, (_, digit) => ({
-    digit,
-    sounds: parseSounds(words[skKey(digit, 'sounds')] ?? ''),
-    display: words[skKey(digit, 'display')] ?? '',
-    hint: words[skKey(digit, 'hint')] ?? '',
-  }))
+  return Array.from({ length: 10 }, (_, digit) => {
+    const sounds = parseSounds(words[skKey(digit, 'sounds')] ?? '')
+    return {
+      digit,
+      sounds,
+      display: sounds.join(', '),
+      hint: words[skKey(digit, 'hint')] ?? '',
+    }
+  })
 }
 
 export function buildAllSounds(entries: SoundKeyEntry[]): SoundEntry[] {
