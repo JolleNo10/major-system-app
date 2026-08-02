@@ -12,6 +12,7 @@ import { StatsOverlay } from './components/StatsOverlay'
 
 export default function App() {
   const [mode, setMode] = useState<Mode>('home')
+  const [homeSection, setHomeSection] = useState<'major-system' | null>(null)
   const [showReference, setShowReference] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showStats, setShowStats] = useState(false)
@@ -21,6 +22,12 @@ export default function App() {
 
   const goHome = useCallback(() => setMode('home'), [])
   const closeRef = useCallback(() => setShowReference(false), [])
+
+  // The Sound Key + Word List reference is Major-System-specific: show its
+  // header button only inside Major-System drills or the Major-System home list.
+  const showReferenceButton = mode !== 'home'
+    ? MODES[mode].group === 'major-system'
+    : homeSection === 'major-system'
   const closeSettings = useCallback(() => setShowSettings(false), [])
   const closeStats = useCallback(() => setShowStats(false), [])
 
@@ -66,15 +73,17 @@ export default function App() {
             >
               <span aria-hidden="true">📊</span>
             </button>
-            <button
-              onClick={() => setShowReference(true)}
-              title="Reference"
-              aria-label="Reference"
-              className="flex items-center justify-center gap-1.5 px-3 min-h-[40px] min-w-[40px] rounded-lg bg-zinc-800 border border-zinc-700 hover:border-violet-500 transition-colors text-sm font-medium text-zinc-300 hover:text-zinc-100"
-            >
-              <span aria-hidden="true">📚</span>
-              <span className="hidden sm:inline">Reference</span>
-            </button>
+            {showReferenceButton && (
+              <button
+                onClick={() => setShowReference(true)}
+                title="Reference"
+                aria-label="Reference"
+                className="flex items-center justify-center gap-1.5 px-3 min-h-[40px] min-w-[40px] rounded-lg bg-zinc-800 border border-zinc-700 hover:border-violet-500 transition-colors text-sm font-medium text-zinc-300 hover:text-zinc-100"
+              >
+                <span aria-hidden="true">📚</span>
+                <span className="hidden sm:inline">Reference</span>
+              </button>
+            )}
             <button
               onClick={() => setShowSettings(true)}
               title="Settings"
@@ -90,7 +99,7 @@ export default function App() {
       {/* Main content */}
       <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-6">
         {mode === 'home'
-          ? <ModeSelector onSelectMode={setMode} />
+          ? <ModeSelector onSelectMode={setMode} section={homeSection} onSectionChange={setHomeSection} />
           : (() => {
               const Drill = MODES[mode].component
               return <Drill answerMode={answerMode} />

@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import type { Mode } from '../types'
 import { MODE_ENTRIES, type DrillMode, type ModeDef } from '../modes'
 import { getStats, getDueCount } from '../hooks/useStats'
@@ -11,6 +10,8 @@ const APPLICATION_MODES = MODE_ENTRIES.filter(([, def]) => def.group === 'applic
 
 interface Props {
   onSelectMode: (mode: Mode) => void
+  section: 'major-system' | null
+  onSectionChange: (section: 'major-system' | null) => void
 }
 
 function ModeButton({
@@ -87,22 +88,21 @@ function MajorSystemDrills({ onSelectMode, dueCount, total, correct, onBack }: {
   )
 }
 
-export function ModeSelector({ onSelectMode }: Props) {
-  const [selectedSystem, setSelectedSystem] = useState<'major-system' | null>(null)
+export function ModeSelector({ onSelectMode, section, onSectionChange }: Props) {
   const stats = getStats()
   const entries = Object.values(stats)
   const total = entries.reduce((s, e) => s + e.correct + e.wrong, 0)
   const correct = entries.reduce((s, e) => s + e.correct, 0)
   const dueCount = getDueCount(ALL_NUMS)
 
-  if (selectedSystem === 'major-system') {
+  if (section === 'major-system') {
     return (
       <MajorSystemDrills
         onSelectMode={onSelectMode}
         dueCount={dueCount}
         total={total}
         correct={correct}
-        onBack={() => setSelectedSystem(null)}
+        onBack={() => onSectionChange(null)}
       />
     )
   }
@@ -112,7 +112,7 @@ export function ModeSelector({ onSelectMode }: Props) {
       <div className="space-y-3">
         <p className="text-xs text-zinc-500 uppercase tracking-widest font-semibold">Systems</p>
         <button
-          onClick={() => setSelectedSystem('major-system')}
+          onClick={() => onSectionChange('major-system')}
           className="group w-full text-left p-5 rounded-xl border border-zinc-800 bg-zinc-900 hover:bg-zinc-800/80 transition-all duration-200 shadow-lg hover:shadow-xl group-hover:border-violet-500/60 hover:border-violet-500/60 hover:shadow-violet-900/20"
         >
           <div className="flex items-start justify-between">
