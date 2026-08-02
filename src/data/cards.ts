@@ -10,7 +10,10 @@ export interface Card {
 
 // Alphabetical suit order: Clubs=01-13, Diamonds=14-26, Hearts=27-39, Spades=40-52
 const SUITS: Suit[] = ['♣', '♦', '♥', '♠']
-const RANKS: Rank[] = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
+export const RANKS: Rank[] = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
+
+// Rank index (0=A .. 12=K) for a 2-digit card number, independent of suit.
+export const rankIndex = (number: string): number => (parseInt(number, 10) - 1) % 13
 
 export const CARDS: Card[] = SUITS.flatMap((suit, si) =>
   RANKS.map((rank, ri) => ({

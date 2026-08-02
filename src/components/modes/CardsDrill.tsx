@@ -12,10 +12,11 @@ import { shuffle, pickDistractors, pickWeighted } from '../../utils/quiz'
 import { applyRoundAttempt, type RoundStat } from '../../utils/roundStats'
 import { readString, readJSON, safeSet } from '../../utils/storage'
 import { matchesAnswer } from '../../utils/answerMatch'
-import { CARDS } from '../../data/cards'
+import { CARDS, RANKS, rankIndex } from '../../data/cards'
 import type { Card, Suit } from '../../data/cards'
 import type { AnswerMode, Direction } from '../../types'
 import { DeckMemoDrill } from './DeckMemoDrill'
+import { RankRangeSelector } from '../RankRangeSelector'
 
 const ALL_SUITS: Suit[] = ['♣', '♦', '♥', '♠']
 
@@ -51,6 +52,19 @@ function loadSuits(key: string): Set<Suit> {
   const parsed = readJSON<string[]>(key, [])
   const valid = parsed.filter((s): s is Suit => (ALL_SUITS as string[]).includes(s))
   return valid.length > 0 ? new Set(valid) : new Set(ALL_SUITS)
+}
+
+const LAST_RANK = RANKS.length - 1
+
+function loadRankRange(key: string): [number, number] {
+  const p = readJSON<number[]>(key, [])
+  if (p.length === 2 && p[0] >= 0 && p[1] <= LAST_RANK && p[0] <= p[1]) return [p[0], p[1]]
+  return [0, LAST_RANK]
+}
+
+// Restrict a single suit's numbers to a rank range (only meaningful for one suit).
+function limitByRank(numbers: string[], range: [number, number]): string[] {
+  return numbers.filter(n => rankIndex(n) >= range[0] && rankIndex(n) <= range[1])
 }
 
 function makeQuestion(
@@ -112,6 +126,7 @@ export function CardsDrill({
   const drilltypeKey = `${storagePrefix}-drilltype`
   const suitsKey = `${storagePrefix}-suits`
   const deckCountKey = `${storagePrefix}-deck-count`
+  const rankRangeKey = `${storagePrefix}-rank-range`
 
   const [drillType, setDrillType] = useState<CardsDrillType>(() => {
     const v = readString(drilltypeKey)
@@ -122,6 +137,11 @@ export function CardsDrill({
   const [activeSuits, setActiveSuits] = useState<Set<Suit>>(() => loadSuits(suitsKey))
 
   const activeNumbers = numbersForSuits(activeSuits)
+
+  // Rank range applies only to Deck Memo with exactly one suit selected.
+  const [rankRange, setRankRange] = useState<[number, number]>(() => loadRankRange(rankRangeKey))
+  const singleSuit = activeSuits.size === 1
+  const memoNumbers = singleSuit ? limitByRank(activeNumbers, rankRange) : activeNumbers
 
   const [deckCount, setDeckCount] = useState<number>(() => {
     const nums = numbersForSuits(loadSuits(suitsKey))
@@ -289,14 +309,32 @@ export function CardsDrill({
       </div>
 
       {drillType === 'deck-memo' ? (
+        (() => {
+          const memoMax = memoNumbers.length
+          const memoMin = Math.min(2, memoMax)
+          const memoCount = Math.max(memoMin, Math.min(deckCount, memoMax))
+          return (
         <>
-          <div className="flex items-center gap-3 -mt-4">
+          {singleSuit && (
+            <div className="-mt-4">
+              <RankRangeSelector
+                low={rankRange[0]}
+                high={rankRange[1]}
+                red={[...activeSuits][0] === '♥' || [...activeSuits][0] === '♦'}
+                onChange={(lo, hi) => {
+                  setRankRange([lo, hi])
+                  safeSet(rankRangeKey, JSON.stringify([lo, hi]))
+                }}
+              />
+            </div>
+          )}
+          <div className="flex items-center gap-3 -mt-2">
             <span className="text-xs text-zinc-500">Cards:</span>
             <input
               type="range"
-              min={2}
-              max={activeNumbers.length}
-              value={deckCount}
+              min={memoMin}
+              max={memoMax}
+              value={memoCount}
               onChange={e => {
                 const n = Number(e.target.value)
                 setDeckCount(n)
@@ -304,17 +342,19 @@ export function CardsDrill({
               }}
               className="w-36 accent-violet-500"
             />
-            <span className="text-xs text-zinc-400 tabular-nums w-6 text-right">{deckCount}</span>
+            <span className="text-xs text-zinc-400 tabular-nums w-6 text-right">{memoCount}</span>
           </div>
           <DeckMemoDrill
-            key={[...activeSuits].sort().join('') + '-' + deckCount}
-            activeNumbers={activeNumbers}
+            key={[...activeSuits].sort().join('') + '-' + rankRange.join('-') + '-' + memoCount}
+            activeNumbers={memoNumbers}
             words={words}
-            cardCount={deckCount}
+            cardCount={memoCount}
             historyKey={`${storagePrefix}-deck-memo-history`}
             activeSuits={[...activeSuits]}
           />
         </>
+          )
+        })()
       ) : (
         <>
           <ScoreBar
