@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { CARDS } from '../../data/cards'
+import { CARDS, RANKS } from '../../data/cards'
 import type { Card, Suit } from '../../data/cards'
 import { shuffle } from '../../utils/quiz'
 import { matchesAnswer } from '../../utils/answerMatch'
@@ -18,6 +18,18 @@ interface DeckMemoRun {
   total: number
   suits: string[]
   ms: number
+  ranks?: [number, number]  // rank window (indices) when a single suit is limited; absent = full
+}
+
+const LAST_RANK = RANKS.length - 1
+
+// Config identity for a rank window; full range (or absent, incl. legacy runs) → ''.
+function rankKey(ranks?: [number, number]): string {
+  return ranks && !(ranks[0] === 0 && ranks[1] === LAST_RANK) ? `${ranks[0]}-${ranks[1]}` : ''
+}
+
+function rankLabel(ranks?: [number, number]): string {
+  return rankKey(ranks) ? `${RANKS[ranks![0]]}–${RANKS[ranks![1]]}` : ''
 }
 
 function loadHistory(key: string | undefined): DeckMemoRun[] {
@@ -116,9 +128,10 @@ interface Props {
   cardCount?: number
   historyKey?: string
   activeSuits?: string[]
+  rankRange?: [number, number]
 }
 
-export function DeckMemoDrill({ activeNumbers, words, cardCount, historyKey, activeSuits }: Props) {
+export function DeckMemoDrill({ activeNumbers, words, cardCount, historyKey, activeSuits, rankRange }: Props) {
   const [deck, setDeck] = useState<Card[]>(() => buildDeck(activeNumbers, cardCount))
   const [phase, setPhase] = useState<Phase>('memo')
   const [memoPos, setMemoPos] = useState(0)
@@ -147,6 +160,7 @@ export function DeckMemoDrill({ activeNumbers, words, cardCount, historyKey, act
       total: deck.length,
       suits: activeSuits ?? [],
       ms: at - startTimeRef.current,
+      ...(rankKey(rankRange) ? { ranks: rankRange } : {}),
     }
     const updated = [run, ...history].slice(0, MAX_HISTORY)
     setHistory(updated)
@@ -364,8 +378,9 @@ export function DeckMemoDrill({ activeNumbers, words, cardCount, historyKey, act
   const pct = Math.round((correct / deck.length) * 100)
 
   const thisSuitKey = suitKey(activeSuits ?? [])
+  const thisRankKey = rankKey(rankRange)
   const configHistory = history.filter(
-    r => r.total === deck.length && suitKey(r.suits) === thisSuitKey,
+    r => r.total === deck.length && suitKey(r.suits) === thisSuitKey && rankKey(r.ranks) === thisRankKey,
   )
   const bestRun = configHistory.reduce<DeckMemoRun | null>(
     (b, r) => (!b || runPct(r) > runPct(b) ? r : b),
@@ -402,7 +417,7 @@ export function DeckMemoDrill({ activeNumbers, words, cardCount, historyKey, act
           ? <p className="text-violet-400 text-sm font-semibold">✨ New best for this config!</p>
           : bestRun && (
             <p className="text-zinc-500 text-xs">
-              Best ({deck.length} cards {thisSuitKey || '—'}):&nbsp;
+              Best ({deck.length} cards {thisSuitKey || '—'}{rankLabel(rankRange) && ` ${rankLabel(rankRange)}`}):&nbsp;
               {bestRun.score}/{bestRun.total} ({runPct(bestRun)}%)
               &nbsp;·&nbsp;{fmtDate(bestRun.at)}
             </p>
@@ -462,6 +477,7 @@ export function DeckMemoDrill({ activeNumbers, words, cardCount, historyKey, act
                 >
                   <span className="text-zinc-500 shrink-0 w-28">{fmtDate(run.at)}</span>
                   <span className="text-zinc-400 shrink-0">{run.suits.join('')}</span>
+                  {rankLabel(run.ranks) && <span className="text-zinc-600 shrink-0 text-[10px]">{rankLabel(run.ranks)}</span>}
                   <span className="text-zinc-600 shrink-0 tabular-nums">{run.total}</span>
                   <span className={`tabular-nums font-medium flex-1 ${
                     rPct >= 80 ? 'text-green-400' : rPct >= 60 ? 'text-yellow-400' : 'text-red-400'

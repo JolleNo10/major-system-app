@@ -351,6 +351,7 @@ export function CardsDrill({
             cardCount={memoCount}
             historyKey={`${storagePrefix}-deck-memo-history`}
             activeSuits={[...activeSuits]}
+            rankRange={singleSuit ? rankRange : undefined}
           />
         </>
           )

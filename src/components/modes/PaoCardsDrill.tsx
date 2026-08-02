@@ -326,6 +326,7 @@ export function PaoCardsDrill({ answerMode }: Props) {
             cardCount={memoCount}
             historyKey="major-pao-deck-memo-history"
             activeSuits={[...activeSuits]}
+            rankRange={singleSuit ? rankRange : undefined}
           />
         </>
           )
