@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { MultipleChoice } from '../MultipleChoice'
 import { TypingInput } from '../TypingInput'
 import { PiBatchInput } from '../PiBatchInput'
@@ -17,6 +17,15 @@ function numberMcOptions(number: string, pool: string[]): string[] {
 
 interface NqResult { typed: string; ok: boolean; ms?: number }
 
+// Every on-screen reference to "where am I in π". Defaults describe a contiguous
+// run starting at `anchor`; callers driving a non-contiguous sequence (e.g. the
+// Anchors tab, which chains one pair per segment) override all three.
+export interface PiQuizLabels {
+  prompt: (idx: number) => string   // big centre label above the answer input
+  hint: (idx: number) => string     // small line under the "What are the digits?" heading
+  row: (idx: number) => string      // prefix for in-run history + result review rows
+}
+
 interface Props {
   answerMode: AnswerMode
   answerSize: AnswerSize
@@ -26,6 +35,9 @@ interface Props {
   onExit: () => void             // leave the quiz (back to setup / weak list)
   exitLabel?: string             // label for the secondary result button
   recordSession?: boolean        // append a PiSession to run-history on finish
+  recordAttempts?: boolean       // write a `pi:<pos>` attempt per answered pair
+  labels?: PiQuizLabels          // override the π-position labelling
+  distractorPool?: string[]      // pairs to draw MC distractors from (default: the sequence)
   onPairAnswered?: (pos: number, ok: boolean, ms: number) => void
 }
 
@@ -35,13 +47,16 @@ interface Props {
 // `onPairAnswered`; a PiSession is recorded on finish only when requested.
 export function PiNumberQuiz({
   answerMode, answerSize, sequence, anchor, words,
-  onExit, exitLabel = 'Settings', recordSession = false, onPairAnswered,
+  onExit, exitLabel = 'Settings', recordSession = false, recordAttempts = true,
+  labels: labelsProp, distractorPool, onPairAnswered,
 }: Props) {
+  const mcPool = distractorPool ?? sequence
+  const isBatch = answerMode === 'typing' && answerSize === 10
   const [phase, setPhase] = useState<'quiz' | 'result'>('quiz')
   const [nqIdx, setNqIdx] = useState(0)
   const [nqAnswered, setNqAnswered] = useState<string | null>(null)
   const [nqAnsweredCorrect, setNqAnsweredCorrect] = useState<boolean | null>(null)
-  const [nqOptions, setNqOptions] = useState<string[]>(() => numberMcOptions(sequence[0], sequence))
+  const [nqOptions, setNqOptions] = useState<string[]>(() => numberMcOptions(sequence[0], mcPool))
   const [nqResults, setNqResults] = useState<NqResult[]>([])
   const [nqBatchCorrect, setNqBatchCorrect] = useState<boolean[] | null>(null)
   const [nqBatchTimings, setNqBatchTimings] = useState<BatchTiming[]>([])
@@ -49,6 +64,14 @@ export function PiNumberQuiz({
   const previousAnswerModeRef = useRef(answerMode)
   const historyEndRef = useRef<HTMLDivElement>(null)
   const sessionRecordedRef = useRef(false)
+
+  const labels = useMemo<PiQuizLabels>(() => labelsProp ?? {
+    prompt: idx => `Pair ${anchor + idx}`,
+    hint: idx => isBatch
+      ? `pairs ${anchor + idx}–${anchor + Math.min(idx + 10, sequence.length) - 1} of π`
+      : `decimal digits ${(anchor + idx - 1) * 2 + 1}–${(anchor + idx - 1) * 2 + 2} of π`,
+    row: idx => `#${anchor + idx}`,
+  }, [labelsProp, anchor, isBatch, sequence.length])
 
   useEffect(() => {
     historyEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
@@ -61,9 +84,9 @@ export function PiNumberQuiz({
     if (!modeChanged || phase !== 'quiz' || nqAnswered !== null) return
     setNqAnsweredCorrect(null)
     setNqBatchCorrect(null)
-    setNqOptions(numberMcOptions(sequence[nqIdx], sequence))
+    setNqOptions(numberMcOptions(sequence[nqIdx], mcPool))
     nqStartedAtRef.current = performance.now()
-  }, [answerMode, phase, nqAnswered, nqIdx, sequence])
+  }, [answerMode, phase, nqAnswered, nqIdx, sequence, mcPool])
 
   const advanceNumberQuiz = useCallback((typedValues: string[], correctness: boolean[], ms: number) => {
     const isSinglePair = typedValues.length === 1
@@ -71,7 +94,9 @@ export function PiNumberQuiz({
     const perPairMs = isSinglePair ? ms : ms / typedValues.length
     typedValues.forEach((_, index) => {
       const pos = anchor + nqIdx + index
-      void addAttemptRaw(`pi:${pos}`, { at, ok: correctness[index], ms: perPairMs })
+      if (recordAttempts) {
+        void addAttemptRaw(`pi:${pos}`, { at, ok: correctness[index], ms: perPairMs })
+      }
       onPairAnswered?.(pos, correctness[index], perPairMs)
     })
     setNqResults(prev => [
@@ -92,12 +117,12 @@ export function PiNumberQuiz({
         setNqAnswered(null)
         setNqAnsweredCorrect(null)
         setNqBatchCorrect(null)
-        setNqOptions(numberMcOptions(sequence[nextIdx], sequence))
+        setNqOptions(numberMcOptions(sequence[nextIdx], mcPool))
         nqStartedAtRef.current = performance.now()
         setNqIdx(nextIdx)
       }, delay)
     }
-  }, [nqIdx, sequence, anchor, onPairAnswered])
+  }, [nqIdx, sequence, mcPool, anchor, recordAttempts, onPairAnswered])
 
   const handleNumberAnswer = useCallback((value: string) => {
     if (nqAnswered !== null) return
@@ -125,12 +150,12 @@ export function PiNumberQuiz({
     setNqAnswered(null)
     setNqAnsweredCorrect(null)
     setNqBatchCorrect(null)
-    setNqOptions(numberMcOptions(sequence[0], sequence))
+    setNqOptions(numberMcOptions(sequence[0], mcPool))
     setNqResults([])
     setNqBatchTimings([])
     nqStartedAtRef.current = performance.now()
     setPhase('quiz')
-  }, [sequence])
+  }, [sequence, mcPool])
 
   const nqCorrectCount = nqResults.filter(r => r.ok).length
   const nqTimingStats = summarizeBatchTimings(nqBatchTimings)
@@ -221,7 +246,7 @@ export function PiNumberQuiz({
               <div key={i} className={`flex items-center gap-3 px-4 py-2.5 rounded-lg border ${
                 ok ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'
               }`}>
-                <span className="text-xs text-zinc-600 tabular-nums w-8 shrink-0">#{anchor + i}</span>
+                <span className="text-xs text-zinc-600 tabular-nums w-8 shrink-0">{labels.row(i)}</span>
                 <span className="font-mono text-sm text-cyan-400 tabular-nums w-6 shrink-0">{num}</span>
                 <span className="text-zinc-400 text-sm shrink-0">{words[num]}</span>
                 {r?.ms !== undefined && (
@@ -243,22 +268,20 @@ export function PiNumberQuiz({
 
   return (
     <div className={`flex flex-col items-center gap-5 w-full ${
-      answerMode === 'typing' && answerSize === 10 ? 'max-w-2xl' : 'max-w-md'
+      isBatch ? 'max-w-2xl' : 'max-w-md'
     }`}>
       {progressDots(nqIdx, nqResults)}
       <div className="text-center space-y-1">
         <p className="text-xs text-zinc-600 uppercase tracking-widest">
-          {answerMode === 'typing' && answerSize === 10 ? 'What are the next digits?' : 'What are the digits?'}
+          {isBatch ? 'What are the next digits?' : 'What are the digits?'}
         </p>
         <p className="text-xs text-zinc-700">
-          {answerMode === 'typing' && answerSize === 10
-            ? `pairs ${anchor + nqIdx}–${anchor + Math.min(nqIdx + 10, sequence.length) - 1} of π`
-            : `decimal digits ${(anchor + nqIdx - 1) * 2 + 1}–${(anchor + nqIdx - 1) * 2 + 2} of π`}
+          {labels.hint(nqIdx)}
         </p>
       </div>
-      {!(answerMode === 'typing' && answerSize === 10) && (
+      {!isBatch && (
         <div className="text-[4rem] font-black text-zinc-400 tabular-nums leading-none">
-          Pair {anchor + nqIdx}
+          {labels.prompt(nqIdx)}
         </div>
       )}
       <div className="w-full">
@@ -295,7 +318,7 @@ export function PiNumberQuiz({
               <div key={i} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm ${
                 r.ok ? 'bg-green-500/10' : 'bg-red-500/10'
               }`}>
-                <span className="text-zinc-600 tabular-nums text-xs w-8 shrink-0">#{anchor + i}</span>
+                <span className="text-zinc-600 tabular-nums text-xs w-8 shrink-0">{labels.row(i)}</span>
                 <span className={`font-mono tabular-nums font-bold w-6 shrink-0 ${r.ok ? 'text-green-400' : 'text-red-400'}`}>
                   {sequence[i]}
                 </span>

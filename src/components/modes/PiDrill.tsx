@@ -4,13 +4,16 @@ import { readString, safeSet } from '../../utils/storage'
 import { PiMemoTab } from './PiMemoTab'
 import { PiReciteTab } from './PiReciteTab'
 import { PiTrainTab } from './PiTrainTab'
+import { PiAnchorTab } from './PiAnchorTab'
 import type { AnswerMode } from '../../types'
 
 const TAB_KEY = 'major-pi-tab'
 const MAX_PAIRS_KEY = 'major-pi-max-pairs'
-type Tab = 'memo' | 'recite' | 'train'
-const TABS: Tab[] = ['memo', 'recite', 'train']
-const TAB_LABELS: Record<Tab, string> = { memo: 'Memo', recite: 'Recite', train: 'Train' }
+type Tab = 'memo' | 'recite' | 'train' | 'anchors'
+const TABS: Tab[] = ['memo', 'recite', 'train', 'anchors']
+const TAB_LABELS: Record<Tab, string> = {
+  memo: 'Memo', recite: 'Recite', train: 'Train', anchors: 'Anchors',
+}
 
 interface Props { answerMode: AnswerMode }
 
@@ -20,7 +23,7 @@ export function PiDrill({ answerMode }: Props) {
 
   const [tab, setTab] = useState<Tab>(() => {
     const v = readString(TAB_KEY)
-    return v === 'memo' || v === 'train' ? v : 'recite'
+    return (TABS as string[]).includes(v ?? '') ? v as Tab : 'recite'
   })
 
   const [maxPiPairs, setMaxPiPairs] = useState<number>(() => {
@@ -71,6 +74,8 @@ export function PiDrill({ answerMode }: Props) {
         ? <PiMemoTab answerMode={answerMode} maxPiPairs={maxPiPairs} />
         : tab === 'train'
         ? <PiTrainTab answerMode={answerMode} maxPiPairs={maxPiPairs} />
+        : tab === 'anchors'
+        ? <PiAnchorTab answerMode={answerMode} maxPiPairs={maxPiPairs} />
         : <PiReciteTab answerMode={answerMode} maxPiPairs={maxPiPairs} />
       }
     </div>

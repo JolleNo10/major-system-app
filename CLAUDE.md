@@ -113,14 +113,21 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   `EncodingDrill`/`DecodingDrill` are ~25-line `DrillConfig` wrappers over it (direction, prompt styling,
   matcher, hint toggle). `SoundKeyDrill`, `ReverseSoundKeyDrill`, `SequenceDrill` (setup→study→recall→result),
   `SpeedRound`, `WeakSpots` (feeds a weak-number `pool` into `EncodingDrill`), `RepetitionDrill` (SM-2 due queue),
-  `PiDrill` (three tabs: **Memo** / **Recite** / **Train**). `PiNumberQuiz` is the shared recite engine (fixed sequence + anchor →
-  number-quiz + result; single-pair or 10-pair batch, MC or typing), used by both Recite and Train. It records per-position
-  attempts under `pi:<position>` keys for every answered pair and (when `recordSession`) a `PiSession` summary per run.
+  `PiDrill` (four tabs: **Memo** / **Recite** / **Train** / **Anchors**). `PiNumberQuiz` is the shared recite engine (fixed sequence + anchor →
+  number-quiz + result; single-pair or 10-pair batch, MC or typing), used by Recite, Train and Anchors. It records per-position
+  attempts under `pi:<position>` keys for every answered pair (unless `recordAttempts={false}`) and (when `recordSession`) a
+  `PiSession` summary per run. Optional `labels` (`PiQuizLabels`: `prompt`/`hint`/`row`) overrides every on-screen π-position
+  string — the escape hatch for non-contiguous sequences — and `distractorPool` overrides where MC distractors are drawn from
+  (default: the run sequence).
   **Recite** = user-selected range → `PiNumberQuiz` (records a session; setup shows run-history/best-runs). **Train** (`PiTrainTab`)
   = weakness-targeted practice, two stats-driven sections each surfacing the worst 3 (worst-first, "new" for untested): weakest
   **segments** (`rankPiSegments` rolls up the `pi:` log per 10-pair block → one-tap Recite run for that segment, records a session)
   and weakest **chains** (`rankPiBoundaries` reads the `pi-chain:` log → recite a segment then bridge 20 pairs into the next;
   crossing the boundary records `pi-chain:<segIdx>` for the first pair of the next segment via `recordPiChain`; **no** `PiSession`).
+  **Anchors** (`PiAnchorTab`) = segment-chain training: pick a start segment + chain length, then type the **opening pair of each
+  segment** in turn (`Segment 4 · π digits 61–80` prompt, answer is the pair) — trains the segment *order*, not any one segment.
+  Runs on `PiNumberQuiz` with `answerSize={1}`, `recordAttempts={false}`, custom `labels`, and a `distractorPool` of all segment
+  anchors (so MC options never leak what's next). **Session-only — records nothing**, so it can't skew Recite/Train stats.
   Word-chain (Memo) records nothing.
   **Cards:** `CardsDrill` is prop-driven (`words`/`drillTypes`/`onRecord`/`storagePrefix`/`onEditWords`)
   and hosts Card→Word / Card→Number / `DeckMemoDrill`; two thin wrappers select the word source —
@@ -152,7 +159,8 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   `pickWeighted(dir,…)`), `roundStats` (`RoundStat`/`RoundAttempt` types + `applyRoundAttempt` reducer, shared
   by all drills), `answerMatch` (`matchesAnswer` word + `matchesNumber` digit), `recallColor` (UI latency color),
   `storage` (`safeSet`/`safeRemove` + guarded `readString`/`readJSON`), `overlayGuard` (`isOverlayOpen`),
-  `roundMastery`, `numberStats`, `vowelSkeleton`, `triples` (`groupTriples`/`roleAt` — PAO 3-card grouping).
+  `roundMastery`, `numberStats`, `vowelSkeleton`, `triples` (`groupTriples`/`roleAt` — PAO 3-card grouping),
+  `piSegments` (`segmentAnchorPos`/`segmentDigitRange`/`segmentAnchorPairs` — 0-indexed π segment ↔ position/digit-range/anchor pair).
 - **`data/`** — `words.csv`+`words.ts`, `cardWords.csv`+`cardWords.ts` (Themed Deck, 52 cards; clubs 01–13 seed
   from the major defaults), `paoCards.csv`+`paoCards.ts`+`paoCsv.ts` (PAO Deck, 52 person/action/object triples;
   dedicated quoting-aware parser), `wordsCsv.ts` (shared CSV parse/serialize), `cards.ts` (52-card deck), `soundKey.csv`+`soundKey.ts`+`soundKeyCsv.ts` (editable sound key),

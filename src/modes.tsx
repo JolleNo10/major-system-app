@@ -113,7 +113,7 @@ export const MODES: Record<DrillMode, ModeDef> = {
     component: PiDrill,
     group: 'application',
     emoji: '𝝅',
-    subtitle: 'Memo · Recite',
+    subtitle: 'Memo · Recite · Train · Anchors',
     description: 'Memorise and recite the digits of π using major system words',
     accent: 'group-hover:border-cyan-500/60 group-hover:shadow-cyan-900/20',
   },
