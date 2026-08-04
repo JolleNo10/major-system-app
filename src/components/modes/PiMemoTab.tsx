@@ -1,10 +1,11 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { Fragment, useState, useCallback, useRef, useEffect } from 'react'
 import { useWords } from '../../context/WordsContext'
 import { MultipleChoice } from '../MultipleChoice'
 import { TypingInput } from '../TypingInput'
 import { readString, safeSet } from '../../utils/storage'
 import { buildEncOptions } from '../../utils/quiz'
 import { PI_PAIRS } from '../../data/piDigits'
+import { PiSegmentMilestone, PI_SEGMENT_GRID_CLASS } from './PiSegmentGrid'
 import type { AnswerMode } from '../../types'
 
 const MEMO_SEG_KEY = 'major-pi-memo-seg'
@@ -119,7 +120,7 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
         <div className={`w-full max-w-lg space-y-6 p-6 ${panelCls}`}>
           <div className="space-y-2">
             <span className="text-sm font-medium text-zinc-300">Select a segment to memorise</span>
-            <div className="grid grid-cols-4 gap-1.5">
+            <div className={PI_SEGMENT_GRID_CLASS}>
               {Array.from({ length: maxSegs }, (_, segIdx) => {
                 const startDigit = segIdx * PAIRS_PER_SEG * 2 + 1
                 const endDigit = (segIdx + 1) * PAIRS_PER_SEG * 2
@@ -128,23 +129,25 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
                 const line2 = PI_PAIRS.slice(segIdx * PAIRS_PER_SEG + half, (segIdx + 1) * PAIRS_PER_SEG).join(' ')
                 const isSelected = selectedSeg === segIdx
                 return (
-                  <button
-                    key={segIdx}
-                    onClick={() => {
-                      const next = isSelected ? null : segIdx
-                      setSelectedSeg(next)
-                      if (next !== null) safeSet(MEMO_SEG_KEY, String(next))
-                    }}
-                    className={`flex flex-col items-start px-2 py-1.5 rounded-lg border transition-colors ${
-                      isSelected
-                        ? 'bg-cyan-600/25 border-cyan-500/60 text-cyan-300'
-                        : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200 hover:border-zinc-500'
-                    }`}
-                  >
-                    <span className="text-[8px] opacity-60 leading-none tabular-nums">π {startDigit}–{endDigit}</span>
-                    <span className="font-mono text-[8px] tabular-nums leading-snug mt-0.5">{line1}</span>
-                    <span className="font-mono text-[8px] tabular-nums leading-snug">{line2}</span>
-                  </button>
+                  <Fragment key={segIdx}>
+                    <button
+                      onClick={() => {
+                        const next = isSelected ? null : segIdx
+                        setSelectedSeg(next)
+                        if (next !== null) safeSet(MEMO_SEG_KEY, String(next))
+                      }}
+                      className={`flex flex-col items-start px-2 py-1.5 rounded-lg border transition-colors ${
+                        isSelected
+                          ? 'bg-cyan-600/25 border-cyan-500/60 text-cyan-300'
+                          : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200 hover:border-zinc-500'
+                      }`}
+                    >
+                      <span className="text-[8px] opacity-60 leading-none tabular-nums">π {startDigit}–{endDigit}</span>
+                      <span className="font-mono text-[8px] tabular-nums leading-snug mt-0.5">{line1}</span>
+                      <span className="font-mono text-[8px] tabular-nums leading-snug">{line2}</span>
+                    </button>
+                    <PiSegmentMilestone completedSegments={segIdx + 1} />
+                  </Fragment>
                 )
               })}
             </div>

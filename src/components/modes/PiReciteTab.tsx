@@ -1,10 +1,11 @@
-import { useState, useCallback } from 'react'
+import { Fragment, useState, useCallback } from 'react'
 import { useWords } from '../../context/WordsContext'
 import { useSettings } from '../../context/SettingsContext'
 import { PiNumberQuiz } from './PiNumberQuiz'
 import { readString, safeSet } from '../../utils/storage'
 import { PI_PAIRS } from '../../data/piDigits'
 import { loadPiSessions, bestFromStartReach, type PiSession } from '../../data/piStats'
+import { PiSegmentMilestone, PI_SEGMENT_GRID_CLASS } from './PiSegmentGrid'
 import type { AnswerMode } from '../../types'
 
 const SEL_START_KEY = 'major-pi-sel-start'
@@ -79,7 +80,7 @@ export function PiReciteTab({ answerMode, maxPiPairs }: Props) {
 
           <div className="space-y-2">
             <span className="text-sm font-medium text-zinc-300">Select segment</span>
-            <div className="grid grid-cols-4 gap-1.5">
+            <div className={PI_SEGMENT_GRID_CLASS}>
               {Array.from({ length: numButtons }, (_, segIdx) => {
                 const firstPair = segIdx * PAIRS_PER_ROW + 1
                 const lastPair  = (segIdx + 1) * PAIRS_PER_ROW
@@ -93,21 +94,23 @@ export function PiReciteTab({ answerMode, maxPiPairs }: Props) {
                 const line1 = PI_PAIRS.slice(segIdx * PAIRS_PER_ROW, segIdx * PAIRS_PER_ROW + half).join(' ')
                 const line2 = PI_PAIRS.slice(segIdx * PAIRS_PER_ROW + half, (segIdx + 1) * PAIRS_PER_ROW).join(' ')
                 return (
-                  <button
-                    key={segIdx}
-                    onClick={() => handleSegmentClick(segIdx)}
-                    className={`flex flex-col items-start px-2 py-1.5 rounded-lg border transition-colors ${
-                      inRange
-                        ? 'bg-cyan-600/25 border-cyan-500/60 text-cyan-300'
-                        : isAnchor
-                        ? 'bg-amber-600/20 border-amber-500/60 text-amber-300'
-                        : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200 hover:border-zinc-500'
-                    }`}
-                  >
-                    <span className="text-[8px] opacity-60 leading-none tabular-nums">π {startDigit}–{endDigit}</span>
-                    <span className="font-mono text-[8px] tabular-nums leading-snug mt-0.5">{line1}</span>
-                    <span className="font-mono text-[8px] tabular-nums leading-snug">{line2}</span>
-                  </button>
+                  <Fragment key={segIdx}>
+                    <button
+                      onClick={() => handleSegmentClick(segIdx)}
+                      className={`flex flex-col items-start px-2 py-1.5 rounded-lg border transition-colors ${
+                        inRange
+                          ? 'bg-cyan-600/25 border-cyan-500/60 text-cyan-300'
+                          : isAnchor
+                          ? 'bg-amber-600/20 border-amber-500/60 text-amber-300'
+                          : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200 hover:border-zinc-500'
+                      }`}
+                    >
+                      <span className="text-[8px] opacity-60 leading-none tabular-nums">π {startDigit}–{endDigit}</span>
+                      <span className="font-mono text-[8px] tabular-nums leading-snug mt-0.5">{line1}</span>
+                      <span className="font-mono text-[8px] tabular-nums leading-snug">{line2}</span>
+                    </button>
+                    <PiSegmentMilestone completedSegments={segIdx + 1} />
+                  </Fragment>
                 )
               })}
             </div>
