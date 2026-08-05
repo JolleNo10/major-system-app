@@ -53,7 +53,7 @@ export default defineConfig({
       // update checks; 'prompt' keeps the new SW waiting until we apply it.
       registerType: 'prompt',
       injectRegister: null,
-      includeAssets: ['icon-192.png', 'icon-512.png', 'apple-touch-icon.png'],
+      includeAssets: ['icon-32.png', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'],
       manifest: {
         name: 'Majorsystemet',
         short_name: 'Major',
