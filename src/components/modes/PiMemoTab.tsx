@@ -44,7 +44,16 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
   const [wqOptions, setWqOptions] = useState<string[]>([])
   const [wqNumberRevealed, setWqNumberRevealed] = useState(false)
   const [wqResults, setWqResults] = useState<WqResult[]>([])
+  const [copied, setCopied] = useState(false)
   const historyEndRef = useRef<HTMLDivElement>(null)
+
+  const copyWords = useCallback(() => {
+    const text = sequence.map(num => words[num]).join('\n')
+    navigator.clipboard?.writeText(text).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    }).catch(() => {})
+  }, [sequence, words])
 
   useEffect(() => {
     historyEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
@@ -194,6 +203,14 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
             <p className="text-sm text-zinc-500">
               π digits {(sessionAnchor - 1) * 2 + 1}–{(sessionAnchor + sequence.length - 2) * 2 + 2} · {sequence.length} pairs
             </p>
+          </div>
+          <div className="flex justify-center">
+            <button
+              onClick={copyWords}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-xs font-medium text-zinc-300 hover:text-zinc-100 hover:border-violet-500 transition-colors"
+            >
+              <span aria-hidden="true">📋</span> {copied ? 'Copied!' : 'Copy words'}
+            </button>
           </div>
           <div className="space-y-1.5">
             {sequence.map((num, i) => (
