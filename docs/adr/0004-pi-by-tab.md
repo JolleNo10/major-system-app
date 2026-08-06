@@ -12,6 +12,15 @@
 > `rankPiSegments`/`rankPiBoundaries`/`recordPiChain` helpers and the `pi-chain:` log
 > are gone. The structure below describes the original four-tab split.
 
+> **Update (2026-08-07):** **Maintain** (spaced-repetition upkeep) was added and
+> **Anchors** was later folded from a top-level tab into a **Full/Anchors sub-mode of
+> Recite** — it trained a different axis (segment *order*) than the content-lifecycle
+> tabs, so it read as a false peer in the tab bar. `pi/` is now three lifecycle tabs
+> (Memo / Recite / Maintain); the `anchors/` folder is gone, its `PiAnchorTab` split
+> into `recite/PiReciteAnchors` (body) + `recite/anchorPace.ts` (its session-only pace
+> store), with `recite/PiReciteFull` holding the original recite body and `PiReciteTab`
+> reduced to a mode wrapper (`ReciteModeToggle`).
+
 ## Context
 
 ADR 0002 landed `pi` as a flat feature. It grew to ~24 modules in one directory:

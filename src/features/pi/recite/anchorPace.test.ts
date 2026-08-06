@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { paceFromTimings, PACE_FAST_MS, PACE_SLOW_MS } from '@/features/pi/anchors/anchorPace'
+import { paceFromTimings, PACE_FAST_MS, PACE_SLOW_MS } from '@/features/pi/recite/anchorPace'
 
 const t = (ms: number, at = ms) => ({ at, ms })
 

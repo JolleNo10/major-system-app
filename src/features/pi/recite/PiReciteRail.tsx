@@ -8,7 +8,7 @@ import {
 } from '@/features/pi/shared/piStats'
 import { PiSegmentRangePreview } from '@/features/pi/shared/PiSegmentGrid'
 import { type PiSegmentRange } from '@/features/pi/shared/piProgress'
-import type { Phase } from '@/features/pi/recite/PiReciteTab'
+import type { Phase } from '@/features/pi/recite/PiReciteFull'
 
 // The Pi Recite tab's side rails, split out from the middle-panel drill
 // (`PiReciteTab`). The one public interface is `usePiReciteRail`, which maps

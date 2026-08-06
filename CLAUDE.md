@@ -57,9 +57,9 @@ src/
                             piDigits piSegments piStats piProgress usePiSegmentStatuses
                             story/  piStories usePiStory storyHighlight PiMistakeStoryReview
                    memo/    PiMemoTab PiMemoRail usePiStoryEditor imageResize
-                   recite/  PiReciteTab PiReciteRail
+                   recite/  PiReciteTab (Full/Anchors toggle) PiReciteFull PiReciteAnchors
+                            PiReciteRail ReciteModeToggle anchorPace
                    maintain/ PiMaintainTab piMaintain piMaintainStore
-                   anchors/ PiAnchorTab
     cards/         index.ts (single barrel); internally split by flavor:
                    shared/  CardsDrill DeckMemoDrill (the Card→Word/Number engine)
                    card/    MajorCardsDrill
@@ -103,7 +103,7 @@ a symbol to a feature's public surface = add one line to its `index.ts`.**
 | `major-pi-maintain` | localStorage | Per-segment SM-2 schedule for the Maintain tab: `Record<segIdx, ItemRecord>` (reuses `ItemRecord`; only schedule fields drive upkeep). Unseen seg = `{...DEFAULTS}` (`dueAt 0` = due now). `features/pi/maintain/piMaintainStore.ts` (`rescheduleSegment` grades binary: pass→4, fail→2) |
 | `major-settings` | localStorage | `{ masteryLatencyFactor, maxPiDigits, offlineMode, piPairsPerAnswer, piMaintainBatchSegs }` (`piPairsPerAnswer` 1\|10 = Pi typing batch size, set in Settings; migrated once from the legacy `major-pi-answer-size` key. `piMaintainBatchSegs` 1–10, default 5 = max segments per Maintain review batch) |
 | `major-typing-speed` / `-digit` | localStorage | Adaptive ms/char estimates, separate for word vs digit typing |
-| `major-answer-mode`, `major-hide-options`, `major-seq-length`, `major-seq-studymode`, `major-speed-best`, `major-attempts-migrated`, `major-pi-collapsed-blocks` (collapsed 1000-digit segment blocks, shared across Pi grids), `major-pi-memo-seg` (last-selected Memo segment), `major-pi-memoed-segs` (segments recalled all-correct in Memo mode), `major-pi-recited-segs` (memoed segments later recited flawlessly) | localStorage | Small UI/prefs flags |
+| `major-answer-mode`, `major-hide-options`, `major-seq-length`, `major-seq-studymode`, `major-speed-best`, `major-attempts-migrated`, `major-pi-collapsed-blocks` (collapsed 1000-digit segment blocks, shared across Pi grids), `major-pi-memo-seg` (last-selected Memo segment), `major-pi-memoed-segs` (segments recalled all-correct in Memo mode), `major-pi-recited-segs` (memoed segments later recited flawlessly), `major-pi-recite-mode` (Recite tab's Full/Anchors sub-mode), `major-pi-anchor-start`/`-end`/`-pace` (Anchors sub-mode selection + per-segment transition-pace store) | localStorage | Small UI/prefs flags |
 
 **Word list is 3 layered sources** (`WordsContext`); effective = `{...shipped, ...saved, ...overrides}`:
 1. **shipped** — `src/features/major-system/words.csv` (`number,default,custom`), imported via `?raw` and parsed by
@@ -172,12 +172,12 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   `HOME_TITLE` is `'Mnemonics'`.
 - `src/app/main.tsx` — mounts `SettingsProvider > WordsProvider > CardWordsProvider > PaoCardsProvider > SoundKeyProvider > PageLayoutProvider > App`; calls `initAttempts()` (opens IndexedDB + one-time migration of any legacy in-blob attempts).
 - `src/core/types.ts` — `Mode`, `AnswerMode`, `Direction`, `NumberStats`/`AllStats` (in `core` so `core/scoring` can consume it).
-- **Feature drills** (`features/major-system/`, `features/pi/` — split internally by tab into `shared`(`/story`)`/memo/recite/anchors`, `features/cards/` — split internally into `shared`/`card`/`themed`/`pao`): `WordNumberDrill` is the shared config-driven engine for both directions;
+- **Feature drills** (`features/major-system/`, `features/pi/` — split internally by tab into `shared`(`/story`)`/memo/recite/maintain`, `features/cards/` — split internally into `shared`/`card`/`themed`/`pao`): `WordNumberDrill` is the shared config-driven engine for both directions;
   `EncodingDrill`/`DecodingDrill` are ~25-line `DrillConfig` wrappers over it (direction, prompt styling,
   matcher, hint toggle). `SoundKeyDrill`, `ReverseSoundKeyDrill`, `SequenceDrill` (setup→study→recall→result),
   `SpeedRound`, `WeakSpots` (feeds a weak-number `pool` into `EncodingDrill`), `RepetitionDrill` (SM-2 due queue),
-  `PiDrill` (four tabs: **Memo** / **Recite** / **Maintain** / **Anchors**). `PiNumberQuiz` is the shared recite engine (fixed sequence + anchor →
-  number-quiz + result; single-pair or 10-pair batch, MC or typing), used by Recite and Anchors. It records per-position
+  `PiDrill` (three tabs: **Memo** / **Recite** / **Maintain**). `PiNumberQuiz` is the shared recite engine (fixed sequence + anchor →
+  number-quiz + result; single-pair or 10-pair batch, MC or typing), used by both Recite flavours. It records per-position
   attempts under `pi:<position>` keys for every answered pair (unless `recordAttempts={false}`) and (when `recordSession`) a
   `PiSession` summary per run. Optional `labels` (`PiQuizLabels`: `prompt`/`hint`/`row`) overrides every on-screen π-position
   string — the escape hatch for non-contiguous sequences — and `distractorPool` overrides where MC distractors are drawn from
@@ -185,27 +185,31 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   All three tabs render their segment grid through the shared **`PiSegmentGrid`** wrapper (`count` + `renderCell(segIdx)`): it owns
   the grid container and the 1000-digit block dividers, each a toggle that **collapses the block above it** (50 segments) — collapse
   state is persisted (`major-pi-collapsed-blocks`) and shared across the grids; with < 1050 π digits there's a single block and no dividers.
-  Recite and Anchors go through **`PiSegmentRangePicker`** (`shared/`), a controlled range selector wrapping `PiSegmentGrid`: it owns
-  the cell shell + range/anchor styling + status dot + two-click reducer (working in 0-indexed segment indices), while each tab keeps
-  its own persistence unit (Recite: pair numbers; Anchors: segment indices), status line, Start button, and per-cell body
+  Both Recite flavours go through **`PiSegmentRangePicker`** (`shared/`), a controlled range selector wrapping `PiSegmentGrid`: it owns
+  the cell shell + range/anchor styling + status dot + two-click reducer (working in 0-indexed segment indices), while each body keeps
+  its own persistence unit (Full: pair numbers; Anchors: segment indices), status line, Start button, and per-cell body
   (via `renderCellBody`); the shared status/memoed wiring is `useSegmentPickerData`.
   Each grid paints a per-segment **status dot** (`PiSegmentDot`) derived from the **`piseg:<seg>` "try" log** via
   `piSegmentStatuses` (`usePiSegmentStatuses` hook). A **try** = one Recite run that fully covered a segment (all 10 pairs),
   correct only if *every* pair in that run was right; `recordSegmentTries(anchor, correctness)` writes one row per fully-covered
-  segment on run completion (from `PiReciteTab`'s `onComplete`) — a log distinct from the per-pair `pi:<pos>` log (which still
+  segment on run completion (from `PiReciteFull`'s `onComplete`) — a log distinct from the per-pair `pi:<pos>` log (which still
   feeds weak-position stats). emerald = learned (**last 2 tries both correct** → 2/2; recency-based, so a fresh miss demotes and
   two clean re-tries regain it), amber = practising (tried but short of 2/2), gray = memoed correctly but not yet recited, none =
   new (never fully recited). The dot's hover tooltip (`describeSegment`) reads `learned · 2/2 recent tries · N tries, P% correct`,
   where **P% is an exponentially age-decayed ratio** of fully-correct tries (`HISTORY_HALFLIFE_DAYS` half-life — recent tries
   dominate, old ones fade). Recitation status takes precedence over memo status. Recite shows just the dots; **Memo** rings the
   first segment that's neither recited (`piseg:` log) nor memoed all-correct in Memo mode (`major-pi-memoed-segs`) — "next to memo".
-  **Recite** = user-selected range → `PiNumberQuiz` (records a session; setup shows run-history/best-runs). The ultimate goal is reciting π **from #1 onward**, so runs are read-time split into two tracks by anchor (`piStats.ts`: `isFullRecite`/`fullReciteSessions`/`practiceSessions`; **no** stored flag): a **full recite** = a run that started at π #1 (`anchor === 1`) — its own record (`fromStartRecordRun` = greatest `reach`, earliest wins ties; the record card shows that run's reach/pairs/accuracy/pairs-per-sec) + chronological history, all in the left rail's top section; every other run is **practice**, collapsed below. Beating the standing from-π#1 record (`isFromStartRecord`, strictly greater, non-zero reach — checked in `PiNumberQuiz` against the sessions stored *before* this run lands) fires a result-screen celebration: a "🎉 New record — π to Nd" banner + `RecordFireworks` (dependency-free canvas overlay, honours `prefers-reduced-motion`). Its rails (left run-history, right "ready to recite") are published via **`usePiReciteRail`** (mirroring Memo's `usePiMemoRail`); the right rail groups adjacent segments that were successfully memoed but not yet flawlessly recited into one-tap continuous runs; flawless segments are persisted independently even when another segment in the same run has mistakes. Weakness is surfaced
+  **Recite** (`PiReciteTab`) hosts two flavours behind a **Full/Anchors** segmented toggle (`ReciteModeToggle`, top of each setup panel;
+  persisted to `major-pi-recite-mode`); the wrapper only owns the mode, each flavour is its own body with its own selection state/rails.
+  **Full** (`PiReciteFull`, the default) = user-selected range → `PiNumberQuiz` (records a session; setup shows run-history/best-runs). The ultimate goal is reciting π **from #1 onward**, so runs are read-time split into two tracks by anchor (`piStats.ts`: `isFullRecite`/`fullReciteSessions`/`practiceSessions`; **no** stored flag): a **full recite** = a run that started at π #1 (`anchor === 1`) — its own record (`fromStartRecordRun` = greatest `reach`, earliest wins ties; the record card shows that run's reach/pairs/accuracy/pairs-per-sec) + chronological history, all in the left rail's top section; every other run is **practice**, collapsed below. Beating the standing from-π#1 record (`isFromStartRecord`, strictly greater, non-zero reach — checked in `PiNumberQuiz` against the sessions stored *before* this run lands) fires a result-screen celebration: a "🎉 New record — π to Nd" banner + `RecordFireworks` (dependency-free canvas overlay, honours `prefers-reduced-motion`). Its rails (left run-history, right "ready to recite") are published via **`usePiReciteRail`** (mirroring Memo's `usePiMemoRail`); the right rail groups adjacent segments that were successfully memoed but not yet flawlessly recited into one-tap continuous runs; flawless segments are persisted independently even when another segment in the same run has mistakes. Weakness is surfaced
   in-place via each grid's per-segment status dots (`piSegmentStatuses`) rather than a dedicated tab — pick a weak (amber) range
-  in Recite; span two segments to drill a boundary.
-  **Anchors** (`PiAnchorTab`) = segment-chain training: pick a start segment + chain length, then type the **opening pair of each
-  segment** in turn (`Segment 4 · π digits 61–80` prompt, answer is the pair) — trains the segment *order*, not any one segment.
-  Runs on `PiNumberQuiz` with `answerSize={1}`, `recordAttempts={false}`, custom `labels`, and a `distractorPool` of all segment
-  anchors (so MC options never leak what's next). **Session-only — records nothing**, so it can't skew Recite stats.
+  in Full recite; span two segments to drill a boundary.
+  **Anchors** (`PiReciteAnchors`, the Recite tab's other flavour) = segment-chain training: pick a start segment + chain length, then
+  type the **opening pair of each segment** in turn (`Segment 4 · π digits 61–80` prompt, answer is the pair) — trains the segment
+  *order*, not any one segment. Runs on `PiNumberQuiz` with `answerSize={1}`, `recordAttempts={false}`, custom `labels`, and a
+  `distractorPool` of all segment anchors (so MC options never leak what's next). **Session-only — records nothing**, so it can't skew
+  Recite stats. Its own traffic-light (`anchorPace.ts`: quick/slow/long-pause per segment-transition, `major-pi-anchor-pace` store,
+  merged by recency with `pi:<pos>` opening-pair timings) marks each cell; selection persists to `major-pi-anchor-*`.
   **Maintain** (`PiMaintainTab`, `maintain/`) = spaced-repetition *upkeep* of already-learned segments (keep π alive against the
   forgetting curve), distinct from Recite's weak-spot hunt. **Due-driven**, not weakness-ranked: eligible segs (status `weak`/`learned`
   — ever recited; `new`/gray excluded and break a run) are split into maximal contiguous runs, tiled into batches of ≤ `piMaintainBatchSegs`
@@ -260,7 +264,7 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   derives direction-less aggregates from item-data; `buildRepQueue`, `getDueCount`, `getNextDueMs`),
   `useAnswerTimer` (active-elapsed timer/pause/STALE-discard); `core/ui/`: `useAnswerMode`;
   `features/pi/shared/`: `usePiSegmentStatuses` (async per-segment new/weak/learned status from the `pi:` log, re-fetched on a `refreshKey`),
-  `useSegmentPickerData` (statuses + memoed set + statusesLoading, shared by Recite/Anchors — colocated with `PiSegmentRangePicker`),
+  `useSegmentPickerData` (statuses + memoed set + statusesLoading, shared by both Recite flavours — colocated with `PiSegmentRangePicker`),
   `story/`: `usePiStory`/`usePiStorySegs`/`useBlobUrl` (async per-segment Pi story load + grid indicator set + object-URL lifecycle
   for a stored Blob — revokes on change/unmount); `features/pi/memo/`: `usePiStoryEditor` (story authoring lifecycle),
   and the per-tab rail hooks `usePiMemoRail` (`memo/`) + `usePiReciteRail` (`recite/`);

@@ -5,7 +5,8 @@ import { readString, safeSet } from '@/core/storage'
 import { PAIRS_PER_SEGMENT } from '@/features/pi/shared/piStats'
 import { segmentAnchorPos, segmentDigitRange, segmentAnchorPairs } from '@/features/pi/shared/piSegments'
 import { PiSegmentRangePicker } from '@/features/pi/shared/PiSegmentRangePicker'
-import { loadAnchorPaceStore, recordAnchorPace, useAnchorPaces, type AnchorPaceInfo } from '@/features/pi/anchors/anchorPace'
+import { loadAnchorPaceStore, recordAnchorPace, useAnchorPaces, type AnchorPaceInfo } from '@/features/pi/recite/anchorPace'
+import { ReciteModeToggle, type ReciteMode } from '@/features/pi/recite/ReciteModeToggle'
 import type { AnswerMode } from '@/core/types'
 
 const SEL_START_KEY = 'major-pi-anchor-start'
@@ -16,7 +17,12 @@ const SEL_END_KEY = 'major-pi-anchor-end'
 const MIN_DISTRACTOR_SEGMENTS = 12
 
 type Phase = 'setup' | 'quiz'
-interface Props { answerMode: AnswerMode; maxPiPairs: number }
+interface Props {
+  answerMode: AnswerMode
+  maxPiPairs: number
+  mode: ReciteMode
+  onModeChange: (mode: ReciteMode) => void
+}
 
 // Traffic-light for the pause getting *into* a segment (recalling its opening
 // pair): a bead sitting in the gap to the left of the cell, i.e. on the chain
@@ -41,7 +47,7 @@ function PaceDot({ info }: { info: AnchorPaceInfo }) {
 // type its first π pair, then are asked for the first pair of the next segment,
 // and so on — training the segment order itself rather than any one segment.
 // Session-only: nothing is recorded, so it can't skew the Recite/Train stats.
-export function PiAnchorTab({ answerMode, maxPiPairs }: Props) {
+export function PiReciteAnchors({ answerMode, maxPiPairs, mode, onModeChange }: Props) {
   const { words } = useWords()
 
   const totalSegments = Math.floor(maxPiPairs / PAIRS_PER_SEGMENT)
@@ -131,6 +137,8 @@ export function PiAnchorTab({ answerMode, maxPiPairs }: Props) {
   return (
     <div className="flex flex-col items-center gap-6 w-full">
       <div className={`w-full max-w-lg space-y-6 p-6 ${panelCls}`}>
+
+        <ReciteModeToggle mode={mode} onChange={onModeChange} />
 
         <p className="text-xs text-zinc-500 leading-relaxed">
           Type the <span className="text-zinc-300">first pair</span> of each segment in turn — the
