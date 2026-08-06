@@ -10,6 +10,7 @@ import { usePiSegmentStatuses } from '../../hooks/usePiSegmentStatuses'
 import { usePiStory, usePiStorySegs, useBlobUrl } from '../../hooks/usePiStory'
 import { putStory, deleteStory, exportStories, importStories, type PiStory } from '../../data/piStories'
 import { processImage } from '../../utils/imageResize'
+import { highlightStory } from '../../utils/storyHighlight'
 import { segmentDigitRange } from '../../utils/piSegments'
 import { ToolLayout } from '../ToolLayout'
 import { loadMemoedPiSegments, saveMemoedPiSegments } from '../../data/piProgress'
@@ -328,6 +329,7 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
           </div>
           <StoryPanel
             story={story}
+            expectedWords={sequence.map(num => words[num])}
             editing={storyEditing}
             onEdit={() => setStoryEditing(true)}
             onCancel={() => setStoryEditing(false)}
@@ -434,6 +436,7 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
           </div>
           <StoryPanel
             story={story}
+            expectedWords={sequence.map(num => words[num])}
             editing={storyEditing}
             onEdit={() => setStoryEditing(true)}
             onCancel={() => setStoryEditing(false)}
@@ -489,8 +492,9 @@ function NextToMemoTool({ nextSeg, loading, onStudy }: {
 // The per-segment story: a freeform mnemonic + one picture, authored inline in
 // the study/result phases (view↔edit toggle). Image via upload or clipboard
 // paste, downscaled by processImage before it reaches the save callback.
-function StoryPanel({ story, editing, onEdit, onCancel, onSave, flash }: {
+function StoryPanel({ story, expectedWords, editing, onEdit, onCancel, onSave, flash }: {
   story: PiStory | null
+  expectedWords: string[]   // the segment's 10 Major-System words, for highlight + warning
   editing: boolean
   onEdit: () => void
   onCancel: () => void
@@ -555,9 +559,25 @@ function StoryPanel({ story, editing, onEdit, onCancel, onSave, flash }: {
         </div>
         {hasContent ? (
           <>
-            {story!.text.trim() && (
-              <p className="text-sm text-zinc-200 whitespace-pre-wrap leading-relaxed">{story!.text}</p>
-            )}
+            {story!.text.trim() && (() => {
+              const { segments, missing } = highlightStory(story!.text, expectedWords)
+              return (
+                <>
+                  <p className="text-sm text-zinc-200 whitespace-pre-wrap leading-relaxed">
+                    {segments.map((s, i) =>
+                      s.matched
+                        ? <mark key={i} className="bg-violet-500/25 text-violet-200 rounded px-0.5">{s.text}</mark>
+                        : <span key={i}>{s.text}</span>,
+                    )}
+                  </p>
+                  {missing.length > 0 && (
+                    <p className="text-xs text-amber-400">
+                      ⚠ {missing.length} word{missing.length !== 1 ? 's' : ''} not in your story: {missing.join(', ')}
+                    </p>
+                  )}
+                </>
+              )
+            })()}
             {viewUrl && <img src={viewUrl} alt="Story picture" className="max-h-64 rounded-lg" />}
           </>
         ) : (
@@ -581,6 +601,16 @@ function StoryPanel({ story, editing, onEdit, onCancel, onSave, flash }: {
           placeholder="Describe the vivid story linking these pairs… (paste an image here too)"
           className="w-full rounded-lg bg-zinc-800 border border-zinc-700 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-violet-500 focus:outline-none resize-y"
         />
+        {draftText.trim() && (() => {
+          const { missing } = highlightStory(draftText, expectedWords)
+          return missing.length > 0 ? (
+            <p className="mt-1.5 text-xs text-amber-400">
+              ⚠ {missing.length} word{missing.length !== 1 ? 's' : ''} not yet in your story: {missing.join(', ')}
+            </p>
+          ) : (
+            <p className="mt-1.5 text-xs text-emerald-400">✓ All {expectedWords.length} words are in your story</p>
+          )
+        })()}
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
         <div className="flex items-center gap-2 mt-2">
           <button onClick={() => fileRef.current?.click()} className={`${btn} bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-zinc-100 hover:border-violet-500`}>
