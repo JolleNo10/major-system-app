@@ -4,6 +4,14 @@
 - **Date:** 2026-08-06
 - **Refines:** ADR 0002 (package-by-feature layout); parallels ADR 0003 (cards split by flavor)
 
+> **Update (2026-08-06):** the **Train** tab was later removed as redundant — its
+> weak-segment drill duplicated a Recite range, its boundary "chains" are covered by
+> a Recite range that spans a boundary, and Anchors covers segment order. Weakness is
+> now surfaced in-place via each grid's segment status dots (`piSegmentStatuses`).
+> `pi/` is now three tabs (Memo / Recite / Anchors); the `train/` folder, the
+> `rankPiSegments`/`rankPiBoundaries`/`recordPiChain` helpers and the `pi-chain:` log
+> are gone. The structure below describes the original four-tab split.
+
 ## Context
 
 ADR 0002 landed `pi` as a flat feature. It grew to ~24 modules in one directory:

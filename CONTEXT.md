@@ -12,7 +12,7 @@ is `features/pi/`: a self-contained feature that exposes its drill entry-points 
 `features/pi/index.ts` and keeps everything else internal. It depends on `core/` and reuses
 the Major-System **Word** list via the `features/major-system` barrel (its one cross-feature
 edge). Internally it's split by tab (see ADR 0004): `shared/` (`+story/`) holds code reached by
-3+ tabs or the app; `memo/`, `recite/`, `train/`, `anchors/` each own one tab (with `PiDrill` the
+3+ tabs or the app; `memo/`, `recite/`, `anchors/` each own one tab (with `PiDrill` the
 composition root at the root). The glossary below is the ubiquitous language for that feature.
 
 ## Language
@@ -47,17 +47,16 @@ _Avoid_: edge, join
 Author a story for a segment and memorise its word-chain. No timing or stats.
 
 **Recite**:
-Number-quiz a chosen range of π; records a run. The scored activity.
-
-**Train**:
-Weakness-targeted recitation of the worst segments and boundaries.
+Number-quiz a chosen range of π; records a run. The scored activity. Weakness is
+targeted here directly — the segment status dots show which ranges to pick.
 
 **Anchors**:
 Drill segment *order* by typing each segment's anchor in turn — trains the sequence
 of segments, not any one segment.
 
 **Chain**:
-Recite a segment, then bridge across its boundary into the next.
+Recite a segment, then bridge across its boundary into the next — drilled by
+selecting a Recite range that spans the boundary.
 
 ### Progress
 

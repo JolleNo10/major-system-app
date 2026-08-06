@@ -58,7 +58,6 @@ src/
                             story/  piStories usePiStory storyHighlight PiMistakeStoryReview
                    memo/    PiMemoTab PiMemoRail usePiStoryEditor imageResize
                    recite/  PiReciteTab PiReciteRail
-                   train/   PiTrainTab
                    anchors/ PiAnchorTab
     cards/         index.ts (single barrel); internally split by flavor:
                    shared/  CardsDrill DeckMemoDrill (the Card→Word/Number engine)
@@ -92,7 +91,7 @@ a symbol to a feature's public surface = add one line to its `index.ts`.**
 | Store | Where | Contents |
 |-------|-------|----------|
 | `major-item-data` | localStorage | `Record<"enc:NN"\|"dec:NN", ItemRecord>` — per-number/direction SM-2 stats (correct/wrong, rolling `latencies` (last 10), `ease`, `intervalDays`, `dueAt`, `lastSeenAt`, `reps`, `hintCount`) |
-| `major-system` (db, **v2**) → `attempts` store | **IndexedDB** | Per-answer log `{id, key:"enc:07", at, ok, ms}`, pruned to 90 days / 200 per key. Written on every answer. Keys are usually `"enc:NN"`/`"dec:NN"` but the same store also holds Pi's `"pi:<position>"` per-position log and the Train tab's `"pi-chain:<segIdx>"` boundary-crossing log (`features/pi/shared/piStats.ts`). Read via `getAllAttempts` (Pi weak-spots + Train segment/boundary ranking); the number-drill read path is otherwise unconsumed (future age-decay) |
+| `major-system` (db, **v2**) → `attempts` store | **IndexedDB** | Per-answer log `{id, key:"enc:07", at, ok, ms}`, pruned to 90 days / 200 per key. Written on every answer. Keys are usually `"enc:NN"`/`"dec:NN"` but the same store also holds Pi's `"pi:<position>"` per-position log (`features/pi/shared/piStats.ts`). Read via `getAllAttempts` (Pi weak-spots + per-segment status dots); the number-drill read path is otherwise unconsumed (future age-decay) |
 | `major-system` (db, v2) → `pi_stories` store | **IndexedDB** | Per-segment Pi mnemonic story `{seg, text, image:Blob\|null, updatedAt}`, keyed by 0-indexed `seg` (no index — always accessed by primary key). Purely user-authored (no shipped defaults), text + one downscaled picture stored atomically (`features/pi/shared/story/piStories.ts`). Backed up via JSON export/import (`{seg,text,imageDataUrl}[]`, base64). **`core/scoring/attemptStore.ts` is the single DB owner** — it exports `getDb`/`reqToPromise`/`txDone`/`hasIdb` and `piStories.ts` reuses that one connection (a second open at a different version would `onblocked`-hang the v1→v2 upgrade) |
 | `major-pi-sessions` | localStorage | Pi number-quiz run summaries (`PiSession[]`, capped 50) — reach, accuracy, pairs/sec per completed run (`features/pi/shared/piStats.ts`) |
 | `major-word-saved` | localStorage | Committed custom words (layer 2) |
@@ -171,12 +170,12 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   `HOME_TITLE` is `'Mnemonics'`.
 - `src/app/main.tsx` — mounts `SettingsProvider > WordsProvider > CardWordsProvider > PaoCardsProvider > SoundKeyProvider > PageLayoutProvider > App`; calls `initAttempts()` (opens IndexedDB + one-time migration of any legacy in-blob attempts).
 - `src/core/types.ts` — `Mode`, `AnswerMode`, `Direction`, `NumberStats`/`AllStats` (in `core` so `core/scoring` can consume it).
-- **Feature drills** (`features/major-system/`, `features/pi/` — split internally by tab into `shared`(`/story`)`/memo/recite/train/anchors`, `features/cards/` — split internally into `shared`/`card`/`themed`/`pao`): `WordNumberDrill` is the shared config-driven engine for both directions;
+- **Feature drills** (`features/major-system/`, `features/pi/` — split internally by tab into `shared`(`/story`)`/memo/recite/anchors`, `features/cards/` — split internally into `shared`/`card`/`themed`/`pao`): `WordNumberDrill` is the shared config-driven engine for both directions;
   `EncodingDrill`/`DecodingDrill` are ~25-line `DrillConfig` wrappers over it (direction, prompt styling,
   matcher, hint toggle). `SoundKeyDrill`, `ReverseSoundKeyDrill`, `SequenceDrill` (setup→study→recall→result),
   `SpeedRound`, `WeakSpots` (feeds a weak-number `pool` into `EncodingDrill`), `RepetitionDrill` (SM-2 due queue),
-  `PiDrill` (four tabs: **Memo** / **Recite** / **Train** / **Anchors**). `PiNumberQuiz` is the shared recite engine (fixed sequence + anchor →
-  number-quiz + result; single-pair or 10-pair batch, MC or typing), used by Recite, Train and Anchors. It records per-position
+  `PiDrill` (three tabs: **Memo** / **Recite** / **Anchors**). `PiNumberQuiz` is the shared recite engine (fixed sequence + anchor →
+  number-quiz + result; single-pair or 10-pair batch, MC or typing), used by Recite and Anchors. It records per-position
   attempts under `pi:<position>` keys for every answered pair (unless `recordAttempts={false}`) and (when `recordSession`) a
   `PiSession` summary per run. Optional `labels` (`PiQuizLabels`: `prompt`/`hint`/`row`) overrides every on-screen π-position
   string — the escape hatch for non-contiguous sequences — and `distractorPool` overrides where MC distractors are drawn from
@@ -193,15 +192,13 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   amber = practising (touched but short of that), gray = memoed correctly but not yet recited, none = new. Recitation status takes
   precedence over memo status. Recite shows just the dots; **Memo** rings the first segment that's
   neither recited (`pi:` log) nor memoed all-correct in Memo mode (`major-pi-memoed-segs`) — "next to memo".
-  **Recite** = user-selected range → `PiNumberQuiz` (records a session; setup shows run-history/best-runs). The ultimate goal is reciting π **from #1 onward**, so runs are read-time split into two tracks by anchor (`piStats.ts`: `isFullRecite`/`fullReciteSessions`/`practiceSessions`; **no** stored flag): a **full recite** = a run that started at π #1 (`anchor === 1`) — its own record (`fromStartRecordRun` = greatest `reach`, earliest wins ties; the record card shows that run's reach/pairs/accuracy/pairs-per-sec) + chronological history, all in the left rail's top section; every other run is **practice**, collapsed below. Beating the standing from-π#1 record (`isFromStartRecord`, strictly greater, non-zero reach — checked in `PiNumberQuiz` against the sessions stored *before* this run lands) fires a result-screen celebration: a "🎉 New record — π to Nd" banner + `RecordFireworks` (dependency-free canvas overlay, honours `prefers-reduced-motion`). Its rails (left run-history, right "ready to recite") are published via **`usePiReciteRail`** (mirroring Memo's `usePiMemoRail`); the right rail groups adjacent segments that were successfully memoed but not yet flawlessly recited into one-tap continuous runs; flawless segments are persisted independently even when another segment in the same run has mistakes. **Train** (`PiTrainTab`)
-  = weakness-targeted practice, two stats-driven sections each surfacing the worst 3 (worst-first, "new" for untested): weakest
-  **segments** (`rankPiSegments` rolls up the `pi:` log per 10-pair block → one-tap Recite run for that segment, records a session)
-  and weakest **chains** (`rankPiBoundaries` reads the `pi-chain:` log → recite a segment then bridge 20 pairs into the next;
-  crossing the boundary records `pi-chain:<segIdx>` for the first pair of the next segment via `recordPiChain`; **no** `PiSession`).
+  **Recite** = user-selected range → `PiNumberQuiz` (records a session; setup shows run-history/best-runs). The ultimate goal is reciting π **from #1 onward**, so runs are read-time split into two tracks by anchor (`piStats.ts`: `isFullRecite`/`fullReciteSessions`/`practiceSessions`; **no** stored flag): a **full recite** = a run that started at π #1 (`anchor === 1`) — its own record (`fromStartRecordRun` = greatest `reach`, earliest wins ties; the record card shows that run's reach/pairs/accuracy/pairs-per-sec) + chronological history, all in the left rail's top section; every other run is **practice**, collapsed below. Beating the standing from-π#1 record (`isFromStartRecord`, strictly greater, non-zero reach — checked in `PiNumberQuiz` against the sessions stored *before* this run lands) fires a result-screen celebration: a "🎉 New record — π to Nd" banner + `RecordFireworks` (dependency-free canvas overlay, honours `prefers-reduced-motion`). Its rails (left run-history, right "ready to recite") are published via **`usePiReciteRail`** (mirroring Memo's `usePiMemoRail`); the right rail groups adjacent segments that were successfully memoed but not yet flawlessly recited into one-tap continuous runs; flawless segments are persisted independently even when another segment in the same run has mistakes. Weakness is surfaced
+  in-place via each grid's per-segment status dots (`piSegmentStatuses`) rather than a dedicated tab — pick a weak (amber) range
+  in Recite; span two segments to drill a boundary.
   **Anchors** (`PiAnchorTab`) = segment-chain training: pick a start segment + chain length, then type the **opening pair of each
   segment** in turn (`Segment 4 · π digits 61–80` prompt, answer is the pair) — trains the segment *order*, not any one segment.
   Runs on `PiNumberQuiz` with `answerSize={1}`, `recordAttempts={false}`, custom `labels`, and a `distractorPool` of all segment
-  anchors (so MC options never leak what's next). **Session-only — records nothing**, so it can't skew Recite/Train stats.
+  anchors (so MC options never leak what's next). **Session-only — records nothing**, so it can't skew Recite stats.
   Word-chain (Memo) records no `pi:`/session stats, but a segment recalled all-correct in Memo mode is remembered in
   `major-pi-memoed-segs` so it stops being suggested. Memo's setup publishes a **right rail** ("Next to memo") via `useRails`
   whose one-tap **Study →** jumps straight into the first segment that's neither recited nor memoed.
