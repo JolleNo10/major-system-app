@@ -1,4 +1,4 @@
-import { useState, useCallback, type ReactNode } from 'react'
+import { useState, useCallback, useMemo, type ReactNode } from 'react'
 import {
   PAIRS_PER_SEGMENT, describeSegment,
   type PiSegmentStatus, type PiSegmentSummary,
@@ -94,6 +94,9 @@ export function useSegmentPickerData(maxPiPairs: number, phase: unknown): {
   const summaries = usePiSegmentSummaries(maxPiPairs, phase)
   const [memoedSegs] = useState(loadMemoedPiSegments)
   const maxSegments = Math.floor(maxPiPairs / PAIRS_PER_SEGMENT)
-  const statuses = summaries.map(s => s.status)
+  // Keep `statuses` referentially stable while `summaries` is unchanged —
+  // downstream consumers feed it into useMemo/useRails dep arrays, and a fresh
+  // array each render would loop the rail publisher (black page).
+  const statuses = useMemo(() => summaries.map(s => s.status), [summaries])
   return { statuses, summaries, memoedSegs, statusesLoading: summaries.length !== maxSegments }
 }
