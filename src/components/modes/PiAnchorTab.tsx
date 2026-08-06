@@ -95,7 +95,7 @@ export function PiAnchorTab({ answerMode, maxPiPairs }: Props) {
 
   if (phase === 'quiz') {
     return (
-      <div className="flex flex-col items-center gap-6 py-4 w-full">
+      <div className="flex flex-col items-center gap-6 w-full">
         <PiNumberQuiz
           key={runNonce}
           answerMode={answerMode}
@@ -114,7 +114,7 @@ export function PiAnchorTab({ answerMode, maxPiPairs }: Props) {
   }
 
   return (
-    <div className="flex flex-col items-center gap-6 py-4 w-full">
+    <div className="flex flex-col items-center gap-6 w-full">
       <div className={`w-full max-w-lg space-y-6 p-6 ${panelCls}`}>
 
         <p className="text-xs text-zinc-500 leading-relaxed">

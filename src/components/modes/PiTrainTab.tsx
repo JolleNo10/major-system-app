@@ -101,7 +101,7 @@ export function PiTrainTab({ answerMode, maxPiPairs }: Props) {
 
   if (phase === 'quiz' && drill) {
     return (
-      <div className="flex flex-col items-center gap-6 py-4 w-full">
+      <div className="flex flex-col items-center gap-6 w-full">
         {drill.anchorNote && (
           <div className="w-full max-w-md rounded-xl border border-cyan-500/30 bg-cyan-600/10 px-4 py-3 text-center">
             <div className="text-[10px] uppercase tracking-wider text-cyan-600">Sequence starts here</div>
@@ -131,7 +131,7 @@ export function PiTrainTab({ answerMode, maxPiPairs }: Props) {
   }
 
   return (
-    <div className="flex flex-col items-center gap-6 py-4 w-full">
+    <div className="flex flex-col items-center gap-6 w-full">
 
       {/* WEAK SEGMENTS */}
       <div className={`w-full max-w-lg space-y-3 p-6 ${panelCls}`}>

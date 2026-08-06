@@ -12,7 +12,7 @@ import { putStory, deleteStory, exportStories, importStories, type PiStory } fro
 import { processImage } from '../../utils/imageResize'
 import { highlightStory } from '../../utils/storyHighlight'
 import { segmentDigitRange } from '../../utils/piSegments'
-import { ToolLayout } from '../ToolLayout'
+import { useRails } from '../../context/PageLayoutContext'
 import { loadMemoedPiSegments, saveMemoedPiSegments } from '../../data/piProgress'
 import type { AnswerMode } from '../../types'
 
@@ -217,6 +217,45 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
 
   const panelCls = 'bg-zinc-900 border border-zinc-800 rounded-xl'
 
+  // Right rail for the current phase: "Next to memo" in setup, the story/picture
+  // panel while studying and reviewing (omitted in recall — it's a spoiler).
+  // Study also gets a Copy-words action alongside the story ("Study tools").
+  const storyPanel = (
+    <StoryPanel
+      story={story}
+      expectedWords={sequence.map(num => words[num])}
+      editing={storyEditing}
+      onEdit={() => setStoryEditing(true)}
+      onCancel={() => setStoryEditing(false)}
+      onSave={saveStory}
+      flash={storyFlash}
+    />
+  )
+  const rightRail =
+    phase === 'setup'
+      ? <NextToMemoTool nextSeg={nextSeg} loading={statuses.length === 0} onStudy={studySegment} />
+      : phase === 'study'
+      ? (
+          <div className="w-full space-y-3">
+            {storyPanel}
+            <button
+              onClick={copyWords}
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-zinc-900 border border-zinc-800 px-4 py-3 text-sm font-medium text-zinc-300 hover:text-zinc-100 hover:border-violet-500 transition-colors"
+            >
+              <span aria-hidden="true">📋</span> {copied ? 'Copied!' : 'Copy words'}
+            </button>
+          </div>
+        )
+      : phase === 'result'
+      ? storyPanel
+      : undefined
+  const rightLabel =
+    phase === 'setup' ? 'Next to memo' : phase === 'study' ? 'Study tools' : 'Story & picture'
+  useRails(
+    { right: rightRail, rightLabel },
+    [phase, nextSeg, statuses.length, studySegment, story, sequence, words, storyEditing, saveStory, storyFlash, copyWords, copied],
+  )
+
   const progressDots = (idx: number, results?: WqResult[]) => (
     <div className="flex gap-1 items-center flex-wrap justify-center">
       {sequence.map((_, i) => {
@@ -233,15 +272,11 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
   )
 
   return (
-    <div className="flex flex-col items-center gap-6 py-4 w-full">
+    <div className="flex flex-col items-center gap-6 w-full">
 
       {/* SETUP */}
       {phase === 'setup' && (
-        <ToolLayout
-          rightLabel="Next to memo"
-          right={<NextToMemoTool nextSeg={nextSeg} loading={statuses.length === 0} onStudy={studySegment} />}
-        >
-        <div className={`w-full max-w-lg space-y-6 p-6 ${panelCls}`}>
+        <div className={`w-full space-y-6 p-6 ${panelCls}`}>
           <div className="space-y-2">
             <span className="text-sm font-medium text-zinc-300">Select a segment to memorise</span>
             <PiSegmentGrid
@@ -308,34 +343,11 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
           </div>
           {storyFlash && <p className="text-xs text-center text-violet-400">{storyFlash}</p>}
         </div>
-        </ToolLayout>
       )}
 
       {/* STUDY */}
       {phase === 'study' && (
-        <ToolLayout
-          rightLabel="Study tools"
-          right={(
-            <div className="w-full space-y-3">
-              <StoryPanel
-                story={story}
-                expectedWords={sequence.map(num => words[num])}
-                editing={storyEditing}
-                onEdit={() => setStoryEditing(true)}
-                onCancel={() => setStoryEditing(false)}
-                onSave={saveStory}
-                flash={storyFlash}
-              />
-              <button
-                onClick={copyWords}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-zinc-900 border border-zinc-800 px-4 py-3 text-sm font-medium text-zinc-300 hover:text-zinc-100 hover:border-violet-500 transition-colors"
-              >
-                <span aria-hidden="true">📋</span> {copied ? 'Copied!' : 'Copy words'}
-              </button>
-            </div>
-          )}
-        >
-        <div className="w-full max-w-md space-y-4">
+        <div className="w-full space-y-4">
           <div className="text-center space-y-1">
             <p className="text-xs text-zinc-600 uppercase tracking-widest">Memorise the sequence</p>
             <p className="text-sm text-zinc-500">
@@ -368,7 +380,6 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
             >Next segment →</button>
           </div>
         </div>
-        </ToolLayout>
       )}
 
       {/* RECALL — StoryPanel is intentionally omitted here: the story/picture is
@@ -434,21 +445,7 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
 
       {/* RESULT */}
       {phase === 'result' && (
-        <ToolLayout
-          rightLabel="Story & picture"
-          right={(
-            <StoryPanel
-              story={story}
-              expectedWords={sequence.map(num => words[num])}
-              editing={storyEditing}
-              onEdit={() => setStoryEditing(true)}
-              onCancel={() => setStoryEditing(false)}
-              onSave={saveStory}
-              flash={storyFlash}
-            />
-          )}
-        >
-        <div className="w-full max-w-md space-y-4">
+        <div className="w-full space-y-4">
           <h3 className="text-xl font-bold text-center text-zinc-100">Review the sequence</h3>
           <div className="space-y-1.5">
             {sequence.map((num, i) => {
@@ -473,7 +470,6 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
             <button onClick={goToSetup} className="flex-1 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold transition-colors">Change segment</button>
           </div>
         </div>
-        </ToolLayout>
       )}
     </div>
   )

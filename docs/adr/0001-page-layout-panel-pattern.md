@@ -46,7 +46,9 @@ renders sits outside it.
 | **Gutters** | `minmax(0, 18rem)`, symmetric — shrink together, cap at 288px. Equal gutters mean a rail appearing/vanishing cannot move the center. |
 | **Breakpoint** | Single: `xl` (1280px). At/above → three columns; below → gutters vanish and rails become drawers. |
 | **Content rule** | The center IS the mode's entire content column; every vertical section (setup, run history, results…) stacks inside it as children. A mode may render nothing outside the layout. |
-| **Rails** | Optional `left`/`right`; top-aligned; scroll with the page (not sticky); pass `null` for a phase that has none. |
+| **Header slot** | Optional chrome (e.g. Pi's tab bar + digit slider) published via `useLayoutHeader`, rendered above the rail row and centered at the center-column width. Keeping it out of the grid lets the rails top-align with the body content instead of the chrome. |
+| **Rails** | Optional `left`/`right`, published via `useRails`; the grid is `items-start` so each cell is content-height (rails hug their content, never stretch to the body's full height) and gutters are plain blocks so a rail fills its gutter and sits beside the center. Scroll with the page (not sticky); pass `undefined` for a view that has none. |
+| **Panel width** | Content that is flanked by a rail fills the 672px center (`w-full`, not `max-w-lg`) so the rail sits tight against the panel edge rather than across dead space. |
 | **Below xl** | Unchanged: a toggle row (📊/🧰) opens each rail as a focus-trapped slide-in drawer over a backdrop, reusing `useOverlay`. |
 | **Universality** | Every mode (paned or not) routes through `PageLayout`. One code path. A no-rail mode is just a centered 672px column. |
 

@@ -7,7 +7,7 @@ import { PI_PAIRS } from '../../data/piDigits'
 import { loadPiSessions, bestFromStartReach, type PiSession } from '../../data/piStats'
 import { PiSegmentGrid, PiSegmentDot, PiSegmentRangePreview } from './PiSegmentGrid'
 import { usePiSegmentStatuses } from '../../hooks/usePiSegmentStatuses'
-import { ToolLayout } from '../ToolLayout'
+import { useRails } from '../../context/PageLayoutContext'
 import {
   flawlessSegmentsFromRun,
   flawlessSegmentsFromSessions,
@@ -133,23 +133,30 @@ export function PiReciteTab({ answerMode, maxPiPairs }: Props) {
 
   const numButtons = Math.ceil(maxPiPairs / PAIRS_PER_ROW)
 
-  return (
-    <div className="flex flex-col items-center gap-6 py-4 w-full">
-
-      {/* SETUP */}
-      {phase === 'setup' && (
-        <ToolLayout
-          rightLabel="Ready to recite"
-          right={(
+  // "Ready to recite" rail — only during setup (the quiz phase has no rail).
+  useRails(
+    {
+      right: phase === 'setup'
+        ? (
             <ReadyToReciteTool
               ranges={pendingRanges}
               loading={statuses.length !== maxSegments}
               availableMemoedCount={availableMemoedCount}
               onRecite={startQuickRange}
             />
-          )}
-        >
-        <div className={`w-full max-w-lg space-y-6 p-6 ${panelCls}`}>
+          )
+        : undefined,
+      rightLabel: 'Ready to recite',
+    },
+    [phase, pendingRanges, statuses.length, maxSegments, availableMemoedCount, startQuickRange],
+  )
+
+  return (
+    <div className="flex flex-col items-center gap-6 w-full">
+
+      {/* SETUP */}
+      {phase === 'setup' && (
+        <div className={`w-full space-y-6 p-6 ${panelCls}`}>
 
           <div className="space-y-2">
             <span className="text-sm font-medium text-zinc-300">Select segment</span>
@@ -208,12 +215,11 @@ export function PiReciteTab({ answerMode, maxPiPairs }: Props) {
             className="w-full py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold transition-colors"
           >Start →</button>
         </div>
-        </ToolLayout>
       )}
 
       {/* PI RUN HISTORY */}
       {phase === 'setup' && piSessions.length > 0 && (
-        <div className={`w-full max-w-lg space-y-4 p-6 ${panelCls}`}>
+        <div className={`w-full space-y-4 p-6 ${panelCls}`}>
           <div className="flex items-baseline justify-between">
             <span className="text-sm font-medium text-zinc-300">Your runs</span>
             <span className="text-xs text-zinc-600 tabular-nums">{piSessions.length} recorded</span>

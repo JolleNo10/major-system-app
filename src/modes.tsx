@@ -25,7 +25,6 @@ export interface ModeDef {
   component: ComponentType<{ answerMode: AnswerMode }> // drill rendered in <main>
   group: 'major-system' | 'application'                // ModeSelector section
   hideAnswerToggle?: boolean                           // header omits the MC/typing toggle
-  wide?: boolean                                       // let content exceed max-w-2xl on lg+ (side rails)
   // ModeSelector card
   emoji: string
   subtitle: string
@@ -113,7 +112,6 @@ export const MODES: Record<DrillMode, ModeDef> = {
     title: 'Pi',
     component: PiDrill,
     group: 'application',
-    wide: true,
     emoji: '𝝅',
     subtitle: 'Memo · Recite · Train · Anchors',
     description: 'Memorise and recite the digits of π using major system words',

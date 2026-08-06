@@ -5,6 +5,7 @@ import { useAnswerMode } from './hooks/useAnswerMode'
 import { useSettings } from './context/SettingsContext'
 import { usePwaUpdate } from './hooks/usePwaUpdate'
 import { ModeSelector } from './components/ModeSelector'
+import { PageLayout } from './components/PageLayout'
 import { AnswerModeToggle } from './components/AnswerModeToggle'
 import { ReferenceOverlay } from './components/ReferenceOverlay'
 import { SettingsOverlay } from './components/SettingsOverlay'
@@ -29,8 +30,6 @@ export default function App() {
     ? MODES[mode].group === 'major-system'
     : homeSection === 'major-system'
 
-  // Wide modes (side rails) may exceed the default reading column on lg+.
-  const widthCls = mode !== 'home' && MODES[mode].wide ? 'max-w-2xl lg:max-w-5xl' : 'max-w-2xl'
   const closeSettings = useCallback(() => setShowSettings(false), [])
   const closeStats = useCallback(() => setShowStats(false), [])
 
@@ -46,7 +45,7 @@ export default function App() {
     <div className="min-h-dvh bg-zinc-950 flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-zinc-950/90 backdrop-blur border-b border-zinc-800/60">
-        <div className={`${widthCls} mx-auto px-4 h-14 flex items-center gap-3`}>
+        <div className="max-w-2xl mx-auto px-4 h-14 flex items-center gap-3">
           {mode !== 'home' ? (
             <button
               onClick={goHome}
@@ -99,14 +98,16 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main content */}
-      <main className={`flex-1 ${widthCls} mx-auto w-full px-4 py-6`}>
-        {mode === 'home'
-          ? <ModeSelector onSelectMode={setMode} section={homeSection} onSectionChange={setHomeSection} />
-          : (() => {
-              const Drill = MODES[mode].component
-              return <Drill answerMode={answerMode} />
-            })()}
+      {/* Main content — PageLayout owns the center column + optional rails (ADR 0001). */}
+      <main className="flex-1 w-full px-4 py-6">
+        <PageLayout>
+          {mode === 'home'
+            ? <ModeSelector onSelectMode={setMode} section={homeSection} onSectionChange={setHomeSection} />
+            : (() => {
+                const Drill = MODES[mode].component
+                return <Drill answerMode={answerMode} />
+              })()}
+        </PageLayout>
       </main>
 
       {/* Reference overlay */}

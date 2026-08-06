@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSettings } from '../../context/SettingsContext'
+import { useLayoutHeader } from '../../context/PageLayoutContext'
 import { readString, safeSet } from '../../utils/storage'
 import { PiMemoTab } from './PiMemoTab'
 import { PiReciteTab } from './PiReciteTab'
@@ -36,8 +37,11 @@ export function PiDrill({ answerMode }: Props) {
     if (maxPiPairs > settingsMaxPairs) setMaxPiPairs(settingsMaxPairs)
   }, [settingsMaxPairs, maxPiPairs])
 
-  return (
-    <div className="flex flex-col items-center gap-0 py-4 w-full">
+  // Tab bar + digit slider are chrome shared by every tab: publish them as the
+  // PageLayout header (above the rail row) so each tab's rail top-aligns with
+  // its body content, not with this chrome.
+  useLayoutHeader(
+    <div className="flex flex-col items-center gap-0">
       <div className="flex gap-1 p-1 rounded-lg bg-zinc-800 mb-2">
         {TABS.map(t => (
           <button
@@ -70,14 +74,15 @@ export function PiDrill({ answerMode }: Props) {
         />
         <span className="text-cyan-400 tabular-nums text-xs w-8 text-right">{maxPiPairs * 2}</span>
       </div>
-      {tab === 'memo'
-        ? <PiMemoTab answerMode={answerMode} maxPiPairs={maxPiPairs} />
-        : tab === 'train'
-        ? <PiTrainTab answerMode={answerMode} maxPiPairs={maxPiPairs} />
-        : tab === 'anchors'
-        ? <PiAnchorTab answerMode={answerMode} maxPiPairs={maxPiPairs} />
-        : <PiReciteTab answerMode={answerMode} maxPiPairs={maxPiPairs} />
-      }
-    </div>
+    </div>,
+    [tab, maxPiPairs, settingsMaxPairs],
   )
+
+  return tab === 'memo'
+    ? <PiMemoTab answerMode={answerMode} maxPiPairs={maxPiPairs} />
+    : tab === 'train'
+    ? <PiTrainTab answerMode={answerMode} maxPiPairs={maxPiPairs} />
+    : tab === 'anchors'
+    ? <PiAnchorTab answerMode={answerMode} maxPiPairs={maxPiPairs} />
+    : <PiReciteTab answerMode={answerMode} maxPiPairs={maxPiPairs} />
 }

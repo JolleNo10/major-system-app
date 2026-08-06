@@ -110,14 +110,14 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   `allItems()` traversal.
 
 ## Module map
-- `src/App.tsx` — header (mode title, AnswerModeToggle, 📊/📚/⚙️ overlay triggers) + `<main>` that renders
-  `MODES[mode].component`, + overlays. No per-mode render switch.
+- `src/App.tsx` — header (mode title, AnswerModeToggle, 📊/📚/⚙️ overlay triggers) + a **full-width** `<main>` that
+  wraps `MODES[mode].component` (or `ModeSelector` on home) in a single `<PageLayout>`, + overlays. No per-mode render
+  switch, no per-mode width logic (`PageLayout` owns width/centering — see ADR 0001).
 - **`src/modes.tsx` — the mode registry** (`Record<DrillMode, ModeDef>`): each non-home `Mode` maps to its
-  header `title`, drill `component`, `group` (`'major-system' | 'application'`), `hideAnswerToggle`, `wide` (let content
-  exceed `max-w-2xl` on lg+ — set on Pi for its side rails), and ModeSelector card
+  header `title`, drill `component`, `group` (`'major-system' | 'application'`), `hideAnswerToggle`, and ModeSelector card
   metadata. Single source of truth — TypeScript enforces every mode is fully wired. **Add a mode = one entry here.**
   `HOME_TITLE` is `'Mnemonics'`.
-- `src/main.tsx` — mounts `SettingsProvider > WordsProvider > CardWordsProvider > PaoCardsProvider > SoundKeyProvider > App`; calls `initAttempts()` (opens IndexedDB + one-time migration of any legacy in-blob attempts).
+- `src/main.tsx` — mounts `SettingsProvider > WordsProvider > CardWordsProvider > PaoCardsProvider > SoundKeyProvider > PageLayoutProvider > App`; calls `initAttempts()` (opens IndexedDB + one-time migration of any legacy in-blob attempts).
 - `src/types.ts` — `Mode`, `AnswerMode`, `Direction`, `NumberStats`/`AllStats`.
 - **`components/modes/`**: `WordNumberDrill` is the shared config-driven engine for both directions;
   `EncodingDrill`/`DecodingDrill` are ~25-line `DrillConfig` wrappers over it (direction, prompt styling,
@@ -147,7 +147,7 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   Runs on `PiNumberQuiz` with `answerSize={1}`, `recordAttempts={false}`, custom `labels`, and a `distractorPool` of all segment
   anchors (so MC options never leak what's next). **Session-only — records nothing**, so it can't skew Recite/Train stats.
   Word-chain (Memo) records no `pi:`/session stats, but a segment recalled all-correct in Memo mode is remembered in
-  `major-pi-memoed-segs` so it stops being suggested. Memo's setup wraps in `ToolLayout` with a **right rail** ("Next to memo")
+  `major-pi-memoed-segs` so it stops being suggested. Memo's setup publishes a **right rail** ("Next to memo") via `useRails`
   whose one-tap **Study →** jumps straight into the first segment that's neither recited nor memoed.
   **Per-segment stories:** the Memo tab lets the user author a freeform **story** + one **picture** per segment (`pi_stories`
   IndexedDB store, `data/piStories.ts`; `usePiStory`/`usePiStorySegs`/`useBlobUrl` hooks). Shown inline (view↔edit `StoryPanel`)
@@ -172,8 +172,15 @@ Person/Action/Object triples (partial final group of 1–2 kept).
 - **`components/`** — `ModeSelector` (home screen: **Systems** section for Major System drills, **Applications** section for Pi + Cards + PAO Deck), `MultipleChoice`/`TypingInput` (answer inputs),
   `ScoreBar`, `RangeSlider` (dual-thumb number range, accessible), `RoundStatsPanel`, `HintButton` (vowel skeleton),
   `SoundKeyGrid` (editable sound-key table)/`SoundKeyPanel`, `AnswerModeToggle`, `Switch` (accessible on/off toggle),
-  `ToolLayout` (opt-in three-pane: optional left/right rails around a drill — persistent columns on lg+, slide-in drawers
-  below, reusing `useOverlay`; gated behind a mode's `wide` flag for the width). **Overlays share
+  **`PageLayout`** (the one base layout for every screen — ADR 0001; App renders exactly one, wrapping all mode content).
+  Fixed `42rem`/max-w-2xl center that never moves, flanked by symmetric `minmax(0,18rem)` gutters via CSS grid; single `xl`
+  breakpoint (three columns above, slide-in drawers below via `useOverlay`). Rails are **not** props — drills publish their
+  current-view rails through **`useRails(config, deps)`** (`context/PageLayoutContext`, read back by `PageLayout` via
+  `usePageRails`; the `deps` array prevents an update loop), so every phase of every mode stays inside the one center column.
+  The grid is `items-start` (rails hug their content height) and gutters are plain blocks (a rail fills its gutter beside the
+  center); content flanked by a rail fills the 672px center (`w-full`) so the rail sits tight against it. Chrome that should sit
+  **above** the rail row (Pi's tab bar + digit slider) is published via **`useLayoutHeader(node, deps)`** and centered at the
+  center width, so rails top-align with the body content, not the chrome. **Overlays share
   `Overlay` (`components/Overlay.tsx`)** — the `role="dialog"` shell, `useOverlay` wiring, header bar, close
   button, and scroll body; callers pass `ariaLabel`/`header`/`maxWidth`/children (`TabButton` is the shared
   header tab). Overlays: `ReferenceOverlay` (sound key + major `WordListGrid`), `CardWordsOverlay` (Themed Deck
