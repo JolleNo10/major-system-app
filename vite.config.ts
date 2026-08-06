@@ -4,7 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { execSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import path, { join } from 'node:path'
 
 // Build identity baked in at build time (no runtime fetch). buildTime always
 // works; the git short SHA is best-effort (the build context includes .git).
@@ -40,6 +40,9 @@ const buildTime = new Date().toISOString()
 const commit = readGitCommit()
 
 export default defineConfig({
+  resolve: {
+    alias: { '@': path.resolve(__dirname, 'src') },
+  },
   define: {
     __BUILD_TIME__: JSON.stringify(buildTime),
     __BUILD_COMMIT__: JSON.stringify(commit),

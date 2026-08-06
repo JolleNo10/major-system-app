@@ -1,0 +1,476 @@
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { CARDS, RANKS } from '@/core/cards'
+import type { Card, Suit } from '@/core/cards'
+import type { PaoCard } from '@/features/pao/paoCards'
+import { shuffle } from '@/core/scoring/quiz'
+import { groupTriples, roleAt } from '@/features/pao/triples'
+import { isOverlayOpen } from '@/app/layout/overlayGuard'
+import { safeSet } from '@/core/storage'
+
+// PAO deck memo: memorise the deck in Person/Action/Object triples (the P of the
+// first card + A of the second + O of the third form one image per 3 cards), then
+// reproduce the card order blind. Forked from DeckMemoDrill (card faces, run
+// history, personal-best) so the shared single-word deck memo stays untouched.
+
+const SUIT_LETTERS: Record<string, Suit> = { C: '♣', D: '♦', H: '♥', S: '♠' }
+const MAX_HISTORY = 100
+const ROLE_EMOJI = ['👤', '🎬', '📦'] as const
+
+interface DeckMemoRun {
+  at: number
+  score: number
+  total: number
+  suits: string[]
+  ms: number
+  ranks?: [number, number]  // rank window (indices) when a single suit is limited; absent = full
+}
+
+const LAST_RANK = RANKS.length - 1
+
+// Config identity for a rank window; full range (or absent, incl. legacy runs) → ''.
+function rankKey(ranks?: [number, number]): string {
+  return ranks && !(ranks[0] === 0 && ranks[1] === LAST_RANK) ? `${ranks[0]}-${ranks[1]}` : ''
+}
+
+function rankLabel(ranks?: [number, number]): string {
+  return rankKey(ranks) ? `${RANKS[ranks![0]]}–${RANKS[ranks![1]]}` : ''
+}
+
+function loadHistory(key: string | undefined): DeckMemoRun[] {
+  if (!key) return []
+  try {
+    const v = localStorage.getItem(key)
+    if (v) return JSON.parse(v) as DeckMemoRun[]
+  } catch {}
+  return []
+}
+
+function fmtDuration(ms: number): string {
+  const s = Math.round(ms / 1000)
+  if (s < 60) return `${s}s`
+  return `${Math.floor(s / 60)}m ${s % 60}s`
+}
+
+function fmtDate(at: number): string {
+  const d = new Date(at)
+  return (
+    d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
+    ' ' +
+    d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+  )
+}
+
+function suitKey(suits: string[]): string {
+  return [...suits].sort().join('')
+}
+
+function runPct(r: DeckMemoRun): number {
+  return Math.round((r.score / r.total) * 100)
+}
+
+function trendColor(pct: number): string {
+  if (pct >= 80) return 'bg-green-500'
+  if (pct >= 60) return 'bg-yellow-500'
+  return 'bg-red-500'
+}
+
+function parseCard(raw: string, deck: Card[]): Card | null {
+  const s = raw.trim().toUpperCase()
+  if (s.length < 2) return null
+  const suit = SUIT_LETTERS[s.slice(-1)]
+  if (!suit) return null
+  return deck.find(c => c.rank === s.slice(0, -1) && c.suit === suit) ?? null
+}
+
+function buildDeck(activeNumbers: string[], count?: number): Card[] {
+  const all = shuffle(activeNumbers.map(n => CARDS.find(c => c.number === n)!))
+  return count !== undefined && count < all.length ? all.slice(0, count) : all
+}
+
+function CardFace({ card, className = '', small = false }: { card: Card; className?: string; small?: boolean }) {
+  const col = card.red ? 'text-rose-500' : 'text-zinc-900'
+  const size = small ? 'w-20 h-28' : 'w-36 h-52'
+  const suitSize = small ? 'text-3xl' : 'text-6xl'
+  const rankSize = small ? 'text-xl' : 'text-3xl'
+  return (
+    <div className={`relative flex flex-col items-center justify-center ${size} rounded-2xl bg-zinc-100 shadow-2xl border-2 border-zinc-300 select-none ${className}`}>
+      <div className={`absolute top-2 left-2 flex flex-col items-center leading-none ${col}`}>
+        <span className="text-xs font-black">{card.rank}</span>
+        <span className="text-[10px]">{card.suit}</span>
+      </div>
+      <span className={`${suitSize} ${col}`}>{card.suit}</span>
+      <span className={`${rankSize} font-black mt-0.5 ${col}`}>{card.rank}</span>
+      <div className={`absolute bottom-2 right-2 flex flex-col items-center leading-none rotate-180 ${col}`}>
+        <span className="text-xs font-black">{card.rank}</span>
+        <span className="text-[10px]">{card.suit}</span>
+      </div>
+    </div>
+  )
+}
+
+// The P/A/O story for a triple: role at each position, using only the cards present
+// (a partial final group of 1 or 2 cards fills just Person, or Person + Action).
+function StoryLine({ triple, byNumber }: { triple: Card[]; byNumber: Record<string, PaoCard> }) {
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center">
+      {triple.map((card, j) => {
+        const role = roleAt(j)
+        const value = byNumber[card.number]?.[role] ?? ''
+        return (
+          <span key={card.number} className="text-lg">
+            <span className="mr-1">{ROLE_EMOJI[j]}</span>
+            <span className={j === 0 ? 'font-bold text-zinc-100' : j === 1 ? 'text-violet-300' : 'text-cyan-300'}>{value}</span>
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
+type Phase = 'memo' | 'recall' | 'done'
+type AnswerState = 'pending' | 'correct' | 'wrong'
+
+interface Props {
+  activeNumbers: string[]
+  byNumber: Record<string, PaoCard>
+  cardCount?: number
+  historyKey?: string
+  activeSuits?: string[]
+  rankRange?: [number, number]
+}
+
+export function PaoDeckMemoDrill({ activeNumbers, byNumber, cardCount, historyKey, activeSuits, rankRange }: Props) {
+  const [deck, setDeck] = useState<Card[]>(() => buildDeck(activeNumbers, cardCount))
+  const triples = groupTriples(deck)
+
+  const [phase, setPhase] = useState<Phase>('memo')
+  const [memoPos, setMemoPos] = useState(0)  // indexes triples during memo
+  const [recallPos, setRecallPos] = useState(0)  // indexes cards during recall
+  const [input, setInput] = useState('')
+  const [answerState, setAnswerState] = useState<AnswerState>('pending')
+  const [results, setResults] = useState<boolean[]>([])
+  const [history, setHistory] = useState<DeckMemoRun[]>(() => loadHistory(historyKey))
+  const startTimeRef = useRef(Date.now())
+  const currentRunAtRef = useRef<number | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  // Save run when done phase is entered
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (phase !== 'done' || !historyKey) return
+    const at = Date.now()
+    currentRunAtRef.current = at
+    const run: DeckMemoRun = {
+      at,
+      score: results.filter(Boolean).length,
+      total: deck.length,
+      suits: activeSuits ?? [],
+      ms: at - startTimeRef.current,
+      ...(rankKey(rankRange) ? { ranks: rankRange } : {}),
+    }
+    const updated = [run, ...history].slice(0, MAX_HISTORY)
+    setHistory(updated)
+    safeSet(historyKey, JSON.stringify(updated))
+  }, [phase])
+
+  useEffect(() => {
+    if (phase === 'recall' && answerState === 'pending') inputRef.current?.focus()
+  }, [phase, recallPos, answerState])
+
+  const handleSubmit = useCallback(() => {
+    if (answerState !== 'pending' || phase !== 'recall') return
+    const target = deck[recallPos]
+    const matched = parseCard(input, deck)
+    const correct = matched?.number === target.number
+    setAnswerState(correct ? 'correct' : 'wrong')
+    setResults(prev => [...prev, correct])
+    setInput('')
+    setTimeout(() => {
+      const next = recallPos + 1
+      if (next >= deck.length) setPhase('done')
+      else { setRecallPos(next); setAnswerState('pending') }
+    }, correct ? 1200 : 1900)
+  }, [answerState, phase, input, deck, recallPos])
+
+  const restart = useCallback((reshuffle: boolean) => {
+    if (reshuffle) setDeck(buildDeck(activeNumbers, cardCount))
+    setPhase('memo')
+    setMemoPos(0)
+    setRecallPos(0)
+    setInput('')
+    setAnswerState('pending')
+    setResults([])
+    startTimeRef.current = Date.now()
+    currentRunAtRef.current = null
+  }, [activeNumbers, cardCount])
+
+  // Memo phase keyboard: Space / → / Enter advances one triple
+  useEffect(() => {
+    if (phase !== 'memo') return
+    const handler = (e: KeyboardEvent) => {
+      if (isOverlayOpen()) return
+      if (e.key === ' ' || e.key === 'ArrowRight' || e.key === 'Enter') {
+        e.preventDefault()
+        if (memoPos < triples.length - 1) setMemoPos(p => p + 1)
+        else { setPhase('recall'); setRecallPos(0) }
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [phase, memoPos, triples.length])
+
+  // ── Memo phase ──────────────────────────────────────────────────────────────
+  if (phase === 'memo') {
+    const triple = triples[memoPos]
+    const isLast = memoPos === triples.length - 1
+
+    return (
+      <div className="flex flex-col items-center gap-5 py-2">
+        <div className="flex items-center gap-3 text-xs text-zinc-500">
+          <span className="uppercase tracking-widest">Memorize · triple</span>
+          <span className="text-zinc-400 tabular-nums">{memoPos + 1} / {triples.length}</span>
+        </div>
+
+        {/* Progress strip — one mark per triple */}
+        <div className="flex gap-1 flex-wrap justify-center max-w-sm">
+          {triples.map((_, i) => (
+            <div
+              key={i}
+              className={`h-1.5 w-5 rounded-full transition-colors ${
+                i < memoPos ? 'bg-violet-600' : i === memoPos ? 'bg-violet-400' : 'bg-zinc-700'
+              }`}
+            />
+          ))}
+        </div>
+
+        <div className="flex items-end gap-2">
+          {triple.map((card, j) => (
+            <div key={card.number} className="flex flex-col items-center gap-1">
+              <span className="text-lg" title={roleAt(j)}>{ROLE_EMOJI[j]}</span>
+              <CardFace card={card} small />
+            </div>
+          ))}
+        </div>
+
+        <div className="max-w-md">
+          <StoryLine triple={triple} byNumber={byNumber} />
+        </div>
+
+        {isLast ? (
+          <button
+            onClick={() => { setPhase('recall'); setRecallPos(0) }}
+            className="px-6 py-2.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-medium transition-colors"
+          >Start Recall →</button>
+        ) : (
+          <button
+            onClick={() => setMemoPos(p => p + 1)}
+            className="px-6 py-2.5 rounded-lg bg-zinc-700 hover:bg-zinc-600 text-zinc-200 font-medium transition-colors"
+          >Next →</button>
+        )}
+
+        <p className="text-xs text-zinc-700">Space / → to advance · reproduce the card order next</p>
+      </div>
+    )
+  }
+
+  // ── Recall phase ─────────────────────────────────────────────────────────────
+  if (phase === 'recall') {
+    const correctCard = deck[recallPos]
+    const correctCount = results.filter(Boolean).length
+    const tripleIdx = Math.floor(recallPos / 3)
+    const posInTriple = recallPos % 3
+
+    return (
+      <div className="flex flex-col items-center gap-5 w-full py-2">
+        <div className="flex justify-between w-full max-w-sm text-xs">
+          <span className="text-zinc-500 uppercase tracking-widest">
+            Recall · triple {tripleIdx + 1} · {roleAt(posInTriple)}
+          </span>
+          <span className="text-zinc-400 tabular-nums">
+            {recallPos + 1} / {deck.length} &middot; {correctCount} ✓
+          </span>
+        </div>
+
+        {/* Card slot */}
+        {answerState === 'pending' && (
+          <div className="w-36 h-52 rounded-2xl border-2 border-dashed border-zinc-700 bg-zinc-900 flex items-center justify-center">
+            <span className="text-zinc-600 text-5xl font-black">?</span>
+          </div>
+        )}
+        {answerState === 'correct' && (
+          <div className="animate-deal">
+            <CardFace card={correctCard} className="border-green-500" />
+          </div>
+        )}
+        {answerState === 'wrong' && (
+          <div className="relative animate-fade-in">
+            <CardFace card={correctCard} className="border-red-500 opacity-75" />
+            <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-red-950/70">
+              <span className="text-red-400 text-5xl font-black">✗</span>
+            </div>
+          </div>
+        )}
+
+        {answerState === 'correct' && <p className="text-green-400 text-sm font-medium">Correct!</p>}
+        {answerState === 'wrong' && (
+          <p className="text-red-400 text-sm text-center">
+            Wrong — was <span className="font-mono font-bold">{correctCard.rank}{correctCard.suit}</span>
+          </p>
+        )}
+
+        {answerState === 'pending' && (
+          <div className="flex gap-2 w-full max-w-xs">
+            <input
+              ref={inputRef}
+              value={input}
+              onChange={e => setInput(e.target.value.toUpperCase())}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit() } }}
+              placeholder="e.g. AC, 10H, KS"
+              className="flex-1 px-3 py-2.5 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-violet-500 font-mono text-base tracking-wider"
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <button
+              onClick={handleSubmit}
+              className="px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-medium transition-colors"
+            >✓</button>
+          </div>
+        )}
+
+        {/* Progress dots — grouped into triples */}
+        <div className="flex gap-2 flex-wrap justify-center max-w-sm">
+          {triples.map((triple, ti) => (
+            <div key={ti} className="flex gap-1">
+              {triple.map((_, j) => {
+                const idx = ti * 3 + j
+                const ok = results[idx]
+                const isCurrent = idx === recallPos && answerState === 'pending'
+                return (
+                  <div
+                    key={j}
+                    className={`w-2.5 h-2.5 rounded-full ${
+                      idx < results.length ? (ok ? 'bg-green-500' : 'bg-red-500')
+                      : isCurrent ? 'bg-violet-500 animate-pulse'
+                      : 'bg-zinc-700'
+                    }`}
+                  />
+                )
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // ── Done phase ───────────────────────────────────────────────────────────────
+  const correct = results.filter(Boolean).length
+  const pct = Math.round((correct / deck.length) * 100)
+
+  const thisSuitKey = suitKey(activeSuits ?? [])
+  const thisRankKey = rankKey(rankRange)
+  const configHistory = history.filter(
+    r => r.total === deck.length && suitKey(r.suits) === thisSuitKey && rankKey(r.ranks) === thisRankKey,
+  )
+  const bestRun = configHistory.reduce<DeckMemoRun | null>(
+    (b, r) => (!b || runPct(r) > runPct(b) ? r : b),
+    null,
+  )
+  const isNewBest = !bestRun || pct >= runPct(bestRun)
+
+  return (
+    <div className="flex flex-col items-center gap-6 py-4 w-full max-w-sm mx-auto">
+      <div className="text-center">
+        <p className="text-4xl font-bold tabular-nums">
+          {correct}
+          <span className="text-zinc-500 text-2xl font-normal"> / {deck.length}</span>
+        </p>
+        <p className="text-zinc-400 text-sm mt-1">{pct}% correct</p>
+      </div>
+
+      <div className="flex gap-1.5 flex-wrap justify-center">
+        {results.map((ok, i) => (
+          <div
+            key={i}
+            className={`w-3 h-3 rounded-full ${ok ? 'bg-green-500' : 'bg-red-500'}`}
+            title={`Card ${i + 1}: ${deck[i].rank}${deck[i].suit}`}
+          />
+        ))}
+      </div>
+
+      {historyKey && (
+        isNewBest
+          ? <p className="text-violet-400 text-sm font-semibold">✨ New best for this config!</p>
+          : bestRun && (
+            <p className="text-zinc-500 text-xs">
+              Best ({deck.length} cards {thisSuitKey || '—'}{rankLabel(rankRange) && ` ${rankLabel(rankRange)}`}):&nbsp;
+              {bestRun.score}/{bestRun.total} ({runPct(bestRun)}%)
+              &nbsp;·&nbsp;{fmtDate(bestRun.at)}
+            </p>
+          )
+      )}
+
+      <div className="flex gap-3">
+        <button
+          onClick={() => restart(false)}
+          className="px-5 py-2.5 rounded-lg bg-zinc-700 hover:bg-zinc-600 text-zinc-200 font-medium transition-colors"
+        >Same order</button>
+        <button
+          onClick={() => restart(true)}
+          className="px-5 py-2.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-medium transition-colors"
+        >Reshuffle</button>
+      </div>
+
+      {historyKey && history.length > 0 && (
+        <div className="w-full space-y-3 pt-1">
+          <div className="flex items-center gap-2">
+            <div className="h-px flex-1 bg-zinc-800" />
+            <span className="text-xs text-zinc-600 uppercase tracking-widest">History</span>
+            <div className="h-px flex-1 bg-zinc-800" />
+          </div>
+
+          {configHistory.length > 1 && (
+            <div className="flex gap-0.5 flex-wrap">
+              {configHistory.slice(0, 30).map(r => (
+                <div
+                  key={r.at}
+                  className={`w-3 h-3 rounded-sm ${trendColor(runPct(r))} ${
+                    r.at === currentRunAtRef.current ? 'ring-1 ring-white/60' : ''
+                  }`}
+                  title={`${fmtDate(r.at)}: ${r.score}/${r.total} (${runPct(r)}%) · ${fmtDuration(r.ms)}`}
+                />
+              ))}
+            </div>
+          )}
+
+          <div className="space-y-0.5 max-h-56 overflow-y-auto pr-1">
+            {history.slice(0, 30).map(run => {
+              const rPct = runPct(run)
+              const isCurrent = run.at === currentRunAtRef.current
+              const isBestRun = run === bestRun
+              return (
+                <div
+                  key={run.at}
+                  className={`flex items-center gap-2 text-xs px-2 py-1 rounded border-l-2 ${
+                    isCurrent ? 'bg-violet-950/50 border-violet-500' : 'border-transparent'
+                  }`}
+                >
+                  <span className="text-zinc-500 shrink-0 w-28">{fmtDate(run.at)}</span>
+                  <span className="text-zinc-400 shrink-0">{run.suits.join('')}</span>
+                  {rankLabel(run.ranks) && <span className="text-zinc-600 shrink-0 text-[10px]">{rankLabel(run.ranks)}</span>}
+                  <span className="text-zinc-600 shrink-0 tabular-nums">{run.total}</span>
+                  <span className={`tabular-nums font-medium flex-1 ${
+                    rPct >= 80 ? 'text-green-400' : rPct >= 60 ? 'text-yellow-400' : 'text-red-400'
+                  }`}>{run.score}/{run.total}</span>
+                  <span className="text-zinc-500 tabular-nums w-7 text-right">{rPct}%</span>
+                  <span className="text-zinc-700 tabular-nums w-8 text-right" title="Duration">{fmtDuration(run.ms)}</span>
+                  {isBestRun && <span className="text-yellow-500 shrink-0" title="Personal best">★</span>}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

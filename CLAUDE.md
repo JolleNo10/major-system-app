@@ -25,12 +25,49 @@ docker compose down
 # One-off verification without a host Node toolchain:
 docker run --rm -v "$(pwd)":/app -w /app node:20-alpine sh -c "npx tsc -b && npx vitest run && npx vite build"
 ```
-Tests are colocated `*.test.ts` next to the pure utils.
+Tests are colocated `*.test.ts` next to the module they cover.
+
+## Source layout (package-by-feature)
+`src/` is organized **by domain**, not by technical kind. Every import uses the **`@/*` → `src/*`**
+path alias (configured in `tsconfig.json`, `vite.config.ts`, `vitest.config.ts`), so specifiers are
+location-independent (`@/core/scoring/quiz`, `@/features/pi/piStats`).
+
+```
+src/
+  vite-env.d.ts                 # ambient module decls (*.csv?raw, build-time globals) — stays at root
+  app/                          # composition root — may import features/ + core/
+    App main modes index.css ModeSelector
+    layout/    PageLayout PageLayoutContext Overlay useOverlay overlayGuard
+    settings/  SettingsOverlay SettingsContext settings usePwaUpdate
+    overlays/  StatsOverlay ReferenceOverlay
+  core/                         # depends on nothing but itself
+    types storage createWordStore wordsCsv answerMatch cards
+    scoring/   scoring sm2 itemStore attemptStore numberStats quiz roundStats
+               roundMastery recallColor typingSpeed useStats useAnswerTimer
+    ui/        MultipleChoice TypingInput AnswerModeToggle useAnswerMode numericInput
+               Switch RangeSlider ScoreBar RankRangeSelector WordListGrid
+  features/                     # each depends on core/; flat inside
+    major-system/  drills (WordNumberDrill EncodingDrill DecodingDrill SequenceDrill
+                   SpeedRound WeakSpots RepetitionDrill SoundKeyDrill ReverseSoundKeyDrill)
+                   SoundKeyGrid SoundKeyPanel HintButton RoundStatsPanel vowelSkeleton
+                   words(.csv) soundKey(.csv) soundKeyCsv WordsContext SoundKeyContext
+    pi/            PiDrill PiMemoTab PiReciteTab PiTrainTab PiAnchorTab PiNumberQuiz
+                   PiSegmentGrid PiMemoRail PiMistakeStoryReview PiBatchInput
+                   piDigits piProgress piStats piStories piSegments storyHighlight imageResize
+                   usePiSegmentStatuses usePiStory usePiStoryEditor
+    cards/         CardsDrill DeckMemoDrill MajorCardsDrill ThemedCardsDrill
+                   CardWordsOverlay cardWords(.csv) CardWordsContext
+    pao/           PaoCardsDrill PaoDeckMemoDrill PaoWordsGrid PaoWordsOverlay
+                   paoCards(.csv) paoCsv PaoCardsContext triples
+```
+
+**Layering rule:** `core/` → self only; `features/*` → `core/` (+ two kept feature→feature edges:
+`cards → major-system` for the Words store, `pao → cards` for "🎭 From Themed Deck"); `app/` → anything.
 
 ## Big picture
 - **No router.** `App.tsx` holds `mode: Mode` (state machine) + three overlay booleans
   (`showReference`, `showSettings`, `showStats`). `mode === 'home'` renders `ModeSelector`;
-  every other value renders a drill from `components/modes/`.
+  every other value renders a drill from `features/`.
 - **Answer modes.** A global `answerMode` (`'multiple-choice' | 'typing'`, `useAnswerMode`)
   is threaded to drills, which render `<MultipleChoice>` or `<TypingInput>`.
 - **Number keys are zero-padded 2-digit strings** (`"00"`..`"99"`) everywhere. Direction is
@@ -40,9 +77,9 @@ Tests are colocated `*.test.ts` next to the pure utils.
 | Store | Where | Contents |
 |-------|-------|----------|
 | `major-item-data` | localStorage | `Record<"enc:NN"\|"dec:NN", ItemRecord>` — per-number/direction SM-2 stats (correct/wrong, rolling `latencies` (last 10), `ease`, `intervalDays`, `dueAt`, `lastSeenAt`, `reps`, `hintCount`) |
-| `major-system` (db, **v2**) → `attempts` store | **IndexedDB** | Per-answer log `{id, key:"enc:07", at, ok, ms}`, pruned to 90 days / 200 per key. Written on every answer. Keys are usually `"enc:NN"`/`"dec:NN"` but the same store also holds Pi's `"pi:<position>"` per-position log and the Train tab's `"pi-chain:<segIdx>"` boundary-crossing log (`data/piStats.ts`). Read via `getAllAttempts` (Pi weak-spots + Train segment/boundary ranking); the number-drill read path is otherwise unconsumed (future age-decay) |
-| `major-system` (db, v2) → `pi_stories` store | **IndexedDB** | Per-segment Pi mnemonic story `{seg, text, image:Blob\|null, updatedAt}`, keyed by 0-indexed `seg` (no index — always accessed by primary key). Purely user-authored (no shipped defaults), text + one downscaled picture stored atomically (`data/piStories.ts`). Backed up via JSON export/import (`{seg,text,imageDataUrl}[]`, base64). **`attemptStore.ts` is the single DB owner** — it exports `getDb`/`reqToPromise`/`txDone`/`hasIdb` and `piStories.ts` reuses that one connection (a second open at a different version would `onblocked`-hang the v1→v2 upgrade) |
-| `major-pi-sessions` | localStorage | Pi number-quiz run summaries (`PiSession[]`, capped 50) — reach, accuracy, pairs/sec per completed run (`data/piStats.ts`) |
+| `major-system` (db, **v2**) → `attempts` store | **IndexedDB** | Per-answer log `{id, key:"enc:07", at, ok, ms}`, pruned to 90 days / 200 per key. Written on every answer. Keys are usually `"enc:NN"`/`"dec:NN"` but the same store also holds Pi's `"pi:<position>"` per-position log and the Train tab's `"pi-chain:<segIdx>"` boundary-crossing log (`features/pi/piStats.ts`). Read via `getAllAttempts` (Pi weak-spots + Train segment/boundary ranking); the number-drill read path is otherwise unconsumed (future age-decay) |
+| `major-system` (db, v2) → `pi_stories` store | **IndexedDB** | Per-segment Pi mnemonic story `{seg, text, image:Blob\|null, updatedAt}`, keyed by 0-indexed `seg` (no index — always accessed by primary key). Purely user-authored (no shipped defaults), text + one downscaled picture stored atomically (`features/pi/piStories.ts`). Backed up via JSON export/import (`{seg,text,imageDataUrl}[]`, base64). **`core/scoring/attemptStore.ts` is the single DB owner** — it exports `getDb`/`reqToPromise`/`txDone`/`hasIdb` and `piStories.ts` reuses that one connection (a second open at a different version would `onblocked`-hang the v1→v2 upgrade) |
+| `major-pi-sessions` | localStorage | Pi number-quiz run summaries (`PiSession[]`, capped 50) — reach, accuracy, pairs/sec per completed run (`features/pi/piStats.ts`) |
 | `major-word-saved` | localStorage | Committed custom words (layer 2) |
 | `major-word-overrides` | localStorage | Trial/pending word edits (layer 3, shown yellow) |
 | `major-soundkey-saved` / `-overrides` | localStorage | Editable sound-key layers (same 3-layer store), keyed by composite `"<digit>:<field>"` strings |
@@ -53,7 +90,7 @@ Tests are colocated `*.test.ts` next to the pure utils.
 | `major-answer-mode`, `major-hide-options`, `major-seq-length`, `major-seq-studymode`, `major-speed-best`, `major-attempts-migrated`, `major-pi-collapsed-blocks` (collapsed 1000-digit segment blocks, shared across Pi grids), `major-pi-memo-seg` (last-selected Memo segment), `major-pi-memoed-segs` (segments recalled all-correct in Memo mode), `major-pi-recited-segs` (memoed segments later recited flawlessly) | localStorage | Small UI/prefs flags |
 
 **Word list is 3 layered sources** (`WordsContext`); effective = `{...shipped, ...saved, ...overrides}`:
-1. **shipped** — `src/data/words.csv` (`number,default,custom`), imported via `?raw` and parsed by
+1. **shipped** — `src/features/major-system/words.csv` (`number,default,custom`), imported via `?raw` and parsed by
    `words.ts` → `WORDS`. **Edit this file to change the shipped defaults.**
 2. **saved** (`major-word-saved`) — customizations committed in-app.
 3. **overrides** (`major-word-overrides`) — pending trial edits.
@@ -63,7 +100,7 @@ persist, resetFactory, importSaved }`; `persist()` folds trials→saved. Import/
 CSV format (`wordsCsv.ts`, validated). The browser can't write the repo, so updating `words.csv`
 for real = Export → replace the file → commit by hand.
 
-**The 3-layer store is a factory** (`context/createWordStore.tsx` → `{ Provider, useStore }`; values are
+**The 3-layer store is a factory** (`core/createWordStore.tsx` → `{ Provider, useStore }`; values are
 `Record<string,string>`). Four instances: `WordsContext` (major `WORDS`, keys `major-word-*`),
 `CardWordsContext` (Themed Deck `CARD_WORDS` from `cardWords.csv`, keys `major-cardword-*`, `useCardWords()`),
 `SoundKeyContext` (editable sound key, keys `major-soundkey-*`, `useSoundKeyStore()` + derived
@@ -72,35 +109,35 @@ for real = Export → replace the file → commit by hand.
 `exportName`) so both word lists reuse the same editor. `importEffective(map)` on the store folds a
 key→effective map into `saved` (import shares it; `importSaved(rows)` delegates).
 
-**The sound key is editable too** (`data/soundKey.csv` shipped, parsed by `soundKeyCsv.ts` — a
+**The sound key is editable too** (`features/major-system/soundKey.csv` shipped, parsed by `soundKeyCsv.ts` — a
 quoting-aware parser, since `sounds`/`hint` carry commas + quotes). Stored flat under composite keys
 `"<digit>:<field>"` (`sounds`/`hint`; the UI `display` string is derived from `sounds`, comma-joined,
-not stored), so `createWordStore` is reused; `data/soundKey.ts`
+not stored), so `createWordStore` is reused; `features/major-system/soundKey.ts`
 derives the effective `SoundKeyEntry[]`/`ALL_SOUNDS`/`SOUND_TO_DIGIT` from the store via `buildSoundKey`
 etc. `SoundKeyGrid` (Reference → Sound Key tab) is the 3-column editor with the same Import/Export/Persist/
 Reset flow; the two sound-key drills + `SoundKeyPanel` read `useSoundKey()` so they reflect edits.
 
-**The PAO Deck is a fourth editable list** (`data/paoCards.csv` shipped — `number,person,action,object`,
+**The PAO Deck is a fourth editable list** (`features/pao/paoCards.csv` shipped — `number,person,action,object`,
 cards `01`–`52` — parsed by `paoCsv.ts`, a dedicated quoting-aware parser, **not** the shared `wordsCsv.ts`).
 Stored flat under composite keys `"<NN>:<field>"` (`person`/`action`/`object`), so `createWordStore` is reused
-(`PaoCardsContext`); `data/paoCards.ts` derives the effective `PaoCard[]` from the store via `buildPaoCards`.
+(`PaoCardsContext`); `features/pao/paoCards.ts` derives the effective `PaoCard[]` from the store via `buildPaoCards`.
 `PaoWordsGrid` (opened from the PAO Deck's "📇 Edit words" via `PaoWordsOverlay`) is the 3-column,
 suit-grouped editor with the same Import/Export/Persist/Reset flow, plus a **"🎭 From Themed Deck"**
 button that seeds the Person column from the Themed Deck word list (`useCardWords`, person-only, via `importEffective`). Independent of the Themed Deck list —
-the current Themed Deck is untouched. `utils/triples.ts` (`groupTriples`, `roleAt`) chunks a deck into
+the current Themed Deck is untouched. `features/pao/triples.ts` (`groupTriples`, `roleAt`) chunks a deck into
 Person/Action/Object triples (partial final group of 1–2 kept).
 
 ## Scoring & spaced repetition
-- **`data/scoring.ts` is the single home for all scoring/latency config** (dependency-free): `FAST_MS`/`SLOW_MS`,
+- **`core/scoring/scoring.ts` is the single home for all scoring/latency config** (dependency-free): `FAST_MS`/`SLOW_MS`,
   `RECALL_FAST_MS`/`RECALL_SLOW_MS`, `OUTLIER_MS`/`STALE_MS`, `DEFAULT_EASE`/`MIN_EASE`, `MAX_LATENCIES`,
   `HISTORY_HALFLIFE_DAYS`. Every scorer imports from here; `itemStore` keeps only storage config.
 - `sm2.ts` — `gradeAnswer(correct, ms, mode)` → 2 (wrong) / 3 (slow) / 4 / 5 (fast); `applySm2(item, grade)`
   updates ease/interval/due (SM-2). Grades use the **recall-adjusted** ms on the multiple-choice scale.
 - `typingSpeed.ts` — `adjustLatency(raw, mode, chars)` subtracts estimated typing time (separate word vs
-  digit track) so recall speed is judged on one scale. (`recallColor` is a UI helper in `utils/recallColor.ts`.)
+  digit track) so recall speed is judged on one scale. (`recallColor` is a UI helper in `core/scoring/recallColor.ts`.)
 - `roundMastery.ts` — per-round mastery: `isMastered` = last `MASTERY_REPS` (2) attempts all correct,
   un-hinted, and `recallMs <= masteryFastMs(settings.masteryLatencyFactor)`. Uses the **in-memory**
-  `RoundStat.attempts` (defined in `utils/roundStats.ts`), not the IndexedDB log.
+  `RoundStat.attempts` (defined in `core/scoring/roundStats.ts`), not the IndexedDB log.
 - `numberStats.ts` — **`itemWeakness(item)` is the one weakness score used everywhere** ("weak" is defined
   once): `0.55·easePenalty + 0.25·normLatency + 0.20·(wrongRate · 0.8^reps)` — recency-biased; the lifetime
   wrong-rate residual decays with the current correct streak. `rankByWeakness(dir, nums)` (Stats overlay,
@@ -110,16 +147,16 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   `allItems()` traversal.
 
 ## Module map
-- `src/App.tsx` — header (mode title, AnswerModeToggle, 📊/📚/⚙️ overlay triggers) + a **full-width** `<main>` that
+- `src/app/App.tsx` — header (mode title, AnswerModeToggle, 📊/📚/⚙️ overlay triggers) + a **full-width** `<main>` that
   wraps `MODES[mode].component` (or `ModeSelector` on home) in a single `<PageLayout>`, + overlays. No per-mode render
   switch, no per-mode width logic (`PageLayout` owns width/centering — see ADR 0001).
-- **`src/modes.tsx` — the mode registry** (`Record<DrillMode, ModeDef>`): each non-home `Mode` maps to its
+- **`src/app/modes.tsx` — the mode registry** (`Record<DrillMode, ModeDef>`): each non-home `Mode` maps to its
   header `title`, drill `component`, `group` (`'major-system' | 'application'`), `hideAnswerToggle`, and ModeSelector card
   metadata. Single source of truth — TypeScript enforces every mode is fully wired. **Add a mode = one entry here.**
   `HOME_TITLE` is `'Mnemonics'`.
-- `src/main.tsx` — mounts `SettingsProvider > WordsProvider > CardWordsProvider > PaoCardsProvider > SoundKeyProvider > PageLayoutProvider > App`; calls `initAttempts()` (opens IndexedDB + one-time migration of any legacy in-blob attempts).
-- `src/types.ts` — `Mode`, `AnswerMode`, `Direction`, `NumberStats`/`AllStats`.
-- **`components/modes/`**: `WordNumberDrill` is the shared config-driven engine for both directions;
+- `src/app/main.tsx` — mounts `SettingsProvider > WordsProvider > CardWordsProvider > PaoCardsProvider > SoundKeyProvider > PageLayoutProvider > App`; calls `initAttempts()` (opens IndexedDB + one-time migration of any legacy in-blob attempts).
+- `src/core/types.ts` — `Mode`, `AnswerMode`, `Direction`, `NumberStats`/`AllStats` (in `core` so `core/scoring` can consume it).
+- **Feature drills** (`features/major-system/`, `features/pi/`, `features/cards/`, `features/pao/`): `WordNumberDrill` is the shared config-driven engine for both directions;
   `EncodingDrill`/`DecodingDrill` are ~25-line `DrillConfig` wrappers over it (direction, prompt styling,
   matcher, hint toggle). `SoundKeyDrill`, `ReverseSoundKeyDrill`, `SequenceDrill` (setup→study→recall→result),
   `SpeedRound`, `WeakSpots` (feeds a weak-number `pool` into `EncodingDrill`), `RepetitionDrill` (SM-2 due queue),
@@ -150,11 +187,11 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   `major-pi-memoed-segs` so it stops being suggested. Memo's setup publishes a **right rail** ("Next to memo") via `useRails`
   whose one-tap **Study →** jumps straight into the first segment that's neither recited nor memoed.
   **Per-segment stories:** the Memo tab lets the user author a freeform **story** + one **picture** per segment (`pi_stories`
-  IndexedDB store, `data/piStories.ts`; `usePiStory`/`usePiStorySegs`/`useBlobUrl` hooks). Shown inline (view↔edit `StoryPanel`)
+  IndexedDB store, `features/pi/piStories.ts`; `usePiStory`/`usePiStorySegs`/`useBlobUrl` hooks). Shown inline (view↔edit `StoryPanel`)
   in the **study** phase and read-only-with-edit on the **result** screen; **hidden in recall** (spoiler). Images arrive via file
-  upload or clipboard paste, downscaled to ≤1024px WebP@0.8 (JPEG fallback) by `utils/imageResize.processImage` before storing.
+  upload or clipboard paste, downscaled to ≤1024px WebP@0.8 (JPEG fallback) by `features/pi/imageResize.processImage` before storing.
   Setup grid cells get a violet corner dot for segments with a story; setup also has JSON **Export/Import stories** (all segments
-  as `{seg,text,imageDataUrl}[]`). The story display **highlights the segment's words** in the freeform text (`utils/storyHighlight`,
+  as `{seg,text,imageDataUrl}[]`). The story display **highlights the segment's words** in the freeform text (`features/pi/storyHighlight`,
   token-edge match so "biten" hits "bit" and "fotballmål" hits "mål"); matching is **sequential** — the words are an ordered sequence, so each expected word
   highlights the *next* matching token, consuming one at a time (repeats supported) — and warns (edit + view) when a word never matches.
   **Cards:** `CardsDrill` is prop-driven (`words`/`drillTypes`/`onRecord`/`storagePrefix`/`onEditWords`)
@@ -169,49 +206,55 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   `pickWeighted('enc', …)` only reads draw weights). **Deck Memo** = `PaoDeckMemoDrill` (forked from `DeckMemoDrill` so the
   shared one stays untouched): memorise the deck in P₁·A₂·O₃ triples, then blind card-order recall grouped in threes; keeps its
   own run history under `major-pao-deck-memo-history`.
-- **`components/`** — `ModeSelector` (home screen: **Systems** section for Major System drills, **Applications** section for Pi + Cards + PAO Deck), `MultipleChoice`/`TypingInput` (answer inputs),
-  `ScoreBar`, `RangeSlider` (dual-thumb number range, accessible), `RoundStatsPanel`, `HintButton` (vowel skeleton),
-  `SoundKeyGrid` (editable sound-key table)/`SoundKeyPanel`, `AnswerModeToggle`, `Switch` (accessible on/off toggle),
-  **`PageLayout`** (the one base layout for every screen — ADR 0001; App renders exactly one, wrapping all mode content).
+- **UI & shell** (`app/`, `app/layout/`, `app/overlays/`, `core/ui/`; a few list-editors in features) — `app/ModeSelector` (home screen: **Systems** section for Major System drills, **Applications** section for Pi + Cards + PAO Deck); shared `core/ui/`: `MultipleChoice`/`TypingInput` (answer inputs),
+  `ScoreBar`, `RangeSlider` (dual-thumb number range, accessible), `RankRangeSelector`, `WordListGrid`, `AnswerModeToggle`, `Switch` (accessible on/off toggle);
+  Major-System-local (`features/major-system/`): `RoundStatsPanel`, `HintButton` (vowel skeleton), `SoundKeyGrid` (editable sound-key table)/`SoundKeyPanel`.
+  **`app/layout/PageLayout`** (the one base layout for every screen — ADR 0001; App renders exactly one, wrapping all mode content).
   Fixed `42rem`/max-w-2xl center that never moves, flanked by symmetric `minmax(0,18rem)` gutters via CSS grid; single `xl`
   breakpoint (three columns above, slide-in drawers below via `useOverlay`). Rails are **not** props — drills publish their
-  current-view rails through **`useRails(config, deps)`** (`context/PageLayoutContext`, read back by `PageLayout` via
+  current-view rails through **`useRails(config, deps)`** (`app/layout/PageLayoutContext`, read back by `PageLayout` via
   `usePageRails`; the `deps` array prevents an update loop), so every phase of every mode stays inside the one center column.
   The grid is `items-start` (rails hug their content height) and gutters are plain blocks (a rail fills its gutter beside the
   center); content flanked by a rail fills the 672px center (`w-full`) so the rail sits tight against it. Chrome that should sit
   **above** the rail row (Pi's tab bar + digit slider) is published via **`useLayoutHeader(node, deps)`** and centered at the
   center width, so rails top-align with the body content, not the chrome. **Overlays share
-  `Overlay` (`components/Overlay.tsx`)** — the `role="dialog"` shell, `useOverlay` wiring, header bar, close
+  `Overlay` (`app/layout/Overlay.tsx`)** — the `role="dialog"` shell, `useOverlay` wiring, header bar, close
   button, and scroll body; callers pass `ariaLabel`/`header`/`maxWidth`/children (`TabButton` is the shared
-  header tab). Overlays: `ReferenceOverlay` (sound key + major `WordListGrid`), `CardWordsOverlay` (Themed Deck
+  header tab). Overlays (`app/overlays/` + feature-local editors): `ReferenceOverlay` (sound key + major `WordListGrid`), `CardWordsOverlay` (Themed Deck
   word list, suit-grouped), `SettingsOverlay` (mastery tolerance, max π digits, Pi pairs-per-answer, offline mode + version/update),
   `StatsOverlay` (worst-first ranking per direction, plus a **🥧 π tab** that async-loads Pi weak positions + run summary).
-- **`hooks/`** — `useStats` (`recordFull` records item-data + attempts and returns its grade; `getStats`
+- **Hooks** (co-located with what they serve) — `core/scoring/`: `useStats` (`recordFull` records item-data + attempts and returns its grade; `getStats`
   derives direction-less aggregates from item-data; `buildRepQueue`, `getDueCount`, `getNextDueMs`),
-  `useAnswerMode`, `useAnswerTimer` (active-elapsed timer/pause/STALE-discard),
-  `usePiSegmentStatuses` (async per-segment new/weak/learned status from the `pi:` log, re-fetched on a `refreshKey`),
+  `useAnswerTimer` (active-elapsed timer/pause/STALE-discard); `core/ui/`: `useAnswerMode`;
+  `features/pi/`: `usePiSegmentStatuses` (async per-segment new/weak/learned status from the `pi:` log, re-fetched on a `refreshKey`),
   `usePiStory`/`usePiStorySegs`/`useBlobUrl` (async per-segment Pi story load + grid indicator set + object-URL lifecycle
-  for a stored Blob — revokes on change/unmount),
-  `useOverlay` (focus trap/return + Escape + registers `overlayGuard`),
-  `usePwaUpdate` (wraps `virtual:pwa-register/react`; gates SW update checks on `settings.offlineMode`,
+  for a stored Blob — revokes on change/unmount);
+  `app/layout/`: `useOverlay` (focus trap/return + Escape + registers `overlayGuard`);
+  `app/settings/`: `usePwaUpdate` (wraps `virtual:pwa-register/react`; gates SW update checks on `settings.offlineMode`,
   auto-applies updates from checks it initiates, exposes build version + manual check — called once in `App`).
-- **`utils/`** — `quiz` (`shuffle`, `pickDistractors` same-decade-biased, `buildEncOptions`/`buildDecOptions`,
+- **Pure utils** (now filed by domain) — `core/scoring/`: `quiz` (`shuffle`, `pickDistractors` same-decade-biased, `buildEncOptions`/`buildDecOptions`,
   `pickWeighted(dir,…)`), `roundStats` (`RoundStat`/`RoundAttempt` types + `applyRoundAttempt` reducer, shared
-  by all drills), `answerMatch` (`matchesAnswer` word + `matchesNumber` digit), `recallColor` (UI latency color),
-  `storage` (`safeSet`/`safeRemove` + guarded `readString`/`readJSON`), `overlayGuard` (`isOverlayOpen`),
-  `roundMastery`, `numberStats`, `vowelSkeleton`, `triples` (`groupTriples`/`roleAt` — PAO 3-card grouping),
-  `piSegments` (`segmentAnchorPos`/`segmentDigitRange`/`segmentAnchorPairs` — 0-indexed π segment ↔ position/digit-range/anchor pair),
+  by all drills), `recallColor` (UI latency color), `roundMastery`, `numberStats`;
+  `core/`: `answerMatch` (`matchesAnswer` word + `matchesNumber` digit), `storage` (`safeSet`/`safeRemove` + guarded `readString`/`readJSON`);
+  `app/layout/`: `overlayGuard` (`isOverlayOpen`);
+  `core/ui/`: `numericInput`;
+  `features/major-system/`: `vowelSkeleton`;
+  `features/pao/`: `triples` (`groupTriples`/`roleAt` — PAO 3-card grouping);
+  `features/pi/`: `piSegments` (`segmentAnchorPos`/`segmentDigitRange`/`segmentAnchorPairs` — 0-indexed π segment ↔ position/digit-range/anchor pair),
   `imageResize` (`processImage` — canvas downscale to ≤1024px + WebP@0.8/JPEG-fallback re-encode, for Pi story pictures),
   `storyHighlight` (`highlightStory` — sequentially match a segment's ordered words at either token edge in a freeform Pi story → highlight runs + missing-word list).
-- **`data/`** — `words.csv`+`words.ts`, `cardWords.csv`+`cardWords.ts` (Themed Deck, 52 cards; clubs 01–13 seed
-  from the major defaults), `paoCards.csv`+`paoCards.ts`+`paoCsv.ts` (PAO Deck, 52 person/action/object triples;
-  dedicated quoting-aware parser), `wordsCsv.ts` (shared CSV parse/serialize), `cards.ts` (52-card deck), `soundKey.csv`+`soundKey.ts`+`soundKeyCsv.ts` (editable sound key),
-  `scoring.ts` (all scoring/latency constants), `itemStore.ts` (ItemRecord + load/save + storage config),
+- **Data & stores** (filed by domain) — `features/major-system/`: `words.csv`+`words.ts`, `soundKey.csv`+`soundKey.ts`+`soundKeyCsv.ts` (editable sound key);
+  `features/cards/`: `cardWords.csv`+`cardWords.ts` (Themed Deck, 52 cards; clubs 01–13 seed from the major defaults);
+  `features/pao/`: `paoCards.csv`+`paoCards.ts`+`paoCsv.ts` (PAO Deck, 52 person/action/object triples; dedicated quoting-aware parser);
+  `core/`: `wordsCsv.ts` (shared CSV parse/serialize), `cards.ts` (52-card deck);
+  `core/scoring/`: `scoring.ts` (all scoring/latency constants), `itemStore.ts` (ItemRecord + load/save + storage config),
   `attemptStore.ts` (IndexedDB `major-system` db owner, **v2**; `addAttempt`/`getAttempts` are item-keyed wrappers over the
   raw-key `addAttemptRaw`/`getAttemptsForKey` primitives; exports the shared `getDb`/`reqToPromise`/`txDone`/`hasIdb` plumbing),
-  `piStories.ts` (per-segment Pi story CRUD over the `pi_stories` store + JSON export/import + `dataUrlToBlob`/`blobToDataUrl`,
+  `sm2.ts`, `typingSpeed.ts`;
+  `features/pi/`: `piStories.ts` (per-segment Pi story CRUD over the `pi_stories` store + JSON export/import + `dataUrlToBlob`/`blobToDataUrl`,
   reusing `attemptStore`'s connection), `piStats.ts` (Pi run summaries + per-position aggregation +
-  `piSegmentStatuses` new/weak/learned rollup), `sm2.ts`, `typingSpeed.ts`, `settings.ts`.
+  `piSegmentStatuses` new/weak/learned rollup), `piDigits.ts`, `piProgress.ts`;
+  `app/settings/`: `settings.ts`.
 
 ## Conventions & gotchas
 - **Read this file first in fresh contexts and keep it updated** when workflow, architecture, commands,
@@ -221,7 +264,7 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   `vite.config.ts`; after watcher config changes, run `docker compose up -d --build` or restart `app`.
 - **Commit + push each completed, verified change to `main`** (one logical change per commit). `.gitignore`
   covers `node_modules/`/`dist/`; keep build artifacts (`package-lock.json`, `tsconfig.tsbuildinfo`) out.
-- **All localStorage access goes through `utils/storage`** (`safeSet`/`safeRemove` writes, `readString`/`readJSON`
+- **All localStorage access goes through `core/storage`** (`safeSet`/`safeRemove` writes, `readString`/`readJSON`
   reads) — private-mode/quota safe.
 - **Full-screen overlays must render inside `<Overlay>`** (which uses `useOverlay`) so the drills' global keydown
   handlers (which check `isOverlayOpen()`) don't fire behind them.
