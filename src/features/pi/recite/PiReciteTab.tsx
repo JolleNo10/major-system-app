@@ -4,7 +4,7 @@ import { useSettings } from '@/app/settings/SettingsContext'
 import { PiNumberQuiz, type PiQuizCompletion } from '@/features/pi/shared/PiNumberQuiz'
 import { readString, safeSet } from '@/core/storage'
 import { PI_PAIRS } from '@/features/pi/shared/piDigits'
-import { loadPiSessions, type PiSession } from '@/features/pi/shared/piStats'
+import { loadPiSessions, recordSegmentTries, type PiSession } from '@/features/pi/shared/piStats'
 import { PiSegmentRangePicker, useSegmentPickerData } from '@/features/pi/shared/PiSegmentRangePicker'
 import { PiLegend } from '@/features/pi/shared/PiSegmentGrid'
 import { usePiReciteRail } from '@/features/pi/recite/PiReciteRail'
@@ -98,6 +98,8 @@ export function PiReciteTab({ answerMode, maxPiPairs }: Props) {
   }, [startRange])
 
   const handleQuizComplete = useCallback((completion: PiQuizCompletion) => {
+    // Log one "try" per fully-covered segment (feeds the status dots + tooltip).
+    recordSegmentTries(completion.anchor, completion.correctness)
     const flawless = flawlessSegmentsFromRun(completion.anchor, completion.correctness)
     if (flawless.length === 0) return
     setRecitedSegs(previous => {

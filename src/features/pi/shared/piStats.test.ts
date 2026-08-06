@@ -37,79 +37,66 @@ function session(partial: Partial<PiSession>): PiSession {
 
 describe('piSegmentStatuses (per-segment progress dots)', () => {
   type A = { key: string; at: number; ok: boolean; ms: number }
-  // Build attempts for segment 0 (positions 1..10). `outcomes[i]` is the ordered
-  // list of ok/wrong for pair i+1; a missing entry means the pair was untouched.
-  function seg0(outcomes: Array<boolean[] | undefined>): A[] {
-    const rows: A[] = []
-    let t = 0
-    outcomes.forEach((oks, i) => {
-      oks?.forEach(ok => rows.push({ key: `pi:${i + 1}`, at: ++t, ok, ms: 100 }))
-    })
-    return rows
+  // Build segment-0 "try" rows in chronological order — `oks[i]` is whether the
+  // i-th recite run over the whole segment was fully correct.
+  function seg0(oks: boolean[]): A[] {
+    return oks.map((ok, i) => ({ key: 'piseg:0', at: i + 1, ok, ms: 0 }))
   }
-  const status = async (rows: A[]) => (await piSegmentStatuses(10))[0]
+  const status = async (rows: A[]) => {
+    mockAttempts.mockResolvedValue(rows)
+    return (await piSegmentStatuses(10))[0]
+  }
 
   beforeEach(() => mockAttempts.mockReset())
 
-  it('is new when no pair was touched', async () => {
-    mockAttempts.mockResolvedValue([])
+  it('is new when the segment was never fully recited', async () => {
     expect(await status([])).toBe('new')
   })
 
-  it('turns learned on a first flawless pass (single correct per pair)', async () => {
-    mockAttempts.mockResolvedValue(seg0(Array(10).fill([true])))
-    expect(await status(seg0(Array(10).fill([true])))).toBe('learned')
+  it('is weak after a single correct try (needs two for green)', async () => {
+    expect(await status(seg0([true]))).toBe('weak')
   })
 
-  it('is weak when some pairs are still untouched', async () => {
-    const outcomes = Array<boolean[] | undefined>(10).fill([true])
-    outcomes[5] = undefined
-    mockAttempts.mockResolvedValue(seg0(outcomes))
-    expect(await status(seg0(outcomes))).toBe('weak')
+  it('turns learned when the last two tries were both correct', async () => {
+    expect(await status(seg0([true, true]))).toBe('learned')
+  })
+
+  it('stays learned on recency — an old miss followed by two clean tries', async () => {
+    expect(await status(seg0([false, true, true]))).toBe('learned')
   })
 
   it('demotes to weak on a fresh miss', async () => {
-    const outcomes = Array<boolean[] | undefined>(10).fill([true])
-    outcomes[3] = [true, false] // most recent answer wrong
-    mockAttempts.mockResolvedValue(seg0(outcomes))
-    expect(await status(seg0(outcomes))).toBe('weak')
+    expect(await status(seg0([true, true, false]))).toBe('weak')
   })
 
-  it('regains learned only after two correct re-answers (not one)', async () => {
-    const oneRedo = Array<boolean[] | undefined>(10).fill([true])
-    oneRedo[3] = [true, false, true] // one correct after the miss — still weak
-    mockAttempts.mockResolvedValue(seg0(oneRedo))
-    expect(await status(seg0(oneRedo))).toBe('weak')
-
-    const twoRedo = Array<boolean[] | undefined>(10).fill([true])
-    twoRedo[3] = [true, false, true, true] // two correct after the miss — clean
-    mockAttempts.mockResolvedValue(seg0(twoRedo))
-    expect(await status(seg0(twoRedo))).toBe('learned')
+  it('regains learned only after two correct re-tries (not one)', async () => {
+    expect(await status(seg0([true, true, false, true]))).toBe('weak')
+    expect(await status(seg0([true, true, false, true, true]))).toBe('learned')
   })
 })
 
 describe('describeSegment (status dot tooltip)', () => {
   const s = (p: Partial<PiSegmentSummary>): PiSegmentSummary =>
-    ({ status: 'new', touched: 0, clean: 0, correct: 0, wrong: 0, ...p })
+    ({ status: 'new', recentClean: 0, tries: 0, correctPct: 0, ...p })
 
   it('distinguishes memorised-in-study from untouched for new segments', () => {
     expect(describeSegment(s({ status: 'new' }), true)).toBe('memorised in study — not yet recited')
     expect(describeSegment(s({ status: 'new' }), false)).toBe('not yet recited')
   })
 
-  it('reports all pairs solid and accuracy when learned', () => {
-    const sum = s({ status: 'learned', touched: 10, clean: 10, correct: 19, wrong: 1 })
-    expect(describeSegment(sum, false)).toBe('learned · all 10 pairs solid · 20 answers, 95% correct')
+  it('reports recent tries and decayed accuracy when learned', () => {
+    const sum = s({ status: 'learned', recentClean: 2, tries: 6, correctPct: 83 })
+    expect(describeSegment(sum, false)).toBe('learned · 2/2 recent tries · 6 tries, 83% correct')
   })
 
-  it('reports the solid count and accuracy when practising', () => {
-    const sum = s({ status: 'weak', touched: 8, clean: 6, correct: 9, wrong: 3 })
-    expect(describeSegment(sum, false)).toBe('practising · 6/10 pairs solid · 12 answers, 75% correct')
+  it('reports the recent-clean count and accuracy when practising', () => {
+    const sum = s({ status: 'weak', recentClean: 1, tries: 4, correctPct: 75 })
+    expect(describeSegment(sum, false)).toBe('practising · 1/2 recent tries · 4 tries, 75% correct')
   })
 
-  it('singularises a lone answer', () => {
-    const sum = s({ status: 'weak', touched: 1, clean: 1, correct: 1, wrong: 0 })
-    expect(describeSegment(sum, false)).toBe('practising · 1/10 pairs solid · 1 answer, 100% correct')
+  it('singularises a lone try', () => {
+    const sum = s({ status: 'weak', recentClean: 1, tries: 1, correctPct: 100 })
+    expect(describeSegment(sum, false)).toBe('practising · 1/2 recent tries · 1 try, 100% correct')
   })
 })
 

@@ -91,7 +91,7 @@ a symbol to a feature's public surface = add one line to its `index.ts`.**
 | Store | Where | Contents |
 |-------|-------|----------|
 | `major-item-data` | localStorage | `Record<"enc:NN"\|"dec:NN", ItemRecord>` — per-number/direction SM-2 stats (correct/wrong, rolling `latencies` (last 10), `ease`, `intervalDays`, `dueAt`, `lastSeenAt`, `reps`, `hintCount`) |
-| `major-system` (db, **v2**) → `attempts` store | **IndexedDB** | Per-answer log `{id, key:"enc:07", at, ok, ms}`, pruned to 90 days / 200 per key. Written on every answer. Keys are usually `"enc:NN"`/`"dec:NN"` but the same store also holds Pi's `"pi:<position>"` per-position log (`features/pi/shared/piStats.ts`). Read via `getAllAttempts` (Pi weak-spots + per-segment status dots); the number-drill read path is otherwise unconsumed (future age-decay) |
+| `major-system` (db, **v2**) → `attempts` store | **IndexedDB** | Per-answer log `{id, key:"enc:07", at, ok, ms}`, pruned to 90 days / 200 per key. Written on every answer. Keys are usually `"enc:NN"`/`"dec:NN"` but the same store also holds Pi's `"pi:<position>"` per-position log **and** `"piseg:<seg>"` per-segment "try" log (`features/pi/shared/piStats.ts`). Read via `getAllAttempts` (Pi weak-spots from `pi:`, per-segment status dots from `piseg:`); the number-drill read path is otherwise unconsumed (future age-decay) |
 | `major-system` (db, v2) → `pi_stories` store | **IndexedDB** | Per-segment Pi mnemonic story `{seg, text, image:Blob\|null, updatedAt}`, keyed by 0-indexed `seg` (no index — always accessed by primary key). Purely user-authored (no shipped defaults), text + one downscaled picture stored atomically (`features/pi/shared/story/piStories.ts`). Backed up via JSON export/import (`{seg,text,imageDataUrl}[]`, base64). **`core/scoring/attemptStore.ts` is the single DB owner** — it exports `getDb`/`reqToPromise`/`txDone`/`hasIdb` and `piStories.ts` reuses that one connection (a second open at a different version would `onblocked`-hang the v1→v2 upgrade) |
 | `major-pi-sessions` | localStorage | Pi number-quiz run summaries (`PiSession[]`, capped 50) — reach, accuracy, pairs/sec per completed run (`features/pi/shared/piStats.ts`) |
 | `major-word-saved` | localStorage | Committed custom words (layer 2) |
@@ -187,11 +187,16 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   the cell shell + range/anchor styling + status dot + two-click reducer (working in 0-indexed segment indices), while each tab keeps
   its own persistence unit (Recite: pair numbers; Anchors: segment indices), status line, Start button, and per-cell body
   (via `renderCellBody`); the shared status/memoed wiring is `useSegmentPickerData`.
-  Each grid paints a per-segment **status dot** (`PiSegmentDot`) derived from the `pi:` log via
-  `piSegmentStatuses` (`usePiSegmentStatuses` hook): emerald = learned (every pair's last 2 answers correct — recency-based, so a first flawless pass turns it green and a later miss only needs two correct re-answers to regain it),
-  amber = practising (touched but short of that), gray = memoed correctly but not yet recited, none = new. Recitation status takes
-  precedence over memo status. Recite shows just the dots; **Memo** rings the first segment that's
-  neither recited (`pi:` log) nor memoed all-correct in Memo mode (`major-pi-memoed-segs`) — "next to memo".
+  Each grid paints a per-segment **status dot** (`PiSegmentDot`) derived from the **`piseg:<seg>` "try" log** via
+  `piSegmentStatuses` (`usePiSegmentStatuses` hook). A **try** = one Recite run that fully covered a segment (all 10 pairs),
+  correct only if *every* pair in that run was right; `recordSegmentTries(anchor, correctness)` writes one row per fully-covered
+  segment on run completion (from `PiReciteTab`'s `onComplete`) — a log distinct from the per-pair `pi:<pos>` log (which still
+  feeds weak-position stats). emerald = learned (**last 2 tries both correct** → 2/2; recency-based, so a fresh miss demotes and
+  two clean re-tries regain it), amber = practising (tried but short of 2/2), gray = memoed correctly but not yet recited, none =
+  new (never fully recited). The dot's hover tooltip (`describeSegment`) reads `learned · 2/2 recent tries · N tries, P% correct`,
+  where **P% is an exponentially age-decayed ratio** of fully-correct tries (`HISTORY_HALFLIFE_DAYS` half-life — recent tries
+  dominate, old ones fade). Recitation status takes precedence over memo status. Recite shows just the dots; **Memo** rings the
+  first segment that's neither recited (`piseg:` log) nor memoed all-correct in Memo mode (`major-pi-memoed-segs`) — "next to memo".
   **Recite** = user-selected range → `PiNumberQuiz` (records a session; setup shows run-history/best-runs). The ultimate goal is reciting π **from #1 onward**, so runs are read-time split into two tracks by anchor (`piStats.ts`: `isFullRecite`/`fullReciteSessions`/`practiceSessions`; **no** stored flag): a **full recite** = a run that started at π #1 (`anchor === 1`) — its own record (`fromStartRecordRun` = greatest `reach`, earliest wins ties; the record card shows that run's reach/pairs/accuracy/pairs-per-sec) + chronological history, all in the left rail's top section; every other run is **practice**, collapsed below. Beating the standing from-π#1 record (`isFromStartRecord`, strictly greater, non-zero reach — checked in `PiNumberQuiz` against the sessions stored *before* this run lands) fires a result-screen celebration: a "🎉 New record — π to Nd" banner + `RecordFireworks` (dependency-free canvas overlay, honours `prefers-reduced-motion`). Its rails (left run-history, right "ready to recite") are published via **`usePiReciteRail`** (mirroring Memo's `usePiMemoRail`); the right rail groups adjacent segments that were successfully memoed but not yet flawlessly recited into one-tap continuous runs; flawless segments are persisted independently even when another segment in the same run has mistakes. Weakness is surfaced
   in-place via each grid's per-segment status dots (`piSegmentStatuses`) rather than a dedicated tab — pick a weak (amber) range
   in Recite; span two segments to drill a boundary.
