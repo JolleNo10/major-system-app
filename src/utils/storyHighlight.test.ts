@@ -4,6 +4,12 @@ import { highlightStory } from './storyHighlight'
 const matchedText = (text: string, words: string[]) =>
   highlightStory(text, words).segments.filter(s => s.matched).map(s => s.text)
 
+// Boolean matched-pattern over just the word tokens (separators ignored).
+const wordPattern = (text: string, words: string[]) =>
+  highlightStory(text, words).segments
+    .filter(s => /[\p{L}\p{N}]/u.test(s.text))
+    .map(s => s.matched)
+
 describe('highlightStory', () => {
   it('matches exact words', () => {
     expect(matchedText('en bit ost', ['bit'])).toEqual(['bit'])
@@ -19,13 +25,34 @@ describe('highlightStory', () => {
     expect(matchedText('Biten var god', ['bit'])).toEqual(['Biten'])
   })
 
-  it('matches any word that starts with the base (prefix match)', () => {
-    expect(matchedText('bitar och biten', ['bit'])).toEqual(['bitar', 'biten'])
+  it('consumes the sequence in order — only the next occurrence per word', () => {
+    // words: ball, hale, ball
+    const text = 'lorum ipusm ball, ball bla bla, hale, bld blad ball, hale.'
+    // tokens:  lorum ipusm ball  ball bla bla  hale  bld blad ball  hale
+    expect(wordPattern(text, ['ball', 'hale', 'ball'])).toEqual([
+      false, false, true,  // 1st ball ✓
+      false, false, false, // 2nd ball skipped (next expected is hale)
+      true,                // 1st hale ✓
+      false, false, true,  // 3rd ball ✓
+      false,               // last hale not expected → not highlighted
+    ])
   })
 
-  it('reports missing expected words (original case)', () => {
-    const { missing } = highlightStory('bara katten syns', ['Katt', 'Sko', 'Ros'])
-    expect(missing).toEqual(['Sko', 'Ros'])
+  it('a single expected word only highlights its first occurrence', () => {
+    expect(matchedText('bitar och biten', ['bit'])).toEqual(['bitar'])
+  })
+
+  it('reports missing expected words but keeps matching later ones', () => {
+    // "sko" has no match; "ros" (as rosen) still matches afterwards.
+    const { missing } = highlightStory('katten och rosen', ['Katt', 'Sko', 'Ros'])
+    expect(missing).toEqual(['Sko'])
+    expect(matchedText('katten och rosen', ['Katt', 'Sko', 'Ros'])).toEqual(['katten', 'rosen'])
+  })
+
+  it('a repeated word with only one occurrence is partly missing', () => {
+    const { missing } = highlightStory('en ball här', ['ball', 'ball'])
+    expect(matchedText('en ball här', ['ball', 'ball'])).toEqual(['ball'])
+    expect(missing).toEqual(['ball'])
   })
 
   it('preserves the full text across segments (roundtrips)', () => {
@@ -36,10 +63,5 @@ describe('highlightStory', () => {
 
   it('handles Swedish letters in stems', () => {
     expect(matchedText('ölen var kall', ['öl'])).toEqual(['ölen'])
-  })
-
-  it('dedupes duplicate expected words', () => {
-    const { missing } = highlightStory('inget här', ['ko', 'ko'])
-    expect(missing).toEqual(['ko'])
   })
 })
