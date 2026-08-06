@@ -5,7 +5,8 @@ import { TypingInput } from '../TypingInput'
 import { readString, safeSet } from '../../utils/storage'
 import { buildEncOptions } from '../../utils/quiz'
 import { PI_PAIRS } from '../../data/piDigits'
-import { PiSegmentMilestone, PI_SEGMENT_GRID_CLASS } from './PiSegmentGrid'
+import { PiSegmentMilestone, PiSegmentDot, PI_SEGMENT_GRID_CLASS } from './PiSegmentGrid'
+import { usePiSegmentStatuses } from '../../hooks/usePiSegmentStatuses'
 import type { AnswerMode } from '../../types'
 
 const MEMO_SEG_KEY = 'major-pi-memo-seg'
@@ -29,6 +30,11 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
   const [phase, setPhase] = useState<Phase>('setup')
   const [sequence, setSequence] = useState<string[]>([])
   const [sessionAnchor, setSessionAnchor] = useState(1)
+
+  const statuses = usePiSegmentStatuses(maxPiPairs, phase)
+  // "Next to memo" = the first untested segment (ones already recited, even
+  // weakly, have clearly been memorised). −1 once everything's been touched.
+  const nextSeg = statuses.indexOf('new')
 
   const [studyIdx, setStudyIdx] = useState(0)
   const [wqAnswered, setWqAnswered] = useState<string | null>(null)
@@ -136,12 +142,13 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
                         setSelectedSeg(next)
                         if (next !== null) safeSet(MEMO_SEG_KEY, String(next))
                       }}
-                      className={`flex flex-col items-start px-2 py-1.5 rounded-lg border transition-colors ${
+                      className={`relative flex flex-col items-start px-2 py-1.5 rounded-lg border transition-colors ${
                         isSelected
                           ? 'bg-cyan-600/25 border-cyan-500/60 text-cyan-300'
                           : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200 hover:border-zinc-500'
-                      }`}
+                      } ${segIdx === nextSeg ? 'ring-2 ring-violet-500' : ''}`}
                     >
+                      <PiSegmentDot status={statuses[segIdx] ?? 'new'} />
                       <span className="text-[8px] opacity-60 leading-none tabular-nums">π {startDigit}–{endDigit}</span>
                       <span className="font-mono text-[8px] tabular-nums leading-snug mt-0.5">{line1}</span>
                       <span className="font-mono text-[8px] tabular-nums leading-snug">{line2}</span>

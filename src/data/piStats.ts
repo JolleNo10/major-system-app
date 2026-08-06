@@ -178,6 +178,46 @@ export async function rankPiSegments(maxPairs: number): Promise<PiSegmentStat[]>
   return stats
 }
 
+// ── Per-segment learning status (progress dots) ─────────────────────────────
+
+// Derived from the pi:<position> attempt log, indexed by segment:
+//   learned — every pair in the segment has ≥1 correct answer in the retained
+//             window AND the segment has no recorded misses (a later miss
+//             demotes it back to weak);
+//   weak    — touched (≥1 answered pair) but short of that bar;
+//   new     — untested.
+export type PiSegmentStatus = 'new' | 'weak' | 'learned'
+
+export async function piSegmentStatuses(maxPairs: number): Promise<PiSegmentStatus[]> {
+  const attempts = (await getAllAttempts()).filter(a => a.key.startsWith(PI_KEY_PREFIX))
+
+  const byPos = new Map<number, { correct: number; wrong: number }>()
+  for (const a of attempts) {
+    const pos = parseInt(a.key.slice(PI_KEY_PREFIX.length), 10)
+    if (!Number.isFinite(pos)) continue
+    let g = byPos.get(pos)
+    if (!g) { g = { correct: 0, wrong: 0 }; byPos.set(pos, g) }
+    if (a.ok) g.correct++; else g.wrong++
+  }
+
+  const maxSegs = Math.floor(maxPairs / PAIRS_PER_SEGMENT)
+  const statuses: PiSegmentStatus[] = []
+  for (let seg = 0; seg < maxSegs; seg++) {
+    let total = 0, wrong = 0, covered = 0
+    for (let i = 0; i < PAIRS_PER_SEGMENT; i++) {
+      const g = byPos.get(seg * PAIRS_PER_SEGMENT + i + 1)
+      if (!g) continue
+      total += g.correct + g.wrong
+      wrong += g.wrong
+      if (g.correct > 0) covered++
+    }
+    if (total === 0) statuses.push('new')
+    else if (covered === PAIRS_PER_SEGMENT && wrong === 0) statuses.push('learned')
+    else statuses.push('weak')
+  }
+  return statuses
+}
+
 // Rank the segment boundaries by chaining weakness from the pi-chain log,
 // worst-first. Covers every boundary that has a next segment within maxPairs.
 export async function rankPiBoundaries(maxPairs: number): Promise<PiBoundaryStat[]> {

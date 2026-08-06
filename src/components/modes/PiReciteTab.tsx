@@ -5,7 +5,8 @@ import { PiNumberQuiz } from './PiNumberQuiz'
 import { readString, safeSet } from '../../utils/storage'
 import { PI_PAIRS } from '../../data/piDigits'
 import { loadPiSessions, bestFromStartReach, type PiSession } from '../../data/piStats'
-import { PiSegmentMilestone, PI_SEGMENT_GRID_CLASS } from './PiSegmentGrid'
+import { PiSegmentMilestone, PiSegmentDot, PI_SEGMENT_GRID_CLASS } from './PiSegmentGrid'
+import { usePiSegmentStatuses } from '../../hooks/usePiSegmentStatuses'
 import type { AnswerMode } from '../../types'
 
 const SEL_START_KEY = 'major-pi-sel-start'
@@ -36,6 +37,7 @@ export function PiReciteTab({ answerMode, maxPiPairs }: Props) {
   const [runNonce, setRunNonce] = useState(0)
 
   const [piSessions, setPiSessions] = useState<PiSession[]>(() => loadPiSessions())
+  const statuses = usePiSegmentStatuses(maxPiPairs, phase)
 
   const handleSegmentClick = useCallback((segIdx: number) => {
     const firstPair = segIdx * PAIRS_PER_ROW + 1
@@ -97,7 +99,7 @@ export function PiReciteTab({ answerMode, maxPiPairs }: Props) {
                   <Fragment key={segIdx}>
                     <button
                       onClick={() => handleSegmentClick(segIdx)}
-                      className={`flex flex-col items-start px-2 py-1.5 rounded-lg border transition-colors ${
+                      className={`relative flex flex-col items-start px-2 py-1.5 rounded-lg border transition-colors ${
                         inRange
                           ? 'bg-cyan-600/25 border-cyan-500/60 text-cyan-300'
                           : isAnchor
@@ -105,6 +107,7 @@ export function PiReciteTab({ answerMode, maxPiPairs }: Props) {
                           : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200 hover:border-zinc-500'
                       }`}
                     >
+                      <PiSegmentDot status={statuses[segIdx] ?? 'new'} />
                       <span className="text-[8px] opacity-60 leading-none tabular-nums">π {startDigit}–{endDigit}</span>
                       <span className="font-mono text-[8px] tabular-nums leading-snug mt-0.5">{line1}</span>
                       <span className="font-mono text-[8px] tabular-nums leading-snug">{line2}</span>
