@@ -18,3 +18,16 @@
   `docker compose build app` before verifying.
 - Without a host toolchain, use `docker compose up`; with one, `npm run dev` is
   also supported.
+
+## Git and GitHub authentication
+
+- For normal `git fetch`, `git pull`, and `git push` operations, use Git
+  directly. Do not use `gh auth status` as an authentication prerequisite:
+  Git uses the host's configured credential helper, while GitHub CLI
+  authentication is a separate credential path.
+- If a GitHub network operation is blocked in the sandbox, retry the same Git
+  command in the host/escalated context. Do not ask the user to reauthenticate
+  unless the host Git command returns an actual authentication or authorization
+  error.
+- Use `gh auth status` only when an operation itself requires GitHub CLI, such
+  as creating a pull request or querying issues.
