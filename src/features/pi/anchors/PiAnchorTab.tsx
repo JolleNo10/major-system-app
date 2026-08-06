@@ -5,6 +5,7 @@ import { readString, safeSet } from '@/core/storage'
 import { PAIRS_PER_SEGMENT } from '@/features/pi/shared/piStats'
 import { segmentAnchorPos, segmentDigitRange, segmentAnchorPairs } from '@/features/pi/shared/piSegments'
 import { PiSegmentRangePicker } from '@/features/pi/shared/PiSegmentRangePicker'
+import { loadAnchorPaceStore, recordAnchorPace, useAnchorPaces, type AnchorPace } from '@/features/pi/anchors/anchorPace'
 import type { AnswerMode } from '@/core/types'
 
 const SEL_START_KEY = 'major-pi-anchor-start'
@@ -16,6 +17,22 @@ const MIN_DISTRACTOR_SEGMENTS = 12
 
 type Phase = 'setup' | 'quiz'
 interface Props { answerMode: AnswerMode; maxPiPairs: number }
+
+// Traffic-light for the pause getting *into* a segment (recalling its opening
+// pair): a bead sitting in the gap to the left of the cell, i.e. on the chain
+// link from the previous segment. Requires the containing cell to be `relative`
+// (PiSegmentRangePicker's button is).
+function PaceDot({ pace }: { pace: AnchorPace }) {
+  const cls = pace === 'fast' ? 'bg-emerald-400' : pace === 'ok' ? 'bg-amber-400' : 'bg-red-500'
+  const label = pace === 'fast' ? 'quick recall' : pace === 'ok' ? 'some hesitation' : 'long pause'
+  return (
+    <span
+      className={`absolute top-1/2 -left-1.5 z-10 h-1.5 w-1.5 -translate-y-1/2 rounded-full ring-1 ring-zinc-950 ${cls}`}
+      title={label}
+      aria-label={label}
+    />
+  )
+}
 
 // Anchors: chain the *opening pair* of each segment. You start at a segment,
 // type its first π pair, then are asked for the first pair of the next segment,
@@ -40,6 +57,12 @@ export function PiAnchorTab({ answerMode, maxPiPairs }: Props) {
   const [sequence, setSequence] = useState<string[]>([])
   const [runSeg, setRunSeg] = useState(0)
   const [runNonce, setRunNonce] = useState(0)
+
+  // Traffic-light for the pause into each segment (the chain delay), merging
+  // this drill's own transition timings with the opening-pair timings reciting
+  // logs. Kept in a dedicated store so Anchors stays session-only for stats.
+  const [paceStore, setPaceStore] = useState(loadAnchorPaceStore)
+  const paces = useAnchorPaces(maxPiPairs, phase, paceStore)
 
   // Lowering "Max π digits" can strand a stored selection past the last segment.
   const rangeStart = selStart === null ? null : Math.min(selStart, lastSeg)
@@ -89,6 +112,12 @@ export function PiAnchorTab({ answerMode, maxPiPairs }: Props) {
           distractorPool={anchorPairs}
           recordAttempts={false}
           resultMode="anchor"
+          onPairAnswered={(pos, _ok, ms) => {
+            // pos = run anchor + idx; idx 0 is the run's start (no incoming
+            // transition), every later answer is a segment-to-segment chain.
+            const idx = pos - segmentAnchorPos(runSeg)
+            if (idx > 0) setPaceStore(prev => recordAnchorPace(prev, runSeg + idx, ms))
+          }}
           onExit={() => setPhase('setup')}
           exitLabel="Segments"
         />
@@ -106,7 +135,14 @@ export function PiAnchorTab({ answerMode, maxPiPairs }: Props) {
         </p>
 
         <div className="space-y-2">
-          <span className="text-sm font-medium text-zinc-300">Select segments</span>
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="text-sm font-medium text-zinc-300">Select segments</span>
+            <span className="flex items-center gap-2.5 text-[10px] text-zinc-500" title="Pause recalling the segment's opening pair">
+              <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />quick</span>
+              <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-amber-400" />slow</span>
+              <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-red-500" />long pause</span>
+            </span>
+          </div>
           <PiSegmentRangePicker
             count={totalSegments}
             showStatus={false}
@@ -116,10 +152,13 @@ export function PiAnchorTab({ answerMode, maxPiPairs }: Props) {
               setSelEnd(next.end)
             }}
             renderCellBody={seg => (
-              <span className="w-full truncate leading-snug mt-0.5 text-left">
-                <span className="font-mono text-[10px] tabular-nums">{anchorPairs[seg]}</span>
-                <span className="text-[10px] opacity-60 ml-1">{words[anchorPairs[seg]]}</span>
-              </span>
+              <>
+                {seg > 0 && paces[seg] && <PaceDot pace={paces[seg]!} />}
+                <span className="w-full truncate leading-snug mt-0.5 text-left">
+                  <span className="font-mono text-[10px] tabular-nums">{anchorPairs[seg]}</span>
+                  <span className="text-[10px] opacity-60 ml-1">{words[anchorPairs[seg]]}</span>
+                </span>
+              </>
             )}
           />
           <p className="text-xs text-center pt-1 min-h-5">
