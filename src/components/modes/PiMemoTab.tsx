@@ -7,6 +7,8 @@ import { buildEncOptions } from '../../utils/quiz'
 import { PI_PAIRS } from '../../data/piDigits'
 import { PiSegmentMilestone, PiSegmentDot, PI_SEGMENT_GRID_CLASS } from './PiSegmentGrid'
 import { usePiSegmentStatuses } from '../../hooks/usePiSegmentStatuses'
+import { segmentDigitRange } from '../../utils/piSegments'
+import { ToolLayout } from '../ToolLayout'
 import type { AnswerMode } from '../../types'
 
 const MEMO_SEG_KEY = 'major-pi-memo-seg'
@@ -48,14 +50,19 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
     historyEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }, [wqResults.length])
 
+  const studySegment = useCallback((seg: number) => {
+    const anchor = seg * PAIRS_PER_SEG + 1
+    setSequence(PI_PAIRS.slice(anchor - 1, anchor - 1 + PAIRS_PER_SEG))
+    setSessionAnchor(anchor)
+    setSelectedSeg(seg)
+    safeSet(MEMO_SEG_KEY, String(seg))
+    setPhase('study')
+  }, [])
+
   const start = useCallback(() => {
     if (selectedSeg === null) return
-    const anchor = selectedSeg * PAIRS_PER_SEG + 1
-    const seq = PI_PAIRS.slice(anchor - 1, anchor - 1 + PAIRS_PER_SEG)
-    setSequence(seq)
-    setSessionAnchor(anchor)
-    setPhase('study')
-  }, [selectedSeg])
+    studySegment(selectedSeg)
+  }, [selectedSeg, studySegment])
 
   const advanceRecall = useCallback(() => {
     setStudyIdx(prev => {
@@ -123,6 +130,10 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
 
       {/* SETUP */}
       {phase === 'setup' && (
+        <ToolLayout
+          rightLabel="Next to memo"
+          right={<NextToMemoTool nextSeg={nextSeg} loading={statuses.length === 0} onStudy={studySegment} />}
+        >
         <div className={`w-full max-w-lg space-y-6 p-6 ${panelCls}`}>
           <div className="space-y-2">
             <span className="text-sm font-medium text-zinc-300">Select a segment to memorise</span>
@@ -174,6 +185,7 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
             className="w-full py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold transition-colors"
           >Study →</button>
         </div>
+        </ToolLayout>
       )}
 
       {/* STUDY */}
@@ -297,6 +309,44 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// Right-rail quick tool: jump straight into studying the next untested segment.
+function NextToMemoTool({ nextSeg, loading, onStudy }: {
+  nextSeg: number
+  loading: boolean
+  onStudy: (seg: number) => void
+}) {
+  const panelCls = 'bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3'
+
+  if (loading) return null
+
+  if (nextSeg < 0) {
+    return (
+      <div className={panelCls}>
+        <p className="text-sm font-medium text-zinc-300">Next to memo</p>
+        <p className="text-xs text-zinc-500 leading-relaxed">
+          You've started every segment 🎉 Pick any one on the left to study it again.
+        </p>
+      </div>
+    )
+  }
+
+  const [from, to] = segmentDigitRange(nextSeg)
+  return (
+    <div className={panelCls}>
+      <p className="text-sm font-medium text-zinc-300">Next to memo</p>
+      <div className="rounded-lg border border-violet-500/40 bg-violet-600/10 px-3 py-2">
+        <div className="text-[10px] uppercase tracking-wider text-violet-400">Untrained</div>
+        <div className="mt-0.5 font-semibold text-zinc-100">Segment {nextSeg + 1}</div>
+        <div className="font-mono text-xs tabular-nums text-zinc-500">π digits {from}–{to}</div>
+      </div>
+      <button
+        onClick={() => onStudy(nextSeg)}
+        className="w-full py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-sm transition-colors"
+      >Study →</button>
     </div>
   )
 }

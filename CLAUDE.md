@@ -104,7 +104,8 @@ Person/Action/Object triples (partial final group of 1–2 kept).
 - `src/App.tsx` — header (mode title, AnswerModeToggle, 📊/📚/⚙️ overlay triggers) + `<main>` that renders
   `MODES[mode].component`, + overlays. No per-mode render switch.
 - **`src/modes.tsx` — the mode registry** (`Record<DrillMode, ModeDef>`): each non-home `Mode` maps to its
-  header `title`, drill `component`, `group` (`'major-system' | 'application'`), `hideAnswerToggle`, and ModeSelector card
+  header `title`, drill `component`, `group` (`'major-system' | 'application'`), `hideAnswerToggle`, `wide` (let content
+  exceed `max-w-2xl` on lg+ — set on Pi for its side rails), and ModeSelector card
   metadata. Single source of truth — TypeScript enforces every mode is fully wired. **Add a mode = one entry here.**
   `HOME_TITLE` is `'Mnemonics'`.
 - `src/main.tsx` — mounts `SettingsProvider > WordsProvider > CardWordsProvider > PaoCardsProvider > SoundKeyProvider > App`; calls `initAttempts()` (opens IndexedDB + one-time migration of any legacy in-blob attempts).
@@ -119,6 +120,10 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   `PiSession` summary per run. Optional `labels` (`PiQuizLabels`: `prompt`/`hint`/`row`) overrides every on-screen π-position
   string — the escape hatch for non-contiguous sequences — and `distractorPool` overrides where MC distractors are drawn from
   (default: the run sequence).
+  All three segment grids (Memo/Recite/Anchors) paint a per-segment **status dot** (`PiSegmentDot`) derived from the `pi:` log via
+  `piSegmentStatuses` (`usePiSegmentStatuses` hook): emerald = learned (every pair answered correctly ≥1× with no recorded misses),
+  amber = practising (touched but short of that), none = new. Recite shows just the dots; **Memo** rings the first *untested* segment
+  (next to memo) and Anchors dims everything past the contiguous *learned* frontier (soft cap).
   **Recite** = user-selected range → `PiNumberQuiz` (records a session; setup shows run-history/best-runs). **Train** (`PiTrainTab`)
   = weakness-targeted practice, two stats-driven sections each surfacing the worst 3 (worst-first, "new" for untested): weakest
   **segments** (`rankPiSegments` rolls up the `pi:` log per 10-pair block → one-tap Recite run for that segment, records a session)
@@ -128,7 +133,8 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   segment** in turn (`Segment 4 · π digits 61–80` prompt, answer is the pair) — trains the segment *order*, not any one segment.
   Runs on `PiNumberQuiz` with `answerSize={1}`, `recordAttempts={false}`, custom `labels`, and a `distractorPool` of all segment
   anchors (so MC options never leak what's next). **Session-only — records nothing**, so it can't skew Recite/Train stats.
-  Word-chain (Memo) records nothing.
+  Word-chain (Memo) records nothing. Memo's setup wraps in `ToolLayout` with a **right rail** ("Next to memo") whose one-tap
+  **Study →** jumps straight into the first untested segment.
   **Cards:** `CardsDrill` is prop-driven (`words`/`drillTypes`/`onRecord`/`storagePrefix`/`onEditWords`)
   and hosts Card→Word / Card→Number / `DeckMemoDrill`; two thin wrappers select the word source —
   `MajorCardsDrill` (`cards` mode: `useWords` + records to global stats, all 3 drill types) and
@@ -143,7 +149,9 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   own run history under `major-pao-deck-memo-history`.
 - **`components/`** — `ModeSelector` (home screen: **Systems** section for Major System drills, **Applications** section for Pi + Cards + PAO Deck), `MultipleChoice`/`TypingInput` (answer inputs),
   `ScoreBar`, `RangeSlider` (dual-thumb number range, accessible), `RoundStatsPanel`, `HintButton` (vowel skeleton),
-  `SoundKeyGrid` (editable sound-key table)/`SoundKeyPanel`, `AnswerModeToggle`, `Switch` (accessible on/off toggle). **Overlays share
+  `SoundKeyGrid` (editable sound-key table)/`SoundKeyPanel`, `AnswerModeToggle`, `Switch` (accessible on/off toggle),
+  `ToolLayout` (opt-in three-pane: optional left/right rails around a drill — persistent columns on lg+, slide-in drawers
+  below, reusing `useOverlay`; gated behind a mode's `wide` flag for the width). **Overlays share
   `Overlay` (`components/Overlay.tsx`)** — the `role="dialog"` shell, `useOverlay` wiring, header bar, close
   button, and scroll body; callers pass `ariaLabel`/`header`/`maxWidth`/children (`TabButton` is the shared
   header tab). Overlays: `ReferenceOverlay` (sound key + major `WordListGrid`), `CardWordsOverlay` (Themed Deck
@@ -152,6 +160,7 @@ Person/Action/Object triples (partial final group of 1–2 kept).
 - **`hooks/`** — `useStats` (`recordFull` records item-data + attempts and returns its grade; `getStats`
   derives direction-less aggregates from item-data; `buildRepQueue`, `getDueCount`, `getNextDueMs`),
   `useAnswerMode`, `useAnswerTimer` (active-elapsed timer/pause/STALE-discard),
+  `usePiSegmentStatuses` (async per-segment new/weak/learned status from the `pi:` log, re-fetched on a `refreshKey`),
   `useOverlay` (focus trap/return + Escape + registers `overlayGuard`),
   `usePwaUpdate` (wraps `virtual:pwa-register/react`; gates SW update checks on `settings.offlineMode`,
   auto-applies updates from checks it initiates, exposes build version + manual check — called once in `App`).
@@ -166,8 +175,8 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   dedicated quoting-aware parser), `wordsCsv.ts` (shared CSV parse/serialize), `cards.ts` (52-card deck), `soundKey.csv`+`soundKey.ts`+`soundKeyCsv.ts` (editable sound key),
   `scoring.ts` (all scoring/latency constants), `itemStore.ts` (ItemRecord + load/save + storage config),
   `attemptStore.ts` (IndexedDB; `addAttempt`/`getAttempts` are item-keyed wrappers over the raw-key
-  `addAttemptRaw`/`getAttemptsForKey` primitives), `piStats.ts` (Pi run summaries + per-position aggregation),
-  `sm2.ts`, `typingSpeed.ts`, `settings.ts`.
+  `addAttemptRaw`/`getAttemptsForKey` primitives), `piStats.ts` (Pi run summaries + per-position aggregation +
+  `piSegmentStatuses` new/weak/learned rollup), `sm2.ts`, `typingSpeed.ts`, `settings.ts`.
 
 ## Conventions & gotchas
 - **Read this file first in fresh contexts and keep it updated** when workflow, architecture, commands,

@@ -28,6 +28,9 @@ export default function App() {
   const showReferenceButton = mode !== 'home'
     ? MODES[mode].group === 'major-system'
     : homeSection === 'major-system'
+
+  // Wide modes (side rails) may exceed the default reading column on lg+.
+  const widthCls = mode !== 'home' && MODES[mode].wide ? 'max-w-2xl lg:max-w-5xl' : 'max-w-2xl'
   const closeSettings = useCallback(() => setShowSettings(false), [])
   const closeStats = useCallback(() => setShowStats(false), [])
 
@@ -43,7 +46,7 @@ export default function App() {
     <div className="min-h-dvh bg-zinc-950 flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-zinc-950/90 backdrop-blur border-b border-zinc-800/60">
-        <div className="max-w-2xl mx-auto px-4 h-14 flex items-center gap-3">
+        <div className={`${widthCls} mx-auto px-4 h-14 flex items-center gap-3`}>
           {mode !== 'home' ? (
             <button
               onClick={goHome}
@@ -97,7 +100,7 @@ export default function App() {
       </header>
 
       {/* Main content */}
-      <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-6">
+      <main className={`flex-1 ${widthCls} mx-auto w-full px-4 py-6`}>
         {mode === 'home'
           ? <ModeSelector onSelectMode={setMode} section={homeSection} onSectionChange={setHomeSection} />
           : (() => {
