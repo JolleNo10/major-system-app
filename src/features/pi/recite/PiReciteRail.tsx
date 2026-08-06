@@ -1,5 +1,12 @@
+import { useState } from 'react'
 import { useRails } from '@/app/layout/PageLayoutContext'
-import { bestFromStartReach, type PiSession } from '@/features/pi/shared/piStats'
+import {
+  bestFromStartPairsPerSec,
+  fromStartRecordRun,
+  fullReciteSessions,
+  practiceSessions,
+  type PiSession,
+} from '@/features/pi/shared/piStats'
 import { PiSegmentRangePreview } from '@/features/pi/shared/PiSegmentGrid'
 import { type PiSegmentRange } from '@/features/pi/shared/piProgress'
 import type { Phase } from '@/features/pi/recite/PiReciteTab'
@@ -9,7 +16,7 @@ import type { Phase } from '@/features/pi/recite/PiReciteTab'
 // the current phase to rail views + labels and publishes them via `useRails`.
 // The two views below are its private implementation; both show only during
 // setup (the quiz phase has no rail):
-//   left  → RunHistoryTool    ("Your runs")
+//   left  → RunHistoryTool    ("Your runs": full-recite track + collapsed practice)
 //   right → ReadyToReciteTool ("Ready to recite")
 
 interface PiReciteRailArgs {
@@ -51,52 +58,105 @@ export function usePiReciteRail({
   )
 }
 
+// Two tracks: full recites (runs that started at π #1 — the progress that
+// counts, with the standing record pinned) and practice (every other run,
+// collapsed below). See ADR 0004.
 function RunHistoryTool({ piSessions, formatRate }: {
   piSessions: PiSession[]
   formatRate: (rate: number) => string
 }) {
+  const [showPractice, setShowPractice] = useState(false)
   const panelCls = 'bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3'
+
+  const full = fullReciteSessions(piSessions)
+  const practice = practiceSessions(piSessions)
+  const record = fromStartRecordRun(piSessions)
+
   return (
     <div className={panelCls}>
       <div className="flex items-baseline justify-between">
-        <span className="text-sm font-medium text-zinc-300">Your runs</span>
-        <span className="text-xs text-zinc-600 tabular-nums">{piSessions.length} recorded</span>
+        <span className="text-sm font-medium text-zinc-300">Full recites</span>
+        <span className="text-xs text-zinc-600 tabular-nums">from π #1</span>
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-lg border border-cyan-500/30 bg-cyan-600/10 px-3 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-cyan-600">Best from π #1</div>
-          <div className="mt-0.5 font-mono text-lg font-bold tabular-nums text-cyan-300">
-            {bestFromStartReach(piSessions) * 2}d
-          </div>
-        </div>
-        <div className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-600">Best pairs/sec</div>
-          <div className="mt-0.5 font-mono text-lg font-bold tabular-nums text-zinc-100">
-            {formatRate(Math.max(...piSessions.map(s => s.pairsPerSec)))}
-          </div>
-        </div>
-      </div>
-      <div className="space-y-1">
-        {[...piSessions].slice(-8).reverse().map(s => (
-          <div key={s.at} className="px-2 py-1.5 rounded bg-zinc-800/40 text-xs space-y-0.5">
-            <div className="flex items-center justify-between">
-              <span className="font-mono text-zinc-400 tabular-nums" title="π digit range">
-                π {(s.anchor - 1) * 2 + 1}–{(s.anchor + s.pairs - 1) * 2}
-              </span>
-              <span className="text-zinc-600 tabular-nums">
-                {new Date(s.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-              </span>
+
+      {record ? (
+        <>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-lg border border-cyan-500/30 bg-cyan-600/10 px-3 py-2">
+              <div className="text-[10px] uppercase tracking-wider text-cyan-600">🏆 Record</div>
+              <div className="mt-0.5 font-mono text-lg font-bold tabular-nums text-cyan-300">
+                π to {record.reach * 2}d
+              </div>
+              <div className="text-[10px] text-zinc-600 tabular-nums">
+                {new Date(record.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+              </div>
             </div>
-            <div className="flex items-center gap-2 tabular-nums">
-              <span className="text-cyan-400" title="Reach (consecutive correct from start)">⟶ {s.reach * 2}d</span>
-              <span className="text-zinc-500" title="Correct pairs out of total">{s.correctPairs}/{s.pairs}</span>
-              <span className="ml-auto flex items-center gap-2">
-                <span className={s.accuracy === 100 ? 'text-green-400' : 'text-zinc-400'}>{s.accuracy}%</span>
-                <span className="text-zinc-500 font-mono">{formatRate(s.pairsPerSec)}/s</span>
-              </span>
+            <div className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2">
+              <div className="text-[10px] uppercase tracking-wider text-zinc-600">Best pairs/sec</div>
+              <div className="mt-0.5 font-mono text-lg font-bold tabular-nums text-zinc-100">
+                {formatRate(bestFromStartPairsPerSec(piSessions))}
+              </div>
             </div>
           </div>
-        ))}
+          <div className="space-y-1">
+            {[...full].slice(-8).reverse().map(s => (
+              <SessionRow key={s.at} s={s} formatRate={formatRate} isRecord={s.at === record.at} />
+            ))}
+          </div>
+        </>
+      ) : (
+        <p className="text-xs text-zinc-500 leading-relaxed">
+          No full recites yet. Start a run from π #1 (the first segment) to set your record.
+        </p>
+      )}
+
+      {practice.length > 0 && (
+        <div className="border-t border-zinc-800 pt-2">
+          <button
+            onClick={() => setShowPractice(v => !v)}
+            className="w-full flex items-center justify-between text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+          >
+            <span className="uppercase tracking-wider">Practice</span>
+            <span className="tabular-nums">{showPractice ? '▾' : '▸'} {practice.length}</span>
+          </button>
+          {showPractice && (
+            <div className="space-y-1 mt-2">
+              {[...practice].slice(-8).reverse().map(s => (
+                <SessionRow key={s.at} s={s} formatRate={formatRate} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SessionRow({ s, formatRate, isRecord }: {
+  s: PiSession
+  formatRate: (rate: number) => string
+  isRecord?: boolean
+}) {
+  return (
+    <div className={`px-2 py-1.5 rounded text-xs space-y-0.5 ${
+      isRecord ? 'bg-cyan-600/10 border border-cyan-500/30' : 'bg-zinc-800/40'
+    }`}>
+      <div className="flex items-center justify-between">
+        <span className="font-mono text-zinc-400 tabular-nums" title="π digit range">
+          π {(s.anchor - 1) * 2 + 1}–{(s.anchor + s.pairs - 1) * 2}
+        </span>
+        <span className="text-zinc-600 tabular-nums flex items-center gap-1">
+          {isRecord && <span title="Current record">🏆</span>}
+          {new Date(s.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+        </span>
+      </div>
+      <div className="flex items-center gap-2 tabular-nums">
+        <span className="text-cyan-400" title="Reach (consecutive correct from start)">⟶ {s.reach * 2}d</span>
+        <span className="text-zinc-500" title="Correct pairs out of total">{s.correctPairs}/{s.pairs}</span>
+        <span className="ml-auto flex items-center gap-2">
+          <span className={s.accuracy === 100 ? 'text-green-400' : 'text-zinc-400'}>{s.accuracy}%</span>
+          <span className="text-zinc-500 font-mono">{formatRate(s.pairsPerSec)}/s</span>
+        </span>
       </div>
     </div>
   )

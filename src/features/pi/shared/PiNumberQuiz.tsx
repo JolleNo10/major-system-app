@@ -5,8 +5,9 @@ import { PiBatchInput } from '@/features/pi/shared/PiBatchInput'
 import { shuffle, pickDistractors } from '@/core/scoring/quiz'
 import { summarizeBatchTimings, type BatchTiming } from '@/core/ui/numericInput'
 import { addAttemptRaw } from '@/core/scoring/attemptStore'
-import { addPiSession } from '@/features/pi/shared/piStats'
+import { addPiSession, isFromStartRecord, loadPiSessions } from '@/features/pi/shared/piStats'
 import { PiMistakeStoryReview } from '@/features/pi/shared/story/PiMistakeStoryReview'
+import { RecordFireworks } from '@/features/pi/shared/RecordFireworks'
 import type { AnswerMode } from '@/core/types'
 
 export type AnswerSize = 1 | 10
@@ -70,6 +71,9 @@ export function PiNumberQuiz({
   const [nqBatchCorrect, setNqBatchCorrect] = useState<boolean[] | null>(null)
   const [nqBatchTimings, setNqBatchTimings] = useState<BatchTiming[]>([])
   const [missedSegments, setMissedSegments] = useState<number[]>([])
+  // Set to the digit count when this run beats the standing from-π#1 record
+  // (full recite = anchor 1). Drives the result-screen celebration.
+  const [newRecordDigits, setNewRecordDigits] = useState<number | null>(null)
   const nqStartedAtRef = useRef<number>(performance.now())
   const previousAnswerModeRef = useRef(answerMode)
   const historyEndRef = useRef<HTMLDivElement>(null)
@@ -172,6 +176,7 @@ export function PiNumberQuiz({
     setNqResults([])
     setNqBatchTimings([])
     setMissedSegments([])
+    setNewRecordDigits(null)
     nqStartedAtRef.current = performance.now()
     setPhase('quiz')
   }, [sequence, mcPool])
@@ -200,6 +205,11 @@ export function PiNumberQuiz({
     completionReportedRef.current = true
     onComplete?.({ anchor, correctness: nqResults.map(result => result.ok) })
     if (!recordSession) return
+    // A full recite (anchor 1) that beats the standing from-π#1 record earns a
+    // celebration — checked against the stored sessions *before* this one lands.
+    if (anchor === 1 && isFromStartRecord(loadPiSessions(), nqReach)) {
+      setNewRecordDigits(nqReach * 2)
+    }
     addPiSession({
       at: Date.now(),
       anchor,
@@ -239,6 +249,17 @@ export function PiNumberQuiz({
   if (phase === 'result') {
     return (
       <div className="w-full max-w-md space-y-4">
+        {newRecordDigits !== null && (
+          <>
+            <RecordFireworks />
+            <div className="rounded-xl border border-violet-500/40 bg-gradient-to-r from-violet-600/20 to-cyan-600/20 px-4 py-3 text-center">
+              <div className="text-[11px] uppercase tracking-widest text-violet-300">🎉 New record</div>
+              <div className="mt-0.5 text-2xl font-black text-violet-100">
+                π to {newRecordDigits} digits
+              </div>
+            </div>
+          </>
+        )}
         <h3 className="text-xl font-bold text-center text-zinc-100">
           {formatResultSummary(nqCorrectCount)}
         </h3>
