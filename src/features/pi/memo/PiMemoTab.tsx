@@ -5,10 +5,11 @@ import { TypingInput } from '@/core/ui/TypingInput'
 import { readString, safeSet } from '@/core/storage'
 import { buildEncOptions } from '@/core/scoring/quiz'
 import { PI_PAIRS } from '@/features/pi/shared/piDigits'
-import { PiSegmentGrid, PiSegmentDot } from '@/features/pi/shared/PiSegmentGrid'
+import { PiSegmentGrid } from '@/features/pi/shared/PiSegmentGrid'
 import { usePiMemoRail } from '@/features/pi/memo/PiMemoRail'
 import { usePiSegmentStatuses } from '@/features/pi/shared/usePiSegmentStatuses'
 import { usePiStoryEditor } from '@/features/pi/memo/usePiStoryEditor'
+import { StoryView } from '@/features/pi/shared/story/StoryView'
 import { loadMemoedPiSegments, saveMemoedPiSegments } from '@/features/pi/shared/piProgress'
 import type { AnswerMode } from '@/core/types'
 
@@ -52,6 +53,12 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
     return -1
   })()
 
+  // The selected segment's 10 Major-System words — for highlighting the setup
+  // preview (during setup `sequence` is empty, so derive from `selectedSeg`).
+  const selectedSegWords = selectedSeg === null
+    ? []
+    : PI_PAIRS.slice(selectedSeg * PAIRS_PER_SEG, (selectedSeg + 1) * PAIRS_PER_SEG).map(num => words[num])
+
   const [studyIdx, setStudyIdx] = useState(0)
   const [wqAnswered, setWqAnswered] = useState<string | null>(null)
   const [wqCorrect, setWqCorrect] = useState<boolean | null>(null)
@@ -62,9 +69,8 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
   const historyEndRef = useRef<HTMLDivElement>(null)
 
   // Per-segment story (text + picture) edit/persist lifecycle. Shared with the
-  // rail (StoryPanel) — `storyFileRef` is the setup panel's hidden Import input.
+  // rail (StoryPanel + Import/Export) and the setup window's read-only preview.
   const storyEditor = usePiStoryEditor(selectedSeg, phase)
-  const storyFileRef = useRef<HTMLInputElement>(null)
 
   const copyWords = useCallback(() => {
     const text = sequence.map(num => words[num]).join('\n')
@@ -220,10 +226,6 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
                         : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200 hover:border-zinc-500'
                     } ${segIdx === nextSeg ? 'ring-1 ring-violet-400/50' : ''}`}
                   >
-                    <PiSegmentDot
-                      status={statuses[segIdx] ?? 'new'}
-                      memoed={memoedSegs.has(segIdx)}
-                    />
                     {storyEditor.storySegs.has(segIdx) && (
                       <span className="absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full bg-violet-400" aria-label="has story" />
                     )}
@@ -249,18 +251,14 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
             disabled={selectedSeg === null}
             className="w-full py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold transition-colors"
           >Study →</button>
-          <div className="flex items-center gap-2 pt-1">
-            <input ref={storyFileRef} type="file" accept="application/json" className="hidden" onChange={storyEditor.onImport} />
-            <button
-              onClick={() => storyFileRef.current?.click()}
-              className="flex-1 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-xs font-medium text-zinc-300 hover:text-zinc-100 hover:border-violet-500 transition-colors"
-            >↑ Import stories</button>
-            <button
-              onClick={storyEditor.onExport}
-              className="flex-1 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-xs font-medium text-zinc-300 hover:text-zinc-100 hover:border-violet-500 transition-colors"
-            >↓ Export stories</button>
-          </div>
-          {storyEditor.flash && <p className="text-xs text-center text-violet-400">{storyEditor.flash}</p>}
+          {/* The selected segment's story/picture, if any — read-only preview. */}
+          {selectedSeg !== null && !storyEditor.loading && storyEditor.story &&
+            (storyEditor.story.text.trim() || storyEditor.story.image) && (
+            <div className="space-y-2 pt-1">
+              <p className="text-sm font-medium text-zinc-300">Story &amp; picture</p>
+              <StoryView story={storyEditor.story} expectedWords={selectedSegWords} />
+            </div>
+          )}
         </div>
       )}
 

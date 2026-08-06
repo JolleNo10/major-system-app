@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { PiSegmentRangePreview } from '@/features/pi/shared/PiSegmentGrid'
 import { useBlobUrl } from '@/features/pi/shared/story/usePiStory'
+import { StoryView } from '@/features/pi/shared/story/StoryView'
 import { type PiStory } from '@/features/pi/shared/story/piStories'
 import { processImage } from '@/features/pi/memo/imageResize'
 import { highlightStory } from '@/features/pi/shared/story/storyHighlight'
@@ -12,7 +13,7 @@ import type { Phase } from '@/features/pi/memo/PiMemoTab'
 // drill (`PiMemoTab`). The one public interface is `usePiMemoRail`, which maps
 // the current phase to a rail view + label and publishes it via `useRails`.
 // The three phase views below are its private implementation:
-//   setup  → NextToMemoTool  ("Next to memo")
+//   setup  → NextToMemoTool + StoryIoPanel  ("Next to memo")
 //   study  → MemoStudyTools  (StoryPanel + Copy-words, "Study tools")
 //   result → StoryPanel      ("Story & picture")
 // Recall shows no rail — the story/picture is a spoiler for the pairs.
@@ -53,7 +54,12 @@ export function usePiMemoRail({
   )
   const rightRail =
     phase === 'setup'
-      ? <NextToMemoTool nextSeg={nextSeg} loading={statusesLoading} onStudy={onStudySeg} />
+      ? (
+        <div className="w-full space-y-3">
+          <NextToMemoTool nextSeg={nextSeg} loading={statusesLoading} onStudy={onStudySeg} />
+          <StoryIoPanel onImport={storyEditor.onImport} onExport={storyEditor.onExport} flash={storyEditor.flash} />
+        </div>
+      )
       : phase === 'study'
       ? <MemoStudyTools storyPanel={storyPanel} onCopyWords={onCopyWords} copied={copied} />
       : phase === 'result'
@@ -63,7 +69,29 @@ export function usePiMemoRail({
     phase === 'setup' ? 'Next to memo' : phase === 'study' ? 'Study tools' : 'Story & picture'
   useRails(
     { right: rightRail, rightLabel },
-    [phase, nextSeg, statusesLoading, onStudySeg, storyEditor.story, storyEditor.loading, sequence, words, storyEditor.editing, storyEditor.onSave, storyEditor.flash, onCopyWords, copied],
+    [phase, nextSeg, statusesLoading, onStudySeg, storyEditor.story, storyEditor.loading, sequence, words, storyEditor.editing, storyEditor.onSave, storyEditor.onImport, storyEditor.onExport, storyEditor.flash, onCopyWords, copied],
+  )
+}
+
+// Setup-phase rail tool: JSON backup of all per-segment stories (moved here from
+// the setup window so the grid keeps its focus on segment selection).
+function StoryIoPanel({ onImport, onExport, flash }: {
+  onImport: (e: React.ChangeEvent<HTMLInputElement>) => void
+  onExport: () => void
+  flash: string | null
+}) {
+  const fileRef = useRef<HTMLInputElement>(null)
+  const btn = 'flex-1 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-xs font-medium text-zinc-300 hover:text-zinc-100 hover:border-violet-500 transition-colors'
+  return (
+    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-2">
+      <p className="text-sm font-medium text-zinc-300">Backup stories</p>
+      <input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={onImport} />
+      <div className="flex items-center gap-2">
+        <button onClick={() => fileRef.current?.click()} className={btn}>↑ Import stories</button>
+        <button onClick={onExport} className={btn}>↓ Export stories</button>
+      </div>
+      {flash && <p className="text-xs text-center text-violet-400">{flash}</p>}
+    </div>
   )
 }
 
@@ -150,7 +178,6 @@ function StoryPanel({ story, loading, expectedWords, editing, onEdit, onCancel, 
     }
   }, [editing, story])
 
-  const viewUrl = useBlobUrl(story?.image ?? null)
   const draftUrl = useBlobUrl(draftImage)
 
   const handleBlob = useCallback(async (blob: Blob) => {
@@ -201,28 +228,7 @@ function StoryPanel({ story, loading, expectedWords, editing, onEdit, onCancel, 
           </button>
         </div>
         {hasContent ? (
-          <>
-            {story!.text.trim() && (() => {
-              const { segments, missing } = highlightStory(story!.text, expectedWords)
-              return (
-                <>
-                  <p className="text-sm text-zinc-200 whitespace-pre-wrap leading-relaxed">
-                    {segments.map((s, i) =>
-                      s.matched
-                        ? <mark key={i} className="bg-violet-500/25 text-violet-200 rounded px-0.5">{s.text}</mark>
-                        : <span key={i}>{s.text}</span>,
-                    )}
-                  </p>
-                  {missing.length > 0 && (
-                    <p className="text-xs text-amber-400">
-                      ⚠ {missing.length} word{missing.length !== 1 ? 's' : ''} not in your story: {missing.join(', ')}
-                    </p>
-                  )}
-                </>
-              )
-            })()}
-            {viewUrl && <img src={viewUrl} alt="Story picture" className="max-h-64 rounded-lg" />}
-          </>
+          <StoryView story={story!} expectedWords={expectedWords} />
         ) : (
           <button onClick={onEdit} className="w-full text-left text-xs text-zinc-600 hover:text-zinc-400 transition-colors">
             Add a story or picture to anchor this segment.
