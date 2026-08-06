@@ -22,6 +22,13 @@ export const PACE_SLOW_MS = 6000
 
 export type AnchorPace = 'fast' | 'ok' | 'slow'
 
+// The light plus the data behind it, for the hover tooltip.
+export interface AnchorPaceInfo {
+  pace: AnchorPace
+  medianMs: number
+  samples: number[]   // the recent timings that decided the light (oldest → newest)
+}
+
 interface Timing { at: number; ms: number }
 export type AnchorPaceStore = Record<number, Timing[]>   // keyed by 0-indexed segment
 
@@ -38,13 +45,19 @@ export function recordAnchorPace(store: AnchorPaceStore, seg: number, ms: number
   return next
 }
 
-// Median of the most recent RECENT timings → fast (≤ FAST) / ok (≤ SLOW) / slow.
-export function paceFromTimings(timings: Timing[]): AnchorPace | null {
+// Median of the most recent RECENT timings → fast (≤ FAST) / ok (≤ SLOW) / slow,
+// carrying the samples + median so the tooltip can show the data behind it.
+export function paceInfoFromTimings(timings: Timing[]): AnchorPaceInfo | null {
   if (timings.length === 0) return null
-  const recent = [...timings].sort((a, b) => a.at - b.at).slice(-RECENT).map(t => t.ms)
-  const m = medianMs(recent)
+  const samples = [...timings].sort((a, b) => a.at - b.at).slice(-RECENT).map(t => t.ms)
+  const m = medianMs(samples)
   if (m === null) return null
-  return m <= PACE_FAST_MS ? 'fast' : m <= PACE_SLOW_MS ? 'ok' : 'slow'
+  const pace: AnchorPace = m <= PACE_FAST_MS ? 'fast' : m <= PACE_SLOW_MS ? 'ok' : 'slow'
+  return { pace, medianMs: m, samples }
+}
+
+export function paceFromTimings(timings: Timing[]): AnchorPace | null {
+  return paceInfoFromTimings(timings)?.pace ?? null
 }
 
 // Per-segment pace, merging reciting timings (fetched from the pi log on
@@ -54,7 +67,7 @@ export function useAnchorPaces(
   maxPairs: number,
   refreshKey: unknown,
   local: AnchorPaceStore,
-): (AnchorPace | null)[] {
+): (AnchorPaceInfo | null)[] {
   const [recite, setRecite] = useState<Record<number, Timing[]>>({})
 
   useEffect(() => {
@@ -78,7 +91,7 @@ export function useAnchorPaces(
   return useMemo(() => {
     const maxSegs = Math.floor(maxPairs / PAIRS_PER_SEGMENT)
     return Array.from({ length: maxSegs }, (_, seg) =>
-      paceFromTimings([...(recite[seg] ?? []), ...(local[seg] ?? [])]),
+      paceInfoFromTimings([...(recite[seg] ?? []), ...(local[seg] ?? [])]),
     )
   }, [recite, local, maxPairs])
 }

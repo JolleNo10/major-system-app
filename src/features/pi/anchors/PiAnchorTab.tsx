@@ -5,7 +5,7 @@ import { readString, safeSet } from '@/core/storage'
 import { PAIRS_PER_SEGMENT } from '@/features/pi/shared/piStats'
 import { segmentAnchorPos, segmentDigitRange, segmentAnchorPairs } from '@/features/pi/shared/piSegments'
 import { PiSegmentRangePicker } from '@/features/pi/shared/PiSegmentRangePicker'
-import { loadAnchorPaceStore, recordAnchorPace, useAnchorPaces, type AnchorPace } from '@/features/pi/anchors/anchorPace'
+import { loadAnchorPaceStore, recordAnchorPace, useAnchorPaces, type AnchorPaceInfo } from '@/features/pi/anchors/anchorPace'
 import type { AnswerMode } from '@/core/types'
 
 const SEL_START_KEY = 'major-pi-anchor-start'
@@ -22,14 +22,17 @@ interface Props { answerMode: AnswerMode; maxPiPairs: number }
 // pair): a bead sitting in the gap to the left of the cell, i.e. on the chain
 // link from the previous segment. Requires the containing cell to be `relative`
 // (PiSegmentRangePicker's button is).
-function PaceDot({ pace }: { pace: AnchorPace }) {
-  const cls = pace === 'fast' ? 'bg-emerald-400' : pace === 'ok' ? 'bg-amber-400' : 'bg-red-500'
-  const label = pace === 'fast' ? 'quick recall' : pace === 'ok' ? 'some hesitation' : 'long pause'
+function PaceDot({ info }: { info: AnchorPaceInfo }) {
+  const cls = info.pace === 'fast' ? 'bg-emerald-400' : info.pace === 'ok' ? 'bg-amber-400' : 'bg-red-500'
+  const label = info.pace === 'fast' ? 'quick recall' : info.pace === 'ok' ? 'some hesitation' : 'long pause'
+  const fmt = (ms: number) => `${(ms / 1000).toFixed(1)}s`
+  // Native tooltip: the light plus the timings behind it.
+  const title = `${label} — ${fmt(info.medianMs)} median · last ${info.samples.length}: ${info.samples.map(fmt).join(', ')}`
   return (
     <span
       className={`absolute top-1/2 -left-1.5 z-10 h-1.5 w-1.5 -translate-y-1/2 rounded-full ring-1 ring-zinc-950 ${cls}`}
-      title={label}
-      aria-label={label}
+      title={title}
+      aria-label={title}
     />
   )
 }
@@ -153,7 +156,7 @@ export function PiAnchorTab({ answerMode, maxPiPairs }: Props) {
             }}
             renderCellBody={seg => (
               <>
-                {seg > 0 && paces[seg] && <PaceDot pace={paces[seg]!} />}
+                {seg > 0 && paces[seg] && <PaceDot info={paces[seg]!} />}
                 <span className="w-full truncate leading-snug mt-0.5 text-left">
                   <span className="font-mono text-[10px] tabular-nums">{anchorPairs[seg]}</span>
                   <span className="text-[10px] opacity-60 ml-1">{words[anchorPairs[seg]]}</span>
