@@ -28,9 +28,9 @@ docker run --rm -v "$(pwd)":/app -w /app node:20-alpine sh -c "npx tsc -b && npx
 Tests are colocated `*.test.ts` next to the module they cover.
 
 ## Source layout (package-by-feature)
-`src/` is organized **by domain**, not by technical kind. Every import uses the **`@/*` → `src/*`**
-path alias (configured in `tsconfig.json`, `vite.config.ts`, `vitest.config.ts`), so specifiers are
-location-independent (`@/core/scoring/quiz`, `@/features/pi/piStats`).
+`src/` is organized **by domain**, not by technical kind (rationale + rules in **ADR 0002**). Every
+import uses the **`@/*` → `src/*`** path alias (configured in `tsconfig.json`, `vite.config.ts`,
+`vitest.config.ts`), so specifiers are location-independent (`@/core/scoring/quiz`, `@/features/pi/piStats`).
 
 ```
 src/
