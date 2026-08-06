@@ -22,13 +22,19 @@ const TOGGLE_CLS =
 
 export function ToolLayout({ children, left, right, leftLabel = 'Stats', rightLabel = 'Tools' }: Props) {
   const [openDrawer, setOpenDrawer] = useState<'left' | 'right' | null>(null)
-  const railCls = 'hidden lg:block lg:w-72 shrink-0'
+  // Rails become persistent side columns only at xl+, where there's room to
+  // break out (xl:-mx-20) beyond the reading column and flank the main pane
+  // without shrinking it. The side cells are ALWAYS both rendered at xl (empty
+  // when a rail is absent) so they're symmetric — that keeps the main pane the
+  // same width and dead-centered whether 0, 1, or 2 rails exist. Below xl the
+  // rails collapse to the drawer toggles below.
+  const cellCls = 'hidden xl:flex xl:w-72 shrink-0'
 
   return (
     <div className="w-full">
       {/* Narrow-screen toggles — one per provided rail. */}
       {(left || right) && (
-        <div className="flex justify-center gap-2 mb-4 lg:hidden">
+        <div className="flex justify-center gap-2 mb-4 xl:hidden">
           {left && (
             <button onClick={() => setOpenDrawer('left')} className={TOGGLE_CLS}>
               <span aria-hidden="true">📊</span> {leftLabel}
@@ -42,10 +48,10 @@ export function ToolLayout({ children, left, right, leftLabel = 'Stats', rightLa
         </div>
       )}
 
-      <div className="flex justify-center gap-6">
-        {left && <aside className={railCls}>{left}</aside>}
-        <div className="flex-1 min-w-0 flex flex-col items-center">{children}</div>
-        {right && <aside className={railCls}>{right}</aside>}
+      <div className="flex items-start justify-center gap-6 xl:-mx-20">
+        {(left || right) && <div className={`${cellCls} justify-start`}>{left}</div>}
+        <div className="min-w-0 flex flex-col items-center">{children}</div>
+        {(left || right) && <div className={`${cellCls} justify-end`}>{right}</div>}
       </div>
 
       {openDrawer === 'left' && left && (
@@ -70,14 +76,14 @@ function Drawer({ side, label, onClose, children }: {
 
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-black/50 animate-fade-in lg:hidden" onClick={onClose} />
+      <div className="fixed inset-0 z-50 bg-black/50 animate-fade-in xl:hidden" onClick={onClose} />
       <div
         ref={ref}
         role="dialog"
         aria-modal="true"
         aria-label={label}
         tabIndex={-1}
-        className={`fixed inset-y-0 z-50 w-80 max-w-[85vw] flex flex-col bg-zinc-950 border-zinc-800 outline-none animate-fade-in lg:hidden ${sideCls}`}
+        className={`fixed inset-y-0 z-50 w-80 max-w-[85vw] flex flex-col bg-zinc-950 border-zinc-800 outline-none animate-fade-in xl:hidden ${sideCls}`}
       >
         <div className="flex items-center justify-between px-4 py-4 border-b border-zinc-800 shrink-0">
           <span className="font-semibold text-zinc-100">{label}</span>
