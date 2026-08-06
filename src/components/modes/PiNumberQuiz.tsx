@@ -6,6 +6,7 @@ import { shuffle, pickDistractors } from '../../utils/quiz'
 import { summarizeBatchTimings, type BatchTiming } from '../../utils/numericInput'
 import { addAttemptRaw } from '../../data/attemptStore'
 import { addPiSession } from '../../data/piStats'
+import { PiMistakeStoryReview } from './PiMistakeStoryReview'
 import type { AnswerMode } from '../../types'
 
 export type AnswerSize = 1 | 10
@@ -45,6 +46,7 @@ interface Props {
   distractorPool?: string[]      // pairs to draw MC distractors from (default: the sequence)
   onPairAnswered?: (pos: number, ok: boolean, ms: number) => void
   onComplete?: (completion: PiQuizCompletion) => void
+  reviewStoriesOnMistake?: boolean
 }
 
 // The shared Pi recite engine: given a fixed sequence + anchor, run the
@@ -55,6 +57,7 @@ export function PiNumberQuiz({
   answerMode, answerSize, sequence, anchor, words,
   onExit, exitLabel = 'Settings', recordSession = false, recordAttempts = true,
   labels: labelsProp, distractorPool, onPairAnswered, onComplete,
+  reviewStoriesOnMistake = false,
 }: Props) {
   const mcPool = distractorPool ?? sequence
   const isBatch = answerMode === 'typing' && answerSize === 10
@@ -66,6 +69,7 @@ export function PiNumberQuiz({
   const [nqResults, setNqResults] = useState<NqResult[]>([])
   const [nqBatchCorrect, setNqBatchCorrect] = useState<boolean[] | null>(null)
   const [nqBatchTimings, setNqBatchTimings] = useState<BatchTiming[]>([])
+  const [missedSegments, setMissedSegments] = useState<number[]>([])
   const nqStartedAtRef = useRef<number>(performance.now())
   const previousAnswerModeRef = useRef(answerMode)
   const historyEndRef = useRef<HTMLDivElement>(null)
@@ -114,6 +118,14 @@ export function PiNumberQuiz({
       })),
     ])
     setNqBatchTimings(prev => [...prev, { pairCount: typedValues.length, ms }])
+    if (reviewStoriesOnMistake) {
+      const newlyMissed = correctness.flatMap((ok, index) =>
+        ok ? [] : [Math.floor((anchor + nqIdx + index - 1) / 10)],
+      )
+      if (newlyMissed.length > 0) {
+        setMissedSegments(previous => [...new Set([...previous, ...newlyMissed])].sort((a, b) => a - b))
+      }
+    }
     const nextIdx = nqIdx + typedValues.length
     const delay = correctness.every(Boolean) ? 100 : 1200
     if (nextIdx >= sequence.length) {
@@ -128,7 +140,7 @@ export function PiNumberQuiz({
         setNqIdx(nextIdx)
       }, delay)
     }
-  }, [nqIdx, sequence, mcPool, anchor, recordAttempts, onPairAnswered])
+  }, [nqIdx, sequence, mcPool, anchor, recordAttempts, onPairAnswered, reviewStoriesOnMistake])
 
   const handleNumberAnswer = useCallback((value: string) => {
     if (nqAnswered !== null) return
@@ -159,6 +171,7 @@ export function PiNumberQuiz({
     setNqOptions(numberMcOptions(sequence[0], mcPool))
     setNqResults([])
     setNqBatchTimings([])
+    setMissedSegments([])
     nqStartedAtRef.current = performance.now()
     setPhase('quiz')
   }, [sequence, mcPool])
@@ -265,6 +278,9 @@ export function PiNumberQuiz({
             )
           })}
         </div>
+        {reviewStoriesOnMistake && (
+          <PiMistakeStoryReview segments={missedSegments} words={words} />
+        )}
         <div className="flex gap-2">
           <button onClick={restart} className="flex-1 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold transition-colors">Try again</button>
           <button onClick={onExit} className="flex-1 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold transition-colors">{exitLabel}</button>
@@ -318,6 +334,9 @@ export function PiNumberQuiz({
           />
         )}
       </div>
+      {reviewStoriesOnMistake && (
+        <PiMistakeStoryReview segments={missedSegments} words={words} />
+      )}
       {nqResults.length > 0 && (
         <div className="w-full max-h-48 overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-900/60">
           <div className="p-2 space-y-0.5">

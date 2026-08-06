@@ -269,6 +269,7 @@ export function PiReciteTab({ answerMode, maxPiPairs }: Props) {
           onExit={exitToSetup}
           onComplete={handleQuizComplete}
           recordSession
+          reviewStoriesOnMistake
         />
       )}
     </div>
