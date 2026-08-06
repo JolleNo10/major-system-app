@@ -40,7 +40,8 @@ Tests are colocated `*.test.ts` next to the pure utils.
 | Store | Where | Contents |
 |-------|-------|----------|
 | `major-item-data` | localStorage | `Record<"enc:NN"\|"dec:NN", ItemRecord>` — per-number/direction SM-2 stats (correct/wrong, rolling `latencies` (last 10), `ease`, `intervalDays`, `dueAt`, `lastSeenAt`, `reps`, `hintCount`) |
-| `major-system` (db) → `attempts` store | **IndexedDB** | Per-answer log `{id, key:"enc:07", at, ok, ms}`, pruned to 90 days / 200 per key. Written on every answer. Keys are usually `"enc:NN"`/`"dec:NN"` but the same store also holds Pi's `"pi:<position>"` per-position log and the Train tab's `"pi-chain:<segIdx>"` boundary-crossing log (`data/piStats.ts`). Read via `getAllAttempts` (Pi weak-spots + Train segment/boundary ranking); the number-drill read path is otherwise unconsumed (future age-decay) |
+| `major-system` (db, **v2**) → `attempts` store | **IndexedDB** | Per-answer log `{id, key:"enc:07", at, ok, ms}`, pruned to 90 days / 200 per key. Written on every answer. Keys are usually `"enc:NN"`/`"dec:NN"` but the same store also holds Pi's `"pi:<position>"` per-position log and the Train tab's `"pi-chain:<segIdx>"` boundary-crossing log (`data/piStats.ts`). Read via `getAllAttempts` (Pi weak-spots + Train segment/boundary ranking); the number-drill read path is otherwise unconsumed (future age-decay) |
+| `major-system` (db, v2) → `pi_stories` store | **IndexedDB** | Per-segment Pi mnemonic story `{seg, text, image:Blob\|null, updatedAt}`, keyed by 0-indexed `seg` (no index — always accessed by primary key). Purely user-authored (no shipped defaults), text + one downscaled picture stored atomically (`data/piStories.ts`). Backed up via JSON export/import (`{seg,text,imageDataUrl}[]`, base64). **`attemptStore.ts` is the single DB owner** — it exports `getDb`/`reqToPromise`/`txDone`/`hasIdb` and `piStories.ts` reuses that one connection (a second open at a different version would `onblocked`-hang the v1→v2 upgrade) |
 | `major-pi-sessions` | localStorage | Pi number-quiz run summaries (`PiSession[]`, capped 50) — reach, accuracy, pairs/sec per completed run (`data/piStats.ts`) |
 | `major-word-saved` | localStorage | Committed custom words (layer 2) |
 | `major-word-overrides` | localStorage | Trial/pending word edits (layer 3, shown yellow) |
@@ -148,6 +149,12 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   Word-chain (Memo) records no `pi:`/session stats, but a segment recalled all-correct in Memo mode is remembered in
   `major-pi-memoed-segs` so it stops being suggested. Memo's setup wraps in `ToolLayout` with a **right rail** ("Next to memo")
   whose one-tap **Study →** jumps straight into the first segment that's neither recited nor memoed.
+  **Per-segment stories:** the Memo tab lets the user author a freeform **story** + one **picture** per segment (`pi_stories`
+  IndexedDB store, `data/piStories.ts`; `usePiStory`/`usePiStorySegs`/`useBlobUrl` hooks). Shown inline (view↔edit `StoryPanel`)
+  in the **study** phase and read-only-with-edit on the **result** screen; **hidden in recall** (spoiler). Images arrive via file
+  upload or clipboard paste, downscaled to ≤1024px WebP@0.8 (JPEG fallback) by `utils/imageResize.processImage` before storing.
+  Setup grid cells get a violet corner dot for segments with a story; setup also has JSON **Export/Import stories** (all segments
+  as `{seg,text,imageDataUrl}[]`).
   **Cards:** `CardsDrill` is prop-driven (`words`/`drillTypes`/`onRecord`/`storagePrefix`/`onEditWords`)
   and hosts Card→Word / Card→Number / `DeckMemoDrill`; two thin wrappers select the word source —
   `MajorCardsDrill` (`cards` mode: `useWords` + records to global stats, all 3 drill types) and
@@ -174,6 +181,8 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   derives direction-less aggregates from item-data; `buildRepQueue`, `getDueCount`, `getNextDueMs`),
   `useAnswerMode`, `useAnswerTimer` (active-elapsed timer/pause/STALE-discard),
   `usePiSegmentStatuses` (async per-segment new/weak/learned status from the `pi:` log, re-fetched on a `refreshKey`),
+  `usePiStory`/`usePiStorySegs`/`useBlobUrl` (async per-segment Pi story load + grid indicator set + object-URL lifecycle
+  for a stored Blob — revokes on change/unmount),
   `useOverlay` (focus trap/return + Escape + registers `overlayGuard`),
   `usePwaUpdate` (wraps `virtual:pwa-register/react`; gates SW update checks on `settings.offlineMode`,
   auto-applies updates from checks it initiates, exposes build version + manual check — called once in `App`).
@@ -182,13 +191,16 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   by all drills), `answerMatch` (`matchesAnswer` word + `matchesNumber` digit), `recallColor` (UI latency color),
   `storage` (`safeSet`/`safeRemove` + guarded `readString`/`readJSON`), `overlayGuard` (`isOverlayOpen`),
   `roundMastery`, `numberStats`, `vowelSkeleton`, `triples` (`groupTriples`/`roleAt` — PAO 3-card grouping),
-  `piSegments` (`segmentAnchorPos`/`segmentDigitRange`/`segmentAnchorPairs` — 0-indexed π segment ↔ position/digit-range/anchor pair).
+  `piSegments` (`segmentAnchorPos`/`segmentDigitRange`/`segmentAnchorPairs` — 0-indexed π segment ↔ position/digit-range/anchor pair),
+  `imageResize` (`processImage` — canvas downscale to ≤1024px + WebP@0.8/JPEG-fallback re-encode, for Pi story pictures).
 - **`data/`** — `words.csv`+`words.ts`, `cardWords.csv`+`cardWords.ts` (Themed Deck, 52 cards; clubs 01–13 seed
   from the major defaults), `paoCards.csv`+`paoCards.ts`+`paoCsv.ts` (PAO Deck, 52 person/action/object triples;
   dedicated quoting-aware parser), `wordsCsv.ts` (shared CSV parse/serialize), `cards.ts` (52-card deck), `soundKey.csv`+`soundKey.ts`+`soundKeyCsv.ts` (editable sound key),
   `scoring.ts` (all scoring/latency constants), `itemStore.ts` (ItemRecord + load/save + storage config),
-  `attemptStore.ts` (IndexedDB; `addAttempt`/`getAttempts` are item-keyed wrappers over the raw-key
-  `addAttemptRaw`/`getAttemptsForKey` primitives), `piStats.ts` (Pi run summaries + per-position aggregation +
+  `attemptStore.ts` (IndexedDB `major-system` db owner, **v2**; `addAttempt`/`getAttempts` are item-keyed wrappers over the
+  raw-key `addAttemptRaw`/`getAttemptsForKey` primitives; exports the shared `getDb`/`reqToPromise`/`txDone`/`hasIdb` plumbing),
+  `piStories.ts` (per-segment Pi story CRUD over the `pi_stories` store + JSON export/import + `dataUrlToBlob`/`blobToDataUrl`,
+  reusing `attemptStore`'s connection), `piStats.ts` (Pi run summaries + per-position aggregation +
   `piSegmentStatuses` new/weak/learned rollup), `sm2.ts`, `typingSpeed.ts`, `settings.ts`.
 
 ## Conventions & gotchas

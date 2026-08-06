@@ -11,7 +11,7 @@ import {
 // Record: { id (auto), key: "enc:42", at, ok, ms }
 
 const DB_NAME = 'major-system'
-const DB_VERSION = 1
+const DB_VERSION = 2
 const STORE = 'attempts'
 const MIGRATED_KEY = 'major-attempts-migrated'
 
@@ -20,16 +20,16 @@ interface AttemptRecord extends Attempt {
   key: string
 }
 
-const hasIdb = typeof indexedDB !== 'undefined'
+export const hasIdb = typeof indexedDB !== 'undefined'
 
-function reqToPromise<T>(req: IDBRequest<T>): Promise<T> {
+export function reqToPromise<T>(req: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     req.onsuccess = () => resolve(req.result)
     req.onerror = () => reject(req.error)
   })
 }
 
-function txDone(tx: IDBTransaction): Promise<void> {
+export function txDone(tx: IDBTransaction): Promise<void> {
   return new Promise((resolve, reject) => {
     tx.oncomplete = () => resolve()
     tx.onerror = () => reject(tx.error)
@@ -39,7 +39,10 @@ function txDone(tx: IDBTransaction): Promise<void> {
 
 let dbPromise: Promise<IDBDatabase> | null = null
 
-function getDb(): Promise<IDBDatabase> {
+// Single owner of the `major-system` IndexedDB connection. `piStories.ts` reuses
+// this connection rather than opening its own — a second open at a different
+// version would block the upgrade (`onblocked` hang).
+export function getDb(): Promise<IDBDatabase> {
   if (!dbPromise) {
     dbPromise = new Promise<IDBDatabase>((resolve, reject) => {
       const req = indexedDB.open(DB_NAME, DB_VERSION)
@@ -50,6 +53,11 @@ function getDb(): Promise<IDBDatabase> {
           os.createIndex('by_key', 'key')
           os.createIndex('by_at', 'at')
           os.createIndex('by_key_at', ['key', 'at'])
+        }
+        // v1 → v2: per-segment Pi stories (freeform text + one image). Keyed by
+        // 0-indexed segment; access is always by primary key, so no index.
+        if (!db.objectStoreNames.contains('pi_stories')) {
+          db.createObjectStore('pi_stories', { keyPath: 'seg' })
         }
       }
       req.onsuccess = () => resolve(req.result)

@@ -7,6 +7,9 @@ import { buildEncOptions } from '../../utils/quiz'
 import { PI_PAIRS } from '../../data/piDigits'
 import { PiSegmentGrid, PiSegmentDot } from './PiSegmentGrid'
 import { usePiSegmentStatuses } from '../../hooks/usePiSegmentStatuses'
+import { usePiStory, usePiStorySegs, useBlobUrl } from '../../hooks/usePiStory'
+import { putStory, deleteStory, exportStories, importStories, type PiStory } from '../../data/piStories'
+import { processImage } from '../../utils/imageResize'
 import { segmentDigitRange } from '../../utils/piSegments'
 import { ToolLayout } from '../ToolLayout'
 import { loadMemoedPiSegments, saveMemoedPiSegments } from '../../data/piProgress'
@@ -60,6 +63,62 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
   const [wqResults, setWqResults] = useState<WqResult[]>([])
   const [copied, setCopied] = useState(false)
   const historyEndRef = useRef<HTMLDivElement>(null)
+
+  // Per-segment story (text + picture). `storyRefresh` re-runs both story hooks
+  // after any write/import; `storyEditing` flips the panel view↔edit.
+  const [storyRefresh, setStoryRefresh] = useState(0)
+  const [storyEditing, setStoryEditing] = useState(false)
+  const [storyFlash, setStoryFlash] = useState<string | null>(null)
+  const storyFileRef = useRef<HTMLInputElement>(null)
+  const { story } = usePiStory(selectedSeg, storyRefresh)
+  const storySegs = usePiStorySegs(storyRefresh)
+
+  const flashStory = useCallback((msg: string) => {
+    setStoryFlash(msg)
+    setTimeout(() => setStoryFlash(null), 3000)
+  }, [])
+
+  // Reset the view↔edit toggle whenever the segment or phase changes.
+  useEffect(() => { setStoryEditing(false) }, [selectedSeg, phase])
+
+  const saveStory = useCallback(async (text: string, image: Blob | null) => {
+    if (selectedSeg === null) return
+    try {
+      // Empty text + no image → delete, keeping the grid indicator + export clean.
+      if (!text.trim() && !image) await deleteStory(selectedSeg)
+      else await putStory(selectedSeg, { text, image })
+      setStoryRefresh(k => k + 1)
+      setStoryEditing(false)
+    } catch {
+      flashStory('Could not save — storage may be full')
+    }
+  }, [selectedSeg, flashStory])
+
+  const handleExportStories = useCallback(async () => {
+    const blob = await exportStories()
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = 'pi-stories.json'
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }, [])
+
+  const handleImportStories = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = async ev => {
+      try {
+        const n = await importStories(ev.target?.result as string)
+        setStoryRefresh(k => k + 1)
+        flashStory(`Imported ${n} stor${n === 1 ? 'y' : 'ies'}`)
+      } catch {
+        flashStory('Import failed — invalid file')
+      }
+    }
+    reader.readAsText(file)
+  }, [flashStory])
 
   const copyWords = useCallback(() => {
     const text = sequence.map(num => words[num]).join('\n')
@@ -197,6 +256,9 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
                     } ${segIdx === nextSeg ? 'ring-2 ring-violet-500' : ''}`}
                   >
                     <PiSegmentDot status={statuses[segIdx] ?? 'new'} />
+                    {storySegs.has(segIdx) && (
+                      <span className="absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full bg-violet-400" aria-label="has story" />
+                    )}
                     <span className="text-[8px] opacity-60 leading-none tabular-nums">π {startDigit}–{endDigit}</span>
                     <span className="font-mono text-[8px] tabular-nums leading-snug mt-0.5">{line1}</span>
                     <span className="font-mono text-[8px] tabular-nums leading-snug">{line2}</span>
@@ -219,6 +281,18 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
             disabled={selectedSeg === null}
             className="w-full py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold transition-colors"
           >Study →</button>
+          <div className="flex items-center gap-2 pt-1">
+            <input ref={storyFileRef} type="file" accept="application/json" className="hidden" onChange={handleImportStories} />
+            <button
+              onClick={() => storyFileRef.current?.click()}
+              className="flex-1 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-xs font-medium text-zinc-300 hover:text-zinc-100 hover:border-violet-500 transition-colors"
+            >↑ Import stories</button>
+            <button
+              onClick={handleExportStories}
+              className="flex-1 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-xs font-medium text-zinc-300 hover:text-zinc-100 hover:border-violet-500 transition-colors"
+            >↓ Export stories</button>
+          </div>
+          {storyFlash && <p className="text-xs text-center text-violet-400">{storyFlash}</p>}
         </div>
         </ToolLayout>
       )}
@@ -249,6 +323,14 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
               </div>
             ))}
           </div>
+          <StoryPanel
+            story={story}
+            editing={storyEditing}
+            onEdit={() => setStoryEditing(true)}
+            onCancel={() => setStoryEditing(false)}
+            onSave={saveStory}
+            flash={storyFlash}
+          />
           <button
             onClick={() => {
               setStudyIdx(0)
@@ -264,7 +346,8 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
         </div>
       )}
 
-      {/* RECALL */}
+      {/* RECALL — StoryPanel is intentionally omitted here: the story/picture is
+          a spoiler for the pairs being recalled. */}
       {phase === 'recall' && (
         <div className="flex flex-col items-center gap-6 w-full max-w-md">
           {progressDots(studyIdx, wqResults)}
@@ -346,6 +429,14 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
               )
             })}
           </div>
+          <StoryPanel
+            story={story}
+            editing={storyEditing}
+            onEdit={() => setStoryEditing(true)}
+            onCancel={() => setStoryEditing(false)}
+            onSave={saveStory}
+            flash={storyFlash}
+          />
           <div className="flex gap-2">
             <button onClick={goToRecall} className="flex-1 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold transition-colors">Recall again</button>
             <button onClick={goToSetup} className="flex-1 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold transition-colors">Change segment</button>
@@ -390,6 +481,132 @@ function NextToMemoTool({ nextSeg, loading, onStudy }: {
         onClick={() => onStudy(nextSeg)}
         className="w-full py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-sm transition-colors"
       >Study →</button>
+    </div>
+  )
+}
+
+// The per-segment story: a freeform mnemonic + one picture, authored inline in
+// the study/result phases (view↔edit toggle). Image via upload or clipboard
+// paste, downscaled by processImage before it reaches the save callback.
+function StoryPanel({ story, editing, onEdit, onCancel, onSave, flash }: {
+  story: PiStory | null
+  editing: boolean
+  onEdit: () => void
+  onCancel: () => void
+  onSave: (text: string, image: Blob | null) => void
+  flash: string | null
+}) {
+  const panelCls = 'bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3'
+  const btn = 'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors'
+
+  const [draftText, setDraftText] = useState('')
+  const [draftImage, setDraftImage] = useState<Blob | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  // Seed the draft from the current story each time we enter edit mode.
+  useEffect(() => {
+    if (editing) {
+      setDraftText(story?.text ?? '')
+      setDraftImage(story?.image ?? null)
+    }
+  }, [editing, story])
+
+  const viewUrl = useBlobUrl(story?.image ?? null)
+  const draftUrl = useBlobUrl(draftImage)
+
+  const handleBlob = useCallback(async (blob: Blob) => {
+    try {
+      setDraftImage(await processImage(blob))
+    } catch {
+      /* unsupported / decode error — leave the draft image unchanged */
+    }
+  }, [])
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (file) void handleBlob(file)
+  }
+
+  // Capture pasted images; preventDefault only when an image is found so plain
+  // text paste into the textarea still works.
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items
+    if (!items) return
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i]
+      if (item.kind === 'file' && item.type.startsWith('image/')) {
+        const file = item.getAsFile()
+        if (file) { e.preventDefault(); void handleBlob(file); return }
+      }
+    }
+  }
+
+  if (!editing) {
+    const hasContent = story && (story.text.trim() || story.image)
+    return (
+      <div className={panelCls}>
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium text-zinc-300">Story &amp; picture</p>
+          <button onClick={onEdit} className={`${btn} bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-zinc-100 hover:border-violet-500`}>
+            {hasContent ? 'Edit' : '+ Add'}
+          </button>
+        </div>
+        {hasContent ? (
+          <>
+            {story!.text.trim() && (
+              <p className="text-sm text-zinc-200 whitespace-pre-wrap leading-relaxed">{story!.text}</p>
+            )}
+            {viewUrl && <img src={viewUrl} alt="Story picture" className="max-h-64 rounded-lg" />}
+          </>
+        ) : (
+          <button onClick={onEdit} className="w-full text-left text-xs text-zinc-600 hover:text-zinc-400 transition-colors">
+            Add a story or picture to anchor this segment.
+          </button>
+        )}
+        {flash && <p className="text-xs text-violet-400">{flash}</p>}
+      </div>
+    )
+  }
+
+  return (
+    <div className={panelCls}>
+      <p className="text-sm font-medium text-zinc-300">Story &amp; picture</p>
+      <div onPaste={handlePaste}>
+        <textarea
+          value={draftText}
+          onChange={e => setDraftText(e.target.value)}
+          rows={4}
+          placeholder="Describe the vivid story linking these pairs… (paste an image here too)"
+          className="w-full rounded-lg bg-zinc-800 border border-zinc-700 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-violet-500 focus:outline-none resize-y"
+        />
+        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+        <div className="flex items-center gap-2 mt-2">
+          <button onClick={() => fileRef.current?.click()} className={`${btn} bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-zinc-100 hover:border-violet-500`}>
+            Upload image
+          </button>
+          {draftImage && (
+            <button onClick={() => setDraftImage(null)} className={`${btn} bg-zinc-800 border border-zinc-700 text-red-300 hover:border-red-500`}>
+              Remove image
+            </button>
+          )}
+          {draftText.trim() && (
+            <button onClick={() => setDraftText('')} className={`${btn} bg-zinc-800 border border-zinc-700 text-red-300 hover:border-red-500`}>
+              Clear story
+            </button>
+          )}
+        </div>
+        {draftUrl && <img src={draftUrl} alt="Story picture preview" className="max-h-64 rounded-lg mt-2" />}
+      </div>
+      <div className="flex items-center gap-2 pt-1">
+        <button onClick={() => onSave(draftText, draftImage)} className={`${btn} flex-1 bg-violet-600 hover:bg-violet-500 text-white font-semibold`}>
+          Save
+        </button>
+        <button onClick={onCancel} className={`${btn} flex-1 bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-zinc-100`}>
+          Cancel
+        </button>
+      </div>
+      {flash && <p className="text-xs text-red-400">{flash}</p>}
     </div>
   )
 }
