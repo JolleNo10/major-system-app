@@ -2,7 +2,7 @@ import type { AnswerMode } from '@/core/types'
 import { readJSON, safeSet } from '@/core/storage'
 import { addAttemptRaw, getAllAttempts } from '@/core/scoring/attemptStore'
 import { medianMs } from '@/core/scoring/itemStore'
-import { PI_PAIRS } from '@/features/pi/piDigits'
+import { PI_PAIRS } from '@/features/pi/shared/piDigits'
 
 // Pi drill (number-quiz only) metrics. Two persisted shapes:
 //   - session summaries → localStorage (one row per completed run, capped)

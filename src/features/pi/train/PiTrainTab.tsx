@@ -1,12 +1,12 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useWords } from '@/features/major-system'
 import { useSettings } from '@/app/settings/SettingsContext'
-import { PiNumberQuiz } from '@/features/pi/PiNumberQuiz'
-import { PI_PAIRS } from '@/features/pi/piDigits'
+import { PiNumberQuiz } from '@/features/pi/shared/PiNumberQuiz'
+import { PI_PAIRS } from '@/features/pi/shared/piDigits'
 import {
   rankPiSegments, rankPiBoundaries, recordPiChain, PAIRS_PER_SEGMENT,
   type PiSegmentStat, type PiBoundaryStat,
-} from '@/features/pi/piStats'
+} from '@/features/pi/shared/piStats'
 import type { AnswerMode } from '@/core/types'
 
 interface Props { answerMode: AnswerMode; maxPiPairs: number }

@@ -1,12 +1,12 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useWords } from '@/features/major-system'
 import { useSettings } from '@/app/settings/SettingsContext'
-import { PiNumberQuiz, type PiQuizCompletion } from '@/features/pi/PiNumberQuiz'
+import { PiNumberQuiz, type PiQuizCompletion } from '@/features/pi/shared/PiNumberQuiz'
 import { readString, safeSet } from '@/core/storage'
-import { PI_PAIRS } from '@/features/pi/piDigits'
-import { loadPiSessions, bestFromStartReach, type PiSession } from '@/features/pi/piStats'
-import { PiSegmentGrid, PiSegmentDot, PiSegmentRangePreview } from '@/features/pi/PiSegmentGrid'
-import { usePiSegmentStatuses } from '@/features/pi/usePiSegmentStatuses'
+import { PI_PAIRS } from '@/features/pi/shared/piDigits'
+import { loadPiSessions, bestFromStartReach, type PiSession } from '@/features/pi/shared/piStats'
+import { PiSegmentGrid, PiSegmentDot, PiSegmentRangePreview } from '@/features/pi/shared/PiSegmentGrid'
+import { usePiSegmentStatuses } from '@/features/pi/shared/usePiSegmentStatuses'
 import { useRails } from '@/app/layout/PageLayoutContext'
 import {
   flawlessSegmentsFromRun,
@@ -16,7 +16,7 @@ import {
   pendingMemoedSegmentRanges,
   saveFlawlesslyRecitedPiSegments,
   type PiSegmentRange,
-} from '@/features/pi/piProgress'
+} from '@/features/pi/shared/piProgress'
 import type { AnswerMode } from '@/core/types'
 
 const SEL_START_KEY = 'major-pi-sel-start'

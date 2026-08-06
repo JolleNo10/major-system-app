@@ -1,8 +1,8 @@
 import { Fragment, useState, type ReactNode } from 'react'
-import type { PiSegmentStatus } from '@/features/pi/piStats'
-import { PAIRS_PER_SEGMENT } from '@/features/pi/piStats'
-import { PI_PAIRS } from '@/features/pi/piDigits'
-import { segmentDigitRange } from '@/features/pi/piSegments'
+import type { PiSegmentStatus } from '@/features/pi/shared/piStats'
+import { PAIRS_PER_SEGMENT } from '@/features/pi/shared/piStats'
+import { PI_PAIRS } from '@/features/pi/shared/piDigits'
+import { segmentDigitRange } from '@/features/pi/shared/piSegments'
 import { readJSON, safeSet } from '@/core/storage'
 
 const DIGITS_PER_SEGMENT = 20

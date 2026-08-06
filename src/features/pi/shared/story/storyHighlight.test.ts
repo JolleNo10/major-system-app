@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { highlightStory } from '@/features/pi/storyHighlight'
+import { highlightStory } from '@/features/pi/shared/story/storyHighlight'
 
 const matchedText = (text: string, words: string[]) =>
   highlightStory(text, words).segments.filter(s => s.matched).map(s => s.text)

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { piSegmentStatuses, type PiSegmentStatus } from '@/features/pi/piStats'
+import { piSegmentStatuses, type PiSegmentStatus } from '@/features/pi/shared/piStats'
 
 // Async-load per-segment learning status from the IndexedDB attempt log.
 // `refreshKey` re-fetches when it changes — pass the tab's phase so the grid

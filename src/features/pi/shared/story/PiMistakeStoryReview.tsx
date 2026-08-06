@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { PI_PAIRS } from '@/features/pi/piDigits'
-import { useBlobUrl, usePiStory } from '@/features/pi/usePiStory'
-import { segmentDigitRange } from '@/features/pi/piSegments'
-import { highlightStory } from '@/features/pi/storyHighlight'
+import { PI_PAIRS } from '@/features/pi/shared/piDigits'
+import { useBlobUrl, usePiStory } from '@/features/pi/shared/story/usePiStory'
+import { segmentDigitRange } from '@/features/pi/shared/piSegments'
+import { highlightStory } from '@/features/pi/shared/story/storyHighlight'
 
 const PAIRS_PER_SEGMENT = 10
 

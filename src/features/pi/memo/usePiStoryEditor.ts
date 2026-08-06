@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
-import { usePiStory, usePiStorySegs } from '@/features/pi/usePiStory'
-import { putStory, deleteStory, exportStories, importStories, type PiStory } from '@/features/pi/piStories'
+import { usePiStory, usePiStorySegs } from '@/features/pi/shared/story/usePiStory'
+import { putStory, deleteStory, exportStories, importStories, type PiStory } from '@/features/pi/shared/story/piStories'
 
 export interface PiStoryEditor {
   story: PiStory | null          // the selected segment's story (null when none / no selection)

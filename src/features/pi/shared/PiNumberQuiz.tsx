@@ -1,12 +1,12 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { MultipleChoice } from '@/core/ui/MultipleChoice'
 import { TypingInput } from '@/core/ui/TypingInput'
-import { PiBatchInput } from '@/features/pi/PiBatchInput'
+import { PiBatchInput } from '@/features/pi/shared/PiBatchInput'
 import { shuffle, pickDistractors } from '@/core/scoring/quiz'
 import { summarizeBatchTimings, type BatchTiming } from '@/core/ui/numericInput'
 import { addAttemptRaw } from '@/core/scoring/attemptStore'
-import { addPiSession } from '@/features/pi/piStats'
-import { PiMistakeStoryReview } from '@/features/pi/PiMistakeStoryReview'
+import { addPiSession } from '@/features/pi/shared/piStats'
+import { PiMistakeStoryReview } from '@/features/pi/shared/story/PiMistakeStoryReview'
 import type { AnswerMode } from '@/core/types'
 
 export type AnswerSize = 1 | 10

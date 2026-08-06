@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { PI_PAIRS } from '@/features/pi/piDigits'
-import { segmentAnchorPos, segmentDigitRange, segmentAnchorPairs } from '@/features/pi/piSegments'
+import { PI_PAIRS } from '@/features/pi/shared/piDigits'
+import { segmentAnchorPos, segmentDigitRange, segmentAnchorPairs } from '@/features/pi/shared/piSegments'
 
 describe('segmentAnchorPos', () => {
   it('maps segment 0 to the first π pair', () => {

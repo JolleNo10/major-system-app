@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getStory, getStorySegs, type PiStory } from '@/features/pi/piStories'
+import { getStory, getStorySegs, type PiStory } from '@/features/pi/shared/story/piStories'
 
 // Async-load one segment's story from IndexedDB. `refreshKey` re-fetches when it
 // changes — bump it after a write so the panel reflects the new state.

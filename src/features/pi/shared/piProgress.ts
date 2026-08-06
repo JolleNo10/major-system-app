@@ -1,5 +1,5 @@
 import { readJSON, safeSet } from '@/core/storage'
-import type { PiSegmentStatus, PiSession } from '@/features/pi/piStats'
+import type { PiSegmentStatus, PiSession } from '@/features/pi/shared/piStats'
 
 const MEMOED_SEGMENTS_KEY = 'major-pi-memoed-segs'
 const RECITED_SEGMENTS_KEY = 'major-pi-recited-segs'

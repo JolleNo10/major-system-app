@@ -5,8 +5,8 @@ import {
   loadFlawlesslyRecitedPiSegments,
   pendingMemoedSegmentRanges,
   saveFlawlesslyRecitedPiSegments,
-} from '@/features/pi/piProgress'
-import type { PiSession } from '@/features/pi/piStats'
+} from '@/features/pi/shared/piProgress'
+import type { PiSession } from '@/features/pi/shared/piStats'
 
 afterEach(() => vi.unstubAllGlobals())
 

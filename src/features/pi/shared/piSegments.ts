@@ -1,5 +1,5 @@
-import { PI_PAIRS } from '@/features/pi/piDigits'
-import { PAIRS_PER_SEGMENT } from '@/features/pi/piStats'
+import { PI_PAIRS } from '@/features/pi/shared/piDigits'
+import { PAIRS_PER_SEGMENT } from '@/features/pi/shared/piStats'
 
 // π is memorised in fixed segments of PAIRS_PER_SEGMENT pairs (= 20 decimal
 // digits). These map a 0-indexed segment to its position in π. The segment's

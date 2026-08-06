@@ -1,12 +1,12 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { PiSegmentRangePreview } from '@/features/pi/PiSegmentGrid'
-import { useBlobUrl } from '@/features/pi/usePiStory'
-import { type PiStory } from '@/features/pi/piStories'
-import { processImage } from '@/features/pi/imageResize'
-import { highlightStory } from '@/features/pi/storyHighlight'
+import { PiSegmentRangePreview } from '@/features/pi/shared/PiSegmentGrid'
+import { useBlobUrl } from '@/features/pi/shared/story/usePiStory'
+import { type PiStory } from '@/features/pi/shared/story/piStories'
+import { processImage } from '@/features/pi/memo/imageResize'
+import { highlightStory } from '@/features/pi/shared/story/storyHighlight'
 import { useRails } from '@/app/layout/PageLayoutContext'
-import type { PiStoryEditor } from '@/features/pi/usePiStoryEditor'
-import type { Phase } from '@/features/pi/PiMemoTab'
+import type { PiStoryEditor } from '@/features/pi/memo/usePiStoryEditor'
+import type { Phase } from '@/features/pi/memo/PiMemoTab'
 
 // The Pi Memo tab's right rail (side panel), split out from the middle-panel
 // drill (`PiMemoTab`). The one public interface is `usePiMemoRail`, which maps

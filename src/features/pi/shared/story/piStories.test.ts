@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { dataUrlToBlob } from '@/features/pi/piStories'
+import { dataUrlToBlob } from '@/features/pi/shared/story/piStories'
 
 describe('dataUrlToBlob', () => {
   it('decodes a base64 data URL to a Blob with the right MIME type and byte length', () => {
