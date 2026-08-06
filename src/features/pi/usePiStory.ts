@@ -7,9 +7,13 @@ export function usePiStory(seg: number | null, refreshKey: unknown): { story: Pi
   const [story, setStory] = useState<PiStory | null>(null)
   const [loading, setLoading] = useState(seg !== null)
   useEffect(() => {
+    // Do not let the previous segment's record remain addressable while the
+    // new read is in flight. The memo editor can be opened immediately after
+    // navigation; retaining the old record here lets that editor seed its
+    // draft from the wrong segment and save it under the new key.
+    setStory(null)
+    setLoading(seg !== null)
     if (seg === null) {
-      setStory(null)
-      setLoading(false)
       return
     }
     let alive = true

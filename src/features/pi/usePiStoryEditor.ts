@@ -4,6 +4,7 @@ import { putStory, deleteStory, exportStories, importStories, type PiStory } fro
 
 export interface PiStoryEditor {
   story: PiStory | null          // the selected segment's story (null when none / no selection)
+  loading: boolean               // the selected segment's story read is in flight (avoid stale seed)
   storySegs: Set<number>         // every segment that has a stored story (grid indicators)
   editing: boolean               // view↔edit toggle for the StoryPanel
   flash: string | null           // transient save/import status message
@@ -25,7 +26,7 @@ export function usePiStoryEditor(selectedSeg: number | null, phase: string): PiS
   const [editing, setEditing] = useState(false)
   const [flash, setFlash] = useState<string | null>(null)
 
-  const { story } = usePiStory(selectedSeg, refresh)
+  const { story, loading } = usePiStory(selectedSeg, refresh)
   const storySegs = usePiStorySegs(refresh)
 
   const doFlash = useCallback((msg: string) => {
@@ -78,5 +79,5 @@ export function usePiStoryEditor(selectedSeg: number | null, phase: string): PiS
   const onEdit = useCallback(() => setEditing(true), [])
   const onCancel = useCallback(() => setEditing(false), [])
 
-  return { story, storySegs, editing, flash, onEdit, onCancel, onSave, onExport, onImport }
+  return { story, loading, storySegs, editing, flash, onEdit, onCancel, onSave, onExport, onImport }
 }
