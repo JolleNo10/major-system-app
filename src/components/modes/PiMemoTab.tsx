@@ -71,7 +71,7 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
   const [storyEditing, setStoryEditing] = useState(false)
   const [storyFlash, setStoryFlash] = useState<string | null>(null)
   const storyFileRef = useRef<HTMLInputElement>(null)
-  const { story } = usePiStory(selectedSeg, storyRefresh)
+  const { story, loading: storyLoading } = usePiStory(selectedSeg, storyRefresh)
   const storySegs = usePiStorySegs(storyRefresh)
 
   const flashStory = useCallback((msg: string) => {
@@ -223,6 +223,7 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
   const storyPanel = (
     <StoryPanel
       story={story}
+      loading={storyLoading}
       expectedWords={sequence.map(num => words[num])}
       editing={storyEditing}
       onEdit={() => setStoryEditing(true)}
@@ -253,7 +254,7 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
     phase === 'setup' ? 'Next to memo' : phase === 'study' ? 'Study tools' : 'Story & picture'
   useRails(
     { right: rightRail, rightLabel },
-    [phase, nextSeg, statuses.length, studySegment, story, sequence, words, storyEditing, saveStory, storyFlash, copyWords, copied],
+    [phase, nextSeg, statuses.length, studySegment, story, storyLoading, sequence, words, storyEditing, saveStory, storyFlash, copyWords, copied],
   )
 
   const progressDots = (idx: number, results?: WqResult[]) => (
@@ -514,8 +515,9 @@ function NextToMemoTool({ nextSeg, loading, onStudy }: {
 // The per-segment story: a freeform mnemonic + one picture, authored inline in
 // the study/result phases (view↔edit toggle). Image via upload or clipboard
 // paste, downscaled by processImage before it reaches the save callback.
-function StoryPanel({ story, expectedWords, editing, onEdit, onCancel, onSave, flash }: {
+function StoryPanel({ story, loading, expectedWords, editing, onEdit, onCancel, onSave, flash }: {
   story: PiStory | null
+  loading: boolean
   expectedWords: string[]   // the segment's 10 Major-System words, for highlight + warning
   editing: boolean
   onEdit: () => void
@@ -569,13 +571,22 @@ function StoryPanel({ story, expectedWords, editing, onEdit, onCancel, onSave, f
     }
   }
 
+  if (loading) {
+    return (
+      <div className={panelCls}>
+        <p className="text-sm font-medium text-zinc-300">Story &amp; picture</p>
+        <p className="text-xs text-zinc-500">Loading story…</p>
+      </div>
+    )
+  }
+
   if (!editing) {
     const hasContent = story && (story.text.trim() || story.image)
     return (
       <div className={panelCls}>
         <div className="flex items-center justify-between">
           <p className="text-sm font-medium text-zinc-300">Story &amp; picture</p>
-          <button onClick={onEdit} className={`${btn} bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-zinc-100 hover:border-violet-500`}>
+          <button onClick={onEdit} disabled={loading} className={`${btn} bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-zinc-100 hover:border-violet-500 disabled:opacity-50 disabled:cursor-not-allowed`}>
             {hasContent ? 'Edit' : '+ Add'}
           </button>
         </div>
