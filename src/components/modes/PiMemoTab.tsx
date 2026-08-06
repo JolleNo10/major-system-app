@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { useWords } from '../../context/WordsContext'
 import { MultipleChoice } from '../MultipleChoice'
 import { TypingInput } from '../TypingInput'
-import { readString, safeSet } from '../../utils/storage'
+import { readString, readJSON, safeSet } from '../../utils/storage'
 import { buildEncOptions } from '../../utils/quiz'
 import { PI_PAIRS } from '../../data/piDigits'
 import { PiSegmentGrid, PiSegmentDot } from './PiSegmentGrid'
@@ -12,6 +12,10 @@ import { ToolLayout } from '../ToolLayout'
 import type { AnswerMode } from '../../types'
 
 const MEMO_SEG_KEY = 'major-pi-memo-seg'
+// Segments the user has memorised in Memo mode (recalled with all pairs
+// correct ≥1×). Recite records to the pi: log; Memo records nothing, so this
+// is the only signal that a Memo-only segment is no longer "new".
+const MEMOED_SEGS_KEY = 'major-pi-memoed-segs'
 const PAIRS_PER_SEG = 10
 
 type Phase = 'setup' | 'study' | 'recall' | 'result'
@@ -33,10 +37,20 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
   const [sequence, setSequence] = useState<string[]>([])
   const [sessionAnchor, setSessionAnchor] = useState(1)
 
+  const [memoedSegs, setMemoedSegs] = useState<Set<number>>(
+    () => new Set(readJSON<number[]>(MEMOED_SEGS_KEY, [])),
+  )
+
   const statuses = usePiSegmentStatuses(maxPiPairs, phase)
-  // "Next to memo" = the first untested segment (ones already recited, even
-  // weakly, have clearly been memorised). −1 once everything's been touched.
-  const nextSeg = statuses.indexOf('new')
+  // "Next to memo" = the first segment that's neither been recited (pi: log,
+  // even weakly) nor successfully memorised in Memo mode. −1 once every
+  // segment has been touched one way or the other.
+  const nextSeg = (() => {
+    for (let i = 0; i < statuses.length; i++) {
+      if (statuses[i] === 'new' && !memoedSegs.has(i)) return i
+    }
+    return -1
+  })()
 
   const [studyIdx, setStudyIdx] = useState(0)
   const [wqAnswered, setWqAnswered] = useState<string | null>(null)
@@ -58,6 +72,20 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
   useEffect(() => {
     historyEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }, [wqResults.length])
+
+  // Mark the segment memorised once the recall test is completed with every
+  // pair correct — this is what lets "Next to memo" advance past segments
+  // learned in Memo mode (which otherwise record nothing).
+  useEffect(() => {
+    if (phase !== 'result' || selectedSeg === null) return
+    const allCorrect = wqResults.length === sequence.length && wqResults.every(r => r.ok)
+    if (!allCorrect || memoedSegs.has(selectedSeg)) return
+    setMemoedSegs(prev => {
+      const next = new Set(prev).add(selectedSeg)
+      safeSet(MEMOED_SEGS_KEY, JSON.stringify([...next]))
+      return next
+    })
+  }, [phase, selectedSeg, wqResults, sequence.length, memoedSegs])
 
   const studySegment = useCallback((seg: number) => {
     const anchor = seg * PAIRS_PER_SEG + 1
