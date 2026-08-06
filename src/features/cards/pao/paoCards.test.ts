@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { PAO_SHIPPED, buildPaoCards, paoKey } from '@/features/pao/paoCards'
+import { PAO_SHIPPED, buildPaoCards, paoKey } from '@/features/cards/pao/paoCards'
 import { CARD_NUMBERS } from '@/core/cards'
 
 describe('PAO_SHIPPED', () => {

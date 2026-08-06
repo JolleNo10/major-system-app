@@ -46,7 +46,7 @@ src/
                roundMastery recallColor typingSpeed useStats useAnswerTimer
     ui/        MultipleChoice TypingInput AnswerModeToggle useAnswerMode numericInput
                Switch RangeSlider ScoreBar RankRangeSelector WordListGrid
-  features/                     # each depends on core/; flat inside
+  features/                     # each depends on core/
     major-system/  drills (WordNumberDrill EncodingDrill DecodingDrill SequenceDrill
                    SpeedRound WeakSpots RepetitionDrill SoundKeyDrill ReverseSoundKeyDrill)
                    SoundKeyGrid SoundKeyPanel HintButton RoundStatsPanel vowelSkeleton
@@ -55,15 +55,18 @@ src/
                    PiSegmentGrid PiMemoRail PiMistakeStoryReview PiBatchInput
                    piDigits piProgress piStats piStories piSegments storyHighlight imageResize
                    usePiSegmentStatuses usePiStory usePiStoryEditor
-    cards/         CardsDrill DeckMemoDrill MajorCardsDrill ThemedCardsDrill
-                   CardWordsOverlay cardWords(.csv) CardWordsContext
-    pao/           PaoCardsDrill PaoDeckMemoDrill PaoWordsGrid PaoWordsOverlay
-                   paoCards(.csv) paoCsv PaoCardsContext triples
+    cards/         index.ts (single barrel); internally split by flavor:
+                   shared/  CardsDrill DeckMemoDrill (the Card→Word/Number engine)
+                   card/    MajorCardsDrill
+                   themed/  ThemedCardsDrill CardWordsOverlay cardWords(.csv) CardWordsContext
+                   pao/     PaoCardsDrill PaoDeckMemoDrill PaoWordsGrid PaoWordsOverlay
+                            paoCards(.csv) paoCsv PaoCardsContext triples
 ```
 
 **Layering rule:** `core/` → self only; `features/*` → `core/` (+ kept feature→feature edges:
-`cards → major-system` and `pi → major-system` both reuse the Words store, `pao → cards` for
-"🎭 From Themed Deck"); `app/` → anything.
+`cards → major-system` and `pi → major-system` both reuse the Words store); `app/` → anything. The
+PAO "🎭 From Themed Deck" seed is now an **intra-feature** edge (`cards/pao/` → `cards/themed/`) since
+PAO folded into `cards`.
 
 **Feature barrels:** each feature has an `index.ts` that re-exports its **public interface** (drill
 entry-points, providers/hooks, and the handful of data/stats symbols the shell needs). All code
@@ -124,14 +127,14 @@ derives the effective `SoundKeyEntry[]`/`ALL_SOUNDS`/`SOUND_TO_DIGIT` from the s
 etc. `SoundKeyGrid` (Reference → Sound Key tab) is the 3-column editor with the same Import/Export/Persist/
 Reset flow; the two sound-key drills + `SoundKeyPanel` read `useSoundKey()` so they reflect edits.
 
-**The PAO Deck is a fourth editable list** (`features/pao/paoCards.csv` shipped — `number,person,action,object`,
+**The PAO Deck is a fourth editable list** (`features/cards/pao/paoCards.csv` shipped — `number,person,action,object`,
 cards `01`–`52` — parsed by `paoCsv.ts`, a dedicated quoting-aware parser, **not** the shared `wordsCsv.ts`).
 Stored flat under composite keys `"<NN>:<field>"` (`person`/`action`/`object`), so `createWordStore` is reused
-(`PaoCardsContext`); `features/pao/paoCards.ts` derives the effective `PaoCard[]` from the store via `buildPaoCards`.
+(`PaoCardsContext`); `features/cards/pao/paoCards.ts` derives the effective `PaoCard[]` from the store via `buildPaoCards`.
 `PaoWordsGrid` (opened from the PAO Deck's "📇 Edit words" via `PaoWordsOverlay`) is the 3-column,
 suit-grouped editor with the same Import/Export/Persist/Reset flow, plus a **"🎭 From Themed Deck"**
 button that seeds the Person column from the Themed Deck word list (`useCardWords`, person-only, via `importEffective`). Independent of the Themed Deck list —
-the current Themed Deck is untouched. `features/pao/triples.ts` (`groupTriples`, `roleAt`) chunks a deck into
+the current Themed Deck is untouched. `features/cards/pao/triples.ts` (`groupTriples`, `roleAt`) chunks a deck into
 Person/Action/Object triples (partial final group of 1–2 kept).
 
 ## Scoring & spaced repetition
@@ -163,7 +166,7 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   `HOME_TITLE` is `'Mnemonics'`.
 - `src/app/main.tsx` — mounts `SettingsProvider > WordsProvider > CardWordsProvider > PaoCardsProvider > SoundKeyProvider > PageLayoutProvider > App`; calls `initAttempts()` (opens IndexedDB + one-time migration of any legacy in-blob attempts).
 - `src/core/types.ts` — `Mode`, `AnswerMode`, `Direction`, `NumberStats`/`AllStats` (in `core` so `core/scoring` can consume it).
-- **Feature drills** (`features/major-system/`, `features/pi/`, `features/cards/`, `features/pao/`): `WordNumberDrill` is the shared config-driven engine for both directions;
+- **Feature drills** (`features/major-system/`, `features/pi/`, `features/cards/` — the last split internally into `shared`/`card`/`themed`/`pao`): `WordNumberDrill` is the shared config-driven engine for both directions;
   `EncodingDrill`/`DecodingDrill` are ~25-line `DrillConfig` wrappers over it (direction, prompt styling,
   matcher, hint toggle). `SoundKeyDrill`, `ReverseSoundKeyDrill`, `SequenceDrill` (setup→study→recall→result),
   `SpeedRound`, `WeakSpots` (feeds a weak-number `pool` into `EncodingDrill`), `RepetitionDrill` (SM-2 due queue),
@@ -246,13 +249,13 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   `app/layout/`: `overlayGuard` (`isOverlayOpen`);
   `core/ui/`: `numericInput`;
   `features/major-system/`: `vowelSkeleton`;
-  `features/pao/`: `triples` (`groupTriples`/`roleAt` — PAO 3-card grouping);
+  `features/cards/pao/`: `triples` (`groupTriples`/`roleAt` — PAO 3-card grouping);
   `features/pi/`: `piSegments` (`segmentAnchorPos`/`segmentDigitRange`/`segmentAnchorPairs` — 0-indexed π segment ↔ position/digit-range/anchor pair),
   `imageResize` (`processImage` — canvas downscale to ≤1024px + WebP@0.8/JPEG-fallback re-encode, for Pi story pictures),
   `storyHighlight` (`highlightStory` — sequentially match a segment's ordered words at either token edge in a freeform Pi story → highlight runs + missing-word list).
 - **Data & stores** (filed by domain) — `features/major-system/`: `words.csv`+`words.ts`, `soundKey.csv`+`soundKey.ts`+`soundKeyCsv.ts` (editable sound key);
   `features/cards/`: `cardWords.csv`+`cardWords.ts` (Themed Deck, 52 cards; clubs 01–13 seed from the major defaults);
-  `features/pao/`: `paoCards.csv`+`paoCards.ts`+`paoCsv.ts` (PAO Deck, 52 person/action/object triples; dedicated quoting-aware parser);
+  `features/cards/pao/`: `paoCards.csv`+`paoCards.ts`+`paoCsv.ts` (PAO Deck, 52 person/action/object triples; dedicated quoting-aware parser);
   `core/`: `wordsCsv.ts` (shared CSV parse/serialize), `cards.ts` (52-card deck);
   `core/scoring/`: `scoring.ts` (all scoring/latency constants), `itemStore.ts` (ItemRecord + load/save + storage config),
   `attemptStore.ts` (IndexedDB `major-system` db owner, **v2**; `addAttempt`/`getAttempts` are item-keyed wrappers over the

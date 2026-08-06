@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { groupTriples, roleAt } from '@/features/pao/triples'
+import { groupTriples, roleAt } from '@/features/cards/pao/triples'
 
 describe('groupTriples', () => {
   it('chunks an exact multiple of 3 into full triples', () => {

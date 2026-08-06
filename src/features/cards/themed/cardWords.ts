@@ -2,7 +2,7 @@
 // (♣=01-13, ♦=14-26, ♥=27-39, ♠=40-52). Separate from the Major System list (words.csv);
 // clubs 01-13 are a standalone snapshot of the major defaults, not linked afterward.
 // Edit cardWords.csv to change the shipped defaults, or edit in-app (Themed Deck → Edit words).
-import raw from '@/features/cards/cardWords.csv?raw'
+import raw from '@/features/cards/themed/cardWords.csv?raw'
 import { parseWordsCsv } from '@/core/wordsCsv'
 
 const { rows, errors } = parseWordsCsv(raw)

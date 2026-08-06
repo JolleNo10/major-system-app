@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { createWordStore } from '@/core/createWordStore'
-import { PAO_SHIPPED, buildPaoCards, type PaoCard } from '@/features/pao/paoCards'
+import { PAO_SHIPPED, buildPaoCards, type PaoCard } from '@/features/cards/pao/paoCards'
 
 // Editable PAO deck — same 3-layer store as the word/sound-key lists, keyed by
 // composite "<number>:<field>" strings (see data/paoCards.ts). The editor grid

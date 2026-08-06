@@ -15,7 +15,7 @@ import { matchesAnswer } from '@/core/answerMatch'
 import { CARDS, RANKS, rankIndex } from '@/core/cards'
 import type { Card, Suit } from '@/core/cards'
 import type { AnswerMode, Direction } from '@/core/types'
-import { DeckMemoDrill } from '@/features/cards/DeckMemoDrill'
+import { DeckMemoDrill } from '@/features/cards/shared/DeckMemoDrill'
 import { RankRangeSelector } from '@/core/ui/RankRangeSelector'
 
 const ALL_SUITS: Suit[] = ['♣', '♦', '♥', '♠']

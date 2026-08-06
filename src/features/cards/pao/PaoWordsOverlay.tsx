@@ -1,5 +1,5 @@
 import { Overlay } from '@/app/layout/Overlay'
-import { PaoWordsGrid } from '@/features/pao/PaoWordsGrid'
+import { PaoWordsGrid } from '@/features/cards/pao/PaoWordsGrid'
 
 interface Props {
   onClose: () => void

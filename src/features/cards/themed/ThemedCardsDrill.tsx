@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { useCardWords } from '@/features/cards/CardWordsContext'
-import { CardsDrill } from '@/features/cards/CardsDrill'
-import { CardWordsOverlay } from '@/features/cards/CardWordsOverlay'
+import { useCardWords } from '@/features/cards/themed/CardWordsContext'
+import { CardsDrill } from '@/features/cards/shared/CardsDrill'
+import { CardWordsOverlay } from '@/features/cards/themed/CardWordsOverlay'
 import type { AnswerMode } from '@/core/types'
 
 // Themed Deck: cards map to a separate per-suit word list (its own storage),

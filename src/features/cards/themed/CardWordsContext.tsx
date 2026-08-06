@@ -1,4 +1,4 @@
-import { CARD_WORDS } from '@/features/cards/cardWords'
+import { CARD_WORDS } from '@/features/cards/themed/cardWords'
 import { createWordStore } from '@/core/createWordStore'
 
 // Themed Deck word list — a separate 01–52 map (one person/word per card),

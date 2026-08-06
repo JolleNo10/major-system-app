@@ -3,8 +3,8 @@
 // same 3-layer store as the word/sound-key lists. Effective triples are derived
 // from that store via usePaoCards(); nothing here is a live singleton beyond the
 // shipped seed. Independent of the Themed Deck list (cardWords.csv).
-import raw from '@/features/pao/paoCards.csv?raw'
-import { parsePaoCsv } from '@/features/pao/paoCsv'
+import raw from '@/features/cards/pao/paoCards.csv?raw'
+import { parsePaoCsv } from '@/features/cards/pao/paoCsv'
 import { CARD_NUMBERS } from '@/core/cards'
 
 export interface PaoCard {

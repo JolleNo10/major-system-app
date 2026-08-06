@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { CARDS, RANKS } from '@/core/cards'
 import type { Card, Suit } from '@/core/cards'
-import type { PaoCard } from '@/features/pao/paoCards'
+import type { PaoCard } from '@/features/cards/pao/paoCards'
 import { shuffle } from '@/core/scoring/quiz'
-import { groupTriples, roleAt } from '@/features/pao/triples'
+import { groupTriples, roleAt } from '@/features/cards/pao/triples'
 import { isOverlayOpen } from '@/app/layout/overlayGuard'
 import { safeSet } from '@/core/storage'
 

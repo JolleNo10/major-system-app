@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { CARD_WORDS } from '@/features/cards/cardWords'
+import { CARD_WORDS } from '@/features/cards/themed/cardWords'
 import { WORDS } from '@/features/major-system'
 
 describe('cardWords', () => {

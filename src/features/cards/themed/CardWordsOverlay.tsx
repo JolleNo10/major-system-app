@@ -1,6 +1,6 @@
 import { WordListGrid } from '@/core/ui/WordListGrid'
 import { Overlay } from '@/app/layout/Overlay'
-import { useCardWords } from '@/features/cards/CardWordsContext'
+import { useCardWords } from '@/features/cards/themed/CardWordsContext'
 import { CARDS, CARD_NUMBERS } from '@/core/cards'
 import type { Suit } from '@/core/cards'
 

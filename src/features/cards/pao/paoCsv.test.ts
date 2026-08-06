@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parsePaoCsv, serializePaoCsv, PAO_CSV_HEADER, type PaoRow } from '@/features/pao/paoCsv'
+import { parsePaoCsv, serializePaoCsv, PAO_CSV_HEADER, type PaoRow } from '@/features/cards/pao/paoCsv'
 
 const row = (number: string, person: string, action: string, object: string): PaoRow =>
   ({ number, person, action, object })

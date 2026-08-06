@@ -2,8 +2,7 @@ import type { ComponentType } from 'react'
 import type { Mode, AnswerMode } from '@/core/types'
 import { DecodingDrill, EncodingDrill, RepetitionDrill, ReverseSoundKeyDrill, SequenceDrill, SoundKeyDrill, SpeedRound, WeakSpots } from '@/features/major-system'
 import { PiDrill } from '@/features/pi'
-import { MajorCardsDrill, ThemedCardsDrill } from '@/features/cards'
-import { PaoCardsDrill } from '@/features/pao'
+import { MajorCardsDrill, ThemedCardsDrill, PaoCardsDrill } from '@/features/cards'
 
 // Single source of truth for every non-home mode: its header title, the drill
 // component, and the ModeSelector card. Because it is Record<DrillMode, …>,
