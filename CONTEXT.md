@@ -11,7 +11,9 @@ internally into `shared`/`card`/`themed`/`pao`) over a shared `core/`
 is `features/pi/`: a self-contained feature that exposes its drill entry-points through
 `features/pi/index.ts` and keeps everything else internal. It depends on `core/` and reuses
 the Major-System **Word** list via the `features/major-system` barrel (its one cross-feature
-edge). The glossary below is the ubiquitous language for that feature.
+edge). Internally it's split by tab (see ADR 0004): `shared/` (`+story/`) holds code reached by
+3+ tabs or the app; `memo/`, `recite/`, `train/`, `anchors/` each own one tab (with `PiDrill` the
+composition root at the root). The glossary below is the ubiquitous language for that feature.
 
 ## Language
 
