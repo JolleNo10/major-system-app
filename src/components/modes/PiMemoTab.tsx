@@ -303,6 +303,20 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
 
       {/* STUDY */}
       {phase === 'study' && (
+        <ToolLayout
+          rightLabel="Story & picture"
+          right={(
+            <StoryPanel
+              story={story}
+              expectedWords={sequence.map(num => words[num])}
+              editing={storyEditing}
+              onEdit={() => setStoryEditing(true)}
+              onCancel={() => setStoryEditing(false)}
+              onSave={saveStory}
+              flash={storyFlash}
+            />
+          )}
+        >
         <div className="w-full max-w-md space-y-4">
           <div className="text-center space-y-1">
             <p className="text-xs text-zinc-600 uppercase tracking-widest">Memorise the sequence</p>
@@ -327,15 +341,6 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
               </div>
             ))}
           </div>
-          <StoryPanel
-            story={story}
-            expectedWords={sequence.map(num => words[num])}
-            editing={storyEditing}
-            onEdit={() => setStoryEditing(true)}
-            onCancel={() => setStoryEditing(false)}
-            onSave={saveStory}
-            flash={storyFlash}
-          />
           <button
             onClick={() => {
               setStudyIdx(0)
@@ -349,6 +354,7 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
             className="w-full py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold transition-colors"
           >Test recall →</button>
         </div>
+        </ToolLayout>
       )}
 
       {/* RECALL — StoryPanel is intentionally omitted here: the story/picture is
@@ -414,6 +420,20 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
 
       {/* RESULT */}
       {phase === 'result' && (
+        <ToolLayout
+          rightLabel="Story & picture"
+          right={(
+            <StoryPanel
+              story={story}
+              expectedWords={sequence.map(num => words[num])}
+              editing={storyEditing}
+              onEdit={() => setStoryEditing(true)}
+              onCancel={() => setStoryEditing(false)}
+              onSave={saveStory}
+              flash={storyFlash}
+            />
+          )}
+        >
         <div className="w-full max-w-md space-y-4">
           <h3 className="text-xl font-bold text-center text-zinc-100">Review the sequence</h3>
           <div className="space-y-1.5">
@@ -434,20 +454,12 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
               )
             })}
           </div>
-          <StoryPanel
-            story={story}
-            expectedWords={sequence.map(num => words[num])}
-            editing={storyEditing}
-            onEdit={() => setStoryEditing(true)}
-            onCancel={() => setStoryEditing(false)}
-            onSave={saveStory}
-            flash={storyFlash}
-          />
           <div className="flex gap-2">
             <button onClick={goToRecall} className="flex-1 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold transition-colors">Recall again</button>
             <button onClick={goToSetup} className="flex-1 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold transition-colors">Change segment</button>
           </div>
         </div>
+        </ToolLayout>
       )}
     </div>
   )
