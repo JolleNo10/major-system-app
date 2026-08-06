@@ -188,7 +188,7 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   its own persistence unit (Recite: pair numbers; Anchors: segment indices), status line, Start button, and per-cell body
   (via `renderCellBody`); the shared status/memoed wiring is `useSegmentPickerData`.
   Each grid paints a per-segment **status dot** (`PiSegmentDot`) derived from the `pi:` log via
-  `piSegmentStatuses` (`usePiSegmentStatuses` hook): emerald = learned (every pair answered correctly ≥1× with no recorded misses),
+  `piSegmentStatuses` (`usePiSegmentStatuses` hook): emerald = learned (every pair's last 2 answers correct — recency-based, so a first flawless pass turns it green and a later miss only needs two correct re-answers to regain it),
   amber = practising (touched but short of that), gray = memoed correctly but not yet recited, none = new. Recitation status takes
   precedence over memo status. Recite shows just the dots; **Memo** rings the first segment that's
   neither recited (`pi:` log) nor memoed all-correct in Memo mode (`major-pi-memoed-segs`) — "next to memo".

@@ -1,13 +1,20 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   bestFromStartReach,
   fromStartRecordRun,
   fullReciteSessions,
   isFromStartRecord,
   isFullRecite,
+  piSegmentStatuses,
   practiceSessions,
   type PiSession,
 } from '@/features/pi/shared/piStats'
+import { getAllAttempts } from '@/core/scoring/attemptStore'
+
+vi.mock('@/core/scoring/attemptStore', () => ({
+  getAllAttempts: vi.fn(),
+}))
+const mockAttempts = vi.mocked(getAllAttempts)
 
 // Minimal PiSession factory — only the fields these helpers read matter.
 function session(partial: Partial<PiSession>): PiSession {
@@ -25,6 +32,59 @@ function session(partial: Partial<PiSession>): PiSession {
     ...partial,
   }
 }
+
+describe('piSegmentStatuses (per-segment progress dots)', () => {
+  type A = { key: string; at: number; ok: boolean; ms: number }
+  // Build attempts for segment 0 (positions 1..10). `outcomes[i]` is the ordered
+  // list of ok/wrong for pair i+1; a missing entry means the pair was untouched.
+  function seg0(outcomes: Array<boolean[] | undefined>): A[] {
+    const rows: A[] = []
+    let t = 0
+    outcomes.forEach((oks, i) => {
+      oks?.forEach(ok => rows.push({ key: `pi:${i + 1}`, at: ++t, ok, ms: 100 }))
+    })
+    return rows
+  }
+  const status = async (rows: A[]) => (await piSegmentStatuses(10))[0]
+
+  beforeEach(() => mockAttempts.mockReset())
+
+  it('is new when no pair was touched', async () => {
+    mockAttempts.mockResolvedValue([])
+    expect(await status([])).toBe('new')
+  })
+
+  it('turns learned on a first flawless pass (single correct per pair)', async () => {
+    mockAttempts.mockResolvedValue(seg0(Array(10).fill([true])))
+    expect(await status(seg0(Array(10).fill([true])))).toBe('learned')
+  })
+
+  it('is weak when some pairs are still untouched', async () => {
+    const outcomes = Array<boolean[] | undefined>(10).fill([true])
+    outcomes[5] = undefined
+    mockAttempts.mockResolvedValue(seg0(outcomes))
+    expect(await status(seg0(outcomes))).toBe('weak')
+  })
+
+  it('demotes to weak on a fresh miss', async () => {
+    const outcomes = Array<boolean[] | undefined>(10).fill([true])
+    outcomes[3] = [true, false] // most recent answer wrong
+    mockAttempts.mockResolvedValue(seg0(outcomes))
+    expect(await status(seg0(outcomes))).toBe('weak')
+  })
+
+  it('regains learned only after two correct re-answers (not one)', async () => {
+    const oneRedo = Array<boolean[] | undefined>(10).fill([true])
+    oneRedo[3] = [true, false, true] // one correct after the miss — still weak
+    mockAttempts.mockResolvedValue(seg0(oneRedo))
+    expect(await status(seg0(oneRedo))).toBe('weak')
+
+    const twoRedo = Array<boolean[] | undefined>(10).fill([true])
+    twoRedo[3] = [true, false, true, true] // two correct after the miss — clean
+    mockAttempts.mockResolvedValue(seg0(twoRedo))
+    expect(await status(seg0(twoRedo))).toBe('learned')
+  })
+})
 
 describe('full recite vs practice classification', () => {
   it('treats only anchor === 1 as a full recite', () => {
