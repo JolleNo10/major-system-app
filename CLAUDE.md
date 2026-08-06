@@ -133,9 +133,9 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   state is persisted (`major-pi-collapsed-blocks`) and shared across the grids; with < 1050 π digits there's a single block and no dividers.
   Each grid paints a per-segment **status dot** (`PiSegmentDot`) derived from the `pi:` log via
   `piSegmentStatuses` (`usePiSegmentStatuses` hook): emerald = learned (every pair answered correctly ≥1× with no recorded misses),
-  amber = practising (touched but short of that), none = new. Recite shows just the dots; **Memo** rings the first segment that's
-  neither recited (`pi:` log) nor memoed all-correct in Memo mode (`major-pi-memoed-segs`) — "next to memo"; Anchors dims everything
-  past the contiguous *learned* frontier (soft cap).
+  amber = practising (touched but short of that), gray = memoed correctly but not yet recited, none = new. Recitation status takes
+  precedence over memo status. Recite shows just the dots; **Memo** rings the first segment that's
+  neither recited (`pi:` log) nor memoed all-correct in Memo mode (`major-pi-memoed-segs`) — "next to memo".
   **Recite** = user-selected range → `PiNumberQuiz` (records a session; setup shows run-history/best-runs). Its right rail groups adjacent segments that were successfully memoed but not yet flawlessly recited into one-tap continuous runs; flawless segments are persisted independently even when another segment in the same run has mistakes. **Train** (`PiTrainTab`)
   = weakness-targeted practice, two stats-driven sections each surfacing the worst 3 (worst-first, "new" for untested): weakest
   **segments** (`rankPiSegments` rolls up the `pi:` log per 10-pair block → one-tap Recite run for that segment, records a session)

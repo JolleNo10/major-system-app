@@ -5,10 +5,9 @@ import { PiNumberQuiz, type PiQuizCompletion } from './PiNumberQuiz'
 import { readString, safeSet } from '../../utils/storage'
 import { PI_PAIRS } from '../../data/piDigits'
 import { loadPiSessions, bestFromStartReach, type PiSession } from '../../data/piStats'
-import { PiSegmentGrid, PiSegmentDot } from './PiSegmentGrid'
+import { PiSegmentGrid, PiSegmentDot, PiSegmentRangePreview } from './PiSegmentGrid'
 import { usePiSegmentStatuses } from '../../hooks/usePiSegmentStatuses'
 import { ToolLayout } from '../ToolLayout'
-import { segmentDigitRange } from '../../utils/piSegments'
 import {
   flawlessSegmentsFromRun,
   flawlessSegmentsFromSessions,
@@ -179,7 +178,10 @@ export function PiReciteTab({ answerMode, maxPiPairs }: Props) {
                         : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200 hover:border-zinc-500'
                     }`}
                   >
-                    <PiSegmentDot status={statuses[segIdx] ?? 'new'} />
+                    <PiSegmentDot
+                      status={statuses[segIdx] ?? 'new'}
+                      memoed={memoedSegs.has(segIdx)}
+                    />
                     <span className="text-[8px] opacity-60 leading-none tabular-nums">π {startDigit}–{endDigit}</span>
                     <span className="font-mono text-[8px] tabular-nums leading-snug mt-0.5">{line1}</span>
                     <span className="font-mono text-[8px] tabular-nums leading-snug">{line2}</span>
@@ -301,9 +303,6 @@ function ReadyToReciteTool({ ranges, loading, availableMemoedCount, onRecite }: 
       <p className="text-sm font-medium text-zinc-300">Ready to recite</p>
       <div className="space-y-2">
         {ranges.map(range => {
-          const [from] = segmentDigitRange(range.startSeg)
-          const [, to] = segmentDigitRange(range.endSeg)
-          const single = range.startSeg === range.endSeg
           return (
             <div
               key={`${range.startSeg}-${range.endSeg}`}
@@ -311,12 +310,7 @@ function ReadyToReciteTool({ ranges, loading, availableMemoedCount, onRecite }: 
             >
               <div>
                 <div className="text-[10px] uppercase tracking-wider text-violet-400">Memoed</div>
-                <div className="mt-0.5 font-semibold text-zinc-100">
-                  {single
-                    ? `Segment ${range.startSeg + 1}`
-                    : `Segments ${range.startSeg + 1}–${range.endSeg + 1}`}
-                </div>
-                <div className="font-mono text-xs tabular-nums text-zinc-500">π digits {from}–{to}</div>
+                <PiSegmentRangePreview startSeg={range.startSeg} endSeg={range.endSeg} />
               </div>
               <button
                 onClick={() => onRecite(range)}

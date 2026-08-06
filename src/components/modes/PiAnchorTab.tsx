@@ -6,6 +6,7 @@ import { PAIRS_PER_SEGMENT } from '../../data/piStats'
 import { segmentAnchorPos, segmentDigitRange, segmentAnchorPairs } from '../../utils/piSegments'
 import { PiSegmentGrid, PiSegmentDot } from './PiSegmentGrid'
 import { usePiSegmentStatuses } from '../../hooks/usePiSegmentStatuses'
+import { loadMemoedPiSegments } from '../../data/piProgress'
 import type { AnswerMode } from '../../types'
 
 const SEL_START_KEY = 'major-pi-anchor-start'
@@ -43,10 +44,7 @@ export function PiAnchorTab({ answerMode, maxPiPairs }: Props) {
   const [runNonce, setRunNonce] = useState(0)
 
   const statuses = usePiSegmentStatuses(maxPiPairs, phase)
-  // Learned frontier: how many leading segments are learned. Cells at/after it
-  // are dimmed — a soft "you haven't learned these yet" cue (still selectable).
-  let learnedFrontier = 0
-  while (learnedFrontier < statuses.length && statuses[learnedFrontier] === 'learned') learnedFrontier++
+  const [memoedSegs] = useState(loadMemoedPiSegments)
 
   // Lowering "Max π digits" can strand a stored selection past the last segment.
   const rangeStart = selStart === null ? null : Math.min(selStart, lastSeg)
@@ -133,7 +131,6 @@ export function PiAnchorTab({ answerMode, maxPiPairs }: Props) {
               const inRange = rangeStart !== null && rangeEnd !== null &&
                               seg >= rangeStart && seg <= rangeEnd
               const isAnchor = rangeEnd === null && seg === rangeStart
-              const dim = statuses.length > 0 && seg >= learnedFrontier
               return (
                 <button
                   onClick={() => handleSegmentClick(seg)}
@@ -143,9 +140,12 @@ export function PiAnchorTab({ answerMode, maxPiPairs }: Props) {
                       : isAnchor
                       ? 'bg-amber-600/20 border-amber-500/60 text-amber-300'
                       : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200 hover:border-zinc-500'
-                  } ${dim ? 'opacity-40' : ''}`}
+                  }`}
                 >
-                  <PiSegmentDot status={statuses[seg] ?? 'new'} />
+                  <PiSegmentDot
+                    status={statuses[seg] ?? 'new'}
+                    memoed={memoedSegs.has(seg)}
+                  />
                   <span className="text-[8px] opacity-60 leading-none tabular-nums">π {from}–{to}</span>
                   <span className="w-full truncate leading-snug mt-0.5 text-left">
                     <span className="font-mono text-[10px] tabular-nums">{anchorPairs[seg]}</span>
