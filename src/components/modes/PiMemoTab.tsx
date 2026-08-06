@@ -5,7 +5,7 @@ import { TypingInput } from '../TypingInput'
 import { readString, safeSet } from '../../utils/storage'
 import { buildEncOptions } from '../../utils/quiz'
 import { PI_PAIRS } from '../../data/piDigits'
-import { PiSegmentGrid, PiSegmentDot } from './PiSegmentGrid'
+import { PiSegmentGrid, PiSegmentDot, PiSegmentRangePreview } from './PiSegmentGrid'
 import { usePiSegmentStatuses } from '../../hooks/usePiSegmentStatuses'
 import { usePiStory, usePiStorySegs, useBlobUrl } from '../../hooks/usePiStory'
 import { putStory, deleteStory, exportStories, importStories, type PiStory } from '../../data/piStories'
@@ -255,7 +255,10 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
                         : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200 hover:border-zinc-500'
                     } ${segIdx === nextSeg ? 'ring-2 ring-violet-500' : ''}`}
                   >
-                    <PiSegmentDot status={statuses[segIdx] ?? 'new'} />
+                    <PiSegmentDot
+                      status={statuses[segIdx] ?? 'new'}
+                      memoed={memoedSegs.has(segIdx)}
+                    />
                     {storySegs.has(segIdx) && (
                       <span className="absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full bg-violet-400" aria-label="has story" />
                     )}
@@ -468,14 +471,12 @@ function NextToMemoTool({ nextSeg, loading, onStudy }: {
     )
   }
 
-  const [from, to] = segmentDigitRange(nextSeg)
   return (
     <div className={panelCls}>
       <p className="text-sm font-medium text-zinc-300">Next to memo</p>
       <div className="rounded-lg border border-violet-500/40 bg-violet-600/10 px-3 py-2">
         <div className="text-[10px] uppercase tracking-wider text-violet-400">Untrained</div>
-        <div className="mt-0.5 font-semibold text-zinc-100">Segment {nextSeg + 1}</div>
-        <div className="font-mono text-xs tabular-nums text-zinc-500">π digits {from}–{to}</div>
+        <PiSegmentRangePreview startSeg={nextSeg} />
       </div>
       <button
         onClick={() => onStudy(nextSeg)}

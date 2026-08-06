@@ -1,5 +1,8 @@
 import { Fragment, useState, type ReactNode } from 'react'
 import type { PiSegmentStatus } from '../../data/piStats'
+import { PAIRS_PER_SEGMENT } from '../../data/piStats'
+import { PI_PAIRS } from '../../data/piDigits'
+import { segmentDigitRange } from '../../utils/piSegments'
 import { readJSON, safeSet } from '../../utils/storage'
 
 const DIGITS_PER_SEGMENT = 20
@@ -19,16 +22,57 @@ function saveCollapsed(set: Set<number>): void {
 }
 
 // Corner status dot for a segment cell. Independent of selection colour (which
-// owns the cell fill): emerald = learned, amber = practising, nothing = new.
+// owns the cell fill): emerald = learned through recitation, amber = practising
+// recitation, zinc = memorised correctly but not yet recited, nothing = new.
 // Requires the containing button to be `relative`.
-export function PiSegmentDot({ status }: { status: PiSegmentStatus }) {
-  if (status === 'new') return null
-  const cls = status === 'learned' ? 'bg-emerald-400' : 'bg-amber-400'
+export function PiSegmentDot({ status, memoed = false }: {
+  status: PiSegmentStatus
+  memoed?: boolean
+}) {
+  if (status === 'new' && !memoed) return null
+  const label = status === 'learned'
+    ? 'learned'
+    : status === 'weak'
+      ? 'practising'
+      : 'memorised correctly'
+  const cls = status === 'learned'
+    ? 'bg-emerald-400'
+    : status === 'weak'
+      ? 'bg-amber-400'
+      : 'bg-zinc-400'
   return (
     <span
       className={`absolute top-1 right-1 h-1.5 w-1.5 rounded-full ${cls}`}
-      aria-label={status === 'learned' ? 'learned' : 'practising'}
+      aria-label={label}
+      title={label}
     />
+  )
+}
+
+// Compact content preview shared by the Pi right-rail cards. It identifies a
+// range by the useful digit positions and pairs rather than internal segment
+// numbers. Longer ranges keep the preview compact by showing both ends.
+export function PiSegmentRangePreview({ startSeg, endSeg = startSeg }: {
+  startSeg: number
+  endSeg?: number
+}) {
+  const [from] = segmentDigitRange(startSeg)
+  const [, to] = segmentDigitRange(endSeg)
+  const pairs = PI_PAIRS.slice(
+    startSeg * PAIRS_PER_SEGMENT,
+    (endSeg + 1) * PAIRS_PER_SEGMENT,
+  )
+  const preview = pairs.length <= PAIRS_PER_SEGMENT
+    ? pairs
+    : [...pairs.slice(0, 5), '…', ...pairs.slice(-5)]
+
+  return (
+    <div className="mt-0.5 space-y-1">
+      <div className="text-[10px] tabular-nums text-zinc-500">π digits {from}–{to}</div>
+      <div className="font-mono text-[10px] tabular-nums leading-snug text-zinc-200">
+        {preview.join(' ')}
+      </div>
+    </div>
   )
 }
 
