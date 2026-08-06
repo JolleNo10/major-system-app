@@ -135,15 +135,15 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
     setPhase('setup')
   }, [])
 
-  const goToStudy = useCallback(() => {
+  const goToRecall = useCallback(() => {
     setStudyIdx(0)
     setWqAnswered(null)
     setWqCorrect(null)
     setWqNumberRevealed(false)
-    setWqOptions([])
+    setWqOptions(buildEncOptions(sequence[0], words))
     setWqResults([])
-    setPhase('study')
-  }, [])
+    setPhase('recall')
+  }, [sequence, words])
 
   const panelCls = 'bg-zinc-900 border border-zinc-800 rounded-xl'
 
@@ -347,7 +347,7 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
             })}
           </div>
           <div className="flex gap-2">
-            <button onClick={goToStudy} className="flex-1 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold transition-colors">Study again</button>
+            <button onClick={goToRecall} className="flex-1 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold transition-colors">Recall again</button>
             <button onClick={goToSetup} className="flex-1 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold transition-colors">Change segment</button>
           </div>
         </div>
