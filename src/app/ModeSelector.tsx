@@ -1,7 +1,7 @@
 import type { Mode } from '@/core/types'
 import { MODE_ENTRIES, type DrillMode, type ModeDef } from '@/app/modes'
 import { getStats, getDueCount } from '@/core/scoring/useStats'
-import { WORDS } from '@/features/major-system/words'
+import { WORDS } from '@/features/major-system'
 
 const ALL_NUMS = Object.keys(WORDS)
 

@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react'
-import { useWords } from '@/features/major-system/WordsContext'
+import { useWords } from '@/features/major-system'
 import { PiNumberQuiz, type PiQuizLabels } from '@/features/pi/PiNumberQuiz'
 import { readString, safeSet } from '@/core/storage'
 import { PAIRS_PER_SEGMENT } from '@/features/pi/piStats'

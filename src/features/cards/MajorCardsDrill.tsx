@@ -1,4 +1,4 @@
-import { useWords } from '@/features/major-system/WordsContext'
+import { useWords } from '@/features/major-system'
 import { useStats } from '@/core/scoring/useStats'
 import { CardsDrill } from '@/features/cards/CardsDrill'
 import type { AnswerMode } from '@/core/types'

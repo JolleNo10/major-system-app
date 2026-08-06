@@ -1,11 +1,8 @@
 import { useState, useEffect } from 'react'
-import { useWords } from '@/features/major-system/WordsContext'
+import { useWords } from '@/features/major-system'
 import { rankByWeakness } from '@/core/scoring/numberStats'
 import { recallColor } from '@/core/scoring/recallColor'
-import {
-  rankPiPositions, loadPiSessions, bestReach, bestFromStartReach,
-  type PiPositionStat, type PiSession,
-} from '@/features/pi/piStats'
+import { bestFromStartReach, bestReach, loadPiSessions, type PiPositionStat, type PiSession, rankPiPositions } from '@/features/pi'
 import { Overlay, TabButton } from '@/app/layout/Overlay'
 import type { Direction } from '@/core/types'
 

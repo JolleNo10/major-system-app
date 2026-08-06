@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
-import { useWords } from '@/features/major-system/WordsContext'
+import { useWords } from '@/features/major-system'
 import { useSettings } from '@/app/settings/SettingsContext'
 import { PiNumberQuiz } from '@/features/pi/PiNumberQuiz'
 import { PI_PAIRS } from '@/features/pi/piDigits'

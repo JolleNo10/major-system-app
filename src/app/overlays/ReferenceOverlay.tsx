@@ -1,8 +1,7 @@
 import { useState } from 'react'
-import { SoundKeyGrid } from '@/features/major-system/SoundKeyGrid'
+import { SoundKeyGrid, useWords } from '@/features/major-system'
 import { WordListGrid } from '@/core/ui/WordListGrid'
 import { Overlay, TabButton } from '@/app/layout/Overlay'
-import { useWords } from '@/features/major-system/WordsContext'
 import { clearSchedules } from '@/core/scoring/itemStore'
 
 const MAJOR_KEYS = Array.from({ length: 100 }, (_, i) => i.toString().padStart(2, '0'))

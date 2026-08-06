@@ -6,7 +6,7 @@ import {
 import { masteryFastMs, MASTERY_REPS } from '@/core/scoring/roundMastery'
 import { RECALL_SLOW_MS } from '@/core/scoring/scoring'
 import { Overlay } from '@/app/layout/Overlay'
-import { PI_PAIRS } from '@/features/pi/piDigits'
+import { PI_PAIRS } from '@/features/pi'
 import { Switch } from '@/core/ui/Switch'
 import type { PwaUpdate } from '@/app/settings/usePwaUpdate'
 import type { ReactNode } from 'react'

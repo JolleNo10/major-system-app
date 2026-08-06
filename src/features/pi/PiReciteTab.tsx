@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
-import { useWords } from '@/features/major-system/WordsContext'
+import { useWords } from '@/features/major-system'
 import { useSettings } from '@/app/settings/SettingsContext'
 import { PiNumberQuiz, type PiQuizCompletion } from '@/features/pi/PiNumberQuiz'
 import { readString, safeSet } from '@/core/storage'

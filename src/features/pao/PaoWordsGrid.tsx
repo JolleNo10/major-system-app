@@ -1,6 +1,6 @@
 import { Fragment, useRef, useState } from 'react'
 import { usePaoStore } from '@/features/pao/PaoCardsContext'
-import { useCardWords } from '@/features/cards/CardWordsContext'
+import { useCardWords } from '@/features/cards'
 import { paoKey, PAO_FIELDS, type PaoField } from '@/features/pao/paoCards'
 import { parsePaoCsv, serializePaoCsv, type PaoRow } from '@/features/pao/paoCsv'
 import { CARDS } from '@/core/cards'

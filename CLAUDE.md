@@ -61,8 +61,15 @@ src/
                    paoCards(.csv) paoCsv PaoCardsContext triples
 ```
 
-**Layering rule:** `core/` → self only; `features/*` → `core/` (+ two kept feature→feature edges:
-`cards → major-system` for the Words store, `pao → cards` for "🎭 From Themed Deck"); `app/` → anything.
+**Layering rule:** `core/` → self only; `features/*` → `core/` (+ kept feature→feature edges:
+`cards → major-system` and `pi → major-system` both reuse the Words store, `pao → cards` for
+"🎭 From Themed Deck"); `app/` → anything.
+
+**Feature barrels:** each feature has an `index.ts` that re-exports its **public interface** (drill
+entry-points, providers/hooks, and the handful of data/stats symbols the shell needs). All code
+outside a feature imports from `@/features/<name>` (the barrel) — never a deep path; everything else
+in the folder is internal. Within a feature, modules import each other by deep path as usual. **Adding
+a symbol to a feature's public surface = add one line to its `index.ts`.**
 
 ## Big picture
 - **No router.** `App.tsx` holds `mode: Mode` (state machine) + three overlay booleans

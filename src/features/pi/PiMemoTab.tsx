@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { useWords } from '@/features/major-system/WordsContext'
+import { useWords } from '@/features/major-system'
 import { MultipleChoice } from '@/core/ui/MultipleChoice'
 import { TypingInput } from '@/core/ui/TypingInput'
 import { readString, safeSet } from '@/core/storage'

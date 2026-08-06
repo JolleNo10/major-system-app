@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { CARD_WORDS } from '@/features/cards/cardWords'
-import { WORDS } from '@/features/major-system/words'
+import { WORDS } from '@/features/major-system'
 
 describe('cardWords', () => {
   it('has all 52 card numbers 01–52, each with a non-empty word', () => {
