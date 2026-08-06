@@ -58,6 +58,7 @@ src/
                             story/  piStories usePiStory storyHighlight PiMistakeStoryReview
                    memo/    PiMemoTab PiMemoRail usePiStoryEditor imageResize
                    recite/  PiReciteTab PiReciteRail
+                   maintain/ PiMaintainTab piMaintain piMaintainStore
                    anchors/ PiAnchorTab
     cards/         index.ts (single barrel); internally split by flavor:
                    shared/  CardsDrill DeckMemoDrill (the Card→Word/Number engine)
@@ -99,7 +100,8 @@ a symbol to a feature's public surface = add one line to its `index.ts`.**
 | `major-soundkey-saved` / `-overrides` | localStorage | Editable sound-key layers (same 3-layer store), keyed by composite `"<digit>:<field>"` strings |
 | `major-pao-saved` / `-overrides` | localStorage | Editable PAO deck layers (same 3-layer store), keyed by composite `"<NN>:<field>"` (`field` = `person`\|`action`\|`object`) — the PAO Deck's Person/Action/Object per card `01`–`52` |
 | `major-pao-drilltype` / `-suits` / `-deck-count` / `-decode-field` / `-deck-memo-history` | localStorage | PAO Deck UI/session state (drill type, active suits, deck-memo card count, decode field selector, and the PAO deck-memo run history) |
-| `major-settings` | localStorage | `{ masteryLatencyFactor, maxPiDigits, offlineMode, piPairsPerAnswer }` (`piPairsPerAnswer` 1\|10 = Pi typing batch size, set in Settings; migrated once from the legacy `major-pi-answer-size` key) |
+| `major-pi-maintain` | localStorage | Per-segment SM-2 schedule for the Maintain tab: `Record<segIdx, ItemRecord>` (reuses `ItemRecord`; only schedule fields drive upkeep). Unseen seg = `{...DEFAULTS}` (`dueAt 0` = due now). `features/pi/maintain/piMaintainStore.ts` (`rescheduleSegment` grades binary: pass→4, fail→2) |
+| `major-settings` | localStorage | `{ masteryLatencyFactor, maxPiDigits, offlineMode, piPairsPerAnswer, piMaintainBatchSegs }` (`piPairsPerAnswer` 1\|10 = Pi typing batch size, set in Settings; migrated once from the legacy `major-pi-answer-size` key. `piMaintainBatchSegs` 1–10, default 5 = max segments per Maintain review batch) |
 | `major-typing-speed` / `-digit` | localStorage | Adaptive ms/char estimates, separate for word vs digit typing |
 | `major-answer-mode`, `major-hide-options`, `major-seq-length`, `major-seq-studymode`, `major-speed-best`, `major-attempts-migrated`, `major-pi-collapsed-blocks` (collapsed 1000-digit segment blocks, shared across Pi grids), `major-pi-memo-seg` (last-selected Memo segment), `major-pi-memoed-segs` (segments recalled all-correct in Memo mode), `major-pi-recited-segs` (memoed segments later recited flawlessly) | localStorage | Small UI/prefs flags |
 
@@ -174,7 +176,7 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   `EncodingDrill`/`DecodingDrill` are ~25-line `DrillConfig` wrappers over it (direction, prompt styling,
   matcher, hint toggle). `SoundKeyDrill`, `ReverseSoundKeyDrill`, `SequenceDrill` (setup→study→recall→result),
   `SpeedRound`, `WeakSpots` (feeds a weak-number `pool` into `EncodingDrill`), `RepetitionDrill` (SM-2 due queue),
-  `PiDrill` (three tabs: **Memo** / **Recite** / **Anchors**). `PiNumberQuiz` is the shared recite engine (fixed sequence + anchor →
+  `PiDrill` (four tabs: **Memo** / **Recite** / **Maintain** / **Anchors**). `PiNumberQuiz` is the shared recite engine (fixed sequence + anchor →
   number-quiz + result; single-pair or 10-pair batch, MC or typing), used by Recite and Anchors. It records per-position
   attempts under `pi:<position>` keys for every answered pair (unless `recordAttempts={false}`) and (when `recordSession`) a
   `PiSession` summary per run. Optional `labels` (`PiQuizLabels`: `prompt`/`hint`/`row`) overrides every on-screen π-position
@@ -204,6 +206,16 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   segment** in turn (`Segment 4 · π digits 61–80` prompt, answer is the pair) — trains the segment *order*, not any one segment.
   Runs on `PiNumberQuiz` with `answerSize={1}`, `recordAttempts={false}`, custom `labels`, and a `distractorPool` of all segment
   anchors (so MC options never leak what's next). **Session-only — records nothing**, so it can't skew Recite stats.
+  **Maintain** (`PiMaintainTab`, `maintain/`) = spaced-repetition *upkeep* of already-learned segments (keep π alive against the
+  forgetting curve), distinct from Recite's weak-spot hunt. **Due-driven**, not weakness-ranked: eligible segs (status `weak`/`learned`
+  — ever recited; `new`/gray excluded and break a run) are split into maximal contiguous runs, tiled into batches of ≤ `piMaintainBatchSegs`
+  segments (Settings knob, default 5 = 100 digits), each batch scheduled per-segment via **SM-2** (`piMaintainStore` reuses `applySm2`
+  with binary grades; a persisted `Record<segIdx, ItemRecord>`). `piMaintain.buildMaintenanceBatches` returns `{due, upcoming}` (due =
+  most-overdue first, tie by earliest π position; upcoming = soonest-due). Setup shows the ranked due batches (each with **Start**) +
+  collapsed caught-up batches ("Review early" when nothing's due) + a `PiSegmentGrid` context grid. A run reuses `PiNumberQuiz`
+  (`recordSession={false}` — no PiSession, keeps the Recite record board clean; `pi:` per-pair attempts stay on) and on complete records
+  `piseg:` tries (status dots) **and** reschedules each recited segment via SM-2. `segmentResultsFromRun` (in `piMaintain.ts`) is the
+  shared per-segment run-slicer that both `recordSegmentTries` and the reschedule loop use.
   Word-chain (Memo) records no `pi:`/session stats, but a segment recalled all-correct in Memo mode is remembered in
   `major-pi-memoed-segs` so it stops being suggested. Memo's setup publishes a **right rail** ("Next to memo") via `useRails`
   whose one-tap **Study →** jumps straight into the first segment that's neither recited nor memoed.
@@ -242,7 +254,7 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   `Overlay` (`app/layout/Overlay.tsx`)** — the `role="dialog"` shell, `useOverlay` wiring, header bar, close
   button, and scroll body; callers pass `ariaLabel`/`header`/`maxWidth`/children (`TabButton` is the shared
   header tab). Overlays (`app/overlays/` + feature-local editors): `ReferenceOverlay` (sound key + major `WordListGrid`), `CardWordsOverlay` (Themed Deck
-  word list, suit-grouped), `SettingsOverlay` (mastery tolerance, max π digits, Pi pairs-per-answer, offline mode + version/update),
+  word list, suit-grouped), `SettingsOverlay` (mastery tolerance, max π digits, Pi pairs-per-answer, Pi maintenance batch size, offline mode + version/update),
   `StatsOverlay` (worst-first ranking per direction, plus a **🥧 π tab** that async-loads Pi weak positions + run summary).
 - **Hooks** (co-located with what they serve) — `core/scoring/`: `useStats` (`recordFull` records item-data + attempts and returns its grade; `getStats`
   derives direction-less aggregates from item-data; `buildRepQueue`, `getDueCount`, `getNextDueMs`),

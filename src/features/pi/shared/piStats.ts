@@ -4,6 +4,7 @@ import { getAllAttempts, addAttemptRaw } from '@/core/scoring/attemptStore'
 import { medianMs } from '@/core/scoring/itemStore'
 import { HISTORY_HALFLIFE_DAYS } from '@/core/scoring/scoring'
 import { PI_PAIRS } from '@/features/pi/shared/piDigits'
+import { segmentResultsFromRun } from '@/features/pi/maintain/piMaintain'
 
 // Pi drill (number-quiz only) metrics. Two persisted shapes:
 //   - session summaries → localStorage (one row per completed run, capped)
@@ -163,14 +164,8 @@ export interface PiSegmentSummary {
 // `correctness[i]` is the outcome of the run's i-th pair (π position anchor+i);
 // only segments whose full 10-pair span sits inside the run get a try.
 export function recordSegmentTries(anchor: number, correctness: boolean[]): void {
-  if (correctness.length === 0) return
   const at = Date.now()
-  const lastPos = anchor + correctness.length - 1
-  const firstSeg = Math.ceil((anchor - 1) / PAIRS_PER_SEGMENT)
-  const lastSeg = Math.floor((lastPos - PAIRS_PER_SEGMENT) / PAIRS_PER_SEGMENT)
-  for (let seg = firstSeg; seg <= lastSeg; seg++) {
-    const start = seg * PAIRS_PER_SEGMENT + 1 - anchor
-    const ok = correctness.slice(start, start + PAIRS_PER_SEGMENT).every(Boolean)
+  for (const { seg, ok } of segmentResultsFromRun(anchor, correctness)) {
     void addAttemptRaw(`${PI_SEGMENT_KEY_PREFIX}${seg}`, { at, ok, ms: 0 })
   }
 }

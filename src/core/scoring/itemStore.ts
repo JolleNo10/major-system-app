@@ -30,7 +30,7 @@ export const DAY_MS = 86_400_000
 export const HISTORY_RETENTION_DAYS = 90
 export const HISTORY_MAX = 200
 
-const DEFAULTS: ItemRecord = {
+export const DEFAULTS: ItemRecord = {
   correct: 0,
   wrong: 0,
   latencies: [],

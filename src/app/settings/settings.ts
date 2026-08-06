@@ -15,6 +15,9 @@ export interface Settings {
   // Pairs typed per answer in the Pi drills' typing mode: 1 = pair-by-pair,
   // 10 = a whole 10-pair row at once. Ignored in multiple-choice.
   piPairsPerAnswer: 1 | 10
+  // Max segments (× 20 digits) per Maintain-tab review batch. Batches are
+  // contiguous runs of learned segments; this caps their length.
+  piMaintainBatchSegs: number
 }
 
 const KEY = 'major-settings'
@@ -25,7 +28,12 @@ export const DEFAULT_SETTINGS: Settings = {
   maxPiDigits: 200,
   offlineMode: false, // default: check for updates on launch
   piPairsPerAnswer: 1,
+  piMaintainBatchSegs: 5, // 5 segments = 100 digits per maintenance batch
 }
+
+export const MAINTAIN_BATCH_MIN = 1
+export const MAINTAIN_BATCH_MAX = 10
+export const MAINTAIN_BATCH_STEP = 1
 
 export const MASTERY_FACTOR_MIN = 1
 export const MASTERY_FACTOR_MAX = 2.5

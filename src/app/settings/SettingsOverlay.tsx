@@ -2,6 +2,7 @@ import { useSettings } from '@/app/settings/SettingsContext'
 import {
   MASTERY_FACTOR_MIN, MASTERY_FACTOR_MAX, MASTERY_FACTOR_STEP, DEFAULT_SETTINGS,
   MAX_PI_DIGITS_MIN, MAX_PI_DIGITS_STEP,
+  MAINTAIN_BATCH_MIN, MAINTAIN_BATCH_MAX, MAINTAIN_BATCH_STEP,
 } from '@/app/settings/settings'
 import { masteryFastMs, MASTERY_REPS } from '@/core/scoring/roundMastery'
 import { RECALL_SLOW_MS } from '@/core/scoring/scoring'
@@ -133,6 +134,32 @@ export function SettingsOverlay({ onClose, pwa }: Props) {
                   {size === 1 ? '1 pair' : '10 pairs'}
                 </button>
               ))}
+            </div>
+          </section>
+
+          <section>
+            <div className="flex items-baseline justify-between mb-1">
+              <h3 className="font-semibold text-zinc-100">Maintenance batch size</h3>
+              <span className="text-sm font-mono tabular-nums text-cyan-300">
+                {settings.piMaintainBatchSegs} seg · {settings.piMaintainBatchSegs * 20} digits
+              </span>
+            </div>
+            <p className="text-sm text-zinc-500 mb-4">
+              Max segments per review batch in the Maintain tab. Larger batches recite longer
+              contiguous runs at once (each segment = 20 digits).
+            </p>
+            <input
+              type="range"
+              min={MAINTAIN_BATCH_MIN}
+              max={MAINTAIN_BATCH_MAX}
+              step={MAINTAIN_BATCH_STEP}
+              value={settings.piMaintainBatchSegs}
+              onChange={e => update({ piMaintainBatchSegs: +e.target.value })}
+              className="w-full h-2 accent-cyan-600 cursor-pointer touch-none"
+            />
+            <div className="flex justify-between text-xs text-zinc-600 mt-1">
+              <span>{MAINTAIN_BATCH_MIN}</span>
+              <span>{MAINTAIN_BATCH_MAX}</span>
             </div>
           </section>
           </SettingsGroup>

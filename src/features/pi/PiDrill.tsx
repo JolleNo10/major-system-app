@@ -4,15 +4,16 @@ import { useLayoutHeader } from '@/app/layout/PageLayoutContext'
 import { readString, safeSet } from '@/core/storage'
 import { PiMemoTab } from '@/features/pi/memo/PiMemoTab'
 import { PiReciteTab } from '@/features/pi/recite/PiReciteTab'
+import { PiMaintainTab } from '@/features/pi/maintain/PiMaintainTab'
 import { PiAnchorTab } from '@/features/pi/anchors/PiAnchorTab'
 import type { AnswerMode } from '@/core/types'
 
 const TAB_KEY = 'major-pi-tab'
 const MAX_PAIRS_KEY = 'major-pi-max-pairs'
-type Tab = 'memo' | 'recite' | 'anchors'
-const TABS: Tab[] = ['memo', 'recite', 'anchors']
+type Tab = 'memo' | 'recite' | 'maintain' | 'anchors'
+const TABS: Tab[] = ['memo', 'recite', 'maintain', 'anchors']
 const TAB_LABELS: Record<Tab, string> = {
-  memo: 'Memo', recite: 'Recite', anchors: 'Anchors',
+  memo: 'Memo', recite: 'Recite', maintain: 'Maintain', anchors: 'Anchors',
 }
 
 interface Props { answerMode: AnswerMode }
@@ -79,6 +80,8 @@ export function PiDrill({ answerMode }: Props) {
 
   return tab === 'memo'
     ? <PiMemoTab answerMode={answerMode} maxPiPairs={maxPiPairs} />
+    : tab === 'maintain'
+    ? <PiMaintainTab answerMode={answerMode} maxPiPairs={maxPiPairs} />
     : tab === 'anchors'
     ? <PiAnchorTab answerMode={answerMode} maxPiPairs={maxPiPairs} />
     : <PiReciteTab answerMode={answerMode} maxPiPairs={maxPiPairs} />
