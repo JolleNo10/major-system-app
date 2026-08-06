@@ -1,12 +1,23 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useWords } from '../../context/WordsContext'
 import { useSettings } from '../../context/SettingsContext'
-import { PiNumberQuiz } from './PiNumberQuiz'
+import { PiNumberQuiz, type PiQuizCompletion } from './PiNumberQuiz'
 import { readString, safeSet } from '../../utils/storage'
 import { PI_PAIRS } from '../../data/piDigits'
 import { loadPiSessions, bestFromStartReach, type PiSession } from '../../data/piStats'
 import { PiSegmentGrid, PiSegmentDot } from './PiSegmentGrid'
 import { usePiSegmentStatuses } from '../../hooks/usePiSegmentStatuses'
+import { ToolLayout } from '../ToolLayout'
+import { segmentDigitRange } from '../../utils/piSegments'
+import {
+  flawlessSegmentsFromRun,
+  flawlessSegmentsFromSessions,
+  loadFlawlesslyRecitedPiSegments,
+  loadMemoedPiSegments,
+  pendingMemoedSegmentRanges,
+  saveFlawlesslyRecitedPiSegments,
+  type PiSegmentRange,
+} from '../../data/piProgress'
 import type { AnswerMode } from '../../types'
 
 const SEL_START_KEY = 'major-pi-sel-start'
@@ -38,6 +49,35 @@ export function PiReciteTab({ answerMode, maxPiPairs }: Props) {
 
   const [piSessions, setPiSessions] = useState<PiSession[]>(() => loadPiSessions())
   const statuses = usePiSegmentStatuses(maxPiPairs, phase)
+  const maxSegments = Math.floor(maxPiPairs / PAIRS_PER_ROW)
+  const [memoedSegs] = useState(loadMemoedPiSegments)
+  const [recitedSegs, setRecitedSegs] = useState(loadFlawlesslyRecitedPiSegments)
+
+  // Migrate progress that predates explicit flawless-segment tracking. Perfect
+  // historical sessions and the existing strict "learned" status both prove a
+  // segment has already been recited correctly.
+  useEffect(() => {
+    const historical = flawlessSegmentsFromSessions(piSessions, maxSegments)
+    setRecitedSegs(previous => {
+      const next = new Set(previous)
+      historical.forEach(seg => next.add(seg))
+      statuses.forEach((status, seg) => { if (status === 'learned') next.add(seg) })
+      return next.size === previous.size ? previous : next
+    })
+  }, [piSessions, statuses, maxSegments])
+
+  useEffect(() => {
+    saveFlawlesslyRecitedPiSegments(recitedSegs)
+  }, [recitedSegs])
+
+  const pendingRanges = useMemo(
+    () => pendingMemoedSegmentRanges(memoedSegs, recitedSegs, statuses, maxSegments),
+    [memoedSegs, recitedSegs, statuses, maxSegments],
+  )
+  const availableMemoedCount = useMemo(
+    () => [...memoedSegs].filter(seg => seg >= 0 && seg < maxSegments).length,
+    [memoedSegs, maxSegments],
+  )
 
   const handleSegmentClick = useCallback((segIdx: number) => {
     const firstPair = segIdx * PAIRS_PER_ROW + 1
@@ -52,15 +92,36 @@ export function PiReciteTab({ answerMode, maxPiPairs }: Props) {
     }
   }, [selAnchor, selEnd])
 
-  const start = useCallback(() => {
-    if (selAnchor === null || selEnd === null) return
-    safeSet(SEL_START_KEY, String(selAnchor))
-    safeSet(SEL_END_KEY, String(selEnd))
-    setSequence(PI_PAIRS.slice(selAnchor - 1, selEnd))
-    setSessionAnchor(selAnchor)
+  const startRange = useCallback((anchor: number, end: number) => {
+    if (anchor < 1 || end < anchor || end > maxPiPairs || end > PI_PAIRS.length) return
+    setSelAnchor(anchor)
+    setSelEnd(end)
+    safeSet(SEL_START_KEY, String(anchor))
+    safeSet(SEL_END_KEY, String(end))
+    setSequence(PI_PAIRS.slice(anchor - 1, end))
+    setSessionAnchor(anchor)
     setRunNonce(n => n + 1)
     setPhase('quiz')
-  }, [selAnchor, selEnd])
+  }, [maxPiPairs])
+
+  const start = useCallback(() => {
+    if (selAnchor === null || selEnd === null) return
+    startRange(selAnchor, selEnd)
+  }, [selAnchor, selEnd, startRange])
+
+  const startQuickRange = useCallback((range: PiSegmentRange) => {
+    startRange(range.startSeg * PAIRS_PER_ROW + 1, (range.endSeg + 1) * PAIRS_PER_ROW)
+  }, [startRange])
+
+  const handleQuizComplete = useCallback((completion: PiQuizCompletion) => {
+    const flawless = flawlessSegmentsFromRun(completion.anchor, completion.correctness)
+    if (flawless.length === 0) return
+    setRecitedSegs(previous => {
+      const next = new Set(previous)
+      flawless.forEach(seg => next.add(seg))
+      return next.size === previous.size ? previous : next
+    })
+  }, [])
 
   const exitToSetup = useCallback(() => {
     setPiSessions(loadPiSessions())
@@ -78,6 +139,17 @@ export function PiReciteTab({ answerMode, maxPiPairs }: Props) {
 
       {/* SETUP */}
       {phase === 'setup' && (
+        <ToolLayout
+          rightLabel="Ready to recite"
+          right={(
+            <ReadyToReciteTool
+              ranges={pendingRanges}
+              loading={statuses.length !== maxSegments}
+              availableMemoedCount={availableMemoedCount}
+              onRecite={startQuickRange}
+            />
+          )}
+        >
         <div className={`w-full max-w-lg space-y-6 p-6 ${panelCls}`}>
 
           <div className="space-y-2">
@@ -134,6 +206,7 @@ export function PiReciteTab({ answerMode, maxPiPairs }: Props) {
             className="w-full py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold transition-colors"
           >Start →</button>
         </div>
+        </ToolLayout>
       )}
 
       {/* PI RUN HISTORY */}
@@ -192,9 +265,67 @@ export function PiReciteTab({ answerMode, maxPiPairs }: Props) {
           anchor={sessionAnchor}
           words={words}
           onExit={exitToSetup}
+          onComplete={handleQuizComplete}
           recordSession
         />
       )}
+    </div>
+  )
+}
+
+function ReadyToReciteTool({ ranges, loading, availableMemoedCount, onRecite }: {
+  ranges: PiSegmentRange[]
+  loading: boolean
+  availableMemoedCount: number
+  onRecite: (range: PiSegmentRange) => void
+}) {
+  const panelCls = 'bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3'
+
+  if (loading) return null
+
+  if (ranges.length === 0) {
+    return (
+      <div className={panelCls}>
+        <p className="text-sm font-medium text-zinc-300">Ready to recite</p>
+        <p className="text-xs text-zinc-500 leading-relaxed">
+          {availableMemoedCount === 0
+            ? 'No memoed segments are ready within your current π limit.'
+            : "You've flawlessly recited every memoed segment 🎉"}
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className={panelCls}>
+      <p className="text-sm font-medium text-zinc-300">Ready to recite</p>
+      <div className="space-y-2">
+        {ranges.map(range => {
+          const [from] = segmentDigitRange(range.startSeg)
+          const [, to] = segmentDigitRange(range.endSeg)
+          const single = range.startSeg === range.endSeg
+          return (
+            <div
+              key={`${range.startSeg}-${range.endSeg}`}
+              className="rounded-lg border border-violet-500/40 bg-violet-600/10 px-3 py-2.5 space-y-2"
+            >
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-violet-400">Memoed</div>
+                <div className="mt-0.5 font-semibold text-zinc-100">
+                  {single
+                    ? `Segment ${range.startSeg + 1}`
+                    : `Segments ${range.startSeg + 1}–${range.endSeg + 1}`}
+                </div>
+                <div className="font-mono text-xs tabular-nums text-zinc-500">π digits {from}–{to}</div>
+              </div>
+              <button
+                onClick={() => onRecite(range)}
+                className="w-full py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-semibold text-sm transition-colors"
+              >Recite →</button>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

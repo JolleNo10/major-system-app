@@ -26,6 +26,11 @@ export interface PiQuizLabels {
   row: (idx: number) => string      // prefix for in-run history + result review rows
 }
 
+export interface PiQuizCompletion {
+  anchor: number
+  correctness: boolean[]
+}
+
 interface Props {
   answerMode: AnswerMode
   answerSize: AnswerSize
@@ -39,6 +44,7 @@ interface Props {
   labels?: PiQuizLabels          // override the π-position labelling
   distractorPool?: string[]      // pairs to draw MC distractors from (default: the sequence)
   onPairAnswered?: (pos: number, ok: boolean, ms: number) => void
+  onComplete?: (completion: PiQuizCompletion) => void
 }
 
 // The shared Pi recite engine: given a fixed sequence + anchor, run the
@@ -48,7 +54,7 @@ interface Props {
 export function PiNumberQuiz({
   answerMode, answerSize, sequence, anchor, words,
   onExit, exitLabel = 'Settings', recordSession = false, recordAttempts = true,
-  labels: labelsProp, distractorPool, onPairAnswered,
+  labels: labelsProp, distractorPool, onPairAnswered, onComplete,
 }: Props) {
   const mcPool = distractorPool ?? sequence
   const isBatch = answerMode === 'typing' && answerSize === 10
@@ -63,7 +69,7 @@ export function PiNumberQuiz({
   const nqStartedAtRef = useRef<number>(performance.now())
   const previousAnswerModeRef = useRef(answerMode)
   const historyEndRef = useRef<HTMLDivElement>(null)
-  const sessionRecordedRef = useRef(false)
+  const completionReportedRef = useRef(false)
 
   const labels = useMemo<PiQuizLabels>(() => labelsProp ?? {
     prompt: idx => `Pair ${anchor + idx}`,
@@ -145,7 +151,7 @@ export function PiNumberQuiz({
   }, [nqAnswered, sequence, nqIdx, advanceNumberQuiz])
 
   const restart = useCallback(() => {
-    sessionRecordedRef.current = false
+    completionReportedRef.current = false
     setNqIdx(0)
     setNqAnswered(null)
     setNqAnsweredCorrect(null)
@@ -177,8 +183,9 @@ export function PiNumberQuiz({
   })()
 
   useEffect(() => {
-    if (phase !== 'result' || sessionRecordedRef.current) return
-    sessionRecordedRef.current = true
+    if (phase !== 'result' || completionReportedRef.current) return
+    completionReportedRef.current = true
+    onComplete?.({ anchor, correctness: nqResults.map(result => result.ok) })
     if (!recordSession) return
     addPiSession({
       at: Date.now(),
@@ -193,7 +200,7 @@ export function PiNumberQuiz({
       answerSize,
     })
   }, [phase, recordSession, anchor, sequence.length, nqCorrectCount, nqReach,
-      nqTotalMs, nqPairsPerSec, nqAccuracy, answerMode, answerSize])
+      nqTotalMs, nqPairsPerSec, nqAccuracy, answerMode, answerSize, nqResults, onComplete])
 
   const formatSec = (ms: number) => `${(ms / 1000).toFixed(ms < 10_000 ? 2 : 1)}s`
   const formatRate = (rate: number) => rate.toFixed(rate < 10 ? 2 : 1)

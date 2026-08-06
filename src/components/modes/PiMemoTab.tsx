@@ -2,20 +2,20 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { useWords } from '../../context/WordsContext'
 import { MultipleChoice } from '../MultipleChoice'
 import { TypingInput } from '../TypingInput'
-import { readString, readJSON, safeSet } from '../../utils/storage'
+import { readString, safeSet } from '../../utils/storage'
 import { buildEncOptions } from '../../utils/quiz'
 import { PI_PAIRS } from '../../data/piDigits'
 import { PiSegmentGrid, PiSegmentDot } from './PiSegmentGrid'
 import { usePiSegmentStatuses } from '../../hooks/usePiSegmentStatuses'
 import { segmentDigitRange } from '../../utils/piSegments'
 import { ToolLayout } from '../ToolLayout'
+import { loadMemoedPiSegments, saveMemoedPiSegments } from '../../data/piProgress'
 import type { AnswerMode } from '../../types'
 
 const MEMO_SEG_KEY = 'major-pi-memo-seg'
 // Segments the user has memorised in Memo mode (recalled with all pairs
 // correct ≥1×). Recite records to the pi: log; Memo records nothing, so this
 // is the only signal that a Memo-only segment is no longer "new".
-const MEMOED_SEGS_KEY = 'major-pi-memoed-segs'
 const PAIRS_PER_SEG = 10
 
 type Phase = 'setup' | 'study' | 'recall' | 'result'
@@ -38,7 +38,7 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
   const [sessionAnchor, setSessionAnchor] = useState(1)
 
   const [memoedSegs, setMemoedSegs] = useState<Set<number>>(
-    () => new Set(readJSON<number[]>(MEMOED_SEGS_KEY, [])),
+    loadMemoedPiSegments,
   )
 
   const statuses = usePiSegmentStatuses(maxPiPairs, phase)
@@ -82,7 +82,7 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
     if (!allCorrect || memoedSegs.has(selectedSeg)) return
     setMemoedSegs(prev => {
       const next = new Set(prev).add(selectedSeg)
-      safeSet(MEMOED_SEGS_KEY, JSON.stringify([...next]))
+      saveMemoedPiSegments(next)
       return next
     })
   }, [phase, selectedSeg, wqResults, sequence.length, memoedSegs])
