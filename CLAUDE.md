@@ -155,7 +155,7 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   upload or clipboard paste, downscaled to ≤1024px WebP@0.8 (JPEG fallback) by `utils/imageResize.processImage` before storing.
   Setup grid cells get a violet corner dot for segments with a story; setup also has JSON **Export/Import stories** (all segments
   as `{seg,text,imageDataUrl}[]`). The story display **highlights the segment's words** in the freeform text (`utils/storyHighlight`,
-  prefix match so "biten" hits "bit"); matching is **sequential** — the words are an ordered sequence, so each expected word
+  token-edge match so "biten" hits "bit" and "fotballmål" hits "mål"); matching is **sequential** — the words are an ordered sequence, so each expected word
   highlights the *next* matching token, consuming one at a time (repeats supported) — and warns (edit + view) when a word never matches.
   **Cards:** `CardsDrill` is prop-driven (`words`/`drillTypes`/`onRecord`/`storagePrefix`/`onEditWords`)
   and hosts Card→Word / Card→Number / `DeckMemoDrill`; two thin wrappers select the word source —
@@ -195,7 +195,7 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   `roundMastery`, `numberStats`, `vowelSkeleton`, `triples` (`groupTriples`/`roleAt` — PAO 3-card grouping),
   `piSegments` (`segmentAnchorPos`/`segmentDigitRange`/`segmentAnchorPairs` — 0-indexed π segment ↔ position/digit-range/anchor pair),
   `imageResize` (`processImage` — canvas downscale to ≤1024px + WebP@0.8/JPEG-fallback re-encode, for Pi story pictures),
-  `storyHighlight` (`highlightStory` — sequentially prefix-match a segment's ordered words in a freeform Pi story → highlight runs + missing-word list).
+  `storyHighlight` (`highlightStory` — sequentially match a segment's ordered words at either token edge in a freeform Pi story → highlight runs + missing-word list).
 - **`data/`** — `words.csv`+`words.ts`, `cardWords.csv`+`cardWords.ts` (Themed Deck, 52 cards; clubs 01–13 seed
   from the major defaults), `paoCards.csv`+`paoCards.ts`+`paoCsv.ts` (PAO Deck, 52 person/action/object triples;
   dedicated quoting-aware parser), `wordsCsv.ts` (shared CSV parse/serialize), `cards.ts` (52-card deck), `soundKey.csv`+`soundKey.ts`+`soundKeyCsv.ts` (editable sound key),

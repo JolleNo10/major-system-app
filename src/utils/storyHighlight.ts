@@ -1,9 +1,9 @@
 // Highlight the segment's Major-System words inside a freeform story. The words
 // are an ordered sequence (repeats allowed), so we walk the story left-to-right
 // and consume one expected word at a time: each expected word highlights the
-// *next* story token that starts with it (prefix match, so "biten" hits "bit"),
-// never an earlier or a later one. Expected words with no remaining match are
-// reported as missing.
+// *next* story token that starts or ends with it (edge match, so "biten" hits
+// "bit" and "fotballmål" hits "mål"), never an earlier or a later one.
+// Expected words with no remaining match are reported as missing.
 //
 // e.g. words [ball, hale, ball] over "… ball, ball …, hale, … ball, hale"
 //      → 1st ball, 1st hale, 3rd ball highlighted; 2nd ball + last hale are not.
@@ -35,7 +35,8 @@ export function highlightStory(text: string, expectedWords: string[]): StoryHigh
     if (!base) continue
     let hit = -1
     for (let j = cursor; j < wordIdx.length; j++) {
-      if (norm(parts[wordIdx[j]]).startsWith(base)) { hit = j; break }
+      const token = norm(parts[wordIdx[j]])
+      if (token.startsWith(base) || token.endsWith(base)) { hit = j; break }
     }
     if (hit >= 0) {
       matched[wordIdx[hit]] = true

@@ -21,6 +21,18 @@ describe('highlightStory', () => {
     expect(missing).toEqual([])
   })
 
+  it('matches compound suffixes (fotballmål for mål)', () => {
+    const { segments, missing } = highlightStory('Han scoret et fotballmål', ['mål'])
+    expect(segments.filter(s => s.matched).map(s => s.text)).toEqual(['fotballmål'])
+    expect(missing).toEqual([])
+  })
+
+  it('does not match a word in the middle of a token', () => {
+    const { segments, missing } = highlightStory('En formåling', ['mål'])
+    expect(segments.some(s => s.matched)).toBe(false)
+    expect(missing).toEqual(['mål'])
+  })
+
   it('is case-insensitive', () => {
     expect(matchedText('Biten var god', ['bit'])).toEqual(['Biten'])
   })
