@@ -314,17 +314,25 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
       {/* STUDY */}
       {phase === 'study' && (
         <ToolLayout
-          rightLabel="Story & picture"
+          rightLabel="Study tools"
           right={(
-            <StoryPanel
-              story={story}
-              expectedWords={sequence.map(num => words[num])}
-              editing={storyEditing}
-              onEdit={() => setStoryEditing(true)}
-              onCancel={() => setStoryEditing(false)}
-              onSave={saveStory}
-              flash={storyFlash}
-            />
+            <div className="w-full space-y-3">
+              <StoryPanel
+                story={story}
+                expectedWords={sequence.map(num => words[num])}
+                editing={storyEditing}
+                onEdit={() => setStoryEditing(true)}
+                onCancel={() => setStoryEditing(false)}
+                onSave={saveStory}
+                flash={storyFlash}
+              />
+              <button
+                onClick={copyWords}
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-zinc-900 border border-zinc-800 px-4 py-3 text-sm font-medium text-zinc-300 hover:text-zinc-100 hover:border-violet-500 transition-colors"
+              >
+                <span aria-hidden="true">📋</span> {copied ? 'Copied!' : 'Copy words'}
+              </button>
+            </div>
           )}
         >
         <div className="w-full max-w-md space-y-4">
@@ -333,14 +341,6 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
             <p className="text-sm text-zinc-500">
               π digits {(sessionAnchor - 1) * 2 + 1}–{(sessionAnchor + sequence.length - 2) * 2 + 2} · {sequence.length} pairs
             </p>
-          </div>
-          <div className="flex justify-center">
-            <button
-              onClick={copyWords}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-xs font-medium text-zinc-300 hover:text-zinc-100 hover:border-violet-500 transition-colors"
-            >
-              <span aria-hidden="true">📋</span> {copied ? 'Copied!' : 'Copy words'}
-            </button>
           </div>
           <div className="space-y-1.5">
             {sequence.map((num, i) => (
