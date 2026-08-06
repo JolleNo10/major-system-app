@@ -4,6 +4,14 @@ The Pi drill: memorising and reciting the decimal digits of π using Major-Syste
 words. π is worked in fixed segments; progress is tracked along three independent
 axes — memorisation, live recitation competence, and flawless-recitation milestones.
 
+**Code home.** Since the package-by-feature restructure (see ADR 0002), `src/` is one
+folder per domain — `features/{major-system, pi, cards, pao}` over a shared `core/`
+(spaced-repetition engine + UI primitives) and an `app/` composition shell. This context
+is `features/pi/`: a self-contained feature that exposes its drill entry-points through
+`features/pi/index.ts` and keeps everything else internal. It depends on `core/` and reuses
+the Major-System **Word** list via the `features/major-system` barrel (its one cross-feature
+edge). The glossary below is the ubiquitous language for that feature.
+
 ## Language
 
 ### Units & structure
