@@ -264,7 +264,7 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
                       isSelected
                         ? 'bg-cyan-600/25 border-cyan-500/60 text-cyan-300'
                         : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200 hover:border-zinc-500'
-                    } ${segIdx === nextSeg ? 'ring-2 ring-violet-500' : ''}`}
+                    } ${segIdx === nextSeg ? 'ring-1 ring-violet-400/50' : ''}`}
                   >
                     <PiSegmentDot
                       status={statuses[segIdx] ?? 'new'}
