@@ -1,12 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   bestFromStartReach,
+  describeSegment,
   fromStartRecordRun,
   fullReciteSessions,
   isFromStartRecord,
   isFullRecite,
   piSegmentStatuses,
   practiceSessions,
+  type PiSegmentSummary,
   type PiSession,
 } from '@/features/pi/shared/piStats'
 import { getAllAttempts } from '@/core/scoring/attemptStore'
@@ -83,6 +85,31 @@ describe('piSegmentStatuses (per-segment progress dots)', () => {
     twoRedo[3] = [true, false, true, true] // two correct after the miss — clean
     mockAttempts.mockResolvedValue(seg0(twoRedo))
     expect(await status(seg0(twoRedo))).toBe('learned')
+  })
+})
+
+describe('describeSegment (status dot tooltip)', () => {
+  const s = (p: Partial<PiSegmentSummary>): PiSegmentSummary =>
+    ({ status: 'new', touched: 0, clean: 0, correct: 0, wrong: 0, ...p })
+
+  it('distinguishes memorised-in-study from untouched for new segments', () => {
+    expect(describeSegment(s({ status: 'new' }), true)).toBe('memorised in study — not yet recited')
+    expect(describeSegment(s({ status: 'new' }), false)).toBe('not yet recited')
+  })
+
+  it('reports all pairs solid and accuracy when learned', () => {
+    const sum = s({ status: 'learned', touched: 10, clean: 10, correct: 19, wrong: 1 })
+    expect(describeSegment(sum, false)).toBe('learned · all 10 pairs solid · 20 answers, 95% correct')
+  })
+
+  it('reports the solid count and accuracy when practising', () => {
+    const sum = s({ status: 'weak', touched: 8, clean: 6, correct: 9, wrong: 3 })
+    expect(describeSegment(sum, false)).toBe('practising · 6/10 pairs solid · 12 answers, 75% correct')
+  })
+
+  it('singularises a lone answer', () => {
+    const sum = s({ status: 'weak', touched: 1, clean: 1, correct: 1, wrong: 0 })
+    expect(describeSegment(sum, false)).toBe('practising · 1/10 pairs solid · 1 answer, 100% correct')
   })
 })
 

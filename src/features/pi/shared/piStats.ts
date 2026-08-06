@@ -142,12 +142,21 @@ export async function rankPiPositions(): Promise<PiPositionStat[]> {
 //   new     — untested.
 export type PiSegmentStatus = 'new' | 'weak' | 'learned'
 
+// Per-segment rollup backing both the status dot and its hover tooltip.
+export interface PiSegmentSummary {
+  status: PiSegmentStatus
+  touched: number   // pairs with ≥1 recorded answer (0..10)
+  clean: number     // pairs whose last CLEAN_RECENT answers were all correct (0..10)
+  correct: number   // total correct answers across the segment's pairs
+  wrong: number     // total wrong answers
+}
+
 // How many of a pair's most-recent answers must be correct for it to count as
 // clean. First-pass single correct answers also qualify (fewer than this many
 // attempts, none wrong), so a first flawless recite still turns the segment green.
 const CLEAN_RECENT = 2
 
-export async function piSegmentStatuses(maxPairs: number): Promise<PiSegmentStatus[]> {
+export async function piSegmentSummaries(maxPairs: number): Promise<PiSegmentSummary[]> {
   const attempts = (await getAllAttempts()).filter(a => a.key.startsWith(PI_KEY_PREFIX))
 
   // Keep each position's attempts in chronological order so we can look at the
@@ -168,17 +177,37 @@ export async function piSegmentStatuses(maxPairs: number): Promise<PiSegmentStat
     !!oks && oks.length > 0 && oks.slice(-CLEAN_RECENT).every(Boolean)
 
   const maxSegs = Math.floor(maxPairs / PAIRS_PER_SEGMENT)
-  const statuses: PiSegmentStatus[] = []
+  const summaries: PiSegmentSummary[] = []
   for (let seg = 0; seg < maxSegs; seg++) {
-    let touched = 0, clean = 0
+    let touched = 0, clean = 0, correct = 0, wrong = 0
     for (let i = 0; i < PAIRS_PER_SEGMENT; i++) {
       const oks = byPos.get(seg * PAIRS_PER_SEGMENT + i + 1)
       if (oks && oks.length) touched++
       if (isClean(oks)) clean++
+      for (const ok of oks ?? []) ok ? correct++ : wrong++
     }
-    if (touched === 0) statuses.push('new')
-    else if (clean === PAIRS_PER_SEGMENT) statuses.push('learned')
-    else statuses.push('weak')
+    const status: PiSegmentStatus =
+      touched === 0 ? 'new' : clean === PAIRS_PER_SEGMENT ? 'learned' : 'weak'
+    summaries.push({ status, touched, clean, correct, wrong })
   }
-  return statuses
+  return summaries
+}
+
+export async function piSegmentStatuses(maxPairs: number): Promise<PiSegmentStatus[]> {
+  return (await piSegmentSummaries(maxPairs)).map(s => s.status)
+}
+
+// Human-readable one-liner for a segment's status dot tooltip (Recite grid),
+// mirroring the Anchors pace bead's "label — timings" hover detail.
+export function describeSegment(s: PiSegmentSummary, memoed: boolean): string {
+  if (s.status === 'new') {
+    return memoed ? 'memorised in study — not yet recited' : 'not yet recited'
+  }
+  const answers = s.correct + s.wrong
+  const pct = answers ? Math.round((s.correct / answers) * 100) : 0
+  const head = s.status === 'learned' ? 'learned' : 'practising'
+  const solid = s.status === 'learned'
+    ? `all ${PAIRS_PER_SEGMENT} pairs solid`
+    : `${s.clean}/${PAIRS_PER_SEGMENT} pairs solid`
+  return `${head} · ${solid} · ${answers} answer${answers === 1 ? '' : 's'}, ${pct}% correct`
 }

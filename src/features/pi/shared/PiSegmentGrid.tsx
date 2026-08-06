@@ -25,16 +25,17 @@ function saveCollapsed(set: Set<number>): void {
 // owns the cell fill): emerald = learned through recitation, amber = practising
 // recitation, zinc = memorised correctly but not yet recited, nothing = new.
 // Requires the containing button to be `relative`.
-export function PiSegmentDot({ status, memoed = false }: {
+export function PiSegmentDot({ status, memoed = false, title }: {
   status: PiSegmentStatus
   memoed?: boolean
+  title?: string           // hover detail; falls back to the bare status word
 }) {
   if (status === 'new' && !memoed) return null
-  const label = status === 'learned'
+  const label = title ?? (status === 'learned'
     ? 'learned'
     : status === 'weak'
       ? 'practising'
-      : 'memorised correctly'
+      : 'memorised correctly')
   const cls = status === 'learned'
     ? 'bg-emerald-400'
     : status === 'weak'

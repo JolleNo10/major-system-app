@@ -46,7 +46,7 @@ export function PiReciteTab({ answerMode, maxPiPairs }: Props) {
   const [runNonce, setRunNonce] = useState(0)
 
   const [piSessions, setPiSessions] = useState<PiSession[]>(() => loadPiSessions())
-  const { statuses, memoedSegs, statusesLoading } = useSegmentPickerData(maxPiPairs, phase)
+  const { statuses, summaries, memoedSegs, statusesLoading } = useSegmentPickerData(maxPiPairs, phase)
   const maxSegments = Math.floor(maxPiPairs / PAIRS_PER_ROW)
   const [recitedSegs, setRecitedSegs] = useState(loadFlawlesslyRecitedPiSegments)
 
@@ -149,6 +149,7 @@ export function PiReciteTab({ answerMode, maxPiPairs }: Props) {
             <PiSegmentRangePicker
               count={numButtons}
               statuses={statuses}
+              summaries={summaries}
               memoedSegs={memoedSegs}
               value={{
                 start: selAnchor === null ? null : (selAnchor - 1) / PAIRS_PER_ROW,

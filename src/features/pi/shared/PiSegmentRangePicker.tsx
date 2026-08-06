@@ -1,8 +1,11 @@
 import { useState, useCallback, type ReactNode } from 'react'
-import { PAIRS_PER_SEGMENT, type PiSegmentStatus } from '@/features/pi/shared/piStats'
+import {
+  PAIRS_PER_SEGMENT, describeSegment,
+  type PiSegmentStatus, type PiSegmentSummary,
+} from '@/features/pi/shared/piStats'
 import { segmentDigitRange } from '@/features/pi/shared/piSegments'
 import { PiSegmentGrid, PiSegmentDot } from '@/features/pi/shared/PiSegmentGrid'
-import { usePiSegmentStatuses } from '@/features/pi/shared/usePiSegmentStatuses'
+import { usePiSegmentSummaries } from '@/features/pi/shared/usePiSegmentStatuses'
 import { loadMemoedPiSegments } from '@/features/pi/shared/piProgress'
 
 // Contiguous segment-range selector shared by the Recite and Anchors tabs. It's
@@ -20,13 +23,14 @@ export interface SegmentRangeValue {
 const EMPTY_SEGS: Set<number> = new Set()
 
 export function PiSegmentRangePicker({
-  count, value, onChange, statuses = [], memoedSegs = EMPTY_SEGS, renderCellBody,
-  showStatus = true,
+  count, value, onChange, statuses = [], summaries = [], memoedSegs = EMPTY_SEGS,
+  renderCellBody, showStatus = true,
 }: {
   count: number
   value: SegmentRangeValue
   onChange: (next: SegmentRangeValue) => void
   statuses?: PiSegmentStatus[]
+  summaries?: PiSegmentSummary[] // richer rollup behind each status — powers the dot tooltip
   memoedSegs?: Set<number>
   renderCellBody: (seg: number) => ReactNode
   showStatus?: boolean          // learning/recite status dot — off for Anchors (order, not recall)
@@ -65,6 +69,7 @@ export function PiSegmentRangePicker({
               <PiSegmentDot
                 status={statuses[seg] ?? 'new'}
                 memoed={memoedSegs.has(seg)}
+                title={summaries[seg] && describeSegment(summaries[seg], memoedSegs.has(seg))}
               />
             )}
             <span className="text-[8px] opacity-60 leading-none tabular-nums">π {from}–{to}</span>
@@ -77,15 +82,18 @@ export function PiSegmentRangePicker({
 }
 
 // The status/memoed wiring both range-picker tabs repeat: async per-segment
-// learning status (re-fetched on `phase`) + the memoed-segment set + whether the
-// statuses have finished loading (used by Recite's "ready to recite" rail).
+// learning summary (re-fetched on `phase`) + the memoed-segment set + whether the
+// statuses have finished loading (used by Recite's "ready to recite" rail). The
+// bare status array is derived from the summaries so there's a single fetch.
 export function useSegmentPickerData(maxPiPairs: number, phase: unknown): {
   statuses: PiSegmentStatus[]
+  summaries: PiSegmentSummary[]
   memoedSegs: Set<number>
   statusesLoading: boolean
 } {
-  const statuses = usePiSegmentStatuses(maxPiPairs, phase)
+  const summaries = usePiSegmentSummaries(maxPiPairs, phase)
   const [memoedSegs] = useState(loadMemoedPiSegments)
   const maxSegments = Math.floor(maxPiPairs / PAIRS_PER_SEGMENT)
-  return { statuses, memoedSegs, statusesLoading: statuses.length !== maxSegments }
+  const statuses = summaries.map(s => s.status)
+  return { statuses, summaries, memoedSegs, statusesLoading: summaries.length !== maxSegments }
 }
