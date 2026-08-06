@@ -79,12 +79,6 @@ export function practiceSessions(sessions: PiSession[]): PiSession[] {
   return sessions.filter(s => !isFullRecite(s))
 }
 
-// Best pairs/sec among full-recite runs only (0 if there are none) — keeps the
-// full-recite track coherently about the from-π#1 story.
-export function bestFromStartPairsPerSec(sessions: PiSession[]): number {
-  return sessions.reduce((max, s) => (isFullRecite(s) ? Math.max(max, s.pairsPerSec) : max), 0)
-}
-
 // The full-recite run that set the current from-π#1 record: max reach, earliest
 // run wins ties (it got there first). null if there are no full recites yet.
 export function fromStartRecordRun(sessions: PiSession[]): PiSession | null {

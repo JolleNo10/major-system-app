@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  bestFromStartPairsPerSec,
   bestFromStartReach,
   fromStartRecordRun,
   fullReciteSessions,
@@ -66,21 +65,6 @@ describe('fromStartRecordRun', () => {
       session({ at: 100, anchor: 1, reach: 30 }),
     ]
     expect(fromStartRecordRun(runs)?.at).toBe(100)
-  })
-})
-
-describe('bestFromStartPairsPerSec', () => {
-  it('considers full-recite runs only', () => {
-    const runs = [
-      session({ anchor: 1, pairsPerSec: 2 }),
-      session({ anchor: 11, pairsPerSec: 9 }), // faster, but practice
-      session({ anchor: 1, pairsPerSec: 3.5 }),
-    ]
-    expect(bestFromStartPairsPerSec(runs)).toBe(3.5)
-  })
-
-  it('is 0 when there are no full recites', () => {
-    expect(bestFromStartPairsPerSec([session({ anchor: 11, pairsPerSec: 9 })])).toBe(0)
   })
 })
 

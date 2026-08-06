@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useRails } from '@/app/layout/PageLayoutContext'
 import {
-  bestFromStartPairsPerSec,
   fromStartRecordRun,
   fullReciteSessions,
   practiceSessions,
@@ -81,20 +80,30 @@ function RunHistoryTool({ piSessions, formatRate }: {
 
       {record ? (
         <>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-lg border border-cyan-500/30 bg-cyan-600/10 px-3 py-2">
-              <div className="text-[10px] uppercase tracking-wider text-cyan-600">🏆 Record</div>
-              <div className="mt-0.5 font-mono text-lg font-bold tabular-nums text-cyan-300">
-                π to {record.reach * 2}d
-              </div>
-              <div className="text-[10px] text-zinc-600 tabular-nums">
-                {new Date(record.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-              </div>
+          <div className="rounded-lg border border-cyan-500/30 bg-cyan-600/10 px-3 py-2.5">
+            <div className="flex items-baseline justify-between">
+              <span className="text-[10px] uppercase tracking-wider text-cyan-600">🏆 Record</span>
+              <span className="text-[10px] text-zinc-500 tabular-nums">
+                {new Date(record.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+              </span>
             </div>
-            <div className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2">
-              <div className="text-[10px] uppercase tracking-wider text-zinc-600">Best pairs/sec</div>
-              <div className="mt-0.5 font-mono text-lg font-bold tabular-nums text-zinc-100">
-                {formatRate(bestFromStartPairsPerSec(piSessions))}
+            <div className="mt-0.5 font-mono text-2xl font-bold tabular-nums text-cyan-300 leading-tight">
+              π to {record.reach * 2}d
+            </div>
+            <div className="mt-1.5 grid grid-cols-3 gap-2 text-center tabular-nums">
+              <div>
+                <div className="font-mono text-sm font-bold text-zinc-100">{record.reach}</div>
+                <div className="text-[9px] uppercase tracking-wide text-zinc-600">pairs</div>
+              </div>
+              <div>
+                <div className={`font-mono text-sm font-bold ${record.accuracy === 100 ? 'text-green-400' : 'text-zinc-100'}`}>
+                  {record.accuracy}%
+                </div>
+                <div className="text-[9px] uppercase tracking-wide text-zinc-600">accuracy</div>
+              </div>
+              <div>
+                <div className="font-mono text-sm font-bold text-zinc-100">{formatRate(record.pairsPerSec)}</div>
+                <div className="text-[9px] uppercase tracking-wide text-zinc-600">pairs/s</div>
               </div>
             </div>
           </div>
