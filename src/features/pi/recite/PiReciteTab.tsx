@@ -5,14 +5,12 @@ import { PiNumberQuiz, type PiQuizCompletion } from '@/features/pi/shared/PiNumb
 import { readString, safeSet } from '@/core/storage'
 import { PI_PAIRS } from '@/features/pi/shared/piDigits'
 import { loadPiSessions, type PiSession } from '@/features/pi/shared/piStats'
-import { PiSegmentGrid, PiSegmentDot } from '@/features/pi/shared/PiSegmentGrid'
-import { usePiSegmentStatuses } from '@/features/pi/shared/usePiSegmentStatuses'
+import { PiSegmentRangePicker, useSegmentPickerData } from '@/features/pi/shared/PiSegmentRangePicker'
 import { usePiReciteRail } from '@/features/pi/recite/PiReciteRail'
 import {
   flawlessSegmentsFromRun,
   flawlessSegmentsFromSessions,
   loadFlawlesslyRecitedPiSegments,
-  loadMemoedPiSegments,
   pendingMemoedSegmentRanges,
   saveFlawlesslyRecitedPiSegments,
   type PiSegmentRange,
@@ -47,9 +45,8 @@ export function PiReciteTab({ answerMode, maxPiPairs }: Props) {
   const [runNonce, setRunNonce] = useState(0)
 
   const [piSessions, setPiSessions] = useState<PiSession[]>(() => loadPiSessions())
-  const statuses = usePiSegmentStatuses(maxPiPairs, phase)
+  const { statuses, memoedSegs, statusesLoading } = useSegmentPickerData(maxPiPairs, phase)
   const maxSegments = Math.floor(maxPiPairs / PAIRS_PER_ROW)
-  const [memoedSegs] = useState(loadMemoedPiSegments)
   const [recitedSegs, setRecitedSegs] = useState(loadFlawlesslyRecitedPiSegments)
 
   // Migrate progress that predates explicit flawless-segment tracking. Perfect
@@ -77,19 +74,6 @@ export function PiReciteTab({ answerMode, maxPiPairs }: Props) {
     () => [...memoedSegs].filter(seg => seg >= 0 && seg < maxSegments).length,
     [memoedSegs, maxSegments],
   )
-
-  const handleSegmentClick = useCallback((segIdx: number) => {
-    const firstPair = segIdx * PAIRS_PER_ROW + 1
-    const lastPair  = (segIdx + 1) * PAIRS_PER_ROW
-    if (selEnd !== null || selAnchor === null) {
-      setSelAnchor(firstPair)
-      setSelEnd(null)
-    } else if (firstPair >= selAnchor) {
-      setSelEnd(lastPair)
-    } else {
-      setSelAnchor(firstPair)
-    }
-  }, [selAnchor, selEnd])
 
   const startRange = useCallback((anchor: number, end: number) => {
     if (anchor < 1 || end < anchor || end > maxPiPairs || end > PI_PAIRS.length) return
@@ -140,7 +124,7 @@ export function PiReciteTab({ answerMode, maxPiPairs }: Props) {
     piSessions,
     formatRate,
     pendingRanges,
-    statusesLoading: statuses.length !== maxSegments,
+    statusesLoading,
     availableMemoedCount,
     onRecite: startQuickRange,
   })
@@ -154,39 +138,27 @@ export function PiReciteTab({ answerMode, maxPiPairs }: Props) {
 
           <div className="space-y-2">
             <span className="text-sm font-medium text-zinc-300">Select segment</span>
-            <PiSegmentGrid
+            <PiSegmentRangePicker
               count={numButtons}
-              renderCell={segIdx => {
-                const firstPair = segIdx * PAIRS_PER_ROW + 1
-                const lastPair  = (segIdx + 1) * PAIRS_PER_ROW
-                const startDigit = segIdx * PAIRS_PER_ROW * 2 + 1
-                const endDigit   = (segIdx + 1) * PAIRS_PER_ROW * 2
-                const inRange = selAnchor !== null && selEnd !== null &&
-                                firstPair <= selEnd && lastPair >= selAnchor
-                const isAnchor = selEnd === null && selAnchor !== null &&
-                                 firstPair <= selAnchor && lastPair >= selAnchor
+              statuses={statuses}
+              memoedSegs={memoedSegs}
+              value={{
+                start: selAnchor === null ? null : (selAnchor - 1) / PAIRS_PER_ROW,
+                end: selEnd === null ? null : selEnd / PAIRS_PER_ROW - 1,
+              }}
+              onChange={next => {
+                setSelAnchor(next.start === null ? null : next.start * PAIRS_PER_ROW + 1)
+                setSelEnd(next.end === null ? null : (next.end + 1) * PAIRS_PER_ROW)
+              }}
+              renderCellBody={seg => {
                 const half = PAIRS_PER_ROW / 2
-                const line1 = PI_PAIRS.slice(segIdx * PAIRS_PER_ROW, segIdx * PAIRS_PER_ROW + half).join(' ')
-                const line2 = PI_PAIRS.slice(segIdx * PAIRS_PER_ROW + half, (segIdx + 1) * PAIRS_PER_ROW).join(' ')
+                const line1 = PI_PAIRS.slice(seg * PAIRS_PER_ROW, seg * PAIRS_PER_ROW + half).join(' ')
+                const line2 = PI_PAIRS.slice(seg * PAIRS_PER_ROW + half, (seg + 1) * PAIRS_PER_ROW).join(' ')
                 return (
-                  <button
-                    onClick={() => handleSegmentClick(segIdx)}
-                    className={`relative flex flex-col items-start px-2 py-1.5 rounded-lg border transition-colors ${
-                      inRange
-                        ? 'bg-cyan-600/25 border-cyan-500/60 text-cyan-300'
-                        : isAnchor
-                        ? 'bg-amber-600/20 border-amber-500/60 text-amber-300'
-                        : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200 hover:border-zinc-500'
-                    }`}
-                  >
-                    <PiSegmentDot
-                      status={statuses[segIdx] ?? 'new'}
-                      memoed={memoedSegs.has(segIdx)}
-                    />
-                    <span className="text-[8px] opacity-60 leading-none tabular-nums">π {startDigit}–{endDigit}</span>
+                  <>
                     <span className="font-mono text-[8px] tabular-nums leading-snug mt-0.5">{line1}</span>
                     <span className="font-mono text-[8px] tabular-nums leading-snug">{line2}</span>
-                  </button>
+                  </>
                 )
               }}
             />
