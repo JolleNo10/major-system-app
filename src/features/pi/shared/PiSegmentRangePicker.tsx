@@ -17,15 +17,19 @@ export interface SegmentRangeValue {
   end: number | null
 }
 
+const EMPTY_SEGS: Set<number> = new Set()
+
 export function PiSegmentRangePicker({
-  count, value, onChange, statuses, memoedSegs, renderCellBody,
+  count, value, onChange, statuses = [], memoedSegs = EMPTY_SEGS, renderCellBody,
+  showStatus = true,
 }: {
   count: number
   value: SegmentRangeValue
   onChange: (next: SegmentRangeValue) => void
-  statuses: PiSegmentStatus[]
-  memoedSegs: Set<number>
+  statuses?: PiSegmentStatus[]
+  memoedSegs?: Set<number>
   renderCellBody: (seg: number) => ReactNode
+  showStatus?: boolean          // learning/recite status dot — off for Anchors (order, not recall)
 }) {
   // Two-click selection: first click anchors the start (end cleared); a second
   // click at or past the anchor sets the end; anything else re-anchors. Once a
@@ -57,10 +61,12 @@ export function PiSegmentRangePicker({
                 : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200 hover:border-zinc-500'
             }`}
           >
-            <PiSegmentDot
-              status={statuses[seg] ?? 'new'}
-              memoed={memoedSegs.has(seg)}
-            />
+            {showStatus && (
+              <PiSegmentDot
+                status={statuses[seg] ?? 'new'}
+                memoed={memoedSegs.has(seg)}
+              />
+            )}
             <span className="text-[8px] opacity-60 leading-none tabular-nums">π {from}–{to}</span>
             {renderCellBody(seg)}
           </button>

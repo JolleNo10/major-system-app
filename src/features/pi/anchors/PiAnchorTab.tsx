@@ -4,7 +4,7 @@ import { PiNumberQuiz, type PiQuizLabels } from '@/features/pi/shared/PiNumberQu
 import { readString, safeSet } from '@/core/storage'
 import { PAIRS_PER_SEGMENT } from '@/features/pi/shared/piStats'
 import { segmentAnchorPos, segmentDigitRange, segmentAnchorPairs } from '@/features/pi/shared/piSegments'
-import { PiSegmentRangePicker, useSegmentPickerData } from '@/features/pi/shared/PiSegmentRangePicker'
+import { PiSegmentRangePicker } from '@/features/pi/shared/PiSegmentRangePicker'
 import type { AnswerMode } from '@/core/types'
 
 const SEL_START_KEY = 'major-pi-anchor-start'
@@ -40,8 +40,6 @@ export function PiAnchorTab({ answerMode, maxPiPairs }: Props) {
   const [sequence, setSequence] = useState<string[]>([])
   const [runSeg, setRunSeg] = useState(0)
   const [runNonce, setRunNonce] = useState(0)
-
-  const { statuses, memoedSegs } = useSegmentPickerData(maxPiPairs, phase)
 
   // Lowering "Max π digits" can strand a stored selection past the last segment.
   const rangeStart = selStart === null ? null : Math.min(selStart, lastSeg)
@@ -90,6 +88,7 @@ export function PiAnchorTab({ answerMode, maxPiPairs }: Props) {
           labels={labels}
           distractorPool={anchorPairs}
           recordAttempts={false}
+          resultMode="anchor"
           onExit={() => setPhase('setup')}
           exitLabel="Segments"
         />
@@ -110,8 +109,7 @@ export function PiAnchorTab({ answerMode, maxPiPairs }: Props) {
           <span className="text-sm font-medium text-zinc-300">Select segments</span>
           <PiSegmentRangePicker
             count={totalSegments}
-            statuses={statuses}
-            memoedSegs={memoedSegs}
+            showStatus={false}
             value={{ start: rangeStart, end: rangeEnd }}
             onChange={next => {
               setSelStart(next.start)

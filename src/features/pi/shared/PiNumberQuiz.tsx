@@ -45,6 +45,7 @@ interface Props {
   recordAttempts?: boolean       // write a `pi:<pos>` attempt per answered pair
   labels?: PiQuizLabels          // override the π-position labelling
   distractorPool?: string[]      // pairs to draw MC distractors from (default: the sequence)
+  resultMode?: 'recite' | 'anchor' // 'anchor' reframes the result screen around segment transitions
   onPairAnswered?: (pos: number, ok: boolean, ms: number) => void
   onComplete?: (completion: PiQuizCompletion) => void
   reviewStoriesOnMistake?: boolean
@@ -58,8 +59,9 @@ export function PiNumberQuiz({
   answerMode, answerSize, sequence, anchor, words,
   onExit, exitLabel = 'Settings', recordSession = false, recordAttempts = true,
   labels: labelsProp, distractorPool, onPairAnswered, onComplete,
-  reviewStoriesOnMistake = false,
+  reviewStoriesOnMistake = false, resultMode = 'recite',
 }: Props) {
+  const isAnchorMode = resultMode === 'anchor'
   const mcPool = distractorPool ?? sequence
   const isBatch = answerMode === 'typing' && answerSize === 10
   const [phase, setPhase] = useState<'quiz' | 'result'>('quiz')
@@ -200,6 +202,16 @@ export function PiNumberQuiz({
     return n
   })()
 
+  // Anchor mode tests the *transitions* between segments: the time to recall the
+  // opening pair of the next segment. The first answer starts the chain rather
+  // than bridging two segments, so the pause stats look only at answers 2..n.
+  const pauseMsList = nqResults.slice(1)
+    .map(r => r.ms)
+    .filter((m): m is number => m !== undefined)
+  const pauseAvgMs = pauseMsList.length ? pauseMsList.reduce((a, b) => a + b, 0) / pauseMsList.length : 0
+  const pauseSlowestMs = pauseMsList.length ? Math.max(...pauseMsList) : 0
+  const pauseFastestMs = pauseMsList.length ? Math.min(...pauseMsList) : 0
+
   useEffect(() => {
     if (phase !== 'result' || completionReportedRef.current) return
     completionReportedRef.current = true
@@ -261,10 +273,19 @@ export function PiNumberQuiz({
           </>
         )}
         <h3 className="text-xl font-bold text-center text-zinc-100">
-          {formatResultSummary(nqCorrectCount)}
+          {isAnchorMode
+            ? `${nqCorrectCount === sequence.length ? '🎉 Perfect! ' : ''}${nqCorrectCount}/${sequence.length} anchors recalled`
+            : formatResultSummary(nqCorrectCount)}
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          {([
+          {(isAnchorMode ? [
+            ['Anchors', `${nqCorrectCount}/${sequence.length}`],
+            ['Avg pause', formatSec(pauseAvgMs)],
+            ['Slowest pause', formatSec(pauseSlowestMs)],
+            ['Fastest pause', formatSec(pauseFastestMs)],
+            ['Accuracy', `${nqAccuracy}%`],
+            ['Mistakes', String(nqMistakes)],
+          ] : [
             ['Reach', `${nqReach * 2} digits`],
             ['Total time', formatSec(nqTotalMs)],
             ['Pairs/sec', formatRate(nqPairsPerSec)],
