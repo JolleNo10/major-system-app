@@ -6,6 +6,7 @@ import { readString, safeSet } from '@/core/storage'
 import { PI_PAIRS } from '@/features/pi/shared/piDigits'
 import { loadPiSessions, type PiSession } from '@/features/pi/shared/piStats'
 import { PiSegmentRangePicker, useSegmentPickerData } from '@/features/pi/shared/PiSegmentRangePicker'
+import { PiLegend } from '@/features/pi/shared/PiSegmentGrid'
 import { usePiReciteRail } from '@/features/pi/recite/PiReciteRail'
 import {
   flawlessSegmentsFromRun,
@@ -137,7 +138,14 @@ export function PiReciteTab({ answerMode, maxPiPairs }: Props) {
         <div className={`w-full space-y-6 p-6 ${panelCls}`}>
 
           <div className="space-y-2">
-            <span className="text-sm font-medium text-zinc-300">Select segment</span>
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-sm font-medium text-zinc-300">Select segment</span>
+              <PiLegend items={[
+                { swatch: 'bg-emerald-400', label: 'recited' },
+                { swatch: 'bg-amber-400', label: 'practising' },
+                { swatch: 'bg-zinc-400', label: 'memorised' },
+              ]} />
+            </div>
             <PiSegmentRangePicker
               count={numButtons}
               statuses={statuses}

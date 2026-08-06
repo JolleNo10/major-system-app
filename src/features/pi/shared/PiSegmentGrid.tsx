@@ -49,6 +49,24 @@ export function PiSegmentDot({ status, memoed = false }: {
   )
 }
 
+// Inline legend for a segment grid's cell indicators. Each item's `swatch` is
+// the class(es) for a 1.5×1.5 dot (a `bg-*` fill or a `ring-1 ring-*` outline).
+// Mirrors the Anchors pace legend so all three tabs read the same.
+export function PiLegend({ items }: {
+  items: { swatch: string; label: string }[]
+}) {
+  return (
+    <span className="flex flex-wrap items-center justify-end gap-x-2.5 gap-y-1 text-[10px] text-zinc-500">
+      {items.map(it => (
+        <span key={it.label} className="flex items-center gap-1">
+          <span className={`h-1.5 w-1.5 rounded-full ${it.swatch}`} />
+          {it.label}
+        </span>
+      ))}
+    </span>
+  )
+}
+
 // Compact content preview shared by the Pi right-rail cards. It identifies a
 // range by the useful digit positions and pairs rather than internal segment
 // numbers. Longer ranges keep the preview compact by showing both ends.

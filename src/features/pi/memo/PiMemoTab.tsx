@@ -5,7 +5,7 @@ import { TypingInput } from '@/core/ui/TypingInput'
 import { readString, safeSet } from '@/core/storage'
 import { buildEncOptions } from '@/core/scoring/quiz'
 import { PI_PAIRS } from '@/features/pi/shared/piDigits'
-import { PiSegmentGrid } from '@/features/pi/shared/PiSegmentGrid'
+import { PiSegmentGrid, PiLegend } from '@/features/pi/shared/PiSegmentGrid'
 import { usePiMemoRail } from '@/features/pi/memo/PiMemoRail'
 import { usePiSegmentStatuses } from '@/features/pi/shared/usePiSegmentStatuses'
 import { usePiStoryEditor } from '@/features/pi/memo/usePiStoryEditor'
@@ -203,7 +203,13 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
       {phase === 'setup' && (
         <div className={`w-full space-y-6 p-6 ${panelCls}`}>
           <div className="space-y-2">
-            <span className="text-sm font-medium text-zinc-300">Select a segment to memorise</span>
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-sm font-medium text-zinc-300">Select a segment to memorise</span>
+              <PiLegend items={[
+                { swatch: 'bg-violet-400', label: 'has story' },
+                { swatch: 'ring-1 ring-violet-400/60', label: 'next to memo' },
+              ]} />
+            </div>
             <PiSegmentGrid
               count={maxSegs}
               renderCell={segIdx => {
