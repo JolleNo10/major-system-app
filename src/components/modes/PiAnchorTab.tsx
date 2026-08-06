@@ -1,10 +1,10 @@
-import { Fragment, useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useWords } from '../../context/WordsContext'
 import { PiNumberQuiz, type PiQuizLabels } from './PiNumberQuiz'
 import { readString, safeSet } from '../../utils/storage'
 import { PAIRS_PER_SEGMENT } from '../../data/piStats'
 import { segmentAnchorPos, segmentDigitRange, segmentAnchorPairs } from '../../utils/piSegments'
-import { PiSegmentMilestone, PiSegmentDot, PI_SEGMENT_GRID_CLASS } from './PiSegmentGrid'
+import { PiSegmentGrid, PiSegmentDot } from './PiSegmentGrid'
 import { usePiSegmentStatuses } from '../../hooks/usePiSegmentStatuses'
 import type { AnswerMode } from '../../types'
 
@@ -126,37 +126,35 @@ export function PiAnchorTab({ answerMode, maxPiPairs }: Props) {
 
         <div className="space-y-2">
           <span className="text-sm font-medium text-zinc-300">Select segments</span>
-          <div className={PI_SEGMENT_GRID_CLASS}>
-            {Array.from({ length: totalSegments }, (_, seg) => {
+          <PiSegmentGrid
+            count={totalSegments}
+            renderCell={seg => {
               const [from, to] = segmentDigitRange(seg)
               const inRange = rangeStart !== null && rangeEnd !== null &&
                               seg >= rangeStart && seg <= rangeEnd
               const isAnchor = rangeEnd === null && seg === rangeStart
               const dim = statuses.length > 0 && seg >= learnedFrontier
               return (
-                <Fragment key={seg}>
-                  <button
-                    onClick={() => handleSegmentClick(seg)}
-                    className={`relative flex flex-col items-start px-2 py-1.5 rounded-lg border transition-colors ${
-                      inRange
-                        ? 'bg-cyan-600/25 border-cyan-500/60 text-cyan-300'
-                        : isAnchor
-                        ? 'bg-amber-600/20 border-amber-500/60 text-amber-300'
-                        : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200 hover:border-zinc-500'
-                    } ${dim ? 'opacity-40' : ''}`}
-                  >
-                    <PiSegmentDot status={statuses[seg] ?? 'new'} />
-                    <span className="text-[8px] opacity-60 leading-none tabular-nums">π {from}–{to}</span>
-                    <span className="w-full truncate leading-snug mt-0.5 text-left">
-                      <span className="font-mono text-[10px] tabular-nums">{anchorPairs[seg]}</span>
-                      <span className="text-[10px] opacity-60 ml-1">{words[anchorPairs[seg]]}</span>
-                    </span>
-                  </button>
-                  <PiSegmentMilestone completedSegments={seg + 1} />
-                </Fragment>
+                <button
+                  onClick={() => handleSegmentClick(seg)}
+                  className={`relative flex flex-col items-start px-2 py-1.5 rounded-lg border transition-colors ${
+                    inRange
+                      ? 'bg-cyan-600/25 border-cyan-500/60 text-cyan-300'
+                      : isAnchor
+                      ? 'bg-amber-600/20 border-amber-500/60 text-amber-300'
+                      : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200 hover:border-zinc-500'
+                  } ${dim ? 'opacity-40' : ''}`}
+                >
+                  <PiSegmentDot status={statuses[seg] ?? 'new'} />
+                  <span className="text-[8px] opacity-60 leading-none tabular-nums">π {from}–{to}</span>
+                  <span className="w-full truncate leading-snug mt-0.5 text-left">
+                    <span className="font-mono text-[10px] tabular-nums">{anchorPairs[seg]}</span>
+                    <span className="text-[10px] opacity-60 ml-1">{words[anchorPairs[seg]]}</span>
+                  </span>
+                </button>
               )
-            })}
-          </div>
+            }}
+          />
           <p className="text-xs text-center pt-1 min-h-5">
             {rangeStart === null ? (
               <span className="text-zinc-700">Click a segment to start selecting</span>

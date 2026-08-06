@@ -41,7 +41,7 @@ docker run --rm -v "$(pwd)":/app -w /app node:20-alpine sh -c "npx tsc -b && npx
 | `major-pao-drilltype` / `-suits` / `-deck-count` / `-decode-field` / `-deck-memo-history` | localStorage | PAO Deck UI/session state (drill type, active suits, deck-memo card count, decode field selector, and the PAO deck-memo run history) |
 | `major-settings` | localStorage | `{ masteryLatencyFactor, maxPiDigits, offlineMode, piPairsPerAnswer }` (`piPairsPerAnswer` 1\|10 = Pi typing batch size, set in Settings; migrated once from the legacy `major-pi-answer-size` key) |
 | `major-typing-speed` / `-digit` | localStorage | Adaptive ms/char estimates, separate for word vs digit typing |
-| `major-answer-mode`, `major-hide-options`, `major-seq-length`, `major-seq-studymode`, `major-speed-best`, `major-attempts-migrated` | localStorage | Small UI/prefs flags |
+| `major-answer-mode`, `major-hide-options`, `major-seq-length`, `major-seq-studymode`, `major-speed-best`, `major-attempts-migrated`, `major-pi-collapsed-blocks` (collapsed 1000-digit segment blocks, shared across Pi grids) | localStorage | Small UI/prefs flags |
 
 **Word list is 3 layered sources** (`WordsContext`); effective = `{...shipped, ...saved, ...overrides}`:
 1. **shipped** — `src/data/words.csv` (`number,default,custom`), imported via `?raw` and parsed by
@@ -120,7 +120,10 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   `PiSession` summary per run. Optional `labels` (`PiQuizLabels`: `prompt`/`hint`/`row`) overrides every on-screen π-position
   string — the escape hatch for non-contiguous sequences — and `distractorPool` overrides where MC distractors are drawn from
   (default: the run sequence).
-  All three segment grids (Memo/Recite/Anchors) paint a per-segment **status dot** (`PiSegmentDot`) derived from the `pi:` log via
+  All three tabs render their segment grid through the shared **`PiSegmentGrid`** wrapper (`count` + `renderCell(segIdx)`): it owns
+  the grid container and the 1000-digit block dividers, each a toggle that **collapses the block above it** (50 segments) — collapse
+  state is persisted (`major-pi-collapsed-blocks`) and shared across the grids; with < 1050 π digits there's a single block and no dividers.
+  Each grid paints a per-segment **status dot** (`PiSegmentDot`) derived from the `pi:` log via
   `piSegmentStatuses` (`usePiSegmentStatuses` hook): emerald = learned (every pair answered correctly ≥1× with no recorded misses),
   amber = practising (touched but short of that), none = new. Recite shows just the dots; **Memo** rings the first *untested* segment
   (next to memo) and Anchors dims everything past the contiguous *learned* frontier (soft cap).
