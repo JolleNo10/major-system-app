@@ -161,6 +161,16 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
     studySegment(selectedSeg)
   }, [selectedSeg, studySegment])
 
+  const studyPreviousSegment = useCallback(() => {
+    if (selectedSeg === null || selectedSeg <= 0) return
+    studySegment(selectedSeg - 1)
+  }, [selectedSeg, studySegment])
+
+  const studyNextSegment = useCallback(() => {
+    if (selectedSeg === null || selectedSeg + 1 >= maxSegs) return
+    studySegment(selectedSeg + 1)
+  }, [selectedSeg, maxSegs, studySegment])
+
   const advanceRecall = useCallback(() => {
     setStudyIdx(prev => {
       const next = prev + 1
@@ -341,18 +351,22 @@ export function PiMemoTab({ answerMode, maxPiPairs }: Props) {
               </div>
             ))}
           </div>
-          <button
-            onClick={() => {
-              setStudyIdx(0)
-              setWqAnswered(null)
-              setWqCorrect(null)
-              setWqNumberRevealed(false)
-              setWqOptions(buildEncOptions(sequence[0], words))
-              setWqResults([])
-              setPhase('recall')
-            }}
-            className="w-full py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold transition-colors"
-          >Test recall →</button>
+          <div className="flex gap-2">
+            <button
+              onClick={studyPreviousSegment}
+              disabled={selectedSeg === null || selectedSeg <= 0}
+              className="flex-1 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed text-zinc-300 font-semibold transition-colors"
+            >← Previous segment</button>
+            <button
+              onClick={goToRecall}
+              className="flex-1 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold transition-colors"
+            >Test recall →</button>
+            <button
+              onClick={studyNextSegment}
+              disabled={selectedSeg === null || selectedSeg + 1 >= maxSegs}
+              className="flex-1 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed text-zinc-300 font-semibold transition-colors"
+            >Next segment →</button>
+          </div>
         </div>
         </ToolLayout>
       )}
