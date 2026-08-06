@@ -4,20 +4,28 @@
 (mapping 2-digit numbers `00`–`99` to words) with dedicated **Applications** for Pi and Cards.
 Built to expand to additional mnemonic systems over time.
 Stack: **Vite + React 19 + TypeScript + Tailwind v4**, single-page, **no backend**,
-**always dark** (zinc-950 base, violet-600 accent). Docker-only dev workflow.
+**always dark** (zinc-950 base, violet-600 accent). Uses the host Node workflow
+when Node/npm are available, with Docker as the fallback.
 
 > This file exists so a fresh context can understand the repo without reading every file.
 > Keep it in sync when the architecture changes.
 
-## Commands (Docker-only — no local node/npm)
+## Commands (host Node/npm preferred; Docker fallback)
 ```bash
+# When Node/npm are installed on the host:
+npm ci
+npm run dev             # dev server
+npm test                # tests
+npm run build           # type-check + production build
+
+# When the host has no Node/npm:
 docker compose up          # dev server → http://localhost:8080 (Vite on 5173)
 docker compose up --build  # rebuild after package.json changes
 docker compose down
-# One-off verification (node isn't installed on the host):
+# One-off verification without a host Node toolchain:
 docker run --rm -v "$(pwd)":/app -w /app node:20-alpine sh -c "npx tsc -b && npx vitest run && npx vite build"
 ```
-`npm test` → `vitest run`. Tests are colocated `*.test.ts` next to the pure utils.
+Tests are colocated `*.test.ts` next to the pure utils.
 
 ## Big picture
 - **No router.** `App.tsx` holds `mode: Mode` (state machine) + three overlay booleans
@@ -186,7 +194,7 @@ Person/Action/Object triples (partial final group of 1–2 kept).
 ## Conventions & gotchas
 - **Read this file first in fresh contexts and keep it updated** when workflow, architecture, commands,
   or persistent repo expectations change.
-- **Verify in Docker** (`tsc -b`, `vitest run`, `vite build`) — there is no host node toolchain.
+- **Verify with the host Node toolchain when available**, otherwise use Docker (`tsc -b`, `vitest run`, `vite build`) — the project supports both workflows.
 - **Dev server runs through Docker/Vite on a Windows bind mount.** Vite uses slow polling in
   `vite.config.ts`; after watcher config changes, run `docker compose up -d --build` or restart `app`.
 - **Commit + push each completed, verified change to `main`** (one logical change per commit). `.gitignore`
