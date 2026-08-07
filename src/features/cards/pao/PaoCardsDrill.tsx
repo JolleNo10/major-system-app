@@ -240,8 +240,12 @@ export function PaoCardsDrill({ answerMode }: Props) {
     })
   }
 
+  // Encode asks for all three fields at once, so its recall latency is roughly the
+  // sum of three recalls — judge mastery against a proportionally larger speed bar
+  // so a card can still count as mastered. Decode is a single recall (bar ×1).
+  const masteryFields = drillType === 'encode' ? PAO_FIELDS.length : 1
   const { mastered, total, masteredSet } = masteryProgress(
-    drillNumbers, roundStats, masteryFastMs(settings.masteryLatencyFactor))
+    drillNumbers, roundStats, masteryFastMs(settings.masteryLatencyFactor) * masteryFields)
   masteredSetRef.current = masteredSet
 
   const colorCls = card.red ? 'text-rose-500' : 'text-zinc-900'
