@@ -36,7 +36,7 @@ export const DEFAULT_SETTINGS: Settings = {
   sessionUnmasteredShare: 0.5, // even split between unmastered and mastered pools
 }
 
-export const UNMASTERED_SHARE_MIN = 0.5
+export const UNMASTERED_SHARE_MIN = 0
 export const UNMASTERED_SHARE_MAX = 1
 export const UNMASTERED_SHARE_STEP = 0.05
 

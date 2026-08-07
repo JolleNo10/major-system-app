@@ -110,6 +110,7 @@ export function SettingsOverlay({ onClose, pwa }: Props) {
               className="w-full h-2 accent-violet-600 cursor-pointer touch-none"
             />
             <div className="flex justify-between text-xs text-zinc-600 mt-1">
+              <span>Only mastered</span>
               <span>Balanced (50/50)</span>
               <span>Only unmastered</span>
             </div>
