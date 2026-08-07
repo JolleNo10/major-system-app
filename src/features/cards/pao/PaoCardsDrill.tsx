@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSettings } from '@/app/settings/SettingsContext'
 import { usePaoCards } from '@/features/cards/pao/PaoCardsContext'
 import { MultipleChoice } from '@/core/ui/MultipleChoice'
-import { TypingInput } from '@/core/ui/TypingInput'
 import { ScoreBar } from '@/core/ui/ScoreBar'
 import { PaoWordsOverlay } from '@/features/cards/pao/PaoWordsOverlay'
 import { PaoDeckMemoDrill } from '@/features/cards/pao/PaoDeckMemoDrill'
@@ -15,7 +14,7 @@ import { matchesAnswerLoose } from '@/core/answerMatch'
 import { CARDS, RANKS, rankIndex } from '@/core/cards'
 import type { Card, Suit } from '@/core/cards'
 import { PAO_FIELDS, type PaoField } from '@/features/cards/pao/paoCards'
-import { PAO_ROLE, RoleTag, RoleValue } from '@/features/cards/pao/paoRoles'
+import { PAO_ROLE, RoleValue } from '@/features/cards/pao/paoRoles'
 import type { AnswerMode } from '@/core/types'
 import { RankRangeSelector } from '@/core/ui/RankRangeSelector'
 
@@ -172,6 +171,8 @@ export function PaoCardsDrill({ answerMode }: Props) {
   const [encodeInput, setEncodeInput] = useState(emptyInput)
   const [encodeResult, setEncodeResult] = useState<Record<PaoField, boolean> | null>(null)
   const [decodeAnswers, setDecodeAnswers] = useState<Partial<Record<PaoField, DecodeAnswer>>>({})
+  // Typed card code per Decode cue (typing mode; inline like Encode's inputs).
+  const [decodeInput, setDecodeInput] = useState<Partial<Record<PaoField, string>>>({})
 
   const [sessionCorrect, setSessionCorrect] = useState(0)
   const [sessionWrong, setSessionWrong] = useState(0)
@@ -179,11 +180,13 @@ export function PaoCardsDrill({ answerMode }: Props) {
   const [bestStreak, setBestStreak] = useState(0)
 
   const encodeRef = useRef<HTMLInputElement>(null)
+  const decodeRefs = useRef<Partial<Record<PaoField, HTMLInputElement | null>>>({})
 
   const resetQuestionState = () => {
     setEncodeInput(emptyInput)
     setEncodeResult(null)
     setDecodeAnswers({})
+    setDecodeInput({})
     startRef.current = Date.now()
     prevAnswerAtRef.current = Date.now()
   }
@@ -238,6 +241,12 @@ export function PaoCardsDrill({ answerMode }: Props) {
     const chars = answerMode === 'typing' ? cardLabel(item.card).length : 0
     registerResult(item.card.number, correct, rawMs, chars)
     setDecodeAnswers(prev => ({ ...prev, [field]: { chosen: value, correct } }))
+    // Typing: jump focus to the next still-unanswered cue.
+    if (answerMode === 'typing') {
+      const answered = new Set([...Object.keys(decodeAnswers), field])
+      const next = orderedDecodeFields.find(f => !answered.has(f))
+      if (next) setTimeout(() => decodeRefs.current[next]?.focus(), 30)
+    }
   }
 
   // Advance once every Decode item is answered.
@@ -252,6 +261,15 @@ export function PaoCardsDrill({ answerMode }: Props) {
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [decodeAnswers, decodeItems, drillType])
+
+  // Focus the first cue's card input on each new Decode question (typing mode).
+  useEffect(() => {
+    if (drillType !== 'decode' || answerMode !== 'typing') return
+    const first = orderedDecodeFields[0]
+    const t = setTimeout(() => first && decodeRefs.current[first]?.focus(), 40)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drillType, answerMode, decodeItems])
 
   // ── Toggles (reset session) ─────────────────────────────────────────────────
   const resetSession = (nums: string[]) => {
@@ -282,6 +300,7 @@ export function PaoCardsDrill({ answerMode }: Props) {
       const fields = PAO_FIELDS.filter(x => next.has(x))
       setDecodeItems(buildDecodeItems(fields, drillNumbers))
       setDecodeAnswers({})
+      setDecodeInput({})
       prevAnswerAtRef.current = Date.now()
       return next
     })
@@ -515,36 +534,69 @@ export function PaoCardsDrill({ answerMode }: Props) {
             <div className="flex flex-col items-center gap-5 w-full max-w-md">
               <p className="text-xs text-zinc-600 uppercase tracking-widest">
                 {multi
-                  ? 'Identify each card from its cue'
+                  ? 'Name the card behind each cue'
                   : `Which card has this ${PAO_ROLE[decodeItems[0].field].label.toLowerCase()}?`}
               </p>
 
-              {/* The P/A/O cues, presented first as one group (the prompt) —
-                  mirrors Encode's card: all the given info up top. */}
-              <div className="w-full space-y-2">
-                {decodeItems.map(item => {
-                  const role = PAO_ROLE[item.field]
-                  return (
-                    <div key={item.field} className={`flex items-stretch rounded-xl border overflow-hidden ${role.border}`}>
-                      <span className={`flex items-center justify-center w-11 text-lg ${role.bg}`} title={role.label} aria-hidden>{role.emoji}</span>
-                      <span className="flex-1 flex flex-col justify-center px-3 py-2 bg-zinc-800 leading-tight">
-                        <span className="text-[10px] uppercase tracking-widest text-zinc-500">{role.label}</span>
-                        <span className={`text-xl font-bold ${role.text}`}>{byNumber[item.card.number][item.field]}</span>
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-
-              {/* The card answers, stacked below like Encode's inputs. Each is
-                  tagged with its role (when multi) so it maps back to its cue. */}
-              <div className="w-full space-y-4">
-                {decodeItems.map(item => {
-                  const ans = decodeAnswers[item.field]
-                  return (
-                    <div key={item.field} className="w-full space-y-1.5">
-                      {multi && <RoleTag field={item.field} />}
-                      {answerMode === 'multiple-choice' ? (
+              {answerMode === 'typing' ? (
+                /* ── Typing: one compact row per cue, exactly like Encode's inputs —
+                      [emoji] [the cue word] [type the card] [✓/✗] ── */
+                <div className="w-full space-y-2.5">
+                  {decodeItems.map(item => {
+                    const role = PAO_ROLE[item.field]
+                    const ans = decodeAnswers[item.field]
+                    const border = !ans
+                      ? 'border-zinc-700 focus-within:border-violet-500'
+                      : ans.correct ? 'border-green-500 bg-green-500/10' : 'border-red-500 bg-red-500/10'
+                    return (
+                      <div key={item.field} className={`flex items-stretch rounded-xl border transition-colors overflow-hidden ${border}`}>
+                        <span className={`flex items-center justify-center w-11 text-lg ${role.bg}`} title={role.label} aria-hidden>{role.emoji}</span>
+                        <span className={`flex items-center px-3 bg-zinc-800 text-lg font-bold whitespace-nowrap ${role.text}`}>
+                          {byNumber[item.card.number][item.field]}
+                        </span>
+                        <input
+                          ref={el => { decodeRefs.current[item.field] = el }}
+                          type="text"
+                          value={decodeInput[item.field] ?? ''}
+                          disabled={!!ans}
+                          onChange={e => setDecodeInput(prev => ({ ...prev, [item.field]: e.target.value.toUpperCase() }))}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              const v = (decodeInput[item.field] ?? '').trim()
+                              if (v && !ans) answerDecodeItem(item.field, v)
+                            }
+                          }}
+                          placeholder="card?"
+                          aria-label={`Card for ${role.label}`}
+                          autoComplete="off"
+                          spellCheck={false}
+                          className="flex-1 min-w-0 px-3 py-3 bg-zinc-800 border-l border-zinc-700/70 outline-none text-lg font-medium font-mono tracking-wider text-zinc-100 placeholder-zinc-600 disabled:opacity-80"
+                        />
+                        {ans && (
+                          <span className={`flex items-center px-3 text-lg whitespace-nowrap ${ans.correct ? 'text-green-400' : 'text-red-400'}`}>
+                            {ans.correct ? '✓' : `✗ ${cardLabel(item.card)}`}
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                /* ── Multiple choice: the cue as one compact row, its card options
+                      directly below (question → answers) ── */
+                <div className="w-full space-y-6">
+                  {decodeItems.map(item => {
+                    const role = PAO_ROLE[item.field]
+                    const ans = decodeAnswers[item.field]
+                    return (
+                      <div key={item.field} className="w-full space-y-2">
+                        <div className={`flex items-stretch rounded-xl border overflow-hidden ${role.border}`}>
+                          <span className={`flex items-center justify-center w-11 text-lg ${role.bg}`} title={role.label} aria-hidden>{role.emoji}</span>
+                          <span className={`flex-1 flex items-center px-3 py-2.5 bg-zinc-800 text-lg font-bold ${role.text}`}>
+                            {byNumber[item.card.number][item.field]}
+                          </span>
+                        </div>
                         <MultipleChoice
                           options={item.options}
                           correctAnswer={cardLabel(item.card)}
@@ -552,18 +604,11 @@ export function PaoCardsDrill({ answerMode }: Props) {
                           answered={ans?.chosen ?? null}
                           keyboard={!multi}
                         />
-                      ) : (
-                        <TypingInput
-                          onAnswer={v => answerDecodeItem(item.field, v)}
-                          answeredCorrect={ans ? ans.correct : null}
-                          correctAnswer={cardLabel(item.card)}
-                          placeholder="Type the card (e.g. 10H, KS)"
-                        />
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
               )
             })()
