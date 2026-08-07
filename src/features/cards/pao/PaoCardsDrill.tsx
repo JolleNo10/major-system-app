@@ -570,7 +570,7 @@ export function PaoCardsDrill({ answerMode }: Props) {
                               if (v && !ans) answerDecodeItem(item.field, v)
                             }
                           }}
-                          placeholder={role.label}
+                          placeholder="Type the card (e.g. 5♣, KS)"
                           aria-label={`Card for ${role.label}`}
                           autoComplete="off"
                           spellCheck={false}
