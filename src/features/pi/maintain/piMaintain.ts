@@ -55,8 +55,12 @@ function summarizeBatch(segs: number[], store: MaintainStore, now: number): Main
   let overdueSum = 0
   let nextDueMs = Infinity
   for (const seg of segs) {
-    const { dueAt } = getSegSchedule(store, seg)
-    overdueSum += (now - dueAt) / DAY_MS
+    const { dueAt, lastSeenAt } = getSegSchedule(store, seg)
+    // A never-maintained segment (recited in Recite but not yet reviewed here)
+    // carries the DEFAULTS sentinel `dueAt 0 / lastSeenAt 0`. It's due now, but
+    // its "overdue" age is meaningless — clamp to 0 rather than measuring from
+    // the Unix epoch (which showed absurd ~20672d values and corrupted the sort).
+    overdueSum += lastSeenAt === 0 ? 0 : (now - dueAt) / DAY_MS
     if (dueAt <= now) dueCount++
     else nextDueMs = Math.min(nextDueMs, dueAt - now)
   }

@@ -66,6 +66,19 @@ describe('buildMaintenanceBatches', () => {
     expect(due[0].dueCount).toBe(1)
   })
 
+  it('reports 0d overdue for a never-maintained segment (not epoch age)', () => {
+    // dueAt 0 sentinel must not be measured from the Unix epoch.
+    const { due } = build(['learned'], {}, 5, 1)
+    expect(due[0].meanOverdueDays).toBe(0)
+  })
+
+  it('sorts genuinely-overdue batches above never-maintained ones', () => {
+    const statuses: PiSegmentStatus[] = ['learned', 'new', 'learned']
+    const store: MaintainStore = { 0: rec(NOW - 2 * DAY_MS) } // seg 2 unseen
+    const { due } = build(statuses, store, 1, 3)
+    expect(due.map(b => b.startSeg)).toEqual([0, 2])
+  })
+
   it('excludes new/gray segments (never recited) entirely', () => {
     const { due, upcoming } = build(['new', 'new'], {}, 5, 2)
     expect(due).toHaveLength(0)
