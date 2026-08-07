@@ -14,7 +14,7 @@ import { matchesAnswerLoose } from '@/core/answerMatch'
 import { CARDS, RANKS, rankIndex } from '@/core/cards'
 import type { Card, Suit } from '@/core/cards'
 import { PAO_FIELDS, type PaoField } from '@/features/cards/pao/paoCards'
-import { PAO_ROLE, RoleValue } from '@/features/cards/pao/paoRoles'
+import { PAO_ROLE, RoleTag, RoleValue } from '@/features/cards/pao/paoRoles'
 import type { AnswerMode } from '@/core/types'
 import { RankRangeSelector } from '@/core/ui/RankRangeSelector'
 
@@ -538,9 +538,15 @@ export function PaoCardsDrill({ answerMode }: Props) {
                   : `Which card has this ${PAO_ROLE[decodeItems[0].field].label.toLowerCase()}?`}
               </p>
 
+              {/* PAO prompt — the same horizontal story line as Deck Memo */}
+              <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+                {decodeItems.map(item => (
+                  <RoleValue key={item.field} field={item.field} value={byNumber[item.card.number][item.field]} className="text-lg" />
+                ))}
+              </div>
+
               {answerMode === 'typing' ? (
-                /* ── Typing: one compact row per cue, exactly like Encode's inputs —
-                      [emoji] [the cue word] [type the card] [✓/✗] ── */
+                /* ── Card inputs — Encode's exact row style ([emoji] [type the card]) ── */
                 <div className="w-full space-y-2.5">
                   {decodeItems.map(item => {
                     const role = PAO_ROLE[item.field]
@@ -551,9 +557,6 @@ export function PaoCardsDrill({ answerMode }: Props) {
                     return (
                       <div key={item.field} className={`flex items-stretch rounded-xl border transition-colors overflow-hidden ${border}`}>
                         <span className={`flex items-center justify-center w-11 text-lg ${role.bg}`} title={role.label} aria-hidden>{role.emoji}</span>
-                        <span className={`flex items-center px-3 bg-zinc-800 text-lg font-bold whitespace-nowrap ${role.text}`}>
-                          {byNumber[item.card.number][item.field]}
-                        </span>
                         <input
                           ref={el => { decodeRefs.current[item.field] = el }}
                           type="text"
@@ -567,11 +570,11 @@ export function PaoCardsDrill({ answerMode }: Props) {
                               if (v && !ans) answerDecodeItem(item.field, v)
                             }
                           }}
-                          placeholder="card?"
+                          placeholder={role.label}
                           aria-label={`Card for ${role.label}`}
                           autoComplete="off"
                           spellCheck={false}
-                          className="flex-1 min-w-0 px-3 py-3 bg-zinc-800 border-l border-zinc-700/70 outline-none text-lg font-medium font-mono tracking-wider text-zinc-100 placeholder-zinc-600 disabled:opacity-80"
+                          className="flex-1 min-w-0 px-3 py-3 bg-zinc-800 outline-none text-lg font-medium text-zinc-100 placeholder-zinc-600 disabled:opacity-80"
                         />
                         {ans && (
                           <span className={`flex items-center px-3 text-lg whitespace-nowrap ${ans.correct ? 'text-green-400' : 'text-red-400'}`}>
@@ -583,20 +586,13 @@ export function PaoCardsDrill({ answerMode }: Props) {
                   })}
                 </div>
               ) : (
-                /* ── Multiple choice: the cue as one compact row, its card options
-                      directly below (question → answers) ── */
+                /* ── Multiple choice: card options per cue (role-tagged when multi) ── */
                 <div className="w-full space-y-6">
                   {decodeItems.map(item => {
-                    const role = PAO_ROLE[item.field]
                     const ans = decodeAnswers[item.field]
                     return (
                       <div key={item.field} className="w-full space-y-2">
-                        <div className={`flex items-stretch rounded-xl border overflow-hidden ${role.border}`}>
-                          <span className={`flex items-center justify-center w-11 text-lg ${role.bg}`} title={role.label} aria-hidden>{role.emoji}</span>
-                          <span className={`flex-1 flex items-center px-3 py-2.5 bg-zinc-800 text-lg font-bold ${role.text}`}>
-                            {byNumber[item.card.number][item.field]}
-                          </span>
-                        </div>
+                        {multi && <RoleTag field={item.field} />}
                         <MultipleChoice
                           options={item.options}
                           correctAnswer={cardLabel(item.card)}
