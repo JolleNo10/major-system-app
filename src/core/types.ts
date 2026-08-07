@@ -12,6 +12,7 @@ export type Mode =
   | 'cards'
   | 'themed-cards'
   | 'pao-cards'
+  | 'world-countries'
 
 export type AnswerMode = 'multiple-choice' | 'typing'
 
