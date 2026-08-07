@@ -15,7 +15,7 @@ import { matchesAnswerLoose } from '@/core/answerMatch'
 import { CARDS, RANKS, rankIndex } from '@/core/cards'
 import type { Card, Suit } from '@/core/cards'
 import { PAO_FIELDS, type PaoField } from '@/features/cards/pao/paoCards'
-import { PAO_ROLE, RoleTag, RoleValue } from '@/features/cards/pao/paoRoles'
+import { PAO_ROLE, RoleValue } from '@/features/cards/pao/paoRoles'
 import type { AnswerMode } from '@/core/types'
 import { RankRangeSelector } from '@/core/ui/RankRangeSelector'
 
@@ -519,15 +519,19 @@ export function PaoCardsDrill({ answerMode }: Props) {
                   : `Which card has this ${PAO_ROLE[decodeItems[0].field].label.toLowerCase()}?`}
               </p>
 
-              <div className="w-full space-y-5">
+              <div className="w-full space-y-6">
                 {decodeItems.map(item => {
                   const ans = decodeAnswers[item.field]
                   const role = PAO_ROLE[item.field]
                   return (
-                    <div key={item.field} className="w-full space-y-2">
-                      <div className={`flex flex-col items-center gap-1.5 px-6 py-4 rounded-2xl bg-zinc-800 border text-center ${role.border}`}>
-                        <RoleTag field={item.field} />
-                        <span className={`text-2xl font-bold ${role.text}`}>{byNumber[item.card.number][item.field]}</span>
+                    <div key={item.field} className="w-full space-y-2.5">
+                      {/* Cue first — same row shell as Encode, leading with the P/A/O */}
+                      <div className={`flex items-stretch rounded-xl border overflow-hidden ${role.border}`}>
+                        <span className={`flex items-center justify-center w-11 text-lg ${role.bg}`} title={role.label} aria-hidden>{role.emoji}</span>
+                        <span className="flex-1 flex flex-col justify-center px-3 py-2 bg-zinc-800 leading-tight">
+                          <span className="text-[10px] uppercase tracking-widest text-zinc-500">{role.label}</span>
+                          <span className={`text-xl font-bold ${role.text}`}>{byNumber[item.card.number][item.field]}</span>
+                        </span>
                       </div>
                       {answerMode === 'multiple-choice' ? (
                         <MultipleChoice
