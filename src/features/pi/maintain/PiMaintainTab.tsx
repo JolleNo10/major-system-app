@@ -102,7 +102,7 @@ export function PiMaintainTab({ answerMode, maxPiPairs }: Props) {
           {due.length > 0 && (
             <div className="space-y-2">
               {due.map(batch => (
-                <BatchRow key={batch.startSeg} batch={batch} onStart={start} />
+                <BatchRow key={batch.startSeg} batch={batch} onStart={start} words={words} />
               ))}
             </div>
           )}
@@ -114,7 +114,7 @@ export function PiMaintainTab({ answerMode, maxPiPairs }: Props) {
                 <div className="flex-1 h-px bg-zinc-800" />
               </div>
               {upcoming.map(batch => (
-                <BatchRow key={batch.startSeg} batch={batch} onStart={start} early />
+                <BatchRow key={batch.startSeg} batch={batch} onStart={start} words={words} early />
               ))}
             </div>
           )}
@@ -180,9 +180,10 @@ export function PiMaintainTab({ answerMode, maxPiPairs }: Props) {
 // One suggested batch: π/segment span, due/overdue detail, and a Start button.
 // `early` marks a not-yet-due (caught-up) batch — Start is labelled "Review
 // early" and the detail shows when it next comes due.
-function BatchRow({ batch, onStart, early = false }: {
+function BatchRow({ batch, onStart, words, early = false }: {
   batch: MaintainBatch
   onStart: (batch: MaintainBatch) => void
+  words: Record<string, string>
   early?: boolean
 }) {
   const [from] = segmentDigitRange(batch.startSeg)
@@ -191,14 +192,24 @@ function BatchRow({ batch, onStart, early = false }: {
   const nextDueDays = Number.isFinite(batch.nextDueMs)
     ? Math.max(1, Math.ceil(batch.nextDueMs / DAY_MS))
     : null
+  // First pair of the batch's first segment + its mnemonic word, so the user
+  // can recognise which segment this is without decoding the π position.
+  const firstPair = PI_PAIRS[batch.startSeg * PAIRS_PER_SEGMENT]
+  const firstWord = words[firstPair]
 
   return (
     <div className={`rounded-lg border px-3 py-2.5 flex items-center gap-3 ${
       early ? 'border-zinc-700 bg-zinc-800/40' : 'border-cyan-500/40 bg-cyan-600/10'
     }`}>
       <div className="min-w-0 flex-1 space-y-0.5">
-        <div className="text-sm font-medium text-zinc-200 tabular-nums">
-          π #{from}–{to}
+        <div className="text-sm font-medium text-zinc-200 tabular-nums flex items-baseline gap-2">
+          <span>π #{from}–{to}</span>
+          {firstWord && (
+            <span className="text-xs font-normal text-zinc-400 truncate">
+              starts <span className="text-zinc-200 font-medium">{firstWord}</span>
+              <span className="text-zinc-600 tabular-nums"> ({firstPair})</span>
+            </span>
+          )}
         </div>
         <div className="text-[11px] text-zinc-500 tabular-nums">
           segment{batch.startSeg === batch.endSeg ? '' : 's'} {batch.startSeg + 1}
