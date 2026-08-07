@@ -3,6 +3,7 @@ import type { Mode, AnswerMode } from '@/core/types'
 import { DecodingDrill, EncodingDrill, RepetitionDrill, ReverseSoundKeyDrill, SequenceDrill, SoundKeyDrill, SpeedRound, WeakSpots } from '@/features/major-system'
 import { PiDrill } from '@/features/pi'
 import { MajorCardsDrill, ThemedCardsDrill, PaoCardsDrill } from '@/features/cards'
+import { WorldCountriesDrill } from '@/features/world-countries'
 
 // Single source of truth for every non-home mode: its header title, the drill
 // component, and the ModeSelector card. Because it is Record<DrillMode, …>,
@@ -134,6 +135,15 @@ export const MODES: Record<DrillMode, ModeDef> = {
     subtitle: 'Person · Action · Object',
     description: 'Every card has a person, action and object — memorise the deck in 3-card images',
     accent: 'group-hover:border-purple-500/60 group-hover:shadow-purple-900/20',
+  },
+  'world-countries': {
+    title: 'World Countries',
+    component: WorldCountriesDrill,
+    group: 'application',
+    emoji: '🌍',
+    subtitle: 'Countries & capitals',
+    description: 'Learn 197 countries and capitals in both directions, region by region',
+    accent: 'group-hover:border-cyan-500/60 group-hover:shadow-cyan-900/20',
   },
 }
 
