@@ -11,7 +11,13 @@ import {
 // Record: { id (auto), key: "enc:42", at, ok, ms }
 
 const DB_NAME = 'major-system'
-const DB_VERSION = 2
+// v3: same schema as v2 (attempts + pi_stories). Bumped only to force the
+// idempotent upgrade handler to re-run for users whose DB reached v2 without a
+// `pi_stories` store (e.g. an in-progress dev build advanced the version before
+// that store's creation landed) — `onupgradeneeded` won't fire again otherwise,
+// leaving story reads/writes to throw NotFoundError. The `contains()` guards
+// make the re-run a no-op for anyone already whole.
+const DB_VERSION = 3
 const STORE = 'attempts'
 const MIGRATED_KEY = 'major-attempts-migrated'
 
@@ -54,7 +60,8 @@ export function getDb(): Promise<IDBDatabase> {
           os.createIndex('by_at', 'at')
           os.createIndex('by_key_at', ['key', 'at'])
         }
-        // v1 → v2: per-segment Pi stories (freeform text + one image). Keyed by
+        // Per-segment Pi stories (freeform text + one image), added in v2 and
+        // backfilled in v3 for DBs that reached v2 without it. Keyed by
         // 0-indexed segment; access is always by primary key, so no index.
         if (!db.objectStoreNames.contains('pi_stories')) {
           db.createObjectStore('pi_stories', { keyPath: 'seg' })
