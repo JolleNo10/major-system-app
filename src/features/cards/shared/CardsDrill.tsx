@@ -73,12 +73,13 @@ function makeQuestion(
   words: Record<string, string>,
   masteredSet: Set<string>,
   drillType: CardsDrillType,
+  share: number,
 ): Question {
   const available = lastNumber
     ? cardNumbers.filter(n => n !== lastNumber)
     : cardNumbers
   const pool = available.length > 0 ? available : cardNumbers
-  const number = pickWeighted('enc', pool, masteredSet)
+  const number = pickWeighted('enc', pool, masteredSet, share)
   const card = CARDS.find(c => c.number === number)!
   const distNums = pickDistractors(number, cardNumbers)
 
@@ -152,7 +153,7 @@ export function CardsDrill({
 
   const [roundStats, setRoundStats] = useState<Record<string, RoundStat>>({})
   const [question, setQuestion] = useState<Question>(() =>
-    makeQuestion(undefined, activeNumbers, words, new Set<string>(), drillType))
+    makeQuestion(undefined, activeNumbers, words, new Set<string>(), drillType, settings.sessionUnmasteredShare))
   const [answered, setAnswered] = useState<string | null>(null)
   const [answeredCorrect, setAnsweredCorrect] = useState<boolean | null>(null)
   const [sessionCorrect, setSessionCorrect] = useState(0)
@@ -164,14 +165,31 @@ export function CardsDrill({
 
   const { paused, togglePause, elapsedMs, wasPaused } = useAnswerTimer(question, answered)
   const masteredSetRef = useRef<Set<string>>(new Set())
+  const shareRef = useRef(settings.sessionUnmasteredShare)
 
   const next = useCallback((lastNumber: string) => {
-    setQuestion(makeQuestion(lastNumber, activeNumbers, words, masteredSetRef.current, drillType))
+    setQuestion(makeQuestion(lastNumber, activeNumbers, words, masteredSetRef.current, drillType, shareRef.current))
     setAnswered(null)
     setAnsweredCorrect(null)
     setLastMs(null)
     setDiscarded(false)
   }, [activeNumbers, words, drillType])
+
+  // Reset all per-session state and start a fresh question over `nums`.
+  const applyReset = useCallback((nums: string[], type: CardsDrillType) => {
+    const s = resetSession()
+    setRoundStats(s.roundStats)
+    setAnswered(s.answered)
+    setAnsweredCorrect(s.answeredCorrect)
+    setSessionCorrect(s.sessionCorrect)
+    setSessionWrong(s.sessionWrong)
+    setStreak(s.streak)
+    setBestStreak(s.bestStreak)
+    setLastMs(s.lastMs)
+    setDiscarded(s.discarded)
+    masteredSetRef.current = new Set()
+    setQuestion(makeQuestion(undefined, nums, words, new Set(), type, shareRef.current))
+  }, [words])
 
   const handleAnswer = useCallback((value: string) => {
     if (answered !== null || paused) return
@@ -211,19 +229,8 @@ export function CardsDrill({
   const switchDrillType = useCallback((newType: CardsDrillType) => {
     safeSet(drilltypeKey, newType)
     setDrillType(newType)
-    const s = resetSession()
-    setRoundStats(s.roundStats)
-    setAnswered(s.answered)
-    setAnsweredCorrect(s.answeredCorrect)
-    setSessionCorrect(s.sessionCorrect)
-    setSessionWrong(s.sessionWrong)
-    setStreak(s.streak)
-    setBestStreak(s.bestStreak)
-    setLastMs(s.lastMs)
-    setDiscarded(s.discarded)
-    masteredSetRef.current = new Set()
-    setQuestion(makeQuestion(undefined, activeNumbers, words, new Set(), newType))
-  }, [activeNumbers, words, drilltypeKey])
+    applyReset(activeNumbers, newType)
+  }, [activeNumbers, drilltypeKey, applyReset])
 
   const toggleSuit = useCallback((suit: Suit) => {
     setActiveSuits(prev => {
@@ -234,25 +241,16 @@ export function CardsDrill({
       safeSet(suitsKey, JSON.stringify([...next]))
       const nums = numbersForSuits(next)
       setDeckCount(prev => Math.min(prev, nums.length))
-      const s = resetSession()
-      setRoundStats(s.roundStats)
-      setAnswered(s.answered)
-      setAnsweredCorrect(s.answeredCorrect)
-      setSessionCorrect(s.sessionCorrect)
-      setSessionWrong(s.sessionWrong)
-      setStreak(s.streak)
-      setBestStreak(s.bestStreak)
-      setLastMs(s.lastMs)
-      setDiscarded(s.discarded)
-      masteredSetRef.current = new Set()
-      setQuestion(makeQuestion(undefined, nums, words, new Set(), drillType))
+      applyReset(nums, drillType)
       return next
     })
-  }, [words, drillType, suitsKey])
+  }, [drillType, suitsKey, applyReset])
 
   const { mastered, total, masteredSet } = masteryProgress(
     activeNumbers, roundStats, masteryFastMs(settings.masteryLatencyFactor))
   masteredSetRef.current = masteredSet
+  shareRef.current = settings.sessionUnmasteredShare
+  const setComplete = total > 0 && mastered === total
 
   const { card } = question
   const colorCls = card.red ? 'text-rose-500' : 'text-zinc-900'
@@ -369,14 +367,24 @@ export function CardsDrill({
             <div className="w-full max-w-md -mt-4">
               <div className="flex justify-between text-xs mb-1">
                 <span className="text-zinc-500">Cards mastered this session</span>
-                <span className="text-zinc-400 tabular-nums">{mastered}/{total}</span>
+                <span className={setComplete ? 'text-green-400 font-semibold' : 'text-zinc-400 tabular-nums'}>{mastered}/{total}</span>
               </div>
               <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
                 <div
-                  className="h-full bg-rose-600 transition-all"
+                  className={`h-full transition-all ${setComplete ? 'bg-green-500' : 'bg-rose-600'}`}
                   style={{ width: `${(mastered / total) * 100}%` }}
                 />
               </div>
+            </div>
+          )}
+
+          {setComplete && (
+            <div className="w-full max-w-md -mt-4 rounded-xl border border-green-600/40 bg-green-500/10 p-4 text-center space-y-3">
+              <p className="text-green-300 font-semibold">🎉 You’ve mastered all {total} — keep going or reset.</p>
+              <button
+                onClick={() => applyReset(activeNumbers, drillType)}
+                className="flex items-center min-h-[40px] px-4 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-medium transition-colors mx-auto"
+              >Keep practising</button>
             </div>
           )}
 

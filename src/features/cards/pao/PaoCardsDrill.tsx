@@ -140,29 +140,37 @@ export function PaoCardsDrill({ answerMode }: Props) {
   // ── Per-question state ──────────────────────────────────────────────────────
   const [roundStats, setRoundStats] = useState<Record<string, RoundStat>>({})
   const masteredSetRef = useRef<Set<string>>(new Set())
+  const shareRef = useRef(settings.sessionUnmasteredShare)
+  const prevDecodeNumsRef = useRef<Set<string>>(new Set()) // last Decode question's cards
   const startRef = useRef<number>(Date.now())
   const prevAnswerAtRef = useRef<number>(Date.now())  // per Decode item timing
 
   const pickCard = useCallback((last: string | undefined, nums: string[]): Card => {
     const available = last ? nums.filter(n => n !== last) : nums
     const pool = available.length > 0 ? available : nums
-    const number = pickWeighted('enc', pool, masteredSetRef.current)
+    const number = pickWeighted('enc', pool, masteredSetRef.current, shareRef.current)
     return CARD_BY_NUMBER.get(number)!
   }, [])
 
   // Build one Decode item per hint field, each from a *distinct* card (so Person,
-  // Action, Object cues point at different cards). Each item carries its own MC
-  // card options.
+  // Action, Object cues point at different cards). Also excludes the previous
+  // question's cards so none repeats back-to-back (relaxed if the pool is too
+  // small). Each item carries its own MC card options.
   const buildDecodeItems = useCallback((fields: PaoField[], nums: string[]): DecodeItem[] => {
+    const prev = prevDecodeNumsRef.current
     const used = new Set<string>()
-    return fields.map(field => {
-      const avail = nums.filter(n => !used.has(n))
-      const number = pickWeighted('enc', avail.length > 0 ? avail : nums, masteredSetRef.current)
+    const items = fields.map(field => {
+      let avail = nums.filter(n => !used.has(n) && !prev.has(n))
+      if (avail.length === 0) avail = nums.filter(n => !used.has(n))
+      if (avail.length === 0) avail = nums
+      const number = pickWeighted('enc', avail, masteredSetRef.current, shareRef.current)
       used.add(number)
       const c = CARD_BY_NUMBER.get(number)!
       const distractors = pickDistractors(number, nums).map(n => cardLabel(CARD_BY_NUMBER.get(n)!))
       return { field, card: c, options: shuffle([cardLabel(c), ...distractors]) }
     })
+    prevDecodeNumsRef.current = new Set(items.map(i => i.card.number))
+    return items
   }, [])
 
   const [card, setCard] = useState<Card>(() => pickCard(undefined, drillNumbers))
@@ -275,6 +283,7 @@ export function PaoCardsDrill({ answerMode }: Props) {
   const resetSession = (nums: string[]) => {
     setRoundStats({})
     masteredSetRef.current = new Set()
+    prevDecodeNumsRef.current = new Set()
     setSessionCorrect(0); setSessionWrong(0); setStreak(0); setBestStreak(0)
     setCard(pickCard(undefined, nums))
     setDecodeItems(buildDecodeItems(orderedDecodeFields, nums))
@@ -328,6 +337,8 @@ export function PaoCardsDrill({ answerMode }: Props) {
   const { mastered, total, masteredSet } = masteryProgress(
     drillNumbers, roundStats, masteryFastMs(settings.masteryLatencyFactor) * masteryFields)
   masteredSetRef.current = masteredSet
+  shareRef.current = settings.sessionUnmasteredShare
+  const setComplete = total > 0 && mastered === total
 
   const colorCls = card.red ? 'text-rose-500' : 'text-zinc-900'
   const answers = byNumber[card.number]
@@ -432,11 +443,21 @@ export function PaoCardsDrill({ answerMode }: Props) {
             <div className="w-full max-w-md -mt-4">
               <div className="flex justify-between text-xs mb-1">
                 <span className="text-zinc-500">Cards mastered this session</span>
-                <span className="text-zinc-400 tabular-nums">{mastered}/{total}</span>
+                <span className={setComplete ? 'text-green-400 font-semibold' : 'text-zinc-400 tabular-nums'}>{mastered}/{total}</span>
               </div>
               <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
-                <div className="h-full bg-fuchsia-600 transition-all" style={{ width: `${(mastered / total) * 100}%` }} />
+                <div className={`h-full transition-all ${setComplete ? 'bg-green-500' : 'bg-fuchsia-600'}`} style={{ width: `${(mastered / total) * 100}%` }} />
               </div>
+            </div>
+          )}
+
+          {setComplete && (
+            <div className="w-full max-w-md -mt-4 rounded-xl border border-green-600/40 bg-green-500/10 p-4 text-center space-y-3">
+              <p className="text-green-300 font-semibold">🎉 You’ve mastered all {total} — keep going or reset.</p>
+              <button
+                onClick={() => resetSession(drillNumbers)}
+                className="flex items-center min-h-[40px] px-4 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-medium transition-colors mx-auto"
+              >Keep practising</button>
             </div>
           )}
 

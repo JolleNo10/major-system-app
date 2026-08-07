@@ -33,37 +33,51 @@ export function buildDecOptions(number: string, words: Record<string, string>): 
   return shuffle([number, ...dist])
 }
 
-// Weighted spaced-repetition pick for one direction. Draw weight scales with the
+// Default fraction of draws that target the not-yet-mastered pool once a round is
+// a mix of mastered and unmastered items (overridable per-call from the user
+// setting). The split is by *pool*, not by item count, so the last few unmastered
+// items keep surfacing even when most of the set is already mastered.
+export const DEFAULT_UNMASTERED_SHARE = 0.5
+
+// Weighted draw within a single pool of numbers. Draw weight scales with the
 // shared per-number weakness score (see numberStats.itemWeakness); unseen items
-// get a flat baseline; already-mastered-this-round items are de-prioritised.
+// get a flat baseline.
 const WEAKNESS_GAIN = 4  // maps weakness 0..1 → weight 1..5
-export function pickWeighted(dir: Direction, available: string[], masteredSet: Set<string>): string {
-  if (available.length === 1) return available[0]
-  const store = loadStore()
-  const weights = available.map(num => {
+function weightedPick(dir: Direction, store: ReturnType<typeof loadStore>, nums: string[]): string {
+  if (nums.length === 1) return nums[0]
+  const weights = nums.map(num => {
     const item = getItem(store, dir, num)
-    const base = item.lastSeenAt === 0 ? 1.5 : 1 + itemWeakness(item) * WEAKNESS_GAIN
-    return masteredSet.has(num) ? base * 0.25 : base
+    return item.lastSeenAt === 0 ? 1.5 : 1 + itemWeakness(item) * WEAKNESS_GAIN
   })
-  // Guarantee unmastered items get ≥ TARGET of all draws when the pool is mixed.
-  const hasUnmastered = available.some(n => !masteredSet.has(n))
-  if (masteredSet.size > 0 && hasUnmastered) {
-    const unmasteredTotal = weights.reduce((s, w, i) => masteredSet.has(available[i]) ? s : s + w, 0)
-    const masteredTotal   = weights.reduce((s, w, i) => masteredSet.has(available[i]) ? s + w : s, 0)
-    const TARGET = 0.75
-    const maxMastered = unmasteredTotal * (TARGET / (1 - TARGET))
-    if (masteredTotal > maxMastered) {
-      const scale = maxMastered / masteredTotal
-      for (let i = 0; i < available.length; i++) {
-        if (masteredSet.has(available[i])) weights[i] *= scale
-      }
-    }
-  }
   const sum = weights.reduce((a, b) => a + b, 0)
   let r = Math.random() * sum
-  for (let i = 0; i < available.length; i++) {
+  for (let i = 0; i < nums.length; i++) {
     r -= weights[i]
-    if (r <= 0) return available[i]
+    if (r <= 0) return nums[i]
   }
-  return available[available.length - 1]
+  return nums[nums.length - 1]
+}
+
+// Spaced-repetition pick for one direction, split into two fixed-ratio pools:
+// with probability `unmasteredShare` the draw targets a not-yet-mastered item,
+// otherwise an already-mastered one (a refresher). Because the ratio is fixed
+// regardless of how many items sit in each pool, a set that is "8 of 10 mastered"
+// still surfaces the remaining two on ~`unmasteredShare` of draws instead of
+// drowning them among the mastered majority. Falls back to a single weighted pool
+// when everything (or nothing) is mastered. Callers own "don't repeat the last
+// item" by pre-filtering `available`.
+export function pickWeighted(
+  dir: Direction,
+  available: string[],
+  masteredSet: Set<string>,
+  unmasteredShare: number = DEFAULT_UNMASTERED_SHARE,
+): string {
+  if (available.length === 1) return available[0]
+  const store = loadStore()
+  const unmastered = available.filter(n => !masteredSet.has(n))
+  const mastered = available.filter(n => masteredSet.has(n))
+  if (unmastered.length === 0) return weightedPick(dir, store, mastered)
+  if (mastered.length === 0) return weightedPick(dir, store, unmastered)
+  const pool = Math.random() < unmasteredShare ? unmastered : mastered
+  return weightedPick(dir, store, pool)
 }

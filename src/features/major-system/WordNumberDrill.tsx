@@ -43,10 +43,11 @@ function makeQuestion(
   pool: string[],
   words: Record<string, string>,
   masteredSet: Set<string>,
+  share: number,
   exclude?: string,
 ): DrillQuestion {
   const available = pool.length > 1 ? pool.filter(n => n !== exclude) : pool
-  const number = pickWeighted(config.dir, available, masteredSet)
+  const number = pickWeighted(config.dir, available, masteredSet, share)
   return { number, ...config.build(number, words) }
 }
 
@@ -75,7 +76,7 @@ export function WordNumberDrill({ config, answerMode, pool: customPool }: Props)
     return allNums
   }, [allNums, customPool, low, high])
 
-  const [question, setQuestion] = useState(() => makeQuestion(config, pool, words, new Set<string>()))
+  const [question, setQuestion] = useState(() => makeQuestion(config, pool, words, new Set<string>(), settings.sessionUnmasteredShare))
   const [answered, setAnswered] = useState<string | null>(null)
   const [answeredCorrect, setAnsweredCorrect] = useState<boolean | null>(null)
   const [sessionCorrect, setSessionCorrect] = useState(0)
@@ -88,9 +89,10 @@ export function WordNumberDrill({ config, answerMode, pool: customPool }: Props)
 
   const { paused, togglePause, elapsedMs, wasPaused } = useAnswerTimer(question, answered)
   const masteredSetRef = useRef<Set<string>>(new Set()) // latest mastered set, for selection
+  const shareRef = useRef(settings.sessionUnmasteredShare) // latest unmastered-focus setting
 
   const next = useCallback((exclude: string) => {
-    setQuestion(makeQuestion(config, pool, words, masteredSetRef.current, exclude))
+    setQuestion(makeQuestion(config, pool, words, masteredSetRef.current, shareRef.current, exclude))
     setAnswered(null)
     setAnsweredCorrect(null)
     setLastMs(null)
@@ -110,7 +112,7 @@ export function WordNumberDrill({ config, answerMode, pool: customPool }: Props)
     setHintUsed(false)
     setDiscarded(false)
     masteredSetRef.current = new Set()
-    setQuestion(makeQuestion(config, pool, words, new Set<string>()))
+    setQuestion(makeQuestion(config, pool, words, new Set<string>(), shareRef.current))
   }, [config, pool, words])
 
   // Range change (new segment) → fresh round
@@ -167,6 +169,7 @@ export function WordNumberDrill({ config, answerMode, pool: customPool }: Props)
   // Round mastery — how well the full selected set is known
   const { mastered, total, masteredSet } = masteryProgress(pool, roundStats, masteryFastMs(settings.masteryLatencyFactor))
   masteredSetRef.current = masteredSet
+  shareRef.current = settings.sessionUnmasteredShare
   const setComplete = total > 0 && mastered === total
   const width = high - low + 1
   const nextLow = high < 99 ? high + 1 : 0

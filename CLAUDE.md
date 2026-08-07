@@ -101,7 +101,7 @@ a symbol to a feature's public surface = add one line to its `index.ts`.**
 | `major-pao-saved` / `-overrides` | localStorage | Editable PAO deck layers (same 3-layer store), keyed by composite `"<NN>:<field>"` (`field` = `person`\|`action`\|`object`) — the PAO Deck's Person/Action/Object per card `01`–`52` |
 | `major-pao-drilltype` / `-suits` / `-deck-count` / `-decode-fields` / `-deck-memo-history` | localStorage | PAO Deck UI/session state (drill type, active suits, deck-memo card count, Decode hint fields (JSON array of `person`\|`action`\|`object`, multi-select; migrated once from the legacy single-value `-decode-field`), and the PAO deck-memo run history) |
 | `major-pi-maintain` | localStorage | Per-segment SM-2 schedule for the Maintain tab: `Record<segIdx, ItemRecord>` (reuses `ItemRecord`; only schedule fields drive upkeep). Unseen seg = `{...DEFAULTS}` (`dueAt 0` = due now). `features/pi/maintain/piMaintainStore.ts` (`rescheduleSegment` grades binary: pass→4, fail→2). **Seeded on a segment's first clean Recite** (`seedSegmentSchedule`, called from `PiReciteFull` — grade 4 → ~1-day first interval, no-op if already scheduled) so a freshly-learned segment waits before Maintain surfaces it instead of being due the instant it's learned; re-reciting is practice and never advances the schedule. Never-maintained eligible segments (`lastSeenAt 0`) are still due now but count as **0d overdue** (not measured from the epoch) |
-| `major-settings` | localStorage | `{ masteryLatencyFactor, maxPiDigits, offlineMode, piPairsPerAnswer, piMaintainBatchSegs }` (`piPairsPerAnswer` 1\|10 = Pi typing batch size, set in Settings; migrated once from the legacy `major-pi-answer-size` key. `piMaintainBatchSegs` 1–10, default 5 = max segments per Maintain review batch) |
+| `major-settings` | localStorage | `{ masteryLatencyFactor, maxPiDigits, offlineMode, piPairsPerAnswer, piMaintainBatchSegs, sessionUnmasteredShare }` (`piPairsPerAnswer` 1\|10 = Pi typing batch size, set in Settings; migrated once from the legacy `major-pi-answer-size` key. `piMaintainBatchSegs` 1–10, default 5 = max segments per Maintain review batch. `sessionUnmasteredShare` 0.5–1, default 0.5 = fraction of `pickWeighted` draws targeting the not-yet-mastered pool) |
 | `major-typing-speed` / `-digit` | localStorage | Adaptive ms/char estimates, separate for word vs digit typing |
 | `major-answer-mode`, `major-hide-options`, `major-seq-length`, `major-seq-studymode`, `major-speed-best`, `major-attempts-migrated`, `major-pi-collapsed-blocks` (collapsed 1000-digit segment blocks, shared across Pi grids), `major-pi-memo-seg` (last-selected Memo segment), `major-pi-memoed-segs` (segments recalled all-correct in Memo mode), `major-pi-recited-segs` (memoed segments later recited flawlessly), `major-pi-recite-mode` (Recite tab's Full/Anchors sub-mode), `major-pi-anchor-start`/`-end`/`-pace` (Anchors sub-mode selection + per-segment transition-pace store) | localStorage | Small UI/prefs flags |
 
@@ -157,7 +157,18 @@ Person/Action/Object triples (partial final group of 1–2 kept).
 - `numberStats.ts` — **`itemWeakness(item)` is the one weakness score used everywhere** ("weak" is defined
   once): `0.55·easePenalty + 0.25·normLatency + 0.20·(wrongRate · 0.8^reps)` — recency-biased; the lifetime
   wrong-rate residual decays with the current correct streak. `rankByWeakness(dir, nums)` (Stats overlay,
-  Weak Spots) sorts by it worst-first; `quiz.pickWeighted` draws with weight `1 + itemWeakness·4`.
+  Weak Spots) sorts by it worst-first; `quiz.pickWeighted` uses it as the intra-pool draw weight
+  (`1 + itemWeakness·4`).
+- **`quiz.pickWeighted` is a two-pool draw** (the shared "mastered this session" selector, used by
+  Major System Encode/Decode, Cards, and PAO Encode/Decode). It splits `available` into an **unmastered**
+  and a **mastered** pool and picks a pool by a **fixed ratio independent of pool sizes** — with probability
+  `settings.sessionUnmasteredShare` (default 0.5) the draw targets an unmastered item, else a mastered one
+  (a refresher). Within the chosen pool it draws weighted by `itemWeakness`. Because the ratio is by pool not
+  by count, "8 of 10 mastered" still surfaces the remaining two on ~`share` of draws instead of drowning them.
+  Falls back to a single weighted pool when everything (or nothing) is mastered. Callers own "don't repeat the
+  last item" by pre-filtering `available` (PAO Decode additionally excludes the previous question's whole card
+  set in `buildDecodeItems`). When a set hits `mastered === total`, the drills show a non-blocking green
+  completion banner (WordNumberDrill: "Next set" + "Keep practising"; Cards/PAO: "Keep practising" only).
 - `useStats.recordFull` splits into `aggregateItem` (counts + rolling latency) and `scheduleItem`
   (grade + `applySm2`, incl. the hint→cap-at-3 rule); the due-count / rep-queue / next-due helpers share one
   `allItems()` traversal.
@@ -266,7 +277,7 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   `Overlay` (`app/layout/Overlay.tsx`)** — the `role="dialog"` shell, `useOverlay` wiring, header bar, close
   button, and scroll body; callers pass `ariaLabel`/`header`/`maxWidth`/children (`TabButton` is the shared
   header tab). Overlays (`app/overlays/` + feature-local editors): `ReferenceOverlay` (sound key + major `WordListGrid`), `CardWordsOverlay` (Themed Deck
-  word list, suit-grouped), `SettingsOverlay` (mastery tolerance, max π digits, Pi pairs-per-answer, Pi maintenance batch size, offline mode + version/update),
+  word list, suit-grouped), `SettingsOverlay` (mastery tolerance, unmastered focus, max π digits, Pi pairs-per-answer, Pi maintenance batch size, offline mode + version/update),
   `StatsOverlay` (worst-first ranking per direction, plus a **🥧 π tab** that async-loads Pi weak positions + run summary).
 - **Hooks** (co-located with what they serve) — `core/scoring/`: `useStats` (`recordFull` records item-data + attempts and returns its grade; `getStats`
   derives direction-less aggregates from item-data; `buildRepQueue`, `getDueCount`, `getNextDueMs`),

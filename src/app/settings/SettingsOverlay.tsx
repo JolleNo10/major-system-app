@@ -3,6 +3,7 @@ import {
   MASTERY_FACTOR_MIN, MASTERY_FACTOR_MAX, MASTERY_FACTOR_STEP, DEFAULT_SETTINGS,
   MAX_PI_DIGITS_MIN, MAX_PI_DIGITS_STEP,
   MAINTAIN_BATCH_MIN, MAINTAIN_BATCH_MAX, MAINTAIN_BATCH_STEP,
+  UNMASTERED_SHARE_MIN, UNMASTERED_SHARE_MAX, UNMASTERED_SHARE_STEP,
 } from '@/app/settings/settings'
 import { masteryFastMs, MASTERY_REPS } from '@/core/scoring/roundMastery'
 import { RECALL_SLOW_MS } from '@/core/scoring/scoring'
@@ -21,6 +22,7 @@ export function SettingsOverlay({ onClose, pwa }: Props) {
   const { settings, update } = useSettings()
 
   const factor = settings.masteryLatencyFactor
+  const share = settings.sessionUnmasteredShare
   const limitS = (masteryFastMs(factor) / 1000).toFixed(1)
   const slowS = (RECALL_SLOW_MS / 1000).toFixed(1)
   const atSlow = masteryFastMs(factor) >= RECALL_SLOW_MS
@@ -80,6 +82,41 @@ export function SettingsOverlay({ onClose, pwa }: Props) {
             {factor !== DEFAULT_SETTINGS.masteryLatencyFactor && (
               <button
                 onClick={() => update({ masteryLatencyFactor: DEFAULT_SETTINGS.masteryLatencyFactor })}
+                className="mt-4 px-3 min-h-[36px] rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 text-sm font-medium transition-colors"
+              >
+                Reset to default
+              </button>
+            )}
+          </section>
+
+          <section>
+            <div className="flex items-baseline justify-between mb-1">
+              <h3 className="font-semibold text-zinc-100">Unmastered focus</h3>
+              <span className="text-sm font-mono tabular-nums text-violet-300">{Math.round(share * 100)}%</span>
+            </div>
+            <p className="text-sm text-zinc-500 mb-4">
+              How often a drill draws from the items you haven’t mastered yet this session,
+              rather than re-testing mastered ones. The split is by pool, not count, so higher
+              means the last few unmastered items keep showing up and a set finishes faster.
+              Applies to every drill with a “mastered this session” bar (Major System, Cards, PAO).
+            </p>
+            <input
+              type="range"
+              min={UNMASTERED_SHARE_MIN}
+              max={UNMASTERED_SHARE_MAX}
+              step={UNMASTERED_SHARE_STEP}
+              value={share}
+              onChange={e => update({ sessionUnmasteredShare: parseFloat(e.target.value) })}
+              className="w-full h-2 accent-violet-600 cursor-pointer touch-none"
+            />
+            <div className="flex justify-between text-xs text-zinc-600 mt-1">
+              <span>Balanced (50/50)</span>
+              <span>Only unmastered</span>
+            </div>
+
+            {share !== DEFAULT_SETTINGS.sessionUnmasteredShare && (
+              <button
+                onClick={() => update({ sessionUnmasteredShare: DEFAULT_SETTINGS.sessionUnmasteredShare })}
                 className="mt-4 px-3 min-h-[36px] rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 text-sm font-medium transition-colors"
               >
                 Reset to default

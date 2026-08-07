@@ -18,6 +18,10 @@ export interface Settings {
   // Max segments (× 20 digits) per Maintain-tab review batch. Batches are
   // contiguous runs of learned segments; this caps their length.
   piMaintainBatchSegs: number
+  // Fraction of draws that target not-yet-mastered items (vs. re-testing mastered
+  // ones) in any drill with a "mastered this session" bar. 0.5 = even split;
+  // higher surfaces the remaining unmastered items more. See quiz.pickWeighted.
+  sessionUnmasteredShare: number
 }
 
 const KEY = 'major-settings'
@@ -29,7 +33,12 @@ export const DEFAULT_SETTINGS: Settings = {
   offlineMode: false, // default: check for updates on launch
   piPairsPerAnswer: 1,
   piMaintainBatchSegs: 5, // 5 segments = 100 digits per maintenance batch
+  sessionUnmasteredShare: 0.5, // even split between unmastered and mastered pools
 }
+
+export const UNMASTERED_SHARE_MIN = 0.5
+export const UNMASTERED_SHARE_MAX = 1
+export const UNMASTERED_SHARE_STEP = 0.05
 
 export const MAINTAIN_BATCH_MIN = 1
 export const MAINTAIN_BATCH_MAX = 10
