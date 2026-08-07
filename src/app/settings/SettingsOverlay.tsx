@@ -5,8 +5,7 @@ import {
   MAINTAIN_BATCH_MIN, MAINTAIN_BATCH_MAX, MAINTAIN_BATCH_STEP,
   UNMASTERED_SHARE_MIN, UNMASTERED_SHARE_MAX, UNMASTERED_SHARE_STEP,
 } from '@/app/settings/settings'
-import { masteryFastMs, MASTERY_REPS } from '@/core/scoring/roundMastery'
-import { RECALL_SLOW_MS } from '@/core/scoring/scoring'
+import { masteryFastMs, RECALL_SLOW_MS } from '@/core/scoring/scoring'
 import { Overlay } from '@/app/layout/Overlay'
 import { PI_PAIRS } from '@/features/pi'
 import { Switch } from '@/core/ui/Switch'
@@ -53,9 +52,10 @@ export function SettingsOverlay({ onClose, pwa }: Props) {
               <span className="text-sm font-mono tabular-nums text-violet-300">≤ {limitS}s</span>
             </div>
             <p className="text-sm text-zinc-500 mb-4">
-              How fast a recall must be to count toward mastering a number this round. A number is
-              mastered after {MASTERY_REPS} correct answers in a row within this limit (recall time,
-              typing already discounted). Higher = slower answers still count.
+              How fast a recall must be to count toward mastering a number this round. Mastery
+              advances a level only on a correct answer within this limit (recall time, typing
+              already discounted) that's also spaced out from the previous one. Higher = slower
+              answers still count.
             </p>
 
             <input
@@ -95,10 +95,10 @@ export function SettingsOverlay({ onClose, pwa }: Props) {
               <span className="text-sm font-mono tabular-nums text-violet-300">{Math.round(share * 100)}%</span>
             </div>
             <p className="text-sm text-zinc-500 mb-4">
-              How often a drill draws from the items you haven’t mastered yet this session,
-              rather than re-testing mastered ones. The split is by pool, not count, so higher
-              means the last few unmastered items keep showing up and a set finishes faster.
-              Applies to every drill with a “mastered this session” bar (Major System, Cards, PAO).
+              How much extra the scheduler favours items you haven’t mastered yet this session over
+              already-mastered ones. Balanced is the tuned default; higher sharpens the focus on
+              weak items, lower spreads exposure more evenly. Spacing between repeats always applies.
+              Affects every drill with a “mastered this session” bar (Major System, Cards, PAO).
             </p>
             <input
               type="range"
@@ -110,9 +110,9 @@ export function SettingsOverlay({ onClose, pwa }: Props) {
               className="w-full h-2 accent-violet-600 cursor-pointer touch-none"
             />
             <div className="flex justify-between text-xs text-zinc-600 mt-1">
-              <span>Only mastered</span>
-              <span>Balanced (50/50)</span>
-              <span>Only unmastered</span>
+              <span>Even exposure</span>
+              <span>Balanced</span>
+              <span>Focus weak</span>
             </div>
 
             {share !== DEFAULT_SETTINGS.sessionUnmasteredShare && (

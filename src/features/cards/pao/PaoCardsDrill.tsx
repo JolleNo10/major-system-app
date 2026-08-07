@@ -6,8 +6,12 @@ import { ScoreBar } from '@/core/ui/ScoreBar'
 import { PaoWordsOverlay } from '@/features/cards/pao/PaoWordsOverlay'
 import { PaoDeckMemoDrill } from '@/features/cards/pao/PaoDeckMemoDrill'
 import { adjustLatency } from '@/core/scoring/typingSpeed'
-import { masteryProgress, masteryFastMs } from '@/core/scoring/roundMastery'
-import { shuffle, pickDistractors, pickWeighted } from '@/core/scoring/quiz'
+import { masteryFastMs } from '@/core/scoring/scoring'
+import {
+  makeRoundConfig, initRoundState, selectNext, recordAnswer, roundProgress,
+  type RoundState, type RoundConfig,
+} from '@/core/scoring/roundScheduler'
+import { shuffle, pickDistractors } from '@/core/scoring/quiz'
 import { applyRoundAttempt, type RoundStat } from '@/core/scoring/roundStats'
 import { readString, readJSON, safeSet } from '@/core/storage'
 import { matchesAnswerLoose } from '@/core/answerMatch'
@@ -137,18 +141,29 @@ export function PaoCardsDrill({ answerMode }: Props) {
   // Selected Decode hint fields in canonical P/A/O order (stable while unchanged).
   const orderedDecodeFields = useMemo(() => PAO_FIELDS.filter(f => decodeFields.has(f)), [decodeFields])
 
+  // Encode asks for all three fields at once, so its recall latency is roughly the
+  // sum of three recalls — judge mastery against a proportionally larger speed bar
+  // so a card can still count as mastered. Decode is a single recall (bar ×1).
+  const masteryFields = drillType === 'encode' ? PAO_FIELDS.length : 1
+
   // ── Per-question state ──────────────────────────────────────────────────────
   const [roundStats, setRoundStats] = useState<Record<string, RoundStat>>({})
-  const masteredSetRef = useRef<Set<string>>(new Set())
-  const shareRef = useRef(settings.sessionUnmasteredShare)
+  // Per-session round scheduler (config carries the ×masteryFields speed bar).
+  const cfg = useMemo<RoundConfig>(
+    () => makeRoundConfig(drillNumbers.length, settings, {
+      fastMs: masteryFastMs(settings.masteryLatencyFactor) * masteryFields,
+    }),
+    [drillNumbers.length, settings, masteryFields],
+  )
+  const cfgRef = useRef(cfg)
+  cfgRef.current = cfg
+  const roundStateRef = useRef<RoundState>(initRoundState())
   const prevDecodeNumsRef = useRef<Set<string>>(new Set()) // last Decode question's cards
   const startRef = useRef<number>(Date.now())
   const prevAnswerAtRef = useRef<number>(Date.now())  // per Decode item timing
 
-  const pickCard = useCallback((last: string | undefined, nums: string[]): Card => {
-    const available = last ? nums.filter(n => n !== last) : nums
-    const pool = available.length > 0 ? available : nums
-    const number = pickWeighted('enc', pool, masteredSetRef.current, shareRef.current)
+  const pickCard = useCallback((nums: string[]): Card => {
+    const number = selectNext(roundStateRef.current, nums, cfgRef.current)
     return CARD_BY_NUMBER.get(number)!
   }, [])
 
@@ -163,7 +178,7 @@ export function PaoCardsDrill({ answerMode }: Props) {
       let avail = nums.filter(n => !used.has(n) && !prev.has(n))
       if (avail.length === 0) avail = nums.filter(n => !used.has(n))
       if (avail.length === 0) avail = nums
-      const number = pickWeighted('enc', avail, masteredSetRef.current, shareRef.current)
+      const number = selectNext(roundStateRef.current, avail, cfgRef.current)
       used.add(number)
       const c = CARD_BY_NUMBER.get(number)!
       const distractors = pickDistractors(number, nums).map(n => cardLabel(CARD_BY_NUMBER.get(n)!))
@@ -173,7 +188,7 @@ export function PaoCardsDrill({ answerMode }: Props) {
     return items
   }, [])
 
-  const [card, setCard] = useState<Card>(() => pickCard(undefined, drillNumbers))
+  const [card, setCard] = useState<Card>(() => pickCard(drillNumbers))
   const [decodeItems, setDecodeItems] = useState<DecodeItem[]>(() => buildDecodeItems(orderedDecodeFields, drillNumbers))
 
   const [encodeInput, setEncodeInput] = useState(emptyInput)
@@ -200,8 +215,8 @@ export function PaoCardsDrill({ answerMode }: Props) {
   }
 
   // Advance to a fresh question: a new Encode card and a fresh Decode item set.
-  const nextQuestion = useCallback((lastEnc: string, nums: string[], fields: PaoField[]) => {
-    setCard(pickCard(lastEnc, nums))
+  const nextQuestion = useCallback((nums: string[], fields: PaoField[]) => {
+    setCard(pickCard(nums))
     setDecodeItems(buildDecodeItems(fields, nums))
     resetQuestionState()
     setTimeout(() => encodeRef.current?.focus(), 40)
@@ -216,6 +231,9 @@ export function PaoCardsDrill({ answerMode }: Props) {
       setStreak(0)
     }
     const adjusted = adjustLatency(rawMs, 'typing', chars)
+    roundStateRef.current = recordAnswer(
+      roundStateRef.current, number, { correct, recallMs: adjusted, hinted: false }, cfgRef.current,
+    )
     setRoundStats(prev => applyRoundAttempt(prev, number, { ok: correct, rawMs, adjustedMs: adjusted, hinted: false }))
   }
 
@@ -232,7 +250,7 @@ export function PaoCardsDrill({ answerMode }: Props) {
     setEncodeResult(perField)
     const chars = answers.person.length + answers.action.length + answers.object.length
     registerResult(card.number, correct, Date.now() - startRef.current, chars)
-    setTimeout(() => nextQuestion(card.number, drillNumbers, orderedDecodeFields), correct ? 1500 : 2400)
+    setTimeout(() => nextQuestion(drillNumbers, orderedDecodeFields), correct ? 1500 : 2400)
   }, [encodeResult, byNumber, card, encodeInput, drillNumbers, orderedDecodeFields, nextQuestion])
 
   // ── Decode: answer one item (identify its card) ──────────────────────────────
@@ -263,7 +281,7 @@ export function PaoCardsDrill({ answerMode }: Props) {
     if (Object.keys(decodeAnswers).length < decodeItems.length) return
     const allCorrect = decodeItems.every(i => decodeAnswers[i.field]?.correct)
     const t = setTimeout(
-      () => nextQuestion(card.number, drillNumbers, orderedDecodeFields),
+      () => nextQuestion(drillNumbers, orderedDecodeFields),
       allCorrect ? 1400 : 2000,
     )
     return () => clearTimeout(t)
@@ -282,10 +300,10 @@ export function PaoCardsDrill({ answerMode }: Props) {
   // ── Toggles (reset session) ─────────────────────────────────────────────────
   const resetSession = (nums: string[]) => {
     setRoundStats({})
-    masteredSetRef.current = new Set()
+    roundStateRef.current = initRoundState()
     prevDecodeNumsRef.current = new Set()
     setSessionCorrect(0); setSessionWrong(0); setStreak(0); setBestStreak(0)
-    setCard(pickCard(undefined, nums))
+    setCard(pickCard(nums))
     setDecodeItems(buildDecodeItems(orderedDecodeFields, nums))
     resetQuestionState()
   }
@@ -330,15 +348,7 @@ export function PaoCardsDrill({ answerMode }: Props) {
     })
   }
 
-  // Encode asks for all three fields at once, so its recall latency is roughly the
-  // sum of three recalls — judge mastery against a proportionally larger speed bar
-  // so a card can still count as mastered. Decode is a single recall (bar ×1).
-  const masteryFields = drillType === 'encode' ? PAO_FIELDS.length : 1
-  const { mastered, total, masteredSet } = masteryProgress(
-    drillNumbers, roundStats, masteryFastMs(settings.masteryLatencyFactor) * masteryFields)
-  masteredSetRef.current = masteredSet
-  shareRef.current = settings.sessionUnmasteredShare
-  const setComplete = total > 0 && mastered === total
+  const { pct, mastered, total, all: setComplete } = roundProgress(roundStateRef.current, drillNumbers, cfg)
 
   const colorCls = card.red ? 'text-rose-500' : 'text-zinc-900'
   const answers = byNumber[card.number]
@@ -443,10 +453,12 @@ export function PaoCardsDrill({ answerMode }: Props) {
             <div className="w-full max-w-md -mt-4">
               <div className="flex justify-between text-xs mb-1">
                 <span className="text-zinc-500">Cards mastered this session</span>
-                <span className={setComplete ? 'text-green-400 font-semibold' : 'text-zinc-400 tabular-nums'}>{mastered}/{total}</span>
+                <span className={setComplete ? 'text-green-400 font-semibold' : 'text-zinc-400 tabular-nums'}>
+                  {Math.round(pct * 100)}% · {mastered}/{total}
+                </span>
               </div>
               <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
-                <div className={`h-full transition-all ${setComplete ? 'bg-green-500' : 'bg-fuchsia-600'}`} style={{ width: `${(mastered / total) * 100}%` }} />
+                <div className={`h-full transition-all ${setComplete ? 'bg-green-500' : 'bg-fuchsia-600'}`} style={{ width: `${pct * 100}%` }} />
               </div>
             </div>
           )}

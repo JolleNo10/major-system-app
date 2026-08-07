@@ -1,13 +1,12 @@
 import { loadStore, medianMs } from '@/core/scoring/itemStore'
 import { RECALL_SLOW_MS } from '@/core/scoring/scoring'
 import { recallColor } from '@/core/scoring/recallColor'
-import { isMastered, masteryProgress, masteryFastMs } from '@/core/scoring/roundMastery'
-import { useSettings } from '@/app/settings/SettingsContext'
 import type { RoundStat } from '@/core/scoring/roundStats'
 import type { Direction } from '@/core/types'
 
 interface Props {
   stats: Record<string, RoundStat>
+  masteredSet: Set<string>  // numbers currently mastered this round (from the scheduler)
   pool: string[]
   dir: Direction
   low?: number
@@ -56,7 +55,7 @@ function sortedPool(pool: string[], stats: Record<string, RoundStat>): string[] 
   })
 }
 
-export function RoundStatsPanel({ stats, pool, dir, low, high, onRestart }: Props) {
+export function RoundStatsPanel({ stats, masteredSet, pool, dir, low, high, onRestart }: Props) {
   const store = loadStore()
   const tested = pool.filter(n => stats[n])
 
@@ -69,9 +68,8 @@ export function RoundStatsPanel({ stats, pool, dir, low, high, onRestart }: Prop
     ? `Round ${String(low).padStart(2, '0')}–${String(high).padStart(2, '0')}`
     : 'Round'
 
-  const { settings } = useSettings()
-  const fastMs = masteryFastMs(settings.masteryLatencyFactor)
-  const { mastered, total } = masteryProgress(pool, stats, fastMs)
+  const mastered = masteredSet.size
+  const total = pool.length
 
   return (
     <div>
@@ -107,7 +105,7 @@ export function RoundStatsPanel({ stats, pool, dir, low, high, onRestart }: Prop
           const allTimeTotal = allTime ? allTime.correct + allTime.wrong : 0
           const isSlowCorrect = s && s.wrong === 0 && s.correct > 0
             && s.lastMs !== undefined && s.lastMs >= RECALL_SLOW_MS
-          const mastered_n = isMastered(s, fastMs)
+          const mastered_n = masteredSet.has(n)
 
           return (
             <div

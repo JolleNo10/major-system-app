@@ -43,7 +43,7 @@ src/
   core/                         # depends on nothing but itself
     types storage createWordStore wordsCsv answerMatch cards
     scoring/   scoring sm2 itemStore attemptStore numberStats quiz roundStats
-               roundMastery recallColor typingSpeed useStats useAnswerTimer
+               roundScheduler recallColor typingSpeed useStats useAnswerTimer
     ui/        MultipleChoice TypingInput AnswerModeToggle useAnswerMode numericInput
                Switch RangeSlider ScoreBar RankRangeSelector WordListGrid
   features/                     # each depends on core/
@@ -101,7 +101,7 @@ a symbol to a feature's public surface = add one line to its `index.ts`.**
 | `major-pao-saved` / `-overrides` | localStorage | Editable PAO deck layers (same 3-layer store), keyed by composite `"<NN>:<field>"` (`field` = `person`\|`action`\|`object`) — the PAO Deck's Person/Action/Object per card `01`–`52` |
 | `major-pao-drilltype` / `-suits` / `-deck-count` / `-decode-fields` / `-deck-memo-history` | localStorage | PAO Deck UI/session state (drill type, active suits, deck-memo card count, Decode hint fields (JSON array of `person`\|`action`\|`object`, multi-select; migrated once from the legacy single-value `-decode-field`), and the PAO deck-memo run history) |
 | `major-pi-maintain` | localStorage | Per-segment SM-2 schedule for the Maintain tab: `Record<segIdx, ItemRecord>` (reuses `ItemRecord`; only schedule fields drive upkeep). Unseen seg = `{...DEFAULTS}` (`dueAt 0` = due now). `features/pi/maintain/piMaintainStore.ts` (`rescheduleSegment` grades binary: pass→4, fail→2). **Seeded on a segment's first clean Recite** (`seedSegmentSchedule`, called from `PiReciteFull` — grade 4 → ~1-day first interval, no-op if already scheduled) so a freshly-learned segment waits before Maintain surfaces it instead of being due the instant it's learned; re-reciting is practice and never advances the schedule. Never-maintained eligible segments (`lastSeenAt 0`) are still due now but count as **0d overdue** (not measured from the epoch) |
-| `major-settings` | localStorage | `{ masteryLatencyFactor, maxPiDigits, offlineMode, piPairsPerAnswer, piMaintainBatchSegs, sessionUnmasteredShare }` (`piPairsPerAnswer` 1\|10 = Pi typing batch size, set in Settings; migrated once from the legacy `major-pi-answer-size` key. `piMaintainBatchSegs` 1–10, default 5 = max segments per Maintain review batch. `sessionUnmasteredShare` 0.5–1, default 0.5 = fraction of `pickWeighted` draws targeting the not-yet-mastered pool) |
+| `major-settings` | localStorage | `{ masteryLatencyFactor, maxPiDigits, offlineMode, piPairsPerAnswer, piMaintainBatchSegs, sessionUnmasteredShare }` (`piPairsPerAnswer` 1\|10 = Pi typing batch size, set in Settings; migrated once from the legacy `major-pi-answer-size` key. `piMaintainBatchSegs` 1–10, default 5 = max segments per Maintain review batch. `sessionUnmasteredShare` 0–1, default 0.5 = "unmastered focus": scales the `roundScheduler` need-weight spread (0.5 baseline, 0 flat, 1 steeper)) |
 | `major-typing-speed` / `-digit` | localStorage | Adaptive ms/char estimates, separate for word vs digit typing |
 | `major-answer-mode`, `major-hide-options`, `major-seq-length`, `major-seq-studymode`, `major-speed-best`, `major-attempts-migrated`, `major-pi-collapsed-blocks` (collapsed 1000-digit segment blocks, shared across Pi grids), `major-pi-memo-seg` (last-selected Memo segment), `major-pi-memoed-segs` (segments recalled all-correct in Memo mode), `major-pi-recited-segs` (memoed segments later recited flawlessly), `major-pi-recite-mode` (Recite tab's Full/Anchors sub-mode), `major-pi-anchor-start`/`-end`/`-pace` (Anchors sub-mode selection + per-segment transition-pace store) | localStorage | Small UI/prefs flags |
 
@@ -145,30 +145,39 @@ Person/Action/Object triples (partial final group of 1–2 kept).
 
 ## Scoring & spaced repetition
 - **`core/scoring/scoring.ts` is the single home for all scoring/latency config** (dependency-free): `FAST_MS`/`SLOW_MS`,
-  `RECALL_FAST_MS`/`RECALL_SLOW_MS`, `OUTLIER_MS`/`STALE_MS`, `DEFAULT_EASE`/`MIN_EASE`, `MAX_LATENCIES`,
-  `HISTORY_HALFLIFE_DAYS`. Every scorer imports from here; `itemStore` keeps only storage config.
+  `RECALL_FAST_MS`/`RECALL_SLOW_MS`, `masteryFastMs(factor)`, `OUTLIER_MS`/`STALE_MS`, `DEFAULT_EASE`/`MIN_EASE`,
+  `MAX_LATENCIES`, `HISTORY_HALFLIFE_DAYS`, and the `ROUND_*` round-scheduler tunables (need weights, interval
+  factors, min-gap). Every scorer imports from here; `itemStore` keeps only storage config.
 - `sm2.ts` — `gradeAnswer(correct, ms, mode)` → 2 (wrong) / 3 (slow) / 4 / 5 (fast); `applySm2(item, grade)`
   updates ease/interval/due (SM-2). Grades use the **recall-adjusted** ms on the multiple-choice scale.
 - `typingSpeed.ts` — `adjustLatency(raw, mode, chars)` subtracts estimated typing time (separate word vs
   digit track) so recall speed is judged on one scale. (`recallColor` is a UI helper in `core/scoring/recallColor.ts`.)
-- `roundMastery.ts` — per-round mastery: `isMastered` = last `MASTERY_REPS` (2) attempts all correct,
-  un-hinted, and `recallMs <= masteryFastMs(settings.masteryLatencyFactor)`. Uses the **in-memory**
-  `RoundStat.attempts` (defined in `core/scoring/roundStats.ts`), not the IndexedDB log.
-- `numberStats.ts` — **`itemWeakness(item)` is the one weakness score used everywhere** ("weak" is defined
+- `numberStats.ts` — **`itemWeakness(item)` is the one all-time weakness score** ("weak" is defined
   once): `0.55·easePenalty + 0.25·normLatency + 0.20·(wrongRate · 0.8^reps)` — recency-biased; the lifetime
   wrong-rate residual decays with the current correct streak. `rankByWeakness(dir, nums)` (Stats overlay,
-  Weak Spots) sorts by it worst-first; `quiz.pickWeighted` uses it as the intra-pool draw weight
-  (`1 + itemWeakness·4`).
-- **`quiz.pickWeighted` is a two-pool draw** (the shared "mastered this session" selector, used by
-  Major System Encode/Decode, Cards, and PAO Encode/Decode). It splits `available` into an **unmastered**
-  and a **mastered** pool and picks a pool by a **fixed ratio independent of pool sizes** — with probability
-  `settings.sessionUnmasteredShare` (default 0.5) the draw targets an unmastered item, else a mastered one
-  (a refresher). Within the chosen pool it draws weighted by `itemWeakness`. Because the ratio is by pool not
-  by count, "8 of 10 mastered" still surfaces the remaining two on ~`share` of draws instead of drowning them.
-  Falls back to a single weighted pool when everything (or nothing) is mastered. Callers own "don't repeat the
-  last item" by pre-filtering `available` (PAO Decode additionally excludes the previous question's whole card
-  set in `buildDecodeItems`). When a set hits `mastered === total`, the drills show a non-blocking green
-  completion banner (WordNumberDrill: "Next set" + "Keep practising"; Cards/PAO: "Keep practising" only).
+  Weak Spots) sorts by it worst-first. (Per-round *selection* uses the separate ephemeral `roundScheduler`,
+  not this all-time score.)
+- **`core/scoring/roundScheduler.ts` is the shared per-session "learn a batch" engine** (the "mastered this
+  session" selector + mastery model, used by Major System Encode/Decode, Cards, and PAO Encode/Decode). Pure,
+  ephemeral (like `roundStats`), never persisted. It replaces the old two-pool `quiz.pickWeighted` + binary
+  `roundMastery`.
+  - **Selection = constrained weighted randomness.** Each question's `selectionWeight = need × spacing × balance`,
+    then weighted-random sampling: **need** (lower mastery ⇒ moderately, not overwhelmingly, more likely),
+    **spacing** (the dominant term — a just-shown question is near-zero, ramping to full once ~its target interval
+    passes; plus a hard anti-repeat `minimumGap` that zeroes anything shown too recently), **balance** (a gentle
+    `sqrt` boost for under-shown questions). The gap is relaxed step-wise and a most-overdue fallback guarantees
+    no deadlock. `state.seq` is a per-session question counter driving all spacing.
+  - **Graded mastery 0..3** (0 unlearned · 1 learning · 2 mastered · 3 confirmed). A correct answer only advances
+    a level when it is **spaced** (≥ the level's target interval since the last advancing recall), **fast enough**
+    (`recallMs ≤ cfg.fastMs`, PAO Encode uses ×3), and **un-hinted** — so `Q17✓ · Q4 · Q17✓` no longer masters.
+    A wrong answer drops one level and halves the interval. `roundProgress` gives a **continuous** batch-mastery %
+    (level 0→0, 1→0.5, ≥2→1) plus the mastered `Set`/count; `all` (every question ≥ level 2) fires the green
+    completion banner (WordNumberDrill: "Next set" + "Keep practising"; Cards/PAO: "Keep practising" only).
+  - **`makeRoundConfig(batchSize, settings, overrides?)`** derives the batch-relative config; `settings.
+    sessionUnmasteredShare` ("unmastered focus") scales the need-weight spread (0.5 = tuned baseline, 0 = flat, 1 =
+    steeper). Drills hold `RoundState` in a ref (selection reads latest; a `setRoundStats` after each answer drives
+    the re-render). Anti-repeat is internal, so callers no longer pre-filter the previous item (PAO Decode still
+    excludes the previous question's whole card set + within-question dupes when drawing its N distinct-card cues).
 - `useStats.recordFull` splits into `aggregateItem` (counts + rolling latency) and `scheduleItem`
   (grade + `applySm2`, incl. the hint→cap-at-3 rule); the due-count / rep-queue / next-due helpers share one
   `allItems()` traversal.
@@ -255,8 +264,8 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   *different* card** (`DecodeItem` = field + distinct card + MC options; `buildDecodeItems`): with N fields you get N cue rows,
   each with its own answer widget, and advance only once all are answered (per-item timing via `prevAnswerAtRef`; auto-advance
   effect). Multi-cue MC passes `keyboard={false}` to each `MultipleChoice` so one keypress doesn't answer every block. Toggling a
-  field rebuilds the item set (keeps the running score). Both are **session-only** (in-memory `roundStats` weighting, no persisted/global stats;
-  `pickWeighted('enc', …)` only reads draw weights). **Deck Memo** = `PaoDeckMemoDrill` (forked from `DeckMemoDrill` so the
+  field rebuilds the item set (keeps the running score). Both are **session-only** (the ephemeral `roundScheduler`
+  drives selection + mastery, no persisted/global stats). **Deck Memo** = `PaoDeckMemoDrill` (forked from `DeckMemoDrill` so the
   shared one stays untouched): memorise the deck in P₁·A₂·O₃ triples, then blind card-order recall grouped in threes; keeps its
   own run history under `major-pao-deck-memo-history`. All three drill types share **one visual language for the roles**
   (`features/cards/pao/paoRoles.tsx` — `PAO_ROLE` meta: emoji + label + accent color per role, amber/violet/cyan for
@@ -290,9 +299,11 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   `app/layout/`: `useOverlay` (focus trap/return + Escape + registers `overlayGuard`);
   `app/settings/`: `usePwaUpdate` (wraps `virtual:pwa-register/react`; gates SW update checks on `settings.offlineMode`,
   auto-applies updates from checks it initiates, exposes build version + manual check — called once in `App`).
-- **Pure utils** (now filed by domain) — `core/scoring/`: `quiz` (`shuffle`, `pickDistractors` same-decade-biased, `buildEncOptions`/`buildDecOptions`,
-  `pickWeighted(dir,…)`), `roundStats` (`RoundStat`/`RoundAttempt` types + `applyRoundAttempt` reducer, shared
-  by all drills), `recallColor` (UI latency color), `roundMastery`, `numberStats`;
+- **Pure utils** (now filed by domain) — `core/scoring/`: `quiz` (`shuffle`, `pickDistractors` same-decade-biased,
+  `buildEncOptions`/`buildDecOptions` — option construction only; selection lives in `roundScheduler`),
+  `roundScheduler` (`makeRoundConfig`/`selectNext`/`recordAnswer`/`roundProgress` — the per-session batch engine),
+  `roundStats` (`RoundStat`/`RoundAttempt` types + `applyRoundAttempt` reducer, shared
+  by all drills), `recallColor` (UI latency color), `numberStats`;
   `core/`: `answerMatch` (`matchesAnswer` word + `matchesNumber` digit), `storage` (`safeSet`/`safeRemove` + guarded `readString`/`readJSON`);
   `app/layout/`: `overlayGuard` (`isOverlayOpen`);
   `core/ui/`: `numericInput`;

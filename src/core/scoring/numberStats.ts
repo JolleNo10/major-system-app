@@ -5,7 +5,7 @@ import { SLOW_MS, DEFAULT_EASE, MIN_EASE } from '@/core/scoring/scoring'
 // All-time per-number weakness ranking for one direction.
 // "Worst" is biased toward RECENT performance, not lifetime history:
 //   - easePenalty (SM-2 ease) — recent difficulty; drops on recent wrongs/slowness,
-//     recovers as you answer well. Already the signal pickWeighted drills by.
+//     recovers as you answer well.
 //   - normLatency — median of the rolling last-10 latencies (recall-adjusted).
 //   - residual — lifetime wrongRate, but DECAYED by the current correct streak so
 //     old mistakes fade as you relearn a number (and snap back on the next miss).
@@ -25,10 +25,11 @@ export interface NumberStat {
 }
 
 // Single per-item weakness score (0..1, higher = worse), the one definition
-// used everywhere "weak" is measured — the Stats ranking, Weak Spots, and the
-// pickWeighted draw. Recency-biased: SM-2 ease penalty (recent difficulty) +
-// rolling recall latency + a lifetime wrongRate residual that decays with the
-// current correct streak so old mistakes fade as a number is relearned.
+// used everywhere all-time "weak" is measured — the Stats ranking and Weak Spots.
+// Recency-biased: SM-2 ease penalty (recent difficulty) + rolling recall latency +
+// a lifetime wrongRate residual that decays with the current correct streak so old
+// mistakes fade as a number is relearned. (Per-round question selection uses the
+// separate, ephemeral roundScheduler, not this all-time score.)
 export function itemWeakness(item: ItemRecord): number {
   const total = item.correct + item.wrong
   const wrongRate = total > 0 ? item.wrong / total : 0

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useMemo } from 'react'
 import { useSettings } from '@/app/settings/SettingsContext'
 import { useAnswerTimer } from '@/core/scoring/useAnswerTimer'
 import { MultipleChoice } from '@/core/ui/MultipleChoice'
@@ -7,8 +7,11 @@ import { ScoreBar } from '@/core/ui/ScoreBar'
 import { STALE_MS } from '@/core/scoring/scoring'
 import { adjustLatency } from '@/core/scoring/typingSpeed'
 import { recallColor } from '@/core/scoring/recallColor'
-import { masteryProgress, masteryFastMs } from '@/core/scoring/roundMastery'
-import { shuffle, pickDistractors, pickWeighted } from '@/core/scoring/quiz'
+import {
+  makeRoundConfig, initRoundState, selectNext, recordAnswer, roundProgress,
+  type RoundState, type RoundConfig,
+} from '@/core/scoring/roundScheduler'
+import { shuffle, pickDistractors } from '@/core/scoring/quiz'
 import { applyRoundAttempt, type RoundStat } from '@/core/scoring/roundStats'
 import { readString, readJSON, safeSet } from '@/core/storage'
 import { matchesAnswer } from '@/core/answerMatch'
@@ -68,18 +71,13 @@ function limitByRank(numbers: string[], range: [number, number]): string[] {
 }
 
 function makeQuestion(
-  lastNumber: string | undefined,
   cardNumbers: string[],
   words: Record<string, string>,
-  masteredSet: Set<string>,
+  state: RoundState,
+  cfg: RoundConfig,
   drillType: CardsDrillType,
-  share: number,
 ): Question {
-  const available = lastNumber
-    ? cardNumbers.filter(n => n !== lastNumber)
-    : cardNumbers
-  const pool = available.length > 0 ? available : cardNumbers
-  const number = pickWeighted('enc', pool, masteredSet, share)
+  const number = selectNext(state, cardNumbers, cfg)
   const card = CARDS.find(c => c.number === number)!
   const distNums = pickDistractors(number, cardNumbers)
 
@@ -151,9 +149,19 @@ export function CardsDrill({
     return nums.length
   })
 
+  // Per-session round scheduler: batch-relative config + ephemeral state (ref so
+  // selection reads the latest; setRoundStats drives the re-render that re-reads it).
+  const cfg = useMemo(
+    () => makeRoundConfig(activeNumbers.length, settings),
+    [activeNumbers.length, settings], // makeRoundConfig only reads the two mastery settings
+  )
+  const cfgRef = useRef(cfg)
+  cfgRef.current = cfg
+  const roundStateRef = useRef<RoundState>(initRoundState())
+
   const [roundStats, setRoundStats] = useState<Record<string, RoundStat>>({})
   const [question, setQuestion] = useState<Question>(() =>
-    makeQuestion(undefined, activeNumbers, words, new Set<string>(), drillType, settings.sessionUnmasteredShare))
+    makeQuestion(activeNumbers, words, roundStateRef.current, cfg, drillType))
   const [answered, setAnswered] = useState<string | null>(null)
   const [answeredCorrect, setAnsweredCorrect] = useState<boolean | null>(null)
   const [sessionCorrect, setSessionCorrect] = useState(0)
@@ -164,11 +172,9 @@ export function CardsDrill({
   const [discarded, setDiscarded] = useState(false)
 
   const { paused, togglePause, elapsedMs, wasPaused } = useAnswerTimer(question, answered)
-  const masteredSetRef = useRef<Set<string>>(new Set())
-  const shareRef = useRef(settings.sessionUnmasteredShare)
 
-  const next = useCallback((lastNumber: string) => {
-    setQuestion(makeQuestion(lastNumber, activeNumbers, words, masteredSetRef.current, drillType, shareRef.current))
+  const next = useCallback(() => {
+    setQuestion(makeQuestion(activeNumbers, words, roundStateRef.current, cfgRef.current, drillType))
     setAnswered(null)
     setAnsweredCorrect(null)
     setLastMs(null)
@@ -187,9 +193,11 @@ export function CardsDrill({
     setBestStreak(s.bestStreak)
     setLastMs(s.lastMs)
     setDiscarded(s.discarded)
-    masteredSetRef.current = new Set()
-    setQuestion(makeQuestion(undefined, nums, words, new Set(), type, shareRef.current))
-  }, [words])
+    roundStateRef.current = initRoundState()
+    const freshCfg = makeRoundConfig(nums.length, settings)
+    cfgRef.current = freshCfg
+    setQuestion(makeQuestion(nums, words, roundStateRef.current, freshCfg, type))
+  }, [words, settings])
 
   const handleAnswer = useCallback((value: string) => {
     if (answered !== null || paused) return
@@ -201,7 +209,7 @@ export function CardsDrill({
 
     if (!wasPaused() && ms > STALE_MS) {
       setDiscarded(true)
-      setTimeout(() => next(question.card.number), 1500)
+      setTimeout(() => next(), 1500)
       return
     }
 
@@ -220,10 +228,14 @@ export function CardsDrill({
       setStreak(0)
     }
 
+    roundStateRef.current = recordAnswer(
+      roundStateRef.current, question.card.number,
+      { correct, recallMs: adjusted, hinted: false }, cfgRef.current,
+    )
     setRoundStats(prev => applyRoundAttempt(prev, question.card.number, {
       ok: correct, rawMs: ms, adjustedMs: adjusted, hinted: false,
     }))
-    setTimeout(() => next(question.card.number), 1500)
+    setTimeout(() => next(), 1500)
   }, [answered, paused, question, answerMode, drillType, onRecord, next])
 
   const switchDrillType = useCallback((newType: CardsDrillType) => {
@@ -246,11 +258,7 @@ export function CardsDrill({
     })
   }, [drillType, suitsKey, applyReset])
 
-  const { mastered, total, masteredSet } = masteryProgress(
-    activeNumbers, roundStats, masteryFastMs(settings.masteryLatencyFactor))
-  masteredSetRef.current = masteredSet
-  shareRef.current = settings.sessionUnmasteredShare
-  const setComplete = total > 0 && mastered === total
+  const { pct, mastered, total, all: setComplete } = roundProgress(roundStateRef.current, activeNumbers, cfg)
 
   const { card } = question
   const colorCls = card.red ? 'text-rose-500' : 'text-zinc-900'
@@ -367,12 +375,14 @@ export function CardsDrill({
             <div className="w-full max-w-md -mt-4">
               <div className="flex justify-between text-xs mb-1">
                 <span className="text-zinc-500">Cards mastered this session</span>
-                <span className={setComplete ? 'text-green-400 font-semibold' : 'text-zinc-400 tabular-nums'}>{mastered}/{total}</span>
+                <span className={setComplete ? 'text-green-400 font-semibold' : 'text-zinc-400 tabular-nums'}>
+                  {Math.round(pct * 100)}% · {mastered}/{total}
+                </span>
               </div>
               <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
                 <div
                   className={`h-full transition-all ${setComplete ? 'bg-green-500' : 'bg-rose-600'}`}
-                  style={{ width: `${(mastered / total) * 100}%` }}
+                  style={{ width: `${pct * 100}%` }}
                 />
               </div>
             </div>

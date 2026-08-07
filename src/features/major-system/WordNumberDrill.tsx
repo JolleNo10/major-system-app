@@ -11,10 +11,11 @@ import { HintButton } from '@/features/major-system/HintButton'
 import { STALE_MS } from '@/core/scoring/scoring'
 import { adjustLatency } from '@/core/scoring/typingSpeed'
 import { recallColor } from '@/core/scoring/recallColor'
-import { masteryProgress, masteryFastMs, isMastered } from '@/core/scoring/roundMastery'
 import { isOverlayOpen } from '@/app/layout/overlayGuard'
-import { pickWeighted } from '@/core/scoring/quiz'
-import { eligible, noteServed, type RefreshState } from '@/core/scoring/sessionRefresh'
+import {
+  makeRoundConfig, initRoundState, selectNext, recordAnswer, roundProgress,
+  type RoundState, type RoundConfig,
+} from '@/core/scoring/roundScheduler'
 import { applyRoundAttempt, type RoundStat } from '@/core/scoring/roundStats'
 import { useAnswerTimer } from '@/core/scoring/useAnswerTimer'
 import { useSettings } from '@/app/settings/SettingsContext'
@@ -43,18 +44,10 @@ function makeQuestion(
   config: DrillConfig,
   pool: string[],
   words: Record<string, string>,
-  masteredSet: Set<string>,
-  share: number,
-  refreshState: RefreshState,
-  index: number,
-  exclude?: string,
+  state: RoundState,
+  cfg: RoundConfig,
 ): DrillQuestion {
-  const excluded = pool.length > 1 ? pool.filter(n => n !== exclude) : pool
-  // Drop mastered items that aren't refresh-due (or have retired); if that leaves
-  // nothing (whole set mastered + all refreshers retired) fall back to the full set.
-  const filtered = eligible(excluded, masteredSet, refreshState, index)
-  const available = filtered.length > 0 ? filtered : excluded
-  const number = pickWeighted(config.dir, available, masteredSet, share)
+  const number = selectNext(state, pool, cfg)
   return { number, ...config.build(number, words) }
 }
 
@@ -83,10 +76,18 @@ export function WordNumberDrill({ config, answerMode, pool: customPool }: Props)
     return allNums
   }, [allNums, customPool, low, high])
 
-  const refreshStateRef = useRef<RefreshState>({}) // per-session refresh schedule
-  const indexRef = useRef(0)                       // recorded-answer counter (drives refresh due-dates)
+  // Per-session scheduler config (batch-relative) + ephemeral round state. The
+  // state lives in a ref so selection always reads the latest; a setRoundStats
+  // call after every answer drives the re-render that re-reads it.
+  const cfg = useMemo(
+    () => makeRoundConfig(pool.length, settings),
+    [pool.length, settings], // makeRoundConfig only reads the two mastery settings
+  )
+  const cfgRef = useRef(cfg)
+  cfgRef.current = cfg
+  const roundStateRef = useRef<RoundState>(initRoundState())
 
-  const [question, setQuestion] = useState(() => makeQuestion(config, pool, words, new Set<string>(), settings.sessionUnmasteredShare, {}, 0))
+  const [question, setQuestion] = useState(() => makeQuestion(config, pool, words, roundStateRef.current, cfg))
   const [answered, setAnswered] = useState<string | null>(null)
   const [answeredCorrect, setAnsweredCorrect] = useState<boolean | null>(null)
   const [sessionCorrect, setSessionCorrect] = useState(0)
@@ -98,11 +99,9 @@ export function WordNumberDrill({ config, answerMode, pool: customPool }: Props)
   const [discarded, setDiscarded] = useState(false)
 
   const { paused, togglePause, elapsedMs, wasPaused } = useAnswerTimer(question, answered)
-  const masteredSetRef = useRef<Set<string>>(new Set()) // latest mastered set, for selection
-  const shareRef = useRef(settings.sessionUnmasteredShare) // latest unmastered-focus setting
 
-  const next = useCallback((exclude: string) => {
-    setQuestion(makeQuestion(config, pool, words, masteredSetRef.current, shareRef.current, refreshStateRef.current, indexRef.current, exclude))
+  const next = useCallback(() => {
+    setQuestion(makeQuestion(config, pool, words, roundStateRef.current, cfgRef.current))
     setAnswered(null)
     setAnsweredCorrect(null)
     setLastMs(null)
@@ -121,10 +120,8 @@ export function WordNumberDrill({ config, answerMode, pool: customPool }: Props)
     setLastMs(null)
     setHintUsed(false)
     setDiscarded(false)
-    masteredSetRef.current = new Set()
-    refreshStateRef.current = {}
-    indexRef.current = 0
-    setQuestion(makeQuestion(config, pool, words, new Set<string>(), shareRef.current, {}, 0))
+    roundStateRef.current = initRoundState()
+    setQuestion(makeQuestion(config, pool, words, roundStateRef.current, cfgRef.current))
   }, [config, pool, words])
 
   // Range change (new segment) → fresh round
@@ -157,7 +154,7 @@ export function WordNumberDrill({ config, answerMode, pool: customPool }: Props)
     // Idle / walked-away answer (and pause wasn't used) → discard, don't record
     if (!wasPaused() && ms > STALE_MS) {
       setDiscarded(true)
-      setTimeout(() => next(question.number), 1500)
+      setTimeout(() => next(), 1500)
       return
     }
 
@@ -172,27 +169,21 @@ export function WordNumberDrill({ config, answerMode, pool: customPool }: Props)
       setSessionWrong(w => w + 1)
       setStreak(0)
     }
-    // Derive mastery before/after this answer to drive the per-session refresh
-    // scheduler (roundStats itself updates async, so compute the next map here).
-    const fastMs = masteryFastMs(settings.masteryLatencyFactor)
-    const wasMastered = masteredSetRef.current.has(question.number)
-    const newStats = applyRoundAttempt(roundStats, question.number, {
-      ok: correct, rawMs: ms, adjustedMs: adjusted, hinted,
-    })
-    const isNowMastered = isMastered(newStats[question.number], fastMs)
-    setRoundStats(newStats)
-    refreshStateRef.current = noteServed(
-      refreshStateRef.current, question.number, indexRef.current, wasMastered, isNowMastered,
+    // Feed the answer to the round scheduler (mastery/spacing) and the display
+    // stats. setRoundStats drives the re-render that re-reads roundStateRef.
+    roundStateRef.current = recordAnswer(
+      roundStateRef.current, question.number,
+      { correct, recallMs: adjusted, hinted }, cfgRef.current,
     )
-    indexRef.current += 1
-    setTimeout(() => next(question.number), 1500)
-  }, [answered, paused, question, answerMode, config, recordFull, next, hintUsed, elapsedMs, wasPaused, roundStats, settings.masteryLatencyFactor])
+    setRoundStats(prev => applyRoundAttempt(prev, question.number, {
+      ok: correct, rawMs: ms, adjustedMs: adjusted, hinted,
+    }))
+    setTimeout(() => next(), 1500)
+  }, [answered, paused, question, answerMode, config, recordFull, next, hintUsed, elapsedMs, wasPaused])
 
-  // Round mastery — how well the full selected set is known
-  const { mastered, total, masteredSet } = masteryProgress(pool, roundStats, masteryFastMs(settings.masteryLatencyFactor))
-  masteredSetRef.current = masteredSet
-  shareRef.current = settings.sessionUnmasteredShare
-  const setComplete = total > 0 && mastered === total
+  // Round mastery — how well the full selected set is known (continuous + counts)
+  const progress = roundProgress(roundStateRef.current, pool, cfg)
+  const { pct, mastered, total, all: setComplete, masteredSet } = progress
   const width = high - low + 1
   const nextLow = high < 99 ? high + 1 : 0
   const nextHigh = high < 99 ? Math.min(99, high + width) : Math.min(99, width - 1)
@@ -259,7 +250,7 @@ export function WordNumberDrill({ config, answerMode, pool: customPool }: Props)
     <>
       {showStats && (
         <div className="hidden xl:block fixed left-0 top-14 bottom-0 w-56 bg-zinc-900 border-r border-zinc-800 overflow-y-auto z-30 p-4">
-          <RoundStatsPanel stats={roundStats} pool={pool} dir={config.dir} low={low} high={high} onRestart={resetRound} />
+          <RoundStatsPanel stats={roundStats} masteredSet={masteredSet} pool={pool} dir={config.dir} low={low} high={high} onRestart={resetRound} />
         </div>
       )}
       {showKey && (
@@ -334,12 +325,14 @@ export function WordNumberDrill({ config, answerMode, pool: customPool }: Props)
           <div className="w-full max-w-md -mt-2">
             <div className="flex justify-between text-xs mb-1">
               <span className="text-zinc-500">Set mastery</span>
-              <span className={setComplete ? 'text-green-400 font-semibold' : 'text-zinc-400 tabular-nums'}>{mastered}/{total}</span>
+              <span className={setComplete ? 'text-green-400 font-semibold' : 'text-zinc-400 tabular-nums'}>
+                {Math.round(pct * 100)}% · {mastered}/{total}
+              </span>
             </div>
             <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
               <div
                 className={`h-full transition-all ${setComplete ? 'bg-green-500' : 'bg-violet-600'}`}
-                style={{ width: `${(mastered / total) * 100}%` }}
+                style={{ width: `${pct * 100}%` }}
               />
             </div>
           </div>
@@ -399,7 +392,7 @@ export function WordNumberDrill({ config, answerMode, pool: customPool }: Props)
 
         {showStats && (
           <div className={`xl:hidden w-full max-w-md ${panelCls}`}>
-            <RoundStatsPanel stats={roundStats} pool={pool} dir={config.dir} low={low} high={high} onRestart={resetRound} />
+            <RoundStatsPanel stats={roundStats} masteredSet={masteredSet} pool={pool} dir={config.dir} low={low} high={high} onRestart={resetRound} />
           </div>
         )}
         {showKey && (

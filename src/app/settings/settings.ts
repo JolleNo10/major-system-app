@@ -18,9 +18,10 @@ export interface Settings {
   // Max segments (× 20 digits) per Maintain-tab review batch. Batches are
   // contiguous runs of learned segments; this caps their length.
   piMaintainBatchSegs: number
-  // Fraction of draws that target not-yet-mastered items (vs. re-testing mastered
-  // ones) in any drill with a "mastered this session" bar. 0.5 = even split;
-  // higher surfaces the remaining unmastered items more. See quiz.pickWeighted.
+  // "Unmastered focus" (0..1): how much the round scheduler favours not-yet-mastered
+  // items over mastered ones, in any drill with a "mastered this session" bar. 0.5 =
+  // the tuned baseline need weights; 0 flattens them (even exposure); 1 sharpens the
+  // focus on weak items. Feeds roundScheduler.makeRoundConfig.
   sessionUnmasteredShare: number
 }
 
