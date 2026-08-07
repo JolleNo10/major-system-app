@@ -65,7 +65,7 @@ src/
                    card/    MajorCardsDrill
                    themed/  ThemedCardsDrill CardWordsOverlay cardWords(.csv) CardWordsContext
                    pao/     PaoCardsDrill PaoDeckMemoDrill PaoWordsGrid PaoWordsOverlay
-                            paoCards(.csv) paoCsv PaoCardsContext triples
+                            paoCards(.csv) paoCsv PaoCardsContext triples paoRoles
 ```
 
 **Layering rule:** `core/` → self only; `features/*` → `core/` (+ kept feature→feature edges:
@@ -247,7 +247,10 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   field rebuilds the item set (keeps the running score). Both are **session-only** (in-memory `roundStats` weighting, no persisted/global stats;
   `pickWeighted('enc', …)` only reads draw weights). **Deck Memo** = `PaoDeckMemoDrill` (forked from `DeckMemoDrill` so the
   shared one stays untouched): memorise the deck in P₁·A₂·O₃ triples, then blind card-order recall grouped in threes; keeps its
-  own run history under `major-pao-deck-memo-history`.
+  own run history under `major-pao-deck-memo-history`. All three drill types share **one visual language for the roles**
+  (`features/cards/pao/paoRoles.tsx` — `PAO_ROLE` meta: emoji + label + accent color per role, amber/violet/cyan for
+  Person/Action/Object; plus `RoleTag`/`RoleValue` presentational bits): the emoji + color are identical across Encode inputs/review,
+  Decode cues + field toggle, and Deck Memo story/card labels, so a Person always reads the same everywhere.
 - **UI & shell** (`app/`, `app/layout/`, `app/overlays/`, `core/ui/`; a few list-editors in features) — `app/ModeSelector` (home screen: **Systems** section for Major System drills, **Applications** section for Pi + Cards + PAO Deck); shared `core/ui/`: `MultipleChoice`/`TypingInput` (answer inputs),
   `ScoreBar`, `RangeSlider` (dual-thumb number range, accessible), `RankRangeSelector`, `WordListGrid`, `AnswerModeToggle`, `Switch` (accessible on/off toggle);
   Major-System-local (`features/major-system/`): `RoundStatsPanel`, `HintButton` (vowel skeleton), `SoundKeyGrid` (editable sound-key table)/`SoundKeyPanel`.

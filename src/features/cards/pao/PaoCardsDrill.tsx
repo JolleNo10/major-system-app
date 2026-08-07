@@ -15,6 +15,7 @@ import { matchesAnswerLoose } from '@/core/answerMatch'
 import { CARDS, RANKS, rankIndex } from '@/core/cards'
 import type { Card, Suit } from '@/core/cards'
 import { PAO_FIELDS, type PaoField } from '@/features/cards/pao/paoCards'
+import { PAO_ROLE, RoleTag, RoleValue } from '@/features/cards/pao/paoRoles'
 import type { AnswerMode } from '@/core/types'
 import { RankRangeSelector } from '@/core/ui/RankRangeSelector'
 
@@ -35,9 +36,6 @@ const DRILL_LABELS: Record<PaoDrillType, string> = {
   decode: 'Decode',
   'deck-memo': 'Deck Memo',
 }
-
-const FIELD_LABELS: Record<PaoField, string> = { person: 'Person', action: 'Action', object: 'Object' }
-const FIELD_EMOJI: Record<PaoField, string> = { person: '👤', action: '🎬', object: '📦' }
 
 const cardLabel = (card: Card) => `${card.rank}${card.suit}`
 
@@ -431,9 +429,9 @@ export function PaoCardsDrill({ answerMode }: Props) {
                     key={f}
                     onClick={() => toggleDecodeField(f)}
                     className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                      decodeFields.has(f) ? 'bg-violet-600 text-white' : 'text-zinc-400 hover:text-zinc-200'
+                      decodeFields.has(f) ? `${PAO_ROLE[f].pill} text-white` : 'text-zinc-400 hover:text-zinc-200'
                     }`}
-                  >{FIELD_EMOJI[f]} {FIELD_LABELS[f]}</button>
+                  >{PAO_ROLE[f].emoji} {PAO_ROLE[f].label}</button>
                 ))}
               </div>
               <span className="text-[10px] text-zinc-600">Pick which hint(s) to show</span>
@@ -443,7 +441,12 @@ export function PaoCardsDrill({ answerMode }: Props) {
           {drillType === 'encode' ? (
             /* ── Encode: card → type all three ── */
             <div className="flex flex-col items-center gap-5 w-full max-w-md">
-              <p className="text-xs text-zinc-600 uppercase tracking-widest">Recall the Person · Action · Object</p>
+              <p className="text-xs uppercase tracking-widest text-zinc-600">
+                Recall the{' '}
+                <span className={PAO_ROLE.person.text}>Person</span> ·{' '}
+                <span className={PAO_ROLE.action.text}>Action</span> ·{' '}
+                <span className={PAO_ROLE.object.text}>Object</span>
+              </p>
               <div className={`relative flex flex-col items-center justify-center w-36 h-52 rounded-2xl bg-zinc-100 shadow-2xl border-2 border-zinc-300 select-none`}>
                 <div className={`absolute top-2.5 left-3 flex flex-col items-center leading-none ${colorCls}`}>
                   <span className="text-base font-black">{card.rank}</span>
@@ -460,12 +463,13 @@ export function PaoCardsDrill({ answerMode }: Props) {
               <div className="w-full space-y-2.5">
                 {PAO_FIELDS.map((f, i) => {
                   const res = encodeResult?.[f]
+                  const role = PAO_ROLE[f]
                   const border = encodeResult === null
                     ? 'border-zinc-700 focus-within:border-violet-500'
                     : res ? 'border-green-500 bg-green-500/10' : 'border-red-500 bg-red-500/10'
                   return (
-                    <div key={f} className={`flex items-center rounded-xl border transition-colors overflow-hidden ${border}`}>
-                      <span className="pl-3 pr-1 text-lg" title={FIELD_LABELS[f]}>{['👤', '🎬', '📦'][i]}</span>
+                    <div key={f} className={`flex items-stretch rounded-xl border transition-colors overflow-hidden ${border}`}>
+                      <span className={`flex items-center justify-center w-11 text-lg ${role.bg}`} title={role.label} aria-hidden>{role.emoji}</span>
                       <input
                         ref={i === 0 ? encodeRef : undefined}
                         type="text"
@@ -473,14 +477,14 @@ export function PaoCardsDrill({ answerMode }: Props) {
                         disabled={encodeResult !== null}
                         onChange={e => setEncodeInput(prev => ({ ...prev, [f]: e.target.value }))}
                         onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); submitEncode() } }}
-                        placeholder={FIELD_LABELS[f]}
-                        aria-label={FIELD_LABELS[f]}
+                        placeholder={role.label}
+                        aria-label={role.label}
                         autoComplete="off"
                         spellCheck={false}
-                        className="flex-1 px-2 py-3 bg-zinc-800 outline-none text-lg font-medium text-zinc-100 placeholder-zinc-600 disabled:opacity-80"
+                        className="flex-1 px-3 py-3 bg-zinc-800 outline-none text-lg font-medium text-zinc-100 placeholder-zinc-600 disabled:opacity-80"
                       />
                       {encodeResult !== null && (
-                        <span className={`px-3 text-lg ${res ? 'text-green-400' : 'text-red-400'}`}>{res ? '✓' : '✗'}</span>
+                        <span className={`flex items-center px-3 text-lg ${res ? 'text-green-400' : 'text-red-400'}`}>{res ? '✓' : '✗'}</span>
                       )}
                     </div>
                   )
@@ -493,11 +497,11 @@ export function PaoCardsDrill({ answerMode }: Props) {
                   className="px-6 py-2.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-medium transition-colors"
                 >Check ↵</button>
               ) : (
-                <div className="w-full px-4 py-3 rounded-lg bg-zinc-800/60 border border-zinc-700 text-sm space-y-1">
-                  {PAO_FIELDS.map((f, i) => (
-                    <div key={f} className="flex items-center gap-2">
-                      <span>{['👤', '🎬', '📦'][i]}</span>
-                      <span className={encodeResult[f] ? 'text-green-300' : 'text-red-300'}>{answers[f]}</span>
+                <div className="w-full px-4 py-3 rounded-lg bg-zinc-800/60 border border-zinc-700 text-base space-y-1.5">
+                  {PAO_FIELDS.map(f => (
+                    <div key={f} className="flex items-center justify-between gap-2">
+                      <RoleValue field={f} value={answers[f]} />
+                      <span className={encodeResult[f] ? 'text-green-400' : 'text-red-400'}>{encodeResult[f] ? '✓' : '✗'}</span>
                     </div>
                   ))}
                 </div>
@@ -512,17 +516,18 @@ export function PaoCardsDrill({ answerMode }: Props) {
               <p className="text-xs text-zinc-600 uppercase tracking-widest">
                 {multi
                   ? 'Identify each card from its cue'
-                  : `Which card has this ${FIELD_LABELS[decodeItems[0].field].toLowerCase()}?`}
+                  : `Which card has this ${PAO_ROLE[decodeItems[0].field].label.toLowerCase()}?`}
               </p>
 
               <div className="w-full space-y-5">
                 {decodeItems.map(item => {
                   const ans = decodeAnswers[item.field]
+                  const role = PAO_ROLE[item.field]
                   return (
                     <div key={item.field} className="w-full space-y-2">
-                      <div className="flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-zinc-800 border border-zinc-700 text-center">
-                        {multi && <span className="text-lg" title={FIELD_LABELS[item.field]}>{FIELD_EMOJI[item.field]}</span>}
-                        <span className="text-2xl font-bold text-zinc-100">{byNumber[item.card.number][item.field]}</span>
+                      <div className={`flex flex-col items-center gap-1.5 px-6 py-4 rounded-2xl bg-zinc-800 border text-center ${role.border}`}>
+                        <RoleTag field={item.field} />
+                        <span className={`text-2xl font-bold ${role.text}`}>{byNumber[item.card.number][item.field]}</span>
                       </div>
                       {answerMode === 'multiple-choice' ? (
                         <MultipleChoice

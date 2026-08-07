@@ -4,6 +4,7 @@ import type { Card, Suit } from '@/core/cards'
 import type { PaoCard } from '@/features/cards/pao/paoCards'
 import { shuffle } from '@/core/scoring/quiz'
 import { groupTriples, roleAt } from '@/features/cards/pao/triples'
+import { RoleTag, RoleValue } from '@/features/cards/pao/paoRoles'
 import { isOverlayOpen } from '@/app/layout/overlayGuard'
 import { safeSet } from '@/core/storage'
 
@@ -14,7 +15,6 @@ import { safeSet } from '@/core/storage'
 
 const SUIT_LETTERS: Record<string, Suit> = { C: '♣', D: '♦', H: '♥', S: '♠' }
 const MAX_HISTORY = 100
-const ROLE_EMOJI = ['👤', '🎬', '📦'] as const
 
 interface DeckMemoRun {
   at: number
@@ -116,12 +116,7 @@ function StoryLine({ triple, byNumber }: { triple: Card[]; byNumber: Record<stri
       {triple.map((card, j) => {
         const role = roleAt(j)
         const value = byNumber[card.number]?.[role] ?? ''
-        return (
-          <span key={card.number} className="text-lg">
-            <span className="mr-1">{ROLE_EMOJI[j]}</span>
-            <span className={j === 0 ? 'font-bold text-zinc-100' : j === 1 ? 'text-violet-300' : 'text-cyan-300'}>{value}</span>
-          </span>
-        )
+        return <RoleValue key={card.number} field={role} value={value} className="text-lg" />
       })}
     </div>
   )
@@ -245,8 +240,8 @@ export function PaoDeckMemoDrill({ activeNumbers, byNumber, cardCount, historyKe
 
         <div className="flex items-end gap-2">
           {triple.map((card, j) => (
-            <div key={card.number} className="flex flex-col items-center gap-1">
-              <span className="text-lg" title={roleAt(j)}>{ROLE_EMOJI[j]}</span>
+            <div key={card.number} className="flex flex-col items-center gap-1.5">
+              <RoleTag field={roleAt(j)} />
               <CardFace card={card} small />
             </div>
           ))}
