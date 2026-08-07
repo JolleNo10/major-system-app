@@ -136,7 +136,7 @@ export function PiReciteAnchors({ answerMode, maxPiPairs, mode, onModeChange }: 
 
   return (
     <div className="flex flex-col items-center gap-6 w-full">
-      <div className={`w-full max-w-lg space-y-6 p-6 ${panelCls}`}>
+      <div className={`w-full space-y-6 p-6 ${panelCls}`}>
 
         <ReciteModeToggle mode={mode} onChange={onModeChange} />
 

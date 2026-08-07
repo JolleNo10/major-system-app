@@ -134,6 +134,9 @@ export function PiMaintainTab({ answerMode, maxPiPairs }: Props) {
                 renderCell={seg => {
                   const [from, to] = segmentDigitRange(seg)
                   const isDue = dueSegs.has(seg)
+                  const half = PAIRS_PER_SEGMENT / 2
+                  const line1 = PI_PAIRS.slice(seg * PAIRS_PER_SEGMENT, seg * PAIRS_PER_SEGMENT + half).join(' ')
+                  const line2 = PI_PAIRS.slice(seg * PAIRS_PER_SEGMENT + half, (seg + 1) * PAIRS_PER_SEGMENT).join(' ')
                   return (
                     <div
                       className={`relative flex flex-col items-start px-2 py-1.5 rounded-lg border ${
@@ -144,7 +147,8 @@ export function PiMaintainTab({ answerMode, maxPiPairs }: Props) {
                     >
                       <PiSegmentDot status={statuses[seg] ?? 'new'} />
                       <span className="text-[8px] opacity-60 leading-none tabular-nums">π {from}–{to}</span>
-                      <span className="font-mono text-[9px] tabular-nums leading-snug mt-0.5">seg {seg + 1}</span>
+                      <span className="font-mono text-[8px] tabular-nums leading-snug mt-0.5">{line1}</span>
+                      <span className="font-mono text-[8px] tabular-nums leading-snug">{line2}</span>
                     </div>
                   )
                 }}
