@@ -7,7 +7,7 @@ import { PI_PAIRS } from '@/features/pi/shared/piDigits'
 import { PAIRS_PER_SEGMENT, recordSegmentTries } from '@/features/pi/shared/piStats'
 import { segmentDigitRange } from '@/features/pi/shared/piSegments'
 import { useSegmentPickerData } from '@/features/pi/shared/PiSegmentRangePicker'
-import { PiSegmentGrid, PiSegmentDot, PiLegend } from '@/features/pi/shared/PiSegmentGrid'
+import { PiSegmentGrid, PiLegend } from '@/features/pi/shared/PiSegmentGrid'
 import {
   buildMaintenanceBatches, segmentResultsFromRun, type MaintainBatch,
 } from '@/features/pi/maintain/piMaintain'
@@ -125,8 +125,6 @@ export function PiMaintainTab({ answerMode, maxPiPairs }: Props) {
                 <span className="text-sm font-medium text-zinc-300">Schedule</span>
                 <PiLegend items={[
                   { swatch: 'bg-cyan-400', label: 'due' },
-                  { swatch: 'bg-emerald-400', label: 'learned' },
-                  { swatch: 'bg-amber-400', label: 'practising' },
                 ]} />
               </div>
               <PiSegmentGrid
@@ -145,7 +143,6 @@ export function PiMaintainTab({ answerMode, maxPiPairs }: Props) {
                           : 'bg-zinc-800 border-zinc-700 text-zinc-500'
                       }`}
                     >
-                      <PiSegmentDot status={statuses[seg] ?? 'new'} />
                       <span className="text-[8px] opacity-60 leading-none tabular-nums">π {from}–{to}</span>
                       <span className="font-mono text-[8px] tabular-nums leading-snug mt-0.5">{line1}</span>
                       <span className="font-mono text-[8px] tabular-nums leading-snug">{line2}</span>
