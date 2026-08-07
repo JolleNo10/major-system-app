@@ -32,3 +32,11 @@ export const MAX_LATENCIES = 10
 
 // Decay half-life (days) for age-weighting older answers/mistakes.
 export const HISTORY_HALFLIFE_DAYS = 14
+
+// Per-session refresh scheduler (sessionRefresh.ts): once an item masters, it is
+// refreshed on an expanding interval measured in *questions since mastery*, then
+// retired. REFRESH_BASE_GAP = the first gap (questions) after mastery; each
+// successful refresh pushes the next out by ×2; REFRESH_MAX = how many refreshers
+// before an item stops resurfacing. Validated by Monte-Carlo sim (see plan).
+export const REFRESH_BASE_GAP = 4
+export const REFRESH_MAX = 2
