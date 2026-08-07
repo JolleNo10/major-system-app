@@ -24,6 +24,21 @@ export function getSegSchedule(store: MaintainStore, seg: number): ItemRecord {
   return store[seg] ?? { ...DEFAULTS }
 }
 
+// Seed a segment's maintenance schedule on its first clean recite — the initial
+// "learning" event that should start the forgetting-curve clock. Gives it the
+// first SM-2 interval (~1 day) so Maintain waits before surfacing a
+// freshly-learned segment, instead of it being due the instant it's learned.
+// No-op if the segment already has a schedule: re-reciting in the Recite tab is
+// practice, not a maintenance review, and must not advance the interval (a hard
+// learning session would otherwise balloon the schedule far into the future).
+export function seedSegmentSchedule(seg: number): void {
+  const store = loadMaintainStore()
+  if (store[seg]) return
+  const next = applySm2({ ...DEFAULTS }, 4)
+  next.correct = 1
+  saveMaintainStore({ ...store, [seg]: next })
+}
+
 // Reschedule one recited segment. Grade is fixed binary (pass → 4, fail → 2)
 // rather than `gradeAnswer`, since a segment try records only whole-segment
 // pass/fail — there's no per-segment latency, and an `ms:0` would be mis-read

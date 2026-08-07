@@ -6,6 +6,7 @@ import { readString, safeSet } from '@/core/storage'
 import { PI_PAIRS } from '@/features/pi/shared/piDigits'
 import { loadPiSessions, recordSegmentTries, type PiSession } from '@/features/pi/shared/piStats'
 import { PiSegmentRangePicker, useSegmentPickerData } from '@/features/pi/shared/PiSegmentRangePicker'
+import { seedSegmentSchedule } from '@/features/pi/maintain/piMaintainStore'
 import { PiLegend } from '@/features/pi/shared/PiSegmentGrid'
 import { usePiReciteRail } from '@/features/pi/recite/PiReciteRail'
 import { ReciteModeToggle, type ReciteMode } from '@/features/pi/recite/ReciteModeToggle'
@@ -110,6 +111,9 @@ export function PiReciteFull({ answerMode, maxPiPairs, mode, onModeChange }: Pro
     recordSegmentTries(completion.anchor, completion.correctness)
     const flawless = flawlessSegmentsFromRun(completion.anchor, completion.correctness)
     if (flawless.length === 0) return
+    // Start the maintenance clock on a segment's first clean recite (no-op once
+    // it already has a schedule) so Maintain waits before surfacing it.
+    flawless.forEach(seedSegmentSchedule)
     setRecitedSegs(previous => {
       const next = new Set(previous)
       flawless.forEach(seg => next.add(seg))

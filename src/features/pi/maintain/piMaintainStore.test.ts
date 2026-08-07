@@ -1,7 +1,7 @@
 import { beforeEach, describe, it, expect } from 'vitest'
 import { DAY_MS } from '@/core/scoring/itemStore'
 import {
-  getSegSchedule, loadMaintainStore, rescheduleSegment,
+  getSegSchedule, loadMaintainStore, rescheduleSegment, seedSegmentSchedule,
 } from '@/features/pi/maintain/piMaintainStore'
 
 // core/storage talks to localStorage; the node test env has none, so stub a
@@ -58,5 +58,32 @@ describe('rescheduleSegment', () => {
     const rec = loadMaintainStore()[9]
     expect(rec.reps).toBe(1)
     expect(rec.dueAt).toBeGreaterThan(Date.now())
+  })
+})
+
+describe('seedSegmentSchedule', () => {
+  it('seeds a fresh segment with the first SM-2 interval (~1 day out, not due now)', () => {
+    seedSegmentSchedule(4)
+    const rec = loadMaintainStore()[4]
+    expect(rec.reps).toBe(1)
+    expect(rec.intervalDays).toBe(1)
+    expect(rec.correct).toBe(1)
+    expect(rec.dueAt).toBeGreaterThan(Date.now())
+  })
+
+  it('is a no-op once the segment already has a schedule (re-reciting must not advance it)', () => {
+    seedSegmentSchedule(4)
+    const first = loadMaintainStore()[4]
+    seedSegmentSchedule(4)
+    seedSegmentSchedule(4)
+    const after = loadMaintainStore()[4]
+    expect(after).toEqual(first)   // interval never ballooned past the first day
+  })
+
+  it('does not touch a segment already advanced via a maintenance run', () => {
+    rescheduleSegment(2, true)     // reps 1 (interval 1)
+    rescheduleSegment(2, true)     // reps 2 (interval 3)
+    seedSegmentSchedule(2)         // should NOT reset it back to reps 1
+    expect(loadMaintainStore()[2].reps).toBe(2)
   })
 })
