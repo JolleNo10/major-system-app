@@ -11,7 +11,7 @@ import { masteryProgress, masteryFastMs } from '@/core/scoring/roundMastery'
 import { shuffle, pickDistractors, pickWeighted } from '@/core/scoring/quiz'
 import { applyRoundAttempt, type RoundStat } from '@/core/scoring/roundStats'
 import { readString, readJSON, safeSet } from '@/core/storage'
-import { matchesAnswer } from '@/core/answerMatch'
+import { matchesAnswerLoose } from '@/core/answerMatch'
 import { CARDS, RANKS, rankIndex } from '@/core/cards'
 import type { Card, Suit } from '@/core/cards'
 import { PAO_FIELDS, type PaoField } from '@/features/cards/pao/paoCards'
@@ -176,9 +176,9 @@ export function PaoCardsDrill({ answerMode }: Props) {
     if (encodeResult !== null) return
     const answers = byNumber[card.number]
     const perField = {
-      person: matchesAnswer(encodeInput.person, answers.person),
-      action: matchesAnswer(encodeInput.action, answers.action),
-      object: matchesAnswer(encodeInput.object, answers.object),
+      person: matchesAnswerLoose(encodeInput.person, answers.person),
+      action: matchesAnswerLoose(encodeInput.action, answers.action),
+      object: matchesAnswerLoose(encodeInput.object, answers.object),
     }
     const correct = perField.person && perField.action && perField.object
     setEncodeResult(perField)
