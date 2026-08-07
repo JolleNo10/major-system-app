@@ -108,6 +108,8 @@ export async function exportStories(): Promise<Blob> {
 }
 
 // Validate + write each row; returns the number of stories imported.
+// Skips empty rows (no text and no image) so the reported count and the
+// grid indicators stay in sync — the same rule `onSave` applies in the editor.
 export async function importStories(json: string): Promise<number> {
   const parsed = JSON.parse(json)
   if (!Array.isArray(parsed)) throw new Error('Expected a JSON array')
@@ -116,6 +118,7 @@ export async function importStories(json: string): Promise<number> {
     if (typeof row.seg !== 'number' || typeof row.text !== 'string') {
       throw new Error('Invalid story row')
     }
+    if (!row.text.trim() && !row.imageDataUrl) continue
     const image = row.imageDataUrl ? dataUrlToBlob(row.imageDataUrl) : null
     await putStory(row.seg, { text: row.text, image })
     count++

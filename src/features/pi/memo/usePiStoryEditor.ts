@@ -73,6 +73,7 @@ export function usePiStoryEditor(selectedSeg: number | null, phase: string): PiS
         doFlash('Import failed — invalid file')
       }
     }
+    reader.onerror = () => doFlash('Import failed — could not read file')
     reader.readAsText(file)
   }, [doFlash])
 
