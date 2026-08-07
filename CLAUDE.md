@@ -99,7 +99,7 @@ a symbol to a feature's public surface = add one line to its `index.ts`.**
 | `major-word-overrides` | localStorage | Trial/pending word edits (layer 3, shown yellow) |
 | `major-soundkey-saved` / `-overrides` | localStorage | Editable sound-key layers (same 3-layer store), keyed by composite `"<digit>:<field>"` strings |
 | `major-pao-saved` / `-overrides` | localStorage | Editable PAO deck layers (same 3-layer store), keyed by composite `"<NN>:<field>"` (`field` = `person`\|`action`\|`object`) — the PAO Deck's Person/Action/Object per card `01`–`52` |
-| `major-pao-drilltype` / `-suits` / `-deck-count` / `-decode-field` / `-deck-memo-history` | localStorage | PAO Deck UI/session state (drill type, active suits, deck-memo card count, decode field selector, and the PAO deck-memo run history) |
+| `major-pao-drilltype` / `-suits` / `-deck-count` / `-decode-fields` / `-deck-memo-history` | localStorage | PAO Deck UI/session state (drill type, active suits, deck-memo card count, Decode hint fields (JSON array of `person`\|`action`\|`object`, multi-select; migrated once from the legacy single-value `-decode-field`), and the PAO deck-memo run history) |
 | `major-pi-maintain` | localStorage | Per-segment SM-2 schedule for the Maintain tab: `Record<segIdx, ItemRecord>` (reuses `ItemRecord`; only schedule fields drive upkeep). Unseen seg = `{...DEFAULTS}` (`dueAt 0` = due now). `features/pi/maintain/piMaintainStore.ts` (`rescheduleSegment` grades binary: pass→4, fail→2). **Seeded on a segment's first clean Recite** (`seedSegmentSchedule`, called from `PiReciteFull` — grade 4 → ~1-day first interval, no-op if already scheduled) so a freshly-learned segment waits before Maintain surfaces it instead of being due the instant it's learned; re-reciting is practice and never advances the schedule. Never-maintained eligible segments (`lastSeenAt 0`) are still due now but count as **0d overdue** (not measured from the epoch) |
 | `major-settings` | localStorage | `{ masteryLatencyFactor, maxPiDigits, offlineMode, piPairsPerAnswer, piMaintainBatchSegs }` (`piPairsPerAnswer` 1\|10 = Pi typing batch size, set in Settings; migrated once from the legacy `major-pi-answer-size` key. `piMaintainBatchSegs` 1–10, default 5 = max segments per Maintain review batch) |
 | `major-typing-speed` / `-digit` | localStorage | Adaptive ms/char estimates, separate for word vs digit typing |
@@ -239,8 +239,9 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   **PAO Deck** (`pao-cards` mode) is a **separate** drill, not a `CardsDrill` wrapper (its triple shape doesn't fit
   the single-string engine): `PaoCardsDrill` (`usePaoCards`) hosts a drill-type toggle (**Encode** / **Decode** / **Deck Memo**)
   + ♣♦♥♠ suit chips. **Encode** = card → type all three fields (per-field ✓/✗, card correct only if all three match).
-  **Decode** = one field value (Person/Action/Object selector) → identify the card (MC card-face picks / typing the card code,
-  per the global answer toggle). Both are **session-only** (in-memory `roundStats` weighting, no persisted/global stats;
+  **Decode** = field value(s) → identify the card (MC card-face picks / typing the card code, per the global answer toggle).
+  The Person/Action/Object selector is **multi-select** (min one): each chosen field's value is shown as a hint (emoji-labelled
+  when more than one), but the answer is always the single card. Toggling a hint doesn't reset the run (same card/pool). Both are **session-only** (in-memory `roundStats` weighting, no persisted/global stats;
   `pickWeighted('enc', …)` only reads draw weights). **Deck Memo** = `PaoDeckMemoDrill` (forked from `DeckMemoDrill` so the
   shared one stays untouched): memorise the deck in P₁·A₂·O₃ triples, then blind card-order recall grouped in threes; keeps its
   own run history under `major-pao-deck-memo-history`.

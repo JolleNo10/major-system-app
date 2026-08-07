@@ -31,6 +31,7 @@ const DRILL_LABELS: Record<PaoDrillType, string> = {
 }
 
 const FIELD_LABELS: Record<PaoField, string> = { person: 'Person', action: 'Action', object: 'Object' }
+const FIELD_EMOJI: Record<PaoField, string> = { person: '👤', action: '🎬', object: '📦' }
 
 const cardLabel = (card: Card) => `${card.rank}${card.suit}`
 
@@ -50,6 +51,26 @@ function loadSuits(key: string): Set<Suit> {
   const parsed = readJSON<string[]>(key, [])
   const valid = parsed.filter((s): s is Suit => (ALL_SUITS as string[]).includes(s))
   return valid.length > 0 ? new Set(valid) : new Set(ALL_SUITS)
+}
+
+const isPaoField = (v: string): v is PaoField => (PAO_FIELDS as readonly string[]).includes(v)
+
+// Which field values Decode shows as hints. Stored as a JSON array; falls back to
+// migrating the legacy single-field key, then defaults to Person.
+function loadDecodeFields(key: string, legacyKey: string): Set<PaoField> {
+  const raw = readString(key)
+  if (raw) {
+    try {
+      const arr = JSON.parse(raw)
+      if (Array.isArray(arr)) {
+        const valid = arr.filter((v): v is PaoField => typeof v === 'string' && isPaoField(v))
+        if (valid.length > 0) return new Set(valid)
+      }
+    } catch { /* fall through to the legacy single-field key */ }
+  }
+  const legacy = readString(legacyKey)
+  if (legacy && isPaoField(legacy)) return new Set([legacy])
+  return new Set<PaoField>(['person'])
 }
 
 const LAST_RANK = RANKS.length - 1
@@ -77,7 +98,8 @@ export function PaoCardsDrill({ answerMode }: Props) {
   const drilltypeKey = 'major-pao-drilltype'
   const suitsKey = 'major-pao-suits'
   const deckCountKey = 'major-pao-deck-count'
-  const decodeFieldKey = 'major-pao-decode-field'
+  const decodeFieldsKey = 'major-pao-decode-fields'
+  const legacyDecodeFieldKey = 'major-pao-decode-field'
   const rankRangeKey = 'major-pao-rank-range'
 
   const [showWords, setShowWords] = useState(false)
@@ -86,10 +108,9 @@ export function PaoCardsDrill({ answerMode }: Props) {
     const v = readString(drilltypeKey)
     return v === 'decode' || v === 'deck-memo' ? v : 'encode'
   })
-  const [decodeField, setDecodeField] = useState<PaoField>(() => {
-    const v = readString(decodeFieldKey)
-    return (PAO_FIELDS as readonly string[]).includes(v ?? '') ? (v as PaoField) : 'person'
-  })
+  // Decode: which field value(s) are shown as hints (multi-select, min one).
+  const [decodeFields, setDecodeFields] = useState<Set<PaoField>>(
+    () => loadDecodeFields(decodeFieldsKey, legacyDecodeFieldKey))
 
   const [activeSuits, setActiveSuits] = useState<Set<Suit>>(() => loadSuits(suitsKey))
   const activeNumbers = numbersForSuits(activeSuits)
@@ -122,14 +143,14 @@ export function PaoCardsDrill({ answerMode }: Props) {
     return CARD_BY_NUMBER.get(number)!
   }, [])
 
-  const makeDecode = useCallback((card: Card, field: PaoField, nums: string[]) => {
-    const value = byNumber[card.number]?.[field] ?? ''
+  // Decode's MC card options — independent of which fields are shown as hints.
+  const makeDecode = useCallback((card: Card, nums: string[]) => {
     const distractors = pickDistractors(card.number, nums).map(n => cardLabel(CARD_BY_NUMBER.get(n)!))
-    return { value, options: shuffle([cardLabel(card), ...distractors]) }
-  }, [byNumber])
+    return { options: shuffle([cardLabel(card), ...distractors]) }
+  }, [])
 
   const [card, setCard] = useState<Card>(() => pickCard(undefined, drillNumbers))
-  const [decode, setDecode] = useState(() => makeDecode(card, decodeField, drillNumbers))
+  const [decode, setDecode] = useState(() => makeDecode(card, drillNumbers))
 
   const [encodeInput, setEncodeInput] = useState(emptyInput)
   const [encodeResult, setEncodeResult] = useState<Record<PaoField, boolean> | null>(null)
@@ -151,10 +172,10 @@ export function PaoCardsDrill({ answerMode }: Props) {
     startRef.current = Date.now()
   }
 
-  const nextCard = useCallback((last: string, field: PaoField, nums: string[]) => {
+  const nextCard = useCallback((last: string, nums: string[]) => {
     const c = pickCard(last, nums)
     setCard(c)
-    setDecode(makeDecode(c, field, nums))
+    setDecode(makeDecode(c, nums))
     resetQuestionState()
     setTimeout(() => encodeRef.current?.focus(), 40)
   }, [pickCard, makeDecode])
@@ -184,8 +205,8 @@ export function PaoCardsDrill({ answerMode }: Props) {
     setEncodeResult(perField)
     const chars = answers.person.length + answers.action.length + answers.object.length
     registerResult(card.number, correct, Date.now() - startRef.current, chars)
-    setTimeout(() => nextCard(card.number, decodeField, drillNumbers), correct ? 1500 : 2400)
-  }, [encodeResult, byNumber, card, encodeInput, decodeField, drillNumbers, nextCard])
+    setTimeout(() => nextCard(card.number, drillNumbers), correct ? 1500 : 2400)
+  }, [encodeResult, byNumber, card, encodeInput, drillNumbers, nextCard])
 
   // ── Decode: pick / type the card ────────────────────────────────────────────
   const answerDecode = useCallback((value: string) => {
@@ -197,17 +218,17 @@ export function PaoCardsDrill({ answerMode }: Props) {
     setAnsweredCorrect(correct)
     const chars = answerMode === 'typing' ? cardLabel(card).length : 0
     registerResult(card.number, correct, Date.now() - startRef.current, chars)
-    setTimeout(() => nextCard(card.number, decodeField, drillNumbers), correct ? 1400 : 2000)
-  }, [answered, answerMode, card, decodeField, drillNumbers, nextCard])
+    setTimeout(() => nextCard(card.number, drillNumbers), correct ? 1400 : 2000)
+  }, [answered, answerMode, card, drillNumbers, nextCard])
 
   // ── Toggles (reset session) ─────────────────────────────────────────────────
-  const resetSession = (nums: string[], field: PaoField) => {
+  const resetSession = (nums: string[]) => {
     setRoundStats({})
     masteredSetRef.current = new Set()
     setSessionCorrect(0); setSessionWrong(0); setStreak(0); setBestStreak(0)
     const c = pickCard(undefined, nums)
     setCard(c)
-    setDecode(makeDecode(c, field, nums))
+    setDecode(makeDecode(c, nums))
     resetQuestionState()
   }
 
@@ -215,14 +236,19 @@ export function PaoCardsDrill({ answerMode }: Props) {
     if (t === drillType) return
     safeSet(drilltypeKey, t)
     setDrillType(t)
-    resetSession(poolFor(t), decodeField)
+    resetSession(poolFor(t))
   }
 
-  const switchDecodeField = (f: PaoField) => {
-    if (f === decodeField) return
-    safeSet(decodeFieldKey, f)
-    setDecodeField(f)
-    resetSession(activeNumbers, f)
+  // Toggle a Decode hint field. Only changes what's shown, not the card/pool, so
+  // no session reset — keep at least one field selected.
+  const toggleDecodeField = (f: PaoField) => {
+    setDecodeFields(prev => {
+      if (prev.has(f) && prev.size === 1) return prev
+      const next = new Set(prev)
+      if (next.has(f)) next.delete(f); else next.add(f)
+      safeSet(decodeFieldsKey, JSON.stringify([...next]))
+      return next
+    })
   }
 
   const toggleSuit = (suit: Suit) => {
@@ -235,7 +261,7 @@ export function PaoCardsDrill({ answerMode }: Props) {
       setDeckCount(dc => Math.min(dc, nums.length))
       const singleNext = next.size === 1
       const pool = drillType === 'encode' && singleNext ? limitByRank(nums, rankRange) : nums
-      resetSession(pool, decodeField)
+      resetSession(pool)
       return next
     })
   }
@@ -307,7 +333,7 @@ export function PaoCardsDrill({ answerMode }: Props) {
             onChange={(lo, hi) => {
               setRankRange([lo, hi])
               safeSet(rankRangeKey, JSON.stringify([lo, hi]))
-              resetSession(limitByRank(activeNumbers, [lo, hi]), decodeField)
+              resetSession(limitByRank(activeNumbers, [lo, hi]))
             }}
           />
         </div>
@@ -360,16 +386,19 @@ export function PaoCardsDrill({ answerMode }: Props) {
           )}
 
           {drillType === 'decode' && (
-            <div className="flex items-center gap-1 p-1 rounded-lg bg-zinc-800 -mt-4">
-              {PAO_FIELDS.map(f => (
-                <button
-                  key={f}
-                  onClick={() => switchDecodeField(f)}
-                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                    decodeField === f ? 'bg-violet-600 text-white' : 'text-zinc-400 hover:text-zinc-200'
-                  }`}
-                >{FIELD_LABELS[f]}</button>
-              ))}
+            <div className="flex flex-col items-center gap-1 -mt-4">
+              <div className="flex items-center gap-1 p-1 rounded-lg bg-zinc-800">
+                {PAO_FIELDS.map(f => (
+                  <button
+                    key={f}
+                    onClick={() => toggleDecodeField(f)}
+                    className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                      decodeFields.has(f) ? 'bg-violet-600 text-white' : 'text-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >{FIELD_EMOJI[f]} {FIELD_LABELS[f]}</button>
+                ))}
+              </div>
+              <span className="text-[10px] text-zinc-600">Pick which hint(s) to show</span>
             </div>
           )}
 
@@ -437,11 +466,22 @@ export function PaoCardsDrill({ answerMode }: Props) {
               )}
             </div>
           ) : (
-            /* ── Decode: field value → which card ── */
+            /* ── Decode: field value(s) → which card ── */
+            (() => {
+              const hints = PAO_FIELDS.filter(f => decodeFields.has(f))
+              const multi = hints.length > 1
+              return (
             <div className="flex flex-col items-center gap-5 w-full max-w-md">
-              <p className="text-xs text-zinc-600 uppercase tracking-widest">Which card has this {FIELD_LABELS[decodeField].toLowerCase()}?</p>
-              <div className="px-6 py-5 rounded-2xl bg-zinc-800 border border-zinc-700 text-center">
-                <span className="text-2xl font-bold text-zinc-100">{decode.value}</span>
+              <p className="text-xs text-zinc-600 uppercase tracking-widest">
+                {multi ? 'Which card has these?' : `Which card has this ${FIELD_LABELS[hints[0]].toLowerCase()}?`}
+              </p>
+              <div className="px-6 py-5 rounded-2xl bg-zinc-800 border border-zinc-700 text-center space-y-1.5">
+                {hints.map(f => (
+                  <div key={f} className="flex items-center justify-center gap-2">
+                    {multi && <span className="text-lg" title={FIELD_LABELS[f]}>{FIELD_EMOJI[f]}</span>}
+                    <span className="text-2xl font-bold text-zinc-100">{answers[f]}</span>
+                  </div>
+                ))}
               </div>
 
               <div className="w-full space-y-2">
@@ -462,6 +502,8 @@ export function PaoCardsDrill({ answerMode }: Props) {
                 )}
               </div>
             </div>
+              )
+            })()
           )}
         </>
       )}
