@@ -94,10 +94,14 @@ export function PaoCardsDrill({ answerMode }: Props) {
   const [activeSuits, setActiveSuits] = useState<Set<Suit>>(() => loadSuits(suitsKey))
   const activeNumbers = numbersForSuits(activeSuits)
 
-  // Rank range applies only to Deck Memo with exactly one suit selected.
+  // Rank range narrows the Encode pool when exactly one suit is selected.
   const [rankRange, setRankRange] = useState<[number, number]>(() => loadRankRange(rankRangeKey))
   const singleSuit = activeSuits.size === 1
-  const memoNumbers = singleSuit ? limitByRank(activeNumbers, rankRange) : activeNumbers
+  // Card pool for Encode/Decode: Encode with a single suit is limited to the rank
+  // window; Decode uses the full suit. (Deck Memo builds its own deck from all cards.)
+  const poolFor = (t: PaoDrillType) =>
+    t === 'encode' && singleSuit ? limitByRank(activeNumbers, rankRange) : activeNumbers
+  const drillNumbers = poolFor(drillType)
 
   const [deckCount, setDeckCount] = useState<number>(() => {
     const nums = numbersForSuits(loadSuits(suitsKey))
@@ -124,8 +128,8 @@ export function PaoCardsDrill({ answerMode }: Props) {
     return { value, options: shuffle([cardLabel(card), ...distractors]) }
   }, [byNumber])
 
-  const [card, setCard] = useState<Card>(() => pickCard(undefined, activeNumbers))
-  const [decode, setDecode] = useState(() => makeDecode(card, decodeField, activeNumbers))
+  const [card, setCard] = useState<Card>(() => pickCard(undefined, drillNumbers))
+  const [decode, setDecode] = useState(() => makeDecode(card, decodeField, drillNumbers))
 
   const [encodeInput, setEncodeInput] = useState(emptyInput)
   const [encodeResult, setEncodeResult] = useState<Record<PaoField, boolean> | null>(null)
@@ -180,8 +184,8 @@ export function PaoCardsDrill({ answerMode }: Props) {
     setEncodeResult(perField)
     const chars = answers.person.length + answers.action.length + answers.object.length
     registerResult(card.number, correct, Date.now() - startRef.current, chars)
-    setTimeout(() => nextCard(card.number, decodeField, activeNumbers), correct ? 1500 : 2400)
-  }, [encodeResult, byNumber, card, encodeInput, decodeField, activeNumbers, nextCard])
+    setTimeout(() => nextCard(card.number, decodeField, drillNumbers), correct ? 1500 : 2400)
+  }, [encodeResult, byNumber, card, encodeInput, decodeField, drillNumbers, nextCard])
 
   // ── Decode: pick / type the card ────────────────────────────────────────────
   const answerDecode = useCallback((value: string) => {
@@ -193,8 +197,8 @@ export function PaoCardsDrill({ answerMode }: Props) {
     setAnsweredCorrect(correct)
     const chars = answerMode === 'typing' ? cardLabel(card).length : 0
     registerResult(card.number, correct, Date.now() - startRef.current, chars)
-    setTimeout(() => nextCard(card.number, decodeField, activeNumbers), correct ? 1400 : 2000)
-  }, [answered, answerMode, card, decodeField, activeNumbers, nextCard])
+    setTimeout(() => nextCard(card.number, decodeField, drillNumbers), correct ? 1400 : 2000)
+  }, [answered, answerMode, card, decodeField, drillNumbers, nextCard])
 
   // ── Toggles (reset session) ─────────────────────────────────────────────────
   const resetSession = (nums: string[], field: PaoField) => {
@@ -211,7 +215,7 @@ export function PaoCardsDrill({ answerMode }: Props) {
     if (t === drillType) return
     safeSet(drilltypeKey, t)
     setDrillType(t)
-    resetSession(activeNumbers, decodeField)
+    resetSession(poolFor(t), decodeField)
   }
 
   const switchDecodeField = (f: PaoField) => {
@@ -229,13 +233,15 @@ export function PaoCardsDrill({ answerMode }: Props) {
       safeSet(suitsKey, JSON.stringify([...next]))
       const nums = numbersForSuits(next)
       setDeckCount(dc => Math.min(dc, nums.length))
-      resetSession(nums, decodeField)
+      const singleNext = next.size === 1
+      const pool = drillType === 'encode' && singleNext ? limitByRank(nums, rankRange) : nums
+      resetSession(pool, decodeField)
       return next
     })
   }
 
   const { mastered, total, masteredSet } = masteryProgress(
-    activeNumbers, roundStats, masteryFastMs(settings.masteryLatencyFactor))
+    drillNumbers, roundStats, masteryFastMs(settings.masteryLatencyFactor))
   masteredSetRef.current = masteredSet
 
   const colorCls = card.red ? 'text-rose-500' : 'text-zinc-900'
@@ -287,26 +293,29 @@ export function PaoCardsDrill({ answerMode }: Props) {
         <span className="text-xs text-zinc-600 ml-1 tabular-nums">{activeNumbers.length} cards</span>
       </div>
 
+      {/* Rank range — narrows the Encode pool to a window of one suit */}
+      {drillType === 'encode' && singleSuit && (
+        <div className="-mt-4">
+          <RankRangeSelector
+            low={rankRange[0]}
+            high={rankRange[1]}
+            red={[...activeSuits][0] === '♥' || [...activeSuits][0] === '♦'}
+            onChange={(lo, hi) => {
+              setRankRange([lo, hi])
+              safeSet(rankRangeKey, JSON.stringify([lo, hi]))
+              resetSession(limitByRank(activeNumbers, [lo, hi]), decodeField)
+            }}
+          />
+        </div>
+      )}
+
       {drillType === 'deck-memo' ? (
         (() => {
-          const memoMax = memoNumbers.length
+          const memoMax = activeNumbers.length
           const memoMin = Math.min(2, memoMax)
           const memoCount = Math.max(memoMin, Math.min(deckCount, memoMax))
           return (
         <>
-          {singleSuit && (
-            <div className="-mt-4">
-              <RankRangeSelector
-                low={rankRange[0]}
-                high={rankRange[1]}
-                red={[...activeSuits][0] === '♥' || [...activeSuits][0] === '♦'}
-                onChange={(lo, hi) => {
-                  setRankRange([lo, hi])
-                  safeSet(rankRangeKey, JSON.stringify([lo, hi]))
-                }}
-              />
-            </div>
-          )}
           <div className="flex items-center gap-3 -mt-2">
             <span className="text-xs text-zinc-500">Cards:</span>
             <input
@@ -320,13 +329,12 @@ export function PaoCardsDrill({ answerMode }: Props) {
             <span className="text-xs text-zinc-400 tabular-nums w-6 text-right">{memoCount}</span>
           </div>
           <PaoDeckMemoDrill
-            key={[...activeSuits].sort().join('') + '-' + rankRange.join('-') + '-' + memoCount}
-            activeNumbers={memoNumbers}
+            key={[...activeSuits].sort().join('') + '-' + memoCount}
+            activeNumbers={activeNumbers}
             byNumber={byNumber}
             cardCount={memoCount}
             historyKey="major-pao-deck-memo-history"
             activeSuits={[...activeSuits]}
-            rankRange={singleSuit ? rankRange : undefined}
           />
         </>
           )
