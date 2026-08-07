@@ -189,10 +189,11 @@ function BatchRow({ batch, onStart, words, early = false }: {
   const nextDueDays = Number.isFinite(batch.nextDueMs)
     ? Math.max(1, Math.ceil(batch.nextDueMs / DAY_MS))
     : null
-  // First pair of the batch's first segment + its mnemonic word, so the user
-  // can recognise which segment this is without decoding the π position.
-  const firstPair = PI_PAIRS[batch.startSeg * PAIRS_PER_SEGMENT]
-  const firstWord = words[firstPair]
+  // First two pairs of the batch's first segment + their mnemonic words, so the
+  // user can recognise which segment this is without decoding the π position.
+  const base = batch.startSeg * PAIRS_PER_SEGMENT
+  const startPairs = [PI_PAIRS[base], PI_PAIRS[base + 1]]
+  const startWords = startPairs.map(p => words[p]).filter(Boolean)
 
   return (
     <div className={`rounded-lg border px-3 py-2.5 flex items-center gap-3 ${
@@ -201,10 +202,10 @@ function BatchRow({ batch, onStart, words, early = false }: {
       <div className="min-w-0 flex-1 space-y-0.5">
         <div className="text-sm font-medium text-zinc-200 tabular-nums flex items-baseline gap-2">
           <span>π #{from}–{to}</span>
-          {firstWord && (
+          {startWords.length > 0 && (
             <span className="text-xs font-normal text-zinc-400 truncate">
-              starts <span className="text-zinc-200 font-medium">{firstWord}</span>
-              <span className="text-zinc-600 tabular-nums"> ({firstPair})</span>
+              starts <span className="text-zinc-200 font-medium">{startWords.join(' · ')}</span>
+              <span className="text-zinc-600 tabular-nums"> ({startPairs.join(' ')})</span>
             </span>
           )}
         </div>
