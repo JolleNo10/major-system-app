@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSettings } from '@/app/settings/SettingsContext'
 import { usePaoCards } from '@/features/cards/pao/PaoCardsContext'
 import { MultipleChoice } from '@/core/ui/MultipleChoice'
@@ -23,6 +23,12 @@ const SUIT_LETTERS: Record<string, Suit> = { C: '♣', D: '♦', H: '♥', S: '�
 const CARD_BY_NUMBER = new Map(CARDS.map(c => [c.number, c]))
 
 type PaoDrillType = 'encode' | 'decode' | 'deck-memo'
+
+// One Decode sub-question: a hint field, the (distinct) card it's drawn from, and
+// that card's MC options. With N fields selected there are N items, each a
+// different card, so the user identifies several cards from mixed cues at once.
+interface DecodeItem { field: PaoField; card: Card; options: string[] }
+type DecodeAnswer = { chosen: string; correct: boolean }
 
 const DRILL_LABELS: Record<PaoDrillType, string> = {
   encode: 'Encode',
@@ -131,10 +137,14 @@ export function PaoCardsDrill({ answerMode }: Props) {
     return nums.length
   })
 
+  // Selected Decode hint fields in canonical P/A/O order (stable while unchanged).
+  const orderedDecodeFields = useMemo(() => PAO_FIELDS.filter(f => decodeFields.has(f)), [decodeFields])
+
   // ── Per-question state ──────────────────────────────────────────────────────
   const [roundStats, setRoundStats] = useState<Record<string, RoundStat>>({})
   const masteredSetRef = useRef<Set<string>>(new Set())
   const startRef = useRef<number>(Date.now())
+  const prevAnswerAtRef = useRef<number>(Date.now())  // per Decode item timing
 
   const pickCard = useCallback((last: string | undefined, nums: string[]): Card => {
     const available = last ? nums.filter(n => n !== last) : nums
@@ -143,19 +153,27 @@ export function PaoCardsDrill({ answerMode }: Props) {
     return CARD_BY_NUMBER.get(number)!
   }, [])
 
-  // Decode's MC card options — independent of which fields are shown as hints.
-  const makeDecode = useCallback((card: Card, nums: string[]) => {
-    const distractors = pickDistractors(card.number, nums).map(n => cardLabel(CARD_BY_NUMBER.get(n)!))
-    return { options: shuffle([cardLabel(card), ...distractors]) }
+  // Build one Decode item per hint field, each from a *distinct* card (so Person,
+  // Action, Object cues point at different cards). Each item carries its own MC
+  // card options.
+  const buildDecodeItems = useCallback((fields: PaoField[], nums: string[]): DecodeItem[] => {
+    const used = new Set<string>()
+    return fields.map(field => {
+      const avail = nums.filter(n => !used.has(n))
+      const number = pickWeighted('enc', avail.length > 0 ? avail : nums, masteredSetRef.current)
+      used.add(number)
+      const c = CARD_BY_NUMBER.get(number)!
+      const distractors = pickDistractors(number, nums).map(n => cardLabel(CARD_BY_NUMBER.get(n)!))
+      return { field, card: c, options: shuffle([cardLabel(c), ...distractors]) }
+    })
   }, [])
 
   const [card, setCard] = useState<Card>(() => pickCard(undefined, drillNumbers))
-  const [decode, setDecode] = useState(() => makeDecode(card, drillNumbers))
+  const [decodeItems, setDecodeItems] = useState<DecodeItem[]>(() => buildDecodeItems(orderedDecodeFields, drillNumbers))
 
   const [encodeInput, setEncodeInput] = useState(emptyInput)
   const [encodeResult, setEncodeResult] = useState<Record<PaoField, boolean> | null>(null)
-  const [answered, setAnswered] = useState<string | null>(null)   // decode: chosen value
-  const [answeredCorrect, setAnsweredCorrect] = useState<boolean | null>(null)
+  const [decodeAnswers, setDecodeAnswers] = useState<Partial<Record<PaoField, DecodeAnswer>>>({})
 
   const [sessionCorrect, setSessionCorrect] = useState(0)
   const [sessionWrong, setSessionWrong] = useState(0)
@@ -167,18 +185,18 @@ export function PaoCardsDrill({ answerMode }: Props) {
   const resetQuestionState = () => {
     setEncodeInput(emptyInput)
     setEncodeResult(null)
-    setAnswered(null)
-    setAnsweredCorrect(null)
+    setDecodeAnswers({})
     startRef.current = Date.now()
+    prevAnswerAtRef.current = Date.now()
   }
 
-  const nextCard = useCallback((last: string, nums: string[]) => {
-    const c = pickCard(last, nums)
-    setCard(c)
-    setDecode(makeDecode(c, nums))
+  // Advance to a fresh question: a new Encode card and a fresh Decode item set.
+  const nextQuestion = useCallback((lastEnc: string, nums: string[], fields: PaoField[]) => {
+    setCard(pickCard(lastEnc, nums))
+    setDecodeItems(buildDecodeItems(fields, nums))
     resetQuestionState()
     setTimeout(() => encodeRef.current?.focus(), 40)
-  }, [pickCard, makeDecode])
+  }, [pickCard, buildDecodeItems])
 
   const registerResult = (number: string, correct: boolean, rawMs: number, chars: number) => {
     if (correct) {
@@ -205,30 +223,45 @@ export function PaoCardsDrill({ answerMode }: Props) {
     setEncodeResult(perField)
     const chars = answers.person.length + answers.action.length + answers.object.length
     registerResult(card.number, correct, Date.now() - startRef.current, chars)
-    setTimeout(() => nextCard(card.number, drillNumbers), correct ? 1500 : 2400)
-  }, [encodeResult, byNumber, card, encodeInput, drillNumbers, nextCard])
+    setTimeout(() => nextQuestion(card.number, drillNumbers, orderedDecodeFields), correct ? 1500 : 2400)
+  }, [encodeResult, byNumber, card, encodeInput, drillNumbers, orderedDecodeFields, nextQuestion])
 
-  // ── Decode: pick / type the card ────────────────────────────────────────────
-  const answerDecode = useCallback((value: string) => {
-    if (answered !== null) return
+  // ── Decode: answer one item (identify its card) ──────────────────────────────
+  const answerDecodeItem = (field: PaoField, value: string) => {
+    if (decodeAnswers[field]) return
+    const item = decodeItems.find(i => i.field === field)
+    if (!item) return
     const correct = answerMode === 'multiple-choice'
-      ? value === cardLabel(card)
-      : parseCardCode(value)?.number === card.number
-    setAnswered(value)
-    setAnsweredCorrect(correct)
-    const chars = answerMode === 'typing' ? cardLabel(card).length : 0
-    registerResult(card.number, correct, Date.now() - startRef.current, chars)
-    setTimeout(() => nextCard(card.number, drillNumbers), correct ? 1400 : 2000)
-  }, [answered, answerMode, card, drillNumbers, nextCard])
+      ? value === cardLabel(item.card)
+      : parseCardCode(value)?.number === item.card.number
+    const now = Date.now()
+    const rawMs = now - prevAnswerAtRef.current
+    prevAnswerAtRef.current = now
+    const chars = answerMode === 'typing' ? cardLabel(item.card).length : 0
+    registerResult(item.card.number, correct, rawMs, chars)
+    setDecodeAnswers(prev => ({ ...prev, [field]: { chosen: value, correct } }))
+  }
+
+  // Advance once every Decode item is answered.
+  useEffect(() => {
+    if (drillType !== 'decode' || decodeItems.length === 0) return
+    if (Object.keys(decodeAnswers).length < decodeItems.length) return
+    const allCorrect = decodeItems.every(i => decodeAnswers[i.field]?.correct)
+    const t = setTimeout(
+      () => nextQuestion(card.number, drillNumbers, orderedDecodeFields),
+      allCorrect ? 1400 : 2000,
+    )
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [decodeAnswers, decodeItems, drillType])
 
   // ── Toggles (reset session) ─────────────────────────────────────────────────
   const resetSession = (nums: string[]) => {
     setRoundStats({})
     masteredSetRef.current = new Set()
     setSessionCorrect(0); setSessionWrong(0); setStreak(0); setBestStreak(0)
-    const c = pickCard(undefined, nums)
-    setCard(c)
-    setDecode(makeDecode(c, nums))
+    setCard(pickCard(undefined, nums))
+    setDecodeItems(buildDecodeItems(orderedDecodeFields, nums))
     resetQuestionState()
   }
 
@@ -239,14 +272,19 @@ export function PaoCardsDrill({ answerMode }: Props) {
     resetSession(poolFor(t))
   }
 
-  // Toggle a Decode hint field. Only changes what's shown, not the card/pool, so
-  // no session reset — keep at least one field selected.
+  // Toggle a Decode hint field (min one). Each field is its own sub-question from a
+  // different card, so adding/removing one rebuilds the current item set (keeps the
+  // running score).
   const toggleDecodeField = (f: PaoField) => {
     setDecodeFields(prev => {
       if (prev.has(f) && prev.size === 1) return prev
       const next = new Set(prev)
       if (next.has(f)) next.delete(f); else next.add(f)
       safeSet(decodeFieldsKey, JSON.stringify([...next]))
+      const fields = PAO_FIELDS.filter(x => next.has(x))
+      setDecodeItems(buildDecodeItems(fields, drillNumbers))
+      setDecodeAnswers({})
+      prevAnswerAtRef.current = Date.now()
       return next
     })
   }
@@ -466,40 +504,45 @@ export function PaoCardsDrill({ answerMode }: Props) {
               )}
             </div>
           ) : (
-            /* ── Decode: field value(s) → which card ── */
+            /* ── Decode: each hint field → identify its (distinct) card ── */
             (() => {
-              const hints = PAO_FIELDS.filter(f => decodeFields.has(f))
-              const multi = hints.length > 1
+              const multi = decodeItems.length > 1
               return (
             <div className="flex flex-col items-center gap-5 w-full max-w-md">
               <p className="text-xs text-zinc-600 uppercase tracking-widest">
-                {multi ? 'Which card has these?' : `Which card has this ${FIELD_LABELS[hints[0]].toLowerCase()}?`}
+                {multi
+                  ? 'Identify each card from its cue'
+                  : `Which card has this ${FIELD_LABELS[decodeItems[0].field].toLowerCase()}?`}
               </p>
-              <div className="px-6 py-5 rounded-2xl bg-zinc-800 border border-zinc-700 text-center space-y-1.5">
-                {hints.map(f => (
-                  <div key={f} className="flex items-center justify-center gap-2">
-                    {multi && <span className="text-lg" title={FIELD_LABELS[f]}>{FIELD_EMOJI[f]}</span>}
-                    <span className="text-2xl font-bold text-zinc-100">{answers[f]}</span>
-                  </div>
-                ))}
-              </div>
 
-              <div className="w-full space-y-2">
-                {answerMode === 'multiple-choice' ? (
-                  <MultipleChoice
-                    options={decode.options}
-                    correctAnswer={cardLabel(card)}
-                    onAnswer={answerDecode}
-                    answered={answered}
-                  />
-                ) : (
-                  <TypingInput
-                    onAnswer={answerDecode}
-                    answeredCorrect={answeredCorrect}
-                    correctAnswer={cardLabel(card)}
-                    placeholder="Type the card (e.g. 10H, KS)"
-                  />
-                )}
+              <div className="w-full space-y-5">
+                {decodeItems.map(item => {
+                  const ans = decodeAnswers[item.field]
+                  return (
+                    <div key={item.field} className="w-full space-y-2">
+                      <div className="flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-zinc-800 border border-zinc-700 text-center">
+                        {multi && <span className="text-lg" title={FIELD_LABELS[item.field]}>{FIELD_EMOJI[item.field]}</span>}
+                        <span className="text-2xl font-bold text-zinc-100">{byNumber[item.card.number][item.field]}</span>
+                      </div>
+                      {answerMode === 'multiple-choice' ? (
+                        <MultipleChoice
+                          options={item.options}
+                          correctAnswer={cardLabel(item.card)}
+                          onAnswer={v => answerDecodeItem(item.field, v)}
+                          answered={ans?.chosen ?? null}
+                          keyboard={!multi}
+                        />
+                      ) : (
+                        <TypingInput
+                          onAnswer={v => answerDecodeItem(item.field, v)}
+                          answeredCorrect={ans ? ans.correct : null}
+                          correctAnswer={cardLabel(item.card)}
+                          placeholder="Type the card (e.g. 10H, KS)"
+                        />
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </div>
               )

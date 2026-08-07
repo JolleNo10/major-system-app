@@ -240,8 +240,11 @@ Person/Action/Object triples (partial final group of 1–2 kept).
   the single-string engine): `PaoCardsDrill` (`usePaoCards`) hosts a drill-type toggle (**Encode** / **Decode** / **Deck Memo**)
   + ♣♦♥♠ suit chips. **Encode** = card → type all three fields (per-field ✓/✗, card correct only if all three match).
   **Decode** = field value(s) → identify the card (MC card-face picks / typing the card code, per the global answer toggle).
-  The Person/Action/Object selector is **multi-select** (min one): each chosen field's value is shown as a hint (emoji-labelled
-  when more than one), but the answer is always the single card. Toggling a hint doesn't reset the run (same card/pool). Both are **session-only** (in-memory `roundStats` weighting, no persisted/global stats;
+  The Person/Action/Object selector is **multi-select** (min one). Each selected field is its **own sub-question drawn from a
+  *different* card** (`DecodeItem` = field + distinct card + MC options; `buildDecodeItems`): with N fields you get N cue rows,
+  each with its own answer widget, and advance only once all are answered (per-item timing via `prevAnswerAtRef`; auto-advance
+  effect). Multi-cue MC passes `keyboard={false}` to each `MultipleChoice` so one keypress doesn't answer every block. Toggling a
+  field rebuilds the item set (keeps the running score). Both are **session-only** (in-memory `roundStats` weighting, no persisted/global stats;
   `pickWeighted('enc', …)` only reads draw weights). **Deck Memo** = `PaoDeckMemoDrill` (forked from `DeckMemoDrill` so the
   shared one stays untouched): memorise the deck in P₁·A₂·O₃ triples, then blind card-order recall grouped in threes; keeps its
   own run history under `major-pao-deck-memo-history`.

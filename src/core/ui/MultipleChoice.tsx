@@ -23,9 +23,13 @@ interface Props {
   correctAnswer: string
   onAnswer: (answer: string) => void
   answered: string | null
+  // When false, this instance ignores the global 1–3 / Space-Enter keys. Needed
+  // when several choice blocks share the screen (e.g. multi-cue Decode), so one
+  // keypress doesn't answer all of them at once. Defaults to true.
+  keyboard?: boolean
 }
 
-export function MultipleChoice({ options, correctAnswer, onAnswer, answered }: Props) {
+export function MultipleChoice({ options, correctAnswer, onAnswer, answered, keyboard = true }: Props) {
   const { hide, toggle } = useHideOptions()
   const [revealed, setRevealed] = useState(() => !hide)
 
@@ -36,7 +40,7 @@ export function MultipleChoice({ options, correctAnswer, onAnswer, answered }: P
 
   // Keyboard: 1–3 to answer, Space/Enter to reveal
   useEffect(() => {
-    if (answered !== null) return
+    if (!keyboard || answered !== null) return
     const handler = (e: KeyboardEvent) => {
       if (isOverlayOpen()) return
       if (!revealed && (e.key === ' ' || e.key === 'Enter')) {
@@ -51,7 +55,7 @@ export function MultipleChoice({ options, correctAnswer, onAnswer, answered }: P
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [answered, revealed, options, onAnswer])
+  }, [keyboard, answered, revealed, options, onAnswer])
 
   return (
     <div className="flex flex-col gap-3 w-full">
