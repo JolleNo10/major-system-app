@@ -111,7 +111,9 @@ export async function exportStories(): Promise<Blob> {
 // Skips empty rows (no text and no image) so the reported count and the
 // grid indicators stay in sync — the same rule `onSave` applies in the editor.
 export async function importStories(json: string): Promise<number> {
-  const parsed = JSON.parse(json)
+  // Strip a leading UTF-8 BOM — editors on Windows add one, and it makes
+  // JSON.parse throw "Unexpected token" so a valid export reads as invalid.
+  const parsed = JSON.parse(json.replace(/^\uFEFF/, ''))
   if (!Array.isArray(parsed)) throw new Error('Expected a JSON array')
   let count = 0
   for (const row of parsed as StoryExportRow[]) {

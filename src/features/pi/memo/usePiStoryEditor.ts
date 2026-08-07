@@ -69,7 +69,10 @@ export function usePiStoryEditor(selectedSeg: number | null, phase: string): PiS
         const n = await importStories(ev.target?.result as string)
         setRefresh(k => k + 1)
         doFlash(`Imported ${n} stor${n === 1 ? 'y' : 'ies'}`)
-      } catch {
+      } catch (err) {
+        // Log the underlying cause so a storage/decode error isn't silently
+        // masked by the generic message.
+        console.error('Pi story import failed', err)
         doFlash('Import failed — invalid file')
       }
     }
