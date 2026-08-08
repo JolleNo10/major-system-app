@@ -6,6 +6,7 @@ import { getContinentMemoProgress, getSubregionMemoProgress, getWorldMemoProgres
 import { loadMemoedCountryIds } from './memoStore'
 import { MemoMap } from './MemoMap'
 import { MemoWorkspace } from './MemoWorkspace'
+import { getContinentHoverGroupId, getSubregionHoverGroupId } from './memoMapAdapter'
 
 function ProgressBadge({
   memoedCount,
@@ -24,6 +25,7 @@ function ProgressBadge({
 export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: AnswerMode }) {
   const [continent, setContinent] = useState<Continent | null>(null)
   const [subregion, setSubregion] = useState<string | null>(null)
+  const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null)
   const [memoedCountryIds, setMemoedCountryIds] = useState<Set<string>>(() => loadMemoedCountryIds())
   const continents = useMemo(() => getContinents(), [])
   const worldProgress = getWorldMemoProgress(memoedCountryIds)
@@ -31,10 +33,12 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
   const selectContinent = useCallback((next: Continent) => {
     setContinent(next)
     setSubregion(null)
+    setHoveredGroupId(null)
   }, [])
 
   const selectSubregion = useCallback((next: string) => {
     setSubregion(next)
+    setHoveredGroupId(null)
   }, [])
 
   const onMemoed = useCallback((ids: Set<string>) => {
@@ -44,9 +48,13 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
   const backToWorld = () => {
     setContinent(null)
     setSubregion(null)
+    setHoveredGroupId(null)
   }
 
-  const backToContinent = () => setSubregion(null)
+  const backToContinent = () => {
+    setSubregion(null)
+    setHoveredGroupId(null)
+  }
 
   if (continent && subregion) {
     const subregionProgress = getSubregionMemoProgress(continent, subregion, memoedCountryIds)
@@ -67,6 +75,7 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
           continent={continent}
           selectedSubregion={subregion}
           memoedCountryIds={memoedCountryIds}
+          hoveredGroupId={hoveredGroupId}
           onSelectSubregion={selectSubregion}
         />
         <MemoWorkspace
@@ -99,6 +108,7 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
           level="continent"
           continent={continent}
           memoedCountryIds={memoedCountryIds}
+          hoveredGroupId={hoveredGroupId}
           onSelectSubregion={selectSubregion}
         />
         <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4" aria-labelledby="subregions-heading">
@@ -114,6 +124,8 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
                   key={name}
                   type="button"
                   onClick={() => selectSubregion(name)}
+                  onMouseEnter={() => setHoveredGroupId(getSubregionHoverGroupId(name))}
+                  onMouseLeave={() => setHoveredGroupId(null)}
                   className="flex min-h-[48px] items-center justify-between gap-3 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-left transition-colors hover:border-cyan-500 hover:bg-zinc-800/80"
                 >
                   <span className="font-medium text-zinc-200">{name}</span>
@@ -150,6 +162,7 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
       <MemoMap
         level="world"
         memoedCountryIds={memoedCountryIds}
+        hoveredGroupId={hoveredGroupId}
         onSelectContinent={selectContinent}
       />
       <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4" aria-labelledby="continents-heading">
@@ -165,6 +178,8 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
                 key={item}
                 type="button"
                 onClick={() => selectContinent(item)}
+                onMouseEnter={() => setHoveredGroupId(getContinentHoverGroupId(item))}
+                onMouseLeave={() => setHoveredGroupId(null)}
                 className="flex min-h-[52px] items-center justify-between gap-3 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-left transition-colors hover:border-cyan-500 hover:bg-zinc-800/80"
               >
                 <span className="font-medium text-zinc-200">{item}</span>

@@ -17,6 +17,7 @@ export interface MemoMapProps {
   continent?: Continent
   selectedSubregion?: string | null
   memoedCountryIds: ReadonlySet<string>
+  hoveredGroupId?: string | null
   onSelectContinent?: (continent: Continent) => void
   onSelectSubregion?: (subregion: string) => void
 }
@@ -26,6 +27,7 @@ export function MemoMap({
   continent,
   selectedSubregion = null,
   memoedCountryIds,
+  hoveredGroupId = null,
   onSelectContinent,
   onSelectSubregion,
 }: MemoMapProps) {
@@ -122,6 +124,19 @@ export function MemoMap({
       createMemoCountryColors(visibleCountries, memoedCountryIds, mapCountries.map(country => country.id)),
     )
   }, [level, mapCountries, memoedCountryIds, scopeSvgIds, visibleCountries])
+
+  useEffect(() => {
+    const controller = controllerRef.current
+    if (!controller || mapCountries.length === 0) return
+
+    if (!hoveredGroupId) {
+      controller.hoverCountry(null)
+      return
+    }
+
+    const group = controller.getHoverGroups().find(candidate => candidate.id === hoveredGroupId)
+    controller.hoverCountry(group?.countryIds[0] ?? null, false)
+  }, [hoveredGroupId, mapCountries])
 
   useEffect(() => {
     const controller = controllerRef.current
