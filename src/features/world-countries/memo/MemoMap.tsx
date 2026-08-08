@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { SvgMapController, type SvgMapCountry } from '@/features/world-countries/common/SvgMapController'
+import { countriesToSvgIds } from '@/features/world-countries/common/countryMapIds'
 import { countries, type Continent } from '@/features/world-countries/data/countries'
 import { getCountriesForContinent, getCountriesForSubregion } from './geographyMemo'
 import {
@@ -38,6 +39,15 @@ export function MemoMap({
     () => level === 'world' || !continent ? countries : getCountriesForContinent(continent),
     [continent, level],
   )
+  const scopeCountries = useMemo(
+    () => level === 'world' || !continent
+      ? countries
+      : selectedSubregion
+        ? getCountriesForSubregion(continent, selectedSubregion, visibleCountries)
+        : visibleCountries,
+    [continent, level, selectedSubregion, visibleCountries],
+  )
+  const scopeSvgIds = useMemo(() => countriesToSvgIds(scopeCountries), [scopeCountries])
   const mapMountRef = useRef<HTMLDivElement>(null)
   const controllerRef = useRef<SvgMapController | null>(null)
   const [mapCountries, setMapCountries] = useState<readonly SvgMapCountry[]>([])
@@ -58,9 +68,9 @@ export function MemoMap({
     const controller = new SvgMapController(mount, {
       countryFill: '#52525b',
       hoverHighlight: true,
-      hoverShowName: true,
+      hoverShowName: level !== 'world',
       hoverScope: 'group',
-      hoverFill: '#22d3ee',
+      hoverFill: '#0f766e',
       showHighlightedNames: false,
     })
     controllerRef.current = controller
@@ -96,21 +106,38 @@ export function MemoMap({
   useEffect(() => {
     const controller = controllerRef.current
     if (!controller || mapCountries.length === 0) return
+    if (level === 'world') {
+      controller.resetHoverableCountries()
+      controller.clearMutedCountries()
+    } else {
+      controller.setHoverableCountries(scopeSvgIds)
+      controller.setMutedCountries(
+        mapCountries
+          .map(country => country.id)
+          .filter(id => !scopeSvgIds.includes(id)),
+      )
+    }
     controller.clearColors()
     controller.setCountryColors(
       createMemoCountryColors(visibleCountries, memoedCountryIds, mapCountries.map(country => country.id)),
     )
-  }, [mapCountries, memoedCountryIds, visibleCountries])
+  }, [level, mapCountries, memoedCountryIds, scopeSvgIds, visibleCountries])
 
   useEffect(() => {
     const controller = controllerRef.current
-    if (!controller || mapCountries.length === 0 || level !== 'continent' || !continent || !selectedSubregion) {
+    if (!controller || mapCountries.length === 0 || level !== 'continent' || !continent) {
       if (controller && level === 'continent') controller.resetZoom()
       return
     }
-    const selectedCountries = getCountriesForSubregion(continent, selectedSubregion, visibleCountries)
+    const selectedCountries = selectedSubregion
+      ? getCountriesForSubregion(continent, selectedSubregion, visibleCountries)
+      : getCountriesForContinent(continent, visibleCountries)
     const ids = resolveCountriesToSvgIds(selectedCountries, mapCountries.map(country => country.id))
-    controller.setZoomArea(ids, definition.zoomPadding)
+    if (selectedSubregion || definition.domainContinents.length > 1) {
+      controller.setZoomArea(ids, definition.zoomPadding)
+    } else {
+      controller.resetZoom()
+    }
   }, [continent, definition.zoomPadding, level, mapCountries, selectedSubregion, visibleCountries])
 
   const title = level === 'world' ? 'World' : continent ?? 'Continent'
