@@ -7,6 +7,8 @@ export type Continent =
   | "Oceania";
 
 export type Country = {
+  /** Optional stable code for callers adding their own records. */
+  id?: string;
   country: string;
   capital: string;
   continent: Continent;

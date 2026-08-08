@@ -12,6 +12,15 @@ import {
   type CountryQuestion,
   type CountryQuizDirection,
 } from '@/features/world-countries/quiz/countryQuiz'
+import {
+  countryRecallItemId,
+  getCountryPoolScope,
+  loadCountryLearningProgress,
+  recordCountryAttempt,
+  selectCountryEntry,
+  type CountryLearningProgress,
+} from '@/features/world-countries/learning'
+import type { ItemProgress, RecallItemId } from '@/core/learning'
 import type { AnswerMode } from '@/core/types'
 
 const CONTINENTS: Continent[] = [
@@ -24,8 +33,13 @@ function makeQuestion(
   pool: Country[],
   direction: CountryQuizDirection,
   previousCountry?: string,
+  progress?: ReadonlyMap<RecallItemId, ItemProgress>,
+  recentHistory: readonly RecallItemId[] = [],
 ): CountryQuestion {
-  return buildCountryQuestion(pickCountry(pool, previousCountry), countries, direction)
+  const entry = progress
+    ? selectCountryEntry(pool, direction, progress, recentHistory)
+    : pickCountry(pool, previousCountry)
+  return buildCountryQuestion(entry ?? pool[0], countries, direction)
 }
 
 function CountryCapitalDrill({
@@ -39,7 +53,8 @@ function CountryCapitalDrill({
 }) {
   const [continent, setContinent] = useState<ContinentFilter>('All')
   const [subregion, setSubregion] = useState('All')
-  const [question, setQuestion] = useState(() => makeQuestion(countries, direction))
+  const recentItemHistory = useRef<RecallItemId[]>([])
+  const questionStartedAt = useRef(Date.now())
   const [answered, setAnswered] = useState<string | null>(null)
   const [answeredCorrect, setAnsweredCorrect] = useState<boolean | null>(null)
   const [correct, setCorrect] = useState(0)
@@ -61,9 +76,52 @@ function CountryCapitalDrill({
     && (subregion === 'All' || entry.subregion === subregion)
   )), [continent, subregion])
 
+  const learningScope = useMemo(
+    () => getCountryPoolScope(pool, direction, `quiz-${continent}-${subregion}`),
+    [continent, direction, pool, subregion],
+  )
+  const [learningProgress, setLearningProgress] = useState<CountryLearningProgress | null>(null)
+  const learningProgressRef = useRef<CountryLearningProgress | null>(null)
+  learningProgressRef.current = learningProgress
+
+  const rememberQuestion = (next: CountryQuestion) => {
+    recentItemHistory.current = [
+      ...recentItemHistory.current,
+      countryRecallItemId(next.entry, direction),
+    ].slice(-20)
+  }
+
+  const [question, setQuestion] = useState(() => {
+    const initial = makeQuestion(countries, direction)
+    recentItemHistory.current = [countryRecallItemId(initial.entry, direction)]
+    return initial
+  })
+
+  const refreshLearningProgress = useCallback(() => {
+    void loadCountryLearningProgress(learningScope).then(setLearningProgress)
+  }, [learningScope])
+
+  useEffect(() => {
+    setLearningProgress(null)
+    let active = true
+    void loadCountryLearningProgress(learningScope).then(next => {
+      if (active) setLearningProgress(next)
+    })
+    return () => { active = false }
+  }, [learningScope])
+
   const resetSession = useCallback((nextPool: Country[]) => {
     if (nextTimer.current) clearTimeout(nextTimer.current)
-    setQuestion(makeQuestion(nextPool, direction))
+    recentItemHistory.current = []
+    const nextQuestion = makeQuestion(
+      nextPool,
+      direction,
+      undefined,
+      learningProgressRef.current?.itemProgress,
+    )
+    rememberQuestion(nextQuestion)
+    questionStartedAt.current = Date.now()
+    setQuestion(nextQuestion)
     setAnswered(null)
     setAnsweredCorrect(null)
     setCorrect(0)
@@ -87,14 +145,29 @@ function CountryCapitalDrill({
   }, [])
 
   const showNext = useCallback(() => {
-    setQuestion(current => makeQuestion(pool, direction, current.entry.country))
+    const nextQuestion = makeQuestion(
+      pool,
+      direction,
+      question.entry.country,
+      learningProgressRef.current?.itemProgress,
+      recentItemHistory.current,
+    )
+    rememberQuestion(nextQuestion)
+    questionStartedAt.current = Date.now()
+    setQuestion(nextQuestion)
     setAnswered(null)
     setAnsweredCorrect(null)
-  }, [direction, pool])
+  }, [direction, pool, question])
 
   const handleAnswer = useCallback((value: string) => {
     if (answered !== null) return
     const isCorrect = matchesPlaceName(value, question.answer)
+    const now = Date.now()
+    void recordCountryAttempt(question.entry, direction, {
+      at: now,
+      ok: isCorrect,
+      ms: Math.max(0, now - questionStartedAt.current),
+    }).then(refreshLearningProgress)
     setAnswered(value)
     setAnsweredCorrect(isCorrect)
     if (isCorrect) {
@@ -110,7 +183,7 @@ function CountryCapitalDrill({
       setStreak(0)
     }
     nextTimer.current = setTimeout(showNext, 1400)
-  }, [answered, question, showNext])
+  }, [answered, direction, question, refreshLearningProgress, showNext])
 
   const selectContinent = (next: ContinentFilter) => {
     setContinent(next)
@@ -232,6 +305,13 @@ function CountryCapitalDrill({
         <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
           <div className="h-full bg-cyan-600 transition-all" style={{ width: `${progress}%` }} />
         </div>
+        {learningProgress && (
+          <div className="mt-3 text-center text-xs text-zinc-500">
+            {learningProgress.scopeProgress.masteredItems}/{learningProgress.scopeProgress.totalItems} mastered
+            {' · '}
+            {Math.round(learningProgress.scopeProgress.masteryRatio * 100)}% durable progress
+          </div>
+        )}
         <button
           onClick={() => resetSession(pool)}
           className="mt-4 w-full min-h-[40px] rounded-lg bg-zinc-900 border border-zinc-800 text-sm text-zinc-500 hover:text-zinc-200 hover:border-zinc-700 transition-colors"
