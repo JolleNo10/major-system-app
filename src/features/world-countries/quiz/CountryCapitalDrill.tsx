@@ -21,6 +21,7 @@ import {
 import type { ItemProgress, RecallItemId } from '@/core/learning'
 import type { AnswerMode } from '@/core/types'
 import { GeographyMnemonicPanel } from '@/features/world-countries/mnemonics/GeographyMnemonicPanel'
+import { WorldCountriesMemo } from '@/features/world-countries/memo/WorldCountriesMemo'
 
 const CONTINENTS: Continent[] = [
   'Africa', 'Asia', 'Europe', 'North America', 'South America', 'Oceania',
@@ -326,13 +327,45 @@ function CountryCapitalDrill({
 
 export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) {
   const [direction, setDirection] = useState<CountryQuizDirection>('country-to-capital')
+  const [tab, setTab] = useState<'quiz' | 'memo'>('quiz')
 
   return (
-    <CountryCapitalDrill
-      key={direction}
-      answerMode={answerMode}
-      direction={direction}
-      onDirectionChange={setDirection}
-    />
+    <div className="w-full space-y-4">
+      <div role="tablist" aria-label="World Countries modes" className="mx-auto flex w-fit gap-1 rounded-lg bg-zinc-800 p-1">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'quiz'}
+          onClick={() => setTab('quiz')}
+          className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+            tab === 'quiz' ? 'bg-cyan-600 text-white' : 'text-zinc-400 hover:text-zinc-200'
+          }`}
+        >
+          Quiz
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'memo'}
+          onClick={() => setTab('memo')}
+          className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+            tab === 'memo' ? 'bg-cyan-600 text-white' : 'text-zinc-400 hover:text-zinc-200'
+          }`}
+        >
+          Memo
+        </button>
+      </div>
+
+      {tab === 'memo' ? (
+        <WorldCountriesMemo answerMode={answerMode} />
+      ) : (
+        <CountryCapitalDrill
+          key={direction}
+          answerMode={answerMode}
+          direction={direction}
+          onDirectionChange={setDirection}
+        />
+      )}
+    </div>
   )
 }

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRails } from '@/app/layout/PageLayoutContext'
 import { SvgMapController, type SvgMapCountry, type SvgMapHoverScope } from '@/features/world-countries/common/SvgMapController'
 import { countries, type Country } from '@/features/world-countries/data/countries'
+import { mapCountryNamesToSvgIds } from '@/features/world-countries/common/countryMapIds'
 import { Switch } from '@/core/ui/Switch'
 import { MAP_DEFINITIONS } from '@/features/world-countries/common/worldMap'
 
@@ -13,11 +14,7 @@ const DEMO_COUNTRY_COLORS: Readonly<Record<string, string>> = {
   Andorra: '#f97316',
 }
 
-const COUNTRY_BY_NAME = new Map(countries.map(country => [country.country, country]))
-
-export function mapCountryNamesToSvgIds(countryNames: readonly string[]): string[] {
-  return [...new Set(countryNames.flatMap(countryName => COUNTRY_BY_NAME.get(countryName)?.aliases ?? [countryName]))]
-}
+export { mapCountryNamesToSvgIds }
 
 export type CountryHierarchy = readonly {
   continent: string

@@ -31,6 +31,7 @@ export interface SvgMapZoomArea {
 
 export interface SvgMapSettings {
   countryFill: string | null
+  mutedFill: string
   countryStroke: string | null
   labelFill: string | null
   highlightFill: string
@@ -68,6 +69,7 @@ export type SvgMapCountryColors =
 
 export const DEFAULT_SVG_MAP_SETTINGS: Readonly<SvgMapSettings> = Object.freeze({
   countryFill: null,
+  mutedFill: '#3f3f46',
   countryStroke: null,
   labelFill: null,
   highlightFill: '#0891b2',
@@ -95,6 +97,7 @@ interface InternalCountry extends SvgMapCountry {
   originalFill: OriginalStyle
   originalStroke: OriginalStyle
   originalStrokeWidth: OriginalStyle
+  originalFilter: OriginalStyle
   originalTransition: OriginalStyle
   originalLabelDisplay: OriginalStyle
   originalLabelPointerEvents: OriginalStyle
@@ -108,6 +111,7 @@ interface HoverListeners {
   path: SVGPathElement
   enter: EventListener
   leave: EventListener
+  click: EventListener
 }
 
 const FORBIDDEN_ELEMENTS = 'script, foreignObject, iframe, object, embed, image, style'
@@ -154,6 +158,8 @@ export class SvgMapController {
   private countries = new Map<string, InternalCountry>()
   private highlighted = new Set<string>()
   private countryColors = new Map<string, string>()
+  private mutedCountries = new Set<string>()
+  private hoverableCountries: Set<string> | null = null
   private named = new Set<string>()
   private hoverGroups: SvgMapHoverGroup[] = []
   private groupOutlines: SvgMapGroupOutline[] = []
@@ -164,6 +170,7 @@ export class SvgMapController {
   private hoveredNameOverride: boolean | null = null
   private hoveredIds = new Set<string>()
   private listeners: HoverListeners[] = []
+  private countryClickHandler: ((countryId: string) => void) | null = null
   private svg: SVGSVGElement | null = null
   private originalViewBox: string | null = null
   private loadVersion = 0
@@ -337,6 +344,22 @@ export class SvgMapController {
     return { activeIds: [...this.countryColors.keys()], unknownIds: uniqueStrings(unknownIds) }
   }
 
+  /** Restrict generic muted/de-emphasized rendering to known country IDs. */
+  setMutedCountries(ids: Iterable<string>): SvgMapMutationResult {
+    this.assertUsable()
+    const { knownIds, unknownIds } = this.resolveKnown(ids)
+    this.mutedCountries = new Set(knownIds)
+    this.render()
+    return { activeIds: [...this.mutedCountries], unknownIds }
+  }
+
+  clearMutedCountries(): SvgMapMutationResult {
+    this.assertUsable()
+    this.mutedCountries.clear()
+    this.render()
+    return { activeIds: [], unknownIds: [] }
+  }
+
   clearColors(): SvgMapMutationResult {
     this.assertUsable()
     this.countryColors.clear()
@@ -363,6 +386,28 @@ export class SvgMapController {
     return { activeIds: this.getNamedIds(), unknownIds }
   }
 
+  /** Restrict pointer-driven hover effects to a generic allowlist of country IDs. */
+  setHoverableCountries(ids: Iterable<string>): SvgMapMutationResult {
+    this.assertUsable()
+    const { knownIds, unknownIds } = this.resolveKnown(ids)
+    this.hoverableCountries = new Set(knownIds)
+    if (this.hoveredCountryId !== null && !this.isHoverable(this.hoveredCountryId)) {
+      this.hoveredCountryId = null
+      this.hoveredNameOverride = null
+    }
+    this.refreshHoveredIds()
+    this.render()
+    return { activeIds: [...this.hoverableCountries], unknownIds }
+  }
+
+  /** Restore pointer-driven hover effects for every discovered country. */
+  resetHoverableCountries(): void {
+    this.assertUsable()
+    this.hoverableCountries = null
+    this.refreshHoveredIds()
+    this.render()
+  }
+
   toggleNames(ids: Iterable<string>): SvgMapMutationResult {
     this.assertUsable()
     const { knownIds, unknownIds } = this.resolveKnown(ids)
@@ -378,6 +423,12 @@ export class SvgMapController {
     this.assertUsable()
     this.settings = { ...this.settings, showAllNames: visible }
     this.render()
+  }
+
+  /** Register a framework-neutral callback for clicks on discovered countries. */
+  setCountryClickHandler(handler: ((countryId: string) => void) | null): void {
+    this.assertUsable()
+    this.countryClickHandler = handler
   }
 
   setHoverGroups(groups: readonly SvgMapHoverGroup[]): SvgMapHoverGroupResult {
@@ -533,8 +584,8 @@ export class SvgMapController {
     }
 
     for (const definition of discovered) {
-      const path = svg.getElementById(definition.pathId) as SVGPathElement | null
-      const label = svg.getElementById(definition.labelId) as SVGTextElement | null
+      const path = this.findElementById(svg, definition.pathId) as SVGPathElement | null
+      const label = this.findElementById(svg, definition.labelId) as SVGTextElement | null
       if (!path || !label) continue
       const parent = label.parentElement
       if (!parent) continue
@@ -551,6 +602,7 @@ export class SvgMapController {
         originalFill: captureStyle(path, 'fill'),
         originalStroke: captureStyle(path, 'stroke'),
         originalStrokeWidth: captureStyle(path, 'stroke-width'),
+        originalFilter: captureStyle(path, 'filter'),
         originalTransition: captureStyle(path, 'transition'),
         originalLabelDisplay: captureStyle(label, 'display'),
         originalLabelPointerEvents: captureStyle(label, 'pointer-events'),
@@ -560,6 +612,15 @@ export class SvgMapController {
         })),
       })
     }
+  }
+
+  private findElementById(root: SVGSVGElement, id: string): Element | null {
+    // SVGSVGElement#getElementById is not implemented consistently across
+    // browsers and DOM test environments. The attribute comparison fallback
+    // is also safe for IDs containing punctuation that needs CSS escaping.
+    const native = root.getElementById?.(id)
+    if (native) return native
+    return [...root.querySelectorAll<SVGElement>('[id]')].find(element => element.id === id) ?? null
   }
 
   private extractCountryDefinitions(svg: SVGSVGElement): readonly SvgMapCountry[] {
@@ -586,22 +647,32 @@ export class SvgMapController {
     for (const country of this.countries.values()) {
       const enter: EventListener = () => this.setHoveredCountry(country.id)
       const leave: EventListener = () => this.setHoveredCountry(null)
+      const click: EventListener = () => this.countryClickHandler?.(country.id)
       country.path.addEventListener('pointerenter', enter)
       country.path.addEventListener('pointerleave', leave)
-      this.listeners.push({ path: country.path, enter, leave })
+      country.path.addEventListener('click', click)
+      this.listeners.push({ path: country.path, enter, leave, click })
     }
   }
 
   private detachHoverListeners(): void {
-    for (const { path, enter, leave } of this.listeners) {
+    for (const { path, enter, leave, click } of this.listeners) {
       path.removeEventListener('pointerenter', enter)
       path.removeEventListener('pointerleave', leave)
+      path.removeEventListener('click', click)
     }
     this.listeners = []
   }
 
   private setHoveredCountry(id: string | null, showName?: boolean): void {
     this.hoveredNameOverride = id === null || showName === undefined ? null : showName
+    if (id !== null && !this.isHoverable(id)) {
+      this.hoveredCountryId = null
+      this.hoveredNameOverride = null
+      this.hoveredIds.clear()
+      this.render()
+      return
+    }
     if (!this.settings.hoverHighlight && !this.settings.hoverShowName && this.hoveredNameOverride !== true) {
       this.hoveredCountryId = null
       this.hoveredIds.clear()
@@ -616,7 +687,8 @@ export class SvgMapController {
   private refreshHoveredIds(): void {
     this.hoveredIds.clear()
     const id = this.hoveredCountryId
-    if (!id || (!this.settings.hoverHighlight && !this.settings.hoverShowName && this.hoveredNameOverride !== true)) return
+    if (!id || !this.isHoverable(id)
+      || (!this.settings.hoverHighlight && !this.settings.hoverShowName && this.hoveredNameOverride !== true)) return
 
     if (this.settings.hoverScope === 'single') {
       this.hoveredIds.add(id)
@@ -625,7 +697,9 @@ export class SvgMapController {
 
     for (const group of this.hoverGroups) {
       if (!group.countryIds.includes(id)) continue
-      for (const countryId of group.countryIds) this.hoveredIds.add(countryId)
+      for (const countryId of group.countryIds) {
+        if (this.isHoverable(countryId)) this.hoveredIds.add(countryId)
+      }
     }
     if (this.hoveredIds.size === 0) this.hoveredIds.add(id)
   }
@@ -638,6 +712,10 @@ export class SvgMapController {
       else unknownIds.push(id)
     }
     return { knownIds, unknownIds }
+  }
+
+  private isHoverable(id: string): boolean {
+    return this.hoverableCountries === null || this.hoverableCountries.has(id)
   }
 
   private resolveOutlineIds(ids: Iterable<string>): { knownIds: string[]; unknownIds: string[] } {
@@ -674,12 +752,16 @@ export class SvgMapController {
 
     for (const country of this.countries.values()) {
       const hovered = this.hoveredIds.has(country.id)
-      const fill = hovered && this.settings.hoverHighlight
+      const baseFill = hovered && this.settings.hoverHighlight
         ? this.settings.hoverFill
         : this.countryColors.get(country.id)
           ?? (this.highlighted.has(country.id)
             ? this.settings.highlightFill
             : this.settings.countryFill)
+      const fill = this.mutedCountries.has(country.id) && !this.countryColors.has(country.id)
+        && !this.highlighted.has(country.id) && !hovered
+        ? this.settings.mutedFill
+        : baseFill
 
       const styled = this.highlighted.has(country.id) || this.countryColors.has(country.id)
       const stroke = hovered && this.settings.hoverStroke !== null
@@ -697,6 +779,11 @@ export class SvgMapController {
       setOverride(country.path, 'stroke', stroke, country.originalStroke)
       setOverride(country.path, 'stroke-width', strokeWidth, country.originalStrokeWidth)
       country.path.style.setProperty('transition', transition)
+      if (this.mutedCountries.has(country.id) && this.countryColors.has(country.id)) {
+        country.path.style.setProperty('filter', 'saturate(0.2) brightness(0.65)', 'important')
+      } else {
+        restoreStyle(country.path, 'filter', country.originalFilter)
+      }
 
       const showHoverName = this.hoveredNameOverride ?? this.settings.hoverShowName
       const showLabel = this.settings.showAllNames
@@ -805,6 +892,8 @@ export class SvgMapController {
     this.countries.clear()
     this.highlighted.clear()
     this.countryColors.clear()
+    this.mutedCountries.clear()
+    this.hoverableCountries = null
     this.named.clear()
     this.hoverGroups = []
     this.groupOutlines = []

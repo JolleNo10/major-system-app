@@ -37,6 +37,7 @@ The application renders `WorldCountriesDrill` and `MapWorkarea` as separate appl
 - `useLayoutHeader` and `useRails` from `src/app/layout/PageLayoutContext.tsx` place feature chrome and the workarea country controls in the shared page layout. Their dependency arrays must remain referentially stable enough to avoid republish loops.
 - Vite's `?url` and `?raw` SVG imports are used by runtime map loading and DOM tests respectively. The map URL is a bundled local asset; there is no backend/API boundary.
 - `SvgMapController` uses browser `fetch`, `DOMParser`, SVG DOM APIs, and pointer events. Its test explicitly selects the jsdom environment.
+- Geographic scope is decided by the feature/UI layer and passed to `SvgMapController` only as generic SVG-ID interaction allowlists. SVG-ID mapping is shared feature infrastructure in `common/`; the controller does not know about continents, subregions, or Memo.
 
 ## Local conventions and invariants
 

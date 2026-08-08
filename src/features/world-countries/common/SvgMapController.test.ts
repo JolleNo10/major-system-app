@@ -215,6 +215,19 @@ describe('SvgMapController persistent state', () => {
 })
 
 describe('SvgMapController hover behavior', () => {
+  it('dispatches generic country clicks and supports removing the handler', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    const clicked: string[] = []
+    controller.setCountryClickHandler(id => clicked.push(id))
+    path(mount, 'Alpha').dispatchEvent(new MouseEvent('click'))
+    expect(clicked).toEqual(['Alpha'])
+
+    controller.setCountryClickHandler(null)
+    path(mount, 'Beta').dispatchEvent(new MouseEvent('click'))
+    expect(clicked).toEqual(['Alpha'])
+  })
+
   it('is disabled by default and supports independent single hover effects', async () => {
     const { mount, controller } = makeController()
     await controller.load({ markup: TEST_MAP })
@@ -227,6 +240,9 @@ describe('SvgMapController hover behavior', () => {
     alpha.dispatchEvent(new Event('pointerenter'))
     expect(alpha.style.getPropertyValue('fill')).toBe('#22d3ee')
     expect(label(mount, 'Alpha_label').style.getPropertyValue('display')).toBe('inline')
+    const beta = path(mount, 'Beta')
+    beta.dispatchEvent(new Event('pointerenter'))
+    expect(beta.style.getPropertyValue('fill')).toBe('#22d3ee')
     alpha.dispatchEvent(new Event('pointerleave'))
     expect(alpha.style.getPropertyValue('fill')).toBe('#737373')
     expect(label(mount, 'Alpha_label').style.getPropertyValue('display')).toBe('none')
@@ -258,6 +274,56 @@ describe('SvgMapController hover behavior', () => {
     path(mount, 'Delta').dispatchEvent(new Event('pointerenter'))
     expect(path(mount, 'Delta').style.getPropertyValue('fill')).toBe('#22d3ee')
     expect(path(mount, 'Alpha').style.getPropertyValue('fill')).toBe('#737373')
+  })
+
+  it('restricts hover effects and group activation to an allowlist', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    controller.setHoverGroups([{ id: 'pair', countryIds: ['Alpha', 'Beta'] }])
+    controller.updateSettings({ hoverHighlight: true, hoverShowName: true, hoverScope: 'group' })
+
+    expect(controller.setHoverableCountries(['Alpha', 'Missing'])).toEqual({
+      activeIds: ['Alpha'],
+      unknownIds: ['Missing'],
+    })
+
+    path(mount, 'Alpha').dispatchEvent(new Event('pointerenter'))
+    expect(path(mount, 'Alpha').style.getPropertyValue('fill')).toBe('#22d3ee')
+    expect(label(mount, 'Alpha_label').style.getPropertyValue('display')).toBe('inline')
+    expect(path(mount, 'Beta').style.getPropertyValue('fill')).toBe('#737373')
+    expect(label(mount, 'Beta_label').style.getPropertyValue('display')).toBe('none')
+
+    path(mount, 'Beta').dispatchEvent(new Event('pointerenter'))
+    expect(path(mount, 'Beta').style.getPropertyValue('fill')).toBe('#737373')
+    expect(label(mount, 'Beta_label').style.getPropertyValue('display')).toBe('none')
+
+    controller.hoverCountry('Beta', true)
+    expect(label(mount, 'Beta_label').style.getPropertyValue('display')).toBe('none')
+
+    controller.resetHoverableCountries()
+    path(mount, 'Beta').dispatchEvent(new Event('pointerenter'))
+    expect(path(mount, 'Alpha').style.getPropertyValue('fill')).toBe('#22d3ee')
+    expect(path(mount, 'Beta').style.getPropertyValue('fill')).toBe('#22d3ee')
+    expect(label(mount, 'Beta_label').style.getPropertyValue('display')).toBe('inline')
+  })
+
+  it('de-emphasizes muted countries without overwriting semantic colors', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+
+    expect(controller.setMutedCountries(['Beta', 'Missing'])).toEqual({
+      activeIds: ['Beta'],
+      unknownIds: ['Missing'],
+    })
+    expect(path(mount, 'Beta').style.getPropertyValue('fill')).toBe('#3f3f46')
+
+    controller.setCountryColors({ Beta: '#22c55e' })
+    expect(path(mount, 'Beta').style.getPropertyValue('fill')).toBe('#22c55e')
+    expect(path(mount, 'Beta').style.getPropertyValue('filter')).toContain('saturate')
+
+    controller.clearMutedCountries()
+    expect(path(mount, 'Beta').style.getPropertyValue('fill')).toBe('#22c55e')
+    expect(path(mount, 'Beta').style.getPropertyValue('filter')).toBe('')
   })
 
   it('allows controller-driven hover with an explicit name-visibility choice', async () => {
