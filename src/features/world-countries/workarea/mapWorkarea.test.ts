@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { MAP_DEFINITIONS } from '@/features/world-countries/common/worldMap'
 import { countries } from '@/features/world-countries/data/countries'
-import { buildCountryHierarchy } from '@/features/world-countries/workarea/MapWorkarea'
+import { buildCountryHierarchy, mapCountryNamesToSvgIds } from '@/features/world-countries/workarea/MapWorkarea'
 
 describe('world map definitions', () => {
   const europe = MAP_DEFINITIONS[0]
@@ -16,6 +16,23 @@ describe('world map definitions', () => {
         id: 'scandinavia-demo',
         countryIds: ['Norway', 'Sweden', 'Denmark'],
       },
+    ])
+  })
+
+  it('maps Europe dataset names to the SVG country IDs', () => {
+    expect(mapCountryNamesToSvgIds([
+      'Bosnia and Herzegovina',
+      'North Macedonia',
+      'United Kingdom',
+      'France',
+    ])).toEqual([
+      'Bosnia_and_Herzegovina',
+      'North_Macedonia',
+      'England',
+      'Northern_Ireland',
+      'Scotland',
+      'Wales',
+      'France',
     ])
   })
 

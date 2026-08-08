@@ -11,6 +11,7 @@ export type Country = {
   capital: string;
   continent: Continent;
   subregion: string;
+  aliases?: readonly string[];
 };
 
 export const countries: Country[] = [
@@ -35,7 +36,7 @@ export const countries: Country[] = [
   { country: "Benin", capital: "Porto-Novo", continent: "Africa", subregion: "West Africa" },
   { country: "Bhutan", capital: "Thimphu", continent: "Asia", subregion: "South Asia" },
   { country: "Bolivia", capital: "Sucre", continent: "South America", subregion: "Andean Countries" },
-  { country: "Bosnia and Herzegovina", capital: "Sarajevo", continent: "Europe", subregion: "Balkans" },
+  { country: "Bosnia and Herzegovina", capital: "Sarajevo", continent: "Europe", subregion: "Balkans", aliases: ["Bosnia_and_Herzegovina"] },
   { country: "Botswana", capital: "Gaborone", continent: "Africa", subregion: "Southern Africa" },
   { country: "Brazil", capital: "Brasília", continent: "South America", subregion: "Eastern South America" },
   { country: "Brunei", capital: "Bandar Seri Begawan", continent: "Asia", subregion: "Southeast Asia" },
@@ -141,7 +142,7 @@ export const countries: Country[] = [
   { country: "Niger", capital: "Niamey", continent: "Africa", subregion: "West Africa" },
   { country: "Nigeria", capital: "Abuja", continent: "Africa", subregion: "West Africa" },
   { country: "North Korea", capital: "Pyongyang", continent: "Asia", subregion: "East Asia" },
-  { country: "North Macedonia", capital: "Skopje", continent: "Europe", subregion: "Balkans" },
+  { country: "North Macedonia", capital: "Skopje", continent: "Europe", subregion: "Balkans", aliases: ["North_Macedonia"] },
   { country: "Norway", capital: "Oslo", continent: "Europe", subregion: "Northern Europe" },
   { country: "Oman", capital: "Muscat", continent: "Asia", subregion: "West Asia" },
   { country: "Pakistan", capital: "Islamabad", continent: "Asia", subregion: "South Asia" },
@@ -163,7 +164,7 @@ export const countries: Country[] = [
   { country: "Saint Lucia", capital: "Castries", continent: "North America", subregion: "Caribbean" },
   { country: "Saint Vincent and the Grenadines", capital: "Kingstown", continent: "North America", subregion: "Caribbean" },
   { country: "Samoa", capital: "Apia", continent: "Oceania", subregion: "Polynesia" },
-  { country: "San Marino", capital: "San Marino", continent: "Europe", subregion: "Southern Europe" },
+  { country: "San Marino", capital: "San Marino", continent: "Europe", subregion: "Southern Europe", aliases: ["San_Marino"] },
   { country: "São Tomé and Príncipe", capital: "São Tomé", continent: "Africa", subregion: "Central Africa" },
   { country: "Saudi Arabia", capital: "Riyadh", continent: "Asia", subregion: "West Asia" },
   { country: "Senegal", capital: "Dakar", continent: "Africa", subregion: "West Africa" },
@@ -200,12 +201,12 @@ export const countries: Country[] = [
   { country: "Uganda", capital: "Kampala", continent: "Africa", subregion: "East Africa" },
   { country: "Ukraine", capital: "Kyiv", continent: "Europe", subregion: "Eastern Europe" },
   { country: "United Arab Emirates", capital: "Abu Dhabi", continent: "Asia", subregion: "West Asia" },
-  { country: "United Kingdom", capital: "London", continent: "Europe", subregion: "Northern Europe" },
+  { country: "United Kingdom", capital: "London", continent: "Europe", subregion: "Northern Europe", aliases: ["England", "Northern_Ireland", "Scotland", "Wales"] },
   { country: "United States", capital: "Washington, D.C.", continent: "North America", subregion: "Northern America" },
   { country: "Uruguay", capital: "Montevideo", continent: "South America", subregion: "Southern Cone" },
   { country: "Uzbekistan", capital: "Tashkent", continent: "Asia", subregion: "Central Asia" },
   { country: "Vanuatu", capital: "Port Vila", continent: "Oceania", subregion: "Melanesia" },
-  { country: "Vatican City", capital: "Vatican City", continent: "Europe", subregion: "Southern Europe" },
+  { country: "Vatican City", capital: "Vatican City", continent: "Europe", subregion: "Southern Europe", aliases: ["Vatican_City"] },
   { country: "Venezuela", capital: "Caracas", continent: "South America", subregion: "Northern South America" },
   { country: "Vietnam", capital: "Hanoi", continent: "Asia", subregion: "Southeast Asia" },
   { country: "Yemen", capital: "Sana'a", continent: "Asia", subregion: "West Asia" },

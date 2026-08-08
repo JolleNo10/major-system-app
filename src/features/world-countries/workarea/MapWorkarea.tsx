@@ -13,6 +13,12 @@ const DEMO_COUNTRY_COLORS: Readonly<Record<string, string>> = {
   Andorra: '#f97316',
 }
 
+const COUNTRY_BY_NAME = new Map(countries.map(country => [country.country, country]))
+
+export function mapCountryNamesToSvgIds(countryNames: readonly string[]): string[] {
+  return [...new Set(countryNames.flatMap(countryName => COUNTRY_BY_NAME.get(countryName)?.aliases ?? [countryName]))]
+}
+
 export type CountryHierarchy = readonly {
   continent: string
   subregions: readonly {
@@ -105,7 +111,9 @@ function CountryControls({
 export function MapWorkarea() {
   const [regionId, setRegionId] = useState(MAP_DEFINITIONS[0].id)
   const [availableCountries, setAvailableCountries] = useState<readonly SvgMapCountry[]>([])
+  const [mapCountries, setMapCountries] = useState<readonly SvgMapCountry[]>([])
   const [selectedCountries, setSelectedCountries] = useState<Set<string>>(() => new Set())
+  const [selectedSubregion, setSelectedSubregion] = useState<string | null>(null)
   const [showNames, setShowNames] = useState(false)
   const [hoverHighlight, setHoverHighlight] = useState(false)
   const [hoverShowName, setHoverShowName] = useState(false)
@@ -139,7 +147,9 @@ export function MapWorkarea() {
     })
     controllerRef.current = controller
     setAvailableCountries([])
+    setMapCountries([])
     setSelectedCountries(new Set())
+    setSelectedSubregion(null)
     setLoading(true)
     setLoadError(false)
 
@@ -157,6 +167,7 @@ export function MapWorkarea() {
           })),
         )
         if (colorDemoRef.current) controller.setCountryColors(DEMO_COUNTRY_COLORS)
+        setMapCountries(countries)
         const byId = new Map(countries.map(country => [country.id, country]))
         setAvailableCountries(
           definition.demoCountryIds.flatMap(id => {
@@ -184,12 +195,25 @@ export function MapWorkarea() {
 
   const toggleCountry = useCallback((countryId: string) => {
     const result = controllerRef.current?.toggleHighlighted([countryId])
-    if (result) setSelectedCountries(new Set(result.activeIds))
+    if (result) {
+      setSelectedSubregion(null)
+      setSelectedCountries(new Set(result.activeIds))
+    }
   }, [])
 
   const clearHighlights = useCallback(() => {
     const result = controllerRef.current?.clearHighlights()
-    if (result) setSelectedCountries(new Set(result.activeIds))
+    if (result) {
+      setSelectedSubregion(null)
+      setSelectedCountries(new Set(result.activeIds))
+    }
+  }, [])
+
+  const highlightSubregion = useCallback((countryNames: readonly string[], subregionName: string) => {
+    const result = controllerRef.current?.setHighlighted(mapCountryNamesToSvgIds(countryNames))
+    if (!result) return
+    setSelectedSubregion(subregionName)
+    setSelectedCountries(new Set(result.activeIds))
   }, [])
 
   const changeShowNames = useCallback((next: boolean) => {
@@ -243,7 +267,7 @@ export function MapWorkarea() {
     rightLabel: 'Countries',
   }, [availableCountries, selectedCountries, toggleCountry, clearHighlights])
 
-  const selectedLabels = availableCountries
+  const selectedLabels = mapCountries
     .filter(country => selectedCountries.has(country.id))
     .map(country => country.name)
   const mapLabel = selectedLabels.length
@@ -383,13 +407,35 @@ export function MapWorkarea() {
                   ({subregions.reduce((total, subregion) => total + subregion.countries.length, 0)} countries, {subregions.length} subregions)
                 </span>
               </h3>
+              {continent === 'Europe' ? (
+                <p className="mt-2 text-sm text-zinc-500">
+                  Click a Europe subregion below to highlight its countries on the map.
+                </p>
+              ) : null}
               <div className="mt-3 space-y-4 pl-3 sm:pl-4">
                 {subregions.map(({ name, countries: countryNames }) => (
                   <div key={name}>
-                    <h4 className="text-sm font-medium text-zinc-200">
-                      {name}
-                      <span className="ml-2 font-normal text-zinc-500">({countryNames.length} countries)</span>
-                    </h4>
+                    {continent === 'Europe' ? (
+                      <button
+                        type="button"
+                        aria-pressed={selectedSubregion === name}
+                        disabled={loading || loadError}
+                        onClick={() => highlightSubregion(countryNames, name)}
+                        className={`flex min-h-[36px] w-full items-center rounded-md px-2 text-left text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                          selectedSubregion === name
+                            ? 'bg-cyan-900/60 text-cyan-200'
+                            : 'text-zinc-200 hover:bg-zinc-800 hover:text-cyan-200'
+                        }`}
+                      >
+                        {name}
+                        <span className="ml-2 font-normal text-zinc-500">({countryNames.length} countries)</span>
+                      </button>
+                    ) : (
+                      <h4 className="text-sm font-medium text-zinc-200">
+                        {name}
+                        <span className="ml-2 font-normal text-zinc-500">({countryNames.length} countries)</span>
+                      </h4>
+                    )}
                     <ul className="mt-1 grid gap-x-6 gap-y-1 text-sm text-zinc-400 sm:grid-cols-2 lg:grid-cols-3">
                       {countryNames.map(country => (
                         <li key={country}>{country}</li>
