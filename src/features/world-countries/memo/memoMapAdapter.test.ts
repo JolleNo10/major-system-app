@@ -5,6 +5,8 @@ import {
   createMemoCountryColors,
   createSubregionHoverGroups,
   findUnresolvedCountries,
+  getContinentHoverGroupId,
+  getSubregionHoverGroupId,
   resolveCountryToSvgIds,
 } from './memoMapAdapter'
 
@@ -22,6 +24,8 @@ describe('World Countries Memo map adapter', () => {
   })
 
   it('derives hover groups and learned colors from domain records', () => {
+    expect(getContinentHoverGroupId('North America')).toBe('continent-north-america')
+    expect(getSubregionHoverGroupId('Northern Europe')).toBe('subregion-northern-europe')
     expect(createContinentHoverGroups([norway], ['Norway'])).toEqual([
       { id: 'continent-europe', countryIds: ['Norway'] },
     ])

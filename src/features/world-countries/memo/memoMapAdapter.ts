@@ -52,7 +52,7 @@ export function createContinentHoverGroups(
     groups.set(entry.continent, group)
   }
   return [...groups.entries()].map(([continent, ids]) => ({
-    id: `continent-${continentSlug(continent)}`,
+    id: getContinentHoverGroupId(continent),
     countryIds: [...new Set(ids)],
   }))
 }
@@ -70,9 +70,17 @@ export function createSubregionHoverGroups(
     groups.set(entry.subregion, group)
   }
   return [...groups.entries()].map(([subregion, ids]) => ({
-    id: `subregion-${continentSlug(subregion)}`,
+    id: getSubregionHoverGroupId(subregion),
     countryIds: [...new Set(ids)],
   }))
+}
+
+export function getContinentHoverGroupId(continent: Continent | string): string {
+  return `continent-${continentSlug(continent)}`
+}
+
+export function getSubregionHoverGroupId(subregion: string): string {
+  return `subregion-${continentSlug(subregion)}`
 }
 
 export function getCountryForSvgId(
