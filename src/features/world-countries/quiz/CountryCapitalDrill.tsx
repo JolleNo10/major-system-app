@@ -3,6 +3,7 @@ import { MultipleChoice } from '@/core/ui/MultipleChoice'
 import { ScoreBar } from '@/core/ui/ScoreBar'
 import { TypingInput } from '@/core/ui/TypingInput'
 import { countries, type Continent, type Country } from '@/features/world-countries/data/countries'
+import { getSubregionDefinition, subregionIdFor } from '@/features/world-countries/data/subregions'
 import {
   buildCountryQuestion,
   matchesPlaceName,
@@ -28,6 +29,11 @@ const CONTINENTS: Continent[] = [
 ]
 
 type ContinentFilter = Continent | 'All'
+
+function subregionLabel(country: Country): string {
+  const id = country.subregionId ?? subregionIdFor(country.subregion)
+  return id ? getSubregionDefinition(id).label : country.subregion
+}
 
 function makeQuestion(
   pool: Country[],
@@ -68,13 +74,19 @@ function CountryCapitalDrill({
     const filtered = continent === 'All'
       ? countries
       : countries.filter(entry => entry.continent === continent)
-    return [...new Set(filtered.map(entry => entry.subregion))].sort()
+    return [...new Set(filtered.map(entry => {
+      return subregionLabel(entry)
+    }))].sort()
   }, [continent])
 
-  const pool = useMemo(() => countries.filter(entry => (
-    (continent === 'All' || entry.continent === continent)
-    && (subregion === 'All' || entry.subregion === subregion)
-  )), [continent, subregion])
+  const pool = useMemo(() => {
+    const selectedSubregionId = subregionIdFor(subregion)
+    return countries.filter(entry => (
+      (continent === 'All' || entry.continent === continent)
+      && (subregion === 'All'
+        || (entry.subregionId ?? subregionIdFor(entry.subregion)) === selectedSubregionId)
+    ))
+  }, [continent, subregion])
 
   const learningScope = useMemo(
     () => getCountryPoolScope(pool, direction, `quiz-${continent}-${subregion}`),
@@ -262,7 +274,7 @@ function CountryCapitalDrill({
         <h1 className="text-4xl sm:text-5xl font-black text-zinc-100 leading-tight tracking-tight break-words">
           {question.prompt}
         </h1>
-        <p className="mt-3 text-sm text-zinc-500">{question.entry.continent} · {question.entry.subregion}</p>
+        <p className="mt-3 text-sm text-zinc-500">{question.entry.continent} · {subregionLabel(question.entry)}</p>
       </div>
 
       <div className="w-full max-w-md">

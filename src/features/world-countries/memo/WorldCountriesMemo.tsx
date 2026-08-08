@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useState } from 'react'
 import type { AnswerMode } from '@/core/types'
 import { countries, type Continent } from '@/features/world-countries/data/countries'
-import { getContinents, getCountriesForContinent, getSubregionsForContinent } from './geographyMemo'
+import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
+import { getContinents, getCountriesForContinent, getSubregionDefinitionsForContinent } from './geographyMemo'
 import { getContinentMemoProgress, getSubregionMemoProgress, getWorldMemoProgress } from './memoProgress'
 import { loadMemoedCountryIds } from './memoStore'
 import { MemoMap } from './MemoMap'
@@ -24,7 +25,7 @@ function ProgressBadge({
 
 export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: AnswerMode }) {
   const [continent, setContinent] = useState<Continent | null>(null)
-  const [subregion, setSubregion] = useState<string | null>(null)
+  const [subregion, setSubregion] = useState<SubregionId | null>(null)
   const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null)
   const [memoedCountryIds, setMemoedCountryIds] = useState<Set<string>>(() => loadMemoedCountryIds())
   const continents = useMemo(() => getContinents(), [])
@@ -36,7 +37,7 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
     setHoveredGroupId(null)
   }, [])
 
-  const selectSubregion = useCallback((next: string) => {
+  const selectSubregion = useCallback((next: SubregionId) => {
     setSubregion(next)
     setHoveredGroupId(null)
   }, [])
@@ -58,14 +59,15 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
 
   if (continent && subregion) {
     const subregionProgress = getSubregionMemoProgress(continent, subregion, memoedCountryIds)
+    const subregionLabel = getSubregionDefinition(subregion).label
     return (
       <div className="w-full space-y-4 animate-fade-in">
-        <MemoBreadcrumbs continent={continent} subregion={subregion} onWorld={backToWorld} onContinent={backToContinent} />
+        <MemoBreadcrumbs continent={continent} subregion={subregionLabel} onWorld={backToWorld} onContinent={backToContinent} />
         <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Subregion</p>
-              <h1 className="mt-1 text-2xl font-bold text-zinc-100">{subregion}</h1>
+              <h1 className="mt-1 text-2xl font-bold text-zinc-100">{subregionLabel}</h1>
             </div>
             <ProgressBadge memoedCount={subregionProgress.memoedCount} totalCount={subregionProgress.totalCount} />
           </div>
@@ -90,7 +92,7 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
 
   if (continent) {
     const continentProgress = getContinentMemoProgress(continent, memoedCountryIds)
-    const subregions = getSubregionsForContinent(continent)
+    const subregions = getSubregionDefinitionsForContinent(continent)
     return (
       <div className="w-full space-y-4 animate-fade-in">
         <MemoBreadcrumbs continent={continent} onWorld={backToWorld} />
@@ -117,18 +119,18 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
             <span className="text-xs text-zinc-600">{getCountriesForContinent(continent).length} countries</span>
           </div>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            {subregions.map(name => {
-              const progress = getSubregionMemoProgress(continent, name, memoedCountryIds)
+            {subregions.map(definition => {
+              const progress = getSubregionMemoProgress(continent, definition.id, memoedCountryIds)
               return (
                 <button
-                  key={name}
+                  key={definition.id}
                   type="button"
-                  onClick={() => selectSubregion(name)}
-                  onMouseEnter={() => setHoveredGroupId(getSubregionHoverGroupId(name))}
+                  onClick={() => selectSubregion(definition.id)}
+                  onMouseEnter={() => setHoveredGroupId(getSubregionHoverGroupId(definition.label))}
                   onMouseLeave={() => setHoveredGroupId(null)}
                   className="flex min-h-[48px] items-center justify-between gap-3 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-left transition-colors hover:border-cyan-500 hover:bg-zinc-800/80"
                 >
-                  <span className="font-medium text-zinc-200">{name}</span>
+                  <span className="font-medium text-zinc-200">{definition.label}</span>
                   <ProgressBadge memoedCount={progress.memoedCount} totalCount={progress.totalCount} />
                 </button>
               )

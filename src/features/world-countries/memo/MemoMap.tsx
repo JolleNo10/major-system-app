@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { SvgMapController, type SvgMapCountry } from '@/features/world-countries/common/SvgMapController'
 import { countriesToSvgIds } from '@/features/world-countries/common/countryMapIds'
 import { countries, type Continent } from '@/features/world-countries/data/countries'
+import { getSubregionDefinition, subregionIdFor, type SubregionId } from '@/features/world-countries/data/subregions'
 import { getCountriesForContinent, getCountriesForSubregion } from './geographyMemo'
 import {
   createContinentHoverGroups,
@@ -15,11 +16,11 @@ import { getMemoMapDefinition, MEMO_MAP_DEFINITIONS } from './memoMaps'
 export interface MemoMapProps {
   level: 'world' | 'continent'
   continent?: Continent
-  selectedSubregion?: string | null
+  selectedSubregion?: SubregionId | null
   memoedCountryIds: ReadonlySet<string>
   hoveredGroupId?: string | null
   onSelectContinent?: (continent: Continent) => void
-  onSelectSubregion?: (subregion: string) => void
+  onSelectSubregion?: (subregion: SubregionId) => void
 }
 
 export function MemoMap({
@@ -60,7 +61,10 @@ export function MemoMap({
     const entry = getCountryForSvgId(svgId, visibleCountries)
     if (!entry) return
     if (level === 'world') onSelectContinent?.(entry.continent)
-    else onSelectSubregion?.(entry.subregion)
+    else {
+      const subregionId = subregionIdFor(entry.subregion)
+      if (subregionId) onSelectSubregion?.(subregionId)
+    }
   }, [level, onSelectContinent, onSelectSubregion, visibleCountries])
 
   useEffect(() => {
@@ -156,7 +160,9 @@ export function MemoMap({
   }, [continent, definition.zoomPadding, level, mapCountries, selectedSubregion, visibleCountries])
 
   const title = level === 'world' ? 'World' : continent ?? 'Continent'
-  const selectedLabel = selectedSubregion ? `, focused on ${selectedSubregion}` : ''
+  const selectedLabel = selectedSubregion
+    ? `, focused on ${getSubregionDefinition(selectedSubregion).label}`
+    : ''
 
   return (
     <div className="space-y-2">

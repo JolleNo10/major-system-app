@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react'
 import { matchesPlaceName } from '@/features/world-countries/quiz/countryQuiz'
 import { countryCapitalMnemonicId, subregionMnemonicId } from '@/features/world-countries/mnemonics/geographyMnemonicIds'
-import { getSubregionCountryIds } from '@/features/world-countries/mnemonics/geographyMnemonics'
-import { getCountriesForSubregion } from './geographyMemo'
+import { countryId } from '@/features/world-countries/learning'
+import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
+import { getCountriesForSubregionInEffectiveOrder } from './geographyMemo'
+import { resetSubregionCountryOrder, setSubregionCountryOrder } from '@/features/world-countries/subregions/subregionMetadataStore'
 import { isCountryMemoed, markCountryMemoed } from './memoStore'
 import { MemoMnemonicCard } from './MemoMnemonicCard'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
@@ -80,21 +82,40 @@ export function MemoWorkspace({
   onMemoed,
 }: {
   continent: Continent
-  subregion: string
+  subregion: SubregionId
   memoedCountryIds: ReadonlySet<string>
   onMemoed: (ids: Set<string>) => void
 }) {
   const [refreshKey, setRefreshKey] = useState(0)
-  const entries = useMemo(() => getCountriesForSubregion(continent, subregion), [continent, subregion])
-  const countryIds = useMemo(() => getSubregionCountryIds(continent, subregion), [continent, subregion])
+  const [orderVersion, setOrderVersion] = useState(0)
+  const definition = getSubregionDefinition(subregion)
+  const entries = useMemo(
+    () => getCountriesForSubregionInEffectiveOrder(subregion),
+    [orderVersion, subregion],
+  )
+  const countryIds = useMemo(() => entries.map(countryId), [entries])
   const subregionProgress = entries.reduce((count, country) => count + (isCountryMemoed(country, memoedCountryIds) ? 1 : 0), 0)
+
+  const moveCountry = (index: number, offset: -1 | 1) => {
+    const nextIndex = index + offset
+    if (nextIndex < 0 || nextIndex >= entries.length) return
+    const next = entries.map(countryId)
+    ;[next[index], next[nextIndex]] = [next[nextIndex], next[index]]
+    setSubregionCountryOrder(subregion, next)
+    setOrderVersion(value => value + 1)
+  }
+
+  const resetOrder = () => {
+    resetSubregionCountryOrder(subregion)
+    setOrderVersion(value => value + 1)
+  }
 
   return (
     <section className="space-y-4" aria-labelledby="memo-workspace-heading">
       <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 id="memo-workspace-heading" className="text-xl font-bold text-zinc-100">{subregion} Memo</h2>
+            <h2 id="memo-workspace-heading" className="text-xl font-bold text-zinc-100">{definition.label} Memo</h2>
             <p className="mt-1 text-sm text-zinc-500">{entries.length} Country–Capital facts in {continent}.</p>
           </div>
           <span className="text-sm tabular-nums text-cyan-300">{subregionProgress}/{entries.length} memoed</span>
@@ -105,13 +126,55 @@ export function MemoWorkspace({
       </div>
 
       <MemoMnemonicCard
-        targetId={subregionMnemonicId(continent, subregion)}
-        title={`${subregion} mnemonic`}
+        targetId={subregionMnemonicId(subregion)}
+        title={`${definition.label} mnemonic`}
         subtitle={`One story for the ordered ${countryIds.length}-country group`}
         countryIds={countryIds}
         refreshKey={refreshKey}
         onChanged={() => setRefreshKey(value => value + 1)}
       />
+
+      <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4" aria-labelledby="subregion-order-heading">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 id="subregion-order-heading" className="text-sm font-semibold uppercase tracking-wider text-zinc-400">Country order</h3>
+            <p className="mt-1 text-xs text-zinc-600">Shared by Memo and future Recite workflows.</p>
+          </div>
+          <button
+            type="button"
+            onClick={resetOrder}
+            className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-xs text-zinc-400 hover:border-cyan-500 hover:text-zinc-200"
+          >
+            Reset canonical order
+          </button>
+        </div>
+        <ol className="mt-3 space-y-2">
+          {entries.map((country, index) => (
+            <li key={country.id ?? country.country} className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950/40 px-3 py-2">
+              <span className="w-6 text-xs tabular-nums text-zinc-600">{index + 1}.</span>
+              <span className="min-w-0 flex-1 text-sm text-zinc-300">{country.country}</span>
+              <button
+                type="button"
+                onClick={() => moveCountry(index, -1)}
+                disabled={index === 0}
+                aria-label={`Move ${country.country} up`}
+                className="rounded border border-zinc-700 px-2 py-1 text-xs text-zinc-400 enabled:hover:border-cyan-500 enabled:hover:text-zinc-200 disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                onClick={() => moveCountry(index, 1)}
+                disabled={index === entries.length - 1}
+                aria-label={`Move ${country.country} down`}
+                className="rounded border border-zinc-700 px-2 py-1 text-xs text-zinc-400 enabled:hover:border-cyan-500 enabled:hover:text-zinc-200 disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                ↓
+              </button>
+            </li>
+          ))}
+        </ol>
+      </section>
 
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">

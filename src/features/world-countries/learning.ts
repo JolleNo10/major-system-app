@@ -11,6 +11,7 @@ import {
   type ScopeProgress,
 } from '@/core/learning'
 import { countries, type Continent, type Country } from './data/countries'
+import { continentIdFor, subregionIdFor } from './data/subregions'
 import type { CountryQuizDirection } from './quiz/countryQuiz'
 
 // ISO-like stable identities in the same order as the bundled dataset. Keeping
@@ -98,9 +99,12 @@ export function getSubregionScope(
   direction: CountryQuizDirection,
   entries: readonly Country[] = countries,
 ): LearningScope {
+  const stableSubregionId = subregionIdFor(subregion)
   return scope(
-    `geo:subregion:${fallbackCountryId(subregion)}`,
-    entries.filter(entry => entry.subregion === subregion),
+    `geo:subregion:${stableSubregionId ?? fallbackCountryId(subregion)}`,
+    entries.filter(entry => stableSubregionId
+      ? (entry.subregionId ?? subregionIdFor(entry.subregion)) === stableSubregionId
+      : entry.subregion === subregion),
     direction,
   )
 }
@@ -110,8 +114,9 @@ export function getContinentScope(
   direction: CountryQuizDirection,
   entries: readonly Country[] = countries,
 ): LearningScope {
+  const stableContinentId = continentIdFor(continent)
   return scope(
-    `geo:continent:${fallbackCountryId(continent)}`,
+    `geo:continent:${stableContinentId ?? fallbackCountryId(continent)}`,
     entries.filter(entry => entry.continent === continent),
     direction,
   )

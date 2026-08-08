@@ -11,6 +11,7 @@ export {
   blobToDataUrl,
   dataUrlToBlob,
   decodeMnemonicEntry,
+  encodeMnemonicEntries,
   exportMnemonicTargets,
   exportMnemonics,
   importMnemonics,

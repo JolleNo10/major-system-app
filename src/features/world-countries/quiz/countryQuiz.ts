@@ -1,4 +1,5 @@
 import type { Country } from '@/features/world-countries/data/countries'
+import { subregionIdFor } from '@/features/world-countries/data/subregions'
 
 export type CountryQuizDirection = 'country-to-capital' | 'capital-to-country'
 
@@ -50,13 +51,17 @@ export function buildCountryQuestion(
   const eligible = allCountries.filter(candidate => (
     candidate.country !== entry.country && answerFor(candidate, direction) !== answer
   ))
+  const entrySubregionId = entry.subregionId ?? subregionIdFor(entry.subregion)
   const sameSubregion = shuffleWith(
-    eligible.filter(candidate => candidate.subregion === entry.subregion),
+    eligible.filter(candidate => (
+      (candidate.subregionId ?? subregionIdFor(candidate.subregion)) === entrySubregionId
+    )),
     rng,
   )
   const sameContinent = shuffleWith(
     eligible.filter(candidate => (
-      candidate.subregion !== entry.subregion && candidate.continent === entry.continent
+      (candidate.subregionId ?? subregionIdFor(candidate.subregion)) !== entrySubregionId
+        && candidate.continent === entry.continent
     )),
     rng,
   )

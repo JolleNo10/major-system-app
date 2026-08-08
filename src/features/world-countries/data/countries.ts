@@ -6,6 +6,12 @@ export type Continent =
   | "South America"
   | "Oceania";
 
+import { getSubregionDefinition, getSubregionIdForLabel, type SubregionId } from './subregions'
+
+export type { SubregionId } from './subregions'
+
+export type CountryId = string
+
 /** The bundled map reference associated with each geography Continent. */
 export const CONTINENT_MAP_IDS: Readonly<Record<Continent, string>> = {
   Africa: 'africa',
@@ -18,10 +24,13 @@ export const CONTINENT_MAP_IDS: Readonly<Record<Continent, string>> = {
 
 export type Country = {
   /** Stable ISO-like code used by persisted learning and mnemonic records. */
-  id?: string;
+  id?: CountryId;
   country: string;
   capital: string;
   continent: Continent;
+  /** Stable Subregion identity. Legacy fixtures may omit this during migration. */
+  subregionId?: SubregionId;
+  /** Display label retained as a compatibility/presentation field. */
   subregion: string;
   /** UN M49 subregion retained when the app's learning geography differs. */
   unM49Subregion?: string;
@@ -245,9 +254,13 @@ const COUNTRY_RECORDS: Omit<Country, 'id'>[] = [
   { country: "Zimbabwe", capital: "Harare", continent: "Africa", subregion: "Southern Africa" },
 ];
 
-export const countries: Country[] = COUNTRY_RECORDS.map((entry, index) => ({
-  ...entry,
-  id: COUNTRY_CODES[index],
-}))
+export const countries: Country[] = COUNTRY_RECORDS.map((entry, index) => {
+  const subregionId = getSubregionIdForLabel(entry.subregion)
+  if (!subregionId) throw new Error(`Unknown country Subregion label: ${entry.subregion}`)
+  if (getSubregionDefinition(subregionId).continent !== entry.continent) {
+    throw new Error(`Country ${entry.country} has an inconsistent Continent/Subregion pair`)
+  }
+  return { ...entry, id: COUNTRY_CODES[index], subregionId }
+})
 
 export default countries;

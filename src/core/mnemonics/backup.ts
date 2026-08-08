@@ -41,7 +41,16 @@ export function dataUrlToBlob(dataUrl: string): Blob {
 export async function exportMnemonics(
   mnemonics: readonly Mnemonic[],
 ): Promise<Blob> {
-  const rows = await Promise.all(mnemonics.map(async mnemonic => {
+  const rows = await encodeMnemonicEntries(mnemonics)
+  const payload: MnemonicExport = { version: 1, mnemonics: rows }
+  return new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+}
+
+/** Encode shared mnemonic fields for feature-owned backup envelopes. */
+export async function encodeMnemonicEntries(
+  mnemonics: readonly Mnemonic[],
+): Promise<MnemonicExportEntry[]> {
+  return Promise.all(mnemonics.map(async mnemonic => {
     const extras = Object.fromEntries(
       Object.entries(mnemonic).filter(([key]) => !['targetId', 'text', 'image', 'updatedAt'].includes(key)),
     )
@@ -52,8 +61,6 @@ export async function exportMnemonics(
       imageDataUrl: mnemonic.image ? await blobToDataUrl(mnemonic.image) : null,
     } as MnemonicExportEntry
   }))
-  const payload: MnemonicExport = { version: 1, mnemonics: rows }
-  return new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
 }
 
 export function parseMnemonicExport(json: string): MnemonicExportEntry[] {

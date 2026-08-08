@@ -2,6 +2,8 @@ import type { Continent, Country } from '@/features/world-countries/data/countri
 import type { SvgMapHoverGroup } from '@/features/world-countries/common/SvgMapController'
 import { countryToSvgIds } from '@/features/world-countries/common/countryMapIds'
 import { countryId } from '@/features/world-countries/learning'
+import { getSubregionDefinition } from '@/features/world-countries/data/subregions'
+import { countrySubregionId } from '@/features/world-countries/subregions/subregionMetadata'
 import { getCountriesForContinent, getCountriesForSubregion } from './geographyMemo'
 import type { MemoedCountryIds } from './memoProgress'
 
@@ -65,9 +67,11 @@ export function createSubregionHoverGroups(
   const groups = new Map<string, string[]>()
   for (const entry of getCountriesForContinent(continent, entries)) {
     const ids = resolveCountryToSvgIds(entry, discoveredSvgIds)
-    const group = groups.get(entry.subregion) ?? []
+    const subregionId = countrySubregionId(entry)
+    const subregionLabel = subregionId ? getSubregionDefinition(subregionId).label : entry.subregion
+    const group = groups.get(subregionLabel) ?? []
     group.push(...ids)
-    groups.set(entry.subregion, group)
+    groups.set(subregionLabel, group)
   }
   return [...groups.entries()].map(([subregion, ids]) => ({
     id: getSubregionHoverGroupId(subregion),

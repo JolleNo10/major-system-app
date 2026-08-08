@@ -7,6 +7,7 @@ import {
   useMnemonic,
 } from '@/core/mnemonics'
 import type { Country } from '@/features/world-countries/data/countries'
+import { getSubregionDefinition, subregionIdFor } from '@/features/world-countries/data/subregions'
 import {
   countryCapitalMnemonicId,
   subregionMnemonicId,
@@ -175,7 +176,7 @@ function MnemonicCard({
         </button>
       )}
 
-      {stale && <p className="text-xs text-amber-400">This mnemonic was created for an older country list.</p>}
+      {stale && <p className="text-xs text-amber-400">This mnemonic was created for a different country order. Review and save it to update.</p>}
       {flash && <p className="text-xs text-cyan-400">{flash}</p>}
     </article>
   )
@@ -185,22 +186,30 @@ export function GeographyMnemonicPanel({ country }: { country: Country }) {
   const [refresh, setRefresh] = useState(0)
   const [flash, showFlash] = useFlash()
   const fileRef = useRef<HTMLInputElement>(null)
+  const currentSubregionId = country.subregionId ?? subregionIdFor(country.subregion)
+  const subregionLabel = currentSubregionId
+    ? getSubregionDefinition(currentSubregionId).label
+    : country.subregion
   const subregionCountryIds = useMemo(
-    () => getSubregionCountryIds(country.continent, country.subregion),
-    [country.continent, country.subregion],
+    () => currentSubregionId
+      ? getSubregionCountryIds(currentSubregionId)
+      : getSubregionCountryIds(country.continent, country.subregion),
+    [country.continent, country.subregion, currentSubregionId, refresh],
   )
   const countryTargetId = countryCapitalMnemonicId(country)
-  const subregionTargetId = subregionMnemonicId(country.continent, country.subregion)
+  const subregionTargetId = currentSubregionId
+    ? subregionMnemonicId(currentSubregionId)
+    : subregionMnemonicId(country.continent, country.subregion)
 
   const download = async () => {
     const blob = await exportGeographyMnemonics()
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement('a')
     anchor.href = url
-    anchor.download = 'geography-mnemonics.json'
+    anchor.download = 'geography-backup.json'
     anchor.click()
     URL.revokeObjectURL(url)
-    showFlash('Exported Geography mnemonics')
+    showFlash('Exported Geography backup')
   }
 
   const handleImport = (event: ChangeEvent<HTMLInputElement>) => {
@@ -245,7 +254,7 @@ export function GeographyMnemonicPanel({ country }: { country: Country }) {
         />
         <MnemonicCard
           targetId={subregionTargetId}
-          title={country.subregion}
+          title={subregionLabel}
           subtitle={`${subregionCountryIds.length} countries in ${country.continent}`}
           countryIds={subregionCountryIds}
           refreshKey={refresh}

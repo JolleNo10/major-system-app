@@ -145,7 +145,7 @@ export function MemoMnemonicCard({
         </button>
       )}
 
-      {stale && <p className="mt-3 text-xs text-amber-400">This mnemonic was created for an older country list.</p>}
+      {stale && <p className="mt-3 text-xs text-amber-400">This mnemonic was created for a different country order. Review and save it to update.</p>}
       {error && <p className="mt-3 text-xs text-red-300">{error}</p>}
     </article>
   )

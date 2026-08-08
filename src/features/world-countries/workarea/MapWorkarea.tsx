@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRails } from '@/app/layout/PageLayoutContext'
 import { SvgMapController, type SvgMapCountry, type SvgMapHoverScope } from '@/features/world-countries/common/SvgMapController'
 import { countries, type Country } from '@/features/world-countries/data/countries'
+import { getSubregionDefinition, subregionIdFor } from '@/features/world-countries/data/subregions'
 import { mapCountryNamesToSvgIds } from '@/features/world-countries/common/countryMapIds'
 import { Switch } from '@/core/ui/Switch'
 import { MAP_DEFINITIONS } from '@/features/world-countries/common/worldMap'
@@ -24,6 +25,11 @@ export type CountryHierarchy = readonly {
   }[]
 }[]
 
+function subregionLabel(country: Country): string {
+  const id = country.subregionId ?? subregionIdFor(country.subregion)
+  return id ? getSubregionDefinition(id).label : country.subregion
+}
+
 export function buildCountryHierarchy(source: readonly Country[]): CountryHierarchy {
   const continents = new Map<string, Map<string, string[]>>()
 
@@ -34,9 +40,10 @@ export function buildCountryHierarchy(source: readonly Country[]): CountryHierar
       continents.set(entry.continent, subregions)
     }
 
-    const countryNames = subregions.get(entry.subregion) ?? []
+    const name = subregionLabel(entry)
+    const countryNames = subregions.get(name) ?? []
     countryNames.push(entry.country)
-    subregions.set(entry.subregion, countryNames)
+    subregions.set(name, countryNames)
   }
 
   return [...continents.entries()]
