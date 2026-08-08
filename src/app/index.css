@@ -47,6 +47,12 @@ body {
   min-height: 100dvh;
 }
 
+.world-map-svg > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
 }

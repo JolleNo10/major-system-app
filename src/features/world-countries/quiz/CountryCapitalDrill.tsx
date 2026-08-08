@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useLayoutHeader } from '@/app/layout/PageLayoutContext'
 import { MultipleChoice } from '@/core/ui/MultipleChoice'
 import { ScoreBar } from '@/core/ui/ScoreBar'
 import { TypingInput } from '@/core/ui/TypingInput'
-import { countries, type Continent, type Country } from '@/features/world-countries/countries'
+import { MapWorkarea } from '@/features/world-countries/workarea/MapWorkarea'
+import { countries, type Continent, type Country } from '@/features/world-countries/data/countries'
 import {
   buildCountryQuestion,
   matchesPlaceName,
   pickCountry,
   type CountryQuestion,
   type CountryQuizDirection,
-} from '@/features/world-countries/countryQuiz'
+} from '@/features/world-countries/quiz/countryQuiz'
 import type { AnswerMode } from '@/core/types'
 
 const CONTINENTS: Continent[] = [
@@ -242,12 +244,45 @@ function CountryCapitalDrill({
 }
 
 export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) {
+  const [tab, setTab] = useState<'quiz' | 'workarea'>('quiz')
   const [direction, setDirection] = useState<CountryQuizDirection>('country-to-capital')
 
-  return <CountryCapitalDrill
-    key={direction}
-    answerMode={answerMode}
-    direction={direction}
-    onDirectionChange={setDirection}
-  />
+  useLayoutHeader(
+    <div className="mb-4 flex justify-center">
+      <div className="flex gap-1 rounded-lg bg-zinc-800 p-1">
+        <button
+          type="button"
+          onClick={() => setTab('quiz')}
+          className={`rounded-md px-5 py-1.5 text-sm font-medium transition-colors ${
+            tab === 'quiz'
+              ? 'bg-cyan-600 text-white'
+              : 'text-zinc-400 hover:text-zinc-200'
+          }`}
+        >
+          Quiz
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab('workarea')}
+          className={`rounded-md px-5 py-1.5 text-sm font-medium transition-colors ${
+            tab === 'workarea'
+              ? 'bg-cyan-600 text-white'
+              : 'text-zinc-400 hover:text-zinc-200'
+          }`}
+        >
+          Workarea
+        </button>
+      </div>
+    </div>,
+    [tab],
+  )
+
+  return tab === 'workarea'
+    ? <MapWorkarea />
+    : <CountryCapitalDrill
+        key={direction}
+        answerMode={answerMode}
+        direction={direction}
+        onDirectionChange={setDirection}
+      />
 }

@@ -1,4 +1,4 @@
-import type { Country } from '@/features/world-countries/countries'
+import type { Country } from '@/features/world-countries/data/countries'
 
 export type CountryQuizDirection = 'country-to-capital' | 'capital-to-country'
 

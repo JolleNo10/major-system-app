@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildCountryQuestion, matchesPlaceName, normalizePlaceName, pickCountry } from './countryQuiz'
-import type { Country } from './countries'
+import type { Country } from '@/features/world-countries/data/countries'
 
 const sample: Country[] = [
   { country: 'Norway', capital: 'Oslo', continent: 'Europe', subregion: 'Northern Europe' },
