@@ -52,7 +52,7 @@ describe('Memo map registry', () => {
       discovered.map(country => country.id),
     )
     const unresolvedNames = unresolved.map(item => item.country.country)
-    if (continent === 'Asia') expect(unresolvedNames).toEqual(['Cyprus'])
+    if (continent === 'Asia') expect(unresolvedNames).toEqual([])
     else if (continent === 'Oceania') expect(unresolvedNames).toHaveLength(getCountriesForContinent(continent).length)
     else expect(unresolved, unresolvedNames.join(', ')).toEqual([])
   })

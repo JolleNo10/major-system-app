@@ -23,6 +23,8 @@ export type Country = {
   capital: string;
   continent: Continent;
   subregion: string;
+  /** UN M49 subregion retained when the app's learning geography differs. */
+  unM49Subregion?: string;
   aliases?: readonly string[];
 };
 
@@ -86,7 +88,7 @@ const COUNTRY_RECORDS: Omit<Country, 'id'>[] = [
   { country: "Côte d'Ivoire", capital: "Yamoussoukro", continent: "Africa", subregion: "West Africa" },
   { country: "Croatia", capital: "Zagreb", continent: "Europe", subregion: "Balkans" },
   { country: "Cuba", capital: "Havana", continent: "North America", subregion: "Caribbean" },
-  { country: "Cyprus", capital: "Nicosia", continent: "Asia", subregion: "West Asia" },
+  { country: "Cyprus", capital: "Nicosia", continent: "Europe", subregion: "Southern Europe", unM49Subregion: "Western Asia" },
   { country: "Czechia", capital: "Prague", continent: "Europe", subregion: "Central Europe" },
   { country: "Democratic Republic of the Congo", capital: "Kinshasa", continent: "Africa", subregion: "Central Africa" },
   { country: "Denmark", capital: "Copenhagen", continent: "Europe", subregion: "Northern Europe" },

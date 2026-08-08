@@ -19,6 +19,14 @@ describe('World Countries learning adapter', () => {
     expect(countries.find(entry => entry.country === 'Norway')?.id).toBe('NO')
   })
 
+  it('keeps Cyprus in the app geography while retaining its UN M49 reference', () => {
+    expect(countries.find(entry => entry.country === 'Cyprus')).toMatchObject({
+      continent: 'Europe',
+      subregion: 'Southern Europe',
+      unM49Subregion: 'Western Asia',
+    })
+  })
+
   it('keeps opposite recall directions independent and uses stable country ids', () => {
     expect(countryToCapitalItemId(sample[0])).toBe('geo:capital:NO:country-to-capital')
     expect(capitalToCountryItemId(sample[0])).toBe('geo:capital:NO:capital-to-country')
