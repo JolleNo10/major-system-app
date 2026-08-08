@@ -1,5 +1,5 @@
 import europeSvgUrl from '@/features/world-countries/assets/MapChart_Map_Europe_names.svg?url'
-import type { SvgMapHoverGroup } from '@/features/world-countries/common/SvgMapController'
+import type { SvgMapHoverGroup, SvgMapZoomArea } from '@/features/world-countries/common/SvgMapController'
 
 export interface MapDefinition {
   id: string
@@ -7,6 +7,7 @@ export interface MapDefinition {
   svgUrl: string
   demoCountryIds: readonly string[]
   hoverGroups: readonly SvgMapHoverGroup[]
+  zoomAreas: readonly SvgMapZoomArea[]
 }
 
 export const MAP_DEFINITIONS: readonly MapDefinition[] = [
@@ -19,6 +20,14 @@ export const MAP_DEFINITIONS: readonly MapDefinition[] = [
       {
         id: 'scandinavia-demo',
         countryIds: ['Norway', 'Sweden', 'Denmark'],
+      },
+    ],
+    zoomAreas: [
+      {
+        id: 'nordics',
+        label: 'Nordics',
+        countryIds: ['Denmark', 'Finland', 'Iceland', 'Norway', 'Sweden'],
+        padding: 50,
       },
     ],
   },

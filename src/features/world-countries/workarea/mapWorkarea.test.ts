@@ -19,6 +19,17 @@ describe('world map definitions', () => {
     ])
   })
 
+  it('defines a padded Nordics zoom area', () => {
+    expect(europe.zoomAreas).toEqual([
+      {
+        id: 'nordics',
+        label: 'Nordics',
+        countryIds: ['Denmark', 'Finland', 'Iceland', 'Norway', 'Sweden'],
+        padding: 50,
+      },
+    ])
+  })
+
   it('maps Europe dataset names to the SVG country IDs', () => {
     expect(mapCountryNamesToSvgIds([
       'Bosnia and Herzegovina',

@@ -114,6 +114,7 @@ export function MapWorkarea() {
   const [mapCountries, setMapCountries] = useState<readonly SvgMapCountry[]>([])
   const [selectedCountries, setSelectedCountries] = useState<Set<string>>(() => new Set())
   const [selectedSubregion, setSelectedSubregion] = useState<string | null>(null)
+  const [zoomAreaId, setZoomAreaId] = useState('full')
   const [showNames, setShowNames] = useState(false)
   const [hoverHighlight, setHoverHighlight] = useState(false)
   const [hoverShowName, setHoverShowName] = useState(false)
@@ -150,6 +151,7 @@ export function MapWorkarea() {
     setMapCountries([])
     setSelectedCountries(new Set())
     setSelectedSubregion(null)
+    setZoomAreaId('full')
     setLoading(true)
     setLoadError(false)
 
@@ -216,6 +218,16 @@ export function MapWorkarea() {
     setSelectedCountries(new Set(result.activeIds))
   }, [])
 
+  const changeZoomArea = useCallback((nextId: string) => {
+    setZoomAreaId(nextId)
+    if (nextId === 'full') {
+      controllerRef.current?.resetZoom()
+      return
+    }
+    const zoomArea = definition.zoomAreas.find(area => area.id === nextId)
+    if (zoomArea) controllerRef.current?.setZoomArea(zoomArea.countryIds, zoomArea.padding)
+  }, [definition])
+
   const changeShowNames = useCallback((next: boolean) => {
     setShowNames(next)
     controllerRef.current?.setAllNamesVisible(next)
@@ -270,9 +282,13 @@ export function MapWorkarea() {
   const selectedLabels = mapCountries
     .filter(country => selectedCountries.has(country.id))
     .map(country => country.name)
+  const selectedZoomArea = definition.zoomAreas.find(area => area.id === zoomAreaId)
+  const mapTitle = selectedZoomArea
+    ? `${definition.label}, zoomed to ${selectedZoomArea.label}`
+    : definition.label
   const mapLabel = selectedLabels.length
-    ? `Map of ${definition.label}. Highlighted: ${selectedLabels.join(', ')}.`
-    : `Map of ${definition.label}. No countries highlighted.`
+    ? `Map of ${mapTitle}. Highlighted: ${selectedLabels.join(', ')}.`
+    : `Map of ${mapTitle}. No countries highlighted.`
 
   return (
     <div className="w-full space-y-4 animate-fade-in">
@@ -305,7 +321,7 @@ export function MapWorkarea() {
           </div>
         </div>
 
-        <div className="grid gap-3 border-t border-zinc-800 pt-4 sm:grid-cols-6">
+        <div className="grid gap-3 border-t border-zinc-800 pt-4 sm:grid-cols-7">
           <div className="flex items-center justify-between gap-3 sm:block">
             <span className="text-sm text-zinc-300 sm:mb-2 sm:block">Border highlight</span>
             <Switch
@@ -363,6 +379,22 @@ export function MapWorkarea() {
             >
               <option value="single">Single country</option>
               <option value="group">Configured group</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="workarea-zoom-area" className="mb-1.5 block text-sm text-zinc-300">
+              Zoom area
+            </label>
+            <select
+              id="workarea-zoom-area"
+              value={zoomAreaId}
+              onChange={event => changeZoomArea(event.target.value)}
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-200 outline-none focus:border-cyan-500"
+            >
+              <option value="full">Full Europe</option>
+              {definition.zoomAreas.map(area => (
+                <option key={area.id} value={area.id}>{area.label}</option>
+              ))}
             </select>
           </div>
         </div>

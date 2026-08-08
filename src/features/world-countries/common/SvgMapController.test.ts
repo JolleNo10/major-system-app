@@ -89,6 +89,29 @@ describe('SvgMapController loading and discovery', () => {
 })
 
 describe('SvgMapController persistent state', () => {
+  it('zooms to a padded country bounding box and can restore the original viewBox', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+
+    Object.defineProperty(path(mount, 'Alpha'), 'getBBox', {
+      configurable: true,
+      value: () => ({ x: 10, y: 10, width: 10, height: 10 }),
+    })
+    Object.defineProperty(path(mount, 'Beta'), 'getBBox', {
+      configurable: true,
+      value: () => ({ x: 40, y: 20, width: 5, height: 15 }),
+    })
+
+    expect(controller.setZoomArea(['Alpha', 'Beta'], 5)).toEqual({
+      activeIds: ['Alpha', 'Beta'],
+      unknownIds: [],
+    })
+    expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('5 5 45 35')
+
+    controller.resetZoom()
+    expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('0 0 100 50')
+  })
+
   it('sets, toggles, clears, and reports listed or complement highlights', async () => {
     const { mount, controller } = makeController()
     await controller.load({ markup: TEST_MAP })

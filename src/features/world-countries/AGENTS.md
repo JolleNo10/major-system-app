@@ -13,9 +13,9 @@ This feature provides the country/capital drill and an interactive SVG map worka
 
 ## Architecture map
 
-- `index.ts` — public feature API: `WorldCountriesDrill`, `countries`, `Country`, and `Continent`.
+- `index.ts` — public feature API: `WorldCountriesDrill`, `MapWorkarea`, `countries`, `Country`, and `Continent`.
 - `data/countries.ts` — static country/capital/continent/subregion records used by the quiz.
-- `quiz/CountryCapitalDrill.tsx` — feature entry UI; owns Quiz/Workarea selection and all in-memory quiz session state.
+- `quiz/CountryCapitalDrill.tsx` — quiz entry UI; owns all in-memory quiz session state.
 - `quiz/countryQuiz.ts` — pure normalization, answer matching, country selection, and distractor construction.
 - `workarea/MapWorkarea.tsx` — React adapter for the imperative SVG controller; owns workarea controls and publishes the country rail.
 - `common/worldMap.ts` — registry connecting map assets to demo IDs and hover groups.
@@ -25,7 +25,7 @@ This feature provides the country/capital drill and an interactive SVG map worka
 
 ## Important execution and data flow
 
-The application renders `WorldCountriesDrill` from `index.ts`. The component publishes its Quiz/Workarea switch with `useLayoutHeader`.
+The application renders `WorldCountriesDrill` and `MapWorkarea` as separate application modes from `index.ts`. The workarea is an experimental destination from the app's main menu rather than a tab inside the quiz.
 
 - Quiz: filter/direction interaction -> `CountryCapitalDrill` builds a pool -> `pickCountry` and `buildCountryQuestion` create a question -> `MultipleChoice` or `TypingInput` returns an answer -> `matchesPlaceName` scores it -> local score/streak/coverage state updates -> the next question appears after 1.4 seconds. Changing direction remounts the quiz; changing a geographic filter resets the session.
 - Workarea: `MapWorkarea` selects a `MAP_DEFINITIONS` entry -> creates `SvgMapController` -> `load({ url })` fetches, validates, imports, and discovers the SVG -> discovered demo countries populate the right rail -> control handlers update the controller and mirror active IDs in React state. Changing the map definition is the only normal reload path; unmount destroys the controller.

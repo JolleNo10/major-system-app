@@ -22,6 +22,13 @@ export interface SvgMapGroupOutline {
   visible?: boolean
 }
 
+export interface SvgMapZoomArea {
+  id: string
+  label: string
+  countryIds: readonly string[]
+  padding?: number
+}
+
 export interface SvgMapSettings {
   countryFill: string | null
   countryStroke: string | null
@@ -158,6 +165,7 @@ export class SvgMapController {
   private hoveredIds = new Set<string>()
   private listeners: HoverListeners[] = []
   private svg: SVGSVGElement | null = null
+  private originalViewBox: string | null = null
   private loadVersion = 0
   private abortController: AbortController | null = null
   private destroyed = false
@@ -200,6 +208,7 @@ export class SvgMapController {
     imported.setAttribute('focusable', 'false')
     this.mount.replaceChildren(imported)
     this.svg = imported
+    this.originalViewBox = imported.getAttribute('viewBox')
     this.bindDiscoveredCountries(imported, markup)
     this.attachHoverListeners()
     this.render()
@@ -229,6 +238,54 @@ export class SvgMapController {
 
   getNamedIds(): readonly string[] {
     return [...this.named]
+  }
+
+  setZoomArea(countryIds: Iterable<string>, padding = 40): SvgMapMutationResult {
+    this.assertUsable()
+    const { knownIds, unknownIds } = this.resolveKnown(countryIds)
+    if (knownIds.length === 0 || !this.svg || !this.originalViewBox) {
+      return { activeIds: [], unknownIds }
+    }
+
+    const originalBounds = this.parseViewBox(this.originalViewBox)
+    if (!originalBounds) return { activeIds: knownIds, unknownIds }
+
+    const boxes = knownIds.flatMap(id => {
+      const country = this.countries.get(id)
+      if (!country) return []
+      try {
+        const box = country.path.getBBox()
+        return Number.isFinite(box.x) && Number.isFinite(box.y)
+          && Number.isFinite(box.width) && Number.isFinite(box.height)
+          && box.width > 0 && box.height > 0
+          ? [box]
+          : []
+      } catch {
+        return []
+      }
+    })
+    if (boxes.length === 0) return { activeIds: knownIds, unknownIds }
+
+    const safePadding = Number.isFinite(padding) ? Math.max(0, padding) : 0
+    const minX = Math.max(originalBounds.x, Math.min(...boxes.map(box => box.x)) - safePadding)
+    const minY = Math.max(originalBounds.y, Math.min(...boxes.map(box => box.y)) - safePadding)
+    const maxX = Math.min(
+      originalBounds.x + originalBounds.width,
+      Math.max(...boxes.map(box => box.x + box.width)) + safePadding,
+    )
+    const maxY = Math.min(
+      originalBounds.y + originalBounds.height,
+      Math.max(...boxes.map(box => box.y + box.height)) + safePadding,
+    )
+    if (maxX <= minX || maxY <= minY) return { activeIds: knownIds, unknownIds }
+
+    this.svg.setAttribute('viewBox', `${minX} ${minY} ${maxX - minX} ${maxY - minY}`)
+    return { activeIds: knownIds, unknownIds }
+  }
+
+  resetZoom(): void {
+    this.assertUsable()
+    if (this.svg && this.originalViewBox) this.svg.setAttribute('viewBox', this.originalViewBox)
   }
 
   setHighlighted(
@@ -735,6 +792,14 @@ export class SvgMapController {
     return Object.entries(colors)
   }
 
+  private parseViewBox(value: string): { x: number; y: number; width: number; height: number } | null {
+    const values = value.trim().split(/[\s,]+/).map(Number)
+    if (values.length !== 4 || values.some(number => !Number.isFinite(number))) return null
+    const [x, y, width, height] = values
+    if (width <= 0 || height <= 0) return null
+    return { x, y, width, height }
+  }
+
   private resetMap(): void {
     this.detachHoverListeners()
     this.countries.clear()
@@ -749,6 +814,7 @@ export class SvgMapController {
     this.hoveredNameOverride = null
     this.hoveredIds.clear()
     this.svg = null
+    this.originalViewBox = null
     this.mount.replaceChildren()
   }
 }
