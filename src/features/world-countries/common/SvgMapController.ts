@@ -108,6 +108,7 @@ interface HoverListeners {
   path: SVGPathElement
   enter: EventListener
   leave: EventListener
+  click: EventListener
 }
 
 const FORBIDDEN_ELEMENTS = 'script, foreignObject, iframe, object, embed, image, style'
@@ -164,6 +165,7 @@ export class SvgMapController {
   private hoveredNameOverride: boolean | null = null
   private hoveredIds = new Set<string>()
   private listeners: HoverListeners[] = []
+  private countryClickHandler: ((countryId: string) => void) | null = null
   private svg: SVGSVGElement | null = null
   private originalViewBox: string | null = null
   private loadVersion = 0
@@ -380,6 +382,12 @@ export class SvgMapController {
     this.render()
   }
 
+  /** Register a framework-neutral callback for clicks on discovered countries. */
+  setCountryClickHandler(handler: ((countryId: string) => void) | null): void {
+    this.assertUsable()
+    this.countryClickHandler = handler
+  }
+
   setHoverGroups(groups: readonly SvgMapHoverGroup[]): SvgMapHoverGroupResult {
     this.assertUsable()
     const unknownIds = new Set<string>()
@@ -533,8 +541,8 @@ export class SvgMapController {
     }
 
     for (const definition of discovered) {
-      const path = svg.getElementById(definition.pathId) as SVGPathElement | null
-      const label = svg.getElementById(definition.labelId) as SVGTextElement | null
+      const path = this.findElementById(svg, definition.pathId) as SVGPathElement | null
+      const label = this.findElementById(svg, definition.labelId) as SVGTextElement | null
       if (!path || !label) continue
       const parent = label.parentElement
       if (!parent) continue
@@ -562,6 +570,15 @@ export class SvgMapController {
     }
   }
 
+  private findElementById(root: SVGSVGElement, id: string): Element | null {
+    // SVGSVGElement#getElementById is not implemented consistently across
+    // browsers and DOM test environments. The attribute comparison fallback
+    // is also safe for IDs containing punctuation that needs CSS escaping.
+    const native = root.getElementById?.(id)
+    if (native) return native
+    return [...root.querySelectorAll<SVGElement>('[id]')].find(element => element.id === id) ?? null
+  }
+
   private extractCountryDefinitions(svg: SVGSVGElement): readonly SvgMapCountry[] {
     const countries: SvgMapCountry[] = []
     const labels = svg.querySelectorAll<SVGTextElement>('text[id$="_label"]')
@@ -586,16 +603,19 @@ export class SvgMapController {
     for (const country of this.countries.values()) {
       const enter: EventListener = () => this.setHoveredCountry(country.id)
       const leave: EventListener = () => this.setHoveredCountry(null)
+      const click: EventListener = () => this.countryClickHandler?.(country.id)
       country.path.addEventListener('pointerenter', enter)
       country.path.addEventListener('pointerleave', leave)
-      this.listeners.push({ path: country.path, enter, leave })
+      country.path.addEventListener('click', click)
+      this.listeners.push({ path: country.path, enter, leave, click })
     }
   }
 
   private detachHoverListeners(): void {
-    for (const { path, enter, leave } of this.listeners) {
+    for (const { path, enter, leave, click } of this.listeners) {
       path.removeEventListener('pointerenter', enter)
       path.removeEventListener('pointerleave', leave)
+      path.removeEventListener('click', click)
     }
     this.listeners = []
   }

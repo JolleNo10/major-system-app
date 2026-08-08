@@ -6,6 +6,16 @@ export type Continent =
   | "South America"
   | "Oceania";
 
+/** The bundled map reference associated with each geography Continent. */
+export const CONTINENT_MAP_IDS: Readonly<Record<Continent, string>> = {
+  Africa: 'africa',
+  Asia: 'asia',
+  Europe: 'europe',
+  'North America': 'america',
+  'South America': 'america',
+  Oceania: 'oceania',
+}
+
 export type Country = {
   /** Stable ISO-like code used by persisted learning and mnemonic records. */
   id?: string;

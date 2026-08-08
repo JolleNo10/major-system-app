@@ -215,6 +215,19 @@ describe('SvgMapController persistent state', () => {
 })
 
 describe('SvgMapController hover behavior', () => {
+  it('dispatches generic country clicks and supports removing the handler', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    const clicked: string[] = []
+    controller.setCountryClickHandler(id => clicked.push(id))
+    path(mount, 'Alpha').dispatchEvent(new MouseEvent('click'))
+    expect(clicked).toEqual(['Alpha'])
+
+    controller.setCountryClickHandler(null)
+    path(mount, 'Beta').dispatchEvent(new MouseEvent('click'))
+    expect(clicked).toEqual(['Alpha'])
+  })
+
   it('is disabled by default and supports independent single hover effects', async () => {
     const { mount, controller } = makeController()
     await controller.load({ markup: TEST_MAP })
