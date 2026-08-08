@@ -1,8 +1,55 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRails } from '@/app/layout/PageLayoutContext'
-import { SvgMapController, type SvgMapCountry, type SvgMapHoverScope } from '@/core/maps/SvgMapController'
+import { SvgMapController, type SvgMapCountry, type SvgMapHoverScope } from '@/features/world-countries/common/SvgMapController'
+import { countries, type Country } from '@/features/world-countries/data/countries'
 import { Switch } from '@/core/ui/Switch'
 import { MAP_DEFINITIONS } from '@/features/world-countries/common/worldMap'
+
+const SCANDINAVIA_OUTLINE_ID = 'scandinavia-demo-outline'
+const DEMO_COUNTRY_COLORS: Readonly<Record<string, string>> = {
+  Germany: '#ef4444',
+  Italy: '#22c55e',
+  England: '#a855f7',
+  Andorra: '#f97316',
+}
+
+export type CountryHierarchy = readonly {
+  continent: string
+  subregions: readonly {
+    name: string
+    countries: readonly string[]
+  }[]
+}[]
+
+export function buildCountryHierarchy(source: readonly Country[]): CountryHierarchy {
+  const continents = new Map<string, Map<string, string[]>>()
+
+  for (const entry of source) {
+    let subregions = continents.get(entry.continent)
+    if (!subregions) {
+      subregions = new Map()
+      continents.set(entry.continent, subregions)
+    }
+
+    const countryNames = subregions.get(entry.subregion) ?? []
+    countryNames.push(entry.country)
+    subregions.set(entry.subregion, countryNames)
+  }
+
+  return [...continents.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([continent, subregions]) => ({
+      continent,
+      subregions: [...subregions.entries()]
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([name, countryNames]) => ({
+          name,
+          countries: [...countryNames].sort((left, right) => left.localeCompare(right)),
+        })),
+    }))
+}
+
+const COUNTRY_HIERARCHY = buildCountryHierarchy(countries)
 
 function CountryControls({
   countries,
@@ -63,10 +110,17 @@ export function MapWorkarea() {
   const [hoverHighlight, setHoverHighlight] = useState(false)
   const [hoverShowName, setHoverShowName] = useState(false)
   const [hoverScope, setHoverScope] = useState<SvgMapHoverScope>('single')
+  const [borderHighlight, setBorderHighlight] = useState(false)
+  const [groupOutline, setGroupOutline] = useState(false)
+  const [colorDemo, setColorDemo] = useState(false)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const mapMountRef = useRef<HTMLDivElement>(null)
   const controllerRef = useRef<SvgMapController | null>(null)
+  const groupOutlineRef = useRef(groupOutline)
+  const colorDemoRef = useRef(colorDemo)
+  groupOutlineRef.current = groupOutline
+  colorDemoRef.current = colorDemo
 
   const definition = MAP_DEFINITIONS.find(region => region.id === regionId) ?? MAP_DEFINITIONS[0]
 
@@ -80,6 +134,8 @@ export function MapWorkarea() {
       hoverHighlight,
       hoverShowName,
       hoverScope,
+      highlightStroke: borderHighlight ? '#22d3ee' : null,
+      highlightStrokeWidth: borderHighlight ? '2.5px' : null,
     })
     controllerRef.current = controller
     setAvailableCountries([])
@@ -91,6 +147,16 @@ export function MapWorkarea() {
       .then(countries => {
         if (cancelled) return
         controller.setHoverGroups(definition.hoverGroups)
+        controller.setGroupOutlines(
+          definition.hoverGroups.map(group => ({
+            id: `${group.id}-outline`,
+            countryIds: group.countryIds,
+            stroke: '#facc15',
+            strokeWidth: '4px',
+            visible: groupOutlineRef.current,
+          })),
+        )
+        if (colorDemoRef.current) controller.setCountryColors(DEMO_COUNTRY_COLORS)
         const byId = new Map(countries.map(country => [country.id, country]))
         setAvailableCountries(
           definition.demoCountryIds.flatMap(id => {
@@ -146,6 +212,25 @@ export function MapWorkarea() {
     controllerRef.current?.updateSettings({ hoverScope: next })
   }, [])
 
+  const changeBorderHighlight = useCallback((next: boolean) => {
+    setBorderHighlight(next)
+    controllerRef.current?.updateSettings({
+      highlightStroke: next ? '#22d3ee' : null,
+      highlightStrokeWidth: next ? '2.5px' : null,
+    })
+  }, [])
+
+  const changeGroupOutline = useCallback((next: boolean) => {
+    setGroupOutline(next)
+    controllerRef.current?.setGroupOutlinesVisible([SCANDINAVIA_OUTLINE_ID], next)
+  }, [])
+
+  const changeColorDemo = useCallback((next: boolean) => {
+    setColorDemo(next)
+    if (next) controllerRef.current?.setCountryColors(DEMO_COUNTRY_COLORS)
+    else controllerRef.current?.clearColors()
+  }, [])
+
   useRails({
     right: (
       <CountryControls
@@ -196,7 +281,34 @@ export function MapWorkarea() {
           </div>
         </div>
 
-        <div className="grid gap-3 border-t border-zinc-800 pt-4 sm:grid-cols-3">
+        <div className="grid gap-3 border-t border-zinc-800 pt-4 sm:grid-cols-6">
+          <div className="flex items-center justify-between gap-3 sm:block">
+            <span className="text-sm text-zinc-300 sm:mb-2 sm:block">Border highlight</span>
+            <Switch
+              id="workarea-border-highlight"
+              checked={borderHighlight}
+              onChange={changeBorderHighlight}
+              label="Show highlighted country borders"
+            />
+          </div>
+          <div className="flex items-center justify-between gap-3 sm:block">
+            <span className="text-sm text-zinc-300 sm:mb-2 sm:block">Group outline</span>
+            <Switch
+              id="workarea-group-outline"
+              checked={groupOutline}
+              onChange={changeGroupOutline}
+              label="Show Scandinavia outer outline"
+            />
+          </div>
+          <div className="flex items-center justify-between gap-3 sm:block">
+            <span className="text-sm text-zinc-300 sm:mb-2 sm:block">Color demo</span>
+            <Switch
+              id="workarea-color-demo"
+              checked={colorDemo}
+              onChange={changeColorDemo}
+              label="Assign different colors to demo countries"
+            />
+          </div>
           <div className="flex items-center justify-between gap-3 sm:block">
             <span className="text-sm text-zinc-300 sm:mb-2 sm:block">Hover highlight</span>
             <Switch
@@ -251,6 +363,45 @@ export function MapWorkarea() {
           </div>
         ) : null}
       </div>
+
+      <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4" aria-labelledby="country-overview-heading">
+        <div className="border-b border-zinc-800 pb-3">
+          <h2 id="country-overview-heading" className="text-lg font-semibold text-zinc-100">
+            Country overview
+          </h2>
+          <p className="mt-1 text-sm text-zinc-500">
+            Continents, subregions, and the countries in each group.
+          </p>
+        </div>
+
+        <div className="mt-4 space-y-6">
+          {COUNTRY_HIERARCHY.map(({ continent, subregions }) => (
+            <div key={continent}>
+              <h3 className="text-base font-semibold text-cyan-300">
+                {continent}
+                <span className="ml-2 text-sm font-normal text-zinc-500">
+                  ({subregions.reduce((total, subregion) => total + subregion.countries.length, 0)} countries, {subregions.length} subregions)
+                </span>
+              </h3>
+              <div className="mt-3 space-y-4 pl-3 sm:pl-4">
+                {subregions.map(({ name, countries: countryNames }) => (
+                  <div key={name}>
+                    <h4 className="text-sm font-medium text-zinc-200">
+                      {name}
+                      <span className="ml-2 font-normal text-zinc-500">({countryNames.length} countries)</span>
+                    </h4>
+                    <ul className="mt-1 grid gap-x-6 gap-y-1 text-sm text-zinc-400 sm:grid-cols-2 lg:grid-cols-3">
+                      {countryNames.map(country => (
+                        <li key={country}>{country}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
     </div>
   )
 }

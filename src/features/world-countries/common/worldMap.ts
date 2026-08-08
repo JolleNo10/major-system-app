@@ -1,5 +1,5 @@
 import europeSvgUrl from '@/features/world-countries/assets/MapChart_Map_Europe_names.svg?url'
-import type { SvgMapHoverGroup } from '@/core/maps/SvgMapController'
+import type { SvgMapHoverGroup } from '@/features/world-countries/common/SvgMapController'
 
 export interface MapDefinition {
   id: string

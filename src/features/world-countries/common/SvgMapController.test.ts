@@ -2,7 +2,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import europeSvg from '@/features/world-countries/assets/MapChart_Map_Europe_names.svg?raw'
-import { SvgMapController } from '@/core/maps/SvgMapController'
+import { SvgMapController } from '@/features/world-countries/common/SvgMapController'
 
 const TEST_MAP = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
@@ -52,6 +52,7 @@ describe('SvgMapController loading and discovery', () => {
       { id: 'Gamma', name: 'GAMMA', pathId: 'Gamma', labelId: 'Short_label' },
       { id: 'Delta', name: 'DELTA', pathId: 'Delta', labelId: 'Delta_label' },
     ])
+    expect(controller.discoverCountries()).toEqual(countries)
     expect(mount.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true')
     expect(mount.querySelector('#Unlabelled')).not.toBeNull()
   })
@@ -124,6 +125,70 @@ describe('SvgMapController persistent state', () => {
     controller.setHighlighted(['Alpha'])
     expect(label(mount, 'Alpha_label').style.getPropertyValue('display')).toBe('none')
   })
+
+  it('supports independent country colors, border styles, and clearing both layers', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+
+    expect(controller.setCountryColors(new Map([
+      ['Alpha', '#ef4444'],
+      ['Beta', '#22c55e'],
+      ['Missing', '#000000'],
+    ]))).toEqual({
+      activeIds: ['Alpha', 'Beta'],
+      unknownIds: ['Missing'],
+    })
+    expect(controller.getCountryColors()).toEqual({ Alpha: '#ef4444', Beta: '#22c55e' })
+    expect(path(mount, 'Alpha').style.getPropertyValue('fill')).toBe('#ef4444')
+
+    controller.updateSettings({
+      highlightStroke: '#0e7490',
+      highlightStrokeWidth: '3px',
+      hoverStroke: '#67e8f9',
+      hoverStrokeWidth: '4px',
+    })
+    expect(path(mount, 'Alpha').style.getPropertyValue('stroke')).toBe('#0e7490')
+    expect(path(mount, 'Alpha').style.getPropertyValue('stroke-width')).toBe('3px')
+
+    controller.setHighlighted(['Beta'])
+    expect(path(mount, 'Beta').style.getPropertyValue('stroke')).toBe('#0e7490')
+    expect(controller.clearColors().activeIds).toEqual([])
+    expect(path(mount, 'Alpha').style.getPropertyValue('fill')).toBe('#737373')
+    expect(controller.clearHighlightsAndColors().activeIds).toEqual([])
+    expect(controller.getHighlightedIds()).toEqual([])
+  })
+
+  it('renders a filtered outer outline for a configured country group', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+
+    expect(controller.setGroupOutlines([{
+      id: 'alpha-beta',
+      countryIds: ['Alpha', 'Beta', 'Missing'],
+      stroke: '#facc15',
+      strokeWidth: '4px',
+    }])).toEqual({
+      outlines: [{
+        id: 'alpha-beta',
+        countryIds: ['Alpha', 'Beta'],
+        stroke: '#facc15',
+        strokeWidth: '4px',
+      }],
+      unknownIds: ['Missing'],
+    })
+    expect(mount.querySelector('[data-svg-map-group-outline="alpha-beta"]')).toBeNull()
+
+    expect(controller.setGroupOutlinesVisible(['alpha-beta']).activeIds).toEqual(['alpha-beta'])
+    const outline = mount.querySelector('[data-svg-map-group-outline="alpha-beta"]')
+    expect(outline).not.toBeNull()
+    expect(outline?.querySelectorAll('use')).toHaveLength(2)
+    expect(outline?.getAttribute('filter')).toMatch(/^url\(#svg-map-group-outline-/)
+    expect(mount.querySelector('feMorphology')?.getAttribute('operator')).toBe('dilate')
+
+    controller.setGroupOutlinesVisible(['alpha-beta'], false)
+    expect(mount.querySelector('[data-svg-map-group-outline="alpha-beta"]')).toBeNull()
+    expect(mount.querySelector('filter[data-svg-map-group-outline-filter]')).toBeNull()
+  })
 })
 
 describe('SvgMapController hover behavior', () => {
@@ -170,6 +235,25 @@ describe('SvgMapController hover behavior', () => {
     path(mount, 'Delta').dispatchEvent(new Event('pointerenter'))
     expect(path(mount, 'Delta').style.getPropertyValue('fill')).toBe('#22d3ee')
     expect(path(mount, 'Alpha').style.getPropertyValue('fill')).toBe('#737373')
+  })
+
+  it('allows controller-driven hover with an explicit name-visibility choice', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+
+    controller.hoverCountry('Alpha', true)
+    expect(label(mount, 'Alpha_label').style.getPropertyValue('display')).toBe('inline')
+    expect(path(mount, 'Alpha').style.getPropertyValue('fill')).toBe('#737373')
+
+    controller.hoverCountry('Alpha', false)
+    expect(label(mount, 'Alpha_label').style.getPropertyValue('display')).toBe('none')
+
+    controller.setHoverGroups([{ id: 'pair', countryIds: ['Alpha', 'Beta'] }])
+    controller.updateSettings({ hoverScope: 'group' })
+    controller.hoverCountry('Alpha', true)
+    expect(label(mount, 'Beta_label').style.getPropertyValue('display')).toBe('inline')
+    controller.hoverCountry(null)
+    expect(label(mount, 'Beta_label').style.getPropertyValue('display')).toBe('none')
   })
 
   it('applies visual overrides immediately and cleans up on destroy', async () => {
