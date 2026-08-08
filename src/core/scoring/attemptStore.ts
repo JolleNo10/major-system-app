@@ -17,7 +17,7 @@ const DB_NAME = 'major-system'
 // that store's creation landed) — `onupgradeneeded` won't fire again otherwise,
 // leaving story reads/writes to throw NotFoundError. The `contains()` guards
 // make the re-run a no-op for anyone already whole.
-const DB_VERSION = 3
+const DB_VERSION = 4
 const STORE = 'attempts'
 const MIGRATED_KEY = 'major-attempts-migrated'
 
@@ -65,6 +65,9 @@ export function getDb(): Promise<IDBDatabase> {
         // 0-indexed segment; access is always by primary key, so no index.
         if (!db.objectStoreNames.contains('pi_stories')) {
           db.createObjectStore('pi_stories', { keyPath: 'seg' })
+        }
+        if (!db.objectStoreNames.contains('mnemonics')) {
+          db.createObjectStore('mnemonics', { keyPath: 'targetId' })
         }
       }
       req.onsuccess = () => resolve(req.result)

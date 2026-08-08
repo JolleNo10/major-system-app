@@ -20,6 +20,7 @@ import {
 } from '@/features/world-countries/learning'
 import type { ItemProgress, RecallItemId } from '@/core/learning'
 import type { AnswerMode } from '@/core/types'
+import { GeographyMnemonicPanel } from '@/features/world-countries/mnemonics/GeographyMnemonicPanel'
 
 const CONTINENTS: Continent[] = [
   'Africa', 'Asia', 'Europe', 'North America', 'South America', 'Oceania',
@@ -317,6 +318,8 @@ function CountryCapitalDrill({
           Reset session
         </button>
       </div>
+
+      <GeographyMnemonicPanel country={question.entry} />
     </div>
   )
 }

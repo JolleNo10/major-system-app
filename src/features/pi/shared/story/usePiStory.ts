@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getStory, getStorySegs, type PiStory } from '@/features/pi/shared/story/piStories'
+export { useBlobUrl } from '@/core/mnemonics'
 
 // Async-load one segment's story from IndexedDB. `refreshKey` re-fetches when it
 // changes — bump it after a write so the panel reflects the new state.
@@ -39,16 +40,3 @@ export function usePiStorySegs(refreshKey: unknown): Set<number> {
 
 // Object-URL lifecycle for a stored Blob. Revokes on blob-change and unmount —
 // StrictMode's double-mount makes a missing revoke a guaranteed leak.
-export function useBlobUrl(blob: Blob | null): string | null {
-  const [url, setUrl] = useState<string | null>(null)
-  useEffect(() => {
-    if (!blob) {
-      setUrl(null)
-      return
-    }
-    const objectUrl = URL.createObjectURL(blob)
-    setUrl(objectUrl)
-    return () => URL.revokeObjectURL(objectUrl)
-  }, [blob])
-  return url
-}

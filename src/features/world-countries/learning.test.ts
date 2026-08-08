@@ -6,7 +6,7 @@ import {
   getSubregionScope,
   getWorldScope,
 } from './learning'
-import type { Country } from './data/countries'
+import { countries, type Country } from './data/countries'
 
 const sample: Country[] = [
   { country: 'Norway', capital: 'Oslo', continent: 'Europe', subregion: 'Northern Europe' },
@@ -15,6 +15,10 @@ const sample: Country[] = [
 ]
 
 describe('World Countries learning adapter', () => {
+  it('publishes stable IDs on bundled country records', () => {
+    expect(countries.find(entry => entry.country === 'Norway')?.id).toBe('NO')
+  })
+
   it('keeps opposite recall directions independent and uses stable country ids', () => {
     expect(countryToCapitalItemId(sample[0])).toBe('geo:capital:NO:country-to-capital')
     expect(capitalToCountryItemId(sample[0])).toBe('geo:capital:NO:capital-to-country')
