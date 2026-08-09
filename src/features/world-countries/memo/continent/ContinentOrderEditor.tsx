@@ -1,8 +1,7 @@
 import type { Continent } from '@/features/world-countries/data/countries'
 import type { SubregionDefinition, SubregionId } from '@/features/world-countries/data/subregions'
 import { resetContinentSubregionOrder, setContinentSubregionOrder } from '@/features/world-countries/geography/continentMetadataStore'
-import { sortSubregionsByMapPosition } from '@/features/world-countries/maps/geographyMapAdapter'
-import { getMemoMapDefinition } from '@/features/world-countries/maps/mapDefinitions'
+import { sortSubregionsByMemoMapPosition } from '@/features/world-countries/maps/memoMapOrdering'
 import { LearningOrderEditor } from '../LearningOrderEditor'
 
 export function ContinentOrderEditor({
@@ -33,12 +32,7 @@ export function ContinentOrderEditor({
         pendingLabel: 'Reading map…',
         hint: 'Best effort from map positions.',
         errorMessage: 'Could not read the map positions. Your current draft is unchanged.',
-        run: async draft => {
-          const definition = getMemoMapDefinition(continent)
-          const response = await fetch(definition.svgUrl)
-          if (!response.ok) throw new Error(`Map request failed with ${response.status}`)
-          return sortSubregionsByMapPosition(draft, await response.text())
-        },
+        run: draft => sortSubregionsByMemoMapPosition(continent, draft),
       }}
     />
   )
