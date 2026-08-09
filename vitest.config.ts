@@ -10,6 +10,10 @@ export default defineConfig({
   test: {
     include: ['src/**/*.test.ts'],
     environment: 'node',
+    environmentMatchGlobs: [
+      // Tests that access localStorage directly must run under jsdom.
+      ['src/features/world-countries/**/*.test.ts', 'jsdom'],
+    ],
     setupFiles: ['./src/testSetup.ts'],
   },
 })
