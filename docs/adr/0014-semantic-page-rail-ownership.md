@@ -1,6 +1,6 @@
 # ADR 0014 — Semantic ownership of page side rails
 
-* **Status:** Proposed
+* **Status:** Accepted
 * **Date:** 2026-08-09
 * **Refines:** ADR 0001 — `PageLayout`: one base pattern for center + side rails
 * **Initial application:** `src/features/world-countries/`
@@ -1319,3 +1319,7 @@ Report:
 5. recall-phase rail behavior;
 6. tests added or updated;
 7. validation results.
+
+## Confirmation
+
+Implemented and verified against the repository on 2026-08-10.
