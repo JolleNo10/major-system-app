@@ -2,6 +2,39 @@
 
 Issues and PRDs for this repo live as GitHub issues. Use the `gh` CLI for all operations.
 
+## How bugs and small fixes are registered
+
+**During any conversation** (with Claude Code or another LLM): when the user says "file an issue for this", "register this bug", or similar, immediately create a GitHub issue. Use `bug` + `needs-triage` labels for bugs; use `quick-fix` + `needs-triage` for clearly small/contained code fixes. Do **not** ask for more info first — capture what you have and let the label drive triage.
+
+```bash
+# Bug (something broken)
+gh issue create \
+  --title "<short description>" \
+  --body "<what you observed, steps, expected vs actual>" \
+  --label "bug,needs-triage"
+
+# Quick fix (small, well-scoped code change)
+gh issue create \
+  --title "<short description>" \
+  --body "<what and why>" \
+  --label "quick-fix,needs-triage"
+```
+
+The user also has a shell alias `bug "title" ["body"]` for quick capture without opening a chat:
+```bash
+bug "WordListGrid crashes when CSV has BOM"
+```
+
+**Labels in use:**
+| Label | Meaning |
+|-------|---------|
+| `bug` | Something is broken |
+| `quick-fix` | Small, well-scoped fix |
+| `needs-triage` | Default on creation — needs evaluation |
+| `ready-for-agent` | Fully specified, an AFK agent can implement it |
+| `ready-for-human` | Requires human implementation |
+| `wontfix` | Will not be actioned |
+
 ## Conventions
 
 - **Create an issue**: `gh issue create --title "..." --body "..."`. Use a heredoc for multi-line bodies.
