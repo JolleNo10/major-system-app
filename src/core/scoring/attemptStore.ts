@@ -11,12 +11,10 @@ import {
 // Record: { id (auto), key: "enc:42", at, ok, ms }
 
 const DB_NAME = 'major-system'
-// v3: same schema as v2 (attempts + pi_stories). Bumped only to force the
-// idempotent upgrade handler to re-run for users whose DB reached v2 without a
-// `pi_stories` store (e.g. an in-progress dev build advanced the version before
-// that store's creation landed) — `onupgradeneeded` won't fire again otherwise,
-// leaving story reads/writes to throw NotFoundError. The `contains()` guards
-// make the re-run a no-op for anyone already whole.
+// v3: same schema as v2 (attempts + pi_stories). Bumped to backfill pi_stories
+// for databases that reached v2 before that store's creation landed.
+// v4: adds the domain-neutral mnemonics store. Every upgrade is guarded with
+// objectStoreNames.contains() so upgrades remain idempotent.
 const DB_VERSION = 4
 const STORE = 'attempts'
 const MIGRATED_KEY = 'major-attempts-migrated'

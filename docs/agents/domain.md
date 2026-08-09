@@ -2,32 +2,46 @@
 
 How the engineering skills should consume this repo's domain documentation when exploring the codebase.
 
-## Before exploring, read these
+## Before exploring, load the relevant current context
 
-- **`CONTEXT.md`** at the repo root, or
-- **`CONTEXT-MAP.md`** at the repo root if it exists — it points at one `CONTEXT.md` per context. Read each one relevant to the topic.
-- **`docs/adr/`** — read ADRs that touch the area you're about to work in. In multi-context repos, also check `src/<context>/docs/adr/` for context-scoped decisions.
+- Start at **`docs/architecture/SYSTEM.md`** only when the task needs repository
+  routing, ownership, or cross-feature context.
+- For a feature task, read that feature's `AGENTS.md` and its document under
+  **`docs/architecture/features/`**, then start at the listed source anchors.
+- Load **`docs/architecture/CORE.md`** only for shared capability or placement
+  decisions and **`docs/architecture/PERSISTENCE.md`** only for persistence.
+- Read a specific file under **`docs/adr/`** only when historical rationale is
+  needed or a current architecture document points to it.
 
-If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The `/domain-modeling` skill (reached via `/grill-with-docs` and `/improve-codebase-architecture`) creates them lazily when terms or decisions actually get resolved.
+Do not scan every architecture document, ADR, or sibling feature by default.
+Stop loading context once the task can be handled safely.
 
 ## File structure
 
-Single-context repo:
+Current-state architecture:
 
 ```
-/
-├── CONTEXT.md
-├── docs/adr/
-│   ├── 0001-example-decision.md
-│   └── ...
-└── src/
+docs/
+  architecture/
+    SYSTEM.md
+    CORE.md
+    PERSISTENCE.md
+    INVARIANTS.md
+    features/
+  adr/
+src/
+  features/*/AGENTS.md
 ```
 
 ## Use the glossary's vocabulary
 
-When your output names a domain concept (in an issue title, a refactor proposal, a hypothesis, a test name), use the term as defined in `CONTEXT.md`. Don't drift to synonyms the glossary explicitly avoids.
+When your output names a domain concept, use the terminology in the relevant
+feature architecture document and source. Do not drift to synonyms explicitly
+discouraged there.
 
-If the concept you need isn't in the glossary yet, that's a signal — either you're inventing language the project doesn't use (reconsider) or there's a real gap (note it for `/domain-modeling`).
+If a needed concept is not documented, first verify its use in the owning
+feature. Add it to current-state architecture only when it affects agent
+placement or structural correctness.
 
 ## Flag ADR conflicts
 

@@ -3,7 +3,7 @@ import { CARDS, RANKS } from '@/core/cards'
 import type { Card, Suit } from '@/core/cards'
 import { shuffle } from '@/core/scoring/quiz'
 import { matchesAnswer } from '@/core/answerMatch'
-import { isOverlayOpen } from '@/app/layout/overlayGuard'
+import { isOverlayOpen } from '@/core/ui/overlayGuard'
 import { safeSet } from '@/core/storage'
 
 const SUIT_LETTERS: Record<string, Suit> = {

@@ -1,3 +1,6 @@
+// Required architecture before modification:
+// docs/architecture/features/MAJOR_SYSTEM.md
+//
 // Public interface of the major-system feature. External code (app/ and other
 // features) imports from '@/features/major-system'; everything else in this folder
 // is internal. Keep this surface small.

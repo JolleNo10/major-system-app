@@ -1,3 +1,6 @@
+// Required architecture before modification:
+// docs/architecture/features/PI.md
+//
 // Public interface of the pi feature. External code (app/ and other
 // features) imports from '@/features/pi'; everything else in this folder
 // is internal. Keep this surface small.

@@ -5,7 +5,7 @@ import type { PaoCard } from '@/features/cards/pao/paoCards'
 import { shuffle } from '@/core/scoring/quiz'
 import { groupTriples, roleAt } from '@/features/cards/pao/triples'
 import { RoleTag, RoleValue } from '@/features/cards/pao/paoRoles'
-import { isOverlayOpen } from '@/app/layout/overlayGuard'
+import { isOverlayOpen } from '@/core/ui/overlayGuard'
 import { safeSet } from '@/core/storage'
 
 // PAO deck memo: memorise the deck in Person/Action/Object triples (the P of the

@@ -1,5 +1,5 @@
 import { useEffect, type RefObject } from 'react'
-import { pushOverlay, popOverlay } from '@/app/layout/overlayGuard'
+import { pushOverlay, popOverlay } from '@/core/ui/overlayGuard'
 
 const FOCUSABLE = 'button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])'
 

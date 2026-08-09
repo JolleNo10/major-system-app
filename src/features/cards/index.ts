@@ -1,3 +1,6 @@
+// Required architecture before modification:
+// docs/architecture/features/CARDS.md
+//
 // Public interface of the cards feature. External code (app/ and other
 // features) imports from '@/features/cards'; everything else in this folder
 // is internal. Keep this surface small.

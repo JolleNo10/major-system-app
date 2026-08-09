@@ -11,7 +11,7 @@ import { HintButton } from '@/features/major-system/HintButton'
 import { STALE_MS } from '@/core/scoring/scoring'
 import { adjustLatency } from '@/core/scoring/typingSpeed'
 import { recallColor } from '@/core/scoring/recallColor'
-import { isOverlayOpen } from '@/app/layout/overlayGuard'
+import { isOverlayOpen } from '@/core/ui/overlayGuard'
 import {
   makeRoundConfig, initRoundState, selectNext, recordAnswer, roundProgress,
   type RoundState, type RoundConfig,

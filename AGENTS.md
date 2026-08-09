@@ -1,5 +1,13 @@
 # Repository instructions
 
+## Required architecture bootstrap
+
+Before normal code modification, read `CLAUDE.md`. It is the canonical Tier-0
+source for architecture context routing and the compact global invariant set.
+Do not duplicate that content here.
+
+Follow the applicable nested `AGENTS.md` before modifying a feature.
+
 ## Runtime and verification
 
 - Detect whether the developer machine has Node.js and npm available. If it

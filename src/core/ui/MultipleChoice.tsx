@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { safeSet } from '@/core/storage'
-import { isOverlayOpen } from '@/app/layout/overlayGuard'
+import { isOverlayOpen } from '@/core/ui/overlayGuard'
 
 const HIDE_KEY = 'major-hide-options'
 
