@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getContinents, getCountriesForSubregion, getSubregionsForContinent } from './geographyMemo'
+import { getContinents, getCountriesForSubregion, getSubregionsForContinent } from '@/features/world-countries/domain/geography'
 import { getContinentMemoProgress, getMemoProgress, getSubregionMemoProgress } from './memoProgress'
 import { countries, type Country } from '@/features/world-countries/data/countries'
 

@@ -1,11 +1,10 @@
 import type { Continent, Country } from '@/features/world-countries/data/countries'
-import type { SvgMapHoverGroup } from '@/features/world-countries/common/SvgMapController'
-import { countryToSvgIds } from '@/features/world-countries/common/countryMapIds'
-import { countryId } from '@/features/world-countries/learning'
+import type { SvgMapHoverGroup } from '@/features/world-countries/maps/SvgMapController'
+import { countryToSvgIds } from '@/features/world-countries/maps/countryMapIds'
+import { getCountryId } from '@/features/world-countries/domain/country'
 import { getSubregionDefinition } from '@/features/world-countries/data/subregions'
-import { countrySubregionId } from '@/features/world-countries/subregions/subregionMetadata'
-import { getCountriesForContinent, getCountriesForSubregion } from './geographyMemo'
-import type { MemoedCountryIds } from './memoProgress'
+import { countrySubregionId } from '@/features/world-countries/domain/subregionMetadata'
+import { getCountriesForContinent, getCountriesForSubregion } from '@/features/world-countries/domain/geography'
 
 /** Return possible IDs without asserting that a given asset contains them. */
 export const getCountrySvgIdCandidates = countryToSvgIds
@@ -102,19 +101,17 @@ export function getCountriesForSvgGroup(
   return getCountriesForSubregion(continent, subregion, entries)
 }
 
-export const MEMO_LEARNED_COLOR = '#22c55e'
-
-export function createMemoCountryColors(
+export function createCountryColors(
   entries: readonly Country[],
-  memoedCountryIds: MemoedCountryIds,
+  coloredCountryIds: ReadonlySet<string> | Iterable<string>,
   discoveredSvgIds: ReadonlySet<string> | readonly string[],
-  learnedColor = MEMO_LEARNED_COLOR,
+  color: string,
 ): Array<readonly [string, string]> {
-  const memoed = memoedCountryIds instanceof Set
-    ? memoedCountryIds
-    : new Set(memoedCountryIds)
-  return entries.flatMap(entry => memoed.has(countryId(entry))
-    ? resolveCountryToSvgIds(entry, discoveredSvgIds).map(id => [id, learnedColor] as const)
+  const colored = coloredCountryIds instanceof Set
+    ? coloredCountryIds
+    : new Set(coloredCountryIds)
+  return entries.flatMap(entry => colored.has(getCountryId(entry))
+    ? resolveCountryToSvgIds(entry, discoveredSvgIds).map(id => [id, color] as const)
     : [])
 }
 

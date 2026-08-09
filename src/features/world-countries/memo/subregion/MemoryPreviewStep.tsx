@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Country } from '@/features/world-countries/data/countries'
 import type { SubregionId } from '@/features/world-countries/data/subregions'
-import { countryId } from '@/features/world-countries/learning'
+import { getCountryId } from '@/features/world-countries/domain/country'
 import { subregionMnemonicId } from '@/features/world-countries/mnemonics/geographyMnemonicIds'
 import { MemoMnemonicCard } from '../MemoMnemonicCard'
 
@@ -30,7 +30,7 @@ export function MemoryPreviewStep({
         targetId={subregionMnemonicId(subregion)}
         title="Your Subregion memory aid"
         subtitle="Optional support for the walkthrough"
-        countryIds={entries.map(countryId)}
+        countryIds={entries.map(getCountryId)}
         refreshKey={refreshKey}
         onChanged={() => setRefreshKey(value => value + 1)}
       />

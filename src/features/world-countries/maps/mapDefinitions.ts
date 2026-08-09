@@ -1,11 +1,44 @@
-import africaSvgUrl from '@/features/world-countries/assets/MapChart_Map_Africa.svg?url'
-import americaSvgUrl from '@/features/world-countries/assets/MapChart_Map_America.svg?url'
-import asiaSvgUrl from '@/features/world-countries/assets/MapChart_Map_Asia.svg?url'
-import europeSvgUrl from '@/features/world-countries/assets/MapChart_Map_Europe_names.svg?url'
-import oceaniaSvgUrl from '@/features/world-countries/assets/MapChart_Map_Oceania.svg?url'
-import worldSvgUrl from '@/features/world-countries/assets/MapChart_Map_World.svg?url'
+import africaSvgUrl from '@/features/world-countries/maps/assets/MapChart_Map_Africa.svg?url'
+import americaSvgUrl from '@/features/world-countries/maps/assets/MapChart_Map_America.svg?url'
+import asiaSvgUrl from '@/features/world-countries/maps/assets/MapChart_Map_Asia.svg?url'
+import europeSvgUrl from '@/features/world-countries/maps/assets/MapChart_Map_Europe_names.svg?url'
+import oceaniaSvgUrl from '@/features/world-countries/maps/assets/MapChart_Map_Oceania.svg?url'
+import worldSvgUrl from '@/features/world-countries/maps/assets/MapChart_Map_World.svg?url'
+import type { SvgMapHoverGroup, SvgMapZoomArea } from '@/features/world-countries/maps/SvgMapController'
 import { CONTINENT_MAP_IDS, type Continent } from '@/features/world-countries/data/countries'
-import { getContinents } from './geographyMemo'
+import { getContinents } from '@/features/world-countries/domain/geography'
+
+export interface MapDefinition {
+  id: string
+  label: string
+  svgUrl: string
+  demoCountryIds: readonly string[]
+  hoverGroups: readonly SvgMapHoverGroup[]
+  zoomAreas: readonly SvgMapZoomArea[]
+}
+
+export const MAP_DEFINITIONS: readonly MapDefinition[] = [
+  {
+    id: 'europe',
+    label: 'Europe',
+    svgUrl: europeSvgUrl,
+    demoCountryIds: ['Germany', 'Italy', 'England', 'Andorra'],
+    hoverGroups: [
+      {
+        id: 'scandinavia-demo',
+        countryIds: ['Norway', 'Sweden', 'Denmark'],
+      },
+    ],
+    zoomAreas: [
+      {
+        id: 'nordics',
+        label: 'Nordics',
+        countryIds: ['Denmark', 'Finland', 'Iceland', 'Norway', 'Sweden'],
+        padding: 50,
+      },
+    ],
+  },
+]
 
 export interface MemoMapDefinition {
   id: string

@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react'
-import { countriesToSvgIds } from '@/features/world-countries/common/countryMapIds'
-import { SvgMapView, type SvgMapCountry } from '@/features/world-countries/common/SvgMapView'
+import { countriesToSvgIds } from '@/features/world-countries/maps/countryMapIds'
+import { SvgMapView, type SvgMapCountry } from '@/features/world-countries/maps/SvgMapView'
 import type { Country } from '@/features/world-countries/data/countries'
 import type { Continent } from '@/features/world-countries/data/countries'
-import { countryId } from '@/features/world-countries/learning'
-import { getCountryForSvgId, resolveCountriesToSvgIds } from '../memoMapAdapter'
-import { getMemoMapDefinition } from '../memoMaps'
+import { getCountryId } from '@/features/world-countries/domain/country'
+import { getCountryForSvgId, resolveCountriesToSvgIds } from '@/features/world-countries/maps/geographyMapAdapter'
+import { getMemoMapDefinition } from '@/features/world-countries/maps/mapDefinitions'
 
 export interface CountryLearningMapProps {
   continent: Continent
@@ -31,7 +31,7 @@ export function CountryLearningMap({
   )
   const highlightedSvgIds = useMemo(() => {
     if (!highlightedCountryId) return []
-    const country = scopeCountries.find(entry => countryId(entry) === highlightedCountryId)
+    const country = scopeCountries.find(entry => getCountryId(entry) === highlightedCountryId)
     return country ? countriesToSvgIds([country]).filter(id => discoveredIds.includes(id)) : []
   }, [discoveredIds, highlightedCountryId, scopeCountries])
 
@@ -45,7 +45,7 @@ export function CountryLearningMap({
       onCountriesLoaded={setDiscovered}
       onCountryClick={svgId => {
         const country = getCountryForSvgId(svgId, scopeCountries)
-        if (country) onCountryClick?.(countryId(country))
+        if (country) onCountryClick?.(getCountryId(country))
       }}
     />
   )

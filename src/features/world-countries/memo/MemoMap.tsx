@@ -1,17 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { SvgMapController, type SvgMapCountry } from '@/features/world-countries/common/SvgMapController'
-import { countriesToSvgIds } from '@/features/world-countries/common/countryMapIds'
+import { SvgMapController, type SvgMapCountry } from '@/features/world-countries/maps/SvgMapController'
+import { countriesToSvgIds } from '@/features/world-countries/maps/countryMapIds'
 import { countries, type Continent } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition, subregionIdFor, type SubregionId } from '@/features/world-countries/data/subregions'
-import { getCountriesForContinent, getCountriesForSubregion } from './geographyMemo'
+import { getCountriesForContinent, getCountriesForSubregion } from '@/features/world-countries/domain/geography'
 import {
   createContinentHoverGroups,
-  createMemoCountryColors,
+  createCountryColors,
   createSubregionHoverGroups,
   getCountryForSvgId,
   resolveCountriesToSvgIds,
-} from './memoMapAdapter'
-import { getMemoMapDefinition, MEMO_MAP_DEFINITIONS } from './memoMaps'
+} from '@/features/world-countries/maps/geographyMapAdapter'
+import { getMemoMapDefinition, MEMO_MAP_DEFINITIONS } from '@/features/world-countries/maps/mapDefinitions'
 
 export interface MemoMapProps {
   level: 'world' | 'continent'
@@ -125,7 +125,7 @@ export function MemoMap({
     }
     controller.clearColors()
     controller.setCountryColors(
-      createMemoCountryColors(visibleCountries, memoedCountryIds, mapCountries.map(country => country.id)),
+      createCountryColors(visibleCountries, memoedCountryIds, mapCountries.map(country => country.id), '#22c55e'),
     )
   }, [level, mapCountries, memoedCountryIds, scopeSvgIds, visibleCountries])
 

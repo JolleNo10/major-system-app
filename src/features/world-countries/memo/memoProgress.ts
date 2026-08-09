@@ -1,6 +1,6 @@
-import { countryId } from '@/features/world-countries/learning'
+import { getCountryId } from '@/features/world-countries/domain/country'
 import { countries, type Continent, type Country } from '@/features/world-countries/data/countries'
-import { getCountriesForContinent, getCountriesForSubregion } from './geographyMemo'
+import { getCountriesForContinent, getCountriesForSubregion } from '@/features/world-countries/domain/geography'
 
 export type MemoProgressStatus = 'not-started' | 'partial' | 'complete'
 
@@ -23,7 +23,7 @@ export function getMemoProgress(
 ): MemoProgress {
   const memoed = asMemoedIds(memoedCountryIds)
   const memoedCount = entries.reduce(
-    (count, entry) => count + (memoed.has(countryId(entry)) ? 1 : 0),
+    (count, entry) => count + (memoed.has(getCountryId(entry)) ? 1 : 0),
     0,
   )
   const totalCount = entries.length

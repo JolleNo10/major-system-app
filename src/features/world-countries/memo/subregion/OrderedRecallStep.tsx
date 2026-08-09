@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
-import type { CountryLearningFlowState } from '@/features/world-countries/learning/countryLearningFlow'
-import { matchesCountryName } from '@/features/world-countries/learning/answerMatching'
-import { countryId } from '@/features/world-countries/learning'
+import type { CountryLearningFlowState } from '@/features/world-countries/memo/countryLearningFlow'
+import { matchesCountryName } from '@/features/world-countries/domain/answerMatching'
+import { getCountryId } from '@/features/world-countries/domain/country'
 import { CountryLearningMap } from './CountryLearningMap'
 import { LearningHeader } from './MemoryPreviewStep'
 
@@ -42,9 +42,9 @@ export function OrderedRecallStep({
 
   const current = entries[session.currentIndex]
   if (!current) return null
-  const expectedId = countryId(current)
+  const expectedId = getCountryId(current)
   const displayCountry = feedback
-    ? entries.find(entry => countryId(entry) === feedback.expectedId) ?? current
+    ? entries.find(entry => getCountryId(entry) === feedback.expectedId) ?? current
     : current
   const candidates = entries.map(entry => entry.country)
 
@@ -65,7 +65,7 @@ export function OrderedRecallStep({
       <CountryLearningMap
         continent={continent}
         scopeCountries={entries}
-        highlightedCountryId={countryId(displayCountry)}
+        highlightedCountryId={getCountryId(displayCountry)}
         ariaLabel="Highlighted country for ordered blind recall"
       />
       <form onSubmit={event => { event.preventDefault(); submit() }} className="space-y-3">

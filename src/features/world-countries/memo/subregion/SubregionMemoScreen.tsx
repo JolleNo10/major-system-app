@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 import type { Continent } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
-import { getCountriesForSubregionInEffectiveOrder } from '../geographyMemo'
-import { getSubregionLearningState, isSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningStore'
-import { countryId } from '@/features/world-countries/learning'
+import { getCountriesForSubregionInEffectiveOrder } from '@/features/world-countries/domain/geography'
+import { getSubregionMetadata } from '@/features/world-countries/persistence/subregionMetadataStore'
+import { getSubregionLearningState, isSubregionCountriesLearned } from '@/features/world-countries/persistence/subregionLearningStore'
+import { getCountryId } from '@/features/world-countries/domain/country'
 import { CountryLearningFlow } from './CountryLearningFlow'
 import { SubregionOverview } from './SubregionOverview'
 
@@ -24,7 +25,7 @@ export function SubregionMemoScreen({
   onLearningChanged: () => void
   onExit: () => void
 }) {
-  const entries = useMemo(() => getCountriesForSubregionInEffectiveOrder(subregion), [learningVersion, subregion])
+  const entries = useMemo(() => getCountriesForSubregionInEffectiveOrder(subregion, undefined, getSubregionMetadata(subregion)), [learningVersion, subregion])
   const learned = isSubregionCountriesLearned(getSubregionLearningState(subregion))
   return (
     <div className="w-full">
@@ -70,7 +71,7 @@ function SubregionScreenBody({
   if (mode === 'learning') {
     return (
       <CountryLearningFlow
-        key={`${definition.id}-${entries.map(countryId).join(',')}`}
+          key={`${definition.id}-${entries.map(getCountryId).join(',')}`}
         continent={continent}
         subregion={subregion}
         entries={entries}

@@ -1,6 +1,6 @@
 # ADR 0006 — Reusable mnemonic stories for Pi and Geography
 
-- **Status:** Proposed
+- **Status:** Implemented
 - **Date:** 2026-08-08
 - **Builds on:** ADR 0005 — Shared learning model
 - **Refines:** ADR 0005’s non-goal of keeping Pi stories feature-specific; Geography is now a second concrete consumer, so shared mnemonic persistence and image handling are justified.

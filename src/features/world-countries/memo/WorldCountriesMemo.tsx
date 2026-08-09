@@ -3,13 +3,13 @@ import type { AnswerMode } from '@/core/types'
 import { useSettings } from '@/app/settings/SettingsContext'
 import { countries, type Continent } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
-import { getAllSubregionLearningStates, isSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningStore'
-import { countryId } from '@/features/world-countries/learning'
-import { getContinents, getCountriesForContinent, getSubregionDefinitionsForContinent } from './geographyMemo'
+import { getAllSubregionLearningStates, isSubregionCountriesLearned } from '@/features/world-countries/persistence/subregionLearningStore'
+import { getCountryId } from '@/features/world-countries/domain/country'
+import { getContinents, getCountriesForContinent, getSubregionDefinitionsForContinent } from '@/features/world-countries/domain/geography'
 import { getContinentMemoProgress, getSubregionMemoProgress, getWorldMemoProgress } from './memoProgress'
 import { MemoMap } from './MemoMap'
 import { SubregionMemoScreen } from './subregion/SubregionMemoScreen'
-import { getContinentHoverGroupId, getSubregionHoverGroupId } from './memoMapAdapter'
+import { getContinentHoverGroupId, getSubregionHoverGroupId } from '@/features/world-countries/maps/geographyMapAdapter'
 
 function ProgressBadge({ learnedCount, totalCount }: { learnedCount: number; totalCount: number }) {
   return <span className="text-xs tabular-nums text-zinc-500">{learnedCount}/{totalCount} learned</span>
@@ -19,7 +19,7 @@ function learnedCountryIds(): Set<string> {
   const states = new Map(getAllSubregionLearningStates().map(state => [state.subregionId, state]))
   return new Set(countries
     .filter(country => isSubregionCountriesLearned(states.get(country.subregionId!)))
-    .map(countryId))
+    .map(getCountryId))
 }
 
 export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: AnswerMode }) {

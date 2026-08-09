@@ -1,5 +1,5 @@
 import { readJSON, safeSet } from '@/core/storage'
-import { countryId } from '@/features/world-countries/learning'
+import { getCountryId } from '@/features/world-countries/domain/country'
 import type { Country } from '@/features/world-countries/data/countries'
 
 export const MEMO_STORAGE_KEY = 'world-countries-memo'
@@ -32,18 +32,18 @@ export function isCountryMemoed(
   country: Country | string,
   ids: ReadonlySet<string> = loadMemoedCountryIds(),
 ): boolean {
-  return ids.has(countryId(country))
+  return ids.has(getCountryId(country))
 }
 
 /** Mark one Country–Capital relationship as learned once. */
 export function markCountryMemoed(country: Country | string): Set<string> {
   const next = loadMemoedCountryIds()
-  next.add(countryId(country))
+  next.add(getCountryId(country))
   return saveMemoedCountryIds(next)
 }
 
 export function unmarkCountryMemoed(country: Country | string): Set<string> {
   const next = loadMemoedCountryIds()
-  next.delete(countryId(country))
+  next.delete(getCountryId(country))
   return saveMemoedCountryIds(next)
 }

@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
-import { matchesPlaceName } from '@/features/world-countries/learning/answerMatching'
+import { matchesPlaceName } from '@/features/world-countries/domain/answerMatching'
 import { countryCapitalMnemonicId, subregionMnemonicId } from '@/features/world-countries/mnemonics/geographyMnemonicIds'
-import { countryId } from '@/features/world-countries/learning'
+import { getCountryId } from '@/features/world-countries/domain/country'
 import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
-import { getCountriesForSubregionInEffectiveOrder } from './geographyMemo'
-import { resetSubregionCountryOrder, setSubregionCountryOrder } from '@/features/world-countries/subregions/subregionMetadataStore'
+import { getCountriesForSubregionInEffectiveOrder } from '@/features/world-countries/domain/geography'
+import { getSubregionMetadata, resetSubregionCountryOrder, setSubregionCountryOrder } from '@/features/world-countries/persistence/subregionMetadataStore'
 import { isCountryMemoed, markCountryMemoed } from './memoStore'
 import { MemoMnemonicCard } from './MemoMnemonicCard'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
@@ -91,16 +91,16 @@ export function MemoWorkspace({
   const [orderVersion, setOrderVersion] = useState(0)
   const definition = getSubregionDefinition(subregion)
   const entries = useMemo(
-    () => getCountriesForSubregionInEffectiveOrder(subregion),
+    () => getCountriesForSubregionInEffectiveOrder(subregion, undefined, getSubregionMetadata(subregion)),
     [orderVersion, subregion],
   )
-  const countryIds = useMemo(() => entries.map(countryId), [entries])
+  const countryIds = useMemo(() => entries.map(getCountryId), [entries])
   const subregionProgress = entries.reduce((count, country) => count + (isCountryMemoed(country, memoedCountryIds) ? 1 : 0), 0)
 
   const moveCountry = (index: number, offset: -1 | 1) => {
     const nextIndex = index + offset
     if (nextIndex < 0 || nextIndex >= entries.length) return
-    const next = entries.map(countryId)
+    const next = entries.map(getCountryId)
     ;[next[index], next[nextIndex]] = [next[nextIndex], next[index]]
     setSubregionCountryOrder(subregion, next)
     setOrderVersion(value => value + 1)

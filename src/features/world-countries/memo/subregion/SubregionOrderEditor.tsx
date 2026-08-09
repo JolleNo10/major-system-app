@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import type { Country } from '@/features/world-countries/data/countries'
-import { countryId } from '@/features/world-countries/learning'
+import { getCountryId } from '@/features/world-countries/domain/country'
 import type { SubregionId } from '@/features/world-countries/data/subregions'
-import { resetSubregionCountryOrder, setSubregionCountryOrder } from '@/features/world-countries/subregions/subregionMetadataStore'
+import { resetSubregionCountryOrder, setSubregionCountryOrder } from '@/features/world-countries/persistence/subregionMetadataStore'
 
 export function SubregionOrderEditor({
   subregion,
@@ -28,7 +28,7 @@ export function SubregionOrderEditor({
   }
 
   const save = () => {
-    setSubregionCountryOrder(subregion, draft.map(countryId))
+    setSubregionCountryOrder(subregion, draft.map(getCountryId))
     onChanged()
     onClose()
   }
@@ -50,7 +50,7 @@ export function SubregionOrderEditor({
       </div>
       <ol className="mt-4 space-y-2">
         {draft.map((country, index) => (
-          <li key={countryId(country)} className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950/40 px-3 py-2">
+            <li key={getCountryId(country)} className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950/40 px-3 py-2">
             <span className="w-6 text-xs tabular-nums text-zinc-600">{index + 1}.</span>
             <span className="min-w-0 flex-1 text-sm text-zinc-300">{country.country}</span>
             <button type="button" onClick={() => move(index, -1)} disabled={index === 0} aria-label={`Move ${country.country} up`} className="rounded border border-zinc-700 px-2 py-1 text-xs text-zinc-400 enabled:hover:border-cyan-500 disabled:opacity-30">↑</button>

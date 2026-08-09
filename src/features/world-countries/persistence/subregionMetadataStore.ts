@@ -6,7 +6,7 @@ import {
 import {
   normalizeSubregionMetadata,
   type SubregionMetadata,
-} from './subregionMetadata'
+} from '@/features/world-countries/domain/subregionMetadata'
 
 export const SUBREGION_METADATA_STORAGE_KEY = 'world-countries-subregion-metadata'
 
@@ -72,4 +72,3 @@ export function importSubregionMetadata(rows: readonly SubregionMetadata[]): num
   writeMetadata([...existing.values()])
   return rows.length
 }
-

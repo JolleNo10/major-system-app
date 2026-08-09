@@ -4,7 +4,7 @@ import {
   isSubregionId,
   type SubregionId,
 } from '@/features/world-countries/data/subregions'
-import { countryId } from '@/features/world-countries/learning'
+import { getCountryId } from './country'
 
 export interface SubregionMetadata {
   subregionId: SubregionId
@@ -37,7 +37,7 @@ export function resolveSubregionCountryOrder(
   const canonical = getCanonicalSubregionCountries(subregionId, currentCountries)
   if (!metadata || metadata.subregionId !== subregionId) return canonical
 
-  const currentById = new Map(canonical.map(country => [countryId(country), country]))
+  const currentById = new Map(canonical.map(country => [getCountryId(country), country]))
   const ordered: Country[] = []
   const included = new Set<CountryId>()
   for (const storedId of metadata.countryOrder) {
@@ -47,7 +47,7 @@ export function resolveSubregionCountryOrder(
     included.add(storedId)
   }
   for (const country of canonical) {
-    const id = countryId(country)
+    const id = getCountryId(country)
     if (included.has(id)) continue
     ordered.push(country)
     included.add(id)
@@ -60,7 +60,7 @@ export function resolveSubregionCountryIds(
   currentCountries: readonly Country[] = countries,
   metadata?: Pick<SubregionMetadata, 'subregionId' | 'countryOrder'> | null,
 ): CountryId[] {
-  return resolveSubregionCountryOrder(subregionId, currentCountries, metadata).map(countryId)
+  return resolveSubregionCountryOrder(subregionId, currentCountries, metadata).map(getCountryId)
 }
 
 export function isValidSubregionMetadata(value: unknown): value is SubregionMetadata {
@@ -84,4 +84,3 @@ export function normalizeSubregionMetadata(value: unknown): SubregionMetadata {
     updatedAt: row.updatedAt,
   }
 }
-

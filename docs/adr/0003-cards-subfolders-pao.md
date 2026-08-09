@@ -1,6 +1,6 @@
 # ADR 0003 — Fold PAO into `cards`; split `cards` by flavor
 
-- **Status:** Accepted
+- **Status:** Implemented
 - **Date:** 2026-08-06
 - **Refines:** ADR 0002 (package-by-feature layout)
 

@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import europeSvg from '@/features/world-countries/assets/MapChart_Map_Europe_names.svg?raw'
-import { SvgMapController } from '@/features/world-countries/common/SvgMapController'
+import europeSvg from '@/features/world-countries/maps/assets/MapChart_Map_Europe_names.svg?raw'
+import { SvgMapController } from '@/features/world-countries/maps/SvgMapController'
 
 const TEST_MAP = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">

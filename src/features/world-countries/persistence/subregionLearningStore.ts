@@ -1,6 +1,6 @@
 import { readJSON, safeSet } from '@/core/storage'
 import { isSubregionId, type SubregionId } from '@/features/world-countries/data/subregions'
-import { isSubregionCountriesLearned, type SubregionLearningState } from './subregionLearningState'
+import { isSubregionCountriesLearned, type SubregionLearningState } from '@/features/world-countries/domain/subregionLearningState'
 
 export const SUBREGION_LEARNING_STORAGE_KEY = 'world-countries-subregion-learning'
 

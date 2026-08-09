@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
-import { countryId } from '@/features/world-countries/learning'
+import { getCountryId } from '@/features/world-countries/domain/country'
 import type { SubregionId } from '@/features/world-countries/data/subregions'
 import {
   createCountryLearningFlow,
@@ -11,8 +11,8 @@ import {
   submitCountryLocation,
   submitCountryOrderAnswer,
   type CountryLearningFlowState,
-} from '@/features/world-countries/learning/countryLearningFlow'
-import { markSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningStore'
+} from '@/features/world-countries/memo/countryLearningFlow'
+import { markSubregionCountriesLearned } from '@/features/world-countries/persistence/subregionLearningStore'
 import { CountryLearningComplete } from './CountryLearningComplete'
 import { CountryWalkthroughStep } from './CountryWalkthroughStep'
 import { LocationPracticeStep } from './LocationPracticeStep'
@@ -34,7 +34,7 @@ export function CountryLearningFlow({
   fuzzyMatching: boolean
   onExit: () => void
 }) {
-  const ids = useMemo(() => entries.map(countryId), [entries])
+  const ids = useMemo(() => entries.map(getCountryId), [entries])
   const [flow, setFlow] = useState<CountryLearningFlowState>(() => createCountryLearningFlow({
     countryIds: ids,
     minimumCleanTarget: locationCleanTargetMinimum,

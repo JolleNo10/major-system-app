@@ -13,8 +13,8 @@ import {
   importGeographyMnemonics,
   isSubregionMnemonicStale,
 } from './geographyMnemonics'
-import { getSubregionMetadata } from '@/features/world-countries/subregions/subregionMetadataStore'
-import { setSubregionCountryOrder } from '@/features/world-countries/subregions/subregionMetadataStore'
+import { getSubregionMetadata } from '@/features/world-countries/persistence/subregionMetadataStore'
+import { setSubregionCountryOrder } from '@/features/world-countries/persistence/subregionMetadataStore'
 
 afterEach(() => localStorage.clear())
 
@@ -25,7 +25,7 @@ const sample: Country[] = [
 ]
 
 describe('Geography mnemonic adapters', () => {
-  it('uses one relationship target for both quiz directions', () => {
+  it('uses one relationship target for both recall directions', () => {
     expect(countryCapitalMnemonicId(sample[2])).toBe('geo:country-capital:NO')
     expect(subregionMnemonicId('Europe', 'Northern Europe')).toBe('geo:subregion:europe:northern-europe')
   })

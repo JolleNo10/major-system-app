@@ -1,16 +1,16 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it } from 'vitest'
-import africaSvg from '@/features/world-countries/assets/MapChart_Map_Africa.svg?raw'
-import americaSvg from '@/features/world-countries/assets/MapChart_Map_America.svg?raw'
-import asiaSvg from '@/features/world-countries/assets/MapChart_Map_Asia.svg?raw'
-import europeSvg from '@/features/world-countries/assets/MapChart_Map_Europe_names.svg?raw'
-import oceaniaSvg from '@/features/world-countries/assets/MapChart_Map_Oceania.svg?raw'
-import { SvgMapController } from '@/features/world-countries/common/SvgMapController'
+import africaSvg from '@/features/world-countries/maps/assets/MapChart_Map_Africa.svg?raw'
+import americaSvg from '@/features/world-countries/maps/assets/MapChart_Map_America.svg?raw'
+import asiaSvg from '@/features/world-countries/maps/assets/MapChart_Map_Asia.svg?raw'
+import europeSvg from '@/features/world-countries/maps/assets/MapChart_Map_Europe_names.svg?raw'
+import oceaniaSvg from '@/features/world-countries/maps/assets/MapChart_Map_Oceania.svg?raw'
+import { SvgMapController } from '@/features/world-countries/maps/SvgMapController'
 import { CONTINENT_MAP_IDS, countries } from '@/features/world-countries/data/countries'
-import { getContinents, getCountriesForContinent } from './geographyMemo'
-import { findUnresolvedCountries } from './memoMapAdapter'
-import { getMemoMapDefinition, MEMO_MAP_DEFINITIONS } from './memoMaps'
+import { getContinents, getCountriesForContinent } from '@/features/world-countries/domain/geography'
+import { findUnresolvedCountries } from './geographyMapAdapter'
+import { getMemoMapDefinition, MEMO_MAP_DEFINITIONS } from './mapDefinitions'
 
 const controllers: SvgMapController[] = []
 

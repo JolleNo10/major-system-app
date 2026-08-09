@@ -1,6 +1,6 @@
 # ADR 0007 — World Countries Memo workflow
 
-* **Status:** Proposed
+* **Status:** Implemented
 * **Date:** 2026-08-08
 * **Builds on:** ADR 0005 — Shared learning model
 * **Builds on:** ADR 0006 — Reusable mnemonic stories for Pi and Geography

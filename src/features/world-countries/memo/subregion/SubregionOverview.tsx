@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Country } from '@/features/world-countries/data/countries'
-import { countryId } from '@/features/world-countries/learning'
+import { getCountryId } from '@/features/world-countries/domain/country'
 import type { Continent } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
 import { subregionMnemonicId } from '@/features/world-countries/mnemonics/geographyMnemonicIds'
@@ -26,7 +26,7 @@ export function SubregionOverview({
   const [editingOrder, setEditingOrder] = useState(false)
   const [mnemonicVersion, setMnemonicVersion] = useState(0)
   const definition = getSubregionDefinition(subregion)
-  const ids = entries.map(countryId)
+  const ids = entries.map(getCountryId)
 
   return (
     <div className="space-y-4 animate-fade-in">

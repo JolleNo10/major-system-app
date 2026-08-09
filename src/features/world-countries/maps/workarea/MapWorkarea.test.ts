@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { MAP_DEFINITIONS } from '@/features/world-countries/common/worldMap'
+import { MAP_DEFINITIONS } from '@/features/world-countries/maps/mapDefinitions'
 import { countries } from '@/features/world-countries/data/countries'
-import { buildCountryHierarchy, mapCountryNamesToSvgIds } from '@/features/world-countries/workarea/MapWorkarea'
+import { buildCountryHierarchy, mapCountryNamesToSvgIds } from '@/features/world-countries/maps/workarea/MapWorkarea'
 
 describe('world map definitions', () => {
   const europe = MAP_DEFINITIONS[0]

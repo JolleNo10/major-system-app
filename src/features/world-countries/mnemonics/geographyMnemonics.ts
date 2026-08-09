@@ -16,19 +16,20 @@ import {
   subregionIdFor,
   type SubregionId,
 } from '@/features/world-countries/data/subregions'
-import { countryId } from '@/features/world-countries/learning'
+import { getCountryId } from '@/features/world-countries/domain/country'
 import {
   getCountriesForSubregion,
   getCountriesForSubregionInEffectiveOrder,
-} from '@/features/world-countries/memo/geographyMemo'
+} from '@/features/world-countries/domain/geography'
 import {
   getAllSubregionMetadata,
+  getSubregionMetadata,
   importSubregionMetadata,
-} from '@/features/world-countries/subregions/subregionMetadataStore'
+} from '@/features/world-countries/persistence/subregionMetadataStore'
 import {
   normalizeSubregionMetadata,
   type SubregionMetadata,
-} from '@/features/world-countries/subregions/subregionMetadata'
+} from '@/features/world-countries/domain/subregionMetadata'
 import {
   countryCapitalMnemonicId,
   isCountryCapitalMnemonicTargetId,
@@ -65,16 +66,16 @@ export function getSubregionCountries(
   if (second === undefined) {
     const id = subregionIdFor(first)
     if (!id) throw new Error(`Unknown Subregion: ${first}`)
-    return getCountriesForSubregionInEffectiveOrder(id, countries)
+    return getCountriesForSubregionInEffectiveOrder(id, countries, getSubregionMetadata(id))
   }
   if (Array.isArray(second)) {
     const id = subregionIdFor(first)
     if (!id) throw new Error(`Unknown Subregion: ${first}`)
-    return getCountriesForSubregionInEffectiveOrder(id, second)
+    return getCountriesForSubregionInEffectiveOrder(id, second, getSubregionMetadata(id))
   }
   const subregion = second as SubregionId | string
   const id = subregionIdFor(subregion)
-  if (id && third === countries) return getCountriesForSubregionInEffectiveOrder(id, third)
+  if (id && third === countries) return getCountriesForSubregionInEffectiveOrder(id, third, getSubregionMetadata(id))
   return getCountriesForSubregion(first, subregion, third)
 }
 
@@ -92,9 +93,9 @@ export function getSubregionCountryIds(
   second?: SubregionId | string | readonly Country[],
   third: readonly Country[] = countries,
 ): CountryId[] {
-  if (second === undefined) return getSubregionCountries(first as SubregionId).map(countryId)
-  if (Array.isArray(second)) return getSubregionCountries(first as SubregionId, second).map(countryId)
-  return getSubregionCountries(first as Continent, second as SubregionId | string, third).map(countryId)
+  if (second === undefined) return getSubregionCountries(first as SubregionId).map(getCountryId)
+  if (Array.isArray(second)) return getSubregionCountries(first as SubregionId, second).map(getCountryId)
+  return getSubregionCountries(first as Continent, second as SubregionId | string, third).map(getCountryId)
 }
 
 export function getCountryCapitalMnemonic(country: Country | string): Promise<Mnemonic | null> {

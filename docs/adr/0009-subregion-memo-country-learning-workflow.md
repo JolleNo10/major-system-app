@@ -1,6 +1,6 @@
 # ADR 0009 — Subregion Memo country-learning workflow
 
-* **Status:** Proposed
+* **Status:** Implemented
 * **Date:** 2026-08-09
 * **Builds on:** ADR 0007 — World Countries Memo workflow
 * **Builds on:** ADR 0008 — Subregion identity, metadata, and country order

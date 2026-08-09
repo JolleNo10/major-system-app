@@ -249,7 +249,7 @@ export function GeographyMnemonicPanel({ country }: { country: Country }) {
         <MnemonicCard
           targetId={countryTargetId}
           title={`${country.country} ↔ ${country.capital}`}
-          subtitle="Shared by both quiz directions"
+          subtitle="Shared by both country ↔ capital recall directions"
           refreshKey={refresh}
           onChanged={() => setRefresh(value => value + 1)}
         />
