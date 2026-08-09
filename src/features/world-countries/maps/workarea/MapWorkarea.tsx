@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRails } from '@/app/layout/PageLayoutContext'
 import { SvgMapController, type SvgMapCountry, type SvgMapHoverScope } from '@/features/world-countries/maps/SvgMapController'
 import { countries, type Country } from '@/features/world-countries/data/countries'
-import { getSubregionDefinition, subregionIdFor } from '@/features/world-countries/data/subregions'
+import { getSubregionDefinition } from '@/features/world-countries/data/subregions'
 import { mapCountryNamesToSvgIds } from '@/features/world-countries/maps/countryMapIds'
 import { Switch } from '@/core/ui/Switch'
 import { MAP_DEFINITIONS } from '@/features/world-countries/maps/mapDefinitions'
@@ -26,8 +26,7 @@ export type CountryHierarchy = readonly {
 }[]
 
 function subregionLabel(country: Country): string {
-  const id = country.subregionId ?? subregionIdFor(country.subregion)
-  return id ? getSubregionDefinition(id).label : country.subregion
+  return getSubregionDefinition(country.subregionId).label
 }
 
 export function buildCountryHierarchy(source: readonly Country[]): CountryHierarchy {

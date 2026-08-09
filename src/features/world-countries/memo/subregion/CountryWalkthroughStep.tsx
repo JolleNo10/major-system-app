@@ -1,7 +1,6 @@
 import type { Country } from '@/features/world-countries/data/countries'
 import type { Continent } from '@/features/world-countries/data/countries'
-import type { CountryLearningFlowState } from '@/features/world-countries/memo/countryLearningFlow'
-import { getCountryId } from '@/features/world-countries/domain/country'
+import type { CountryLearningFlowState } from '@/features/world-countries/learning/countryLearningFlow'
 import { CountryLearningMap } from './CountryLearningMap'
 import { LearningHeader } from './MemoryPreviewStep'
 
@@ -35,7 +34,7 @@ export function CountryWalkthroughStep({
       <CountryLearningMap
         continent={continent}
         scopeCountries={entries}
-        highlightedCountryId={getCountryId(country)}
+        highlightedCountryId={country.id}
         ariaLabel={`${country.country} highlighted on the map`}
       />
       <div className="flex flex-wrap gap-2">

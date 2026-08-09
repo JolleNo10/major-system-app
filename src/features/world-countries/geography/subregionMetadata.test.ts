@@ -1,18 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import { type Country } from '@/features/world-countries/data/countries'
-import { getCountryId } from './country'
 import {
   resolveSubregionCountryOrder,
 } from './subregionMetadata'
 
 const sample: Country[] = [
-  { id: 'NO', country: 'Norway', capital: 'Oslo', continent: 'Europe', subregion: 'Northern Europe' },
-  { id: 'SE', country: 'Sweden', capital: 'Stockholm', continent: 'Europe', subregion: 'Northern Europe' },
-  { id: 'DK', country: 'Denmark', capital: 'Copenhagen', continent: 'Europe', subregion: 'Northern Europe' },
+  { id: 'NO', country: 'Norway', capital: 'Oslo', continent: 'Europe', subregionId: 'northern-europe', subregion: 'Northern Europe' },
+  { id: 'SE', country: 'Sweden', capital: 'Stockholm', continent: 'Europe', subregionId: 'northern-europe', subregion: 'Northern Europe' },
+  { id: 'DK', country: 'Denmark', capital: 'Copenhagen', continent: 'Europe', subregionId: 'northern-europe', subregion: 'Northern Europe' },
 ]
 describe('Subregion metadata and effective order', () => {
   it('uses canonical order without metadata', () => {
-    expect(resolveSubregionCountryOrder('northern-europe', sample).map(getCountryId))
+    expect(resolveSubregionCountryOrder('northern-europe', sample).map(country => country.id))
       .toEqual(['NO', 'SE', 'DK'])
   })
 
@@ -22,7 +21,7 @@ describe('Subregion metadata and effective order', () => {
       countryOrder: ['DK', 'UNKNOWN', 'DK', 'NO'],
       updatedAt: 1,
     }
-    expect(resolveSubregionCountryOrder('northern-europe', sample, metadata).map(getCountryId))
+    expect(resolveSubregionCountryOrder('northern-europe', sample, metadata).map(country => country.id))
       .toEqual(['DK', 'NO', 'SE'])
     expect(metadata.countryOrder).toEqual(['DK', 'UNKNOWN', 'DK', 'NO'])
   })

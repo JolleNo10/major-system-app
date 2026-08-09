@@ -1,6 +1,6 @@
 # ADR 0002 — Package-by-feature `src/` layout + `@/` alias
 
-- **Status:** Implemented
+- **Status:** Accepted
 - **Date:** 2026-08-06
 
 ## Context

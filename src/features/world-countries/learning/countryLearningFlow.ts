@@ -5,13 +5,13 @@ import {
   type LocationRecallConfig,
   type LocationRecallResult,
   type LocationRecallState,
-} from '@/features/world-countries/domain/locationRecallSession'
+} from '@/features/world-countries/learning/locationRecallSession'
 import {
   createOrderedRecallSession,
   submitOrderedRecall,
   type OrderedRecallResult,
   type OrderedRecallState,
-} from '@/features/world-countries/domain/orderedRecallSession'
+} from '@/features/world-countries/learning/orderedRecallSession'
 
 export type CountryLearningPhase =
   | 'memory-preview'

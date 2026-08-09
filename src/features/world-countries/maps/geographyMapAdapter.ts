@@ -1,10 +1,8 @@
-import type { Continent, Country } from '@/features/world-countries/data/countries'
+import type { Continent, Country, CountryId } from '@/features/world-countries/data/countries'
 import type { SvgMapHoverGroup } from '@/features/world-countries/maps/SvgMapController'
 import { countryToSvgIds } from '@/features/world-countries/maps/countryMapIds'
-import { getCountryId } from '@/features/world-countries/domain/country'
 import { getSubregionDefinition } from '@/features/world-countries/data/subregions'
-import { countrySubregionId } from '@/features/world-countries/domain/subregionMetadata'
-import { getCountriesForContinent, getCountriesForSubregion } from '@/features/world-countries/domain/geography'
+import { getCountriesForContinent } from '@/features/world-countries/geography/queries'
 
 /** Return possible IDs without asserting that a given asset contains them. */
 export const getCountrySvgIdCandidates = countryToSvgIds
@@ -66,8 +64,7 @@ export function createSubregionHoverGroups(
   const groups = new Map<string, string[]>()
   for (const entry of getCountriesForContinent(continent, entries)) {
     const ids = resolveCountryToSvgIds(entry, discoveredSvgIds)
-    const subregionId = countrySubregionId(entry)
-    const subregionLabel = subregionId ? getSubregionDefinition(subregionId).label : entry.subregion
+    const subregionLabel = getSubregionDefinition(entry.subregionId).label
     const group = groups.get(subregionLabel) ?? []
     group.push(...ids)
     groups.set(subregionLabel, group)
@@ -93,24 +90,16 @@ export function getCountryForSvgId(
   return entries.find(country => countryToSvgIds(country).includes(svgId))
 }
 
-export function getCountriesForSvgGroup(
-  continent: Continent | string,
-  subregion: string,
-  entries: readonly Country[],
-): Country[] {
-  return getCountriesForSubregion(continent, subregion, entries)
-}
-
 export function createCountryColors(
   entries: readonly Country[],
-  coloredCountryIds: ReadonlySet<string> | Iterable<string>,
+  coloredCountryIds: ReadonlySet<CountryId> | Iterable<CountryId>,
   discoveredSvgIds: ReadonlySet<string> | readonly string[],
   color: string,
 ): Array<readonly [string, string]> {
   const colored = coloredCountryIds instanceof Set
     ? coloredCountryIds
     : new Set(coloredCountryIds)
-  return entries.flatMap(entry => colored.has(getCountryId(entry))
+  return entries.flatMap(entry => colored.has(entry.id)
     ? resolveCountryToSvgIds(entry, discoveredSvgIds).map(id => [id, color] as const)
     : [])
 }

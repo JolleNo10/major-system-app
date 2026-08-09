@@ -9,12 +9,12 @@ World Countries is one application with three user-directed activities:
 - `Recite` is complete ordered recall over a learned scope.
 
 `Maintenance` is a separate system-directed review capability. It may later
-recommend Drill or Recite, but it is not a kind of Recite session.
+recommend Drill or Recite, but it is not itself either workflow.
 
-The feature owns canonical geography data, pure geography rules, mnemonic
-content, its own persistence, and SVG map infrastructure. It does not own
-application mode registration, shared layout/UI primitives, Pi persistence,
-or unrelated feature state.
+The feature owns canonical Geography data, Geography queries and metadata,
+learning mechanics and state, mnemonic content, and SVG map infrastructure. It
+does not own application mode registration, shared layout/UI primitives, Pi
+persistence, or unrelated feature state.
 
 ## Scope and discovery boundaries
 
@@ -26,86 +26,106 @@ or unrelated feature state.
 - Do not scan sibling features for examples or general context. Prefer the
   contracts recorded here.
 - Keep World Countries persistence changes narrowly scoped to its own keys.
-  Never use broad storage cleanup such as `localStorage.clear()` in feature
-  code; Pi and unrelated feature persistence must remain untouched.
+  Never use broad storage cleanup such as `localStorage.clear()` in production
+  feature code; Pi and unrelated feature persistence must remain untouched.
 
 ## Architecture map
 
 - `WorldCountries.tsx` — application shell and Memo/Drill/Recite navigation;
-  it may expose a high-level Maintenance entry but owns no domain rules.
+  it may expose a high-level Maintenance entry but owns no capability rules.
 - `data/` — canonical Country, Continent, Subregion, and classification data.
-- `domain/` — pure Country identity, geography queries, answer matching,
-  Subregion metadata reconciliation, and reusable session rules.
-- `persistence/` — World Countries storage keys, serialization, reads, writes,
-  resets, and durable Subregion learning facts.
+- `geography/` — shared Geography queries, user-authored Subregion metadata,
+  effective Country order, and the metadata store.
+- `learning/` — answer evaluation, reusable recall/session mechanics, pure
+  learning-flow state, durable Subregion learning facts, and their store.
 - `maps/` — SVG controller/view, Country ID ↔ SVG ID adapters, map definitions,
-  bundled map assets, and the experimental `maps/workarea/`.
-- `mnemonics/` — geography mnemonic IDs, story/image storage, and import/export.
-- `memo/` — instructional geography navigation and Subregion learning flow.
-- `drill/` — lightweight entry point for future deliberate practice.
-- `recite/` — lightweight entry point for future complete ordered recall.
-- `maintenance/` — lightweight entry point for future review selection.
+  bundled assets, and the experimental `maps/workarea/`.
+- `mnemonics/` — Geography mnemonic IDs, story/image storage, and import/export.
+- `memo/` — instructional Geography navigation and Subregion learning UI.
+- `drill/` — entry point for future deliberate practice.
+- `recite/` — entry point for future complete ordered recall.
+- `maintenance/` — entry point for future review selection.
 
-There is no World Countries Quiz architecture. Do not recreate `quiz/`,
-generic `common/`, or compatibility wrappers for removed internal paths.
+There is no World Countries Quiz architecture. Do not recreate `quiz/`, broad
+feature-local `domain/` or `persistence/` layers, generic `common/`, or
+compatibility wrappers for removed internal paths.
 
 ## Dependency direction
 
 ```text
-data → domain → persistence
-             ↘ maps
-             ↘ mnemonics
+                       data
+                        │
+             ┌──────────┴──────────┐
+             ▼                     ▼
+        geography              learning
+             │                     │
+             ├─────────┬───────────┤
+             ▼         ▼           ▼
+           maps    mnemonics   learning state
+             \         |           /
+              └────────┼──────────┘
+                       ▼
+          ┌────────────┼────────────┐
+          ▼            ▼            ▼
+        Memo         Drill        Recite
+                                      ▲
+                                      │
+                                 Maintenance
 
-domain / persistence / maps / mnemonics → Memo, Drill, Recite
-domain + learning history → Maintenance
-all workflows → WorldCountries.tsx
+                       ▼
+                WorldCountries.tsx
 ```
 
-`domain` must not depend on React, maps, or persistence. Persistence may use
-domain validation and models, but domain never reads localStorage or IndexedDB.
-Workflow folders are siblings and must not import one another's internals.
-If shared session mechanics grow, extract them into `domain` only when there
-is a concrete shared requirement.
+Higher-level workflows may consume shared capabilities. Shared capabilities
+must not depend on workflow implementations. Workflow folders are siblings and
+must not import one another's internals.
+
+Pure and impure modules may share a capability owner. For example,
+`learning/subregionLearningState.ts` remains pure while
+`learning/subregionLearningStore.ts` may use storage APIs.
 
 ## Important invariants
 
-- `CountryId` is geography identity. SVG IDs are map identifiers. Workflows
-  persist and exchange `CountryId`; translation to SVG IDs belongs in
-  `maps/geographyMapAdapter.ts`.
+- Canonical `Country.id` and `Country.subregionId` are required runtime
+  identity. Normal code reads these fields directly; it must not reconstruct
+  identity from labels, dataset indexes, fallback slugs, or SVG IDs.
+- `CountryId` is Geography identity. SVG IDs are map identifiers. Translation
+  belongs in `maps/geographyMapAdapter.ts`; workflows persist `CountryId`.
 - `data/` remains authoritative for Country membership and classification.
   User-authored order is `SubregionMetadata.countryOrder`; metadata only
   overrides order and cannot add non-member Countries.
-- Geography queries in `domain/geography.ts` are pure. Effective order takes
-  metadata as an input; callers read stored metadata through `persistence/`.
+- `learning/countryLearningFlow.ts` owns pure state and transitions.
+  `memo/subregion/CountryLearningFlow.tsx` owns Memo UI orchestration.
 - `SvgMapController` remains imperative, framework-independent SVG
   infrastructure. It knows about loading, validation, discovery, DOM styles,
-  hover, labels, highlights, zoom, listeners, and cleanup—not learning,
-  correctness, mastery, or workflow state.
+  hover, labels, highlights, zoom, listeners, and cleanup—not learning rules.
 - `SvgMapView.tsx` is the React adapter around that controller.
-- World Countries persistence may be reset during structural work. Do not add
+- World Countries persistence may reset during structural work. Do not add
   migration code solely to preserve obsolete World Countries state.
 - Pi persistence, schemas, backup formats, and storage keys are outside this
   feature and must not be changed.
 
 ## Public boundary
 
-Consumers import from `@/features/world-countries`. The public API is the
-`WorldCountries` shell, the optional `MapWorkarea`, canonical data/types, and
-small pure domain queries. Internal stores, workflow coordinators, mnemonic
-implementations, map controller details, and session helpers stay internal.
-`src/app/modes.tsx` is the application composition consumer.
+Consumers outside this feature import from `@/features/world-countries`.
+`index.ts` exports only the `WorldCountries` shell and optional `MapWorkarea`
+because those are the current external requirements.
+
+Internal World Countries imports bypass the root barrel and point directly to
+the owning capability. Do not export stores, session reducers, Geography
+helpers, mnemonic implementations, or map adapters without a demonstrated
+external consumer.
 
 ## Where changes should go
 
-- Canonical geography content → `data/`.
-- Country identity, geography queries, answer matching, or pure metadata
-  reconciliation → `domain/` and its tests.
-- World Countries storage or durable learning facts → `persistence/` and its
-  tests.
+- Canonical Geography content and identity → `data/`.
+- Geography queries or user-specific Subregion metadata → `geography/`.
+- Answer evaluation, learning state, recall mechanics, or their stores →
+  `learning/`.
 - SVG loading/discovery/rendering, map assets, definitions, or ID translation
-  → `maps/` and its tests.
+  → `maps/`.
 - Mnemonic target/content behavior → `mnemonics/`.
-- Instructional learning behavior → `memo/`.
+- Instructional learning UI → `memo/`.
 - Future deliberate practice, complete recall, or review selection → the
   corresponding sibling workflow directory.
 
@@ -131,11 +151,11 @@ When package manifests change, rebuild once with `docker compose build app`.
 
 ## Known traps
 
-- The geography dataset and SVG assets are separate sources; names and
+- The Geography dataset and SVG assets are separate sources; names and
   coverage are not automatically synchronized.
 - `MapWorkarea` intentionally keeps live controller settings out of its load
   effect. Adding them reloads the SVG and clears selections on every toggle.
 - `SvgMapController.test.ts` exercises synthetic markup and a real bundled
   asset. Asset moves must preserve SVG contents and update only import paths.
-- The Memo map and Subregion learning flow own temporary React/session state;
-  do not move it into persistence just because it is visible in the UI.
+- Memo map and Subregion learning components own temporary React/session state;
+  do not move it into a store merely because it is visible in the UI.

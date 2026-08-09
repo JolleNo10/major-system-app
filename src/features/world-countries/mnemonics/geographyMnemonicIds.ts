@@ -1,5 +1,4 @@
-import { getCountryId } from '@/features/world-countries/domain/country'
-import type { Continent, Country } from '@/features/world-countries/data/countries'
+import type { Continent, Country, CountryId } from '@/features/world-countries/data/countries'
 import {
   continentIdFor,
   getSubregionDefinition,
@@ -25,8 +24,9 @@ export function subregionId(subregion: SubregionId | string): SubregionId {
   return id
 }
 
-export function countryCapitalMnemonicId(country: Country | string): MnemonicTargetId {
-  return `geo:country-capital:${getCountryId(country)}`
+export function countryCapitalMnemonicId(country: Country | CountryId): MnemonicTargetId {
+  const countryId = typeof country === 'string' ? country : country.id
+  return `geo:country-capital:${countryId}`
 }
 
 export function subregionMnemonicId(subregion: SubregionId): MnemonicTargetId

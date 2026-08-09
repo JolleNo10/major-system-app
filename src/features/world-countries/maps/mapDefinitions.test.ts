@@ -8,7 +8,7 @@ import europeSvg from '@/features/world-countries/maps/assets/MapChart_Map_Europ
 import oceaniaSvg from '@/features/world-countries/maps/assets/MapChart_Map_Oceania.svg?raw'
 import { SvgMapController } from '@/features/world-countries/maps/SvgMapController'
 import { CONTINENT_MAP_IDS, countries } from '@/features/world-countries/data/countries'
-import { getContinents, getCountriesForContinent } from '@/features/world-countries/domain/geography'
+import { getContinents, getCountriesForContinent } from '@/features/world-countries/geography/queries'
 import { findUnresolvedCountries } from './geographyMapAdapter'
 import { getMemoMapDefinition, MEMO_MAP_DEFINITIONS } from './mapDefinitions'
 

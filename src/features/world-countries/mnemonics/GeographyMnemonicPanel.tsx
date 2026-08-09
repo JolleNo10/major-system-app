@@ -7,7 +7,7 @@ import {
   useMnemonic,
 } from '@/core/mnemonics'
 import type { Country } from '@/features/world-countries/data/countries'
-import { getSubregionDefinition, subregionIdFor } from '@/features/world-countries/data/subregions'
+import { getSubregionDefinition } from '@/features/world-countries/data/subregions'
 import {
   countryCapitalMnemonicId,
   subregionMnemonicId,
@@ -187,20 +187,14 @@ export function GeographyMnemonicPanel({ country }: { country: Country }) {
   const [refresh, setRefresh] = useState(0)
   const [flash, showFlash] = useFlash()
   const fileRef = useRef<HTMLInputElement>(null)
-  const currentSubregionId = country.subregionId ?? subregionIdFor(country.subregion)
-  const subregionLabel = currentSubregionId
-    ? getSubregionDefinition(currentSubregionId).label
-    : country.subregion
+  const currentSubregionId = country.subregionId
+  const subregionLabel = getSubregionDefinition(currentSubregionId).label
   const subregionCountryIds = useMemo(
-    () => currentSubregionId
-      ? getSubregionCountryIds(currentSubregionId)
-      : getSubregionCountryIds(country.continent, country.subregion),
-    [country.continent, country.subregion, currentSubregionId, refresh],
+    () => getSubregionCountryIds(currentSubregionId),
+    [currentSubregionId, refresh],
   )
   const countryTargetId = countryCapitalMnemonicId(country)
-  const subregionTargetId = currentSubregionId
-    ? subregionMnemonicId(currentSubregionId)
-    : subregionMnemonicId(country.continent, country.subregion)
+  const subregionTargetId = subregionMnemonicId(currentSubregionId)
 
   const download = async () => {
     const blob = await exportGeographyMnemonics()

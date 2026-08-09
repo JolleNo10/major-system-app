@@ -1,6 +1,6 @@
 # ADR 0008 — Subregion identity, metadata, and country order
 
-* **Status:** Implemented
+* **Status:** Accepted
 * **Date:** 2026-08-08
 * **Builds on:** ADR 0007 — World Countries Memo workflow
 * **Refines:** ADR 0006 — Subregion mnemonic ordering and stale detection

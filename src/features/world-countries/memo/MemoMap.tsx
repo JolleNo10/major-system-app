@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { SvgMapController, type SvgMapCountry } from '@/features/world-countries/maps/SvgMapController'
 import { countriesToSvgIds } from '@/features/world-countries/maps/countryMapIds'
 import { countries, type Continent } from '@/features/world-countries/data/countries'
-import { getSubregionDefinition, subregionIdFor, type SubregionId } from '@/features/world-countries/data/subregions'
-import { getCountriesForContinent, getCountriesForSubregion } from '@/features/world-countries/domain/geography'
+import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
+import { getCountriesForContinent, getCountriesForSubregion } from '@/features/world-countries/geography/queries'
 import {
   createContinentHoverGroups,
   createCountryColors,
@@ -61,10 +61,7 @@ export function MemoMap({
     const entry = getCountryForSvgId(svgId, visibleCountries)
     if (!entry) return
     if (level === 'world') onSelectContinent?.(entry.continent)
-    else {
-      const subregionId = subregionIdFor(entry.subregion)
-      if (subregionId) onSelectSubregion?.(subregionId)
-    }
+    else onSelectSubregion?.(entry.subregionId)
   }, [level, onSelectContinent, onSelectSubregion, visibleCountries])
 
   useEffect(() => {

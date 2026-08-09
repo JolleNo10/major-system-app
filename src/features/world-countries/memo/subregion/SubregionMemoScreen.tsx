@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
 import type { Continent } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
-import { getCountriesForSubregionInEffectiveOrder } from '@/features/world-countries/domain/geography'
-import { getSubregionMetadata } from '@/features/world-countries/persistence/subregionMetadataStore'
-import { getSubregionLearningState, isSubregionCountriesLearned } from '@/features/world-countries/persistence/subregionLearningStore'
-import { getCountryId } from '@/features/world-countries/domain/country'
+import { getCountriesForSubregionInEffectiveOrder } from '@/features/world-countries/geography/queries'
+import { getSubregionMetadata } from '@/features/world-countries/geography/subregionMetadataStore'
+import { getSubregionLearningState } from '@/features/world-countries/learning/subregionLearningStore'
+import { isSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningState'
 import { CountryLearningFlow } from './CountryLearningFlow'
 import { SubregionOverview } from './SubregionOverview'
 
@@ -71,7 +71,7 @@ function SubregionScreenBody({
   if (mode === 'learning') {
     return (
       <CountryLearningFlow
-          key={`${definition.id}-${entries.map(getCountryId).join(',')}`}
+          key={`${definition.id}-${entries.map(country => country.id).join(',')}`}
         continent={continent}
         subregion={subregion}
         entries={entries}

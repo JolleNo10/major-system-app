@@ -3,9 +3,9 @@ import type { AnswerMode } from '@/core/types'
 import { useSettings } from '@/app/settings/SettingsContext'
 import { countries, type Continent } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
-import { getAllSubregionLearningStates, isSubregionCountriesLearned } from '@/features/world-countries/persistence/subregionLearningStore'
-import { getCountryId } from '@/features/world-countries/domain/country'
-import { getContinents, getCountriesForContinent, getSubregionDefinitionsForContinent } from '@/features/world-countries/domain/geography'
+import { getAllSubregionLearningStates } from '@/features/world-countries/learning/subregionLearningStore'
+import { isSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningState'
+import { getContinents, getCountriesForContinent, getSubregionDefinitionsForContinent } from '@/features/world-countries/geography/queries'
 import { getContinentMemoProgress, getSubregionMemoProgress, getWorldMemoProgress } from './memoProgress'
 import { MemoMap } from './MemoMap'
 import { SubregionMemoScreen } from './subregion/SubregionMemoScreen'
@@ -18,8 +18,8 @@ function ProgressBadge({ learnedCount, totalCount }: { learnedCount: number; tot
 function learnedCountryIds(): Set<string> {
   const states = new Map(getAllSubregionLearningStates().map(state => [state.subregionId, state]))
   return new Set(countries
-    .filter(country => isSubregionCountriesLearned(states.get(country.subregionId!)))
-    .map(getCountryId))
+    .filter(country => isSubregionCountriesLearned(states.get(country.subregionId)))
+    .map(country => country.id))
 }
 
 export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: AnswerMode }) {

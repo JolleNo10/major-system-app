@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
-import type { CountryLearningFlowState } from '@/features/world-countries/memo/countryLearningFlow'
-import { getCountryId } from '@/features/world-countries/domain/country'
+import type { CountryLearningFlowState } from '@/features/world-countries/learning/countryLearningFlow'
 import { CountryLearningMap } from './CountryLearningMap'
 import { LearningHeader } from './MemoryPreviewStep'
 
@@ -30,9 +29,9 @@ export function LocationPracticeStep({
 
   if (!location) return null
 
-  const expected = entries.find(entry => getCountryId(entry) === location.currentCountryId)
-  const feedbackCountry = feedback ? entries.find(entry => getCountryId(entry) === feedback.expectedId) : null
-  const highlightedCountryId = feedbackCountry ? getCountryId(feedbackCountry) : expected ? getCountryId(expected) : undefined
+  const expected = entries.find(entry => entry.id === location.currentCountryId)
+  const feedbackCountry = feedback ? entries.find(entry => entry.id === feedback.expectedId) : null
+  const highlightedCountryId = feedbackCountry?.id ?? expected?.id
 
   const submit = (countryId: string) => {
     if (feedback) return
@@ -71,7 +70,7 @@ export function LocationPracticeStep({
       {feedback && (
         <section className={`rounded-xl border p-4 ${feedback.correct ? 'border-green-500/30 bg-green-500/10' : 'border-red-500/30 bg-red-500/10'}`}>
           <p className={`text-sm font-semibold ${feedback.correct ? 'text-green-300' : 'text-red-300'}`}>
-            {feedback.correct ? 'Correct location.' : `That was ${entries.find(entry => getCountryId(entry) === feedback.expectedId)?.country ?? 'not the target'}.`}
+            {feedback.correct ? 'Correct location.' : `That was ${entries.find(entry => entry.id === feedback.expectedId)?.country ?? 'not the target'}.`}
           </p>
         </section>
       )}

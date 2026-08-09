@@ -13,23 +13,20 @@ import {
 import type { Mnemonic, MnemonicRecord, MnemonicTargetId } from '@/core/mnemonics/types'
 import { countries, type Continent, type Country, type CountryId } from '@/features/world-countries/data/countries'
 import {
-  subregionIdFor,
   type SubregionId,
 } from '@/features/world-countries/data/subregions'
-import { getCountryId } from '@/features/world-countries/domain/country'
 import {
-  getCountriesForSubregion,
   getCountriesForSubregionInEffectiveOrder,
-} from '@/features/world-countries/domain/geography'
+} from '@/features/world-countries/geography/queries'
 import {
   getAllSubregionMetadata,
   getSubregionMetadata,
   importSubregionMetadata,
-} from '@/features/world-countries/persistence/subregionMetadataStore'
+} from '@/features/world-countries/geography/subregionMetadataStore'
 import {
   normalizeSubregionMetadata,
   type SubregionMetadata,
-} from '@/features/world-countries/domain/subregionMetadata'
+} from '@/features/world-countries/geography/subregionMetadata'
 import {
   countryCapitalMnemonicId,
   isCountryCapitalMnemonicTargetId,
@@ -51,59 +48,28 @@ export interface GeographyExportV2 {
 
 export function getSubregionCountries(
   subregionId: SubregionId,
-  entries?: readonly Country[],
-): Country[]
-export function getSubregionCountries(
-  continent: Continent | string,
-  subregion: SubregionId | string,
-  entries?: readonly Country[],
-): Country[]
-export function getSubregionCountries(
-  first: Continent | SubregionId | string,
-  second?: SubregionId | string | readonly Country[],
-  third: readonly Country[] = countries,
+  entries: readonly Country[] = countries,
 ): Country[] {
-  if (second === undefined) {
-    const id = subregionIdFor(first)
-    if (!id) throw new Error(`Unknown Subregion: ${first}`)
-    return getCountriesForSubregionInEffectiveOrder(id, countries, getSubregionMetadata(id))
-  }
-  if (Array.isArray(second)) {
-    const id = subregionIdFor(first)
-    if (!id) throw new Error(`Unknown Subregion: ${first}`)
-    return getCountriesForSubregionInEffectiveOrder(id, second, getSubregionMetadata(id))
-  }
-  const subregion = second as SubregionId | string
-  const id = subregionIdFor(subregion)
-  if (id && third === countries) return getCountriesForSubregionInEffectiveOrder(id, third, getSubregionMetadata(id))
-  return getCountriesForSubregion(first, subregion, third)
+  return getCountriesForSubregionInEffectiveOrder(
+    subregionId,
+    entries,
+    getSubregionMetadata(subregionId),
+  )
 }
 
 export function getSubregionCountryIds(
   subregionId: SubregionId,
-  entries?: readonly Country[],
-): CountryId[]
-export function getSubregionCountryIds(
-  continent: Continent | string,
-  subregion: SubregionId | string,
-  entries?: readonly Country[],
-): CountryId[]
-export function getSubregionCountryIds(
-  first: Continent | SubregionId | string,
-  second?: SubregionId | string | readonly Country[],
-  third: readonly Country[] = countries,
+  entries: readonly Country[] = countries,
 ): CountryId[] {
-  if (second === undefined) return getSubregionCountries(first as SubregionId).map(getCountryId)
-  if (Array.isArray(second)) return getSubregionCountries(first as SubregionId, second).map(getCountryId)
-  return getSubregionCountries(first as Continent, second as SubregionId | string, third).map(getCountryId)
+  return getSubregionCountries(subregionId, entries).map(country => country.id)
 }
 
-export function getCountryCapitalMnemonic(country: Country | string): Promise<Mnemonic | null> {
+export function getCountryCapitalMnemonic(country: Country | CountryId): Promise<Mnemonic | null> {
   return getMnemonic(countryCapitalMnemonicId(country))
 }
 
 export async function putCountryCapitalMnemonic(
-  country: Country | string,
+  country: Country | CountryId,
   data: { text: string; image: Blob | null },
 ): Promise<void> {
   const targetId = countryCapitalMnemonicId(country)
@@ -111,7 +77,7 @@ export async function putCountryCapitalMnemonic(
   await putMnemonic({ targetId, ...data, updatedAt: Date.now() })
 }
 
-export function deleteCountryCapitalMnemonic(country: Country | string): Promise<void> {
+export function deleteCountryCapitalMnemonic(country: Country | CountryId): Promise<void> {
   return deleteMnemonic(countryCapitalMnemonicId(country))
 }
 

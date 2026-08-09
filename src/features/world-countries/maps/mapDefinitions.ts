@@ -6,7 +6,7 @@ import oceaniaSvgUrl from '@/features/world-countries/maps/assets/MapChart_Map_O
 import worldSvgUrl from '@/features/world-countries/maps/assets/MapChart_Map_World.svg?url'
 import type { SvgMapHoverGroup, SvgMapZoomArea } from '@/features/world-countries/maps/SvgMapController'
 import { CONTINENT_MAP_IDS, type Continent } from '@/features/world-countries/data/countries'
-import { getContinents } from '@/features/world-countries/domain/geography'
+import { getContinents } from '@/features/world-countries/geography/queries'
 
 export interface MapDefinition {
   id: string

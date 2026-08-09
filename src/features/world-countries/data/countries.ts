@@ -22,20 +22,22 @@ export const CONTINENT_MAP_IDS: Readonly<Record<Continent, string>> = {
   Oceania: 'oceania',
 }
 
-export type Country = {
+export interface Country {
   /** Stable ISO-like code used by persisted learning and mnemonic records. */
-  id?: CountryId;
+  id: CountryId;
   country: string;
   capital: string;
   continent: Continent;
-  /** Stable Subregion identity. Legacy fixtures may omit this during migration. */
-  subregionId?: SubregionId;
-  /** Display label retained as a compatibility/presentation field. */
+  /** Stable canonical Subregion identity. */
+  subregionId: SubregionId;
+  /** Display label for the canonical Subregion. */
   subregion: string;
   /** UN M49 subregion retained when the app's learning geography differs. */
   unM49Subregion?: string;
   aliases?: readonly string[];
-};
+}
+
+type CountryRecordInput = Omit<Country, 'id' | 'subregionId'>
 
 const COUNTRY_CODES = [
   'AF', 'AL', 'DZ', 'AD', 'AO', 'AG', 'AR', 'AM', 'AU', 'AT', 'AZ', 'BS', 'BH', 'BD', 'BB',
@@ -54,7 +56,7 @@ const COUNTRY_CODES = [
   'ZM', 'ZW',
 ] as const
 
-const COUNTRY_RECORDS: Omit<Country, 'id'>[] = [
+const COUNTRY_RECORDS: CountryRecordInput[] = [
   { country: "Afghanistan", capital: "Kabul", continent: "Asia", subregion: "South Asia" },
   { country: "Albania", capital: "Tirana", continent: "Europe", subregion: "Balkans" },
   { country: "Algeria", capital: "Algiers", continent: "Africa", subregion: "North Africa" },
@@ -253,6 +255,10 @@ const COUNTRY_RECORDS: Omit<Country, 'id'>[] = [
   { country: "Zambia", capital: "Lusaka", continent: "Africa", subregion: "Southern Africa" },
   { country: "Zimbabwe", capital: "Harare", continent: "Africa", subregion: "Southern Africa" },
 ];
+
+if (COUNTRY_CODES.length !== COUNTRY_RECORDS.length) {
+  throw new Error('Country codes and Country records must have matching lengths')
+}
 
 export const countries: Country[] = COUNTRY_RECORDS.map((entry, index) => {
   const subregionId = getSubregionIdForLabel(entry.subregion)

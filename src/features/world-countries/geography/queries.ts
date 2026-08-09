@@ -1,11 +1,9 @@
 import { countries, type Continent, type Country } from '@/features/world-countries/data/countries'
 import {
   getSubregionDefinition,
-  subregionDefinitionFor,
   type SubregionId,
 } from '@/features/world-countries/data/subregions'
 import {
-  countrySubregionId,
   getCanonicalSubregionCountries,
   resolveSubregionCountryOrder,
   type SubregionMetadata,
@@ -32,11 +30,7 @@ export function getSubregionIdsForContinent(
   continent: Continent | string,
   entries: readonly Country[] = countries,
 ): SubregionId[] {
-  return unique(
-    getCountriesForContinent(continent, entries)
-      .map(countrySubregionId)
-      .filter((id): id is SubregionId => Boolean(id)),
-  )
+  return unique(getCountriesForContinent(continent, entries).map(country => country.subregionId))
 }
 
 export function getSubregionsForContinent(
@@ -56,12 +50,11 @@ export function getSubregionDefinitionsForContinent(
 
 export function getCountriesForSubregion(
   continent: Continent | string,
-  subregion: SubregionId | string,
+  subregionId: SubregionId,
   entries: readonly Country[] = countries,
 ): Country[] {
-  const id = subregionDefinitionFor(subregion)?.id
-  return entries.filter(entry => entry.continent === continent && (
-    id ? countrySubregionId(entry) === id : entry.subregion === subregion
+  return entries.filter(entry => (
+    entry.continent === continent && entry.subregionId === subregionId
   ))
 }
 
@@ -73,8 +66,8 @@ export function getCountriesForSubregionId(
 }
 
 /**
- * Resolve the effective user order from supplied domain state. Persistence is
- * deliberately not consulted here; callers that need stored state inject it.
+ * Resolve the effective user order from supplied Geography metadata. Storage
+ * is deliberately not consulted here; callers inject the metadata they read.
  */
 export function getCountriesForSubregionInEffectiveOrder(
   subregionId: SubregionId,
@@ -82,14 +75,4 @@ export function getCountriesForSubregionInEffectiveOrder(
   metadata?: Pick<SubregionMetadata, 'subregionId' | 'countryOrder'> | null,
 ): Country[] {
   return resolveSubregionCountryOrder(subregionId, entries, metadata)
-}
-
-export function getSubregionGroups(
-  continent: Continent | string,
-  entries: readonly Country[] = countries,
-): Array<{ name: string; countries: Country[] }> {
-  return getSubregionsForContinent(continent, entries).map(name => ({
-    name,
-    countries: getCountriesForSubregion(continent, name, entries),
-  }))
 }

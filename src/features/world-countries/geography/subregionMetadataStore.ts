@@ -1,4 +1,5 @@
 import { readJSON, safeSet } from '@/core/storage'
+import type { CountryId } from '@/features/world-countries/data/countries'
 import {
   isSubregionId,
   type SubregionId,
@@ -6,7 +7,7 @@ import {
 import {
   normalizeSubregionMetadata,
   type SubregionMetadata,
-} from '@/features/world-countries/domain/subregionMetadata'
+} from '@/features/world-countries/geography/subregionMetadata'
 
 export const SUBREGION_METADATA_STORAGE_KEY = 'world-countries-subregion-metadata'
 
@@ -50,7 +51,7 @@ export function setSubregionMetadata(metadata: SubregionMetadata): void {
 
 export function setSubregionCountryOrder(
   subregionId: SubregionId,
-  countryIds: readonly string[],
+  countryIds: readonly CountryId[],
 ): void {
   if (!isSubregionId(subregionId)) throw new Error(`Unknown Subregion ID: ${subregionId}`)
   setSubregionMetadata({

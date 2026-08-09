@@ -1,6 +1,6 @@
 # ADR 0004 — Restructure `pi` by tab; extract shared segment-range picker
 
-- **Status:** Implemented
+- **Status:** Accepted
 - **Date:** 2026-08-06
 - **Refines:** ADR 0002 (package-by-feature layout); parallels ADR 0003 (cards split by flavor)
 

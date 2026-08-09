@@ -1,6 +1,6 @@
 # ADR 0005 — Shared learning model for reusable scoring, mastery, scheduling, and study workflows
 
-* **Status:** Implemented
+* **Status:** Accepted
 * **Date:** 2026-08-08
 * **Builds on:** existing `core/scoring`, Pi learning workflows, and World Countries feature
 * **Goal:** allow Pi, Countries/Capitals, Major System, cards, and future memorization domains to reuse learning mechanics without forcing them into the same domain model

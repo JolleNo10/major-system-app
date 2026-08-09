@@ -1,10 +1,8 @@
 import { countries, type Country, type CountryId } from '@/features/world-countries/data/countries'
 import {
-  getSubregionIdForLabel,
   isSubregionId,
   type SubregionId,
 } from '@/features/world-countries/data/subregions'
-import { getCountryId } from './country'
 
 export interface SubregionMetadata {
   subregionId: SubregionId
@@ -12,16 +10,11 @@ export interface SubregionMetadata {
   updatedAt: number
 }
 
-/** Resolve a country record's stable Subregion identity, including legacy fixtures. */
-export function countrySubregionId(country: Country): SubregionId | undefined {
-  return country.subregionId ?? getSubregionIdForLabel(country.subregion)
-}
-
 export function getCanonicalSubregionCountries(
   subregionId: SubregionId,
   currentCountries: readonly Country[] = countries,
 ): Country[] {
-  return currentCountries.filter(country => countrySubregionId(country) === subregionId)
+  return currentCountries.filter(country => country.subregionId === subregionId)
 }
 
 /**
@@ -37,7 +30,7 @@ export function resolveSubregionCountryOrder(
   const canonical = getCanonicalSubregionCountries(subregionId, currentCountries)
   if (!metadata || metadata.subregionId !== subregionId) return canonical
 
-  const currentById = new Map(canonical.map(country => [getCountryId(country), country]))
+  const currentById = new Map(canonical.map(country => [country.id, country]))
   const ordered: Country[] = []
   const included = new Set<CountryId>()
   for (const storedId of metadata.countryOrder) {
@@ -47,7 +40,7 @@ export function resolveSubregionCountryOrder(
     included.add(storedId)
   }
   for (const country of canonical) {
-    const id = getCountryId(country)
+    const id = country.id
     if (included.has(id)) continue
     ordered.push(country)
     included.add(id)
@@ -60,7 +53,7 @@ export function resolveSubregionCountryIds(
   currentCountries: readonly Country[] = countries,
   metadata?: Pick<SubregionMetadata, 'subregionId' | 'countryOrder'> | null,
 ): CountryId[] {
-  return resolveSubregionCountryOrder(subregionId, currentCountries, metadata).map(getCountryId)
+  return resolveSubregionCountryOrder(subregionId, currentCountries, metadata).map(country => country.id)
 }
 
 export function isValidSubregionMetadata(value: unknown): value is SubregionMetadata {

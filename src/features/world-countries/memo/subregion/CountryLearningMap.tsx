@@ -3,7 +3,6 @@ import { countriesToSvgIds } from '@/features/world-countries/maps/countryMapIds
 import { SvgMapView, type SvgMapCountry } from '@/features/world-countries/maps/SvgMapView'
 import type { Country } from '@/features/world-countries/data/countries'
 import type { Continent } from '@/features/world-countries/data/countries'
-import { getCountryId } from '@/features/world-countries/domain/country'
 import { getCountryForSvgId, resolveCountriesToSvgIds } from '@/features/world-countries/maps/geographyMapAdapter'
 import { getMemoMapDefinition } from '@/features/world-countries/maps/mapDefinitions'
 
@@ -31,7 +30,7 @@ export function CountryLearningMap({
   )
   const highlightedSvgIds = useMemo(() => {
     if (!highlightedCountryId) return []
-    const country = scopeCountries.find(entry => getCountryId(entry) === highlightedCountryId)
+    const country = scopeCountries.find(entry => entry.id === highlightedCountryId)
     return country ? countriesToSvgIds([country]).filter(id => discoveredIds.includes(id)) : []
   }, [discoveredIds, highlightedCountryId, scopeCountries])
 
@@ -45,7 +44,7 @@ export function CountryLearningMap({
       onCountriesLoaded={setDiscovered}
       onCountryClick={svgId => {
         const country = getCountryForSvgId(svgId, scopeCountries)
-        if (country) onCountryClick?.(getCountryId(country))
+        if (country) onCountryClick?.(country.id)
       }}
     />
   )

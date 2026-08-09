@@ -1,6 +1,6 @@
 import { readJSON, safeSet } from '@/core/storage'
 import { isSubregionId, type SubregionId } from '@/features/world-countries/data/subregions'
-import { isSubregionCountriesLearned, type SubregionLearningState } from '@/features/world-countries/domain/subregionLearningState'
+import type { SubregionLearningState } from '@/features/world-countries/learning/subregionLearningState'
 
 export const SUBREGION_LEARNING_STORAGE_KEY = 'world-countries-subregion-learning'
 
@@ -54,5 +54,3 @@ export function markSubregionCountriesLearned(
 export function clearSubregionCountriesLearned(subregionId: SubregionId): void {
   writeStates(readStoredStates().filter(candidate => candidate.subregionId !== subregionId))
 }
-
-export { isSubregionCountriesLearned }

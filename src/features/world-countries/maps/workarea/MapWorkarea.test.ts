@@ -49,10 +49,10 @@ describe('world map definitions', () => {
 
   it('groups countries by continent and subregion in alphabetical order', () => {
     const hierarchy = buildCountryHierarchy([
-      { country: 'Zulu', capital: '', continent: 'Asia', subregion: 'West Asia' },
-      { country: 'Alpha', capital: '', continent: 'Europe', subregion: 'Balkans' },
-      { country: 'Bravo', capital: '', continent: 'Asia', subregion: 'East Asia' },
-      { country: 'Charlie', capital: '', continent: 'Europe', subregion: 'Balkans' },
+      { id: 'Z1', country: 'Zulu', capital: '', continent: 'Asia', subregionId: 'west-asia', subregion: 'West Asia' },
+      { id: 'A1', country: 'Alpha', capital: '', continent: 'Europe', subregionId: 'balkans', subregion: 'Balkans' },
+      { id: 'B1', country: 'Bravo', capital: '', continent: 'Asia', subregionId: 'east-asia', subregion: 'East Asia' },
+      { id: 'C1', country: 'Charlie', capital: '', continent: 'Europe', subregionId: 'balkans', subregion: 'Balkans' },
     ])
 
     expect(hierarchy).toEqual([

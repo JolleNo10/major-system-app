@@ -13,15 +13,15 @@ import {
   importGeographyMnemonics,
   isSubregionMnemonicStale,
 } from './geographyMnemonics'
-import { getSubregionMetadata } from '@/features/world-countries/persistence/subregionMetadataStore'
-import { setSubregionCountryOrder } from '@/features/world-countries/persistence/subregionMetadataStore'
+import { getSubregionMetadata } from '@/features/world-countries/geography/subregionMetadataStore'
+import { setSubregionCountryOrder } from '@/features/world-countries/geography/subregionMetadataStore'
 
 afterEach(() => localStorage.clear())
 
 const sample: Country[] = [
-  { country: 'Denmark', capital: 'Copenhagen', continent: 'Europe', subregion: 'Northern Europe' },
-  { country: 'Estonia', capital: 'Tallinn', continent: 'Europe', subregion: 'Northern Europe' },
-  { country: 'Norway', capital: 'Oslo', continent: 'Europe', subregion: 'Northern Europe' },
+  { id: 'DK', country: 'Denmark', capital: 'Copenhagen', continent: 'Europe', subregionId: 'northern-europe', subregion: 'Northern Europe' },
+  { id: 'EE', country: 'Estonia', capital: 'Tallinn', continent: 'Europe', subregionId: 'northern-europe', subregion: 'Northern Europe' },
+  { id: 'NO', country: 'Norway', capital: 'Oslo', continent: 'Europe', subregionId: 'northern-europe', subregion: 'Northern Europe' },
 ]
 
 describe('Geography mnemonic adapters', () => {
@@ -31,7 +31,7 @@ describe('Geography mnemonic adapters', () => {
   })
 
   it('records and compares canonical subregion order', () => {
-    const ids = getSubregionCountryIds('Europe', 'Northern Europe', sample)
+    const ids = getSubregionCountryIds('northern-europe', sample)
     expect(ids).toEqual(['DK', 'EE', 'NO'])
     expect(isSubregionMnemonicStale({ countryIds: ids }, ids)).toBe(false)
     expect(isSubregionMnemonicStale({ countryIds: ['EE', 'DK', 'NO'] }, ids)).toBe(true)

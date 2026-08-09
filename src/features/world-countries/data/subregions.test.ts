@@ -22,7 +22,7 @@ describe('stable World Countries geography identity', () => {
       .toBe(SUBREGION_DEFINITIONS.length)
     expect(countries.every(country => country.subregionId)).toBe(true)
     expect(countries.every(country => {
-      const definition = getSubregionDefinition(country.subregionId!)
+      const definition = getSubregionDefinition(country.subregionId)
       return definition.continent === country.continent
     })).toBe(true)
   })
@@ -31,4 +31,3 @@ describe('stable World Countries geography identity', () => {
     expect(CONTINENT_IDS).toMatchObject({ Africa: 'africa', Europe: 'europe', Oceania: 'oceania' })
   })
 })
-

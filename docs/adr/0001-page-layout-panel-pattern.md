@@ -1,6 +1,6 @@
 # ADR 0001 — `PageLayout`: one base pattern for center + side rails
 
-- **Status:** Implemented
+- **Status:** Accepted
 - **Date:** 2026-08-06
 
 ## Context
