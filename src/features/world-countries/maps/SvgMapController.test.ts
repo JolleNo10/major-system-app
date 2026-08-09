@@ -107,9 +107,27 @@ describe('SvgMapController persistent state', () => {
       unknownIds: [],
     })
     expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('5 5 45 35')
+    expect(mount.querySelector('svg')?.style.aspectRatio).toBe('45 / 35')
 
     controller.resetZoom()
     expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('0 0 100 50')
+    expect(mount.querySelector('svg')?.style.aspectRatio).toBe('100 / 50')
+  })
+
+  it('preserves zoom padding beyond the source viewBox at an edge', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+
+    Object.defineProperty(path(mount, 'Alpha'), 'getBBox', {
+      configurable: true,
+      value: () => ({ x: 20, y: 85, width: 10, height: 15 }),
+    })
+
+    expect(controller.setZoomArea(['Alpha'], 10)).toEqual({
+      activeIds: ['Alpha'],
+      unknownIds: [],
+    })
+    expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('10 75 30 35')
   })
 
   it('sets, toggles, clears, and reports listed or complement highlights', async () => {

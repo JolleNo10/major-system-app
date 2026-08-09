@@ -20,8 +20,11 @@ export type CountryLearningPhase =
   | 'ordered-recall'
   | 'complete'
 
+export type CountryLearningEntryPoint = 'beginning' | 'ordered-recall'
+
 export interface CountryLearningConfig extends LocationRecallConfig {
   rewindOnError?: number
+  entryPoint?: CountryLearningEntryPoint
 }
 
 export interface CountryLearningFlowState {
@@ -35,13 +38,16 @@ export interface CountryLearningFlowState {
 export function createCountryLearningFlow(
   config: CountryLearningConfig,
 ): CountryLearningFlowState {
-  return {
+  const state: CountryLearningFlowState = {
     phase: 'memory-preview',
     countryIds: [...new Set(config.countryIds)],
     walkthroughIndex: 0,
     location: null,
     ordered: null,
   }
+  return config.entryPoint === 'ordered-recall'
+    ? startOrderedRecall(state, config.rewindOnError)
+    : state
 }
 
 export function startCountryWalkthrough(state: CountryLearningFlowState): CountryLearningFlowState {

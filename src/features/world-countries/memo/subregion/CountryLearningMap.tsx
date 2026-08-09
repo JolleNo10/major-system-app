@@ -9,6 +9,7 @@ import { getMemoMapDefinition } from '@/features/world-countries/maps/mapDefinit
 export interface CountryLearningMapProps {
   continent: Continent
   scopeCountries: readonly Country[]
+  showNames?: boolean
   highlightedCountryId?: string | null
   onCountryClick?: (countryId: string) => void
   ariaLabel: string
@@ -17,6 +18,7 @@ export interface CountryLearningMapProps {
 export function CountryLearningMap({
   continent,
   scopeCountries,
+  showNames = false,
   highlightedCountryId = null,
   onCountryClick,
   ariaLabel,
@@ -40,6 +42,7 @@ export function CountryLearningMap({
       ariaLabel={ariaLabel}
       highlightedIds={highlightedSvgIds}
       mutedIds={discoveredIds.filter(id => !scopeSvgIds.includes(id))}
+      namedIds={showNames ? scopeSvgIds : []}
       zoomIds={scopeSvgIds}
       onCountriesLoaded={setDiscovered}
       onCountryClick={svgId => {

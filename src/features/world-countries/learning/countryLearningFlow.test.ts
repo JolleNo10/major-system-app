@@ -26,6 +26,25 @@ describe('country-learning workflow coordinator', () => {
     expect(complete.state.phase).toBe('complete')
   })
 
+  it('can enter ordered recall directly at the first country', () => {
+    const flow = createCountryLearningFlow({
+      countryIds: ['B', 'A'],
+      minimumCleanTarget: 2,
+      rewindOnError: 3,
+      entryPoint: 'ordered-recall',
+    })
+
+    expect(flow.phase).toBe('ordered-recall')
+    expect(flow.ordered).toEqual({
+      order: ['B', 'A'],
+      rewindOnError: 3,
+      currentIndex: 0,
+      mode: 'clean',
+      completed: false,
+    })
+    expect(flow.location).toBeNull()
+  })
+
   it('traverses every phase in order from memory-preview to complete', () => {
     // Three countries so walkthrough and sessions have visible structure.
     let flow = createCountryLearningFlow({ countryIds: ['A', 'B', 'C'], minimumCleanTarget: 2 })

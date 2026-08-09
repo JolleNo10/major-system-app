@@ -13,6 +13,7 @@ export function SubregionOverview({
   entries,
   learned,
   onStart,
+  onPracticeStageB,
   onOrderChanged,
 }: {
   continent: Continent
@@ -20,6 +21,7 @@ export function SubregionOverview({
   entries: readonly Country[]
   learned: boolean
   onStart: () => void
+  onPracticeStageB: () => void
   onOrderChanged: () => void
 }) {
   const [editingOrder, setEditingOrder] = useState(false)
@@ -45,6 +47,7 @@ export function SubregionOverview({
       <CountryLearningMap
         continent={continent}
         scopeCountries={entries}
+        showNames
         ariaLabel={`Map of ${definition.label}`}
       />
 
@@ -56,9 +59,16 @@ export function SubregionOverview({
               {learned ? 'The ordered country recall is complete. You can review it whenever you like.' : 'Learn the countries and their locations.'}
             </p>
           </div>
-          <button type="button" onClick={onStart} disabled={entries.length === 0} className="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40">
-            {learned ? 'Review countries' : 'Start learning countries'}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={onStart} disabled={entries.length === 0} className="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40">
+              {learned ? 'Review countries' : 'Start learning countries'}
+            </button>
+            {learned && (
+              <button type="button" onClick={onPracticeStageB} disabled={entries.length === 0} className="rounded-lg border border-cyan-500/50 bg-zinc-900 px-4 py-2 text-sm font-semibold text-cyan-300 hover:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-40">
+                Practice Stage B
+              </button>
+            )}
+          </div>
         </div>
       </section>
 

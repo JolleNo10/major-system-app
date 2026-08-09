@@ -5,6 +5,7 @@ import { getCountriesForSubregionInEffectiveOrder } from '@/features/world-count
 import { getSubregionMetadata } from '@/features/world-countries/geography/subregionMetadataStore'
 import { getSubregionLearningState } from '@/features/world-countries/learning/subregionLearningStore'
 import { isSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningState'
+import type { CountryLearningEntryPoint } from '@/features/world-countries/learning/countryLearningFlow'
 import { CountryLearningFlow } from './CountryLearningFlow'
 import { SubregionOverview } from './SubregionOverview'
 
@@ -66,6 +67,7 @@ function SubregionScreenBody({
   onExit: () => void
 }) {
   const [mode, setMode] = useState<'overview' | 'learning'>('overview')
+  const [entryPoint, setEntryPoint] = useState<CountryLearningEntryPoint>('beginning')
   const definition = getSubregionDefinition(subregion)
 
   if (mode === 'learning') {
@@ -75,6 +77,7 @@ function SubregionScreenBody({
         continent={continent}
         subregion={subregion}
         entries={entries}
+        entryPoint={entryPoint}
         locationCleanTargetMinimum={locationCleanTargetMinimum}
         fuzzyMatching={fuzzyMatching}
         onExit={() => {
@@ -91,7 +94,14 @@ function SubregionScreenBody({
       subregion={subregion}
       entries={entries}
       learned={learned}
-      onStart={() => setMode('learning')}
+      onStart={() => {
+        setEntryPoint('beginning')
+        setMode('learning')
+      }}
+      onPracticeStageB={() => {
+        setEntryPoint('ordered-recall')
+        setMode('learning')
+      }}
       onOrderChanged={onLearningChanged}
     />
   )

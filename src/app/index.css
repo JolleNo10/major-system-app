@@ -51,6 +51,7 @@ body {
   display: block;
   width: 100%;
   height: auto;
+  max-height: min(70dvh, 560px);
 }
 
 ::-webkit-scrollbar {

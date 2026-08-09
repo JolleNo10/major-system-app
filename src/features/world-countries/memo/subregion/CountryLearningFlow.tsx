@@ -9,6 +9,7 @@ import {
   startOrderedRecall,
   submitCountryLocation,
   submitCountryOrderAnswer,
+  type CountryLearningEntryPoint,
   type CountryLearningFlowState,
 } from '@/features/world-countries/learning/countryLearningFlow'
 import { markSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningStore'
@@ -22,6 +23,7 @@ export function CountryLearningFlow({
   continent,
   subregion,
   entries,
+  entryPoint = 'beginning',
   locationCleanTargetMinimum,
   fuzzyMatching,
   onExit,
@@ -29,6 +31,7 @@ export function CountryLearningFlow({
   continent: Continent
   subregion: SubregionId
   entries: readonly Country[]
+  entryPoint?: CountryLearningEntryPoint
   locationCleanTargetMinimum: number
   fuzzyMatching: boolean
   onExit: () => void
@@ -37,6 +40,7 @@ export function CountryLearningFlow({
   const [flow, setFlow] = useState<CountryLearningFlowState>(() => createCountryLearningFlow({
     countryIds: ids,
     minimumCleanTarget: locationCleanTargetMinimum,
+    entryPoint,
   }))
   const completionReported = useRef(false)
 

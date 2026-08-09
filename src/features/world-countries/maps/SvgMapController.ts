@@ -216,6 +216,7 @@ export class SvgMapController {
     this.mount.replaceChildren(imported)
     this.svg = imported
     this.originalViewBox = imported.getAttribute('viewBox')
+    this.syncAspectRatio(this.originalViewBox)
     this.bindDiscoveredCountries(imported, markup)
     this.attachHoverListeners()
     this.render()
@@ -274,25 +275,22 @@ export class SvgMapController {
     if (boxes.length === 0) return { activeIds: knownIds, unknownIds }
 
     const safePadding = Number.isFinite(padding) ? Math.max(0, padding) : 0
-    const minX = Math.max(originalBounds.x, Math.min(...boxes.map(box => box.x)) - safePadding)
-    const minY = Math.max(originalBounds.y, Math.min(...boxes.map(box => box.y)) - safePadding)
-    const maxX = Math.min(
-      originalBounds.x + originalBounds.width,
-      Math.max(...boxes.map(box => box.x + box.width)) + safePadding,
-    )
-    const maxY = Math.min(
-      originalBounds.y + originalBounds.height,
-      Math.max(...boxes.map(box => box.y + box.height)) + safePadding,
-    )
+    // Keep the requested breathing room even when the target is near an edge
+    // of the source map. The SVG background remains visible in this overscan
+    // area, while resetZoom() still restores the source viewBox exactly.
+    const minX = Math.min(...boxes.map(box => box.x)) - safePadding
+    const minY = Math.min(...boxes.map(box => box.y)) - safePadding
+    const maxX = Math.max(...boxes.map(box => box.x + box.width)) + safePadding
+    const maxY = Math.max(...boxes.map(box => box.y + box.height)) + safePadding
     if (maxX <= minX || maxY <= minY) return { activeIds: knownIds, unknownIds }
 
-    this.svg.setAttribute('viewBox', `${minX} ${minY} ${maxX - minX} ${maxY - minY}`)
+    this.setViewBox(`${minX} ${minY} ${maxX - minX} ${maxY - minY}`)
     return { activeIds: knownIds, unknownIds }
   }
 
   resetZoom(): void {
     this.assertUsable()
-    if (this.svg && this.originalViewBox) this.svg.setAttribute('viewBox', this.originalViewBox)
+    if (this.svg && this.originalViewBox) this.setViewBox(this.originalViewBox)
   }
 
   setHighlighted(
@@ -885,6 +883,19 @@ export class SvgMapController {
     const [x, y, width, height] = values
     if (width <= 0 || height <= 0) return null
     return { x, y, width, height }
+  }
+
+  private setViewBox(value: string): void {
+    if (!this.svg) return
+    this.svg.setAttribute('viewBox', value)
+    this.syncAspectRatio(value)
+  }
+
+  /** Keep auto-height SVG surfaces in step with a focused viewBox. */
+  private syncAspectRatio(viewBox: string | null): void {
+    if (!this.svg || !viewBox) return
+    const bounds = this.parseViewBox(viewBox)
+    if (bounds) this.svg.style.aspectRatio = `${bounds.width} / ${bounds.height}`
   }
 
   private resetMap(): void {
