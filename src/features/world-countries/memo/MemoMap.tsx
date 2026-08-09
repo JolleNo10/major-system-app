@@ -136,7 +136,8 @@ export function MemoMap({
     }
 
     const group = controller.getHoverGroups().find(candidate => candidate.id === hoveredGroupId)
-    controller.hoverCountry(group?.countryIds[0] ?? null, false)
+    // Use the same configured hover behavior as pointer-driven map hover.
+    controller.hoverCountry(group?.countryIds[0] ?? null)
   }, [hoveredGroupId, mapCountries])
 
   useEffect(() => {

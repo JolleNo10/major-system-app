@@ -101,6 +101,8 @@ interface InternalCountry extends SvgMapCountry {
   originalTransition: OriginalStyle
   originalLabelDisplay: OriginalStyle
   originalLabelPointerEvents: OriginalStyle
+  originalLabelTextNodes: Array<{ node: Text; value: string }>
+  labelTextNodeIndex: number
   labelPaint: Array<{
     element: SVGElement
     originalFill: OriginalStyle
@@ -134,6 +136,19 @@ function setOverride(element: SVGElement, property: string, value: string | null
   else element.style.setProperty(property, value, 'important')
 }
 
+function collectTextNodes(element: Element): Text[] {
+  const nodes: Text[] = []
+  const visit = (node: Node): void => {
+    if (node.nodeType === 3) {
+      nodes.push(node as Text)
+      return
+    }
+    node.childNodes.forEach(visit)
+  }
+  visit(element)
+  return nodes
+}
+
 function uniqueStrings(values: Iterable<string>): string[] {
   return [...new Set(Array.from(values, value => value.trim()).filter(Boolean))]
 }
@@ -161,6 +176,7 @@ export class SvgMapController {
   private mutedCountries = new Set<string>()
   private hoverableCountries: Set<string> | null = null
   private named = new Set<string>()
+  private countryLabelOverrides = new Map<string, string>()
   private hoverGroups: SvgMapHoverGroup[] = []
   private groupOutlines: SvgMapGroupOutline[] = []
   private visibleGroupOutlines = new Set<string>()
@@ -384,6 +400,30 @@ export class SvgMapController {
     return { activeIds: this.getNamedIds(), unknownIds }
   }
 
+  /** Set temporary display labels without changing discovered country metadata. */
+  setCountryLabels(labels: Readonly<Record<string, string>>): SvgMapMutationResult {
+    this.assertUsable()
+    const unknownIds: string[] = []
+    for (const [rawId, label] of Object.entries(labels)) {
+      const id = rawId.trim()
+      if (!id) continue
+      if (!this.countries.has(id)) {
+        unknownIds.push(id)
+        continue
+      }
+      this.countryLabelOverrides.set(id, label)
+    }
+    this.render()
+    return { activeIds: [...this.countryLabelOverrides.keys()], unknownIds: uniqueStrings(unknownIds) }
+  }
+
+  clearCountryLabels(): SvgMapMutationResult {
+    this.assertUsable()
+    this.countryLabelOverrides.clear()
+    this.render()
+    return { activeIds: [], unknownIds: [] }
+  }
+
   /** Restrict pointer-driven hover effects to a generic allowlist of country IDs. */
   setHoverableCountries(ids: Iterable<string>): SvgMapMutationResult {
     this.assertUsable()
@@ -593,6 +633,7 @@ export class SvgMapController {
       if (paths.length !== 1 || paths[0] !== path || this.countries.has(definition.id)) continue
 
       const labelPaintElements = [label, ...label.querySelectorAll<SVGElement>('tspan')]
+      const originalLabelTextNodes = collectTextNodes(label).map(node => ({ node, value: node.data }))
       this.countries.set(definition.id, {
         ...definition,
         path,
@@ -604,6 +645,8 @@ export class SvgMapController {
         originalTransition: captureStyle(path, 'transition'),
         originalLabelDisplay: captureStyle(label, 'display'),
         originalLabelPointerEvents: captureStyle(label, 'pointer-events'),
+        originalLabelTextNodes,
+        labelTextNodeIndex: Math.max(0, originalLabelTextNodes.findIndex(entry => entry.value.trim() !== '')),
         labelPaint: labelPaintElements.map(element => ({
           element,
           originalFill: captureStyle(element, 'fill'),
@@ -783,6 +826,7 @@ export class SvgMapController {
         restoreStyle(country.path, 'filter', country.originalFilter)
       }
 
+      this.renderCountryLabel(country, this.countryLabelOverrides.get(country.id) ?? null)
       const showHoverName = this.hoveredNameOverride ?? this.settings.hoverShowName
       const showLabel = this.settings.showAllNames
         || this.named.has(country.id)
@@ -795,6 +839,19 @@ export class SvgMapController {
       }
     }
     this.renderGroupOutlines()
+  }
+
+  private renderCountryLabel(country: InternalCountry, override: string | null): void {
+    const textNodes = country.originalLabelTextNodes
+    if (textNodes.length === 0) return
+
+    textNodes[country.labelTextNodeIndex].node.data = override ?? textNodes[country.labelTextNodeIndex].value
+    for (let index = 0; index < textNodes.length; index += 1) {
+      if (index === country.labelTextNodeIndex) continue
+      textNodes[index].node.data = override === null
+        ? textNodes[index].value
+        : textNodes[index].value.trim() === '' ? textNodes[index].value : ''
+    }
   }
 
   private renderGroupOutlines(): void {
@@ -906,6 +963,7 @@ export class SvgMapController {
     this.mutedCountries.clear()
     this.hoverableCountries = null
     this.named.clear()
+    this.countryLabelOverrides.clear()
     this.hoverGroups = []
     this.groupOutlines = []
     this.visibleGroupOutlines.clear()

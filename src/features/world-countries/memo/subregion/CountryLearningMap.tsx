@@ -3,13 +3,15 @@ import { countriesToSvgIds } from '@/features/world-countries/maps/countryMapIds
 import { SvgMapView, type SvgMapCountry } from '@/features/world-countries/maps/SvgMapView'
 import type { Country } from '@/features/world-countries/data/countries'
 import type { Continent } from '@/features/world-countries/data/countries'
-import { getCountryForSvgId, resolveCountriesToSvgIds } from '@/features/world-countries/maps/geographyMapAdapter'
+import { createCountryOrderLabels, getCountryForSvgId, resolveCountriesToSvgIds } from '@/features/world-countries/maps/geographyMapAdapter'
 import { getMemoMapDefinition } from '@/features/world-countries/maps/mapDefinitions'
 
 export interface CountryLearningMapProps {
   continent: Continent
   scopeCountries: readonly Country[]
   showNames?: boolean
+  showOrderNumbers?: boolean
+  namedCountryId?: string | null
   highlightedCountryId?: string | null
   onCountryClick?: (countryId: string) => void
   ariaLabel: string
@@ -19,6 +21,8 @@ export function CountryLearningMap({
   continent,
   scopeCountries,
   showNames = false,
+  showOrderNumbers = false,
+  namedCountryId = null,
   highlightedCountryId = null,
   onCountryClick,
   ariaLabel,
@@ -35,6 +39,16 @@ export function CountryLearningMap({
     const country = scopeCountries.find(entry => entry.id === highlightedCountryId)
     return country ? countriesToSvgIds([country]).filter(id => discoveredIds.includes(id)) : []
   }, [discoveredIds, highlightedCountryId, scopeCountries])
+  const namedSvgIds = useMemo(() => {
+    if (showNames) return scopeSvgIds
+    if (!namedCountryId) return []
+    const country = scopeCountries.find(entry => entry.id === namedCountryId)
+    return country ? countriesToSvgIds([country]).filter(id => discoveredIds.includes(id)) : []
+  }, [discoveredIds, namedCountryId, scopeCountries, scopeSvgIds, showNames])
+  const countryLabels = useMemo(
+    () => showOrderNumbers ? createCountryOrderLabels(scopeCountries, discoveredIds) : {},
+    [discoveredIds, scopeCountries, showOrderNumbers],
+  )
 
   return (
     <SvgMapView
@@ -42,7 +56,8 @@ export function CountryLearningMap({
       ariaLabel={ariaLabel}
       highlightedIds={highlightedSvgIds}
       mutedIds={discoveredIds.filter(id => !scopeSvgIds.includes(id))}
-      namedIds={showNames ? scopeSvgIds : []}
+      namedIds={namedSvgIds}
+      countryLabels={countryLabels}
       zoomIds={scopeSvgIds}
       onCountriesLoaded={setDiscovered}
       onCountryClick={svgId => {

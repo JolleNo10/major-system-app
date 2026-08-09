@@ -7,11 +7,14 @@ import {
 
 export type { SvgMapCountry } from './SvgMapController'
 
+const EMPTY_COUNTRY_LABELS: Readonly<Record<string, string>> = {}
+
 export interface SvgMapViewProps {
   svgUrl: string
   highlightedIds?: readonly string[]
   mutedIds?: readonly string[]
   namedIds?: readonly string[]
+  countryLabels?: Readonly<Record<string, string>>
   zoomIds?: readonly string[]
   zoomPadding?: number
   settings?: Partial<SvgMapSettings>
@@ -27,6 +30,7 @@ export function SvgMapView({
   highlightedIds = [],
   mutedIds = [],
   namedIds = [],
+  countryLabels = EMPTY_COUNTRY_LABELS,
   zoomIds = [],
   zoomPadding = 32,
   settings = {},
@@ -89,12 +93,14 @@ export function SvgMapView({
     if (!controller || countries.length === 0) return
     controller.setHighlighted(highlightedIds)
     controller.setMutedCountries(mutedIds)
+    controller.clearCountryLabels()
+    if (Object.keys(countryLabels).length) controller.setCountryLabels(countryLabels)
     const previouslyNamed = controller.getNamedIds()
     if (previouslyNamed.length) controller.setNamesVisible(previouslyNamed, false)
     if (namedIds.length) controller.setNamesVisible(namedIds, true)
     if (zoomIds.length) controller.setZoomArea(zoomIds, zoomPadding)
     else controller.resetZoom()
-  }, [countries, highlightedIds, mutedIds, namedIds, zoomIds, zoomPadding])
+  }, [countries, countryLabels, highlightedIds, mutedIds, namedIds, zoomIds, zoomPadding])
 
   return (
     <div className="space-y-2">

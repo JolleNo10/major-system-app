@@ -6,6 +6,8 @@ export interface PlaceMatchOptions {
   fuzzy?: boolean
 }
 
+export type PlaceMatchKind = 'none' | 'exact' | 'fuzzy'
+
 export function normalizePlaceName(value: string): string {
   return value
     .normalize('NFD')
@@ -66,14 +68,22 @@ export function matchesPlaceName(
   answer: string,
   options: PlaceMatchOptions = {},
 ): boolean {
+  return classifyPlaceName(value, answer, options) !== 'none'
+}
+
+export function classifyPlaceName(
+  value: string,
+  answer: string,
+  options: PlaceMatchOptions = {},
+): PlaceMatchKind {
   const accepted = [answer, ...(options.aliases ?? [])]
-  if (accepted.some(candidate => basicMatch(value, candidate))) return true
-  if (!options.fuzzy) return false
+  if (accepted.some(candidate => basicMatch(value, candidate))) return 'exact'
+  if (!options.fuzzy) return 'none'
 
   const candidates = [...new Set(options.candidates ?? [answer, ...accepted])]
   const fuzzyMatches = candidates.filter(candidate => isControlledFuzzyMatch(value, candidate))
   const targetMatches = accepted.some(candidate => isControlledFuzzyMatch(value, candidate))
-  return targetMatches && fuzzyMatches.length === 1
+  return targetMatches && fuzzyMatches.length === 1 ? 'fuzzy' : 'none'
 }
 
 export function matchesCountryName(
@@ -81,7 +91,15 @@ export function matchesCountryName(
   country: Country,
   options: Omit<PlaceMatchOptions, 'aliases'> = {},
 ): boolean {
-  return matchesPlaceName(value, country.country, {
+  return classifyCountryName(value, country, options) !== 'none'
+}
+
+export function classifyCountryName(
+  value: string,
+  country: Country,
+  options: Omit<PlaceMatchOptions, 'aliases'> = {},
+): PlaceMatchKind {
+  return classifyPlaceName(value, country.country, {
     ...options,
     aliases: country.aliases,
   })

@@ -24,6 +24,17 @@ export function resolveCountriesToSvgIds(
   return [...new Set(entries.flatMap(entry => resolveCountryToSvgIds(entry, discoveredSvgIds)))]
 }
 
+/** Derive temporary SVG labels from the supplied effective Country order. */
+export function createCountryOrderLabels(
+  entries: readonly Country[],
+  discoveredSvgIds: ReadonlySet<string> | readonly string[],
+): Readonly<Record<string, string>> {
+  return Object.fromEntries(entries.flatMap((entry, index) => (
+    resolveCountryToSvgIds(entry, discoveredSvgIds)
+      .map(svgId => [svgId, `${index + 1} ${entry.country}`] as const)
+  )))
+}
+
 export interface UnresolvedCountry {
   country: Country
   candidates: readonly string[]

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { countries, type Country } from '@/features/world-countries/data/countries'
 import {
   createContinentHoverGroups,
+  createCountryOrderLabels,
   createCountryColors,
   createSubregionHoverGroups,
   findUnresolvedCountries,
@@ -35,6 +36,18 @@ describe('World Countries geography map adapter', () => {
     expect(createCountryColors([norway], ['NO'], ['Norway'], '#22c55e')).toEqual([
       ['Norway', '#22c55e'],
     ])
+  })
+
+  it('derives 1-based temporary labels from the supplied Country order', () => {
+    const sweden = countries.find(country => country.id === 'SE') as Country
+    expect(createCountryOrderLabels([norway, sweden], ['Norway', 'Sweden'])).toEqual({
+      Norway: '1 Norway',
+      Sweden: '2 Sweden',
+    })
+    expect(createCountryOrderLabels([sweden, norway], ['Norway', 'Sweden'])).toEqual({
+      Sweden: '1 Sweden',
+      Norway: '2 Norway',
+    })
   })
 
   it('reports unresolved domain records instead of silently inventing membership', () => {

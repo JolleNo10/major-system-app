@@ -1,9 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
 import type { CountryLearningFlowState } from '@/features/world-countries/learning/countryLearningFlow'
-import { matchesCountryName } from '@/features/world-countries/learning/answerMatching'
+import { classifyCountryName } from '@/features/world-countries/learning/answerMatching'
 import { CountryLearningMap } from './CountryLearningMap'
 import { LearningHeader } from './MemoryPreviewStep'
+
+interface OrderedRecallFeedback {
+  correct: boolean
+  expectedId: string
+  fuzzyMatch: boolean
+}
 
 export function OrderedRecallStep({
   continent,
@@ -21,7 +27,7 @@ export function OrderedRecallStep({
   onExit: () => void
 }) {
   const [answer, setAnswer] = useState('')
-  const [feedback, setFeedback] = useState<{ correct: boolean; expectedId: string } | null>(null)
+  const [feedback, setFeedback] = useState<OrderedRecallFeedback | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const session = flow.ordered
   useEffect(() => {
@@ -49,8 +55,9 @@ export function OrderedRecallStep({
 
   const submit = () => {
     if (feedback || !answer.trim()) return
-    const correct = matchesCountryName(answer, current, { fuzzy: fuzzyMatching, candidates })
-    setFeedback({ correct, expectedId })
+    const match = classifyCountryName(answer, current, { fuzzy: fuzzyMatching, candidates })
+    const correct = match !== 'none'
+    setFeedback({ correct, expectedId, fuzzyMatch: match === 'fuzzy' })
     onSubmit(correct)
   }
 
@@ -66,12 +73,17 @@ export function OrderedRecallStep({
           continent={continent}
           scopeCountries={entries}
           highlightedCountryId={displayCountry.id}
+          namedCountryId={feedback?.correct ? feedback.expectedId : null}
           ariaLabel="Highlighted country for ordered blind recall"
         />
         {feedback && (
           <section className={`pointer-events-none absolute bottom-2 left-2 right-2 rounded-xl border p-4 bg-zinc-900/90 ${feedback.correct ? 'border-green-500/30' : 'border-red-500/30'}`}>
             <p className={`text-sm font-semibold ${feedback.correct ? 'text-green-300' : 'text-red-300'}`}>
-              {feedback.correct ? 'Correct.' : `The correct country is ${displayCountry.country}.`}
+              {feedback.correct
+                ? feedback.fuzzyMatch
+                  ? `Correct. The correct spelling is ${displayCountry.country}.`
+                  : 'Correct.'
+                : `The correct country is ${displayCountry.country}.`}
             </p>
             {!feedback.correct && <p className="mt-1 text-xs text-zinc-500">The session rewinds two positions for a nearby repair pass.</p>}
           </section>

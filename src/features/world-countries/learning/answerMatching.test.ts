@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { matchesCountryName, matchesPlaceName, normalizePlaceName } from './answerMatching'
+import { classifyPlaceName, matchesCountryName, matchesPlaceName, normalizePlaceName } from './answerMatching'
 
 describe('World Countries answer matching', () => {
   it('normalizes case, whitespace, punctuation, accents, and aliases', () => {
@@ -20,5 +20,11 @@ describe('World Countries answer matching', () => {
     expect(matchesPlaceName('Noreway', 'Norway')).toBe(false)
     expect(matchesPlaceName('Noreway', 'Norway', { fuzzy: true, candidates: ['Norway', 'Sweden'] })).toBe(true)
     expect(matchesPlaceName('Austria', 'Australia', { fuzzy: true, candidates: ['Austria', 'Australia'] })).toBe(false)
+  })
+
+  it('classifies exact and fuzzy matches separately', () => {
+    expect(classifyPlaceName('Norway', 'Norway', { fuzzy: true })).toBe('exact')
+    expect(classifyPlaceName('Noreway', 'Norway', { fuzzy: true, candidates: ['Norway', 'Sweden'] })).toBe('fuzzy')
+    expect(classifyPlaceName('Noreway', 'Norway')).toBe('none')
   })
 })

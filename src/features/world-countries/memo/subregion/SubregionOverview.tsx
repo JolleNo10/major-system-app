@@ -10,6 +10,7 @@ export function SubregionOverview({
   learned,
   onStart,
   onPracticeStageB,
+  mapEntries = entries,
 }: {
   continent: Continent
   subregion: SubregionId
@@ -17,6 +18,7 @@ export function SubregionOverview({
   learned: boolean
   onStart: () => void
   onPracticeStageB: () => void
+  mapEntries?: readonly Country[]
 }) {
   const definition = getSubregionDefinition(subregion)
 
@@ -34,8 +36,9 @@ export function SubregionOverview({
 
       <CountryLearningMap
         continent={continent}
-        scopeCountries={entries}
+        scopeCountries={mapEntries}
         showNames
+        showOrderNumbers
         ariaLabel={`Map of ${definition.label}`}
       />
 

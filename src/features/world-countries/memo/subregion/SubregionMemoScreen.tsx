@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { Overlay } from '@/app/layout/Overlay'
-import type { Continent } from '@/features/world-countries/data/countries'
+import type { Continent, Country } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
 import { getCountriesForSubregionInEffectiveOrder } from '@/features/world-countries/geography/queries'
 import { getSubregionMetadata } from '@/features/world-countries/geography/subregionMetadataStore'
@@ -78,11 +78,23 @@ function SubregionScreenBody({
   const [entryPoint, setEntryPoint] = useState<CountryLearningEntryPoint>('beginning')
   const [learningPhase, setLearningPhase] = useState<CountryLearningPhase>('memory-preview')
   const [editingOrder, setEditingOrder] = useState(false)
+  const [draftEntries, setDraftEntries] = useState<readonly Country[] | null>(null)
   const [mnemonicVersion, setMnemonicVersion] = useState(0)
   const definition = getSubregionDefinition(subregion)
+  const mapEntries = draftEntries ?? entries
 
-  const openOrderEditor = useCallback(() => setEditingOrder(true), [])
-  const closeOrderEditor = useCallback(() => setEditingOrder(false), [])
+  const openOrderEditor = useCallback(() => {
+    setDraftEntries(entries)
+    setEditingOrder(true)
+  }, [entries])
+  const closeOrderEditor = useCallback(() => {
+    setDraftEntries(null)
+    setEditingOrder(false)
+  }, [])
+  const handleOrderChanged = useCallback(() => {
+    setDraftEntries(null)
+    onLearningChanged()
+  }, [onLearningChanged])
   const refreshMnemonic = useCallback(() => setMnemonicVersion(version => version + 1), [])
   const reportLearningPhase = useCallback((phase: CountryLearningPhase) => setLearningPhase(phase), [])
   const exitLearning = useCallback(() => {
@@ -108,6 +120,7 @@ function SubregionScreenBody({
       continent={continent}
       subregion={subregion}
       entries={entries}
+      mapEntries={mapEntries}
       learned={learned}
       onStart={() => {
         setEntryPoint('beginning')
@@ -133,7 +146,7 @@ function SubregionScreenBody({
           onContinent: onExit,
         }}
         content={{
-          entries,
+          entries: mapEntries,
           learned,
           mnemonicVersion,
           onMnemonicChanged: refreshMnemonic,
@@ -151,7 +164,8 @@ function SubregionScreenBody({
           <SubregionOrderEditor
             subregion={subregion}
             entries={entries}
-            onChanged={onLearningChanged}
+            onDraftChanged={setDraftEntries}
+            onChanged={handleOrderChanged}
             onClose={closeOrderEditor}
           />
         </Overlay>

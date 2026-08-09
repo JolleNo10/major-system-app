@@ -167,6 +167,28 @@ describe('SvgMapController persistent state', () => {
     expect(label(mount, 'Alpha_label').style.getPropertyValue('display')).toBe('none')
   })
 
+  it('sets, replaces, and clears temporary country labels without changing metadata', async () => {
+    const { mount, controller } = makeController()
+    const countries = await controller.load({ markup: TEST_MAP })
+
+    expect(controller.setCountryLabels({
+      Beta: '1 Beta Land',
+      Missing: '2 Missing',
+    })).toEqual({
+      activeIds: ['Beta'],
+      unknownIds: ['Missing'],
+    })
+    expect(label(mount, 'Beta_label').textContent).toBe('1 Beta Land')
+    expect(controller.discoverCountries()).toEqual(countries)
+
+    controller.setCountryLabels({ Beta: '2 BETA LAND' })
+    expect(label(mount, 'Beta_label').textContent).toBe('2 BETA LAND')
+
+    expect(controller.clearCountryLabels()).toEqual({ activeIds: [], unknownIds: [] })
+    expect(label(mount, 'Beta_label').textContent).toBe('BETA LAND')
+    expect(controller.discoverCountries()).toEqual(countries)
+  })
+
   it('supports independent country colors, border styles, and clearing both layers', async () => {
     const { mount, controller } = makeController()
     await controller.load({ markup: TEST_MAP })
@@ -360,6 +382,20 @@ describe('SvgMapController hover behavior', () => {
     controller.hoverCountry('Alpha', true)
     expect(label(mount, 'Beta_label').style.getPropertyValue('display')).toBe('inline')
     controller.hoverCountry(null)
+    expect(label(mount, 'Beta_label').style.getPropertyValue('display')).toBe('none')
+  })
+
+  it('uses configured hover name visibility when controller-driven hover does not override it', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    controller.setHoverGroups([{ id: 'pair', countryIds: ['Alpha', 'Beta'] }])
+    controller.updateSettings({ hoverHighlight: true, hoverShowName: true, hoverScope: 'group' })
+
+    controller.hoverCountry('Alpha')
+    expect(label(mount, 'Beta_label').style.getPropertyValue('display')).toBe('inline')
+
+    controller.updateSettings({ hoverShowName: false })
+    controller.hoverCountry('Alpha')
     expect(label(mount, 'Beta_label').style.getPropertyValue('display')).toBe('none')
   })
 

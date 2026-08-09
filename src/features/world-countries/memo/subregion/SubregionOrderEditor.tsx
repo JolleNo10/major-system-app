@@ -10,11 +10,13 @@ import { reorderCountryDraft } from './subregionOrder'
 export function SubregionOrderEditor({
   subregion,
   entries,
+  onDraftChanged,
   onChanged,
   onClose,
 }: {
   subregion: SubregionId
   entries: readonly Country[]
+  onDraftChanged: (draft: readonly Country[]) => void
   onChanged: () => void
   onClose: () => void
 }) {
@@ -62,7 +64,9 @@ export function SubregionOrderEditor({
           if (event.canceled) return
           const { source } = event.operation
           if (!source || !isSortable(source) || source.initialIndex === source.index) return
-          setDraft(current => reorderCountryDraft(current, source.initialIndex, source.index))
+          const nextDraft = reorderCountryDraft(draft, source.initialIndex, source.index)
+          setDraft(nextDraft)
+          onDraftChanged(nextDraft)
         }}
       >
         <ol className="mt-4 space-y-2" aria-describedby="order-editor-instructions">

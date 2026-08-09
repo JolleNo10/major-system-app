@@ -47,7 +47,7 @@ infrastructure, workflows, and World Countries persistence.
 - `learning/` — answer matching, reusable session mechanics, pure learning-flow
   state, durable Subregion learning facts, and their store.
 - `maps/` — SVG controller/view, map definitions/assets, Country-to-SVG
-  adapters, and experimental workarea.
+  adapters, temporary display-label overrides, and experimental workarea.
 - `mnemonics/` — feature target IDs, geography mnemonic semantics, feature
   backup envelope, and adapters over shared mnemonic storage.
 - `memo/` — instructional navigation, maps, mnemonic UI, Memo rail
@@ -160,7 +160,9 @@ adapters, and map adapters remain private until a real external consumer exists.
   feature context in the left rail.
 - `SvgMapController` remains imperative and framework-independent. It owns SVG
   loading, validation, discovery, styling, hover, labels, highlights, zoom,
-  listeners, and cleanup—not geography learning rules.
+  listeners, and cleanup—not geography learning rules. Temporary label
+  overrides are per-controller presentation state and must not mutate the
+  discovered `SvgMapCountry.name` metadata or bundled SVG assets.
 - `SvgMapView.tsx` is the React adapter around that controller.
 - Workflow folders do not depend on sibling workflow internals.
 - World Countries persistence does not modify unrelated feature state.
