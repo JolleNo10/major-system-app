@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { AnswerMode } from '@/core/types'
+import { useLayoutHeader } from '@/app/layout/PageLayoutContext'
 import { WorldCountriesDrill } from '@/features/world-countries/drill/WorldCountriesDrill'
 import { WorldCountriesMaintenance } from '@/features/world-countries/maintenance/WorldCountriesMaintenance'
 import { WorldCountriesMemo } from '@/features/world-countries/memo/WorldCountriesMemo'
@@ -17,8 +18,8 @@ const AREAS: readonly { id: WorldCountriesArea; label: string }[] = [
 export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
   const [area, setArea] = useState<WorldCountriesArea>('memo')
 
-  return (
-    <div className="w-full space-y-4">
+  useLayoutHeader(
+    <div className="w-full space-y-4 pb-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World Countries</p>
@@ -53,11 +54,16 @@ export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
           </button>
         ))}
       </div>
+    </div>,
+    [area],
+  )
 
+  return (
+    <>
       {area === 'memo' && <WorldCountriesMemo answerMode={answerMode} />}
       {area === 'drill' && <WorldCountriesDrill answerMode={answerMode} />}
       {area === 'recite' && <WorldCountriesRecite answerMode={answerMode} />}
       {area === 'maintenance' && <WorldCountriesMaintenance answerMode={answerMode} />}
-    </div>
+    </>
   )
 }

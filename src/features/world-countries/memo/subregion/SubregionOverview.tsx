@@ -1,11 +1,7 @@
-import { useState } from 'react'
 import type { Country } from '@/features/world-countries/data/countries'
 import type { Continent } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
-import { subregionMnemonicId } from '@/features/world-countries/mnemonics/geographyMnemonicIds'
 import { CountryLearningMap } from './CountryLearningMap'
-import { MemoMnemonicCard } from '../MemoMnemonicCard'
-import { SubregionOrderEditor } from './SubregionOrderEditor'
 
 export function SubregionOverview({
   continent,
@@ -14,7 +10,6 @@ export function SubregionOverview({
   learned,
   onStart,
   onPracticeStageB,
-  onOrderChanged,
 }: {
   continent: Continent
   subregion: SubregionId
@@ -22,12 +17,8 @@ export function SubregionOverview({
   learned: boolean
   onStart: () => void
   onPracticeStageB: () => void
-  onOrderChanged: () => void
 }) {
-  const [editingOrder, setEditingOrder] = useState(false)
-  const [mnemonicVersion, setMnemonicVersion] = useState(0)
   const definition = getSubregionDefinition(subregion)
-  const ids = entries.map(country => country.id)
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -38,9 +29,6 @@ export function SubregionOverview({
             <h1 className="mt-1 text-2xl font-bold text-zinc-100">{definition.label}</h1>
             <p className="mt-1 text-sm text-zinc-500">{entries.length} countries · {continent}</p>
           </div>
-          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${learned ? 'bg-green-500/15 text-green-300' : 'bg-zinc-800 text-zinc-400'}`}>
-            {learned ? 'Countries learned ✓' : 'Countries not learned'}
-          </span>
         </div>
       </section>
 
@@ -71,27 +59,6 @@ export function SubregionOverview({
           </div>
         </div>
       </section>
-
-      {editingOrder ? (
-        <SubregionOrderEditor subregion={subregion} entries={entries} onChanged={onOrderChanged} onClose={() => setEditingOrder(false)} />
-      ) : (
-        <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4" aria-labelledby="learning-order-heading">
-          <div className="flex items-center justify-between gap-3">
-            <h2 id="learning-order-heading" className="text-sm font-semibold uppercase tracking-wider text-zinc-400">Learning order</h2>
-            <button type="button" onClick={() => setEditingOrder(true)} className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:border-cyan-500">Edit order</button>
-          </div>
-          <p className="mt-3 text-sm leading-relaxed text-zinc-300">{entries.map(country => country.country).join(' → ')}</p>
-        </section>
-      )}
-
-      <MemoMnemonicCard
-        targetId={subregionMnemonicId(subregion)}
-        title="Subregion memory aid"
-        subtitle={`Optional story or picture for this ordered ${ids.length}-country group`}
-        countryIds={ids}
-        refreshKey={mnemonicVersion}
-        onChanged={() => setMnemonicVersion(value => value + 1)}
-      />
 
       <p className="px-1 text-xs text-zinc-600">Capitals are a later learning stage. Country–Capital reference remains available when that stage is designed.</p>
     </div>

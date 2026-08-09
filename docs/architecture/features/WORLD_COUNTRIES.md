@@ -50,8 +50,9 @@ infrastructure, workflows, and World Countries persistence.
   adapters, and experimental workarea.
 - `mnemonics/` — feature target IDs, geography mnemonic semantics, feature
   backup envelope, and adapters over shared mnemonic storage.
-- `memo/` — instructional navigation, maps, mnemonic UI, Subregion country
-  learning orchestration, and the sortable Subregion learning-order editor.
+- `memo/` — instructional navigation, maps, mnemonic UI, Memo rail
+  composition, Subregion country learning orchestration, and the sortable
+  Subregion learning-order editor.
 - `drill/`, `recite/`, `maintenance/` — sibling workflow owners for deliberate
   practice, complete recall, and review selection.
 
@@ -104,9 +105,10 @@ flowchart TD
     Shell --> Maintenance
 ```
 
-The feature also consumes `core/types`, `core/storage`, `core/mnemonics`, and a
-narrow app settings contract. `MapWorkarea` publishes rails through the current
-app layout integration seam.
+The feature also consumes `core/types`, `core/storage`, `core/mnemonics`, and
+narrow app integration contracts for settings, overlays, and page rails.
+`MapWorkarea` and Memo's feature-owned rail composition publish rails through
+the current app layout integration seam.
 
 ## Persistence
 
@@ -147,6 +149,15 @@ adapters, and map adapters remain private until a real external consumer exists.
   user explicitly saves; keyboard-accessible reordering is required.
 - `learning/countryLearningFlow.ts` owns pure state and transitions;
   `memo/subregion/CountryLearningFlow.tsx` owns Memo UI orchestration.
+- Memo overview rail composition owns the World → Continent → Subregion
+  navigation and scope presentation: World Continents and progress use the left
+  rail, Continent Subregions and progress use the left rail, and Subregion
+  learning context/order uses the left rail while its mnemonic uses the right
+  rail.
+- Memo's safe learning phases retain the compact learning context and mnemonic
+  rails; ordered recall and completion omit answer-revealing rails. The full
+  Subregion order editor opens in a larger overlay; the compact order remains
+  feature context in the left rail.
 - `SvgMapController` remains imperative and framework-independent. It owns SVG
   loading, validation, discovery, styling, hover, labels, highlights, zoom,
   listeners, and cleanup—not geography learning rules.
@@ -165,6 +176,7 @@ adapters, and map adapters remain private until a real external consumer exists.
 - `src/features/world-countries/maps/SvgMapController.ts`
 - `src/features/world-countries/mnemonics/geographyMnemonics.ts`
 - `src/features/world-countries/memo/WorldCountriesMemo.tsx`
+- `src/features/world-countries/memo/WorldCountriesMemoRails.tsx`
 
 ## Historical rationale
 

@@ -133,12 +133,12 @@ export function MemoMnemonicCard({
               Cancel
             </button>
           </div>
-          {draftUrl && <img src={draftUrl} alt="Mnemonic preview" className="max-h-56 rounded-lg" />}
+          {draftUrl && <img src={draftUrl} alt="Mnemonic preview" className="max-h-56 max-w-full rounded-lg object-contain" />}
         </div>
       ) : hasContent ? (
         <div className="mt-3 space-y-2">
           {mnemonic?.text.trim() && <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-300">{mnemonic.text}</p>}
-          {imageUrl && <img src={imageUrl} alt="Mnemonic" className="max-h-56 rounded-lg" />}
+          {imageUrl && <img src={imageUrl} alt="Mnemonic" className="max-h-56 max-w-full rounded-lg object-contain" />}
         </div>
       ) : (
         <button type="button" onClick={() => setEditing(true)} className="mt-3 text-left text-xs text-zinc-600 transition-colors hover:text-zinc-400">

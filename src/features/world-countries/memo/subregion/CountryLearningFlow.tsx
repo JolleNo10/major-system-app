@@ -11,6 +11,7 @@ import {
   submitCountryOrderAnswer,
   type CountryLearningEntryPoint,
   type CountryLearningFlowState,
+  type CountryLearningPhase,
 } from '@/features/world-countries/learning/countryLearningFlow'
 import { markSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningStore'
 import { CountryLearningComplete } from './CountryLearningComplete'
@@ -26,6 +27,7 @@ export function CountryLearningFlow({
   entryPoint = 'beginning',
   locationCleanTargetMinimum,
   fuzzyMatching,
+  onPhaseChange,
   onExit,
 }: {
   continent: Continent
@@ -34,6 +36,7 @@ export function CountryLearningFlow({
   entryPoint?: CountryLearningEntryPoint
   locationCleanTargetMinimum: number
   fuzzyMatching: boolean
+  onPhaseChange: (phase: CountryLearningPhase) => void
   onExit: () => void
 }) {
   const ids = useMemo(() => entries.map(country => country.id), [entries])
@@ -44,14 +47,19 @@ export function CountryLearningFlow({
   }))
   const completionReported = useRef(false)
 
+  const transition = (next: CountryLearningFlowState) => {
+    if (next.phase !== flow.phase) onPhaseChange(next.phase)
+    setFlow(next)
+  }
+
   const updateLocation = (selectedCountryId: string) => {
     const next = submitCountryLocation(flow, selectedCountryId)
-    setFlow(next.state)
+    transition(next.state)
   }
 
   const updateOrder = (correct: boolean) => {
     const next = submitCountryOrderAnswer(flow, correct)
-    setFlow(next.state)
+    transition(next.state)
     if (next.result.completedNow && !completionReported.current) {
       completionReported.current = true
       markSubregionCountriesLearned(subregion)
@@ -62,9 +70,7 @@ export function CountryLearningFlow({
     case 'memory-preview':
       return (
         <MemoryPreviewStep
-          subregion={subregion}
-          entries={entries}
-          onStart={() => setFlow(startCountryWalkthrough(flow))}
+          onStart={() => transition(startCountryWalkthrough(flow))}
           onExit={onExit}
         />
       )
@@ -74,8 +80,8 @@ export function CountryLearningFlow({
           continent={continent}
           entries={entries}
           flow={flow}
-          onMove={offset => setFlow(current => moveCountryWalkthrough(current, offset))}
-          onStartLocation={() => setFlow(current => startLocationPractice(current, locationCleanTargetMinimum))}
+          onMove={offset => transition(moveCountryWalkthrough(flow, offset))}
+          onStartLocation={() => transition(startLocationPractice(flow, locationCleanTargetMinimum))}
           onExit={onExit}
         />
       )
@@ -86,7 +92,7 @@ export function CountryLearningFlow({
           entries={entries}
           flow={flow}
           onSelect={updateLocation}
-          onContinue={() => setFlow(current => startOrderedRecall(current, 2))}
+          onContinue={() => transition(startOrderedRecall(flow, 2))}
           onExit={onExit}
         />
       )
@@ -108,7 +114,7 @@ export function CountryLearningFlow({
           onDone={onExit}
           onRestart={() => {
             completionReported.current = false
-            setFlow(createCountryLearningFlow({ countryIds: ids, minimumCleanTarget: locationCleanTargetMinimum }))
+            transition(createCountryLearningFlow({ countryIds: ids, minimumCleanTarget: locationCleanTargetMinimum }))
           }}
         />
       )

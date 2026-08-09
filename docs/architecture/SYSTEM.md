@@ -36,6 +36,19 @@ selects a mode from `src/app/modes.tsx`.
 - `src/features/` owns product-domain data, rules, workflows, and feature-local
   persistence adapters.
 
+`PageLayout` provides one fixed-center layout with optional side rails. The
+semantic default for those regions is:
+
+- left rail — feature-local navigation context, scope, state, progress, and
+  sequence;
+- center — the active task and focal content;
+- right rail — supporting material and tools.
+
+Feature workflow state determines the current rail composition. Feature-owned
+rail composition publishes the appropriate capabilities through `useRails`, and
+`PageLayout` owns only rail geometry and responsive presentation. `PageLayout`
+remains unaware of feature workflow concepts such as recall or learning phases.
+
 Unless a diagram says otherwise, an arrow means the source depends on or uses
 the target. The primary dependency direction is:
 

@@ -25,7 +25,7 @@ export function Overlay({ onClose, ariaLabel, header, maxWidth = 'max-w-2xl', bo
       aria-modal="true"
       aria-label={ariaLabel}
       tabIndex={-1}
-      className="fixed inset-0 z-50 flex flex-col bg-zinc-950 animate-fade-in outline-none"
+      className="fixed inset-0 z-[60] flex flex-col bg-zinc-950 animate-fade-in outline-none"
     >
       <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-zinc-800 shrink-0">
         {header}
