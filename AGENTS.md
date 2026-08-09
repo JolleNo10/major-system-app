@@ -39,3 +39,10 @@ Follow the applicable nested `AGENTS.md` before modifying a feature.
   error.
 - Use `gh auth status` only when an operation itself requires GitHub CLI, such
   as creating a pull request or querying issues.
+
+## ADR implementation commits
+
+- When a commit implements an ADR, identify the ADR in the commit message by
+  its number (for example, `ADR 0014`). If the ADR has no number, use a clear
+  title or slug reference instead. Mention every ADR when a commit implements
+  more than one.
