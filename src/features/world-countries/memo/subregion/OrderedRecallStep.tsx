@@ -29,7 +29,7 @@ export function OrderedRecallStep({
     const timer = window.setTimeout(() => {
       setFeedback(null)
       setAnswer('')
-    }, 800)
+    }, feedback.correct ? 500 : 1800)
     return () => window.clearTimeout(timer)
   }, [feedback])
 
@@ -61,12 +61,22 @@ export function OrderedRecallStep({
         <span className="text-zinc-500">{session.mode === 'repair' ? 'Repair traversal' : 'Clean pass'}</span>
         <span className="font-semibold text-cyan-300">Recall the highlighted country</span>
       </div>
-      <CountryLearningMap
-        continent={continent}
-        scopeCountries={entries}
-        highlightedCountryId={displayCountry.id}
-        ariaLabel="Highlighted country for ordered blind recall"
-      />
+      <div className="relative">
+        <CountryLearningMap
+          continent={continent}
+          scopeCountries={entries}
+          highlightedCountryId={displayCountry.id}
+          ariaLabel="Highlighted country for ordered blind recall"
+        />
+        {feedback && (
+          <section className={`pointer-events-none absolute bottom-2 left-2 right-2 rounded-xl border p-4 bg-zinc-900/90 ${feedback.correct ? 'border-green-500/30' : 'border-red-500/30'}`}>
+            <p className={`text-sm font-semibold ${feedback.correct ? 'text-green-300' : 'text-red-300'}`}>
+              {feedback.correct ? 'Correct.' : `The correct country is ${displayCountry.country}.`}
+            </p>
+            {!feedback.correct && <p className="mt-1 text-xs text-zinc-500">The session rewinds two positions for a nearby repair pass.</p>}
+          </section>
+        )}
+      </div>
       <form onSubmit={event => { event.preventDefault(); submit() }} className="space-y-3">
         <label htmlFor="ordered-country-answer" className="block text-sm text-zinc-400">Which country is this?</label>
         <div className="flex gap-2">
@@ -84,14 +94,6 @@ export function OrderedRecallStep({
           {!feedback && <button type="submit" className="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-500">Check</button>}
         </div>
       </form>
-      {feedback && (
-        <section className={`rounded-xl border p-4 ${feedback.correct ? 'border-green-500/30 bg-green-500/10' : 'border-red-500/30 bg-red-500/10'}`}>
-          <p className={`text-sm font-semibold ${feedback.correct ? 'text-green-300' : 'text-red-300'}`}>
-            {feedback.correct ? 'Correct.' : `The correct country is ${displayCountry.country}.`}
-          </p>
-          {!feedback.correct && <p className="mt-1 text-xs text-zinc-500">The session rewinds two positions for a nearby repair pass.</p>}
-        </section>
-      )}
     </div>
   )
 }
