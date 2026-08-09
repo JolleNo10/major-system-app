@@ -1767,3 +1767,7 @@ Subregion / Continent / World
 ```
 
 The goal is to make the **learning mechanics reusable while keeping each feature's domain model correct**.
+
+## Confirmation
+
+Implemented and verified against the repository on 2026-08-09.

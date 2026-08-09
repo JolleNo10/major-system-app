@@ -1384,3 +1384,7 @@ Geography export v2
 The governing principle is:
 
 > **Stable Geography identity belongs to the domain. Country order belongs to the Subregion. Memo and Recite consume it. A mnemonic stores the order it was authored against, and Geography backup preserves all of it.**
+
+## Confirmation
+
+Implemented and verified against the repository on 2026-08-09.

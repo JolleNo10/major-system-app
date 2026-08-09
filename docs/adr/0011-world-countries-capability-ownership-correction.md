@@ -629,3 +629,7 @@ unnecessary public exports
 The governing principle is:
 
 > Organize World Countries by capability ownership, keep canonical identity authoritative, and preserve validated behavior while correcting the structure around it.
+
+## Confirmation
+
+Implemented and verified against the repository on 2026-08-09.

@@ -1317,3 +1317,7 @@ The reusable abstraction is:
 It is not:
 
 > Pi stories copied into another feature.
+
+## Confirmation
+
+Implemented and verified against the repository on 2026-08-09.

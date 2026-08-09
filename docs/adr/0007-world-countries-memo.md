@@ -1744,3 +1744,7 @@ countries.ts
 The purpose of ADR 0007 is to establish a **data-driven, map-driven initial learning workspace**.
 
 The richer system for repeatedly working through and practising the countries in the selected Subregion is intentionally the next feature, not part of this ADR.
+
+## Confirmation
+
+Implemented and verified against the repository on 2026-08-09.

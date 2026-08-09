@@ -95,3 +95,7 @@ features/pi/
 - **Precedent:** a feature may split its internals by tab (as `cards` split by
   flavor), keep one barrel, and mirror the center/rail hook split wherever a tab
   has a rail. Subfolders import each other by deep path, as flat modules always did.
+
+## Confirmation
+
+Implemented and verified against the repository on 2026-08-09.

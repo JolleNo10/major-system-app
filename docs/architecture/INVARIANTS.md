@@ -40,7 +40,9 @@ architecture document.
   the affected document under `docs/architecture/` in the same change.
 - ADRs preserve historical rationale. Current implementation decisions belong
   here and in the relevant current-state architecture document, not only in a
-  new ADR.
+  new ADR. When creating or interpreting an ADR, follow the convention in
+  [../adr/README.md](../adr/README.md); ADR `Status` describes decision
+  authority, not implementation progress.
 
 ## Clarifications
 

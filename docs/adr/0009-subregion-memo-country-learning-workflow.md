@@ -1890,3 +1890,7 @@ Everything else in the learning session is temporary.
 The governing principle is:
 
 > **Memo should teach the Subregion once, verify one genuine clean recall, and then get out of the way of later Recite and mastery workflows.**
+
+## Confirmation
+
+Implemented and verified against the repository on 2026-08-09.

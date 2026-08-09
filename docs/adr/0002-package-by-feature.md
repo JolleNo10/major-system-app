@@ -68,3 +68,7 @@ the pointed-at string — importer locations were irrelevant.
 - **Constraint to preserve:** keep the layering direction (`core` depends on
   nothing; `features` on `core`; `app` on anything) and route all cross-feature
   and app→feature imports through barrels — never deep paths.
+
+## Confirmation
+
+Implemented and verified against the repository on 2026-08-09.

@@ -74,3 +74,7 @@ renders sits outside it.
 - **Constraint to preserve:** the 672px center and `minmax(0, 18rem)` gutters
   are the invariant. Do not reintroduce content-driven center widths or a second
   width owner in `App`/`<main>`.
+
+## Confirmation
+
+Implemented and verified against the repository on 2026-08-09.

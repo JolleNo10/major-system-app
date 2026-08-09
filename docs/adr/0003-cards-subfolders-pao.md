@@ -58,3 +58,7 @@ features/cards/
 - **Precedent:** a feature may split its internals into flavor subfolders while
   keeping a single barrel. Subfolders import each other by deep path, exactly as
   flat feature modules always have.
+
+## Confirmation
+
+Implemented and verified against the repository on 2026-08-09.
