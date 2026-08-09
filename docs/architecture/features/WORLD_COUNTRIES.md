@@ -50,8 +50,8 @@ infrastructure, workflows, and World Countries persistence.
   adapters, and experimental workarea.
 - `mnemonics/` — feature target IDs, geography mnemonic semantics, feature
   backup envelope, and adapters over shared mnemonic storage.
-- `memo/` — instructional navigation, maps, mnemonic UI, and Subregion country
-  learning orchestration.
+- `memo/` — instructional navigation, maps, mnemonic UI, Subregion country
+  learning orchestration, and the sortable Subregion learning-order editor.
 - `drill/`, `recite/`, `maintenance/` — sibling workflow owners for deliberate
   practice, complete recall, and review selection.
 
@@ -142,6 +142,9 @@ adapters, and map adapters remain private until a real external consumer exists.
 - `data/` is authoritative for Country membership and classification.
   `SubregionMetadata.countryOrder` changes order only; it cannot add non-member
   Countries.
+- `SubregionMetadata.countryOrder` is the durable user-authored sequence. Memo's
+  Subregion order editor keeps drag-and-drop changes in a local draft until the
+  user explicitly saves; keyboard-accessible reordering is required.
 - `learning/countryLearningFlow.ts` owns pure state and transitions;
   `memo/subregion/CountryLearningFlow.tsx` owns Memo UI orchestration.
 - `SvgMapController` remains imperative and framework-independent. It owns SVG

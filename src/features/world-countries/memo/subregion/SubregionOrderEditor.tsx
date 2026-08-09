@@ -1,7 +1,11 @@
+import { PointerActivationConstraints } from '@dnd-kit/dom'
+import { DragDropProvider, PointerSensor } from '@dnd-kit/react'
+import { isSortable, useSortable } from '@dnd-kit/react/sortable'
 import { useState } from 'react'
 import type { Country } from '@/features/world-countries/data/countries'
 import type { SubregionId } from '@/features/world-countries/data/subregions'
 import { resetSubregionCountryOrder, setSubregionCountryOrder } from '@/features/world-countries/geography/subregionMetadataStore'
+import { reorderCountryDraft } from './subregionOrder'
 
 export function SubregionOrderEditor({
   subregion,
@@ -15,16 +19,6 @@ export function SubregionOrderEditor({
   onClose: () => void
 }) {
   const [draft, setDraft] = useState(() => [...entries])
-
-  const move = (index: number, offset: -1 | 1) => {
-    const nextIndex = index + offset
-    if (nextIndex < 0 || nextIndex >= draft.length) return
-    setDraft(current => {
-      const next = [...current]
-      ;[next[index], next[nextIndex]] = [next[nextIndex], next[index]]
-      return next
-    })
-  }
 
   const save = () => {
     setSubregionCountryOrder(subregion, draft.map(country => country.id))
@@ -47,20 +41,74 @@ export function SubregionOrderEditor({
         </div>
         <button type="button" onClick={onClose} className="text-sm text-zinc-500 hover:text-zinc-200">Close</button>
       </div>
-      <ol className="mt-4 space-y-2">
-        {draft.map((country, index) => (
-            <li key={country.id} className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950/40 px-3 py-2">
-            <span className="w-6 text-xs tabular-nums text-zinc-600">{index + 1}.</span>
-            <span className="min-w-0 flex-1 text-sm text-zinc-300">{country.country}</span>
-            <button type="button" onClick={() => move(index, -1)} disabled={index === 0} aria-label={`Move ${country.country} up`} className="rounded border border-zinc-700 px-2 py-1 text-xs text-zinc-400 enabled:hover:border-cyan-500 disabled:opacity-30">↑</button>
-            <button type="button" onClick={() => move(index, 1)} disabled={index === draft.length - 1} aria-label={`Move ${country.country} down`} className="rounded border border-zinc-700 px-2 py-1 text-xs text-zinc-400 enabled:hover:border-cyan-500 disabled:opacity-30">↓</button>
-          </li>
-        ))}
-      </ol>
+
+      <p id="order-editor-instructions" className="mt-3 text-xs leading-relaxed text-zinc-500">
+        Drag the handle to reorder. For keyboard control, focus a handle and press Space, use Arrow Up or Arrow Down, then press Space to drop. Press Escape to cancel.
+      </p>
+
+      <DragDropProvider
+        sensors={defaults => [
+          PointerSensor.configure({
+            activationConstraints(event) {
+              if (event.pointerType === 'touch') {
+                return [new PointerActivationConstraints.Delay({ value: 300, tolerance: 5 })]
+              }
+              return [new PointerActivationConstraints.Distance({ value: 8 })]
+            },
+          }),
+          ...defaults.filter(sensor => sensor !== PointerSensor),
+        ]}
+        onDragEnd={event => {
+          if (event.canceled) return
+          const { source } = event.operation
+          if (!source || !isSortable(source) || source.initialIndex === source.index) return
+          setDraft(current => reorderCountryDraft(current, source.initialIndex, source.index))
+        }}
+      >
+        <ol className="mt-4 space-y-2" aria-describedby="order-editor-instructions">
+          {draft.map((country, index) => (
+            <SortableCountryRow key={country.id} country={country} index={index} />
+          ))}
+        </ol>
+      </DragDropProvider>
+
       <div className="mt-4 flex flex-wrap gap-2">
         <button type="button" onClick={save} className="rounded-lg bg-cyan-600 px-3 py-2 text-sm font-semibold text-white hover:bg-cyan-500">Save order</button>
         <button type="button" onClick={reset} className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-300 hover:border-cyan-500">Reset canonical order</button>
       </div>
     </section>
+  )
+}
+
+function SortableCountryRow({ country, index }: { country: Country; index: number }) {
+  const { ref, handleRef, isDragging, isDropTarget } = useSortable({
+    id: country.id,
+    index,
+  })
+
+  return (
+    <li
+      ref={ref}
+      className={`flex items-center gap-2 rounded-lg border bg-zinc-950/40 px-3 py-2 transition-colors ${
+        isDragging
+          ? 'border-cyan-400/70 opacity-50'
+          : isDropTarget
+            ? 'border-cyan-500/70'
+            : 'border-zinc-800'
+      }`}
+    >
+      <span className="w-6 text-xs tabular-nums text-zinc-600">{index + 1}.</span>
+      <button
+        ref={handleRef}
+        type="button"
+        className="touch-none cursor-grab rounded border border-transparent px-1.5 py-1 text-lg leading-none text-zinc-500 hover:border-zinc-700 hover:text-cyan-300 active:cursor-grabbing"
+        aria-label={`Reorder ${country.country}`}
+        aria-describedby="order-editor-instructions"
+        title="Drag to reorder"
+      >
+        ⠿
+      </button>
+      <span className="min-w-0 flex-1 text-sm text-zinc-300">{country.country}</span>
+    </li>
   )
 }
