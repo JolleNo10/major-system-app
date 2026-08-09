@@ -1,7 +1,7 @@
-import type { Continent, Country, CountryId } from '@/features/world-countries/data/countries'
+import { countries, type Continent, type Country, type CountryId } from '@/features/world-countries/data/countries'
 import type { SvgMapHoverGroup } from '@/features/world-countries/maps/SvgMapController'
 import { countryToSvgIds } from '@/features/world-countries/maps/countryMapIds'
-import { getSubregionDefinition } from '@/features/world-countries/data/subregions'
+import { getSubregionDefinition, type SubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
 import { getCountriesForContinent } from '@/features/world-countries/geography/queries'
 
 /** Return possible IDs without asserting that a given asset contains them. */
@@ -144,6 +144,45 @@ export function sortCountriesByMapPosition(
       return left.position - right.position || left.index - right.index
     })
     .map(entry => entry.country)
+}
+
+/**
+ * Best-effort visual ordering of Subregions using the mean horizontal position
+ * of their member Countries' map labels. Subregions without any positioned
+ * member retain their relative order after the positioned ones.
+ */
+export function sortSubregionsByMapPosition(
+  subregions: readonly SubregionDefinition[],
+  svgMarkup: string,
+  entries: readonly Country[] = countries,
+): SubregionDefinition[] {
+  const document = new DOMParser().parseFromString(svgMarkup, 'image/svg+xml')
+  if (document.documentElement.localName.toLowerCase() !== 'svg' || document.querySelector('parsererror')) {
+    return [...subregions]
+  }
+
+  const totals = new Map<SubregionId, { sum: number; count: number }>()
+  for (const entry of entries) {
+    const position = findCountryLabelX(document, countryToSvgIds(entry))
+    if (position === null) continue
+    const bucket = totals.get(entry.subregionId) ?? { sum: 0, count: 0 }
+    bucket.sum += position
+    bucket.count += 1
+    totals.set(entry.subregionId, bucket)
+  }
+
+  const positions = new Map<SubregionId, number>()
+  for (const [id, { sum, count }] of totals) positions.set(id, sum / count)
+
+  return subregions
+    .map((subregion, index) => ({ subregion, index, position: positions.get(subregion.id) }))
+    .sort((left, right) => {
+      if (left.position === undefined && right.position === undefined) return left.index - right.index
+      if (left.position === undefined) return 1
+      if (right.position === undefined) return -1
+      return left.position - right.position || left.index - right.index
+    })
+    .map(entry => entry.subregion)
 }
 
 function findCountryLabelX(document: Document, svgIds: readonly string[]): number | null {

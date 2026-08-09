@@ -10,7 +10,9 @@ import {
   getSubregionHoverGroupId,
   resolveCountryToSvgIds,
   sortCountriesByMapPosition,
+  sortSubregionsByMapPosition,
 } from './geographyMapAdapter'
+import { getSubregionDefinition } from '@/features/world-countries/data/subregions'
 
 const norway = countries.find(country => country.id === 'NO') as Country
 const sweden = countries.find(country => country.id === 'SE') as Country
@@ -61,6 +63,23 @@ describe('World Countries geography map adapter', () => {
 
     expect(sortCountriesByMapPosition([unitedKingdom, sweden, norway], markup).map(country => country.id))
       .toEqual(['NO', 'SE', 'GB'])
+  })
+
+  it('sorts subregions by the mean map position of their members and trails unpositioned ones', () => {
+    const france = countries.find(country => country.id === 'FR') as Country
+    const markup = `
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <g><path id="France"/><text id="France_label" x="20"/></g>
+        <g><path id="Norway"/><text id="Norway_label" x="80"/></g>
+      </svg>`
+    const northern = getSubregionDefinition('northern-europe')
+    const western = getSubregionDefinition('western-europe')
+    const southern = getSubregionDefinition('southern-europe')
+
+    expect(
+      sortSubregionsByMapPosition([northern, southern, western], markup, [norway, france])
+        .map(subregion => subregion.id),
+    ).toEqual(['western-europe', 'northern-europe', 'southern-europe'])
   })
 
   it('reports unresolved domain records instead of silently inventing membership', () => {

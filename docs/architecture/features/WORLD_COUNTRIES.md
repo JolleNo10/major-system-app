@@ -52,9 +52,10 @@ infrastructure, workflows, and World Countries persistence.
 - `mnemonics/` — feature target IDs, geography mnemonic semantics, feature
   backup envelope, and adapters over shared mnemonic storage.
 - `memo/` — instructional navigation, maps, mnemonic UI, Memo rail
-  composition, Subregion country learning orchestration, and the sortable
-  learning-order editors at both hierarchy levels (Continent Subregion order
-  and Subregion Country order).
+  composition, Subregion country learning orchestration, and one shared
+  sortable learning-order editor (`LearningOrderEditor`) used at both hierarchy
+  levels for Continent Subregion order and Subregion Country order, including
+  the best-effort "Order left to right" map action.
 - `drill/`, `recite/`, `maintenance/` — sibling workflow owners for deliberate
   practice, complete recall, and review selection.
 

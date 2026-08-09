@@ -211,7 +211,8 @@ function ContinentMemoOverview({
           onClose={closeOrderEditor}
           ariaLabel="Edit learning order"
           header={<h2 className="text-lg font-bold text-zinc-100">Edit learning order</h2>}
-          maxWidth="max-w-2xl"
+          maxWidth="max-w-lg"
+          presentation="side-panel"
         >
           <ContinentOrderEditor
             continent={continent}
