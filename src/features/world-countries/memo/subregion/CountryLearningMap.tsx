@@ -17,6 +17,14 @@ export interface CountryLearningMapProps {
   ariaLabel: string
 }
 
+/** Oceania's scattered microstates make subregion bounds too tight to teach from. */
+export function getCountryLearningMapZoomIds(
+  continent: Continent,
+  scopeSvgIds: readonly string[],
+): readonly string[] {
+  return continent === 'Oceania' ? [] : scopeSvgIds
+}
+
 export function CountryLearningMap({
   continent,
   scopeCountries,
@@ -49,6 +57,7 @@ export function CountryLearningMap({
     () => showOrderNumbers ? createCountryOrderLabels(scopeCountries, discoveredIds) : {},
     [discoveredIds, scopeCountries, showOrderNumbers],
   )
+  const zoomIds = getCountryLearningMapZoomIds(continent, scopeSvgIds)
 
   return (
     <SvgMapView
@@ -58,7 +67,7 @@ export function CountryLearningMap({
       mutedIds={discoveredIds.filter(id => !scopeSvgIds.includes(id))}
       namedIds={namedSvgIds}
       countryLabels={countryLabels}
-      zoomIds={scopeSvgIds}
+      zoomIds={zoomIds}
       onCountriesLoaded={setDiscovered}
       onCountryClick={svgId => {
         const country = getCountryForSvgId(svgId, scopeCountries)

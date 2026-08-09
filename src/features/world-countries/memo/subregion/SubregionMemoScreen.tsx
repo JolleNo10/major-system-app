@@ -2,11 +2,13 @@ import { useCallback, useMemo, useState } from 'react'
 import { Overlay } from '@/app/layout/Overlay'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
-import { getCountriesForSubregionInEffectiveOrder } from '@/features/world-countries/geography/queries'
+import { getContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
+import { getCountriesForSubregionInEffectiveOrder, getSubregionsForContinentInEffectiveOrder } from '@/features/world-countries/geography/queries'
 import { getSubregionMetadata } from '@/features/world-countries/geography/subregionMetadataStore'
-import { getSubregionLearningState } from '@/features/world-countries/learning/subregionLearningStore'
+import { getAllSubregionLearningStates, getSubregionLearningState } from '@/features/world-countries/learning/subregionLearningStore'
 import { isSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningState'
 import type { CountryLearningEntryPoint, CountryLearningPhase } from '@/features/world-countries/learning/countryLearningFlow'
+import { getNextSubregionToMemo } from '../memoProgress'
 import { SubregionOverviewRails } from '../WorldCountriesMemoRails'
 import { CountryLearningFlow } from './CountryLearningFlow'
 import { SubregionOverview } from './SubregionOverview'
@@ -19,6 +21,7 @@ export function SubregionMemoScreen({
   locationCleanTargetMinimum,
   fuzzyMatching,
   onLearningChanged,
+  onSelectSubregion,
   onExit,
   onWorld,
 }: {
@@ -28,10 +31,22 @@ export function SubregionMemoScreen({
   locationCleanTargetMinimum: number
   fuzzyMatching: boolean
   onLearningChanged: () => void
+  onSelectSubregion: (subregion: SubregionId) => void
   onExit: () => void
   onWorld: () => void
 }) {
   const entries = useMemo(() => getCountriesForSubregionInEffectiveOrder(subregion, undefined, getSubregionMetadata(subregion)), [learningVersion, subregion])
+  const nextSubregion = useMemo(() => {
+    const learnedSubregionIds = new Set(
+      getAllSubregionLearningStates()
+        .filter(state => isSubregionCountriesLearned(state))
+        .map(state => state.subregionId),
+    )
+    return getNextSubregionToMemo(
+      getSubregionsForContinentInEffectiveOrder(continent, undefined, getContinentMetadata(continent)),
+      candidateId => learnedSubregionIds.has(candidateId),
+    )
+  }, [continent, learningVersion])
   const learned = isSubregionCountriesLearned(getSubregionLearningState(subregion))
   return (
     <div className="w-full">
@@ -44,7 +59,9 @@ export function SubregionMemoScreen({
           learned={learned}
           locationCleanTargetMinimum={locationCleanTargetMinimum}
           fuzzyMatching={fuzzyMatching}
+          nextSubregion={nextSubregion}
           onLearningChanged={onLearningChanged}
+          onSelectSubregion={onSelectSubregion}
           onExit={onExit}
           onWorld={onWorld}
         />
@@ -60,7 +77,9 @@ function SubregionScreenBody({
   learned,
   locationCleanTargetMinimum,
   fuzzyMatching,
+  nextSubregion,
   onLearningChanged,
+  onSelectSubregion,
   onExit,
   onWorld,
 }: {
@@ -70,7 +89,9 @@ function SubregionScreenBody({
   learned: boolean
   locationCleanTargetMinimum: number
   fuzzyMatching: boolean
+  nextSubregion: ReturnType<typeof getSubregionsForContinentInEffectiveOrder>[number] | null
   onLearningChanged: () => void
+  onSelectSubregion: (subregion: SubregionId) => void
   onExit: () => void
   onWorld: () => void
 }) {
@@ -144,6 +165,8 @@ function SubregionScreenBody({
           subregion,
           onWorld,
           onContinent: onExit,
+          nextSubregion,
+          onSelectSubregion,
         }}
         content={{
           entries: mapEntries,

@@ -14,7 +14,11 @@ vi.mock('@/app/layout/PageLayoutContext', () => ({
   useRails: useRailsMock,
 }))
 
-import { WorldOverviewRails } from './WorldCountriesMemoRails'
+vi.mock('./MemoMnemonicCard', () => ({
+  MemoMnemonicCard: () => createElement('div', null, 'Memory aid'),
+}))
+
+import { ContinentOverviewRails, SubregionOverviewRails, WorldOverviewRails } from './WorldCountriesMemoRails'
 
 let root: Root | null = null
 
@@ -78,5 +82,161 @@ describe('World Countries Memo hierarchy rail rows', () => {
       button?.blur()
     })
     expect(onHoverGroup).toHaveBeenLastCalledWith(null)
+  })
+
+  it('offers the first unlearned subregion from the right rail', async () => {
+    const onSelectSubregion = vi.fn()
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(SubregionOverviewRails, {
+        phase: 'overview',
+        navigation: {
+          continent: 'Europe',
+          subregion: 'balkans',
+          onWorld: vi.fn(),
+          onContinent: vi.fn(),
+          nextSubregion: { id: 'northern-europe', label: 'Northern Europe', continent: 'Europe' },
+          onSelectSubregion,
+        },
+        content: {
+          entries: [],
+          learned: false,
+          mnemonicVersion: 0,
+          onMnemonicChanged: vi.fn(),
+        },
+        onEditOrder: vi.fn(),
+      }))
+    })
+
+    const railConfig = useRailsMock.mock.calls[0][0] as { right: ReactNode }
+    await act(async () => {
+      root?.render(railConfig.right)
+    })
+
+    expect(mount.textContent).toContain('Northern Europe')
+    const button = [...mount.querySelectorAll('button')].find(candidate => candidate.textContent === 'Open subregion →')
+    expect(button).not.toBeNull()
+
+    await act(async () => {
+      button?.click()
+    })
+    expect(onSelectSubregion).toHaveBeenCalledWith('northern-europe')
+  })
+
+  it('offers the next unlearned subregion from the continent overview right rail', async () => {
+    const onSelectSubregion = vi.fn()
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(ContinentOverviewRails, {
+        continent: 'Europe',
+        subregions: [
+          { id: 'balkans', label: 'Balkans', continent: 'Europe' },
+          { id: 'northern-europe', label: 'Northern Europe', continent: 'Europe' },
+        ],
+        memoedCountryIds: new Set<string>(),
+        progress: {
+          memoedCount: 0,
+          totalCount: 1,
+          remainingCount: 1,
+          ratio: 0,
+          status: 'not-started',
+        },
+        hoveredGroupId: null,
+        onWorld: vi.fn(),
+        onSelectSubregion,
+        onHoverGroup: vi.fn(),
+        onEditOrder: vi.fn(),
+      }))
+    })
+
+    const railConfig = useRailsMock.mock.calls[0][0] as { right: ReactNode }
+    await act(async () => {
+      root?.render(railConfig.right)
+    })
+
+    expect(mount.textContent).toContain('Balkans')
+    const button = [...mount.querySelectorAll('button')].find(candidate => candidate.textContent === 'Open subregion →')
+    expect(button).not.toBeNull()
+
+    await act(async () => {
+      button?.click()
+    })
+    expect(onSelectSubregion).toHaveBeenCalledWith('balkans')
+  })
+
+  it('hides the next-to-memo action during active subregion learning', async () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(SubregionOverviewRails, {
+        phase: 'walkthrough',
+        navigation: {
+          continent: 'Europe',
+          subregion: 'balkans',
+          onWorld: vi.fn(),
+          onContinent: vi.fn(),
+          nextSubregion: { id: 'northern-europe', label: 'Northern Europe', continent: 'Europe' },
+          onSelectSubregion: vi.fn(),
+        },
+        content: {
+          entries: [],
+          learned: false,
+          mnemonicVersion: 0,
+          onMnemonicChanged: vi.fn(),
+        },
+        onEditOrder: vi.fn(),
+      }))
+    })
+
+    const railConfig = useRailsMock.mock.calls[0][0] as { right: ReactNode }
+    await act(async () => {
+      root?.render(railConfig.right)
+    })
+
+    expect(mount.textContent).not.toContain('Next to memo')
+    expect(mount.textContent).toContain('Memory aid')
+  })
+
+  it('disables the next-to-memo action when every subregion is learned', async () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(SubregionOverviewRails, {
+        phase: 'overview',
+        navigation: {
+          continent: 'Europe',
+          subregion: 'balkans',
+          onWorld: vi.fn(),
+          onContinent: vi.fn(),
+          nextSubregion: null,
+          onSelectSubregion: vi.fn(),
+        },
+        content: {
+          entries: [],
+          learned: true,
+          mnemonicVersion: 0,
+          onMnemonicChanged: vi.fn(),
+        },
+        onEditOrder: vi.fn(),
+      }))
+    })
+
+    const railConfig = useRailsMock.mock.calls[0][0] as { right: ReactNode }
+    await act(async () => {
+      root?.render(railConfig.right)
+    })
+
+    const button = [...mount.querySelectorAll('button')].find(candidate => candidate.textContent === 'All subregions learned')
+    expect(button?.disabled).toBe(true)
   })
 })

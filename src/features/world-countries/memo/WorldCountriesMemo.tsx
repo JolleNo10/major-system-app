@@ -64,6 +64,7 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
         locationCleanTargetMinimum={settings.worldCountriesLocationCleanTargetMinimum}
         fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching}
         onLearningChanged={refreshLearning}
+        onSelectSubregion={selectSubregion}
         onExit={backToContinent}
         onWorld={backToWorld}
       />

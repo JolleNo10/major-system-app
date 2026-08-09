@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { getContinents, getCountriesForSubregion, getSubregionsForContinent } from '@/features/world-countries/geography/queries'
-import { getContinentMemoProgress, getMemoProgress, getSubregionMemoProgress } from './memoProgress'
+import { getContinentMemoProgress, getMemoProgress, getNextSubregionToMemo, getSubregionMemoProgress } from './memoProgress'
 import { countries, type Country } from '@/features/world-countries/data/countries'
 
 const sample: Country[] = [
@@ -28,5 +28,15 @@ describe('World Countries Memo geography', () => {
 
   it('uses the bundled records as the default world source', () => {
     expect(getMemoProgress(countries, []).totalCount).toBe(countries.length)
+  })
+
+  it('finds the first subregion that is not memoed', () => {
+    const order = [
+      { id: 'balkans', label: 'Balkans', continent: 'Europe' },
+      { id: 'northern-europe', label: 'Northern Europe', continent: 'Europe' },
+    ] as const
+
+    expect(getNextSubregionToMemo(order, subregionId => subregionId === 'balkans')).toEqual(order[1])
+    expect(getNextSubregionToMemo(order, () => true)).toBeNull()
   })
 })
