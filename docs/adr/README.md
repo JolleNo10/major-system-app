@@ -3,17 +3,19 @@
 ## Purpose
 
 An ADR records **why** an architectural decision was made and the context that
-justified it. ADRs are historical rationale, not a description of how the system
-works today.
+justified it. An accepted ADR may describe decisions that are part of the
+current architecture, but ADRs are not the authoritative source for current-state
+architecture.
 
 ```text
-docs/adr/          → why architectural decisions were made
-docs/architecture/ → how the architecture is considered to work now
+docs/adr/          → architectural decisions, context, and rationale
+docs/architecture/ → authoritative resolved current-state architecture
 ```
 
-Agents doing normal implementation work use `docs/architecture/` and should not
-replay ADR history. Agents creating, reviewing, modifying, or interpreting an
-ADR use this file as the ADR convention.
+Agents doing normal implementation work use `docs/architecture/` as the resolved
+current-state representation and should not reconstruct current architecture from
+ADR history. Agents creating, reviewing, modifying, or interpreting an ADR use
+this file as the ADR convention.
 
 ## Status
 
@@ -35,14 +37,16 @@ Specifically:
 > `Accepted` means the decision is authoritative. It does not, by itself, mean
 > that implementation has been completed.
 
-Do not add a custom implementation-progress field (for example
-`Implementation: Not Started / Partial / Complete`). Implementation state is
-recorded in `## Confirmation`, not in `Status`.
+ADRs do not use `Status` to track implementation progress, and they do not add a
+separate implementation-lifecycle field (for example
+`Implementation: Not Started / Partial / Complete`). When an accepted decision
+has been implemented and verified, a `Confirmation` section records that
+verification and its date.
 
 ## Confirmation
 
-A `## Confirmation` section records whether an accepted decision has been
-verified against the repository, and when.
+A `## Confirmation` section records evidence that an accepted decision was
+implemented and verified, and when that verification occurred.
 
 ```md
 ## Confirmation
@@ -50,10 +54,14 @@ verified against the repository, and when.
 Implemented and verified against the repository on YYYY-MM-DD.
 ```
 
-Confirmation records a historical fact: the decision was implemented and
-verified at that point in time. Do not change an ADR's `Status` merely because
-implementation is complete — completion is captured by Confirmation, while
-`Status` continues to describe the decision's authority.
+Confirmation is positive evidence captured at a point in time, not an
+implementation-state field. Absence of a Confirmation section does not by itself
+mean `Not Started`, `Partial`, or any other implementation state — the
+repository deliberately does not track a separate implementation lifecycle.
+
+Do not change an ADR's `Status` merely because implementation is complete: the
+verification is captured by Confirmation, while `Status` continues to describe
+the decision's lifecycle and authority.
 
 If an ADR is later superseded, its earlier Confirmation remains valid historical
 information about the state at that date.
@@ -70,9 +78,10 @@ intact.
 
 ## Relationship to current-state architecture
 
-ADRs do not describe current architecture. When a decision changes how the
-system works, update the affected current-state document under
-`docs/architecture/` in the same change (see
+ADRs are not the authoritative source for current-state architecture. When a
+decision changes how the system works, update the affected current-state document
+under `docs/architecture/` in the same change (see
 [../architecture/INVARIANTS.md](../architecture/INVARIANTS.md)). An agent that
-needs the current structure reads `docs/architecture/`; an agent that needs the
-reasoning behind a rule reads the specific ADR.
+needs the current structure reads `docs/architecture/` as the resolved
+current-state representation; an agent that needs the reasoning behind a rule
+reads the specific ADR.
