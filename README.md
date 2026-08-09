@@ -2,7 +2,7 @@
 
 A drill app for the [Major System](https://en.wikipedia.org/wiki/Mnemonic_major_system) — a phonetic mnemonic that encodes numbers into words, making long digit sequences easier to memorize.
 
-**Stack:** Vite + React + TypeScript + Tailwind CSS v4 · **Runtime:** Docker only
+**Stack:** Vite + React + TypeScript + Tailwind CSS v4 · **Runtime:** host Node/npm preferred, Docker fallback
 
 ---
 
@@ -21,6 +21,17 @@ Once you know a word for each two-digit pair 00–99, you can encode any number 
 ---
 
 ## Running
+
+When Node/npm are installed on the host:
+
+```bash
+npm ci
+npm run dev             # dev server
+npm test                # tests
+npm run build           # type-check + production build
+```
+
+When the host has no Node/npm, use Docker:
 
 ```bash
 # Development (hot reload → http://localhost:8080)
@@ -116,7 +127,7 @@ sorted worst-first:
 
 Open the **Reference** panel (top-right) → **Word List** tab. Click any word to edit it. Changed words are highlighted in yellow; click **Reset to default** on any entry or **↺ Reset all** to restore defaults.
 
-Custom words are stored in `localStorage` under `major-word-overrides` and take precedence over the defaults in `src/data/words.ts`.
+Custom words are stored in `localStorage` under `major-word-overrides` and take precedence over the defaults in `src/features/major-system/words.csv`.
 
 ---
 
@@ -124,10 +135,10 @@ Custom words are stored in `localStorage` under `major-word-overrides` and take 
 
 | File | Purpose |
 |------|---------|
-| `src/data/words.ts` | Default word list (00–99) |
-| `src/data/soundKey.ts` | Digit → consonant sound mappings |
-| `src/data/itemStore.ts` | Per-item SM-2 + latency store (localStorage) |
-| `src/context/WordsContext.tsx` | Merges default words with user overrides |
-| `src/hooks/useStats.ts` | SM-2 scheduling, weak-spot detection |
-| `src/App.tsx` | Top-level mode state machine |
-| `src/components/modes/` | One file per drill mode |
+| `src/features/major-system/words.csv` | Default word list (00–99) |
+| `src/features/major-system/soundKey.csv` | Digit → consonant sound mappings |
+| `src/core/scoring/itemStore.ts` | Per-item SM-2 + latency store (localStorage) |
+| `src/features/major-system/WordsContext.tsx` | Merges default words with user overrides |
+| `src/core/scoring/useStats.ts` | SM-2 scheduling, weak-spot detection |
+| `src/app/App.tsx` | Top-level mode state machine |
+| `src/features/` | Drill modes, organised by domain |
