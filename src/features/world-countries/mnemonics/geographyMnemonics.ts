@@ -28,6 +28,14 @@ import {
   type SubregionMetadata,
 } from '@/features/world-countries/geography/subregionMetadata'
 import {
+  getAllContinentMetadata,
+  importContinentMetadata,
+} from '@/features/world-countries/geography/continentMetadataStore'
+import {
+  normalizeContinentMetadata,
+  type ContinentMetadata,
+} from '@/features/world-countries/geography/continentMetadata'
+import {
   countryCapitalMnemonicId,
   isCountryCapitalMnemonicTargetId,
   isGeographyMnemonicTargetId,
@@ -39,11 +47,12 @@ export interface SubregionMnemonic extends Mnemonic {
   countryIds: CountryId[]
 }
 
-export interface GeographyExportV2 {
-  version: 2
+export interface GeographyExportV3 {
+  version: 3
   feature: 'world-countries'
   mnemonics: MnemonicExportEntry[]
   subregions: SubregionMetadata[]
+  continents: ContinentMetadata[]
 }
 
 export function getSubregionCountries(
@@ -158,15 +167,17 @@ export async function getGeographyMnemonics(): Promise<Mnemonic[]> {
 
 /** Export the complete user-authored Geography state in the feature envelope. */
 export async function exportGeographyMnemonics(): Promise<Blob> {
-  const [mnemonics, subregions] = await Promise.all([
+  const [mnemonics, subregions, continents] = await Promise.all([
     getGeographyMnemonics(),
     Promise.resolve(getAllSubregionMetadata()),
+    Promise.resolve(getAllContinentMetadata()),
   ])
-  const payload: GeographyExportV2 = {
-    version: 2,
+  const payload: GeographyExportV3 = {
+    version: 3,
     feature: 'world-countries',
     mnemonics: await encodeMnemonicEntries(mnemonics),
     subregions,
+    continents,
   }
   return new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
 }
@@ -198,33 +209,39 @@ function parseFeatureMnemonicRows(rows: unknown): MnemonicRecord[] {
 function parseGeographyExport(json: string): {
   mnemonics: MnemonicRecord[]
   subregions: SubregionMetadata[]
+  continents: ContinentMetadata[]
 } {
   const parsed: unknown = JSON.parse(json.replace(/^\uFEFF/, ''))
   if (!parsed || typeof parsed !== 'object') throw new Error('Invalid Geography export')
   const envelope = parsed as Record<string, unknown>
   if (envelope.version === 1) {
-    return { mnemonics: parseFeatureMnemonicRows(envelope.mnemonics), subregions: [] }
+    return { mnemonics: parseFeatureMnemonicRows(envelope.mnemonics), subregions: [], continents: [] }
   }
-  if (envelope.version !== 2 || envelope.feature !== 'world-countries') {
-    throw new Error('Expected a version 1 or 2 Geography export')
+  if ((envelope.version !== 2 && envelope.version !== 3) || envelope.feature !== 'world-countries') {
+    throw new Error('Expected a version 1, 2, or 3 Geography export')
   }
   if (!Array.isArray(envelope.mnemonics) || !Array.isArray(envelope.subregions)) {
     throw new Error('Invalid Geography export sections')
   }
   const subregions = envelope.subregions.map(normalizeSubregionMetadata)
+  const continents = Array.isArray(envelope.continents)
+    ? envelope.continents.map(normalizeContinentMetadata)
+    : []
   return {
     mnemonics: parseFeatureMnemonicRows(envelope.mnemonics),
     subregions,
+    continents,
   }
 }
 
-/** Import v1 mnemonic-only files and v2 Geography envelopes without creating inferred order metadata. */
+/** Import v1 mnemonic-only files and v2/v3 Geography envelopes without creating inferred order metadata. */
 export async function importGeographyMnemonics(json: string): Promise<number> {
   const parsed = parseGeographyExport(json)
   // Parse and decode the entire payload before writing anything. This keeps a
   // malformed metadata row from partially importing mnemonic content.
   for (const mnemonic of parsed.mnemonics) await putMnemonic(mnemonic)
   if (parsed.subregions.length) importSubregionMetadata(parsed.subregions)
+  if (parsed.continents.length) importContinentMetadata(parsed.continents)
   return parsed.mnemonics.length
 }
 

@@ -1,6 +1,7 @@
 import { countries, type Continent, type Country } from '@/features/world-countries/data/countries'
 import {
   getSubregionDefinition,
+  type SubregionDefinition,
   type SubregionId,
 } from '@/features/world-countries/data/subregions'
 import {
@@ -8,6 +9,10 @@ import {
   resolveSubregionCountryOrder,
   type SubregionMetadata,
 } from './subregionMetadata'
+import {
+  resolveContinentSubregionOrder,
+  type ContinentMetadata,
+} from './continentMetadata'
 
 function unique<T>(values: Iterable<T>): T[] {
   return [...new Set(values)]
@@ -75,4 +80,16 @@ export function getCountriesForSubregionInEffectiveOrder(
   metadata?: Pick<SubregionMetadata, 'subregionId' | 'countryOrder'> | null,
 ): Country[] {
   return resolveSubregionCountryOrder(subregionId, entries, metadata)
+}
+
+/**
+ * Resolve the effective user Subregion order from supplied Continent metadata.
+ * Storage is deliberately not consulted here; callers inject the metadata.
+ */
+export function getSubregionsForContinentInEffectiveOrder(
+  continent: Continent | string,
+  entries: readonly Country[] = countries,
+  metadata?: Pick<ContinentMetadata, 'continentId' | 'subregionOrder'> | null,
+): SubregionDefinition[] {
+  return resolveContinentSubregionOrder(continent, entries, metadata)
 }

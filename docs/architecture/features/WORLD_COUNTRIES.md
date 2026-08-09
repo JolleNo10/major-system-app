@@ -42,8 +42,9 @@ infrastructure, workflows, and World Countries persistence.
 
 - `data/` — canonical Country, Continent, Subregion identity, membership,
   classification, and bundled reference data.
-- `geography/` — geography queries, user-authored Subregion metadata, effective
-  Country order, and metadata persistence.
+- `geography/` — geography queries, user-authored ordering metadata at both
+  hierarchy levels (Continent → Subregion order and Subregion → Country order),
+  the effective-order resolvers, and metadata persistence.
 - `learning/` — answer matching, reusable session mechanics, pure learning-flow
   state, durable Subregion learning facts, and their store.
 - `maps/` — SVG controller/view, map definitions/assets, Country-to-SVG
@@ -52,7 +53,8 @@ infrastructure, workflows, and World Countries persistence.
   backup envelope, and adapters over shared mnemonic storage.
 - `memo/` — instructional navigation, maps, mnemonic UI, Memo rail
   composition, Subregion country learning orchestration, and the sortable
-  Subregion learning-order editor.
+  learning-order editors at both hierarchy levels (Continent Subregion order
+  and Subregion Country order).
 - `drill/`, `recite/`, `maintenance/` — sibling workflow owners for deliberate
   practice, complete recall, and review selection.
 
@@ -114,14 +116,18 @@ the current app layout integration seam.
 
 - `world-countries-subregion-metadata` stores user-authored
   `SubregionMetadata.countryOrder` rows through `geography/`.
+- `world-countries-continent-metadata` stores user-authored
+  `ContinentMetadata.subregionOrder` rows (keyed by stable `ContinentId`)
+  through `geography/`.
 - `world-countries-subregion-learning` stores durable Subregion learning facts
   through `learning/`.
 - Geography mnemonics use the shared IndexedDB `mnemonics` store with `geo:*`
   target IDs. Subregion mnemonic records also retain the Country IDs/order they
   describe so stale stories can be detected.
-- The feature's version-2 JSON backup envelope contains both Geography
-  mnemonics and Subregion metadata; the import also accepts the older
-  mnemonic-only format.
+- The feature's version-3 JSON backup envelope contains Geography mnemonics,
+  Subregion metadata, and Continent metadata; the import also accepts the
+  version-2 (mnemonics plus Subregion metadata) and older mnemonic-only
+  formats.
 
 Load [PERSISTENCE.md](../PERSISTENCE.md) before changing any of these. World
 Countries structural work may reset its own state when necessary, but must not
@@ -141,12 +147,20 @@ adapters, and map adapters remain private until a real external consumer exists.
   positions, slugs, or SVG IDs.
 - `CountryId` and SVG ID are distinct. Translation belongs in `maps/`; workflows
   and persistence use `CountryId`.
-- `data/` is authoritative for Country membership and classification.
-  `SubregionMetadata.countryOrder` changes order only; it cannot add non-member
-  Countries.
-- `SubregionMetadata.countryOrder` is the durable user-authored sequence. Memo's
-  Subregion order editor keeps drag-and-drop changes in a local draft until the
-  user explicitly saves; keyboard-accessible reordering is required.
+- `data/` is authoritative for Continent → Subregion and Subregion → Country
+  membership and classification. `ContinentMetadata.subregionOrder` and
+  `SubregionMetadata.countryOrder` change order only; they cannot add non-member
+  Subregions or Countries. Resetting an order removes the override and falls back
+  to canonical Geography order.
+- `SubregionMetadata.countryOrder` and `ContinentMetadata.subregionOrder` are the
+  durable user-authored sequences. Memo's order editors keep drag-and-drop
+  changes in a local draft until the user explicitly saves; keyboard-accessible
+  reordering is required at both levels.
+- Continent Memo presents Subregions in effective learning order and exposes the
+  Continent-level order editor on the Subregions rail. Future complete Continent
+  Recite traverses the effective Subregion order and, within each Subregion, its
+  effective Country order; the flattened Continent sequence is derived from the
+  hierarchy and never persisted.
 - `learning/countryLearningFlow.ts` owns pure state and transitions;
   `memo/subregion/CountryLearningFlow.tsx` owns Memo UI orchestration.
 - Memo overview rail composition owns the World → Continent → Subregion
@@ -174,6 +188,7 @@ adapters, and map adapters remain private until a real external consumer exists.
 - `src/features/world-countries/data/countries.ts`
 - `src/features/world-countries/data/subregions.ts`
 - `src/features/world-countries/geography/queries.ts`
+- `src/features/world-countries/geography/continentMetadataStore.ts`
 - `src/features/world-countries/learning/countryLearningFlow.ts`
 - `src/features/world-countries/maps/SvgMapController.ts`
 - `src/features/world-countries/mnemonics/geographyMnemonics.ts`

@@ -64,7 +64,7 @@ Architecturally significant groups are:
 | Major System | `major-word-*`, `major-soundkey-*`, sequence/speed preferences. Layered word and sound-key records use `createWordStore`. |
 | Cards | `major-cardword-*`, `major-pao-*`, deck-memo histories, drill/suit/range preferences. Themed and PAO stores are independent even when PAO seeds Person values from Themed. |
 | Pi | `major-pi-*` session, selection, memoed/flawless, anchor, story-era, and maintenance state. Exact keys are defined beside their owners. |
-| World Countries | `world-countries-subregion-metadata` and `world-countries-subregion-learning`. |
+| World Countries | `world-countries-subregion-metadata`, `world-countries-continent-metadata`, and `world-countries-subregion-learning`. |
 
 Small view preferences need not be catalogued here. Their ownership still
 follows the defining module and feature namespace.
@@ -77,8 +77,8 @@ follows the defining module and feature namespace.
   exchange `pi:<position>`, `piseg:<segment>`, `pi:pair:<position>`, and
   `pi:segment:<segment>` merely because they contain similar numbers; they
   represent different contracts.
-- World Countries persists `CountryId` and `SubregionId`. SVG IDs and display
-  labels are not persistence identity.
+- World Countries persists `CountryId`, `SubregionId`, and `ContinentId`. SVG IDs
+  and display labels are not persistence identity.
 - Shared mnemonic target IDs are opaque to core. Feature adapters own namespace
   construction and import validation.
 
@@ -101,9 +101,10 @@ follows the defining module and feature namespace.
   Blob/data-URL conversion, but feature adapters validate target namespaces.
 - Pi exports shared mnemonic format and accepts both it and the legacy Pi story
   array format.
-- World Countries owns a version-2 feature envelope containing Geography
-  mnemonics plus Subregion metadata, and accepts its earlier mnemonic-only
-  format. The complete payload is parsed before writes begin.
+- World Countries owns a version-3 feature envelope containing Geography
+  mnemonics plus Subregion and Continent ordering metadata, and accepts the
+  earlier version-2 (mnemonics plus Subregion metadata) and mnemonic-only
+  formats. The complete payload is parsed before writes begin.
 - Dictionary CSV import/export remains owned by each layered store/parser;
   browser exports never rewrite bundled repository CSV files.
 
@@ -115,6 +116,7 @@ follows the defining module and feature namespace.
 - `src/core/mnemonics/backup.ts`
 - `src/features/pi/shared/story/piStories.ts`
 - `src/features/world-countries/geography/subregionMetadataStore.ts`
+- `src/features/world-countries/geography/continentMetadataStore.ts`
 - `src/features/world-countries/learning/subregionLearningStore.ts`
 
 ## Historical rationale

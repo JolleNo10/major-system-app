@@ -1,13 +1,16 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import type { AnswerMode } from '@/core/types'
+import { Overlay } from '@/app/layout/Overlay'
 import { useSettings } from '@/app/settings/SettingsContext'
 import { countries, type Continent } from '@/features/world-countries/data/countries'
-import type { SubregionId } from '@/features/world-countries/data/subregions'
+import type { SubregionDefinition, SubregionId } from '@/features/world-countries/data/subregions'
 import { getAllSubregionLearningStates } from '@/features/world-countries/learning/subregionLearningStore'
 import { isSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningState'
-import { getContinents, getSubregionDefinitionsForContinent } from '@/features/world-countries/geography/queries'
+import { getContinents, getSubregionsForContinentInEffectiveOrder } from '@/features/world-countries/geography/queries'
+import { getContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
 import { getContinentMemoProgress, getWorldMemoProgress, type MemoProgress } from './memoProgress'
 import { MemoMap } from './MemoMap'
+import { ContinentOrderEditor } from './continent/ContinentOrderEditor'
 import { SubregionMemoScreen } from './subregion/SubregionMemoScreen'
 import { ContinentOverviewRails, WorldOverviewRails } from './WorldCountriesMemoRails'
 
@@ -73,9 +76,11 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
         continent={continent}
         memoedCountryIds={learnedIds}
         hoveredGroupId={hoveredGroupId}
+        learningVersion={learningVersion}
         onWorld={backToWorld}
         onSelectSubregion={selectSubregion}
         onHoverGroup={setHoveredGroupId}
+        onLearningChanged={refreshLearning}
       />
     )
   }
@@ -136,45 +141,88 @@ function ContinentMemoOverview({
   continent,
   memoedCountryIds,
   hoveredGroupId,
+  learningVersion,
   onWorld,
   onSelectSubregion,
   onHoverGroup,
+  onLearningChanged,
 }: {
   continent: Continent
   memoedCountryIds: ReadonlySet<string>
   hoveredGroupId: string | null
+  learningVersion: number
   onWorld: () => void
   onSelectSubregion: (subregion: SubregionId) => void
   onHoverGroup: (groupId: string | null) => void
+  onLearningChanged: () => void
 }) {
-  const subregions = useMemo(() => getSubregionDefinitionsForContinent(continent), [continent])
+  const [editingOrder, setEditingOrder] = useState(false)
+  const [draftSubregions, setDraftSubregions] = useState<readonly SubregionDefinition[] | null>(null)
+  const subregions = useMemo(
+    () => getSubregionsForContinentInEffectiveOrder(continent, undefined, getContinentMetadata(continent)),
+    [continent, learningVersion],
+  )
   const progress = useMemo(() => getContinentMemoProgress(continent, memoedCountryIds), [continent, memoedCountryIds])
+  const railSubregions = draftSubregions ?? subregions
+
+  const openOrderEditor = useCallback(() => {
+    setDraftSubregions(subregions)
+    setEditingOrder(true)
+  }, [subregions])
+  const closeOrderEditor = useCallback(() => {
+    setDraftSubregions(null)
+    setEditingOrder(false)
+  }, [])
+  const handleOrderChanged = useCallback(() => {
+    setDraftSubregions(null)
+    onLearningChanged()
+  }, [onLearningChanged])
 
   return (
-    <MemoOverviewShell
-      rails={
-        <ContinentOverviewRails
-          continent={continent}
-          subregions={subregions}
-          memoedCountryIds={memoedCountryIds}
-          progress={progress}
-          hoveredGroupId={hoveredGroupId}
-          onWorld={onWorld}
-          onSelectSubregion={onSelectSubregion}
-          onHoverGroup={onHoverGroup}
-        />
-      }
-      map={
-        <MemoMap
-          level="continent"
-          continent={continent}
-          memoedCountryIds={memoedCountryIds}
-          hoveredGroupId={hoveredGroupId}
-          onHoverGroup={onHoverGroup}
-          onSelectSubregion={onSelectSubregion}
-        />
-      }
-    />
+    <>
+      <MemoOverviewShell
+        rails={
+          <ContinentOverviewRails
+            continent={continent}
+            subregions={railSubregions}
+            memoedCountryIds={memoedCountryIds}
+            progress={progress}
+            hoveredGroupId={hoveredGroupId}
+            onWorld={onWorld}
+            onSelectSubregion={onSelectSubregion}
+            onHoverGroup={onHoverGroup}
+            onEditOrder={openOrderEditor}
+          />
+        }
+        map={
+          <MemoMap
+            level="continent"
+            continent={continent}
+            memoedCountryIds={memoedCountryIds}
+            hoveredGroupId={hoveredGroupId}
+            onHoverGroup={onHoverGroup}
+            onSelectSubregion={onSelectSubregion}
+          />
+        }
+      />
+
+      {editingOrder && (
+        <Overlay
+          onClose={closeOrderEditor}
+          ariaLabel="Edit learning order"
+          header={<h2 className="text-lg font-bold text-zinc-100">Edit learning order</h2>}
+          maxWidth="max-w-2xl"
+        >
+          <ContinentOrderEditor
+            continent={continent}
+            entries={subregions}
+            onDraftChanged={setDraftSubregions}
+            onChanged={handleOrderChanged}
+            onClose={closeOrderEditor}
+          />
+        </Overlay>
+      )}
+    </>
   )
 }
 

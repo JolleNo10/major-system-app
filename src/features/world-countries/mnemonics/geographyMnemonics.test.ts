@@ -15,6 +15,7 @@ import {
 } from './geographyMnemonics'
 import { getSubregionMetadata } from '@/features/world-countries/geography/subregionMetadataStore'
 import { setSubregionCountryOrder } from '@/features/world-countries/geography/subregionMetadataStore'
+import { getContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
 
 afterEach(() => localStorage.clear())
 
@@ -83,11 +84,42 @@ describe('Geography mnemonic adapters', () => {
     })
     const payload = JSON.parse(json)
     expect(payload).toMatchObject({
-      version: 2,
+      version: 3,
       feature: 'world-countries',
       mnemonics: [],
       subregions: [{ subregionId: 'northern-europe', countryOrder: ['NO', 'SE'] }],
+      continents: [],
     })
+  })
+
+  it('imports v3 Continent Subregion order', async () => {
+    const count = await importGeographyMnemonics(JSON.stringify({
+      version: 3,
+      feature: 'world-countries',
+      mnemonics: [],
+      subregions: [],
+      continents: [{
+        continentId: 'europe',
+        subregionOrder: ['western-europe', 'northern-europe'],
+        updatedAt: 123,
+      }],
+    }))
+    expect(count).toBe(0)
+    expect(getContinentMetadata('Europe')).toMatchObject({
+      subregionOrder: ['western-europe', 'northern-europe'],
+      updatedAt: 123,
+    })
+  })
+
+  it('rejects malformed Continent metadata before importing mnemonic content', async () => {
+    await expect(importGeographyMnemonics(JSON.stringify({
+      version: 3,
+      feature: 'world-countries',
+      mnemonics: [{ targetId: 'geo:country-capital:NO', text: 'kept', imageDataUrl: null }],
+      subregions: [],
+      continents: [{ continentId: 'not-a-continent', subregionOrder: [], updatedAt: 1 }],
+    }))).rejects.toThrow()
+    expect(getContinentMetadata('Europe')).toBeNull()
   })
 
   it('rejects malformed v2 metadata before importing mnemonic content', async () => {
