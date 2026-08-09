@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useSettings } from '@/app/settings/SettingsContext'
 import { MultipleChoice } from '@/core/ui/MultipleChoice'
 import { ScoreBar } from '@/core/ui/ScoreBar'
 import { TypingInput } from '@/core/ui/TypingInput'
@@ -6,11 +7,11 @@ import { countries, type Continent, type Country } from '@/features/world-countr
 import { getSubregionDefinition, subregionIdFor } from '@/features/world-countries/data/subregions'
 import {
   buildCountryQuestion,
-  matchesPlaceName,
   pickCountry,
   type CountryQuestion,
   type CountryQuizDirection,
 } from '@/features/world-countries/quiz/countryQuiz'
+import { matchesCountryName, matchesPlaceName } from '@/features/world-countries/learning/answerMatching'
 import {
   countryRecallItemId,
   getCountryPoolScope,
@@ -57,6 +58,7 @@ function CountryCapitalDrill({
   direction: CountryQuizDirection
   onDirectionChange: (direction: CountryQuizDirection) => void
 }) {
+  const { settings } = useSettings()
   const [continent, setContinent] = useState<ContinentFilter>('All')
   const [subregion, setSubregion] = useState('All')
   const recentItemHistory = useRef<RecallItemId[]>([])
@@ -87,6 +89,11 @@ function CountryCapitalDrill({
         || (entry.subregionId ?? subregionIdFor(entry.subregion)) === selectedSubregionId)
     ))
   }, [continent, subregion])
+
+  const answerCandidates = useMemo(
+    () => countries.map(entry => direction === 'country-to-capital' ? entry.capital : entry.country),
+    [direction],
+  )
 
   const learningScope = useMemo(
     () => getCountryPoolScope(pool, direction, `quiz-${continent}-${subregion}`),
@@ -173,7 +180,9 @@ function CountryCapitalDrill({
 
   const handleAnswer = useCallback((value: string) => {
     if (answered !== null) return
-    const isCorrect = matchesPlaceName(value, question.answer)
+    const isCorrect = direction === 'capital-to-country'
+      ? matchesCountryName(value, question.entry, { fuzzy: settings.worldCountriesFuzzyAnswerMatching, candidates: answerCandidates })
+      : matchesPlaceName(value, question.answer, { fuzzy: settings.worldCountriesFuzzyAnswerMatching, candidates: answerCandidates })
     const now = Date.now()
     void recordCountryAttempt(question.entry, direction, {
       at: now,
@@ -195,7 +204,7 @@ function CountryCapitalDrill({
       setStreak(0)
     }
     nextTimer.current = setTimeout(showNext, 1400)
-  }, [answered, direction, question, refreshLearningProgress, showNext])
+  }, [answerCandidates, answered, direction, question, refreshLearningProgress, settings.worldCountriesFuzzyAnswerMatching, showNext])
 
   const selectContinent = (next: ContinentFilter) => {
     setContinent(next)

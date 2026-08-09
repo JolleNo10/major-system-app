@@ -23,6 +23,11 @@ export interface Settings {
   // the tuned baseline need weights; 0 flattens them (even exposure); 1 sharpens the
   // focus on weak items. Feeds roundScheduler.makeRoundConfig.
   sessionUnmasteredShare: number
+  // When enabled, World Countries typed answers may accept an unambiguous
+  // small spelling error after basic normalization has failed.
+  worldCountriesFuzzyAnswerMatching: boolean
+  // Minimum consecutive correct map selections in World Countries Memo Stage A.
+  worldCountriesLocationCleanTargetMinimum: number
 }
 
 const KEY = 'major-settings'
@@ -35,6 +40,8 @@ export const DEFAULT_SETTINGS: Settings = {
   piPairsPerAnswer: 1,
   piMaintainBatchSegs: 5, // 5 segments = 100 digits per maintenance batch
   sessionUnmasteredShare: 0.5, // even split between unmastered and mastered pools
+  worldCountriesFuzzyAnswerMatching: false,
+  worldCountriesLocationCleanTargetMinimum: 10,
 }
 
 export const UNMASTERED_SHARE_MIN = 0
@@ -51,6 +58,10 @@ export const MASTERY_FACTOR_STEP = 0.1
 
 export const MAX_PI_DIGITS_MIN  = 20
 export const MAX_PI_DIGITS_STEP = 20
+
+export const WORLD_COUNTRIES_LOCATION_CLEAN_TARGET_MIN = 1
+export const WORLD_COUNTRIES_LOCATION_CLEAN_TARGET_MAX = 50
+export const WORLD_COUNTRIES_LOCATION_CLEAN_TARGET_STEP = 1
 
 export function loadSettings(): Settings {
   const stored = readJSON<Partial<Settings>>(KEY, {})

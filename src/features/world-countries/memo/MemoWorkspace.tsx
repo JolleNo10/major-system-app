@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { matchesPlaceName } from '@/features/world-countries/quiz/countryQuiz'
+import { matchesPlaceName } from '@/features/world-countries/learning/answerMatching'
 import { countryCapitalMnemonicId, subregionMnemonicId } from '@/features/world-countries/mnemonics/geographyMnemonicIds'
 import { countryId } from '@/features/world-countries/learning'
 import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
@@ -47,6 +47,7 @@ function CountryMemoItem({ country, memoed, onMemoed, refreshKey, onMnemonicChan
           <div className="flex gap-2">
             <input
               id={`memo-answer-${country.id ?? country.country}`}
+              autoComplete="off"
               value={answer}
               onChange={event => { setAnswer(event.target.value); setFeedback(null) }}
               onKeyDown={event => { if (event.key === 'Enter') checkAnswer() }}

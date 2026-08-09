@@ -1,35 +1,38 @@
 import { useCallback, useMemo, useState } from 'react'
 import type { AnswerMode } from '@/core/types'
+import { useSettings } from '@/app/settings/SettingsContext'
 import { countries, type Continent } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
+import { getAllSubregionLearningStates, isSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningStore'
+import { countryId } from '@/features/world-countries/learning'
 import { getContinents, getCountriesForContinent, getSubregionDefinitionsForContinent } from './geographyMemo'
 import { getContinentMemoProgress, getSubregionMemoProgress, getWorldMemoProgress } from './memoProgress'
-import { loadMemoedCountryIds } from './memoStore'
 import { MemoMap } from './MemoMap'
-import { MemoWorkspace } from './MemoWorkspace'
+import { SubregionMemoScreen } from './subregion/SubregionMemoScreen'
 import { getContinentHoverGroupId, getSubregionHoverGroupId } from './memoMapAdapter'
 
-function ProgressBadge({
-  memoedCount,
-  totalCount,
-}: {
-  memoedCount: number
-  totalCount: number
-}) {
-  return (
-    <span className="text-xs tabular-nums text-zinc-500">
-      {memoedCount}/{totalCount} memoed
-    </span>
-  )
+function ProgressBadge({ learnedCount, totalCount }: { learnedCount: number; totalCount: number }) {
+  return <span className="text-xs tabular-nums text-zinc-500">{learnedCount}/{totalCount} learned</span>
+}
+
+function learnedCountryIds(): Set<string> {
+  const states = new Map(getAllSubregionLearningStates().map(state => [state.subregionId, state]))
+  return new Set(countries
+    .filter(country => isSubregionCountriesLearned(states.get(country.subregionId!)))
+    .map(countryId))
 }
 
 export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: AnswerMode }) {
+  const { settings } = useSettings()
   const [continent, setContinent] = useState<Continent | null>(null)
   const [subregion, setSubregion] = useState<SubregionId | null>(null)
   const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null)
-  const [memoedCountryIds, setMemoedCountryIds] = useState<Set<string>>(() => loadMemoedCountryIds())
+  const [learningVersion, setLearningVersion] = useState(0)
   const continents = useMemo(() => getContinents(), [])
-  const worldProgress = getWorldMemoProgress(memoedCountryIds)
+  const learnedIds = useMemo(() => learnedCountryIds(), [learningVersion])
+  const worldProgress = getWorldMemoProgress(learnedIds)
+
+  const refreshLearning = useCallback(() => setLearningVersion(version => version + 1), [])
 
   const selectContinent = useCallback((next: Continent) => {
     setContinent(next)
@@ -40,10 +43,6 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
   const selectSubregion = useCallback((next: SubregionId) => {
     setSubregion(next)
     setHoveredGroupId(null)
-  }, [])
-
-  const onMemoed = useCallback((ids: Set<string>) => {
-    setMemoedCountryIds(ids)
   }, [])
 
   const backToWorld = () => {
@@ -58,40 +57,25 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
   }
 
   if (continent && subregion) {
-    const subregionProgress = getSubregionMemoProgress(continent, subregion, memoedCountryIds)
-    const subregionLabel = getSubregionDefinition(subregion).label
+    const definition = getSubregionDefinition(subregion)
     return (
       <div className="w-full space-y-4 animate-fade-in">
-        <MemoBreadcrumbs continent={continent} subregion={subregionLabel} onWorld={backToWorld} onContinent={backToContinent} />
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Subregion</p>
-              <h1 className="mt-1 text-2xl font-bold text-zinc-100">{subregionLabel}</h1>
-            </div>
-            <ProgressBadge memoedCount={subregionProgress.memoedCount} totalCount={subregionProgress.totalCount} />
-          </div>
-        </div>
-        <MemoMap
-          level="continent"
-          continent={continent}
-          selectedSubregion={subregion}
-          memoedCountryIds={memoedCountryIds}
-          hoveredGroupId={hoveredGroupId}
-          onSelectSubregion={selectSubregion}
-        />
-        <MemoWorkspace
+        <MemoBreadcrumbs continent={continent} subregion={definition.label} onWorld={backToWorld} onContinent={backToContinent} />
+        <SubregionMemoScreen
           continent={continent}
           subregion={subregion}
-          memoedCountryIds={memoedCountryIds}
-          onMemoed={onMemoed}
+          learningVersion={learningVersion}
+          locationCleanTargetMinimum={settings.worldCountriesLocationCleanTargetMinimum}
+          fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching}
+          onLearningChanged={refreshLearning}
+          onExit={backToContinent}
         />
       </div>
     )
   }
 
   if (continent) {
-    const continentProgress = getContinentMemoProgress(continent, memoedCountryIds)
+    const continentProgress = getContinentMemoProgress(continent, learnedIds)
     const subregions = getSubregionDefinitionsForContinent(continent)
     return (
       <div className="w-full space-y-4 animate-fade-in">
@@ -102,14 +86,14 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
               <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Continent</p>
               <h1 className="mt-1 text-2xl font-bold text-zinc-100">{continent}</h1>
             </div>
-            <ProgressBadge memoedCount={continentProgress.memoedCount} totalCount={continentProgress.totalCount} />
+            <ProgressBadge learnedCount={continentProgress.memoedCount} totalCount={continentProgress.totalCount} />
           </div>
-          <p className="mt-2 text-sm text-zinc-500">Select a Subregion on the map or below to open its Memo workspace.</p>
+          <p className="mt-2 text-sm text-zinc-500">Select a Subregion to prepare and learn its countries.</p>
         </div>
         <MemoMap
           level="continent"
           continent={continent}
-          memoedCountryIds={memoedCountryIds}
+          memoedCountryIds={learnedIds}
           hoveredGroupId={hoveredGroupId}
           onSelectSubregion={selectSubregion}
         />
@@ -120,7 +104,7 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
           </div>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             {subregions.map(definition => {
-              const progress = getSubregionMemoProgress(continent, definition.id, memoedCountryIds)
+              const progress = getSubregionMemoProgress(continent, definition.id, learnedIds)
               return (
                 <button
                   key={definition.id}
@@ -131,7 +115,7 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
                   className="flex min-h-[48px] items-center justify-between gap-3 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-left transition-colors hover:border-cyan-500 hover:bg-zinc-800/80"
                 >
                   <span className="font-medium text-zinc-200">{definition.label}</span>
-                  <ProgressBadge memoedCount={progress.memoedCount} totalCount={progress.totalCount} />
+                  <ProgressBadge learnedCount={progress.memoedCount} totalCount={progress.totalCount} />
                 </button>
               )
             })}
@@ -151,22 +135,15 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
           </div>
           <div className="text-right">
             <p className="text-xs uppercase tracking-wider text-zinc-500">World progress</p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-green-300">
-              {worldProgress.memoedCount}/{worldProgress.totalCount}
-            </p>
+            <p className="mt-1 text-lg font-semibold tabular-nums text-green-300">{worldProgress.memoedCount}/{worldProgress.totalCount}</p>
           </div>
         </div>
-        <p className="mt-2 text-sm text-zinc-500">Choose a Continent, then a Subregion. Memoed means the Country–Capital fact has been recalled successfully once.</p>
+        <p className="mt-2 text-sm text-zinc-500">Choose a Continent, then a Subregion. Countries are learned after one clean ordered recall.</p>
         <div className="mt-3 h-2 overflow-hidden rounded-full bg-zinc-800">
           <div className="h-full rounded-full bg-green-500 transition-all" style={{ width: `${worldProgress.ratio * 100}%` }} />
         </div>
       </div>
-      <MemoMap
-        level="world"
-        memoedCountryIds={memoedCountryIds}
-        hoveredGroupId={hoveredGroupId}
-        onSelectContinent={selectContinent}
-      />
+      <MemoMap level="world" memoedCountryIds={learnedIds} hoveredGroupId={hoveredGroupId} onSelectContinent={selectContinent} />
       <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4" aria-labelledby="continents-heading">
         <div className="flex items-center justify-between gap-3">
           <h2 id="continents-heading" className="text-sm font-semibold uppercase tracking-wider text-zinc-400">Continents</h2>
@@ -174,7 +151,7 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
         </div>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           {continents.map(item => {
-            const progress = getContinentMemoProgress(item, memoedCountryIds)
+            const progress = getContinentMemoProgress(item, learnedIds)
             return (
               <button
                 key={item}
@@ -185,7 +162,7 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
                 className="flex min-h-[52px] items-center justify-between gap-3 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-left transition-colors hover:border-cyan-500 hover:bg-zinc-800/80"
               >
                 <span className="font-medium text-zinc-200">{item}</span>
-                <ProgressBadge memoedCount={progress.memoedCount} totalCount={progress.totalCount} />
+                <ProgressBadge learnedCount={progress.memoedCount} totalCount={progress.totalCount} />
               </button>
             )
           })}
@@ -195,34 +172,12 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
   )
 }
 
-function MemoBreadcrumbs({
-  continent,
-  subregion,
-  onWorld,
-  onContinent,
-}: {
-  continent?: Continent
-  subregion?: string
-  onWorld: () => void
-  onContinent?: () => void
-}) {
+function MemoBreadcrumbs({ continent, subregion, onWorld, onContinent }: { continent?: Continent; subregion?: string; onWorld: () => void; onContinent?: () => void }) {
   return (
     <nav aria-label="Memo navigation" className="flex flex-wrap items-center gap-2 text-sm">
       <button type="button" onClick={onWorld} className="text-zinc-500 hover:text-zinc-200">World</button>
-      {continent && (
-        <>
-          <span className="text-zinc-700">/</span>
-          {onContinent ? (
-            <button type="button" onClick={onContinent} className="text-zinc-500 hover:text-zinc-200">{continent}</button>
-          ) : <span className="text-zinc-300">{continent}</span>}
-        </>
-      )}
-      {subregion && (
-        <>
-          <span className="text-zinc-700">/</span>
-          <span className="text-cyan-300">{subregion}</span>
-        </>
-      )}
+      {continent && <><span className="text-zinc-700">/</span>{onContinent ? <button type="button" onClick={onContinent} className="text-zinc-500 hover:text-zinc-200">{continent}</button> : <span className="text-zinc-300">{continent}</span>}</>}
+      {subregion && <><span className="text-zinc-700">/</span><span className="text-cyan-300">{subregion}</span></>}
     </nav>
   )
 }

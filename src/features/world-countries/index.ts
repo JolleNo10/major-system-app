@@ -95,3 +95,48 @@ export {
   recordCountryAttempt,
   selectCountryEntry,
 } from '@/features/world-countries/learning'
+export {
+  createShuffleBag,
+  drawShuffleBag,
+  type ShuffleBagState,
+} from '@/features/world-countries/learning/shuffleBag'
+export {
+  createLocationRecallSession,
+  submitLocationSelection,
+  type LocationRecallConfig,
+  type LocationRecallResult,
+  type LocationRecallState,
+} from '@/features/world-countries/learning/locationRecallSession'
+export {
+  createOrderedRecallSession,
+  submitOrderedRecall,
+  type OrderedRecallConfig,
+  type OrderedRecallResult,
+  type OrderedRecallState,
+} from '@/features/world-countries/learning/orderedRecallSession'
+export {
+  createCountryLearningFlow,
+  moveCountryWalkthrough,
+  startCountryWalkthrough,
+  startLocationPractice,
+  startOrderedRecall,
+  submitCountryLocation,
+  submitCountryOrderAnswer,
+  type CountryLearningConfig,
+  type CountryLearningFlowState,
+  type CountryLearningPhase,
+} from '@/features/world-countries/learning/countryLearningFlow'
+export {
+  getAllSubregionLearningStates,
+  getSubregionLearningState,
+  markSubregionCountriesLearned,
+  clearSubregionCountriesLearned,
+  SUBREGION_LEARNING_STORAGE_KEY,
+} from '@/features/world-countries/learning/subregionLearningStore'
+export { isSubregionCountriesLearned, type SubregionLearningState } from '@/features/world-countries/learning/subregionLearningState'
+export {
+  matchesCountryName,
+  matchesPlaceName,
+  normalizePlaceName,
+  type PlaceMatchOptions,
+} from '@/features/world-countries/learning/answerMatching'

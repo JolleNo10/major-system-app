@@ -185,7 +185,7 @@ export function MemoMap({
       ) : null}
       <div className="flex items-center justify-between gap-3 px-1 text-xs text-zinc-500">
         <span>Hover a country to see its {level === 'world' ? 'Continent' : 'Subregion'}.</span>
-        <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-green-500" /> Memoed</span>
+        <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-green-500" /> Countries learned</span>
       </div>
     </div>
   )

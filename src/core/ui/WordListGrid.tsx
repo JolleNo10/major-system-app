@@ -147,6 +147,7 @@ export function WordListGrid({
           <input
             autoFocus
             type="text"
+            autoComplete="off"
             value={editValue}
             onChange={e => setEditValue(e.target.value)}
             onKeyDown={e => handleKeyDown(e, key)}
@@ -176,7 +177,7 @@ export function WordListGrid({
             : 'Click a word to edit'}
         </span>
         <div className="flex items-center gap-3">
-          <input ref={fileInputRef} type="file" accept=".csv,.txt" className="hidden" onChange={handleImportFile} />
+        <input ref={fileInputRef} type="file" accept=".csv,.txt" className="hidden" onChange={handleImportFile} />
           <button onClick={() => fileInputRef.current?.click()} className={btn}>↑ Import</button>
           <button onClick={handleExport} className={btn}>↓ Export</button>
           {trialCount > 0 && (

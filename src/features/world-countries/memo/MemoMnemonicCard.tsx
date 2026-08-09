@@ -109,6 +109,7 @@ export function MemoMnemonicCard({
       ) : editing ? (
         <div className="mt-3 space-y-2">
           <textarea
+            autoComplete="off"
             value={draftText}
             onChange={event => setDraftText(event.target.value)}
             rows={4}

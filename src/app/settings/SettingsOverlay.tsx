@@ -4,6 +4,9 @@ import {
   MAX_PI_DIGITS_MIN, MAX_PI_DIGITS_STEP,
   MAINTAIN_BATCH_MIN, MAINTAIN_BATCH_MAX, MAINTAIN_BATCH_STEP,
   UNMASTERED_SHARE_MIN, UNMASTERED_SHARE_MAX, UNMASTERED_SHARE_STEP,
+  WORLD_COUNTRIES_LOCATION_CLEAN_TARGET_MIN,
+  WORLD_COUNTRIES_LOCATION_CLEAN_TARGET_MAX,
+  WORLD_COUNTRIES_LOCATION_CLEAN_TARGET_STEP,
 } from '@/app/settings/settings'
 import { masteryFastMs, RECALL_SLOW_MS } from '@/core/scoring/scoring'
 import { Overlay } from '@/app/layout/Overlay'
@@ -198,6 +201,46 @@ export function SettingsOverlay({ onClose, pwa }: Props) {
             <div className="flex justify-between text-xs text-zinc-600 mt-1">
               <span>{MAINTAIN_BATCH_MIN}</span>
               <span>{MAINTAIN_BATCH_MAX}</span>
+            </div>
+          </section>
+          </SettingsGroup>
+
+          <SettingsGroup label="World Countries">
+          <section>
+            <div className="flex items-center justify-between gap-4 mb-1">
+              <h3 className="font-semibold text-zinc-100">Fuzzy answer matching</h3>
+              <Switch
+                checked={settings.worldCountriesFuzzyAnswerMatching}
+                onChange={value => update({ worldCountriesFuzzyAnswerMatching: value })}
+                label="World Countries fuzzy answer matching"
+              />
+            </div>
+            <p className="text-sm text-zinc-500">
+              Accept a small spelling error in typed country and capital answers only when it is unambiguous.
+            </p>
+          </section>
+
+          <section>
+            <div className="flex items-baseline justify-between mb-1">
+              <h3 className="font-semibold text-zinc-100">Country location clean recalls</h3>
+              <span className="text-sm font-mono tabular-nums text-cyan-300">{settings.worldCountriesLocationCleanTargetMinimum}</span>
+            </div>
+            <p className="text-sm text-zinc-500 mb-4">
+              Minimum consecutive correct map selections before a Subregion advances from location learning.
+              Larger Subregions still require at least one full pass through their countries.
+            </p>
+            <input
+              type="range"
+              min={WORLD_COUNTRIES_LOCATION_CLEAN_TARGET_MIN}
+              max={WORLD_COUNTRIES_LOCATION_CLEAN_TARGET_MAX}
+              step={WORLD_COUNTRIES_LOCATION_CLEAN_TARGET_STEP}
+              value={settings.worldCountriesLocationCleanTargetMinimum}
+              onChange={event => update({ worldCountriesLocationCleanTargetMinimum: +event.target.value })}
+              className="w-full h-2 accent-cyan-600 cursor-pointer"
+            />
+            <div className="flex justify-between text-xs text-zinc-600 mt-1">
+              <span>{WORLD_COUNTRIES_LOCATION_CLEAN_TARGET_MIN}</span>
+              <span>{WORLD_COUNTRIES_LOCATION_CLEAN_TARGET_MAX}</span>
             </div>
           </section>
           </SettingsGroup>

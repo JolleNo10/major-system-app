@@ -227,6 +227,7 @@ export function SequenceDrill({ answerMode }: Props) {
           </div>
           <textarea
             autoFocus
+            autoComplete="off"
             value={recallText}
             onChange={e => setRecallText(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submitRecall() }}

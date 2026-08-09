@@ -48,6 +48,7 @@ export function PiBatchInput({ expected, answeredCorrect, onAnswer }: Props) {
                 <input
                   ref={element => { inputRefs.current[index] = element }}
                   type="text"
+                  autoComplete="off"
                   inputMode="numeric"
                   pattern="[0-9]*"
                   maxLength={2}

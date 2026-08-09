@@ -337,11 +337,11 @@ export function DeckMemoDrill({ activeNumbers, words, cardCount, historyKey, act
             <input
               ref={inputRef}
               value={input}
+              autoComplete="off"
               onChange={e => setInput(recallMode === 'card' ? e.target.value.toUpperCase() : e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit() } }}
               placeholder={recallMode === 'card' ? 'e.g. AC, 10H, KS' : 'Type the word...'}
               className="flex-1 px-3 py-2.5 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-violet-500 font-mono text-base tracking-wider"
-              autoComplete="off"
               spellCheck={false}
             />
             <button

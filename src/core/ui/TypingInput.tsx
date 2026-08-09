@@ -53,6 +53,7 @@ export function TypingInput({ onAnswer, answeredCorrect, correctAnswer, placehol
         <input
           ref={inputRef}
           type="text"
+          autoComplete="off"
           inputMode={numeric ? 'numeric' : 'text'}
           pattern={numeric ? '[0-9]*' : undefined}
           maxLength={numeric ? correctAnswer.length : undefined}

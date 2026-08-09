@@ -1,5 +1,6 @@
 import type { Country } from '@/features/world-countries/data/countries'
 import { subregionIdFor } from '@/features/world-countries/data/subregions'
+export { matchesPlaceName, normalizePlaceName } from '@/features/world-countries/learning/answerMatching'
 
 export type CountryQuizDirection = 'country-to-capital' | 'capital-to-country'
 
@@ -21,24 +22,6 @@ function shuffleWith<T>(items: T[], rng: () => number): T[] {
 
 function answerFor(entry: Country, direction: CountryQuizDirection): string {
   return direction === 'country-to-capital' ? entry.capital : entry.country
-}
-
-export function normalizePlaceName(value: string): string {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLocaleLowerCase()
-    .replace(/&/g, ' and ')
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim()
-    .replace(/\s+/g, ' ')
-}
-
-export function matchesPlaceName(value: string, answer: string): boolean {
-  const normalizedValue = normalizePlaceName(value)
-  const normalizedAnswer = normalizePlaceName(answer)
-  return normalizedValue === normalizedAnswer
-    || normalizedValue.replace(/\s/g, '') === normalizedAnswer.replace(/\s/g, '')
 }
 
 export function buildCountryQuestion(

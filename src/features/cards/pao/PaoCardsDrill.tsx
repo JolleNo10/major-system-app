@@ -525,13 +525,13 @@ export function PaoCardsDrill({ answerMode }: Props) {
                       <input
                         ref={i === 0 ? encodeRef : undefined}
                         type="text"
+                        autoComplete="off"
                         value={encodeInput[f]}
                         disabled={encodeResult !== null}
                         onChange={e => setEncodeInput(prev => ({ ...prev, [f]: e.target.value }))}
                         onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); submitEncode() } }}
                         placeholder={role.label}
                         aria-label={role.label}
-                        autoComplete="off"
                         spellCheck={false}
                         className="flex-1 px-3 py-3 bg-zinc-800 outline-none text-lg font-medium text-zinc-100 placeholder-zinc-600 disabled:opacity-80"
                       />
@@ -593,6 +593,7 @@ export function PaoCardsDrill({ answerMode }: Props) {
                         <input
                           ref={el => { decodeRefs.current[item.field] = el }}
                           type="text"
+                          autoComplete="off"
                           value={decodeInput[item.field] ?? ''}
                           disabled={!!ans}
                           onChange={e => setDecodeInput(prev => ({ ...prev, [item.field]: e.target.value.toUpperCase() }))}
@@ -605,7 +606,6 @@ export function PaoCardsDrill({ answerMode }: Props) {
                           }}
                           placeholder="Type the card (e.g. 5♣, KS)"
                           aria-label={`Card for ${role.label}`}
-                          autoComplete="off"
                           spellCheck={false}
                           className="flex-1 min-w-0 px-3 py-3 bg-zinc-800 outline-none text-lg font-medium text-zinc-100 placeholder-zinc-600 disabled:opacity-80"
                         />

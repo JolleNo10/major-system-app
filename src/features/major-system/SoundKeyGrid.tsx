@@ -102,6 +102,7 @@ export function SoundKeyGrid() {
           <input
             autoFocus
             type="text"
+            autoComplete="off"
             value={editValue}
             placeholder={placeholder}
             onChange={e => setEditValue(e.target.value)}
@@ -152,7 +153,7 @@ export function SoundKeyGrid() {
             : 'Click a value to edit'}
         </span>
         <div className="flex items-center gap-3">
-          <input ref={fileInputRef} type="file" accept=".csv,.txt" className="hidden" onChange={handleImportFile} />
+        <input ref={fileInputRef} type="file" accept=".csv,.txt" className="hidden" onChange={handleImportFile} />
           <button onClick={() => fileInputRef.current?.click()} className={btn}>↑ Import</button>
           <button onClick={handleExport} className={btn}>↓ Export</button>
           {trialCount > 0 && (

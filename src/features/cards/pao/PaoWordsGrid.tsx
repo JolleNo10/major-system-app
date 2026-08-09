@@ -127,6 +127,7 @@ export function PaoWordsGrid() {
           <input
             autoFocus
             type="text"
+            autoComplete="off"
             value={editValue}
             placeholder={placeholder}
             onChange={e => setEditValue(e.target.value)}

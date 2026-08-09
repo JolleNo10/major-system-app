@@ -318,11 +318,11 @@ export function PaoDeckMemoDrill({ activeNumbers, byNumber, cardCount, historyKe
             <input
               ref={inputRef}
               value={input}
+              autoComplete="off"
               onChange={e => setInput(e.target.value.toUpperCase())}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit() } }}
               placeholder="e.g. AC, 10H, KS"
               className="flex-1 px-3 py-2.5 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-violet-500 font-mono text-base tracking-wider"
-              autoComplete="off"
               spellCheck={false}
             />
             <button

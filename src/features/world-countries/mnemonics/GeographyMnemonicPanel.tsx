@@ -128,6 +128,7 @@ function MnemonicCard({
       ) : editing ? (
         <div className="space-y-2">
           <textarea
+            autoComplete="off"
             value={draftText}
             onChange={event => setDraftText(event.target.value)}
             rows={4}

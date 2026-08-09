@@ -244,6 +244,7 @@ function StoryPanel({ story, loading, expectedWords, editing, onEdit, onCancel, 
       <p className="text-sm font-medium text-zinc-300">Story &amp; picture</p>
       <div onPaste={handlePaste}>
         <textarea
+          autoComplete="off"
           value={draftText}
           onChange={e => setDraftText(e.target.value)}
           rows={4}
