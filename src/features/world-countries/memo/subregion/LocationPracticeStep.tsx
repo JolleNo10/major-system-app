@@ -19,11 +19,11 @@ export function LocationPracticeStep({
   onContinue: () => void
   onExit: () => void
 }) {
-  const [feedback, setFeedback] = useState<{ correct: boolean; expectedId: string } | null>(null)
+  const [feedback, setFeedback] = useState<{ correct: boolean; expectedId: string; selectedId: string } | null>(null)
   const location = flow.location
   useEffect(() => {
     if (!feedback) return
-    const timer = window.setTimeout(() => setFeedback(null), 800)
+    const timer = window.setTimeout(() => setFeedback(null), feedback.correct ? 500 : 1800)
     return () => window.clearTimeout(timer)
   }, [feedback])
 
@@ -36,7 +36,7 @@ export function LocationPracticeStep({
   const submit = (countryId: string) => {
     if (feedback) return
     const correct = countryId === location.currentCountryId
-    setFeedback({ correct, expectedId: location.currentCountryId })
+    setFeedback({ correct, expectedId: location.currentCountryId, selectedId: countryId })
     onSelect(countryId)
   }
 
@@ -60,20 +60,22 @@ export function LocationPracticeStep({
         <span className="text-zinc-500">Clean streak</span>
         <span className="font-semibold tabular-nums text-cyan-300">{location.cleanStreak} / {location.target}</span>
       </div>
-      <CountryLearningMap
-        continent={continent}
-        scopeCountries={entries}
-        highlightedCountryId={feedback ? highlightedCountryId : null}
-        onCountryClick={submit}
-        ariaLabel="Unlabeled map for location recall"
-      />
-      {feedback && (
-        <section className={`rounded-xl border p-4 ${feedback.correct ? 'border-green-500/30 bg-green-500/10' : 'border-red-500/30 bg-red-500/10'}`}>
-          <p className={`text-sm font-semibold ${feedback.correct ? 'text-green-300' : 'text-red-300'}`}>
-            {feedback.correct ? 'Correct location.' : `That was ${entries.find(entry => entry.id === feedback.expectedId)?.country ?? 'not the target'}.`}
-          </p>
-        </section>
-      )}
+      <div className="relative">
+        <CountryLearningMap
+          continent={continent}
+          scopeCountries={entries}
+          highlightedCountryId={feedback ? highlightedCountryId : null}
+          onCountryClick={submit}
+          ariaLabel="Unlabeled map for location recall"
+        />
+        {feedback && (
+          <section className={`pointer-events-none absolute bottom-2 left-2 right-2 rounded-xl border p-4 bg-zinc-900/90 ${feedback.correct ? 'border-green-500/30' : 'border-red-500/30'}`}>
+            <p className={`text-sm font-semibold ${feedback.correct ? 'text-green-300' : 'text-red-300'}`}>
+              {feedback.correct ? 'Correct location.' : `That was ${entries.find(entry => entry.id === feedback.selectedId)?.country ?? 'not the target'} — ${entries.find(entry => entry.id === feedback.expectedId)?.country ?? 'unknown'} is highlighted.`}
+            </p>
+          </section>
+        )}
+      </div>
     </div>
   )
 }
