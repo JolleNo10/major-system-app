@@ -34,6 +34,7 @@ export function CountryWalkthroughStep({
       <CountryLearningMap
         continent={continent}
         scopeCountries={entries}
+        namedCountryId={country.id}
         highlightedCountryId={country.id}
         ariaLabel={`${country.country} highlighted on the map`}
       />

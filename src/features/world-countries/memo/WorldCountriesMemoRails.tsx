@@ -12,6 +12,7 @@ interface WorldOverviewRailsProps {
   continents: readonly Continent[]
   memoedCountryIds: ReadonlySet<string>
   progress: MemoProgress
+  hoveredGroupId: string | null
   onSelectContinent: (continent: Continent) => void
   onHoverGroup: (groupId: string | null) => void
 }
@@ -20,6 +21,7 @@ export function WorldOverviewRails({
   continents,
   memoedCountryIds,
   progress,
+  hoveredGroupId,
   onSelectContinent,
   onHoverGroup,
 }: WorldOverviewRailsProps) {
@@ -36,29 +38,37 @@ export function WorldOverviewRails({
 
           <nav aria-label="Continents">
             <ul className="space-y-1.5">
-              {continents.map(continent => (
-                <li key={continent}>
-                  <button
-                    type="button"
-                    onClick={() => onSelectContinent(continent)}
-                    onMouseEnter={() => onHoverGroup(getContinentHoverGroupId(continent))}
-                    onMouseLeave={() => onHoverGroup(null)}
-                    className="flex min-h-[40px] w-full items-center justify-between gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-left text-sm text-zinc-300 transition-colors hover:border-cyan-500 hover:text-zinc-100"
-                  >
-                    <span className="min-w-0 truncate">{continent}</span>
-                    <span className="shrink-0 text-xs tabular-nums text-zinc-500">
-                      {memoedCountForContinent(continent, memoedCountryIds)}
-                    </span>
-                  </button>
-                </li>
-              ))}
+              {continents.map(continent => {
+                const hovered = hoveredGroupId === getContinentHoverGroupId(continent)
+                return (
+                  <li key={continent}>
+                    <button
+                      type="button"
+                      onClick={() => onSelectContinent(continent)}
+                      onMouseEnter={() => onHoverGroup(getContinentHoverGroupId(continent))}
+                      onMouseLeave={() => onHoverGroup(null)}
+                      aria-current={hovered ? 'true' : undefined}
+                      className={`flex min-h-[40px] w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
+                        hovered
+                          ? 'border-cyan-500 bg-cyan-950/60 text-zinc-100'
+                          : 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-cyan-500 hover:text-zinc-100'
+                      }`}
+                    >
+                      <span className="min-w-0 truncate">{continent}</span>
+                      <span className="shrink-0 text-xs tabular-nums text-zinc-500">
+                        {memoedCountForContinent(continent, memoedCountryIds)}
+                      </span>
+                    </button>
+                  </li>
+                )
+              })}
             </ul>
           </nav>
         </section>
       ),
       leftLabel: 'Continents',
     },
-    [continents, memoedCountryIds, progress.memoedCount, progress.totalCount, progress.ratio, onSelectContinent, onHoverGroup],
+    [continents, memoedCountryIds, progress.memoedCount, progress.totalCount, progress.ratio, hoveredGroupId, onSelectContinent, onHoverGroup],
   )
 
   return null
@@ -69,6 +79,7 @@ interface ContinentOverviewRailsProps {
   subregions: readonly SubregionDefinition[]
   memoedCountryIds: ReadonlySet<string>
   progress: MemoProgress
+  hoveredGroupId: string | null
   onWorld: () => void
   onSelectSubregion: (subregion: SubregionId) => void
   onHoverGroup: (groupId: string | null) => void
@@ -79,6 +90,7 @@ export function ContinentOverviewRails({
   subregions,
   memoedCountryIds,
   progress,
+  hoveredGroupId,
   onWorld,
   onSelectSubregion,
   onHoverGroup,
@@ -102,29 +114,37 @@ export function ContinentOverviewRails({
 
           <nav aria-label={`${continent} Subregions`}>
             <ul className="space-y-1.5">
-              {subregions.map(subregion => (
-                <li key={subregion.id}>
-                  <button
-                    type="button"
-                    onClick={() => onSelectSubregion(subregion.id)}
-                    onMouseEnter={() => onHoverGroup(getSubregionHoverGroupId(subregion.label))}
-                    onMouseLeave={() => onHoverGroup(null)}
-                    className="flex min-h-[40px] w-full items-center rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-left text-sm text-zinc-300 transition-colors hover:border-cyan-500 hover:text-zinc-100"
-                  >
-                    <span className="min-w-0 truncate">{subregion.label}</span>
-                    <span className="shrink-0 text-xs tabular-nums text-zinc-500">
-                      {memoedCountForSubregion(continent, subregion.id, memoedCountryIds)}
-                    </span>
-                  </button>
-                </li>
-              ))}
+              {subregions.map(subregion => {
+                const hovered = hoveredGroupId === getSubregionHoverGroupId(subregion.label)
+                return (
+                  <li key={subregion.id}>
+                    <button
+                      type="button"
+                      onClick={() => onSelectSubregion(subregion.id)}
+                      onMouseEnter={() => onHoverGroup(getSubregionHoverGroupId(subregion.label))}
+                      onMouseLeave={() => onHoverGroup(null)}
+                      aria-current={hovered ? 'true' : undefined}
+                      className={`flex min-h-[40px] w-full items-center rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
+                        hovered
+                          ? 'border-cyan-500 bg-cyan-950/60 text-zinc-100'
+                          : 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-cyan-500 hover:text-zinc-100'
+                      }`}
+                    >
+                      <span className="min-w-0 truncate">{subregion.label}</span>
+                      <span className="shrink-0 text-xs tabular-nums text-zinc-500">
+                        {memoedCountForSubregion(continent, subregion.id, memoedCountryIds)}
+                      </span>
+                    </button>
+                  </li>
+                )
+              })}
             </ul>
           </nav>
         </section>
       ),
       leftLabel: 'Subregions',
     },
-    [continent, subregions, memoedCountryIds, progress.memoedCount, progress.totalCount, progress.ratio, onWorld, onSelectSubregion, onHoverGroup],
+    [continent, subregions, memoedCountryIds, progress.memoedCount, progress.totalCount, progress.ratio, hoveredGroupId, onWorld, onSelectSubregion, onHoverGroup],
   )
 
   return null
@@ -188,9 +208,11 @@ export function SubregionOverviewRails({
           <section aria-labelledby="learning-order-rail-heading">
             <div className="flex items-center justify-between gap-2">
               <h3 id="learning-order-rail-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Learning order</h3>
-              <button type="button" onClick={onEditOrder} className="shrink-0 rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 py-1.5 text-xs font-medium text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">
-                Edit order
-              </button>
+              {phase === 'overview' && (
+                <button type="button" onClick={onEditOrder} className="shrink-0 rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 py-1.5 text-xs font-medium text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">
+                  Edit order
+                </button>
+              )}
             </div>
             <ol className="mt-3 space-y-1.5 text-sm text-zinc-300">
               {entries.map((entry, index) => (

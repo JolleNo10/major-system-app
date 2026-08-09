@@ -9,9 +9,11 @@ import {
   getContinentHoverGroupId,
   getSubregionHoverGroupId,
   resolveCountryToSvgIds,
+  sortCountriesByMapPosition,
 } from './geographyMapAdapter'
 
 const norway = countries.find(country => country.id === 'NO') as Country
+const sweden = countries.find(country => country.id === 'SE') as Country
 const unitedStates = countries.find(country => country.id === 'US') as Country
 const unitedKingdom = countries.find(country => country.id === 'GB') as Country
 
@@ -48,6 +50,17 @@ describe('World Countries geography map adapter', () => {
       Sweden: '1 Sweden',
       Norway: '2 Norway',
     })
+  })
+
+  it('sorts countries by their map label position and preserves unresolved order', () => {
+    const markup = `
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <g><path id="Norway"/><text id="Norway_label" x="20"/></g>
+        <g><path id="Sweden"/><text id="Sweden_label" x="80"/></g>
+      </svg>`
+
+    expect(sortCountriesByMapPosition([unitedKingdom, sweden, norway], markup).map(country => country.id))
+      .toEqual(['NO', 'SE', 'GB'])
   })
 
   it('reports unresolved domain records instead of silently inventing membership', () => {

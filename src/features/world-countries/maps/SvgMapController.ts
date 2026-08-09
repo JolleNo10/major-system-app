@@ -69,7 +69,7 @@ export type SvgMapCountryColors =
 
 export const DEFAULT_SVG_MAP_SETTINGS: Readonly<SvgMapSettings> = Object.freeze({
   countryFill: null,
-  mutedFill: '#3f3f46',
+  mutedFill: '#303036',
   countryStroke: null,
   labelFill: null,
   highlightFill: '#0891b2',
@@ -187,6 +187,7 @@ export class SvgMapController {
   private hoveredIds = new Set<string>()
   private listeners: HoverListeners[] = []
   private countryClickHandler: ((countryId: string) => void) | null = null
+  private countryHoverHandler: ((countryId: string | null) => void) | null = null
   private svg: SVGSVGElement | null = null
   private originalViewBox: string | null = null
   private loadVersion = 0
@@ -469,6 +470,12 @@ export class SvgMapController {
     this.countryClickHandler = handler
   }
 
+  /** Register a framework-neutral callback for pointer hover on discovered countries. */
+  setCountryHoverHandler(handler: ((countryId: string | null) => void) | null): void {
+    this.assertUsable()
+    this.countryHoverHandler = handler
+  }
+
   setHoverGroups(groups: readonly SvgMapHoverGroup[]): SvgMapHoverGroupResult {
     this.assertUsable()
     const unknownIds = new Set<string>()
@@ -686,8 +693,15 @@ export class SvgMapController {
 
   private attachHoverListeners(): void {
     for (const country of this.countries.values()) {
-      const enter: EventListener = () => this.setHoveredCountry(country.id)
-      const leave: EventListener = () => this.setHoveredCountry(null)
+      const enter: EventListener = () => {
+        this.setHoveredCountry(country.id)
+        this.countryHoverHandler?.(this.hoveredCountryId === country.id ? country.id : null)
+      }
+      const leave: EventListener = () => {
+        if (this.hoveredCountryId !== country.id) return
+        this.setHoveredCountry(null)
+        this.countryHoverHandler?.(null)
+      }
       const click: EventListener = () => this.countryClickHandler?.(country.id)
       country.path.addEventListener('pointerenter', enter)
       country.path.addEventListener('pointerleave', leave)

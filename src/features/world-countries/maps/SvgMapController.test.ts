@@ -288,6 +288,22 @@ describe('SvgMapController hover behavior', () => {
     expect(label(mount, 'Alpha_label').style.getPropertyValue('display')).toBe('none')
   })
 
+  it('reports pointer hover changes without coupling them to controller-driven hover', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    controller.updateSettings({ hoverHighlight: true })
+
+    const hovered: Array<string | null> = []
+    controller.setCountryHoverHandler(id => hovered.push(id))
+
+    path(mount, 'Alpha').dispatchEvent(new Event('pointerenter'))
+    controller.hoverCountry('Beta')
+    path(mount, 'Alpha').dispatchEvent(new Event('pointerleave'))
+    path(mount, 'Beta').dispatchEvent(new Event('pointerleave'))
+
+    expect(hovered).toEqual(['Alpha', null])
+  })
+
   it('uses unions for overlapping groups and falls back for ungrouped countries', async () => {
     const { mount, controller } = makeController()
     await controller.load({ markup: TEST_MAP })
@@ -355,7 +371,7 @@ describe('SvgMapController hover behavior', () => {
       activeIds: ['Beta'],
       unknownIds: ['Missing'],
     })
-    expect(path(mount, 'Beta').style.getPropertyValue('fill')).toBe('#3f3f46')
+    expect(path(mount, 'Beta').style.getPropertyValue('fill')).toBe('#303036')
 
     controller.setCountryColors({ Beta: '#22c55e' })
     expect(path(mount, 'Beta').style.getPropertyValue('fill')).toBe('#22c55e')

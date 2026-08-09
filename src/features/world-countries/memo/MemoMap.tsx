@@ -19,6 +19,7 @@ export interface MemoMapProps {
   selectedSubregion?: SubregionId | null
   memoedCountryIds: ReadonlySet<string>
   hoveredGroupId?: string | null
+  onHoverGroup?: (groupId: string | null) => void
   onSelectContinent?: (continent: Continent) => void
   onSelectSubregion?: (subregion: SubregionId) => void
 }
@@ -29,6 +30,7 @@ export function MemoMap({
   selectedSubregion = null,
   memoedCountryIds,
   hoveredGroupId = null,
+  onHoverGroup,
   onSelectContinent,
   onSelectSubregion,
 }: MemoMapProps) {
@@ -53,9 +55,12 @@ export function MemoMap({
   const scopeSvgIds = useMemo(() => countriesToSvgIds(scopeCountries), [scopeCountries])
   const mapMountRef = useRef<HTMLDivElement>(null)
   const controllerRef = useRef<SvgMapController | null>(null)
+  const hoverRef = useRef(onHoverGroup)
   const [mapCountries, setMapCountries] = useState<readonly SvgMapCountry[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
+
+  hoverRef.current = onHoverGroup
 
   const handleCountryClick = useCallback((svgId: string) => {
     const entry = getCountryForSvgId(svgId, visibleCountries)
@@ -89,6 +94,14 @@ export function MemoMap({
           ? createContinentHoverGroups(visibleCountries, discoveredIds)
           : createSubregionHoverGroups(continent ?? '', visibleCountries, discoveredIds)
         controller.setHoverGroups(groups)
+        controller.setCountryHoverHandler(svgId => {
+          if (svgId === null) {
+            hoverRef.current?.(null)
+            return
+          }
+          const group = controller.getHoverGroups().find(candidate => candidate.countryIds.includes(svgId))
+          hoverRef.current?.(group?.id ?? null)
+        })
         controller.setCountryClickHandler(handleCountryClick)
         setMapCountries(discovered)
         setLoading(false)
@@ -122,7 +135,7 @@ export function MemoMap({
     }
     controller.clearColors()
     controller.setCountryColors(
-      createCountryColors(visibleCountries, memoedCountryIds, mapCountries.map(country => country.id), '#22c55e'),
+      createCountryColors(visibleCountries, memoedCountryIds, mapCountries.map(country => country.id), '#16a34a'),
     )
   }, [level, mapCountries, memoedCountryIds, scopeSvgIds, visibleCountries])
 
@@ -183,7 +196,7 @@ export function MemoMap({
       ) : null}
       <div className="flex items-center justify-between gap-3 px-1 text-xs text-zinc-500">
         <span>Hover a country to see its {level === 'world' ? 'Continent' : 'Subregion'}.</span>
-        <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-green-500" /> Countries learned</span>
+        <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-green-600" /> Countries learned</span>
       </div>
     </div>
   )

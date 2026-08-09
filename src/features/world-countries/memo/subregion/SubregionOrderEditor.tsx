@@ -3,8 +3,10 @@ import { DragDropProvider, PointerSensor } from '@dnd-kit/react'
 import { isSortable, useSortable } from '@dnd-kit/react/sortable'
 import { useState } from 'react'
 import type { Country } from '@/features/world-countries/data/countries'
-import type { SubregionId } from '@/features/world-countries/data/subregions'
+import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
 import { resetSubregionCountryOrder, setSubregionCountryOrder } from '@/features/world-countries/geography/subregionMetadataStore'
+import { sortCountriesByMapPosition } from '@/features/world-countries/maps/geographyMapAdapter'
+import { getMemoMapDefinition } from '@/features/world-countries/maps/mapDefinitions'
 import { reorderCountryDraft } from './subregionOrder'
 
 export function SubregionOrderEditor({
@@ -21,6 +23,8 @@ export function SubregionOrderEditor({
   onClose: () => void
 }) {
   const [draft, setDraft] = useState(() => [...entries])
+  const [orderingByMap, setOrderingByMap] = useState(false)
+  const [mapOrderError, setMapOrderError] = useState(false)
 
   const save = () => {
     setSubregionCountryOrder(subregion, draft.map(country => country.id))
@@ -32,6 +36,23 @@ export function SubregionOrderEditor({
     resetSubregionCountryOrder(subregion)
     onChanged()
     onClose()
+  }
+
+  const orderLeftToRight = async () => {
+    setOrderingByMap(true)
+    setMapOrderError(false)
+    try {
+      const definition = getMemoMapDefinition(getSubregionDefinition(subregion).continent)
+      const response = await fetch(definition.svgUrl)
+      if (!response.ok) throw new Error(`Map request failed with ${response.status}`)
+      const nextDraft = sortCountriesByMapPosition(draft, await response.text())
+      setDraft(nextDraft)
+      onDraftChanged(nextDraft)
+    } catch {
+      setMapOrderError(true)
+    } finally {
+      setOrderingByMap(false)
+    }
   }
 
   return (
@@ -47,6 +68,21 @@ export function SubregionOrderEditor({
       <p id="order-editor-instructions" className="mt-3 text-xs leading-relaxed text-zinc-500">
         Drag the handle to reorder. For keyboard control, focus a handle and press Space, use Arrow Up or Arrow Down, then press Space to drop. Press Escape to cancel.
       </p>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => void orderLeftToRight()}
+          disabled={orderingByMap}
+          className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs font-medium text-zinc-300 hover:border-cyan-500 hover:text-zinc-100 disabled:cursor-wait disabled:opacity-50"
+        >
+          {orderingByMap ? 'Reading map…' : 'Order left to right'}
+        </button>
+        <span className="text-xs text-zinc-600">Best effort from map positions.</span>
+      </div>
+      {mapOrderError && (
+        <p role="alert" className="mt-2 text-xs text-red-300">Could not read the map positions. Your current draft is unchanged.</p>
+      )}
 
       <DragDropProvider
         sensors={defaults => [

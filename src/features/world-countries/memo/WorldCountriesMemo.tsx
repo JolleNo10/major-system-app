@@ -114,6 +114,7 @@ function WorldMemoOverview({
           continents={continents}
           memoedCountryIds={memoedCountryIds}
           progress={progress}
+          hoveredGroupId={hoveredGroupId}
           onSelectContinent={onSelectContinent}
           onHoverGroup={onHoverGroup}
         />
@@ -123,6 +124,7 @@ function WorldMemoOverview({
           level="world"
           memoedCountryIds={memoedCountryIds}
           hoveredGroupId={hoveredGroupId}
+          onHoverGroup={onHoverGroup}
           onSelectContinent={onSelectContinent}
         />
       }
@@ -156,6 +158,7 @@ function ContinentMemoOverview({
           subregions={subregions}
           memoedCountryIds={memoedCountryIds}
           progress={progress}
+          hoveredGroupId={hoveredGroupId}
           onWorld={onWorld}
           onSelectSubregion={onSelectSubregion}
           onHoverGroup={onHoverGroup}
@@ -167,6 +170,7 @@ function ContinentMemoOverview({
           continent={continent}
           memoedCountryIds={memoedCountryIds}
           hoveredGroupId={hoveredGroupId}
+          onHoverGroup={onHoverGroup}
           onSelectSubregion={onSelectSubregion}
         />
       }

@@ -115,6 +115,50 @@ export function createCountryColors(
     : [])
 }
 
+/**
+ * Best-effort visual ordering using the horizontal position of each map label.
+ * Countries that cannot be paired with a labelled SVG path retain their
+ * relative order after the positioned countries.
+ */
+export function sortCountriesByMapPosition(
+  entries: readonly Country[],
+  svgMarkup: string,
+): Country[] {
+  const document = new DOMParser().parseFromString(svgMarkup, 'image/svg+xml')
+  if (document.documentElement.localName.toLowerCase() !== 'svg' || document.querySelector('parsererror')) {
+    return [...entries]
+  }
+
+  const positions = new Map<CountryId, number>()
+  for (const entry of entries) {
+    const position = findCountryLabelX(document, countryToSvgIds(entry))
+    if (position !== null) positions.set(entry.id, position)
+  }
+
+  return entries
+    .map((country, index) => ({ country, index, position: positions.get(country.id) }))
+    .sort((left, right) => {
+      if (left.position === undefined && right.position === undefined) return left.index - right.index
+      if (left.position === undefined) return 1
+      if (right.position === undefined) return -1
+      return left.position - right.position || left.index - right.index
+    })
+    .map(entry => entry.country)
+}
+
+function findCountryLabelX(document: Document, svgIds: readonly string[]): number | null {
+  const candidates = new Set(svgIds)
+  for (const path of document.querySelectorAll<SVGPathElement>('path[id]')) {
+    if (!candidates.has(path.id) || !path.parentElement) continue
+    const label = [...path.parentElement.children].find(element => (
+      element.localName.toLowerCase() === 'text' && element.id.endsWith('_label')
+    ))
+    const x = Number.parseFloat(label?.getAttribute('x') ?? '')
+    if (Number.isFinite(x)) return x
+  }
+  return null
+}
+
 function stripDiacritics(value: string): string {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 }
