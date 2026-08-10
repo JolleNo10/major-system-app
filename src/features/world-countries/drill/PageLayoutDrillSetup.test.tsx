@@ -119,6 +119,50 @@ describe('Drill setup PageLayout integration', () => {
     expect(mount.textContent).toContain('Choose a Continent')
   })
 
+  it('keeps the Continent Memo rails stable while the layout publishes them', async () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(StrictMode, null,
+        createElement(SettingsProvider, null,
+          createElement(PageLayoutProvider, null,
+            createElement(PageLayout, null,
+              createElement(WorldCountries, { answerMode: 'typing' }),
+            ),
+          ),
+        ),
+      ))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const europeButton = [...mount.querySelectorAll('button')]
+      .find(button => button.textContent?.trim().startsWith('Europe'))
+    expect(europeButton).not.toBeUndefined()
+
+    await act(async () => {
+      europeButton?.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mount.textContent).toContain('Subregions')
+
+    const northernEuropeButton = [...mount.querySelectorAll('button')]
+      .find(button => button.textContent?.includes('Northern Europe'))
+    expect(northernEuropeButton).not.toBeUndefined()
+
+    await act(async () => {
+      northernEuropeButton?.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mount.textContent).toContain('Northern Europe')
+  })
+
   it('keeps the real map, rails, drawers, and all four modes synchronized', async () => {
     const mount = document.createElement('div')
     document.body.append(mount)

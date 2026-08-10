@@ -77,6 +77,18 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
     () => recallProgress ? deriveWorldCountriesWorldProgress(recallProgress) : null,
     [recallProgress],
   )
+  const subregionLearningProgress = useMemo(
+    () => subregion && recallProgress
+      ? deriveWorldCountriesSubregionProgress(subregion, recallProgress)
+      : null,
+    [recallProgress, subregion],
+  )
+  const continentLearningProgress = useMemo(
+    () => continent && recallProgress
+      ? deriveWorldCountriesContinentProgress(continent, recallProgress)
+      : null,
+    [continent, recallProgress],
+  )
 
   const refreshLearning = useCallback(() => setLearningVersion(version => version + 1), [])
 
@@ -115,9 +127,7 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
         onExit={backToContinent}
         onWorld={backToWorld}
         countryColorsById={countryColorsById}
-        learningProgress={subregion && recallProgress
-          ? deriveWorldCountriesSubregionProgress(subregion, recallProgress)
-          : null}
+        learningProgress={subregionLearningProgress}
       />
     )
   }
@@ -134,9 +144,7 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
         onHoverGroup={setHoveredGroupId}
         onLearningChanged={refreshLearning}
         countryColorsById={countryColorsById}
-        learningProgress={continent && recallProgress
-          ? deriveWorldCountriesContinentProgress(continent, recallProgress)
-          : null}
+        learningProgress={continentLearningProgress}
       />
     )
   }
