@@ -52,8 +52,17 @@ describe('Memo map registry', () => {
       discovered.map(country => country.id),
     )
     const unresolvedNames = unresolved.map(item => item.country.country)
-    if (continent === 'Asia') expect(unresolvedNames).toEqual([])
-    else if (continent === 'Oceania') expect(unresolvedNames).toHaveLength(getCountriesForContinent(continent).length)
-    else expect(unresolved, unresolvedNames.join(', ')).toEqual([])
+    expect(unresolved, unresolvedNames.join(', ')).toEqual([])
+
+    const highlighted = controller.setHighlighted(discovered.map(country => country.id))
+    expect(highlighted).toEqual({
+      activeIds: discovered.map(country => country.id),
+      unknownIds: [],
+    })
+    for (const country of discovered) {
+      const path = mount.querySelector<SVGPathElement>(`path[id="${country.pathId}"]`)
+      expect(path?.getAttribute('id')).toBe(country.pathId)
+      expect(path?.style.getPropertyValue('fill')).toBe('#0891b2')
+    }
   })
 })

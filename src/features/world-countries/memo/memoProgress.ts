@@ -1,5 +1,5 @@
 import { countries, type Continent, type Country } from '@/features/world-countries/data/countries'
-import type { SubregionId } from '@/features/world-countries/data/subregions'
+import type { SubregionDefinition, SubregionId } from '@/features/world-countries/data/subregions'
 import { getCountriesForContinent, getCountriesForSubregion } from '@/features/world-countries/geography/queries'
 
 export type MemoProgressStatus = 'not-started' | 'partial' | 'complete'
@@ -59,6 +59,13 @@ export function getSubregionMemoProgress(
     getCountriesForSubregion(continent, subregion, entries),
     memoedCountryIds,
   )
+}
+
+export function getNextSubregionToMemo(
+  subregions: readonly SubregionDefinition[],
+  isSubregionMemoed: (subregionId: SubregionId) => boolean,
+): SubregionDefinition | null {
+  return subregions.find(subregion => !isSubregionMemoed(subregion.id)) ?? null
 }
 
 export function getContinentMemoProgress(

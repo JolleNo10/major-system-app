@@ -111,6 +111,7 @@ export function CountryLearningFlow({
       return (
         <CountryLearningComplete
           subregion={subregion}
+          countryCount={entries.length}
           onDone={onExit}
           onRestart={() => {
             completionReported.current = false

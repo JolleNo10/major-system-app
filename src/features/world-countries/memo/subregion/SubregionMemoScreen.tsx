@@ -2,12 +2,14 @@ import { useCallback, useMemo, useState } from 'react'
 import { Overlay } from '@/app/layout/Overlay'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
-import { getCountriesForSubregionInEffectiveOrder } from '@/features/world-countries/geography/queries'
+import { getContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
+import { getCountriesForSubregionInEffectiveOrder, getSubregionsForContinentInEffectiveOrder } from '@/features/world-countries/geography/queries'
 import { getSubregionMetadata } from '@/features/world-countries/geography/subregionMetadataStore'
-import { getSubregionLearningState } from '@/features/world-countries/learning/subregionLearningStore'
+import { getAllSubregionLearningStates, getSubregionLearningState } from '@/features/world-countries/learning/subregionLearningStore'
 import { isSubregionCapitalsLearned, isSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningState'
 import type { CountryLearningEntryPoint, CountryLearningPhase } from '@/features/world-countries/learning/countryLearningFlow'
 import type { CapitalLearningPhase } from '@/features/world-countries/learning/capitalLearningFlow'
+import { getNextSubregionToMemo } from '../memoProgress'
 import { SubregionOverviewRails } from '../WorldCountriesMemoRails'
 import { CapitalLearningFlow } from './CapitalLearningFlow'
 import { CountryLearningFlow } from './CountryLearningFlow'
@@ -21,6 +23,7 @@ export function SubregionMemoScreen({
   locationCleanTargetMinimum,
   fuzzyMatching,
   onLearningChanged,
+  onSelectSubregion,
   onExit,
   onWorld,
 }: {
@@ -30,10 +33,22 @@ export function SubregionMemoScreen({
   locationCleanTargetMinimum: number
   fuzzyMatching: boolean
   onLearningChanged: () => void
+  onSelectSubregion: (subregion: SubregionId) => void
   onExit: () => void
   onWorld: () => void
 }) {
   const entries = useMemo(() => getCountriesForSubregionInEffectiveOrder(subregion, undefined, getSubregionMetadata(subregion)), [learningVersion, subregion])
+  const nextSubregion = useMemo(() => {
+    const learnedSubregionIds = new Set(
+      getAllSubregionLearningStates()
+        .filter(state => isSubregionCountriesLearned(state))
+        .map(state => state.subregionId),
+    )
+    return getNextSubregionToMemo(
+      getSubregionsForContinentInEffectiveOrder(continent, undefined, getContinentMetadata(continent)),
+      candidateId => learnedSubregionIds.has(candidateId),
+    )
+  }, [continent, learningVersion])
   const learningState = getSubregionLearningState(subregion)
   const learned = isSubregionCountriesLearned(learningState)
   const capitalsLearned = isSubregionCapitalsLearned(learningState)
@@ -49,7 +64,9 @@ export function SubregionMemoScreen({
           capitalsLearned={capitalsLearned}
           locationCleanTargetMinimum={locationCleanTargetMinimum}
           fuzzyMatching={fuzzyMatching}
+          nextSubregion={nextSubregion}
           onLearningChanged={onLearningChanged}
+          onSelectSubregion={onSelectSubregion}
           onExit={onExit}
           onWorld={onWorld}
         />
@@ -66,7 +83,9 @@ function SubregionScreenBody({
   capitalsLearned,
   locationCleanTargetMinimum,
   fuzzyMatching,
+  nextSubregion,
   onLearningChanged,
+  onSelectSubregion,
   onExit,
   onWorld,
 }: {
@@ -77,7 +96,9 @@ function SubregionScreenBody({
   capitalsLearned: boolean
   locationCleanTargetMinimum: number
   fuzzyMatching: boolean
+  nextSubregion: ReturnType<typeof getSubregionsForContinentInEffectiveOrder>[number] | null
   onLearningChanged: () => void
+  onSelectSubregion: (subregion: SubregionId) => void
   onExit: () => void
   onWorld: () => void
 }) {
@@ -188,6 +209,8 @@ function SubregionScreenBody({
           subregion,
           onWorld,
           onContinent: onExit,
+          nextSubregion,
+          onSelectSubregion,
         }}
         content={{
           entries: mapEntries,

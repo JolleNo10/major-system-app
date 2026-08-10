@@ -2,7 +2,7 @@ import { useRails } from '@/app/layout/PageLayoutContext'
 import type { ReactNode } from 'react'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition, type SubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
-import { getContinentMemoProgress, getSubregionMemoProgress } from './memoProgress'
+import { getContinentMemoProgress, getNextSubregionToMemo, getSubregionMemoProgress } from './memoProgress'
 import { getContinentHoverGroupId, getSubregionHoverGroupId } from '@/features/world-countries/maps/geographyMapAdapter'
 import { countryCapitalMnemonicId, subregionMnemonicId } from '@/features/world-countries/mnemonics/geographyMnemonicIds'
 import type { MemoProgress } from './memoProgress'
@@ -86,6 +86,11 @@ export function ContinentOverviewRails({
   onHoverGroup,
   onEditOrder,
 }: ContinentOverviewRailsProps) {
+  const nextSubregion = getNextSubregionToMemo(
+    subregions,
+    subregion => getSubregionMemoProgress(continent, subregion, memoedCountryIds).remainingCount === 0,
+  )
+
   useRails(
     {
       left: (
@@ -126,9 +131,16 @@ export function ContinentOverviewRails({
           </nav>
         </section>
       ),
+      right: (
+        <NextToMemoPanel
+          nextSubregion={nextSubregion}
+          onSelectSubregion={onSelectSubregion}
+        />
+      ),
       leftLabel: 'Subregions',
+      rightLabel: 'Next to memo',
     },
-    [continent, subregions, memoedCountryIds, progress.memoedCount, progress.totalCount, progress.ratio, hoveredGroupId, onWorld, onSelectSubregion, onHoverGroup, onEditOrder],
+    [continent, subregions, memoedCountryIds, nextSubregion, progress.memoedCount, progress.totalCount, progress.ratio, hoveredGroupId, onWorld, onSelectSubregion, onHoverGroup, onEditOrder],
   )
 
   return null
@@ -187,6 +199,8 @@ interface SubregionRailNavigation {
   subregion: SubregionId
   onWorld: () => void
   onContinent: () => void
+  nextSubregion: SubregionDefinition | null
+  onSelectSubregion: (subregion: SubregionId) => void
 }
 
 interface SubregionRailContent {
@@ -213,7 +227,7 @@ export function SubregionOverviewRails({
   content,
   onEditOrder,
 }: SubregionOverviewRailsProps) {
-  const { continent, subregion, onWorld, onContinent } = navigation
+  const { continent, subregion, onWorld, onContinent, nextSubregion, onSelectSubregion } = navigation
   const { entries, learned, capitalsLearned, track, capitalWalkthroughCountryId, capitalRecallCorrectionCountryId, mnemonicVersion, onMnemonicChanged } = content
   const visible = phase !== 'ordered-recall' && phase !== 'recall' && phase !== 'complete'
   const showSubregionMnemonic = visible && track === 'countries'
@@ -229,6 +243,7 @@ export function SubregionOverviewRails({
     countries: { learned, label: 'Countries' },
     capitals: { learned: capitalsLearned, label: 'Capitals' },
   }[track]
+  const showNextToMemo = phase === 'overview' && nextSubregion?.id !== subregion
 
   useRails(
     {
@@ -285,39 +300,85 @@ export function SubregionOverviewRails({
           </section>
         </section>
       ) : undefined,
-      right: showSubregionMnemonic ? (
-        <MemoMnemonicCard
-          targetId={subregionMnemonicId(subregion)}
-          title="Subregion memory aid"
-          subtitle={`Optional story or picture for this ordered ${entries.length}-country group`}
-          countryIds={entries.map(entry => entry.id)}
-          refreshKey={mnemonicVersion}
-          onChanged={onMnemonicChanged}
-        />
-      ) : showCapitalMnemonic && capitalWalkthroughCountry ? (
-        <MemoMnemonicCard
-          targetId={countryCapitalMnemonicId(capitalWalkthroughCountry)}
-          title={`${capitalWalkthroughCountry.country} ↔ ${capitalWalkthroughCountry.capital}`}
-          subtitle="Optional memory aid for this Country–Capital relationship"
-          refreshKey={`${capitalWalkthroughCountry.id}-${mnemonicVersion}`}
-          onChanged={onMnemonicChanged}
-        />
-      ) : showCapitalCorrectionMnemonic && capitalRecallCorrectionCountry ? (
-        <MemoMnemonicCard
-          targetId={countryCapitalMnemonicId(capitalRecallCorrectionCountry)}
-          title={`${capitalRecallCorrectionCountry.country} ↔ ${capitalRecallCorrectionCountry.capital}`}
-          subtitle="Optional memory aid for the correction"
-          refreshKey={`${capitalRecallCorrectionCountry.id}-${mnemonicVersion}`}
-          onChanged={onMnemonicChanged}
-        />
+      right: visible || showCapitalCorrectionMnemonic ? (
+        <div className="w-full space-y-3">
+          {showNextToMemo && (
+            <NextToMemoPanel
+              nextSubregion={nextSubregion}
+              onSelectSubregion={onSelectSubregion}
+            />
+          )}
+          {showSubregionMnemonic ? (
+            <MemoMnemonicCard
+              targetId={subregionMnemonicId(subregion)}
+              title="Subregion memory aid"
+              subtitle={`Optional story or picture for this ordered ${entries.length}-country group`}
+              countryIds={entries.map(entry => entry.id)}
+              refreshKey={mnemonicVersion}
+              onChanged={onMnemonicChanged}
+            />
+          ) : showCapitalMnemonic && capitalWalkthroughCountry ? (
+            <MemoMnemonicCard
+              targetId={countryCapitalMnemonicId(capitalWalkthroughCountry)}
+              title={`${capitalWalkthroughCountry.country} ↔ ${capitalWalkthroughCountry.capital}`}
+              subtitle="Optional memory aid for this Country–Capital relationship"
+              refreshKey={`${capitalWalkthroughCountry.id}-${mnemonicVersion}`}
+              onChanged={onMnemonicChanged}
+            />
+          ) : showCapitalCorrectionMnemonic && capitalRecallCorrectionCountry ? (
+            <MemoMnemonicCard
+              targetId={countryCapitalMnemonicId(capitalRecallCorrectionCountry)}
+              title={`${capitalRecallCorrectionCountry.country} ↔ ${capitalRecallCorrectionCountry.capital}`}
+              subtitle="Optional memory aid for the correction"
+              refreshKey={`${capitalRecallCorrectionCountry.id}-${mnemonicVersion}`}
+              onChanged={onMnemonicChanged}
+            />
+          ) : null}
+        </div>
       ) : undefined,
       leftLabel: 'Learning context',
-      rightLabel: showSubregionMnemonic || showCapitalMnemonic || showCapitalCorrectionMnemonic ? 'Memory aid' : undefined,
+      rightLabel: showNextToMemo ? 'Memo tools' : showSubregionMnemonic || showCapitalMnemonic || showCapitalCorrectionMnemonic ? 'Memory aid' : undefined,
     },
-    [visible, showSubregionMnemonic, showCapitalMnemonic, showCapitalCorrectionMnemonic, capitalWalkthroughCountry, capitalRecallCorrectionCountry, continent, subregion, entries, track, trackPresentation.learned, trackPresentation.label, mnemonicVersion, onWorld, onContinent, onEditOrder, onMnemonicChanged],
+    [visible, showNextToMemo, showSubregionMnemonic, showCapitalMnemonic, showCapitalCorrectionMnemonic, capitalWalkthroughCountry, capitalRecallCorrectionCountry, continent, subregion, entries, track, trackPresentation.learned, trackPresentation.label, mnemonicVersion, onWorld, onContinent, nextSubregion, onSelectSubregion, onEditOrder, onMnemonicChanged],
   )
 
   return null
+}
+
+function NextToMemoPanel({
+  nextSubregion,
+  onSelectSubregion,
+}: {
+  nextSubregion: SubregionDefinition | null
+  onSelectSubregion: (subregion: SubregionId) => void
+}) {
+  const hasNext = nextSubregion !== null
+
+  return (
+    <section
+      aria-labelledby="world-countries-next-to-memo-heading"
+      aria-disabled={!hasNext}
+      className={`rounded-xl border bg-zinc-900 p-4 ${hasNext ? 'border-zinc-800' : 'border-zinc-800 opacity-70'}`}
+    >
+      <h3 id="world-countries-next-to-memo-heading" className="text-sm font-semibold text-zinc-200">Next to memo</h3>
+      <div className={`mt-3 rounded-lg border px-3 py-2.5 ${hasNext ? 'border-cyan-500/40 bg-cyan-600/10' : 'border-zinc-800 bg-zinc-800/40'}`}>
+        <p className="text-[10px] uppercase tracking-wider text-zinc-500">{hasNext ? 'Unmemoed subregion' : 'Complete'}</p>
+        <p className={`mt-1 text-sm font-semibold ${hasNext ? 'text-cyan-300' : 'text-zinc-500'}`}>
+          {nextSubregion?.label ?? 'All subregions learned'}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          if (nextSubregion) onSelectSubregion(nextSubregion.id)
+        }}
+        disabled={!hasNext}
+        className="mt-3 w-full rounded-xl bg-cyan-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-cyan-500 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500"
+      >
+        {hasNext ? 'Open subregion →' : 'All subregions learned'}
+      </button>
+    </section>
+  )
 }
 
 function ProgressSummary({ label, progress }: { label: string; progress: MemoProgress }) {
