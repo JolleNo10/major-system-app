@@ -374,8 +374,8 @@ describe('SvgMapController hover behavior', () => {
     expect(path(mount, 'Beta').style.getPropertyValue('fill')).toBe('#303036')
 
     controller.setCountryColors({ Beta: '#22c55e' })
-    expect(path(mount, 'Beta').style.getPropertyValue('fill')).toBe('#22c55e')
-    expect(path(mount, 'Beta').style.getPropertyValue('filter')).toContain('saturate')
+    expect(path(mount, 'Beta').style.getPropertyValue('fill')).toBe('#303036')
+    expect(path(mount, 'Beta').style.getPropertyValue('filter')).toBe('')
 
     controller.clearMutedCountries()
     expect(path(mount, 'Beta').style.getPropertyValue('fill')).toBe('#22c55e')
@@ -413,6 +413,44 @@ describe('SvgMapController hover behavior', () => {
     controller.updateSettings({ hoverShowName: false })
     controller.hoverCountry('Alpha')
     expect(label(mount, 'Beta_label').style.getPropertyValue('display')).toBe('none')
+  })
+
+  it('preserves semantic fills and applies a neutral outline during hover', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    controller.setCountryColors({ Alpha: '#d97706' })
+    controller.updateSettings({
+      hoverHighlight: true,
+      hoverStroke: '#d4d4d8',
+      hoverStrokeWidth: '2px',
+    })
+
+    path(mount, 'Alpha').dispatchEvent(new Event('pointerenter'))
+
+    expect(path(mount, 'Alpha').style.getPropertyValue('fill')).toBe('#d97706')
+    expect(path(mount, 'Alpha').style.getPropertyValue('stroke')).toBe('#d4d4d8')
+    expect(path(mount, 'Alpha').style.getPropertyValue('stroke-width')).toBe('2px')
+  })
+
+  it('preserves each semantic fill and outlines every Country in grouped hover', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    controller.setCountryColors({ Alpha: '#92400e', Beta: '#22c55e' })
+    controller.setHoverGroups([{ id: 'pair', countryIds: ['Alpha', 'Beta'] }])
+    controller.updateSettings({
+      hoverHighlight: true,
+      hoverScope: 'group',
+      hoverStroke: '#d4d4d8',
+      hoverStrokeWidth: '2px',
+    })
+
+    path(mount, 'Alpha').dispatchEvent(new Event('pointerenter'))
+
+    for (const [id, fill] of [['Alpha', '#92400e'], ['Beta', '#22c55e']] as const) {
+      expect(path(mount, id).style.getPropertyValue('fill')).toBe(fill)
+      expect(path(mount, id).style.getPropertyValue('stroke')).toBe('#d4d4d8')
+      expect(path(mount, id).style.getPropertyValue('stroke-width')).toBe('2px')
+    }
   })
 
   it('applies visual overrides immediately and cleans up on destroy', async () => {

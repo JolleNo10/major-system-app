@@ -5,6 +5,7 @@ import {
   type RecallProgress,
 } from '@/features/world-countries/learning/recallProgress'
 import {
+  getCountryProgressColor,
   getCountryProgressState,
   type WorldCountriesProgressPerspective,
 } from '@/features/world-countries/learning/progressPresentation'
@@ -23,14 +24,6 @@ import {
 } from '@/features/world-countries/learning/memoReadiness'
 import type { WorldCountriesMemoLearningStates, WorldCountriesMemoReadiness } from '@/features/world-countries/learning/memoReadiness'
 import type { WorldCountriesProgressState } from '@/features/world-countries/learning/progressPresentation'
-
-const DRILL_PROGRESS_COLORS: Readonly<Record<string, string>> = {
-  weak: '#dc2626',
-  developing: '#d97706',
-  strong: '#2563eb',
-  mastered: '#16a34a',
-  complete: '#16a34a',
-}
 
 const DRILL_PROGRESS_LABELS: Readonly<Record<WorldCountriesProgressState, string>> = {
   unpractised: 'Unpractised',
@@ -67,7 +60,7 @@ export function createDrillProgressColors(
       return [countryId, WORLD_COUNTRIES_MEMO_READINESS_COLORS[readiness]] as const
     }
     const state = presentation.state
-    return [countryId, DRILL_PROGRESS_COLORS[state] ?? WORLD_COUNTRIES_MEMO_READINESS_COLORS.NOT_MEMOED] as const
+    return [countryId, getCountryProgressColor(state)] as const
   }))
 }
 
@@ -158,7 +151,7 @@ export function getDrillProgressLegendEntries(
   return ['weak', 'developing', 'strong', completedState].map(state => ({
     state,
     label: DRILL_PROGRESS_LABELS[state as WorldCountriesProgressState],
-    color: DRILL_PROGRESS_COLORS[state],
+    color: getCountryProgressColor(state as WorldCountriesProgressState),
   }))
 }
 

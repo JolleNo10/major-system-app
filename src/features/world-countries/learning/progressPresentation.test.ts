@@ -23,8 +23,11 @@ describe('World Countries progress presentation semantics', () => {
 
     expect(getCountryProgressState(progress, 'core')).toBe('complete')
     expect(getCountryProgressState(progress, 'capital-to-country')).toBe('weak')
-    expect(getCountryProgressColor('complete')).toBe('#16a34a')
-    expect(getCountryProgressColor('mastered')).toBe('#16a34a')
+    expect(getCountryProgressColor('weak')).toBe('#92400e')
+    expect(getCountryProgressColor('developing')).toBe('#d97706')
+    expect(getCountryProgressColor('strong')).toBe('#22c55e')
+    expect(getCountryProgressColor('complete')).toBe('#15803d')
+    expect(getCountryProgressColor('mastered')).toBe('#15803d')
     expect(getWorldCountriesProgressLegend('core')).toBe('Unpractised · Weak · Developing · Strong · Complete')
     expect(getWorldCountriesProgressLegend('skill')).toBe('Unpractised · Weak · Developing · Strong · Mastered')
   })

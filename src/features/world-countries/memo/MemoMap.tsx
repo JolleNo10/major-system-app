@@ -63,7 +63,7 @@ export function MemoMap({
         title="Memo readiness"
         entries={WORLD_COUNTRIES_MEMO_READINESS_LEGEND_ENTRIES}
         explanation="Memo readiness is shared by every current Country in a Subregion and never represents Drill proficiency."
-        mapCues={`Map cues: teal is temporary hover or navigation focus, not readiness. Hover a Country to see its ${level === 'world' ? 'Continent' : 'Subregion'}; the accessible map description names each Country’s readiness.`}
+        mapCues={`Map cues: a neutral outline marks temporary hover or navigation focus, not readiness. Hover a Country to see its ${level === 'world' ? 'Continent' : 'Subregion'}; the accessible map description names each Country’s readiness.`}
         ariaLabel="Memo readiness legend"
       />
     </div>

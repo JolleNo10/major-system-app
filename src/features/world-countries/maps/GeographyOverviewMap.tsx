@@ -118,9 +118,6 @@ export function GeographyOverviewMap({
     const colors: Array<readonly [string, string]> = []
     if (countryColorsById) colors.push(...createCountryColorsById(visibleCountries, countryColorsById, mapCountryIds))
     if (!countryColorsById) colors.push(...createCountryColors(visibleCountries, coloredCountryIds, mapCountryIds, countryColor))
-    if (selectedSubregionIds !== undefined && !countryColorsById) {
-      colors.push(...createCountryColors(visibleCountries, selectedCountries.map(country => country.id), mapCountryIds, '#0e7490'))
-    }
     return colors
   }, [coloredCountryIds, countryColor, countryColorsById, mapCountryIds, selectedCountries, selectedSubregionIds, visibleCountries])
 
@@ -153,6 +150,8 @@ export function GeographyOverviewMap({
           hoverShowName: level !== 'world',
           hoverScope: 'group',
           hoverFill: '#0f766e',
+          hoverStroke: '#d4d4d8',
+          hoverStrokeWidth: '2px',
           showHighlightedNames: false,
         }}
         hoverGroups={hoverGroups}

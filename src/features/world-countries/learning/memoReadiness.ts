@@ -15,8 +15,8 @@ export type WorldCountriesMemoLearningStates = readonly SubregionLearningState[]
 
 export const WORLD_COUNTRIES_MEMO_READINESS_COLORS: Readonly<Record<WorldCountriesMemoReadiness, string>> = {
   NOT_MEMOED: '#52525b',
-  COUNTRIES_MEMOED: '#7c3aed',
-  COUNTRIES_AND_CAPITALS_MEMOED: '#c026d3',
+  COUNTRIES_MEMOED: '#71717a',
+  COUNTRIES_AND_CAPITALS_MEMOED: '#a1a1aa',
 }
 
 const WORLD_COUNTRIES_MEMO_READINESS_LABELS: Readonly<Record<WorldCountriesMemoReadiness, string>> = {

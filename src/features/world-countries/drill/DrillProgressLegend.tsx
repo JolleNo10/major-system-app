@@ -12,7 +12,7 @@ export function DrillProgressLegend({ mode }: { mode: WorldCountriesDrillMode })
       title="Progress"
       entries={getDrillProgressLegendEntries(mode)}
       explanation={getDrillProgressExplanation(mode)}
-      mapCues="Map cues: teal/cyan is temporary hover or recall focus, not progress; Countries outside the selected scope are dimmed."
+      mapCues="Map cues: a neutral outline is temporary hover or recall focus, not progress; Countries outside the selected scope use context grey."
       groups={[
         {
           title: 'No Drill evidence',

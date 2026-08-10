@@ -47,33 +47,33 @@ describe('World Countries Drill map precedence', () => {
     const colors = createColors('countries', new Map(), [
       { subregionId: 'northern-europe', countriesLearnedAt: 1, capitalsLearnedAt: 2 },
     ])
-    expect(colors.get('NO')).toBe('#c026d3')
+    expect(colors.get('NO')).toBe('#a1a1aa')
   })
 
   it('uses only the selected perspective evidence', () => {
     const colors = createColors('countries', progressFor('country-to-capital'), [
       { subregionId: 'northern-europe', countriesLearnedAt: 1 },
     ])
-    expect(colors.get('NO')).toBe('#7c3aed')
+    expect(colors.get('NO')).toBe('#71717a')
 
     const capitalColors = createColors('capitals', progressFor('country-to-capital'), [
       { subregionId: 'northern-europe', countriesLearnedAt: 1 },
     ])
-    expect(capitalColors.get('NO')).toBe('#dc2626')
+    expect(capitalColors.get('NO')).toBe('#92400e')
   })
 
   it('activates Countries + Capitals after either core skill has evidence', () => {
     const colors = createColors('countries-capitals', progressFor('location-to-country'), [
       { subregionId: 'northern-europe', countriesLearnedAt: 1 },
     ])
-    expect(colors.get('NO')).toBe('#dc2626')
+    expect(colors.get('NO')).toBe('#92400e')
   })
 
   it('uses the Capital → Country perspective for Countries from Capitals', () => {
     const colors = createColors('countries-from-capitals', progressFor('capital-to-country'), [
       { subregionId: 'northern-europe', countriesLearnedAt: 1 },
     ])
-    expect(colors.get('NO')).toBe('#dc2626')
+    expect(colors.get('NO')).toBe('#92400e')
   })
 
   it('activates Drill coloring for recognition evidence too', () => {

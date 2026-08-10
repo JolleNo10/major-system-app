@@ -1,6 +1,6 @@
 # Change Spec 0001 - Unify World Countries map status palette
 
-* **Status:** Ready
+* **Status:** Implemented
 * **Date:** 2026-08-11
 * **Current-state docs:** [World Countries architecture](../architecture/features/WORLD_COUNTRIES.md)
 
@@ -314,3 +314,12 @@ Record:
 * TypeScript build result;
 * production build result;
 * any concise manual verification needed for map interaction or visual precedence.
+
+## Implementation
+
+* **Implemented:** 2026-08-11
+* **Affected automated tests:** Memo readiness, shared progress presentation, Drill progress presentation/setup, `SvgMapController`, and `GeographyOverviewMap` tests.
+* **World Countries feature tests:** `npx vitest run src/features/world-countries` — 47 files, 185 tests passed.
+* **TypeScript build:** `npx tsc -b` — passed.
+* **Production build:** `npx vite build` — passed.
+* **Manual verification:** Covered by jsdom map tests for semantic-fill preservation, context-grey scope muting, neutral `#d4d4d8` outlines at `2px`, and grouped hover outlines.

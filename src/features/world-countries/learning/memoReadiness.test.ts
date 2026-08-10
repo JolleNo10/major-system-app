@@ -13,13 +13,13 @@ describe('World Countries Memo readiness', () => {
   it('keeps the canonical three-state palette and accessible labels together', () => {
     expect(WORLD_COUNTRIES_MEMO_READINESS_LEGEND_ENTRIES).toEqual([
       { state: 'NOT_MEMOED', label: 'Not memoed', color: '#52525b' },
-      { state: 'COUNTRIES_MEMOED', label: 'Countries memoed', color: '#7c3aed' },
-      { state: 'COUNTRIES_AND_CAPITALS_MEMOED', label: 'Countries + Capitals memoed', color: '#c026d3' },
+      { state: 'COUNTRIES_MEMOED', label: 'Countries memoed', color: '#71717a' },
+      { state: 'COUNTRIES_AND_CAPITALS_MEMOED', label: 'Countries + Capitals memoed', color: '#a1a1aa' },
     ])
     expect(WORLD_COUNTRIES_MEMO_READINESS_COLORS).toEqual({
       NOT_MEMOED: '#52525b',
-      COUNTRIES_MEMOED: '#7c3aed',
-      COUNTRIES_AND_CAPITALS_MEMOED: '#c026d3',
+      COUNTRIES_MEMOED: '#71717a',
+      COUNTRIES_AND_CAPITALS_MEMOED: '#a1a1aa',
     })
   })
 

@@ -807,14 +807,14 @@ export class SvgMapController {
 
     for (const country of this.countries.values()) {
       const hovered = this.hoveredIds.has(country.id)
-      const baseFill = hovered && this.settings.hoverHighlight
+      const hasSemanticColor = this.countryColors.has(country.id)
+      const baseFill = hovered && this.settings.hoverHighlight && !hasSemanticColor
         ? this.settings.hoverFill
         : this.countryColors.get(country.id)
           ?? (this.highlighted.has(country.id)
             ? this.settings.highlightFill
             : this.settings.countryFill)
-      const fill = this.mutedCountries.has(country.id) && !this.countryColors.has(country.id)
-        && !this.highlighted.has(country.id) && !hovered
+      const fill = this.mutedCountries.has(country.id)
         ? this.settings.mutedFill
         : baseFill
 
@@ -834,11 +834,7 @@ export class SvgMapController {
       setOverride(country.path, 'stroke', stroke, country.originalStroke)
       setOverride(country.path, 'stroke-width', strokeWidth, country.originalStrokeWidth)
       country.path.style.setProperty('transition', transition)
-      if (this.mutedCountries.has(country.id) && this.countryColors.has(country.id)) {
-        country.path.style.setProperty('filter', 'saturate(0.2) brightness(0.65)', 'important')
-      } else {
-        restoreStyle(country.path, 'filter', country.originalFilter)
-      }
+      restoreStyle(country.path, 'filter', country.originalFilter)
 
       this.renderCountryLabel(country, this.countryLabelOverrides.get(country.id) ?? null)
       const showHoverName = this.hoveredNameOverride ?? this.settings.hoverShowName

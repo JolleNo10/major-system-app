@@ -137,7 +137,7 @@ describe('GeographyOverviewMap', () => {
       root = createRoot(mount)
       root.render(createElement(MemoMap, {
         level: 'world',
-        memoReadinessColorsById: new Map([['NO', '#7c3aed']]),
+        memoReadinessColorsById: new Map([['NO', '#71717a']]),
         memoReadinessByCountryId: new Map([['NO', 'COUNTRIES_MEMOED' as const]]),
       }))
       await Promise.resolve()
@@ -149,12 +149,44 @@ describe('GeographyOverviewMap', () => {
     expect(legend?.textContent).toContain('Not memoed')
     expect(legend?.textContent).toContain('Countries memoed')
     expect(legend?.textContent).toContain('Countries + Capitals memoed')
-    expect(legend?.textContent).toContain('teal is temporary hover or navigation focus')
+    expect(legend?.textContent).toContain('neutral outline marks temporary hover or navigation focus')
     expect(mount.textContent).toContain('Norway: Countries memoed')
     const map = mount.querySelector('[role="img"]')
     const descriptionId = map?.getAttribute('aria-describedby')
     expect(descriptionId).toBeTruthy()
     expect(mount.querySelector(`#${descriptionId}`)?.textContent).toContain('Norway: Countries memoed')
+  })
+
+  it('preserves a semantic Memo fill and adds a neutral outline on grouped hover', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      text: async () => `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+          <g><path id="Norway"/><text id="Norway_label">Norway</text></g>
+        </svg>`,
+    })))
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(MemoMap, {
+        level: 'world',
+        memoReadinessColorsById: new Map([['NO', '#71717a']]),
+        memoReadinessByCountryId: new Map([['NO', 'COUNTRIES_MEMOED' as const]]),
+      }))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const norway = mount.querySelector('path#Norway') as SVGPathElement | null
+    expect(norway?.style.fill).toBe('#71717a')
+
+    await act(async () => norway?.dispatchEvent(new Event('pointerenter', { bubbles: true })))
+
+    expect(norway?.style.fill).toBe('#71717a')
+    expect(norway?.style.stroke).toBe('#d4d4d8')
+    expect(norway?.style.strokeWidth).toBe('2px')
   })
 
   it('renders caller-provided semantic Country progress colors', async () => {
@@ -172,14 +204,14 @@ describe('GeographyOverviewMap', () => {
       root = createRoot(mount)
       root.render(createElement(GeographyOverviewMap, {
         level: 'world',
-        countryColorsById: new Map([['NO', '#16a34a']]),
+        countryColorsById: new Map([['NO', '#15803d']]),
         ariaLabel: 'World progress map',
       }))
       await Promise.resolve()
       await Promise.resolve()
     })
 
-    expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toBe('#16a34a')
+    expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toBe('#15803d')
   })
 
   it('keeps progress fill separate from Drill geographic selection', async () => {
@@ -199,14 +231,14 @@ describe('GeographyOverviewMap', () => {
         level: 'continent',
         continent: 'Europe',
         selectedSubregionIds: ['northern-europe'],
-        countryColorsById: new Map([['NO', '#16a34a']]),
+        countryColorsById: new Map([['NO', '#15803d']]),
         ariaLabel: 'Europe Drill progress map',
       }))
       await Promise.resolve()
       await Promise.resolve()
     })
 
-    expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toBe('#16a34a')
+    expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toBe('#15803d')
   })
 
   it('exposes non-color descriptions on individual Country maps', async () => {

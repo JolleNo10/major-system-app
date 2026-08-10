@@ -78,15 +78,15 @@ describe('DrillSetup rail presentation', () => {
     expect(legend?.textContent).toContain('Developing')
     expect(legend?.textContent).toContain('Strong')
     expect(legend?.textContent).toContain('Mastered')
-    expect(legend?.textContent).toContain('teal/cyan is temporary hover or recall focus')
+    expect(legend?.textContent).toContain('neutral outline is temporary hover or recall focus')
     const legendDetails = legend?.querySelector('details')
     expect(legendDetails?.hasAttribute('open')).toBe(false)
     expect(legendDetails?.querySelector('summary')?.textContent).toContain('How progress works')
     expect(getDrillProgressLegendEntries('countries').map(entry => entry.color)).toEqual([
-      '#dc2626',
+      '#92400e',
       '#d97706',
-      '#2563eb',
-      '#16a34a',
+      '#22c55e',
+      '#15803d',
     ])
   })
 
