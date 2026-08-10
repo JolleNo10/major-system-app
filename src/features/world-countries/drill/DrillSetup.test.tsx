@@ -69,14 +69,15 @@ describe('DrillSetup rail presentation', () => {
     expect(loadRecallProgressMock).toHaveBeenCalled()
     expect(mount.textContent).toContain('Location → Country')
     const legend = mount.querySelector('[aria-label="Durable progress legend"]')
-    expect(legend?.textContent).toContain('Unpractised')
+    expect(legend?.textContent).toContain('Not memoed')
+    expect(legend?.textContent).toContain('Countries memoed')
+    expect(legend?.textContent).toContain('Countries + Capitals memoed')
     expect(legend?.textContent).toContain('Weak')
     expect(legend?.textContent).toContain('Developing')
     expect(legend?.textContent).toContain('Strong')
     expect(legend?.textContent).toContain('Mastered')
     expect(legend?.textContent).toContain('teal/cyan is temporary hover or recall focus')
     expect(getDrillProgressLegendEntries('countries').map(entry => entry.color)).toEqual([
-      '#52525b',
       '#dc2626',
       '#d97706',
       '#2563eb',

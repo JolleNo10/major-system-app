@@ -21,7 +21,7 @@ afterEach(() => {
   root = null
 })
 
-function renderOverview(capitalsLearned: boolean, onStartCapitals = vi.fn(), onPracticeCapitals = vi.fn()): HTMLDivElement {
+function renderOverview(learned: boolean, capitalsLearned: boolean, onStartCapitals = vi.fn(), onPracticeCapitals = vi.fn()): HTMLDivElement {
   const container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
@@ -31,7 +31,7 @@ function renderOverview(capitalsLearned: boolean, onStartCapitals = vi.fn(), onP
         continent="Europe"
         subregion="northern-europe"
         entries={entries}
-        learned={false}
+        learned={learned}
         capitalsLearned={capitalsLearned}
         onStart={() => undefined}
         onPracticeStageB={() => undefined}
@@ -44,20 +44,21 @@ function renderOverview(capitalsLearned: boolean, onStartCapitals = vi.fn(), onP
 }
 
 describe('Subregion Capital overview', () => {
-  it('exposes an ungated Capital action and recommends Countries first', () => {
+  it('locks Capital actions until Countries Memo is complete', () => {
     const onStartCapitals = vi.fn()
-    const container = renderOverview(false, onStartCapitals)
-    expect(container.textContent).toContain('Recommended after learning the countries.')
+    const container = renderOverview(false, false, onStartCapitals)
+    expect(container.textContent).toContain('Complete Countries first.')
     const button = [...container.querySelectorAll('button')].find(candidate => candidate.textContent?.includes('Start learning capitals'))
     expect(button).toBeTruthy()
+    expect(button?.disabled).toBe(true)
 
     act(() => button!.click())
-    expect(onStartCapitals).toHaveBeenCalledTimes(1)
+    expect(onStartCapitals).not.toHaveBeenCalled()
   })
 
   it('shows the durable review status after Capital completion', () => {
     const onPracticeCapitals = vi.fn()
-    const container = renderOverview(true, vi.fn(), onPracticeCapitals)
+    const container = renderOverview(true, true, vi.fn(), onPracticeCapitals)
     expect(container.textContent).toContain('You completed a clean Country → Capital recall round.')
     expect(container.textContent).toContain('Review capitals')
     const button = [...container.querySelectorAll('button')].find(candidate => candidate.textContent?.includes('Practice capital recall'))
@@ -65,5 +66,14 @@ describe('Subregion Capital overview', () => {
 
     act(() => button!.click())
     expect(onPracticeCapitals).toHaveBeenCalledTimes(1)
+  })
+
+  it('acknowledges preserved legacy Capital completion while keeping actions locked', () => {
+    const container = renderOverview(false, true)
+    expect(container.textContent).toContain('Capital completion is preserved.')
+    expect(container.textContent).toContain('Complete Countries first to unlock Capital review and practice.')
+    expect([...container.querySelectorAll('button')]
+      .filter(button => button.textContent?.includes('capitals'))
+      .every(button => button.disabled)).toBe(true)
   })
 })

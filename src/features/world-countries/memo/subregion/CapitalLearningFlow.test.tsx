@@ -37,7 +37,7 @@ afterEach(() => {
   localStorage.clear()
 })
 
-function renderFlow(onPhaseChange: (phase: 'walkthrough' | 'recall' | 'complete') => void, startInRecall = false): HTMLDivElement {
+function renderFlow(onPhaseChange: (phase: 'walkthrough' | 'recall' | 'complete') => void, startInRecall = false, countriesLearned = true): HTMLDivElement {
   const container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
@@ -47,6 +47,7 @@ function renderFlow(onPhaseChange: (phase: 'walkthrough' | 'recall' | 'complete'
         continent="Europe"
         subregion="northern-europe"
         entries={entries}
+        countriesLearned={countriesLearned}
         fuzzyMatching={false}
         onPhaseChange={onPhaseChange}
         onExit={() => undefined}
@@ -83,5 +84,11 @@ describe('CapitalLearningFlow orchestration', () => {
 
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="submit-correct"]')!.click())
     expect(phases).toEqual(['complete'])
+  })
+
+  it('rejects direct workflow entry before Countries Memo is complete', () => {
+    const container = renderFlow(vi.fn(), false, false)
+    expect(container.textContent).toContain('Complete Countries first.')
+    expect(container.querySelector('[data-testid="start-recall"]')).toBeNull()
   })
 })

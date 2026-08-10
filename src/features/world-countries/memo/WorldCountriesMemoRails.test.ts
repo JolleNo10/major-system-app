@@ -5,7 +5,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Country } from '@/features/world-countries/data/countries'
 import { getContinentHoverGroupId } from '@/features/world-countries/maps/geographyMapAdapter'
-import type { MemoProgress } from './memoProgress'
+import type { MemoReadinessProgress } from './memoProgress'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -33,12 +33,13 @@ afterEach(() => {
 describe('World Countries Memo hierarchy rail rows', () => {
   it('synchronizes mouse and keyboard hover without using aria-current', async () => {
     const onHoverGroup = vi.fn()
-    const progress: MemoProgress = {
-      memoedCount: 0,
-      totalCount: 1,
-      remainingCount: 1,
-      ratio: 0,
-      status: 'not-started',
+    const progress: MemoReadinessProgress = {
+      totalSubregions: 1,
+      countriesMemoedCount: 0,
+      countriesAndCapitalsMemoedCount: 0,
+      countriesMemoedRatio: 0,
+      countriesAndCapitalsMemoedRatio: 0,
+      readinessBySubregion: new Map(),
     }
     const mount = document.createElement('div')
     document.body.append(mount)
@@ -47,7 +48,7 @@ describe('World Countries Memo hierarchy rail rows', () => {
       root = createRoot(mount)
       root.render(createElement(WorldOverviewRails, {
         continents: ['Europe'],
-        memoedCountryIds: new Set<string>(),
+        learningStates: [],
         progress,
         hoveredGroupId: null,
         onSelectContinent: vi.fn(),
@@ -265,13 +266,14 @@ describe('World Countries Memo hierarchy rail rows', () => {
           { id: 'balkans', label: 'Balkans', continent: 'Europe' },
           { id: 'northern-europe', label: 'Northern Europe', continent: 'Europe' },
         ],
-        memoedCountryIds: new Set<string>(),
+        learningStates: [],
         progress: {
-          memoedCount: 0,
-          totalCount: 1,
-          remainingCount: 1,
-          ratio: 0,
-          status: 'not-started',
+          totalSubregions: 1,
+          countriesMemoedCount: 0,
+          countriesAndCapitalsMemoedCount: 0,
+          countriesMemoedRatio: 0,
+          countriesAndCapitalsMemoedRatio: 0,
+          readinessBySubregion: new Map(),
         },
         hoveredGroupId: null,
         onWorld: vi.fn(),

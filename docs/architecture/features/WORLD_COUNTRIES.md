@@ -53,9 +53,10 @@ tracks.
   answer matching, Country + skill target IDs, atomic evidence adapters,
   feature-local proficiency/mastery, core-vs-additional Country aggregation,
   direct Country-population scope progress, reusable learning map presentation,
-  pure Memo session mechanics, and durable Subregion Memo learning facts. Capital
-  Memo recalls Country → Capital; Drill also defines the independent Location
-  → Country and Capital → Country skills.
+  pure Memo session mechanics, durable Subregion Memo learning facts, and the
+  derived three-state Subregion Memo readiness model. Capital Memo recalls
+  Country → Capital; Drill also defines the independent Location → Country and
+  Capital → Country skills.
 - `maps/` — SVG controller/view, map definitions/assets, Country-to-SVG
   adapters, the reusable World/Continent `GeographyOverviewMap` presentation,
   temporary display-label overrides, and experimental workarea. Overview-map
@@ -67,6 +68,9 @@ tracks.
   sortable learning-order editor (`LearningOrderEditor`) used at both hierarchy
   levels for Continent Subregion order and Subregion Country order, including
   the best-effort "Order left to right" map action.
+- Memo overview maps and rails present Subregion Memo readiness, not Drill
+  proficiency. World and Continent Memo progress count current canonical
+  Subregions at the cumulative Countries and Countries + Capitals milestones.
 - `drill/` — Drill-only setup and preferences, Continent/Subregion selection,
   four recall-mode definitions, visible Country scheduling, active session
   orchestration, and results. A Drill mode is a workflow combination of
@@ -251,6 +255,18 @@ adapters, and map adapters remain private until a real external consumer exists.
   `drill/`.
 - `learning/CountryLearningMap.tsx` remains the individual Country learning and
   recall map; it is not replaced by the overview map.
+- Subregion Memo readiness is exactly `NOT_MEMOED`, `COUNTRIES_MEMOED`, or
+  `COUNTRIES_AND_CAPITALS_MEMOED`, derived from the existing
+  `SubregionLearningState` timestamps. Countries completion is required before
+  any Capital Memo entry action; a legacy Capitals-only timestamp is preserved,
+  acknowledged, and remains locked until Countries completion.
+- Drill setup and results use relevant-evidence precedence per Country and
+  selected mode: relevant atomic attempts own the map state, otherwise the map
+  falls back to Subregion Memo readiness. Countries + Capitals activates its
+  combined core presentation after either core skill has an attempt. Memo
+  readiness never creates or changes Drill evidence.
+- Active Drill recall suppresses both Memo readiness and Drill proficiency map
+  treatments until feedback, preserving recall safety.
 - Workflow folders do not depend on sibling workflow internals.
 - World Countries persistence does not modify unrelated feature state.
 - Atomic skill proficiency is derived as `UNPRACTISED`, `WEAK`, `DEVELOPING`,
@@ -269,8 +285,9 @@ adapters, and map adapters remain private until a real external consumer exists.
   geographic scope selection visually separate. Multi-skill results expose
   per-skill summaries. Active recall maps do not render target-revealing
   progress.
-- Capital learning starts without requiring `countriesLearnedAt`, while the
-  overview still recommends Countries first.
+- Capital learning, review, and direct practice require `countriesLearnedAt`;
+  the overview keeps Capital actions visible but locked with `Complete
+  Countries first.` until the gate is satisfied.
 - Completed Country and Capital tracks expose parallel review and direct
   practice actions; Capital review starts the walkthrough, while Capital
   practice starts a fresh shuffled recall session.
@@ -291,6 +308,7 @@ adapters, and map adapters remain private until a real external consumer exists.
 - `src/features/world-countries/learning/countryLearningFlow.ts`
 - `src/features/world-countries/learning/capitalLearningFlow.ts`
 - `src/features/world-countries/learning/capitalLearningCompletion.ts`
+- `src/features/world-countries/learning/memoReadiness.ts`
 - `src/features/world-countries/learning/recallTargets.ts`
 - `src/features/world-countries/learning/recallAnswerMatching.ts`
 - `src/features/world-countries/learning/recallProgress.ts`
@@ -299,10 +317,12 @@ adapters, and map adapters remain private until a real external consumer exists.
 - `src/features/world-countries/learning/progressPresentation.ts`
 - `src/features/world-countries/learning/useWorldCountriesCountryColors.ts`
 - `src/features/world-countries/learning/subregionLearningStore.ts`
+- `src/features/world-countries/memo/memoProgress.ts`
 - `src/features/world-countries/drill/WorldCountriesDrill.tsx`
 - `src/features/world-countries/drill/drillSelection.ts`
 - `src/features/world-countries/drill/drillSessionState.ts`
 - `src/features/world-countries/drill/drillPreferences.ts`
+- `src/features/world-countries/drill/drillProgressPresentation.ts`
 - `src/features/world-countries/maps/SvgMapController.ts`
 - `src/features/world-countries/maps/GeographyOverviewMap.tsx`
 - `src/features/world-countries/learning/CountryLearningMap.tsx`

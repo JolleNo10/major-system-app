@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useId, useMemo, useState } from 'react'
 import type { Continent, Country, CountryId } from '@/features/world-countries/data/countries'
 import { countries } from '@/features/world-countries/data/countries'
 import type { SubregionId } from '@/features/world-countries/data/subregions'
@@ -26,6 +26,8 @@ export interface GeographyOverviewMapProps {
   countryColor?: string
   /** Caller-resolved semantic progress colors; this map does not interpret them. */
   countryColorsById?: ReadonlyMap<CountryId, string>
+  /** Optional non-color descriptions for the mapped Countries. */
+  countryAccessibleDescriptionsById?: ReadonlyMap<CountryId, string>
   hoveredGroupId?: string | null
   onHoverGroup?: (groupId: string | null) => void
   onCountryClick?: (country: Country) => void
@@ -47,6 +49,7 @@ export function GeographyOverviewMap({
   coloredCountryIds = [],
   countryColor = '#16a34a',
   countryColorsById,
+  countryAccessibleDescriptionsById,
   hoveredGroupId = null,
   onHoverGroup,
   onCountryClick,
@@ -130,12 +133,20 @@ export function GeographyOverviewMap({
     : []
 
   const title = level === 'world' ? 'World' : continent ?? 'Continent'
+  const descriptionId = `geography-map-descriptions-${useId().replace(/:/g, '')}`
+  const countryDescriptions = useMemo(
+    () => countryAccessibleDescriptionsById
+      ? visibleCountries.map(country => `${country.country}: ${countryAccessibleDescriptionsById.get(country.id) ?? 'No mapped status description.'}`)
+      : [],
+    [countryAccessibleDescriptionsById, visibleCountries],
+  )
 
   return (
     <div className="space-y-2">
       <SvgMapView
         svgUrl={definition.svgUrl}
         ariaLabel={ariaLabel ?? `Geography map of ${title}`}
+        ariaDescribedBy={countryDescriptions.length ? descriptionId : undefined}
         settings={{
           countryFill: '#52525b',
           hoverHighlight: true,
@@ -158,6 +169,11 @@ export function GeographyOverviewMap({
         }}
         onCountryClick={handleCountryClick}
       />
+      {countryDescriptions.length > 0 && (
+        <ul id={descriptionId} className="sr-only" aria-label={`${title} Country map descriptions`}>
+          {countryDescriptions.map(description => <li key={description}>{description}</li>)}
+        </ul>
+      )}
     </div>
   )
 }

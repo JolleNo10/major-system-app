@@ -5,29 +5,21 @@ import { useSettings } from '@/app/settings/SettingsContext'
 import { countries, type Continent } from '@/features/world-countries/data/countries'
 import type { SubregionDefinition, SubregionId } from '@/features/world-countries/data/subregions'
 import { getAllSubregionLearningStates } from '@/features/world-countries/learning/subregionLearningStore'
-import { isSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningState'
-import { WORLD_COUNTRIES_RECALL_SKILLS } from '@/features/world-countries/learning/recallTargets'
 import {
-  deriveWorldCountriesContinentProgress,
-  deriveWorldCountriesSubregionProgress,
-  deriveWorldCountriesWorldProgress,
-  type WorldCountriesScopeProgress,
-} from '@/features/world-countries/learning/scopeProgress'
-import { useWorldCountriesCountryColors } from '@/features/world-countries/learning/useWorldCountriesCountryColors'
+  createWorldCountriesMemoReadinessByCountry,
+  createWorldCountriesMemoReadinessColors,
+} from '@/features/world-countries/learning/memoReadiness'
 import { getContinents, getSubregionsForContinentInEffectiveOrder } from '@/features/world-countries/geography/queries'
 import { getContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
-import { getContinentMemoProgress, getWorldMemoProgress, type MemoProgress } from './memoProgress'
+import {
+  getContinentMemoReadinessProgress,
+  getWorldMemoReadinessProgress,
+  type MemoReadinessProgress,
+} from './memoProgress'
 import { MemoMap } from './MemoMap'
 import { ContinentOrderEditor } from './continent/ContinentOrderEditor'
 import { SubregionMemoScreen } from './subregion/SubregionMemoScreen'
 import { ContinentOverviewRails, WorldOverviewRails } from './WorldCountriesMemoRails'
-
-function learnedCountryIds(): Set<string> {
-  const states = new Map(getAllSubregionLearningStates().map(state => [state.subregionId, state]))
-  return new Set(countries
-    .filter(country => isSubregionCountriesLearned(states.get(country.subregionId)))
-    .map(country => country.id))
-}
 
 export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: AnswerMode }) {
   const { settings } = useSettings()
@@ -36,29 +28,15 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
   const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null)
   const [learningVersion, setLearningVersion] = useState(0)
   const continents = useMemo(() => getContinents(), [])
-  const learnedIds = useMemo(() => learnedCountryIds(), [learningVersion])
-  const worldProgress = getWorldMemoProgress(learnedIds)
-  const { recallProgress, countryColorsById } = useWorldCountriesCountryColors({
-    countries,
-    skills: WORLD_COUNTRIES_RECALL_SKILLS,
-    perspective: 'core',
-    refreshKey: learningVersion,
-  })
-  const worldLearningProgress = useMemo(
-    () => recallProgress ? deriveWorldCountriesWorldProgress(recallProgress) : null,
-    [recallProgress],
+  const learningStates = useMemo(() => getAllSubregionLearningStates(), [learningVersion])
+  const worldProgress = useMemo(() => getWorldMemoReadinessProgress(learningStates), [learningStates])
+  const memoReadinessColorsById = useMemo(
+    () => createWorldCountriesMemoReadinessColors(countries, learningStates),
+    [learningStates],
   )
-  const subregionLearningProgress = useMemo(
-    () => subregion && recallProgress
-      ? deriveWorldCountriesSubregionProgress(subregion, recallProgress)
-      : null,
-    [recallProgress, subregion],
-  )
-  const continentLearningProgress = useMemo(
-    () => continent && recallProgress
-      ? deriveWorldCountriesContinentProgress(continent, recallProgress)
-      : null,
-    [continent, recallProgress],
+  const memoReadinessByCountryId = useMemo(
+    () => createWorldCountriesMemoReadinessByCountry(countries, learningStates),
+    [learningStates],
   )
 
   const refreshLearning = useCallback(() => setLearningVersion(version => version + 1), [])
@@ -97,8 +75,6 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
         onSelectSubregion={selectSubregion}
         onExit={backToContinent}
         onWorld={backToWorld}
-        countryColorsById={countryColorsById}
-        learningProgress={subregionLearningProgress}
       />
     )
   }
@@ -107,15 +83,15 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
     return (
       <ContinentMemoOverview
         continent={continent}
-        memoedCountryIds={learnedIds}
+        learningStates={learningStates}
         hoveredGroupId={hoveredGroupId}
         learningVersion={learningVersion}
         onWorld={backToWorld}
         onSelectSubregion={selectSubregion}
         onHoverGroup={setHoveredGroupId}
         onLearningChanged={refreshLearning}
-        countryColorsById={countryColorsById}
-        learningProgress={continentLearningProgress}
+        memoReadinessColorsById={memoReadinessColorsById}
+        memoReadinessByCountryId={memoReadinessByCountryId}
       />
     )
   }
@@ -124,12 +100,12 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
     <WorldMemoOverview
       continents={continents}
       progress={worldProgress}
-      memoedCountryIds={learnedIds}
+      learningStates={learningStates}
       hoveredGroupId={hoveredGroupId}
       onSelectContinent={selectContinent}
       onHoverGroup={setHoveredGroupId}
-      countryColorsById={countryColorsById}
-      learningProgress={worldLearningProgress}
+      memoReadinessColorsById={memoReadinessColorsById}
+      memoReadinessByCountryId={memoReadinessByCountryId}
     />
   )
 }
@@ -137,44 +113,42 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
 function WorldMemoOverview({
   continents,
   progress,
-  memoedCountryIds,
+  learningStates,
   hoveredGroupId,
   onSelectContinent,
   onHoverGroup,
-  countryColorsById,
-  learningProgress,
+  memoReadinessColorsById,
+  memoReadinessByCountryId,
 }: {
   continents: readonly Continent[]
-  progress: MemoProgress
-  memoedCountryIds: ReadonlySet<string>
+  progress: MemoReadinessProgress
+  learningStates: ReturnType<typeof getAllSubregionLearningStates>
   hoveredGroupId: string | null
   onSelectContinent: (continent: Continent) => void
   onHoverGroup: (groupId: string | null) => void
-  countryColorsById?: ReadonlyMap<string, string>
-  learningProgress?: WorldCountriesScopeProgress | null
+  memoReadinessColorsById: ReadonlyMap<string, string>
+  memoReadinessByCountryId: ReadonlyMap<string, import('@/features/world-countries/learning/memoReadiness').WorldCountriesMemoReadiness>
 }) {
   return (
     <MemoOverviewShell
       rails={
         <WorldOverviewRails
           continents={continents}
-          memoedCountryIds={memoedCountryIds}
+          learningStates={learningStates}
           progress={progress}
           hoveredGroupId={hoveredGroupId}
           onSelectContinent={onSelectContinent}
           onHoverGroup={onHoverGroup}
-          learningProgress={learningProgress}
         />
       }
       map={
         <MemoMap
           level="world"
-          memoedCountryIds={memoedCountryIds}
+          memoReadinessColorsById={memoReadinessColorsById}
+          memoReadinessByCountryId={memoReadinessByCountryId}
           hoveredGroupId={hoveredGroupId}
           onHoverGroup={onHoverGroup}
           onSelectContinent={onSelectContinent}
-          countryColorsById={countryColorsById}
-          progressLegend={countryColorsById ? 'Core Country progress' : undefined}
         />
       }
     />
@@ -183,26 +157,26 @@ function WorldMemoOverview({
 
 function ContinentMemoOverview({
   continent,
-  memoedCountryIds,
+  learningStates,
   hoveredGroupId,
   learningVersion,
   onWorld,
   onSelectSubregion,
   onHoverGroup,
   onLearningChanged,
-  countryColorsById,
-  learningProgress,
+  memoReadinessColorsById,
+  memoReadinessByCountryId,
 }: {
   continent: Continent
-  memoedCountryIds: ReadonlySet<string>
+  learningStates: ReturnType<typeof getAllSubregionLearningStates>
   hoveredGroupId: string | null
   learningVersion: number
   onWorld: () => void
   onSelectSubregion: (subregion: SubregionId) => void
   onHoverGroup: (groupId: string | null) => void
   onLearningChanged: () => void
-  countryColorsById?: ReadonlyMap<string, string>
-  learningProgress?: WorldCountriesScopeProgress | null
+  memoReadinessColorsById: ReadonlyMap<string, string>
+  memoReadinessByCountryId: ReadonlyMap<string, import('@/features/world-countries/learning/memoReadiness').WorldCountriesMemoReadiness>
 }) {
   const [editingOrder, setEditingOrder] = useState(false)
   const [draftSubregions, setDraftSubregions] = useState<readonly SubregionDefinition[] | null>(null)
@@ -210,7 +184,7 @@ function ContinentMemoOverview({
     () => getSubregionsForContinentInEffectiveOrder(continent, undefined, getContinentMetadata(continent)),
     [continent, learningVersion],
   )
-  const progress = useMemo(() => getContinentMemoProgress(continent, memoedCountryIds), [continent, memoedCountryIds])
+  const progress = useMemo(() => getContinentMemoReadinessProgress(continent, learningStates), [continent, learningStates])
   const railSubregions = draftSubregions ?? subregions
 
   const openOrderEditor = useCallback(() => {
@@ -233,26 +207,24 @@ function ContinentMemoOverview({
           <ContinentOverviewRails
             continent={continent}
             subregions={railSubregions}
-            memoedCountryIds={memoedCountryIds}
+            learningStates={learningStates}
             progress={progress}
             hoveredGroupId={hoveredGroupId}
             onWorld={onWorld}
             onSelectSubregion={onSelectSubregion}
             onHoverGroup={onHoverGroup}
             onEditOrder={openOrderEditor}
-            learningProgress={learningProgress}
           />
         }
         map={
           <MemoMap
             level="continent"
             continent={continent}
-            memoedCountryIds={memoedCountryIds}
+            memoReadinessColorsById={memoReadinessColorsById}
+            memoReadinessByCountryId={memoReadinessByCountryId}
             hoveredGroupId={hoveredGroupId}
             onHoverGroup={onHoverGroup}
             onSelectSubregion={onSelectSubregion}
-            countryColorsById={countryColorsById}
-            progressLegend={countryColorsById ? 'Core Country progress' : undefined}
           />
         }
       />

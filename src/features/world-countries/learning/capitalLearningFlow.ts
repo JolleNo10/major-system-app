@@ -5,6 +5,8 @@ export type CapitalLearningPhase = 'walkthrough' | 'recall' | 'complete'
 
 export interface CapitalLearningFlowConfig {
   countryIds: readonly CountryId[]
+  /** Countries Memo is the capability gate for every Capital Memo action. */
+  countriesLearned: boolean
 }
 
 export interface CapitalRecallState {
@@ -48,6 +50,7 @@ function uniqueCountryIds(countryIds: readonly CountryId[]): CountryId[] {
 export function createCapitalLearningFlow(
   config: CapitalLearningFlowConfig,
 ): CapitalLearningFlowState {
+  if (config.countriesLearned !== true) throw new Error('Complete Countries first.')
   return {
     phase: 'walkthrough',
     countryIds: uniqueCountryIds(config.countryIds),

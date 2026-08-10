@@ -2,20 +2,28 @@ import { useRails } from '@/app/layout/PageLayoutContext'
 import type { ReactNode } from 'react'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition, type SubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
-import { getContinentMemoProgress, getNextSubregionToMemo, getSubregionMemoProgress } from './memoProgress'
+import {
+  getContinentMemoReadinessProgress,
+  getNextSubregionToMemo,
+  getSubregionMemoReadinessProgress,
+  type MemoLearningStates,
+  type MemoReadinessProgress,
+} from './memoProgress'
+import {
+  deriveWorldCountriesMemoReadinessFromTracks,
+  getWorldCountriesMemoReadinessLabel,
+  type WorldCountriesMemoReadiness,
+} from '@/features/world-countries/learning/memoReadiness'
 import { getContinentHoverGroupId, getSubregionHoverGroupId } from '@/features/world-countries/maps/geographyMapAdapter'
 import { countryCapitalMnemonicId, subregionMnemonicId } from '@/features/world-countries/mnemonics/geographyMnemonicIds'
-import type { MemoProgress } from './memoProgress'
-import type { WorldCountriesScopeProgress } from '@/features/world-countries/learning/scopeProgress'
 import type { CountryLearningPhase } from '@/features/world-countries/learning/countryLearningFlow'
 import type { CapitalLearningPhase } from '@/features/world-countries/learning/capitalLearningFlow'
 import { MemoMnemonicCard } from './MemoMnemonicCard'
 
 interface WorldOverviewRailsProps {
   continents: readonly Continent[]
-  memoedCountryIds: ReadonlySet<string>
-  progress: MemoProgress
-  learningProgress?: WorldCountriesScopeProgress | null
+  progress: MemoReadinessProgress
+  learningStates: MemoLearningStates
   hoveredGroupId: string | null
   onSelectContinent: (continent: Continent) => void
   onHoverGroup: (groupId: string | null) => void
@@ -23,9 +31,8 @@ interface WorldOverviewRailsProps {
 
 export function WorldOverviewRails({
   continents,
-  memoedCountryIds,
   progress,
-  learningProgress,
+  learningStates,
   hoveredGroupId,
   onSelectContinent,
   onHoverGroup,
@@ -39,8 +46,7 @@ export function WorldOverviewRails({
             <h2 id="world-countries-continents-rail-heading" className="mt-1 text-lg font-bold text-zinc-100">Continents</h2>
           </div>
 
-          <ProgressSummary label="World progress" progress={progress} />
-          {learningProgress && <LearningProgressSummary progress={learningProgress} />}
+          <ProgressSummary label="World Memo progress" progress={progress} />
 
           <nav aria-label="Continents">
             <ul className="space-y-1.5">
@@ -52,7 +58,7 @@ export function WorldOverviewRails({
                   hoveredGroupId={hoveredGroupId}
                   onClick={() => onSelectContinent(continent)}
                   onHoverGroup={onHoverGroup}
-                  trailing={memoedCountForContinent(continent, memoedCountryIds)}
+                  trailing={formatContinentProgress(getContinentMemoReadinessProgress(continent, learningStates))}
                 />
               ))}
             </ul>
@@ -61,7 +67,7 @@ export function WorldOverviewRails({
       ),
       leftLabel: 'Continents',
     },
-    [continents, learningProgress, memoedCountryIds, progress.memoedCount, progress.totalCount, progress.ratio, hoveredGroupId, onSelectContinent, onHoverGroup],
+    [continents, learningStates, progress, hoveredGroupId, onSelectContinent, onHoverGroup],
   )
 
   return null
@@ -70,9 +76,8 @@ export function WorldOverviewRails({
 interface ContinentOverviewRailsProps {
   continent: Continent
   subregions: readonly SubregionDefinition[]
-  memoedCountryIds: ReadonlySet<string>
-  progress: MemoProgress
-  learningProgress?: WorldCountriesScopeProgress | null
+  progress: MemoReadinessProgress
+  learningStates: MemoLearningStates
   hoveredGroupId: string | null
   onWorld: () => void
   onSelectSubregion: (subregion: SubregionId) => void
@@ -83,9 +88,8 @@ interface ContinentOverviewRailsProps {
 export function ContinentOverviewRails({
   continent,
   subregions,
-  memoedCountryIds,
   progress,
-  learningProgress,
+  learningStates,
   hoveredGroupId,
   onWorld,
   onSelectSubregion,
@@ -94,7 +98,7 @@ export function ContinentOverviewRails({
 }: ContinentOverviewRailsProps) {
   const nextSubregion = getNextSubregionToMemo(
     subregions,
-    subregion => getSubregionMemoProgress(continent, subregion, memoedCountryIds).remainingCount === 0,
+    subregion => getSubregionMemoReadinessProgress(subregion, learningStates).readiness !== 'NOT_MEMOED',
   )
 
   useRails(
@@ -117,8 +121,7 @@ export function ContinentOverviewRails({
             </button>
           </div>
 
-          <ProgressSummary label="Continent progress" progress={progress} />
-          {learningProgress && <LearningProgressSummary progress={learningProgress} />}
+          <ProgressSummary label="Continent Memo progress" progress={progress} />
 
           <nav aria-label={`${continent} Subregions`}>
             <ol className="space-y-1.5">
@@ -131,7 +134,7 @@ export function ContinentOverviewRails({
                   onClick={() => onSelectSubregion(subregion.id)}
                   onHoverGroup={onHoverGroup}
                   sequenceNumber={index + 1}
-                  trailing={memoedCountForSubregion(continent, subregion.id, memoedCountryIds)}
+                  trailing={getMemoReadinessLabel(getSubregionMemoReadinessProgress(subregion.id, learningStates).readiness)}
                 />
               ))}
             </ol>
@@ -147,7 +150,7 @@ export function ContinentOverviewRails({
       leftLabel: 'Subregions',
       rightLabel: 'Next to memo',
     },
-    [continent, learningProgress, subregions, memoedCountryIds, nextSubregion, progress.memoedCount, progress.totalCount, progress.ratio, hoveredGroupId, onWorld, onSelectSubregion, onHoverGroup, onEditOrder],
+    [continent, learningStates, subregions, nextSubregion, progress, hoveredGroupId, onWorld, onSelectSubregion, onHoverGroup, onEditOrder],
   )
 
   return null
@@ -214,7 +217,6 @@ interface SubregionRailContent {
   entries: readonly Country[]
   learned: boolean
   capitalsLearned: boolean
-  learningProgress?: WorldCountriesScopeProgress | null
   track: 'countries' | 'capitals'
   capitalWalkthroughCountryId: string | null
   capitalRecallCorrectionCountryId: string | null
@@ -236,7 +238,7 @@ export function SubregionOverviewRails({
   onEditOrder,
 }: SubregionOverviewRailsProps) {
   const { continent, subregion, onWorld, onContinent, nextSubregion, onSelectSubregion } = navigation
-  const { entries, learned, capitalsLearned, learningProgress, track, capitalWalkthroughCountryId, capitalRecallCorrectionCountryId, mnemonicVersion, onMnemonicChanged } = content
+  const { entries, learned, capitalsLearned, track, capitalWalkthroughCountryId, capitalRecallCorrectionCountryId, mnemonicVersion, onMnemonicChanged } = content
   const visible = phase !== 'ordered-recall' && phase !== 'recall' && phase !== 'complete'
   const showSubregionMnemonic = visible && track === 'countries'
   const capitalWalkthroughCountry = capitalWalkthroughCountryId
@@ -274,12 +276,20 @@ export function SubregionOverviewRails({
             <p className="text-xs uppercase tracking-wider text-zinc-500">Learning status</p>
             {phase === 'overview' ? (
               <div className="mt-1 space-y-1 text-sm font-semibold">
+                <p className="text-violet-300">
+                  Memo readiness: {getMemoReadinessLabel(deriveWorldCountriesMemoReadinessFromTracks(learned, capitalsLearned))}
+                </p>
                 <p className={learned ? 'text-green-300' : 'text-zinc-300'}>
                   {learned ? 'Countries learned ✓' : 'Countries not learned'}
                 </p>
                 <p className={capitalsLearned ? 'text-green-300' : 'text-zinc-300'}>
                   {capitalsLearned ? 'Capitals learned ✓' : 'Capitals not learned'}
                 </p>
+                {!learned && capitalsLearned && (
+                  <p className="pt-1 text-xs font-normal leading-relaxed text-amber-300">
+                    Capital completion is preserved. Complete Countries first to unlock Capital review and practice.
+                  </p>
+                )}
               </div>
             ) : (
               <p className={`mt-1 text-sm font-semibold ${trackPresentation.learned ? 'text-green-300' : 'text-zinc-300'}`}>
@@ -287,8 +297,6 @@ export function SubregionOverviewRails({
               </p>
             )}
           </div>
-          {learningProgress && <LearningProgressSummary progress={learningProgress} />}
-
           <section aria-labelledby="learning-order-rail-heading">
             <div className="flex items-center justify-between gap-2">
               <h3 id="learning-order-rail-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Learning order</h3>
@@ -348,7 +356,7 @@ export function SubregionOverviewRails({
       leftLabel: 'Learning context',
       rightLabel: showNextToMemo ? 'Memo tools' : showSubregionMnemonic || showCapitalMnemonic || showCapitalCorrectionMnemonic ? 'Memory aid' : undefined,
     },
-    [learningProgress, visible, showNextToMemo, showSubregionMnemonic, showCapitalMnemonic, showCapitalCorrectionMnemonic, capitalWalkthroughCountry, capitalRecallCorrectionCountry, continent, subregion, entries, track, trackPresentation.learned, trackPresentation.label, mnemonicVersion, onWorld, onContinent, nextSubregion, onSelectSubregion, onEditOrder, onMnemonicChanged],
+    [visible, showNextToMemo, showSubregionMnemonic, showCapitalMnemonic, showCapitalCorrectionMnemonic, capitalWalkthroughCountry, capitalRecallCorrectionCountry, continent, subregion, entries, track, trackPresentation.learned, trackPresentation.label, mnemonicVersion, learned, capitalsLearned, onWorld, onContinent, nextSubregion, onSelectSubregion, onEditOrder, onMnemonicChanged],
   )
 
   return null
@@ -390,43 +398,36 @@ function NextToMemoPanel({
   )
 }
 
-function ProgressSummary({ label, progress }: { label: string; progress: MemoProgress }) {
+function ProgressSummary({ label, progress }: { label: string; progress: MemoReadinessProgress }) {
   return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="text-xs uppercase tracking-wider text-zinc-500">{label}</span>
-        <span className="text-sm font-semibold tabular-nums text-green-300">{progress.memoedCount}/{progress.totalCount}</span>
-      </div>
-      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-800">
-        <div className="h-full rounded-full bg-green-500 transition-all" style={{ width: `${progress.ratio * 100}%` }} />
+    <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3" aria-label={label}>
+      <p className="text-xs uppercase tracking-wider text-zinc-500">{label}</p>
+      <div className="mt-3 space-y-3">
+        <MemoMilestone label="Countries memoed" count={progress.countriesMemoedCount} total={progress.totalSubregions} ratio={progress.countriesMemoedRatio} color="bg-violet-500" />
+        <MemoMilestone label="Countries + Capitals memoed" count={progress.countriesAndCapitalsMemoedCount} total={progress.totalSubregions} ratio={progress.countriesAndCapitalsMemoedRatio} color="bg-fuchsia-500" />
       </div>
     </div>
   )
 }
 
-function LearningProgressSummary({ progress }: { progress: WorldCountriesScopeProgress }) {
-  const counts = progress.countryStateCounts
+function MemoMilestone({ label, count, total, ratio, color }: { label: string; count: number; total: number; ratio: number; color: string }) {
   return (
-    <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3" aria-label="Core Country learning progress">
+    <div>
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-xs uppercase tracking-wider text-cyan-300">Core Country progress</span>
-        <span className="text-sm font-semibold tabular-nums text-cyan-200">{progress.completeCountries}/{progress.totalCountries} complete</span>
+        <span className="text-xs text-zinc-400">{label}</span>
+        <span className="text-xs font-semibold tabular-nums text-zinc-200">{count}/{total} Subregions</span>
       </div>
-      <p className="mt-2 text-xs leading-relaxed text-zinc-400">
-        Complete {counts.complete} · Strong {counts.strong} · Developing {counts.developing} · Weak {counts.weak} · Unpractised {counts.unpractised}
-      </p>
+      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-zinc-800">
+        <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${ratio * 100}%` }} />
+      </div>
     </div>
   )
 }
 
-function memoedCountForContinent(continent: Continent, memoedCountryIds: ReadonlySet<string>): string {
-  return formatProgress(getContinentMemoProgress(continent, memoedCountryIds))
+function formatContinentProgress(progress: MemoReadinessProgress): string {
+  return `${progress.countriesMemoedCount}/${progress.totalSubregions} Subregions`
 }
 
-function memoedCountForSubregion(continent: Continent, subregion: SubregionId, memoedCountryIds: ReadonlySet<string>): string {
-  return formatProgress(getSubregionMemoProgress(continent, subregion, memoedCountryIds))
-}
-
-function formatProgress(progress: MemoProgress): string {
-  return `${progress.memoedCount}/${progress.totalCount}`
+function getMemoReadinessLabel(readiness: WorldCountriesMemoReadiness | undefined): string {
+  return getWorldCountriesMemoReadinessLabel(readiness ?? 'NOT_MEMOED')
 }

@@ -34,7 +34,7 @@ describe('CapitalRecallStep', () => {
     const onCorrectionCountryChange = vi.fn()
     const mount = document.createElement('div')
     document.body.appendChild(mount)
-    const flow = startCapitalRecall(createCapitalLearningFlow({ countryIds: [country.id] }), () => 0)
+    const flow = startCapitalRecall(createCapitalLearningFlow({ countryIds: [country.id], countriesLearned: true }), () => 0)
 
     act(() => {
       root = createRoot(mount)

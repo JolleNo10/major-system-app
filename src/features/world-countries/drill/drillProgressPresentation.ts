@@ -14,15 +14,22 @@ import {
   type WorldCountriesDrillMode,
 } from './drillModes'
 import type { ProgressMapLegendEntry } from '@/features/world-countries/learning/ProgressMapLegend'
+import {
+  getMemoReadinessBySubregion,
+  WORLD_COUNTRIES_MEMO_READINESS_LEGEND_ENTRIES,
+  WORLD_COUNTRIES_MEMO_READINESS_COLORS,
+} from '@/features/world-countries/learning/memoReadiness'
+import type { WorldCountriesMemoLearningStates } from '@/features/world-countries/learning/memoReadiness'
 
 const DRILL_PROGRESS_COLORS: Readonly<Record<string, string>> = {
-  unpractised: '#52525b',
   weak: '#dc2626',
   developing: '#d97706',
   strong: '#2563eb',
   mastered: '#16a34a',
   complete: '#16a34a',
 }
+
+export const DRILL_MEMO_READINESS_LEGEND_ENTRIES = WORLD_COUNTRIES_MEMO_READINESS_LEGEND_ENTRIES
 
 export function getDrillProgressPerspective(
   mode: WorldCountriesDrillMode,
@@ -35,15 +42,24 @@ export function createDrillProgressColors(
   mode: WorldCountriesDrillMode,
   scopeCountries: readonly Country[],
   recallProgress: RecallProgress,
+  learningStates: WorldCountriesMemoLearningStates = [],
 ): Map<CountryId, string> {
   const skills = getSkillsForDrillMode(mode)
   const perspective = getDrillProgressPerspective(mode)
+  const readinessBySubregion = getMemoReadinessBySubregion(learningStates)
   return new Map(scopeCountries.map(country => {
     const progress = perspective === 'core'
       ? deriveWorldCountriesCountryProgress(country.id, recallProgress)
       : deriveCountryRecallProgress(country.id, skills, recallProgress)
+    const hasRelevantEvidence = perspective === 'core'
+      ? [...progress.coreSkills.values()].some(skill => skill.attempts > 0)
+      : (progress.skills.get(perspective)?.attempts ?? 0) > 0
+    if (!hasRelevantEvidence) {
+      const readiness = readinessBySubregion.get(country.subregionId) ?? 'NOT_MEMOED'
+      return [country.id, WORLD_COUNTRIES_MEMO_READINESS_COLORS[readiness]]
+    }
     const state = getCountryProgressState(progress, perspective)
-    return [country.id, DRILL_PROGRESS_COLORS[state] ?? DRILL_PROGRESS_COLORS.unpractised]
+    return [country.id, DRILL_PROGRESS_COLORS[state] ?? WORLD_COUNTRIES_MEMO_READINESS_COLORS.NOT_MEMOED]
   }))
 }
 
@@ -66,7 +82,7 @@ export function getDrillProgressLegendEntries(
     mastered: 'Mastered',
     complete: 'Complete',
   }
-  return ['unpractised', 'weak', 'developing', 'strong', completedState].map(state => ({
+  return ['weak', 'developing', 'strong', completedState].map(state => ({
     state,
     label: labels[state],
     color: DRILL_PROGRESS_COLORS[state],

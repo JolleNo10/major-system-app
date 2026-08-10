@@ -4,6 +4,7 @@ import {
   loadWorldCountriesRecallProgress,
   type RecallProgress,
 } from '@/features/world-countries/learning/recallProgress'
+import { getAllSubregionLearningStates } from '@/features/world-countries/learning/subregionLearningStore'
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
 import {
   getDrillSubregions,
@@ -41,6 +42,7 @@ export function DrillSetup({
 }) {
   const subregions = getDrillSubregions(selection.continent)
   const skills = getSkillsForDrillMode(mode)
+  const memoLearningStates = useMemo(() => getAllSubregionLearningStates(), [])
   const [recallProgress, setRecallProgress] = useState<RecallProgress | null>(null)
 
   useEffect(() => {
@@ -56,8 +58,8 @@ export function DrillSetup({
   }, [skills])
 
   const countryColorsById = useMemo(
-    () => recallProgress ? createDrillProgressColors(mode, countries, recallProgress) : undefined,
-    [mode, recallProgress],
+    () => recallProgress ? createDrillProgressColors(mode, countries, recallProgress, memoLearningStates) : undefined,
+    [memoLearningStates, mode, recallProgress],
   )
 
   const toggleEntireContinent = useCallback(

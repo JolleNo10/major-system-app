@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import { DrillResultStat } from './DrillResultStat'
@@ -8,6 +9,8 @@ import { summarizeDrillAnswers } from './drillResultSummary'
 import type { WorldCountriesProgressPerspective } from '@/features/world-countries/learning/progressPresentation'
 import { useWorldCountriesCountryColors } from '@/features/world-countries/learning/useWorldCountriesCountryColors'
 import { DrillProgressLegend } from './DrillProgressLegend'
+import { getAllSubregionLearningStates } from '@/features/world-countries/learning/subregionLearningStore'
+import { createDrillProgressColors } from './drillProgressPresentation'
 
 export function DrillResults({
   mode,
@@ -28,11 +31,18 @@ export function DrillResults({
   const definition = getDrillModeDefinition(mode)
   const skills = getSkillsForDrillMode(mode)
   const perspective: WorldCountriesProgressPerspective = mode === 'countries-capitals' ? 'core' : skills[0]
-  const { countryColorsById } = useWorldCountriesCountryColors({
+  const memoLearningStates = useMemo(() => getAllSubregionLearningStates(), [])
+  const { recallProgress } = useWorldCountriesCountryColors({
     countries: scopeCountries,
     skills,
     perspective,
   })
+  const countryColorsById = useMemo(
+    () => recallProgress
+      ? createDrillProgressColors(mode, scopeCountries, recallProgress, memoLearningStates)
+      : undefined,
+    [memoLearningStates, mode, recallProgress, scopeCountries],
+  )
 
   return (
     <>

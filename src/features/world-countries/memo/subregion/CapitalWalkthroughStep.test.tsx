@@ -39,7 +39,7 @@ describe('CapitalWalkthroughStep', () => {
         <CapitalWalkthroughStep
           continent="Europe"
           entries={[country]}
-          flow={createCapitalLearningFlow({ countryIds: [country.id] })}
+          flow={createCapitalLearningFlow({ countryIds: [country.id], countriesLearned: true })}
           onMove={() => undefined}
           onStartRecall={() => undefined}
           onExit={() => undefined}

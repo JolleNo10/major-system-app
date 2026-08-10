@@ -9,7 +9,6 @@ import { getAllSubregionLearningStates, getSubregionLearningState } from '@/feat
 import { isSubregionCapitalsLearned, isSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningState'
 import type { CountryLearningEntryPoint, CountryLearningPhase } from '@/features/world-countries/learning/countryLearningFlow'
 import type { CapitalLearningPhase } from '@/features/world-countries/learning/capitalLearningFlow'
-import type { WorldCountriesScopeProgress } from '@/features/world-countries/learning/scopeProgress'
 import { getNextSubregionToMemo } from '../memoProgress'
 import { SubregionOverviewRails } from '../WorldCountriesMemoRails'
 import { CapitalLearningFlow } from './CapitalLearningFlow'
@@ -27,8 +26,6 @@ export function SubregionMemoScreen({
   onSelectSubregion,
   onExit,
   onWorld,
-  countryColorsById,
-  learningProgress,
 }: {
   continent: Continent
   subregion: SubregionId
@@ -39,8 +36,6 @@ export function SubregionMemoScreen({
   onSelectSubregion: (subregion: SubregionId) => void
   onExit: () => void
   onWorld: () => void
-  countryColorsById?: ReadonlyMap<string, string>
-  learningProgress?: WorldCountriesScopeProgress | null
 }) {
   const entries = useMemo(() => getCountriesForSubregionInEffectiveOrder(subregion, undefined, getSubregionMetadata(subregion)), [learningVersion, subregion])
   const nextSubregion = useMemo(() => {
@@ -74,8 +69,6 @@ export function SubregionMemoScreen({
           onSelectSubregion={onSelectSubregion}
           onExit={onExit}
           onWorld={onWorld}
-          countryColorsById={countryColorsById}
-          learningProgress={learningProgress}
         />
       </div>
     </div>
@@ -95,8 +88,6 @@ function SubregionScreenBody({
   onSelectSubregion,
   onExit,
   onWorld,
-  countryColorsById,
-  learningProgress,
 }: {
   continent: Continent
   subregion: SubregionId
@@ -110,8 +101,6 @@ function SubregionScreenBody({
   onSelectSubregion: (subregion: SubregionId) => void
   onExit: () => void
   onWorld: () => void
-  countryColorsById?: ReadonlyMap<string, string>
-  learningProgress?: WorldCountriesScopeProgress | null
 }) {
   const [mode, setMode] = useState<'overview' | 'country-learning' | 'capital-learning'>('overview')
   const [entryPoint, setEntryPoint] = useState<CountryLearningEntryPoint>('beginning')
@@ -166,6 +155,7 @@ function SubregionScreenBody({
       continent={continent}
       subregion={subregion}
       entries={entries}
+      countriesLearned={learned}
       fuzzyMatching={fuzzyMatching}
       onPhaseChange={reportLearningPhase}
       onExit={exitLearning}
@@ -179,7 +169,6 @@ function SubregionScreenBody({
       subregion={subregion}
       entries={entries}
       mapEntries={mapEntries}
-      countryColorsById={countryColorsById}
       learned={learned}
       capitalsLearned={capitalsLearned}
       onStart={() => {
@@ -196,6 +185,7 @@ function SubregionScreenBody({
         setMode('country-learning')
       }}
       onStartCapitals={() => {
+        if (!learned) return
         setCapitalStartInRecall(false)
         setCapitalWalkthroughCountryId(entries[0]?.id ?? null)
         setCapitalRecallCorrectionCountryId(null)
@@ -203,6 +193,7 @@ function SubregionScreenBody({
         setMode('capital-learning')
       }}
       onPracticeCapitals={() => {
+        if (!learned) return
         setCapitalStartInRecall(true)
         setCapitalWalkthroughCountryId(null)
         setCapitalRecallCorrectionCountryId(null)
@@ -231,7 +222,6 @@ function SubregionScreenBody({
           track: mode === 'capital-learning' ? 'capitals' : 'countries',
           capitalWalkthroughCountryId,
           capitalRecallCorrectionCountryId,
-          learningProgress,
           mnemonicVersion,
           onMnemonicChanged: refreshMnemonic,
         }}

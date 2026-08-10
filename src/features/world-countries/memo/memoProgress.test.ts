@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { getContinents, getCountriesForSubregion, getSubregionsForContinent } from '@/features/world-countries/geography/queries'
-import { getContinentMemoProgress, getMemoProgress, getNextSubregionToMemo, getSubregionMemoProgress } from './memoProgress'
+import { getContinentMemoReadinessProgress, getNextSubregionToMemo, getSubregionMemoReadinessProgress, getWorldMemoReadinessProgress } from './memoProgress'
 import { countries, type Country } from '@/features/world-countries/data/countries'
 
 const sample: Country[] = [
@@ -16,21 +16,30 @@ describe('World Countries Memo geography', () => {
     expect(getCountriesForSubregion('Europe', 'northern-europe', sample)).toEqual(sample.slice(0, 2))
   })
 
-  it('derives not-started, partial, and complete progress', () => {
-    expect(getMemoProgress(sample, []).status).toBe('not-started')
-    expect(getContinentMemoProgress('Europe', ['NO'], sample)).toMatchObject({
-      memoedCount: 1, totalCount: 2, remainingCount: 1, status: 'partial',
+  it('exposes the exact readiness state for one current Subregion', () => {
+    expect(getSubregionMemoReadinessProgress('northern-europe', [
+      { subregionId: 'northern-europe', countriesLearnedAt: 1, capitalsLearnedAt: 2 },
+    ], sample).readiness).toBe('COUNTRIES_AND_CAPITALS_MEMOED')
+  })
+
+  it('aggregates World and Continent progress by current Subregions', () => {
+    const states = [
+      { subregionId: 'northern-europe' as const, countriesLearnedAt: 1 },
+      { subregionId: 'east-asia' as const, countriesLearnedAt: 2, capitalsLearnedAt: 3 },
+    ]
+    expect(getWorldMemoReadinessProgress(states, sample)).toMatchObject({
+      totalSubregions: 2,
+      countriesMemoedCount: 2,
+      countriesAndCapitalsMemoedCount: 1,
     })
-    expect(getSubregionMemoProgress('Europe', 'northern-europe', ['NO', 'SE'], sample)).toMatchObject({
-      memoedCount: 2, totalCount: 2, ratio: 1, status: 'complete',
+    expect(getContinentMemoReadinessProgress('Europe', states, sample)).toMatchObject({
+      totalSubregions: 1,
+      countriesMemoedCount: 1,
+      countriesAndCapitalsMemoedCount: 0,
     })
   })
 
-  it('uses the bundled records as the default world source', () => {
-    expect(getMemoProgress(countries, []).totalCount).toBe(countries.length)
-  })
-
-  it('finds the first subregion that is not memoed', () => {
+  it('finds the first Subregion whose Countries Memo is incomplete', () => {
     const order = [
       { id: 'balkans', label: 'Balkans', continent: 'Europe' },
       { id: 'northern-europe', label: 'Northern Europe', continent: 'Europe' },
@@ -38,5 +47,10 @@ describe('World Countries Memo geography', () => {
 
     expect(getNextSubregionToMemo(order, subregionId => subregionId === 'balkans')).toEqual(order[1])
     expect(getNextSubregionToMemo(order, () => true)).toBeNull()
+  })
+
+  it('uses the bundled records as the default world source', () => {
+    expect(getWorldMemoReadinessProgress([]).totalSubregions).toBeGreaterThan(0)
+    expect(countries.length).toBeGreaterThan(0)
   })
 })

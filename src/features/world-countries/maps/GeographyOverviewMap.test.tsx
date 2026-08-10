@@ -106,7 +106,8 @@ describe('GeographyOverviewMap', () => {
       root = createRoot(mount)
       root.render(createElement(MemoMap, {
         level: 'world',
-        memoedCountryIds: new Set<string>(),
+        memoReadinessColorsById: new Map(),
+        memoReadinessByCountryId: new Map(),
       }))
       await Promise.resolve()
       await Promise.resolve()
@@ -120,7 +121,7 @@ describe('GeographyOverviewMap', () => {
     expect(greenland?.style.fill).toBe('#0f766e')
   })
 
-  it('renders a visual core-progress legend for Memo maps', async () => {
+  it('renders all three Memo readiness states for Memo maps', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({
       ok: true,
       text: async () => `
@@ -135,22 +136,24 @@ describe('GeographyOverviewMap', () => {
       root = createRoot(mount)
       root.render(createElement(MemoMap, {
         level: 'world',
-        memoedCountryIds: new Set<string>(),
-        countryColorsById: new Map([['NO', '#16a34a']]),
-        progressLegend: 'Core Country progress',
+        memoReadinessColorsById: new Map([['NO', '#7c3aed']]),
+        memoReadinessByCountryId: new Map([['NO', 'COUNTRIES_MEMOED' as const]]),
       }))
       await Promise.resolve()
       await Promise.resolve()
     })
 
-    const legend = mount.querySelector('[aria-label="Core Country progress legend"]')
-    expect(legend?.querySelectorAll('[data-progress-state]')).toHaveLength(5)
-    expect(legend?.textContent).toContain('Unpractised')
-    expect(legend?.textContent).toContain('Weak')
-    expect(legend?.textContent).toContain('Developing')
-    expect(legend?.textContent).toContain('Strong')
-    expect(legend?.textContent).toContain('Complete')
+    const legend = mount.querySelector('[aria-label="Memo readiness legend"]')
+    expect(legend?.querySelectorAll('[data-progress-state]')).toHaveLength(3)
+    expect(legend?.textContent).toContain('Not memoed')
+    expect(legend?.textContent).toContain('Countries memoed')
+    expect(legend?.textContent).toContain('Countries + Capitals memoed')
     expect(legend?.textContent).toContain('teal is temporary hover or navigation focus')
+    expect(mount.textContent).toContain('Norway: Countries memoed')
+    const map = mount.querySelector('[role="img"]')
+    const descriptionId = map?.getAttribute('aria-describedby')
+    expect(descriptionId).toBeTruthy()
+    expect(mount.querySelector(`#${descriptionId}`)?.textContent).toContain('Norway: Countries memoed')
   })
 
   it('renders caller-provided semantic Country progress colors', async () => {

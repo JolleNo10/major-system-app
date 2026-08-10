@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
 import type { SubregionId } from '@/features/world-countries/data/subregions'
+import { getSubregionLearningState } from '@/features/world-countries/learning/subregionLearningStore'
+import { isSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningState'
 import {
   createCapitalLearningFlow,
   applyCapitalLearningTransition,
@@ -15,30 +17,40 @@ import { CapitalLearningComplete } from './CapitalLearningComplete'
 import { CapitalRecallStep } from './CapitalRecallStep'
 import { CapitalWalkthroughStep } from './CapitalWalkthroughStep'
 
-export function CapitalLearningFlow({
-  continent,
-  subregion,
-  entries,
-  fuzzyMatching,
-  onPhaseChange,
-  onExit,
-  startInRecall = false,
-  onWalkthroughCountryChange,
-  onRecallCorrectionCountryChange,
-}: {
+interface CapitalLearningFlowProps {
   continent: Continent
   subregion: SubregionId
   entries: readonly Country[]
   fuzzyMatching: boolean
   onPhaseChange: (phase: CapitalLearningPhase) => void
   onExit: () => void
+  countriesLearned?: boolean
   startInRecall?: boolean
   onWalkthroughCountryChange?: (countryId: string | null) => void
   onRecallCorrectionCountryChange?: (countryId: string | null) => void
-}) {
+}
+
+export function CapitalLearningFlow({ countriesLearned, ...props }: CapitalLearningFlowProps) {
+  const canEnter = countriesLearned ?? isSubregionCountriesLearned(getSubregionLearningState(props.subregion))
+  if (!canEnter) return <CapitalMemoLocked onExit={props.onExit} />
+  return <EnabledCapitalLearningFlow {...props} countriesLearned />
+}
+
+function EnabledCapitalLearningFlow({
+  continent,
+  subregion,
+  entries,
+  fuzzyMatching,
+  onPhaseChange,
+  onExit,
+  countriesLearned,
+  startInRecall = false,
+  onWalkthroughCountryChange,
+  onRecallCorrectionCountryChange,
+}: Omit<CapitalLearningFlowProps, 'countriesLearned'> & { countriesLearned: boolean }) {
   const countryIds = useMemo(() => entries.map(country => country.id), [entries])
   const [flow, setFlow] = useState<CapitalLearningFlowState>(() => {
-    const initialFlow = createCapitalLearningFlow({ countryIds })
+    const initialFlow = createCapitalLearningFlow({ countryIds, countriesLearned })
     return startInRecall ? startCapitalRecall(initialFlow) : initialFlow
   })
   const completionReporter = useRef(createSubregionCapitalCompletionReporter(subregion))
@@ -92,9 +104,24 @@ export function CapitalLearningFlow({
           onDone={onExit}
           onRestart={() => {
             completionReporter.current.reset()
-            transition(createCapitalLearningFlow({ countryIds }))
+            transition(createCapitalLearningFlow({ countryIds, countriesLearned }))
           }}
         />
       )
   }
+}
+
+function CapitalMemoLocked({ onExit }: { onExit: () => void }) {
+  return (
+    <section className="space-y-4 animate-fade-in" aria-labelledby="capital-memo-locked-heading">
+      <header>
+        <p className="text-xs font-semibold uppercase tracking-wider text-amber-400">Capital Memo locked</p>
+        <h1 id="capital-memo-locked-heading" className="mt-1 text-2xl font-bold text-zinc-100">Complete Countries first.</h1>
+      </header>
+      <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-5 text-sm leading-relaxed text-amber-200">
+        Capital Memo review and practice unlock after Countries Memo is complete. Any earlier Capital completion is preserved.
+      </p>
+      <button type="button" onClick={onExit} className="rounded-lg bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500">Back to Subregion</button>
+    </section>
+  )
 }

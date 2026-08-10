@@ -26,6 +26,7 @@ export interface SvgMapViewProps {
   settings?: Partial<SvgMapSettings>
   className?: string
   ariaLabel: string
+  ariaDescribedBy?: string
   onCountryClick?: (svgId: string) => void
   onCountryHover?: (svgId: string | null) => void
   onCountriesLoaded?: (countries: readonly SvgMapCountry[]) => void
@@ -47,6 +48,7 @@ export function SvgMapView({
   settings = {},
   className = '',
   ariaLabel,
+  ariaDescribedBy,
   onCountryClick,
   onCountryHover,
   onCountriesLoaded,
@@ -136,6 +138,7 @@ export function SvgMapView({
         className={`world-map-svg overflow-hidden rounded-xl border border-zinc-800 bg-[#252525] shadow-lg ${loading || error ? 'hidden' : ''} ${className}`}
         role="img"
         aria-label={ariaLabel}
+        aria-describedby={ariaDescribedBy}
       />
       {error ? (
         <div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-12 text-center text-sm text-red-300">

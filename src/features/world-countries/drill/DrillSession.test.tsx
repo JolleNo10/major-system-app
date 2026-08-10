@@ -76,6 +76,7 @@ describe('DrillSession map presentation', () => {
     const mapProps = learningMapMock.mock.calls[0][0] as Record<string, unknown>
     expect(mapProps.highlightedCountryId).toBe('NO')
     expect(mapProps.namedCountryId).toBeNull()
+    expect(mapProps.countryColorsById).toBeUndefined()
     expect(mapProps.ariaLabel).toBe('Map showing the selected location for recall without the Country name revealed')
     expect(mount.textContent).toContain('Which country is this?')
   })

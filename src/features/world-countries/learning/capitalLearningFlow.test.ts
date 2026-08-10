@@ -8,8 +8,12 @@ import {
 } from './capitalLearningFlow'
 
 describe('capital-learning workflow', () => {
+  it('rejects Capital Memo entry before Countries Memo is complete', () => {
+    expect(() => createCapitalLearningFlow({ countryIds: ['NO'], countriesLearned: false })).toThrow('Complete Countries first.')
+  })
+
   it('walks every Country in the supplied effective order before recall', () => {
-    let flow = createCapitalLearningFlow({ countryIds: ['NO', 'SE', 'DK'] })
+    let flow = createCapitalLearningFlow({ countryIds: ['NO', 'SE', 'DK'], countriesLearned: true })
     expect(flow.phase).toBe('walkthrough')
     flow = moveCapitalWalkthrough(flow, 1)
     flow = moveCapitalWalkthrough(flow, 1)
@@ -22,7 +26,7 @@ describe('capital-learning workflow', () => {
 
   it('uses one balanced shuffled set per round and completes a clean round', () => {
     let flow = startCapitalRecall(
-      createCapitalLearningFlow({ countryIds: ['NO', 'SE', 'DK'] }),
+      createCapitalLearningFlow({ countryIds: ['NO', 'SE', 'DK'], countriesLearned: true }),
       () => 0,
     )
     const prompted: string[] = []
@@ -37,7 +41,7 @@ describe('capital-learning workflow', () => {
 
   it('disqualifies an errored round and requires a fresh clean round', () => {
     let flow = startCapitalRecall(
-      createCapitalLearningFlow({ countryIds: ['NO', 'SE'] }),
+      createCapitalLearningFlow({ countryIds: ['NO', 'SE'], countriesLearned: true }),
       () => 0,
     )
     const first = submitCapitalRecall(flow, false, () => 0)
@@ -60,7 +64,7 @@ describe('capital-learning workflow', () => {
   })
 
   it('reports only actual phase changes to Memo orchestration', () => {
-    const flow = createCapitalLearningFlow({ countryIds: ['NO'] })
+    const flow = createCapitalLearningFlow({ countryIds: ['NO'], countriesLearned: true })
     const phases: string[] = []
     applyCapitalLearningTransition(flow, flow, phase => phases.push(phase))
     applyCapitalLearningTransition(flow, { ...flow, phase: 'recall' }, phase => phases.push(phase))
