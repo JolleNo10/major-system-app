@@ -1408,6 +1408,11 @@ Neither measurement replaces the other.
 
 # Progress visualization
 
+> **Refined by ADR 0020.** Memo overview maps present coarse Subregion Memo
+> readiness rather than the evidence-derived progress states below. Drill setup
+> and results use Memo readiness only as a fallback while the selected Drill
+> perspective has no relevant attempt evidence.
+
 ## 35. Map progress always answers a defined learning question
 
 The progress interpretation depends on the current view.
@@ -1941,7 +1946,7 @@ This ADR does not define:
 Those concerns should be defined separately, for example:
 
 ```text
-ADR 0020
+Future ADR
 World Countries Drill Scheduling and Exposure Policy
 ```
 

@@ -287,6 +287,10 @@ Country–Capital mnemonic content and detailed reference information remain sup
 
 ## 5. Countries-first is recommended, not required
 
+> **Partially superseded by ADR 0020.** Countries Memo completion is now a
+> prerequisite for all Capital Memo entry actions. ADR 0016's independent
+> persisted completion facts and Capital-learning mechanics remain in force.
+
 The intended learning sequence remains:
 
 ```text
