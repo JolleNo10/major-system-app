@@ -1,6 +1,8 @@
 import { DAY_MS } from '@/core/scoring/itemStore'
 import { PAIRS_PER_SEGMENT, type PiSegmentStatus } from '@/features/pi/shared/piStats'
-import { getSegSchedule, type MaintainStore } from '@/features/pi/maintain/piMaintainStore'
+import {
+  getSegSchedule, rescheduleSegment, type MaintainStore,
+} from '@/features/pi/maintain/piMaintainStore'
 
 // Batch assembly for the Maintain tab. Selection is *due-driven* (most-overdue
 // first), cycling through learned material to keep it alive against the
@@ -48,6 +50,19 @@ export function segmentResultsFromRun(
     results.push({ seg, ok })
   }
   return results
+}
+
+// Apply the binary outcome of every whole segment covered by a run to the
+// segment's Maintain schedule. Both Recite and Maintain use this same seam so
+// a Recite run advances (or resets) the forgetting curve just like a Maintain
+// review, while partial segments remain untouched.
+export function rescheduleSegmentsFromRun(
+  anchor: number,
+  correctness: boolean[],
+): void {
+  for (const { seg, ok } of segmentResultsFromRun(anchor, correctness)) {
+    rescheduleSegment(seg, ok)
+  }
 }
 
 function summarizeBatch(segs: number[], store: MaintainStore, now: number): MaintainBatch {

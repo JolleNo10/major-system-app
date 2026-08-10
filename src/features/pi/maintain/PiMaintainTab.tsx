@@ -9,9 +9,9 @@ import { segmentDigitRange } from '@/features/pi/shared/piSegments'
 import { useSegmentPickerData } from '@/features/pi/shared/PiSegmentRangePicker'
 import { PiSegmentGrid, PiLegend } from '@/features/pi/shared/PiSegmentGrid'
 import {
-  buildMaintenanceBatches, segmentResultsFromRun, type MaintainBatch,
+  buildMaintenanceBatches, rescheduleSegmentsFromRun, type MaintainBatch,
 } from '@/features/pi/maintain/piMaintain'
-import { loadMaintainStore, rescheduleSegment } from '@/features/pi/maintain/piMaintainStore'
+import { loadMaintainStore } from '@/features/pi/maintain/piMaintainStore'
 import type { AnswerMode } from '@/core/types'
 
 type Phase = 'setup' | 'quiz'
@@ -66,9 +66,7 @@ export function PiMaintainTab({ answerMode, maxPiPairs }: Props) {
   const handleQuizComplete = useCallback((completion: PiQuizCompletion) => {
     // Status dots (shared per-segment try log) + SM-2 reschedule per segment.
     recordSegmentTries(completion.anchor, completion.correctness)
-    for (const { seg, ok } of segmentResultsFromRun(completion.anchor, completion.correctness)) {
-      rescheduleSegment(seg, ok)
-    }
+    rescheduleSegmentsFromRun(completion.anchor, completion.correctness)
   }, [])
 
   const exitToSetup = useCallback(() => {

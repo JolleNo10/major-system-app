@@ -60,7 +60,7 @@ flowchart TD
 ```
 
 For dependencies, `memo/`, `recite/`, and `maintain/` use `shared/`.
-`recite/` may seed the maintenance schedule after a first flawless Full run;
+`recite/` may advance the maintenance schedule after a whole-segment Full run;
 Maintain remains the owner of scheduling semantics. All workflows consume the
 Major System word provider through `@/features/major-system`.
 
@@ -130,8 +130,9 @@ unless a concrete external consumer requires them.
   Practice. From-start records require strict non-zero reach improvement.
 - Live segment status comes from recent `piseg:` tries. Memoed and flawlessly
   recited milestones remain separate from live status.
-- Full recitation may seed an absent maintenance schedule once. Re-reciting does
-  not advance it; Maintain completion reschedules it.
+- Whole-segment Recite and Maintain completions both reschedule the per-segment
+  maintenance schedule using their binary pass/fail result. Partial runs leave
+  segment schedules unchanged.
 - Maintain eligibility is recited weak/learned content. New content is excluded
   and breaks contiguous batches.
 - Anchors records neither normal Pi attempts nor sessions/segment progress; its

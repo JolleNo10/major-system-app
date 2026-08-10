@@ -1,14 +1,30 @@
-import { describe, it, expect } from 'vitest'
+import { beforeEach, describe, it, expect } from 'vitest'
 import { DAY_MS, DEFAULTS, type ItemRecord } from '@/core/scoring/itemStore'
 import type { PiSegmentStatus } from '@/features/pi/shared/piStats'
-import { buildMaintenanceBatches, segmentResultsFromRun } from '@/features/pi/maintain/piMaintain'
-import type { MaintainStore } from '@/features/pi/maintain/piMaintainStore'
+import {
+  buildMaintenanceBatches, rescheduleSegmentsFromRun, segmentResultsFromRun,
+} from '@/features/pi/maintain/piMaintain'
+import {
+  loadMaintainStore, saveMaintainStore, type MaintainStore,
+} from '@/features/pi/maintain/piMaintainStore'
 
 const NOW = 1_700_000_000_000
 
 function rec(dueAt: number): ItemRecord {
   return { ...DEFAULTS, dueAt }
 }
+
+beforeEach(() => {
+  const mem = new Map<string, string>()
+  globalThis.localStorage = {
+    getItem: (key: string) => mem.get(key) ?? null,
+    setItem: (key: string, value: string) => mem.set(key, value),
+    removeItem: (key: string) => mem.delete(key),
+    clear: () => mem.clear(),
+    key: () => null,
+    get length() { return mem.size },
+  } as Storage
+})
 
 describe('segmentResultsFromRun', () => {
   it('returns nothing for an empty run', () => {
@@ -120,5 +136,28 @@ describe('buildMaintenanceBatches', () => {
     expect(due).toHaveLength(1)
     expect(due[0].dueCount).toBe(1)
     expect(due[0].nextDueMs).toBe(3 * DAY_MS)
+  })
+})
+
+describe('rescheduleSegmentsFromRun', () => {
+  it('advances an already-due batch after a flawless Recite run', () => {
+    const now = Date.now()
+    const store = Object.fromEntries(
+      [50, 51, 52, 53, 54].map(seg => [seg, {
+        ...DEFAULTS,
+        dueAt: now - 2 * DAY_MS,
+        lastSeenAt: now - 3 * DAY_MS,
+      }]),
+    )
+    saveMaintainStore(store)
+
+    rescheduleSegmentsFromRun(501, Array(50).fill(true))
+
+    const statuses = Array(55).fill('new') as PiSegmentStatus[]
+    for (const seg of [50, 51, 52, 53, 54]) statuses[seg] = 'learned'
+    const { due } = buildMaintenanceBatches(
+      statuses, loadMaintainStore(), 5, 55, Date.now(),
+    )
+    expect(due).toEqual([])
   })
 })
