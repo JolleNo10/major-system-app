@@ -170,6 +170,41 @@ describe('World Countries Memo hierarchy rail rows', () => {
     expect(onSelectSubregion).toHaveBeenCalledWith('balkans')
   })
 
+  it('hides the next-to-memo panel for the current next subregion', async () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(SubregionOverviewRails, {
+        phase: 'overview',
+        navigation: {
+          continent: 'Europe',
+          subregion: 'balkans',
+          onWorld: vi.fn(),
+          onContinent: vi.fn(),
+          nextSubregion: { id: 'balkans', label: 'Balkans', continent: 'Europe' },
+          onSelectSubregion: vi.fn(),
+        },
+        content: {
+          entries: [],
+          learned: false,
+          mnemonicVersion: 0,
+          onMnemonicChanged: vi.fn(),
+        },
+        onEditOrder: vi.fn(),
+      }))
+    })
+
+    const railConfig = useRailsMock.mock.calls[0][0] as { right: ReactNode }
+    await act(async () => {
+      root?.render(railConfig.right)
+    })
+
+    expect(mount.textContent).not.toContain('Next to memo')
+    expect(mount.textContent).toContain('Memory aid')
+  })
+
   it('hides the next-to-memo action during active subregion learning', async () => {
     const mount = document.createElement('div')
     document.body.append(mount)

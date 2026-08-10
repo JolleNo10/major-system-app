@@ -225,7 +225,7 @@ export function SubregionOverviewRails({
   const { continent, subregion, onWorld, onContinent, nextSubregion, onSelectSubregion } = navigation
   const { entries, learned, mnemonicVersion, onMnemonicChanged } = content
   const visible = phase !== 'ordered-recall' && phase !== 'complete'
-  const showNextToMemo = phase === 'overview'
+  const showNextToMemo = phase === 'overview' && nextSubregion?.id !== subregion
 
   useRails(
     {

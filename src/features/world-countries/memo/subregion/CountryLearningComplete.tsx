@@ -1,7 +1,12 @@
 import type { SubregionId } from '@/features/world-countries/data/subregions'
 import { getSubregionDefinition } from '@/features/world-countries/data/subregions'
 
-export function CountryLearningComplete({ subregion, onDone, onRestart }: { subregion: SubregionId; onDone: () => void; onRestart: () => void }) {
+export function CountryLearningComplete({ subregion, countryCount, onDone, onRestart }: {
+  subregion: SubregionId
+  countryCount: number
+  onDone: () => void
+  onRestart: () => void
+}) {
   return (
     <div className="space-y-4 animate-fade-in">
       <header>
@@ -9,7 +14,7 @@ export function CountryLearningComplete({ subregion, onDone, onRestart }: { subr
         <h1 className="mt-1 text-2xl font-bold text-zinc-100">{getSubregionDefinition(subregion).label} complete ✓</h1>
       </header>
       <section className="rounded-xl border border-green-500/30 bg-green-500/10 p-5">
-        <p className="text-sm leading-relaxed text-green-200">You completed one clean ordered recall from country #1 through country #N. This durable learning result is now recorded for the Subregion.</p>
+        <p className="text-sm leading-relaxed text-green-200">You completed one clean ordered recall from country #1 through country #{countryCount}. This durable learning result is now recorded for the Subregion.</p>
       </section>
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={onDone} className="flex-1 rounded-lg bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500">Back to Subregion</button>
