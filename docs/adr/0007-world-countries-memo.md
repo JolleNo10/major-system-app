@@ -1,5 +1,12 @@
 # ADR 0007 — World Countries Memo workflow
 
+> **Archived legacy change record.** This mixed-purpose feature specification is
+> retained at its original path for history and stable links. It is not an
+> architectural or delivery authority. Use the current
+> [World Countries architecture](../architecture/features/WORLD_COUNTRIES.md),
+> source, tests, and any named Change Spec. See the
+> [classification ledger](LEGACY_CLASSIFICATION.md).
+
 * **Status:** Accepted
 * **Date:** 2026-08-08
 * **Builds on:** ADR 0005 — Shared learning model

@@ -1,5 +1,12 @@
 # ADR 0010 — World Countries feature architecture and structural reset
 
+> **Legacy expanded ADR.** The capability-ownership and structural decisions
+> and their rationale are retained. Migration sequencing, validation,
+> acceptance, and implementation guidance is historical delivery detail. See
+> the [classification ledger](LEGACY_CLASSIFICATION.md), current
+> [World Countries architecture](../architecture/features/WORLD_COUNTRIES.md),
+> and [system architecture](../architecture/SYSTEM.md).
+
 * **Status:** Accepted
 * **Date:** 2026-08-09
 * **Builds on:** ADR 0007 — World Countries Memo workflow

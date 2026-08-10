@@ -1,5 +1,12 @@
 # ADR 0006 — Reusable mnemonic stories for Pi and Geography
 
+> **Legacy expanded ADR.** The architectural decision and rationale are
+> retained. UX, implementation phases, acceptance criteria, and agent guidance
+> in this record are historical delivery detail, not current requirements. See
+> the [classification ledger](LEGACY_CLASSIFICATION.md) and current
+> [Core](../architecture/CORE.md) and
+> [persistence](../architecture/PERSISTENCE.md) architecture.
+
 - **Status:** Accepted
 - **Date:** 2026-08-08
 - **Builds on:** ADR 0005 — Shared learning model

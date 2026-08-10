@@ -2,6 +2,7 @@
 
 * **Status:** Accepted
 * **Date:** 2026-08-09
+* **Refined by:** [ADR 0021](0021-separate-architectural-decisions-from-change-specifications.md)
 * **Scope:** Repository-wide coding-agent context and architecture documentation
 * **Goal:** Route coding agents to the minimum sufficient context required to make structurally correct changes while preserving architectural invariants
 

@@ -1,5 +1,12 @@
 # ADR 0020: World Countries Memo Readiness and Drill Map Precedence
 
+> **Archived legacy change record.** This feature behavior specification is
+> retained at its original path for history and stable links. It is not an
+> architectural or delivery authority. Use the current
+> [World Countries architecture](../architecture/features/WORLD_COUNTRIES.md),
+> source, tests, and any named Change Spec. See the
+> [classification ledger](LEGACY_CLASSIFICATION.md).
+
 ## Status
 
 Accepted

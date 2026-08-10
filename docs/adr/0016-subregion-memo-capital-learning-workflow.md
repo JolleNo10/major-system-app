@@ -1,5 +1,13 @@
 # ADR 0016 — Subregion Memo capital-learning workflow
 
+> **Archived legacy change record.** This workflow specification is retained at
+> its original path for history and stable links. It is not an architectural or
+> delivery authority. Use current
+> [World Countries](../architecture/features/WORLD_COUNTRIES.md) and
+> [persistence](../architecture/PERSISTENCE.md) architecture, source, tests, and
+> any named Change Spec. See the
+> [classification ledger](LEGACY_CLASSIFICATION.md).
+
 * **Status:** Accepted
 * **Date:** 2026-08-10
 * **Builds on:** ADR 0009 — Subregion Memo country-learning workflow

@@ -1,5 +1,13 @@
 # ADR 0018: Map-Centered World Countries Drill Presentation
 
+> **Archived legacy change record.** This presentation and interaction
+> specification is retained at its original path for history and stable links.
+> It is not an architectural or delivery authority. Use current
+> [system](../architecture/SYSTEM.md) and
+> [World Countries](../architecture/features/WORLD_COUNTRIES.md) architecture,
+> source, tests, and any named Change Spec. See the
+> [classification ledger](LEGACY_CLASSIFICATION.md).
+
 ## Status
 
 Accepted

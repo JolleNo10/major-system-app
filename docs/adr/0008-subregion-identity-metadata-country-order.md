@@ -1,5 +1,12 @@
 # ADR 0008 — Subregion identity, metadata, and country order
 
+> **Legacy expanded ADR.** The stable-identity, metadata, and ordering decisions
+> and their rationale are retained. Feature behavior, validation, acceptance,
+> and implementation material is historical delivery detail. See the
+> [classification ledger](LEGACY_CLASSIFICATION.md), current
+> [World Countries architecture](../architecture/features/WORLD_COUNTRIES.md),
+> and [persistence architecture](../architecture/PERSISTENCE.md).
+
 * **Status:** Accepted
 * **Date:** 2026-08-08
 * **Builds on:** ADR 0007 — World Countries Memo workflow

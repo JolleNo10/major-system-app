@@ -1,5 +1,13 @@
 # ADR 0015 — Continent Subregion learning order
 
+> **Archived legacy change record.** This feature specification is retained at
+> its original path for history and stable links. It is not an architectural or
+> delivery authority. Use current
+> [World Countries](../architecture/features/WORLD_COUNTRIES.md) and
+> [persistence](../architecture/PERSISTENCE.md) architecture, source, tests, and
+> any named Change Spec. See the
+> [classification ledger](LEGACY_CLASSIFICATION.md).
+
 * **Status:** Accepted
 * **Date:** 2026-08-09
 * **Builds on:** ADR 0008 — Subregion identity, metadata, and country order

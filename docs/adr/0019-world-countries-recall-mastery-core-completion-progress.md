@@ -1,5 +1,13 @@
 # ADR 0019: World Countries Recall Mastery, Core Completion, and Progress
 
+> **Legacy expanded ADR.** The evidence, mastery, aggregation, retention, and
+> ownership decisions and their rationale are retained. Detailed product and QA
+> material is historical delivery detail. See the
+> [classification ledger](LEGACY_CLASSIFICATION.md), current
+> [World Countries](../architecture/features/WORLD_COUNTRIES.md),
+> [Core](../architecture/CORE.md), and
+> [persistence](../architecture/PERSISTENCE.md) architecture.
+
 ## Status
 
 Accepted

@@ -1,6 +1,12 @@
 # Issue tracker: GitHub
 
-Issues and PRDs for this repo live as GitHub issues. Use the `gh` CLI for all operations.
+GitHub issues own work tracking, assignment, triage, and discussion. A
+substantial feature or functionality change may link a repository Change Spec
+under `docs/changes/`; that spec is the compiled delivery contract, while the
+issue remains the live work item. Small fixes can remain fully specified in the
+issue. Follow `docs/changes/README.md` when a Change Spec is needed.
+
+Use the `gh` CLI for issue operations.
 
 ## How bugs and small fixes are registered
 
@@ -38,6 +44,9 @@ bug "WordListGrid crashes when CSV has BOM"
 ## Conventions
 
 - **Create an issue**: `gh issue create --title "..." --body "..."`. Use a heredoc for multi-line bodies.
+- **Link a Change Spec**: add its repository path to the issue body and add the
+  issue URL to the Change Spec metadata. A `ready-for-agent` issue with a Change
+  Spec must link a spec whose status is `Ready`.
 - **Read an issue**: `gh issue view <number> --comments`, filtering comments by `jq` and also fetching labels.
 - **List issues**: `gh issue list --state open --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'` with appropriate `--label` and `--state` filters.
 - **Comment on an issue**: `gh issue comment <number> --body "..."`

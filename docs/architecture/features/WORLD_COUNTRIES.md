@@ -74,7 +74,10 @@ tracks.
 - `drill/` — Drill-only setup and preferences, Continent/Subregion selection,
   four recall-mode definitions, visible Country scheduling, active session
   orchestration, and results. A Drill mode is a workflow combination of
-  atomic learning skills; it is not part of learning-evidence identity.
+  atomic learning skills; it is not part of learning-evidence identity. Drill
+  is map-centered in both setup and active recall: scope and supporting controls
+  adapt around the map through the established PageLayout rails, while the
+  center retains the map and essential answer interaction.
 - `recite/`, `maintenance/` — sibling workflow owners for complete recall and
   review selection. They may consume shared World Countries evidence without
   importing Drill internals.
