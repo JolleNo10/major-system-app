@@ -7,12 +7,12 @@ import {
   getNextSubregionToMemo,
   getSubregionMemoReadinessProgress,
   type MemoLearningStates,
+  type MemoMilestone,
   type MemoReadinessProgress,
 } from './memoProgress'
 import {
   deriveWorldCountriesMemoReadinessFromTracks,
   getWorldCountriesMemoReadinessLabel,
-  type WorldCountriesMemoReadiness,
 } from '@/features/world-countries/learning/memoReadiness'
 import { getContinentHoverGroupId, getSubregionHoverGroupId } from '@/features/world-countries/maps/geographyMapAdapter'
 import { countryCapitalMnemonicId, subregionMnemonicId } from '@/features/world-countries/mnemonics/geographyMnemonicIds'
@@ -134,7 +134,7 @@ export function ContinentOverviewRails({
                   onClick={() => onSelectSubregion(subregion.id)}
                   onHoverGroup={onHoverGroup}
                   sequenceNumber={index + 1}
-                  trailing={getMemoReadinessLabel(getSubregionMemoReadinessProgress(subregion.id, learningStates).readiness)}
+                  trailing={getWorldCountriesMemoReadinessLabel(getSubregionMemoReadinessProgress(subregion.id, learningStates).readiness)}
                 />
               ))}
             </ol>
@@ -277,7 +277,7 @@ export function SubregionOverviewRails({
             {phase === 'overview' ? (
               <div className="mt-1 space-y-1 text-sm font-semibold">
                 <p className="text-violet-300">
-                  Memo readiness: {getMemoReadinessLabel(deriveWorldCountriesMemoReadinessFromTracks(learned, capitalsLearned))}
+                  Memo readiness: {getWorldCountriesMemoReadinessLabel(deriveWorldCountriesMemoReadinessFromTracks(learned, capitalsLearned))}
                 </p>
                 <p className={learned ? 'text-green-300' : 'text-zinc-300'}>
                   {learned ? 'Countries learned ✓' : 'Countries not learned'}
@@ -403,31 +403,27 @@ function ProgressSummary({ label, progress }: { label: string; progress: MemoRea
     <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3" aria-label={label}>
       <p className="text-xs uppercase tracking-wider text-zinc-500">{label}</p>
       <div className="mt-3 space-y-3">
-        <MemoMilestone label="Countries memoed" count={progress.countriesMemoedCount} total={progress.totalSubregions} ratio={progress.countriesMemoedRatio} color="bg-violet-500" />
-        <MemoMilestone label="Countries + Capitals memoed" count={progress.countriesAndCapitalsMemoedCount} total={progress.totalSubregions} ratio={progress.countriesAndCapitalsMemoedRatio} color="bg-fuchsia-500" />
+        <MemoMilestone label="Countries memoed" milestone={progress.countriesMemoed} color="bg-violet-500" />
+        <MemoMilestone label="Countries + Capitals memoed" milestone={progress.countriesAndCapitalsMemoed} color="bg-fuchsia-500" />
       </div>
     </div>
   )
 }
 
-function MemoMilestone({ label, count, total, ratio, color }: { label: string; count: number; total: number; ratio: number; color: string }) {
+function MemoMilestone({ label, milestone, color }: { label: string; milestone: MemoMilestone; color: string }) {
   return (
     <div>
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-xs text-zinc-400">{label}</span>
-        <span className="text-xs font-semibold tabular-nums text-zinc-200">{count}/{total} Subregions</span>
+        <span className="text-xs font-semibold tabular-nums text-zinc-200">{milestone.count}/{milestone.total} Subregions</span>
       </div>
       <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-zinc-800">
-        <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${ratio * 100}%` }} />
+        <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${milestone.ratio * 100}%` }} />
       </div>
     </div>
   )
 }
 
 function formatContinentProgress(progress: MemoReadinessProgress): string {
-  return `${progress.countriesMemoedCount}/${progress.totalSubregions} Subregions`
-}
-
-function getMemoReadinessLabel(readiness: WorldCountriesMemoReadiness | undefined): string {
-  return getWorldCountriesMemoReadinessLabel(readiness ?? 'NOT_MEMOED')
+  return `${progress.countriesMemoed.count}/${progress.countriesMemoed.total} Subregions`
 }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import { countriesToSvgIds } from '@/features/world-countries/maps/countryMapIds'
 import { SvgMapView, type SvgMapCountry } from '@/features/world-countries/maps/SvgMapView'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
@@ -15,6 +15,8 @@ export interface CountryLearningMapProps {
   showHighlightedNames?: boolean
   /** Optional caller-owned result/overview progress colors. */
   countryColorsById?: ReadonlyMap<string, string>
+  /** Optional non-color descriptions for mapped Countries. */
+  countryAccessibleDescriptionsById?: ReadonlyMap<string, string>
   onCountryClick?: (countryId: string) => void
   ariaLabel: string
 }
@@ -37,6 +39,7 @@ export function CountryLearningMap({
   highlightedCountryId = null,
   showHighlightedNames = true,
   countryColorsById,
+  countryAccessibleDescriptionsById,
   onCountryClick,
   ariaLabel,
 }: CountryLearningMapProps) {
@@ -69,23 +72,38 @@ export function CountryLearningMap({
       : [],
     [countryColorsById, discoveredIds, scopeCountries],
   )
+  const descriptionId = `country-learning-map-descriptions-${useId().replace(/:/g, '')}`
+  const countryDescriptions = useMemo(
+    () => countryAccessibleDescriptionsById
+      ? scopeCountries.map(country => `${country.country}: ${countryAccessibleDescriptionsById.get(country.id) ?? 'No mapped status description.'}`)
+      : [],
+    [countryAccessibleDescriptionsById, scopeCountries],
+  )
 
   return (
-    <SvgMapView
-      svgUrl={definition.svgUrl}
-      ariaLabel={ariaLabel}
-      highlightedIds={highlightedSvgIds}
-      mutedIds={discoveredIds.filter(id => !scopeSvgIds.includes(id))}
-      namedIds={namedSvgIds}
-      countryLabels={countryLabels}
-      countryColors={countryColors}
-      zoomIds={zoomIds}
-      settings={{ showHighlightedNames }}
-      onCountriesLoaded={setDiscovered}
-      onCountryClick={svgId => {
-        const country = getCountryForSvgId(svgId, scopeCountries)
-        if (country) onCountryClick?.(country.id)
-      }}
-    />
+    <div className="space-y-2">
+      <SvgMapView
+        svgUrl={definition.svgUrl}
+        ariaLabel={ariaLabel}
+        ariaDescribedBy={countryDescriptions.length ? descriptionId : undefined}
+        highlightedIds={highlightedSvgIds}
+        mutedIds={discoveredIds.filter(id => !scopeSvgIds.includes(id))}
+        namedIds={namedSvgIds}
+        countryLabels={countryLabels}
+        countryColors={countryColors}
+        zoomIds={zoomIds}
+        settings={{ showHighlightedNames }}
+        onCountriesLoaded={setDiscovered}
+        onCountryClick={svgId => {
+          const country = getCountryForSvgId(svgId, scopeCountries)
+          if (country) onCountryClick?.(country.id)
+        }}
+      />
+      {countryDescriptions.length > 0 && (
+        <ul id={descriptionId} className="sr-only" aria-label="Country map descriptions">
+          {countryDescriptions.map(description => <li key={description}>{description}</li>)}
+        </ul>
+      )}
+    </div>
   )
 }

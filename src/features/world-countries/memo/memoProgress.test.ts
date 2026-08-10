@@ -28,14 +28,12 @@ describe('World Countries Memo geography', () => {
       { subregionId: 'east-asia' as const, countriesLearnedAt: 2, capitalsLearnedAt: 3 },
     ]
     expect(getWorldMemoReadinessProgress(states, sample)).toMatchObject({
-      totalSubregions: 2,
-      countriesMemoedCount: 2,
-      countriesAndCapitalsMemoedCount: 1,
+      countriesMemoed: { count: 2, total: 2, ratio: 1 },
+      countriesAndCapitalsMemoed: { count: 1, total: 2, ratio: 0.5 },
     })
     expect(getContinentMemoReadinessProgress('Europe', states, sample)).toMatchObject({
-      totalSubregions: 1,
-      countriesMemoedCount: 1,
-      countriesAndCapitalsMemoedCount: 0,
+      countriesMemoed: { count: 1, total: 1, ratio: 1 },
+      countriesAndCapitalsMemoed: { count: 0, total: 1, ratio: 0 },
     })
   })
 
@@ -50,7 +48,7 @@ describe('World Countries Memo geography', () => {
   })
 
   it('uses the bundled records as the default world source', () => {
-    expect(getWorldMemoReadinessProgress([]).totalSubregions).toBeGreaterThan(0)
+    expect(getWorldMemoReadinessProgress([]).countriesMemoed.total).toBeGreaterThan(0)
     expect(countries.length).toBeGreaterThan(0)
   })
 })

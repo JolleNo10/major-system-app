@@ -4,6 +4,7 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MemoMap } from '@/features/world-countries/memo/MemoMap'
+import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import { GeographyOverviewMap } from './GeographyOverviewMap'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -206,5 +207,41 @@ describe('GeographyOverviewMap', () => {
     })
 
     expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toBe('#16a34a')
+  })
+
+  it('exposes non-color descriptions on individual Country maps', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      text: async () => `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+          <g><path id="Norway"/><text id="Norway_label">Norway</text></g>
+        </svg>`,
+    })))
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(CountryLearningMap, {
+        continent: 'Europe',
+        scopeCountries: [{
+          id: 'NO',
+          country: 'Norway',
+          capital: 'Oslo',
+          continent: 'Europe',
+          subregionId: 'northern-europe',
+          subregion: 'Northern Europe',
+        }],
+        countryAccessibleDescriptionsById: new Map([['NO', 'Memo readiness: Countries memoed.']]),
+        ariaLabel: 'Drill results map',
+      }))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const map = mount.querySelector('[role="img"]')
+    const descriptionId = map?.getAttribute('aria-describedby')
+    expect(descriptionId).toBeTruthy()
+    expect(mount.querySelector(`#${descriptionId}`)?.textContent).toContain('Norway: Memo readiness: Countries memoed.')
   })
 })

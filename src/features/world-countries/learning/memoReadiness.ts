@@ -19,32 +19,42 @@ export const WORLD_COUNTRIES_MEMO_READINESS_COLORS: Readonly<Record<WorldCountri
   COUNTRIES_AND_CAPITALS_MEMOED: '#c026d3',
 }
 
+const WORLD_COUNTRIES_MEMO_READINESS_LABELS: Readonly<Record<WorldCountriesMemoReadiness, string>> = {
+  NOT_MEMOED: 'Not memoed',
+  COUNTRIES_MEMOED: 'Countries memoed',
+  COUNTRIES_AND_CAPITALS_MEMOED: 'Countries + Capitals memoed',
+}
+
+const WORLD_COUNTRIES_MEMO_READINESS_DESCRIPTIONS: Readonly<Record<WorldCountriesMemoReadiness, string>> = {
+  NOT_MEMOED: 'The Countries Memo track is incomplete.',
+  COUNTRIES_MEMOED: 'Countries Memo is complete; Capital Memo is incomplete.',
+  COUNTRIES_AND_CAPITALS_MEMOED: 'Countries Memo and Capital Memo are complete.',
+}
+
 export const WORLD_COUNTRIES_MEMO_READINESS_LEGEND_ENTRIES: readonly ProgressMapLegendEntry[] = [
-  { state: 'NOT_MEMOED', label: 'Not memoed', color: WORLD_COUNTRIES_MEMO_READINESS_COLORS.NOT_MEMOED },
-  { state: 'COUNTRIES_MEMOED', label: 'Countries memoed', color: WORLD_COUNTRIES_MEMO_READINESS_COLORS.COUNTRIES_MEMOED },
-  { state: 'COUNTRIES_AND_CAPITALS_MEMOED', label: 'Countries + Capitals memoed', color: WORLD_COUNTRIES_MEMO_READINESS_COLORS.COUNTRIES_AND_CAPITALS_MEMOED },
+  ...WORLD_COUNTRIES_MEMO_READINESS_STATES.map(state => ({
+    state,
+    label: WORLD_COUNTRIES_MEMO_READINESS_LABELS[state],
+    color: WORLD_COUNTRIES_MEMO_READINESS_COLORS[state],
+  })),
 ]
 
 export function getWorldCountriesMemoReadinessLabel(readiness: WorldCountriesMemoReadiness): string {
-  if (readiness === 'COUNTRIES_MEMOED') return 'Countries memoed'
-  if (readiness === 'COUNTRIES_AND_CAPITALS_MEMOED') return 'Countries + Capitals memoed'
-  return 'Not memoed'
+  return WORLD_COUNTRIES_MEMO_READINESS_LABELS[readiness]
 }
 
 export function getWorldCountriesMemoReadinessDescription(readiness: WorldCountriesMemoReadiness): string {
-  if (readiness === 'COUNTRIES_MEMOED') return 'Countries Memo is complete; Capital Memo is incomplete.'
-  if (readiness === 'COUNTRIES_AND_CAPITALS_MEMOED') return 'Countries Memo and Capital Memo are complete.'
-  return 'The Countries Memo track is incomplete.'
+  return WORLD_COUNTRIES_MEMO_READINESS_DESCRIPTIONS[readiness]
 }
 
 /** Derive instructional readiness from the existing coarse Memo facts. */
 export function deriveWorldCountriesMemoReadiness(
   state: SubregionLearningState | null | undefined,
 ): WorldCountriesMemoReadiness {
-  if (!isSubregionCountriesLearned(state)) return 'NOT_MEMOED'
-  return isSubregionCapitalsLearned(state)
-    ? 'COUNTRIES_AND_CAPITALS_MEMOED'
-    : 'COUNTRIES_MEMOED'
+  return deriveWorldCountriesMemoReadinessFromTracks(
+    isSubregionCountriesLearned(state),
+    isSubregionCapitalsLearned(state),
+  )
 }
 
 export function deriveWorldCountriesMemoReadinessFromTracks(
@@ -68,10 +78,9 @@ export function getMemoReadinessBySubregion(
 
 export function getMemoReadinessForCountry(
   country: Pick<Country, 'subregionId'>,
-  statesBySubregion: ReadonlyMap<SubregionId, SubregionLearningState | WorldCountriesMemoReadiness>,
+  readinessBySubregion: ReadonlyMap<SubregionId, WorldCountriesMemoReadiness>,
 ): WorldCountriesMemoReadiness {
-  const state = statesBySubregion.get(country.subregionId)
-  return typeof state === 'string' ? state : deriveWorldCountriesMemoReadiness(state)
+  return readinessBySubregion.get(country.subregionId) ?? 'NOT_MEMOED'
 }
 
 export function createWorldCountriesMemoReadinessColors(

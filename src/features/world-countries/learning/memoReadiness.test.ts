@@ -3,6 +3,7 @@ import {
   canEnterCapitalMemo,
   createWorldCountriesMemoReadinessByCountry,
   deriveWorldCountriesMemoReadiness,
+  getMemoReadinessBySubregion,
   getMemoReadinessForCountry,
   WORLD_COUNTRIES_MEMO_READINESS_COLORS,
   WORLD_COUNTRIES_MEMO_READINESS_LEGEND_ENTRIES,
@@ -51,8 +52,9 @@ describe('World Countries Memo readiness', () => {
   it('does not unlock Capital Memo for a Capitals-only legacy row', () => {
     const state = { subregionId: 'northern-europe' as const, capitalsLearnedAt: 456 }
     expect(canEnterCapitalMemo(state)).toBe(false)
-    expect(getMemoReadinessForCountry({ subregionId: 'northern-europe' }, new Map([
-      ['northern-europe', state],
-    ]))).toBe('NOT_MEMOED')
+    expect(getMemoReadinessForCountry(
+      { subregionId: 'northern-europe' },
+      getMemoReadinessBySubregion([state]),
+    )).toBe('NOT_MEMOED')
   })
 })

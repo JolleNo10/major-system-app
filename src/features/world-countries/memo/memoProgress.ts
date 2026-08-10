@@ -8,15 +8,20 @@ import {
   type WorldCountriesMemoReadiness,
 } from '@/features/world-countries/learning/memoReadiness'
 
+export interface MemoMilestone {
+  count: number
+  total: number
+  ratio: number
+}
+
 export interface MemoReadinessProgress {
-  totalSubregions: number
-  countriesMemoedCount: number
-  countriesAndCapitalsMemoedCount: number
-  countriesMemoedRatio: number
-  countriesAndCapitalsMemoedRatio: number
+  countriesMemoed: MemoMilestone
+  countriesAndCapitalsMemoed: MemoMilestone
   readinessBySubregion: ReadonlyMap<SubregionId, WorldCountriesMemoReadiness>
-  /** Present for the one-Subregion progress row. */
-  readiness?: WorldCountriesMemoReadiness
+}
+
+export interface SubregionMemoReadinessProgress extends MemoReadinessProgress {
+  readiness: WorldCountriesMemoReadiness
 }
 
 export type MemoLearningStates = WorldCountriesMemoLearningStates
@@ -44,13 +49,16 @@ function getMemoReadinessProgressForSubregions(
   const countriesAndCapitalsMemoedCount = [...readinessBySubregion.values()]
     .filter(readiness => readiness === 'COUNTRIES_AND_CAPITALS_MEMOED').length
   return {
-    totalSubregions,
-    countriesMemoedCount,
-    countriesAndCapitalsMemoedCount,
-    countriesMemoedRatio: totalSubregions ? countriesMemoedCount / totalSubregions : 0,
-    countriesAndCapitalsMemoedRatio: totalSubregions
-      ? countriesAndCapitalsMemoedCount / totalSubregions
-      : 0,
+    countriesMemoed: {
+      count: countriesMemoedCount,
+      total: totalSubregions,
+      ratio: totalSubregions ? countriesMemoedCount / totalSubregions : 0,
+    },
+    countriesAndCapitalsMemoed: {
+      count: countriesAndCapitalsMemoedCount,
+      total: totalSubregions,
+      ratio: totalSubregions ? countriesAndCapitalsMemoedCount / totalSubregions : 0,
+    },
     readinessBySubregion,
   }
 }
@@ -78,7 +86,7 @@ export function getSubregionMemoReadinessProgress(
   subregion: SubregionId,
   states: MemoLearningStates,
   entries: readonly Country[] = countries,
-): MemoReadinessProgress {
+): SubregionMemoReadinessProgress {
   const currentSubregionIds = new Set(entries.map(country => country.subregionId))
   const subregionIds = currentSubregionIds.has(subregion) ? [subregion] : []
   const progress = getMemoReadinessProgressForSubregions(subregionIds, states)

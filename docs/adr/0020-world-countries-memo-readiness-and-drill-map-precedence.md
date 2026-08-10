@@ -490,3 +490,22 @@ When this ADR is implemented, update
 
 Do not add a `Confirmation` section until implementation has been completed and
 verified against the repository.
+
+## Confirmation
+
+Implementation and review follow-up completed on 2026-08-10.
+
+* The initial palette was checked with protanopia, deuteranopia, and tritanopia
+  matrix simulations. Protanopia and deuteranopia compress the two purple
+  readiness fills, so the implementation does not rely on hue alone: legends
+  pair every swatch with text, Memo rails expose readiness text, and mapped
+  Countries expose accessible readiness descriptions. Drill setup and results
+  now expose the same non-color descriptions for their readiness fallback and
+  evidence-based state.
+* The representative seven-state review covers the shared World and Continent
+  map surfaces: the three readiness states and four Drill states are rendered
+  in separate, responsive flex-wrapped legend groups; `Complete` replaces
+  `Mastered` for the combined mode; and teal/cyan remains documented as
+  temporary hover or recall focus rather than progress.
+* Focused and full verification completed with `npx tsc -b`, `npx vitest run`,
+  and `npx vite build`.

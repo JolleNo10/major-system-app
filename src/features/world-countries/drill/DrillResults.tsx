@@ -10,7 +10,7 @@ import type { WorldCountriesProgressPerspective } from '@/features/world-countri
 import { useWorldCountriesCountryColors } from '@/features/world-countries/learning/useWorldCountriesCountryColors'
 import { DrillProgressLegend } from './DrillProgressLegend'
 import { getAllSubregionLearningStates } from '@/features/world-countries/learning/subregionLearningStore'
-import { createDrillProgressColors } from './drillProgressPresentation'
+import { createDrillProgressColors, createDrillProgressDescriptions } from './drillProgressPresentation'
 
 export function DrillResults({
   mode,
@@ -39,7 +39,13 @@ export function DrillResults({
   })
   const countryColorsById = useMemo(
     () => recallProgress
-      ? createDrillProgressColors(mode, scopeCountries, recallProgress, memoLearningStates)
+      ? createDrillProgressColors({ mode, scopeCountries, recallProgress, learningStates: memoLearningStates })
+      : undefined,
+    [memoLearningStates, mode, recallProgress, scopeCountries],
+  )
+  const countryAccessibleDescriptionsById = useMemo(
+    () => recallProgress
+      ? createDrillProgressDescriptions({ mode, scopeCountries, recallProgress, learningStates: memoLearningStates })
       : undefined,
     [memoLearningStates, mode, recallProgress, scopeCountries],
   )
@@ -65,6 +71,7 @@ export function DrillResults({
           scopeCountries={scopeCountries}
           showNames
           countryColorsById={countryColorsById}
+          countryAccessibleDescriptionsById={countryAccessibleDescriptionsById}
           ariaLabel={`Results map for ${continent} Drill Countries`}
         />
         <DrillProgressLegend mode={mode} />

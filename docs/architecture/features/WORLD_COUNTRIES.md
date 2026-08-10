@@ -282,9 +282,9 @@ adapters, and map adapters remain private until a real external consumer exists.
 - Drill session accuracy is transient and distinct from durable proficiency,
   mastery, and Country completeness. Drill setup and results maps present the
   current mode's durable progress perspective with a legend while keeping
-  geographic scope selection visually separate. Multi-skill results expose
-  per-skill summaries. Active recall maps do not render target-revealing
-  progress.
+  geographic scope selection visually separate; mapped Countries also expose
+  non-color status descriptions. Multi-skill results expose per-skill summaries.
+  Active recall maps do not render target-revealing progress.
 - Capital learning, review, and direct practice require `countriesLearnedAt`;
   the overview keeps Capital actions visible but locked with `Complete
   Countries first.` until the gate is satisfied.

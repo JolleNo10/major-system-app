@@ -34,11 +34,8 @@ describe('World Countries Memo hierarchy rail rows', () => {
   it('synchronizes mouse and keyboard hover without using aria-current', async () => {
     const onHoverGroup = vi.fn()
     const progress: MemoReadinessProgress = {
-      totalSubregions: 1,
-      countriesMemoedCount: 0,
-      countriesAndCapitalsMemoedCount: 0,
-      countriesMemoedRatio: 0,
-      countriesAndCapitalsMemoedRatio: 0,
+      countriesMemoed: { count: 0, total: 1, ratio: 0 },
+      countriesAndCapitalsMemoed: { count: 0, total: 1, ratio: 0 },
       readinessBySubregion: new Map(),
     }
     const mount = document.createElement('div')
@@ -268,11 +265,8 @@ describe('World Countries Memo hierarchy rail rows', () => {
         ],
         learningStates: [],
         progress: {
-          totalSubregions: 1,
-          countriesMemoedCount: 0,
-          countriesAndCapitalsMemoedCount: 0,
-          countriesMemoedRatio: 0,
-          countriesAndCapitalsMemoedRatio: 0,
+          countriesMemoed: { count: 0, total: 1, ratio: 0 },
+          countriesAndCapitalsMemoed: { count: 0, total: 1, ratio: 0 },
           readinessBySubregion: new Map(),
         },
         hoveredGroupId: null,

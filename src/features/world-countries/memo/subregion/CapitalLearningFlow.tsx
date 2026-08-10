@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
 import type { SubregionId } from '@/features/world-countries/data/subregions'
 import { getSubregionLearningState } from '@/features/world-countries/learning/subregionLearningStore'
-import { isSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningState'
+import { canEnterCapitalMemo } from '@/features/world-countries/learning/memoReadiness'
 import {
   createCapitalLearningFlow,
   applyCapitalLearningTransition,
@@ -31,7 +31,7 @@ interface CapitalLearningFlowProps {
 }
 
 export function CapitalLearningFlow({ countriesLearned, ...props }: CapitalLearningFlowProps) {
-  const canEnter = countriesLearned ?? isSubregionCountriesLearned(getSubregionLearningState(props.subregion))
+  const canEnter = countriesLearned ?? canEnterCapitalMemo(getSubregionLearningState(props.subregion))
   if (!canEnter) return <CapitalMemoLocked onExit={props.onExit} />
   return <EnabledCapitalLearningFlow {...props} countriesLearned />
 }

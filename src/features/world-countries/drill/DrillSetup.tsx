@@ -13,7 +13,7 @@ import {
   type WorldCountriesDrillSelection,
 } from './drillSelection'
 import { getDrillModeDefinition, getSkillsForDrillMode, type WorldCountriesDrillMode } from './drillModes'
-import { createDrillProgressColors } from './drillProgressPresentation'
+import { createDrillProgressColors, createDrillProgressDescriptions } from './drillProgressPresentation'
 import { DrillSetupRails } from './DrillRails'
 import { DrillProgressLegend } from './DrillProgressLegend'
 
@@ -58,7 +58,11 @@ export function DrillSetup({
   }, [skills])
 
   const countryColorsById = useMemo(
-    () => recallProgress ? createDrillProgressColors(mode, countries, recallProgress, memoLearningStates) : undefined,
+    () => recallProgress ? createDrillProgressColors({ mode, scopeCountries: countries, recallProgress, learningStates: memoLearningStates }) : undefined,
+    [memoLearningStates, mode, recallProgress],
+  )
+  const countryAccessibleDescriptionsById = useMemo(
+    () => recallProgress ? createDrillProgressDescriptions({ mode, scopeCountries: countries, recallProgress, learningStates: memoLearningStates }) : undefined,
     [memoLearningStates, mode, recallProgress],
   )
 
@@ -104,6 +108,7 @@ export function DrillSetup({
           continent={level === 'continent' ? selection.continent : undefined}
           selectedSubregionIds={level === 'continent' ? selection.subregionIds : undefined}
           countryColorsById={countryColorsById}
+          countryAccessibleDescriptionsById={countryAccessibleDescriptionsById}
           hoveredGroupId={hoveredGroupId}
           onHoverGroup={onHoverGroup}
           onCountryClick={country => {
