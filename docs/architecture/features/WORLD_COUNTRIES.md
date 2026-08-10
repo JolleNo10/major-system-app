@@ -123,6 +123,7 @@ flowchart TD
     Memo --> Mnemonics
     Drill["drill/"] --> Geography
     Drill --> Learning
+    Drill --> Maps
     Recite["recite/"] --> Geography
     Recite --> Learning
     Maintenance["maintenance/"] --> Learning

@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   SvgMapController,
+  type SvgMapCountryColors,
   type SvgMapCountry,
+  type SvgMapHoverGroup,
   type SvgMapSettings,
 } from './SvgMapController'
 
@@ -13,6 +15,10 @@ export interface SvgMapViewProps {
   svgUrl: string
   highlightedIds?: readonly string[]
   mutedIds?: readonly string[]
+  hoverableIds?: readonly string[]
+  hoverGroups?: readonly SvgMapHoverGroup[]
+  hoveredId?: string | null
+  countryColors?: SvgMapCountryColors
   namedIds?: readonly string[]
   countryLabels?: Readonly<Record<string, string>>
   zoomIds?: readonly string[]
@@ -21,6 +27,7 @@ export interface SvgMapViewProps {
   className?: string
   ariaLabel: string
   onCountryClick?: (svgId: string) => void
+  onCountryHover?: (svgId: string | null) => void
   onCountriesLoaded?: (countries: readonly SvgMapCountry[]) => void
 }
 
@@ -29,6 +36,10 @@ export function SvgMapView({
   svgUrl,
   highlightedIds = [],
   mutedIds = [],
+  hoverableIds,
+  hoverGroups,
+  hoveredId = null,
+  countryColors = [],
   namedIds = [],
   countryLabels = EMPTY_COUNTRY_LABELS,
   zoomIds = [],
@@ -37,17 +48,20 @@ export function SvgMapView({
   className = '',
   ariaLabel,
   onCountryClick,
+  onCountryHover,
   onCountriesLoaded,
 }: SvgMapViewProps) {
   const mountRef = useRef<HTMLDivElement>(null)
   const controllerRef = useRef<SvgMapController | null>(null)
   const clickRef = useRef(onCountryClick)
+  const hoverRef = useRef(onCountryHover)
   const loadedRef = useRef(onCountriesLoaded)
   const [countries, setCountries] = useState<readonly SvgMapCountry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
   clickRef.current = onCountryClick
+  hoverRef.current = onCountryHover
   loadedRef.current = onCountriesLoaded
 
   useEffect(() => {
@@ -68,6 +82,7 @@ export function SvgMapView({
       .then(discovered => {
         if (cancelled) return
         controller.setCountryClickHandler(id => clickRef.current?.(id))
+        controller.setCountryHoverHandler(id => hoverRef.current?.(id))
         setCountries(discovered)
         loadedRef.current?.(discovered)
         setLoading(false)
@@ -92,8 +107,13 @@ export function SvgMapView({
     const controller = controllerRef.current
     if (!controller || countries.length === 0) return
     controller.updateSettings(settings)
+    if (hoverGroups !== undefined) controller.setHoverGroups(hoverGroups)
+    if (hoverableIds === undefined) controller.resetHoverableCountries()
+    else controller.setHoverableCountries(hoverableIds)
     controller.setHighlighted(highlightedIds)
     controller.setMutedCountries(mutedIds)
+    controller.clearColors()
+    controller.setCountryColors(countryColors)
     controller.clearCountryLabels()
     if (Object.keys(countryLabels).length) controller.setCountryLabels(countryLabels)
     const previouslyNamed = controller.getNamedIds()
@@ -101,7 +121,13 @@ export function SvgMapView({
     if (namedIds.length) controller.setNamesVisible(namedIds, true)
     if (zoomIds.length) controller.setZoomArea(zoomIds, zoomPadding)
     else controller.resetZoom()
-  }, [countries, countryLabels, highlightedIds, mutedIds, namedIds, settings, zoomIds, zoomPadding])
+  }, [countries, countryColors, countryLabels, highlightedIds, hoverGroups, hoverableIds, mutedIds, namedIds, settings, zoomIds, zoomPadding])
+
+  useEffect(() => {
+    const controller = controllerRef.current
+    if (!controller || countries.length === 0) return
+    controller.hoverCountry(hoveredId)
+  }, [countries, hoveredId])
 
   return (
     <div className="space-y-2">

@@ -147,9 +147,11 @@ export function DrillSession({
             highlightedCountryId={highlightedCountryId}
             namedCountryId={namedCountryId}
             showHighlightedNames={Boolean(namedCountryId)}
-            ariaLabel={isCapitalQuestion && !feedback
-              ? 'Map of the selected geographic scope without the target Country revealed'
-              : `Map with ${country.country} highlighted for Drill recall`}
+            ariaLabel={isLocationQuestion && !feedback
+              ? 'Map showing the selected location for recall without the Country name revealed'
+              : isCapitalQuestion && !feedback
+                ? 'Map of the selected geographic scope without the target Country revealed'
+                : `Map with ${country.country} highlighted for Drill recall`}
           />
           {feedback && <RecallFeedback correct={feedback.correct} message={feedbackText} />}
         </div>

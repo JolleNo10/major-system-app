@@ -3,6 +3,7 @@
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { MemoMap } from '@/features/world-countries/memo/MemoMap'
 import { GeographyOverviewMap } from './GeographyOverviewMap'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -86,5 +87,36 @@ describe('GeographyOverviewMap', () => {
       id: 'NO',
       subregionId: 'northern-europe',
     }))
+  })
+
+  it("preserves Memo's interactive treatment for map-only geography", async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      text: async () => `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+          <g><path id="Norway"/><text id="Norway_label">Norway</text></g>
+          <g><path id="Greenland"/><text id="Greenland_label">Greenland</text></g>
+          <g><path id="Western_Sahara"/><text id="Western_Sahara_label">Western Sahara</text></g>
+        </svg>`,
+    })))
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(MemoMap, {
+        level: 'world',
+        memoedCountryIds: new Set<string>(),
+      }))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const greenland = mount.querySelector('path#Greenland') as SVGPathElement | null
+    expect(greenland).not.toBeNull()
+    expect(greenland?.style.fill).toBe('#52525b')
+
+    await act(async () => greenland?.dispatchEvent(new Event('pointerenter', { bubbles: true })))
+    expect(greenland?.style.fill).toBe('#0f766e')
   })
 })

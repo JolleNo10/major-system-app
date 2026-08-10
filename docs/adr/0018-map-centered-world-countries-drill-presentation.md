@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Implemented
 
 ## Date
 
@@ -1012,4 +1012,16 @@ When implemented and verified:
 
 ## Confirmation
 
-Not yet implemented.
+Implemented and verified on 2026-08-10.
+
+The map-centered Drill setup, shared `maps/GeographyOverviewMap` capability,
+PageLayout rail presentation, active-recall map behavior, correction feedback,
+results workspace, and responsive drawer access are implemented. Drill now
+depends on the shared map capability without importing Memo internals, while
+`learning/CountryLearningMap` remains the Country-focused recall surface.
+
+Verification includes the World Countries integration suite, responsive setup
+and rail/map synchronization coverage, all four Drill modes, answer-correction
+timing, Memo map preservation, TypeScript compilation, and a production build.
+ADR 0017's scope, mode, and atomic learning-evidence semantics remain
+unchanged.

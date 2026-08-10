@@ -118,7 +118,7 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
       <DrillResults
         mode={preferences.mode}
         continent={preferences.continent}
-        entries={entries}
+        scopeCountries={entries}
         answers={answers}
         onAgain={start}
         onChangeSetup={exitToSetup}

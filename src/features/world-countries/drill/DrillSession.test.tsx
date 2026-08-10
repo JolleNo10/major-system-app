@@ -46,6 +46,7 @@ const sweden: Country = {
 let root: Root | null = null
 
 afterEach(() => {
+  vi.useRealTimers()
   act(() => root?.unmount())
   root = null
   document.body.replaceChildren()
@@ -75,6 +76,7 @@ describe('DrillSession map presentation', () => {
     const mapProps = learningMapMock.mock.calls[0][0] as Record<string, unknown>
     expect(mapProps.highlightedCountryId).toBe('NO')
     expect(mapProps.namedCountryId).toBeNull()
+    expect(mapProps.ariaLabel).toBe('Map showing the selected location for recall without the Country name revealed')
     expect(mount.textContent).toContain('Which country is this?')
   })
 
@@ -129,5 +131,63 @@ describe('DrillSession map presentation', () => {
     expect(mapProps.highlightedCountryId).toBe('NO')
     expect(mapProps.namedCountryId).toBe('NO')
     expect(mount.textContent).toContain('The correct country is Norway.')
+  })
+
+  it('advances promptly after correct feedback', async () => {
+    vi.useFakeTimers()
+    const onContinue = vi.fn()
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(DrillSession, {
+        answerMode: 'multiple-choice',
+        fuzzyMatching: false,
+        state: createDrillSession({ mode: 'countries', countryIds: ['NO'] }),
+        selection: createDrillSelection('Europe', ['northern-europe']),
+        entries: [norway],
+        onAnswer: vi.fn(),
+        onContinue,
+        onExit: vi.fn(),
+      }))
+    })
+
+    await act(async () => mount.querySelector('button')?.click())
+    expect(onContinue).not.toHaveBeenCalled()
+    await act(async () => vi.advanceTimersByTime(499))
+    expect(onContinue).not.toHaveBeenCalled()
+    await act(async () => vi.advanceTimersByTime(1))
+    expect(onContinue).toHaveBeenCalledWith(true)
+  })
+
+  it('keeps incorrect feedback visible for the correction interval', async () => {
+    vi.useFakeTimers()
+    const onContinue = vi.fn()
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(DrillSession, {
+        answerMode: 'multiple-choice',
+        fuzzyMatching: false,
+        state: createDrillSession({ mode: 'countries', countryIds: ['NO'] }),
+        selection: createDrillSelection('Europe', ['northern-europe']),
+        entries: [norway, sweden],
+        onAnswer: vi.fn(),
+        onContinue,
+        onExit: vi.fn(),
+      }))
+    })
+
+    const wrongAnswer = [...mount.querySelectorAll('button')]
+      .find(button => button.textContent?.includes('Sweden'))
+    await act(async () => wrongAnswer?.click())
+    await act(async () => vi.advanceTimersByTime(1799))
+    expect(onContinue).not.toHaveBeenCalled()
+    expect(mount.textContent).toContain('The correct country is Norway.')
+    await act(async () => vi.advanceTimersByTime(1))
+    expect(onContinue).toHaveBeenCalledWith(false)
   })
 })

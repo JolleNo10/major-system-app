@@ -3,6 +3,7 @@ import type { Continent, Country } from '@/features/world-countries/data/countri
 import type { SubregionId } from '@/features/world-countries/data/subregions'
 import { getContinents } from '@/features/world-countries/geography/queries'
 import { getContinentHoverGroupId, getSubregionHoverGroupId } from '@/features/world-countries/maps/geographyMapAdapter'
+import { DrillResultStat } from './DrillResultStat'
 import { getDrillSubregions, isEntireContinentSelection, type WorldCountriesDrillSelection } from './drillSelection'
 import { getDrillModeDefinition, getDrillSkillLabel, WORLD_COUNTRIES_DRILL_MODES, type WorldCountriesDrillMode } from './drillModes'
 import { getCurrentDrillStep, getDrillSessionTotalSteps, type DrillAnswerRecord, type DrillSessionState } from './drillSessionState'
@@ -300,19 +301,19 @@ export function DrillSessionRails({
 
 export function DrillResultsRails({
   mode,
-  entries,
+  scopeCountries,
   answers,
   onAgain,
   onChangeSetup,
 }: {
   mode: WorldCountriesDrillMode
-  entries: readonly Country[]
+  scopeCountries: readonly Country[]
   answers: readonly DrillAnswerRecord[]
   onAgain: () => void
   onChangeSetup: () => void
 }) {
   const summary = summarizeDrillAnswers(answers)
-  const countryById = new Map(entries.map(entry => [entry.id, entry]))
+  const countryById = new Map(scopeCountries.map(entry => [entry.id, entry]))
 
   useRails(
     {
@@ -323,8 +324,8 @@ export function DrillResultsRails({
             <h2 id="world-countries-drill-results-heading" className="mt-1 text-lg font-bold text-zinc-100">Results</h2>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <ResultStat label="Correct" value={`${summary.correct}/${answers.length}`} />
-            <ResultStat label="Accuracy" value={`${summary.accuracy}%`} />
+            <DrillResultStat label="Correct" value={`${summary.correct}/${answers.length}`} />
+            <DrillResultStat label="Accuracy" value={`${summary.accuracy}%`} />
           </div>
           <ol className="space-y-1.5" aria-label="Drill answers">
             {answers.map((answer, index) => (
@@ -355,17 +356,8 @@ export function DrillResultsRails({
       leftLabel: 'Results',
       rightLabel: 'Next action',
     },
-    [answers, entries, mode, onAgain, onChangeSetup, summary.accuracy, summary.correct],
+    [answers, mode, onAgain, onChangeSetup, scopeCountries, summary.accuracy, summary.correct],
   )
 
   return null
-}
-
-function ResultStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 px-2 py-3">
-      <p className="text-[10px] uppercase tracking-wider text-zinc-600">{label}</p>
-      <p className="mt-1 font-mono text-lg font-bold text-zinc-100">{value}</p>
-    </div>
-  )
 }
