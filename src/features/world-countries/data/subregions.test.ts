@@ -27,6 +27,10 @@ describe('stable World Countries geography identity', () => {
     })).toBe(true)
   })
 
+  it('has an answerable canonical Capital for every bundled Country', () => {
+    expect(countries.every(country => country.capital.trim().length > 0)).toBe(true)
+  })
+
   it('preserves the existing continent key values', () => {
     expect(CONTINENT_IDS).toMatchObject({ Africa: 'africa', Europe: 'europe', Oceania: 'oceania' })
   })

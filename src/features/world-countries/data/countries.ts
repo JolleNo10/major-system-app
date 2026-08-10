@@ -269,4 +269,11 @@ export const countries: Country[] = COUNTRY_RECORDS.map((entry, index) => {
   return { ...entry, id: COUNTRY_CODES[index], subregionId }
 })
 
+/** Return canonical Country membership without applying user-authored order. */
+export function getCanonicalCountryIdsForSubregion(subregionId: SubregionId): CountryId[] {
+  return countries
+    .filter(country => country.subregionId === subregionId)
+    .map(country => country.id)
+}
+
 export default countries;

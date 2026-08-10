@@ -4,9 +4,10 @@ import type { Continent, Country } from '@/features/world-countries/data/countri
 import { getSubregionDefinition, type SubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
 import { getContinentMemoProgress, getSubregionMemoProgress } from './memoProgress'
 import { getContinentHoverGroupId, getSubregionHoverGroupId } from '@/features/world-countries/maps/geographyMapAdapter'
-import { subregionMnemonicId } from '@/features/world-countries/mnemonics/geographyMnemonicIds'
+import { countryCapitalMnemonicId, subregionMnemonicId } from '@/features/world-countries/mnemonics/geographyMnemonicIds'
 import type { MemoProgress } from './memoProgress'
 import type { CountryLearningPhase } from '@/features/world-countries/learning/countryLearningFlow'
+import type { CapitalLearningPhase } from '@/features/world-countries/learning/capitalLearningFlow'
 import { MemoMnemonicCard } from './MemoMnemonicCard'
 
 interface WorldOverviewRailsProps {
@@ -191,12 +192,16 @@ interface SubregionRailNavigation {
 interface SubregionRailContent {
   entries: readonly Country[]
   learned: boolean
+  capitalsLearned: boolean
+  track: 'countries' | 'capitals'
+  capitalWalkthroughCountryId: string | null
+  capitalRecallCorrectionCountryId: string | null
   mnemonicVersion: number
   onMnemonicChanged: () => void
 }
 
 interface SubregionOverviewRailsProps {
-  phase: 'overview' | CountryLearningPhase
+  phase: 'overview' | CountryLearningPhase | CapitalLearningPhase
   navigation: SubregionRailNavigation
   content: SubregionRailContent
   onEditOrder: () => void
@@ -209,8 +214,21 @@ export function SubregionOverviewRails({
   onEditOrder,
 }: SubregionOverviewRailsProps) {
   const { continent, subregion, onWorld, onContinent } = navigation
-  const { entries, learned, mnemonicVersion, onMnemonicChanged } = content
-  const visible = phase !== 'ordered-recall' && phase !== 'complete'
+  const { entries, learned, capitalsLearned, track, capitalWalkthroughCountryId, capitalRecallCorrectionCountryId, mnemonicVersion, onMnemonicChanged } = content
+  const visible = phase !== 'ordered-recall' && phase !== 'recall' && phase !== 'complete'
+  const showSubregionMnemonic = visible && track === 'countries'
+  const capitalWalkthroughCountry = capitalWalkthroughCountryId
+    ? entries.find(entry => entry.id === capitalWalkthroughCountryId) ?? null
+    : null
+  const showCapitalMnemonic = visible && track === 'capitals' && phase === 'walkthrough' && capitalWalkthroughCountry !== null
+  const capitalRecallCorrectionCountry = capitalRecallCorrectionCountryId
+    ? entries.find(entry => entry.id === capitalRecallCorrectionCountryId) ?? null
+    : null
+  const showCapitalCorrectionMnemonic = track === 'capitals' && phase === 'recall' && capitalRecallCorrectionCountry !== null
+  const trackPresentation = {
+    countries: { learned, label: 'Countries' },
+    capitals: { learned: capitalsLearned, label: 'Capitals' },
+  }[track]
 
   useRails(
     {
@@ -231,9 +249,20 @@ export function SubregionOverviewRails({
 
           <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
             <p className="text-xs uppercase tracking-wider text-zinc-500">Learning status</p>
-            <p className={`mt-1 text-sm font-semibold ${learned ? 'text-green-300' : 'text-zinc-300'}`}>
-              {learned ? 'Countries learned ✓' : 'Countries not learned'}
-            </p>
+            {phase === 'overview' ? (
+              <div className="mt-1 space-y-1 text-sm font-semibold">
+                <p className={learned ? 'text-green-300' : 'text-zinc-300'}>
+                  {learned ? 'Countries learned ✓' : 'Countries not learned'}
+                </p>
+                <p className={capitalsLearned ? 'text-green-300' : 'text-zinc-300'}>
+                  {capitalsLearned ? 'Capitals learned ✓' : 'Capitals not learned'}
+                </p>
+              </div>
+            ) : (
+              <p className={`mt-1 text-sm font-semibold ${trackPresentation.learned ? 'text-green-300' : 'text-zinc-300'}`}>
+                {trackPresentation.learned ? `${trackPresentation.label} learned ✓` : `${trackPresentation.label} not learned`}
+              </p>
+            )}
           </div>
 
           <section aria-labelledby="learning-order-rail-heading">
@@ -256,7 +285,7 @@ export function SubregionOverviewRails({
           </section>
         </section>
       ) : undefined,
-      right: visible ? (
+      right: showSubregionMnemonic ? (
         <MemoMnemonicCard
           targetId={subregionMnemonicId(subregion)}
           title="Subregion memory aid"
@@ -265,11 +294,27 @@ export function SubregionOverviewRails({
           refreshKey={mnemonicVersion}
           onChanged={onMnemonicChanged}
         />
+      ) : showCapitalMnemonic && capitalWalkthroughCountry ? (
+        <MemoMnemonicCard
+          targetId={countryCapitalMnemonicId(capitalWalkthroughCountry)}
+          title={`${capitalWalkthroughCountry.country} ↔ ${capitalWalkthroughCountry.capital}`}
+          subtitle="Optional memory aid for this Country–Capital relationship"
+          refreshKey={`${capitalWalkthroughCountry.id}-${mnemonicVersion}`}
+          onChanged={onMnemonicChanged}
+        />
+      ) : showCapitalCorrectionMnemonic && capitalRecallCorrectionCountry ? (
+        <MemoMnemonicCard
+          targetId={countryCapitalMnemonicId(capitalRecallCorrectionCountry)}
+          title={`${capitalRecallCorrectionCountry.country} ↔ ${capitalRecallCorrectionCountry.capital}`}
+          subtitle="Optional memory aid for the correction"
+          refreshKey={`${capitalRecallCorrectionCountry.id}-${mnemonicVersion}`}
+          onChanged={onMnemonicChanged}
+        />
       ) : undefined,
       leftLabel: 'Learning context',
-      rightLabel: 'Memory aid',
+      rightLabel: showSubregionMnemonic || showCapitalMnemonic || showCapitalCorrectionMnemonic ? 'Memory aid' : undefined,
     },
-    [visible, continent, subregion, entries, learned, mnemonicVersion, onWorld, onContinent, onEditOrder, onMnemonicChanged],
+    [visible, showSubregionMnemonic, showCapitalMnemonic, showCapitalCorrectionMnemonic, capitalWalkthroughCountry, capitalRecallCorrectionCountry, continent, subregion, entries, track, trackPresentation.learned, trackPresentation.label, mnemonicVersion, onWorld, onContinent, onEditOrder, onMnemonicChanged],
   )
 
   return null

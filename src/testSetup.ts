@@ -11,3 +11,7 @@ if (jsdomWindow) {
     value: jsdomWindow.localStorage,
   })
 }
+
+// React 19 uses this flag to enable act() warnings/flush behavior in jsdom
+// tests that exercise interactive components.
+;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true

@@ -5,9 +5,11 @@ import { getSubregionDefinition, type SubregionId } from '@/features/world-count
 import { getCountriesForSubregionInEffectiveOrder } from '@/features/world-countries/geography/queries'
 import { getSubregionMetadata } from '@/features/world-countries/geography/subregionMetadataStore'
 import { getSubregionLearningState } from '@/features/world-countries/learning/subregionLearningStore'
-import { isSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningState'
+import { isSubregionCapitalsLearned, isSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningState'
 import type { CountryLearningEntryPoint, CountryLearningPhase } from '@/features/world-countries/learning/countryLearningFlow'
+import type { CapitalLearningPhase } from '@/features/world-countries/learning/capitalLearningFlow'
 import { SubregionOverviewRails } from '../WorldCountriesMemoRails'
+import { CapitalLearningFlow } from './CapitalLearningFlow'
 import { CountryLearningFlow } from './CountryLearningFlow'
 import { SubregionOverview } from './SubregionOverview'
 import { SubregionOrderEditor } from './SubregionOrderEditor'
@@ -32,7 +34,9 @@ export function SubregionMemoScreen({
   onWorld: () => void
 }) {
   const entries = useMemo(() => getCountriesForSubregionInEffectiveOrder(subregion, undefined, getSubregionMetadata(subregion)), [learningVersion, subregion])
-  const learned = isSubregionCountriesLearned(getSubregionLearningState(subregion))
+  const learningState = getSubregionLearningState(subregion)
+  const learned = isSubregionCountriesLearned(learningState)
+  const capitalsLearned = isSubregionCapitalsLearned(learningState)
   return (
     <div className="w-full">
       {/** This key discards all temporary session state when the effective order changes. */}
@@ -42,6 +46,7 @@ export function SubregionMemoScreen({
           subregion={subregion}
           entries={entries}
           learned={learned}
+          capitalsLearned={capitalsLearned}
           locationCleanTargetMinimum={locationCleanTargetMinimum}
           fuzzyMatching={fuzzyMatching}
           onLearningChanged={onLearningChanged}
@@ -58,6 +63,7 @@ function SubregionScreenBody({
   subregion,
   entries,
   learned,
+  capitalsLearned,
   locationCleanTargetMinimum,
   fuzzyMatching,
   onLearningChanged,
@@ -68,18 +74,22 @@ function SubregionScreenBody({
   subregion: SubregionId
   entries: ReturnType<typeof getCountriesForSubregionInEffectiveOrder>
   learned: boolean
+  capitalsLearned: boolean
   locationCleanTargetMinimum: number
   fuzzyMatching: boolean
   onLearningChanged: () => void
   onExit: () => void
   onWorld: () => void
 }) {
-  const [mode, setMode] = useState<'overview' | 'learning'>('overview')
+  const [mode, setMode] = useState<'overview' | 'country-learning' | 'capital-learning'>('overview')
   const [entryPoint, setEntryPoint] = useState<CountryLearningEntryPoint>('beginning')
-  const [learningPhase, setLearningPhase] = useState<CountryLearningPhase>('memory-preview')
+  const [learningPhase, setLearningPhase] = useState<CountryLearningPhase | CapitalLearningPhase>('memory-preview')
   const [editingOrder, setEditingOrder] = useState(false)
   const [draftEntries, setDraftEntries] = useState<readonly Country[] | null>(null)
   const [mnemonicVersion, setMnemonicVersion] = useState(0)
+  const [capitalWalkthroughCountryId, setCapitalWalkthroughCountryId] = useState<string | null>(null)
+  const [capitalRecallCorrectionCountryId, setCapitalRecallCorrectionCountryId] = useState<string | null>(null)
+  const [capitalStartInRecall, setCapitalStartInRecall] = useState(false)
   const definition = getSubregionDefinition(subregion)
   const mapEntries = draftEntries ?? entries
 
@@ -96,14 +106,17 @@ function SubregionScreenBody({
     onLearningChanged()
   }, [onLearningChanged])
   const refreshMnemonic = useCallback(() => setMnemonicVersion(version => version + 1), [])
-  const reportLearningPhase = useCallback((phase: CountryLearningPhase) => setLearningPhase(phase), [])
+  const reportLearningPhase = useCallback((phase: CountryLearningPhase | CapitalLearningPhase) => setLearningPhase(phase), [])
   const exitLearning = useCallback(() => {
     setMode('overview')
     setLearningPhase('memory-preview')
+    setCapitalWalkthroughCountryId(null)
+    setCapitalRecallCorrectionCountryId(null)
+    setCapitalStartInRecall(false)
     onLearningChanged()
   }, [onLearningChanged])
 
-  const content = mode === 'learning' ? (
+  const content = mode === 'country-learning' ? (
     <CountryLearningFlow
       key={`${definition.id}-${entries.map(country => country.id).join(',')}`}
       continent={continent}
@@ -115,6 +128,19 @@ function SubregionScreenBody({
       onPhaseChange={reportLearningPhase}
       onExit={exitLearning}
     />
+  ) : mode === 'capital-learning' ? (
+    <CapitalLearningFlow
+      key={`${definition.id}-${entries.map(country => country.id).join(',')}`}
+      continent={continent}
+      subregion={subregion}
+      entries={entries}
+      fuzzyMatching={fuzzyMatching}
+      onPhaseChange={reportLearningPhase}
+      onExit={exitLearning}
+      startInRecall={capitalStartInRecall}
+      onWalkthroughCountryChange={setCapitalWalkthroughCountryId}
+      onRecallCorrectionCountryChange={setCapitalRecallCorrectionCountryId}
+    />
   ) : (
     <SubregionOverview
       continent={continent}
@@ -122,15 +148,33 @@ function SubregionScreenBody({
       entries={entries}
       mapEntries={mapEntries}
       learned={learned}
+      capitalsLearned={capitalsLearned}
       onStart={() => {
         setEntryPoint('beginning')
+        setCapitalWalkthroughCountryId(null)
+        setCapitalRecallCorrectionCountryId(null)
+        setCapitalStartInRecall(false)
         setLearningPhase('memory-preview')
-        setMode('learning')
+        setMode('country-learning')
       }}
       onPracticeStageB={() => {
         setEntryPoint('ordered-recall')
         setLearningPhase('ordered-recall')
-        setMode('learning')
+        setMode('country-learning')
+      }}
+      onStartCapitals={() => {
+        setCapitalStartInRecall(false)
+        setCapitalWalkthroughCountryId(entries[0]?.id ?? null)
+        setCapitalRecallCorrectionCountryId(null)
+        setLearningPhase('walkthrough')
+        setMode('capital-learning')
+      }}
+      onPracticeCapitals={() => {
+        setCapitalStartInRecall(true)
+        setCapitalWalkthroughCountryId(null)
+        setCapitalRecallCorrectionCountryId(null)
+        setLearningPhase('recall')
+        setMode('capital-learning')
       }}
     />
   )
@@ -148,6 +192,10 @@ function SubregionScreenBody({
         content={{
           entries: mapEntries,
           learned,
+          capitalsLearned,
+          track: mode === 'capital-learning' ? 'capitals' : 'countries',
+          capitalWalkthroughCountryId,
+          capitalRecallCorrectionCountryId,
           mnemonicVersion,
           onMnemonicChanged: refreshMnemonic,
         }}

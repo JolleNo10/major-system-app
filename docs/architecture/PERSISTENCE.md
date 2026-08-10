@@ -64,7 +64,7 @@ Architecturally significant groups are:
 | Major System | `major-word-*`, `major-soundkey-*`, sequence/speed preferences. Layered word and sound-key records use `createWordStore`. |
 | Cards | `major-cardword-*`, `major-pao-*`, deck-memo histories, drill/suit/range preferences. Themed and PAO stores are independent even when PAO seeds Person values from Themed. |
 | Pi | `major-pi-*` session, selection, memoed/flawless, anchor, story-era, and maintenance state. Exact keys are defined beside their owners. |
-| World Countries | `world-countries-subregion-metadata`, `world-countries-continent-metadata`, and `world-countries-subregion-learning`. |
+| World Countries | `world-countries-subregion-metadata`, `world-countries-continent-metadata`, `world-countries-subregion-learning`, and `world-countries-subregion-learning-membership`. |
 
 Small view preferences need not be catalogued here. Their ownership still
 follows the defining module and feature namespace.
@@ -88,6 +88,12 @@ follows the defining module and feature namespace.
   delegated shared records. Never call `localStorage.clear()` in production.
 - World Countries structural work may reset World Countries state when its
   feature architecture allows it, but must not alter Pi or other feature state.
+  Subregion Memo completion rows preserve `countriesLearnedAt` and
+  `capitalsLearnedAt` independently. The learning store records a canonical
+  Country-membership fingerprint separately and conservatively discards legacy
+  or mismatched completion rows, so both completion dimensions describe the
+  current Country set. User-authored Country order is not part of that
+  fingerprint and therefore does not invalidate completion.
 - IndexedDB upgrade work must preserve all existing stores. Store creation is
   idempotent because users can arrive from different historical versions.
 - Pi story reads lazily copy legacy `pi_stories` records to `mnemonics`; explicit

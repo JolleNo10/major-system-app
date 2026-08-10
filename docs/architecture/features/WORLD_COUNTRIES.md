@@ -26,6 +26,8 @@ practice over a chosen scope; Recite is complete ordered recall. Maintenance is
 a separate system-directed review capability. The feature owns canonical
 geography, geography-specific learning and mnemonic adapters, map
 infrastructure, workflows, and World Countries persistence.
+Subregion Memo contains sibling Country and Country → Capital initial-learning
+tracks.
 
 ## Entry points
 
@@ -41,18 +43,22 @@ infrastructure, workflows, and World Countries persistence.
 ## Ownership
 
 - `data/` — canonical Country, Continent, Subregion identity, membership,
-  classification, and bundled reference data.
+  classification, and bundled reference data. `Country.capital` is the
+  canonical Capital answer taught by World Countries; Subregions define the
+  Country scope and never duplicate Capital data.
 - `geography/` — geography queries, user-authored ordering metadata at both
   hierarchy levels (Continent → Subregion order and Subregion → Country order),
   the effective-order resolvers, and metadata persistence.
-- `learning/` — answer matching, reusable session mechanics, pure learning-flow
-  state, durable Subregion learning facts, and their store.
+- `learning/` — answer matching, reusable session mechanics, pure
+  `CountryLearningFlow` and `CapitalLearningFlow` state, durable Subregion
+  learning facts, and their store. Capital Memo recalls Country → Capital;
+  reverse Capital → Country recall is a separate future skill.
 - `maps/` — SVG controller/view, map definitions/assets, Country-to-SVG
   adapters, temporary display-label overrides, and experimental workarea.
 - `mnemonics/` — feature target IDs, geography mnemonic semantics, feature
   backup envelope, and adapters over shared mnemonic storage.
 - `memo/` — instructional navigation, maps, mnemonic UI, Memo rail
-  composition, Subregion country learning orchestration, and one shared
+  composition, Subregion Country and Capital learning orchestration, and one shared
   sortable learning-order editor (`LearningOrderEditor`) used at both hierarchy
   levels for Continent Subregion order and Subregion Country order, including
   the best-effort "Order left to right" map action.
@@ -120,11 +126,16 @@ the current app layout integration seam.
 - `world-countries-continent-metadata` stores user-authored
   `ContinentMetadata.subregionOrder` rows (keyed by stable `ContinentId`)
   through `geography/`.
-- `world-countries-subregion-learning` stores durable Subregion learning facts
-  through `learning/`.
+- `world-countries-subregion-learning` stores durable Subregion Memo completion
+  facts through `learning/`: `countriesLearnedAt` and `capitalsLearnedAt` are
+  independent fields. A companion membership fingerprint is used to discard
+  completion rows that predate a canonical Subregion membership change.
 - Geography mnemonics use the shared IndexedDB `mnemonics` store with `geo:*`
   target IDs. Subregion mnemonic records also retain the Country IDs/order they
   describe so stale stories can be detected.
+- Country–Capital mnemonic records use `geo:country-capital:<CountryId>` and are
+  owned by `mnemonics/`. This identifies optional Country ↔ Capital content,
+  not Memo completion or future per-target learning performance.
 - The feature's version-3 JSON backup envelope contains Geography mnemonics,
   Subregion metadata, and Continent metadata; the import also accepts the
   version-2 (mnemonics plus Subregion metadata) and older mnemonic-only
@@ -164,15 +175,24 @@ adapters, and map adapters remain private until a real external consumer exists.
   hierarchy and never persisted.
 - `learning/countryLearningFlow.ts` owns pure state and transitions;
   `memo/subregion/CountryLearningFlow.tsx` owns Memo UI orchestration.
+- `learning/capitalLearningFlow.ts` owns pure Capital walkthrough, shuffled
+  Country → Capital recall, clean-round qualification, and transitions;
+  `memo/subregion/CapitalLearningFlow.tsx` owns its Memo UI orchestration.
+- `SubregionLearningState` owns only coarse Memo completion timestamps. Future
+  per-Country/per-skill performance belongs to a separate Drill, Recite, and
+  Maintenance learning-evidence model and must not reuse mnemonic IDs.
 - Memo overview rail composition owns the World → Continent → Subregion
   navigation and scope presentation: World Continents and progress use the left
   rail, Continent Subregions and progress use the left rail, and Subregion
-  learning context/order uses the left rail while its mnemonic uses the right
-  rail.
-- Memo's safe learning phases retain the compact learning context and mnemonic
-  rails; ordered recall and completion omit answer-revealing rails. The full
-  Subregion order editor opens in a larger overlay; the compact order remains
-  feature context in the left rail.
+  learning context/order uses the left rail while the Country-learning
+  Subregion mnemonic uses the right rail. Capital learning removes that
+  Subregion mnemonic rail; the active Country–Capital mnemonic appears in the
+  walkthrough right rail, and a correction mnemonic appears in that rail only
+  after a wrong recall answer. Memo's safe learning phases retain the compact
+  learning context and mnemonic rails; recall starts with no answer-revealing
+  rail content, and completion omits the rails. The full Subregion order editor
+  opens in a larger overlay; the compact order remains feature context in the
+  left rail.
 - `SvgMapController` remains imperative and framework-independent. It owns SVG
   loading, validation, discovery, styling, hover, labels, highlights, zoom,
   listeners, and cleanup—not geography learning rules. Temporary label
@@ -181,6 +201,16 @@ adapters, and map adapters remain private until a real external consumer exists.
 - `SvgMapView.tsx` is the React adapter around that controller.
 - Workflow folders do not depend on sibling workflow internals.
 - World Countries persistence does not modify unrelated feature state.
+- Capital learning starts without requiring `countriesLearnedAt`, while the
+  overview still recommends Countries first.
+- Completed Country and Capital tracks expose parallel review and direct
+  practice actions; Capital review starts the walkthrough, while Capital
+  practice starts a fresh shuffled recall session.
+- Capital walkthroughs use effective `SubregionMetadata.countryOrder`; Capital
+  recall uses a temporary balanced shuffled bag and persists no session state.
+- Capital completion requires a full current Country set in one clean shuffled
+  round. An error disqualifies that round; only a subsequent fresh clean round
+  can set `capitalsLearnedAt`.
 
 ## Source anchors
 
@@ -191,6 +221,9 @@ adapters, and map adapters remain private until a real external consumer exists.
 - `src/features/world-countries/geography/queries.ts`
 - `src/features/world-countries/geography/continentMetadataStore.ts`
 - `src/features/world-countries/learning/countryLearningFlow.ts`
+- `src/features/world-countries/learning/capitalLearningFlow.ts`
+- `src/features/world-countries/learning/capitalLearningCompletion.ts`
+- `src/features/world-countries/learning/subregionLearningStore.ts`
 - `src/features/world-countries/maps/SvgMapController.ts`
 - `src/features/world-countries/mnemonics/geographyMnemonics.ts`
 - `src/features/world-countries/memo/WorldCountriesMemo.tsx`
