@@ -2,7 +2,7 @@
 
 ## Status
 
-Implemented
+Accepted
 
 ## Date
 
@@ -1012,7 +1012,7 @@ When implemented and verified:
 
 ## Confirmation
 
-Implemented and verified on 2026-08-10.
+Implemented and verified against the repository on 2026-08-10.
 
 The map-centered Drill setup, shared `maps/GeographyOverviewMap` capability,
 PageLayout rail presentation, active-recall map behavior, correction feedback,
