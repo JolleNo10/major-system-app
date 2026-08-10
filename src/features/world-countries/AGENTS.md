@@ -12,7 +12,9 @@ read `docs/architecture/features/WORLD_COUNTRIES.md`.
 - Load `docs/architecture/SYSTEM.md` for public exports, app integration,
   ownership, or cross-feature work.
 
-ADRs 0007–0011 are historical rationale, not normal task context.
+Legacy ADRs and archived change records are historical rationale, not normal
+task context. If a task explicitly requires one, check
+`docs/adr/LEGACY_CLASSIFICATION.md` before loading it.
 
 ## Scope and starting points
 

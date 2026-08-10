@@ -40,9 +40,13 @@ Follow the applicable nested `AGENTS.md` before modifying a feature.
 - Use `gh auth status` only when an operation itself requires GitHub CLI, such
   as creating a pull request or querying issues.
 
-## ADR implementation commits
+## Decision and delivery documents
 
-- When a commit implements an ADR, identify the ADR in the commit message by
-  its number (for example, `ADR 0014`). If the ADR has no number, use a clear
-  title or slug reference instead. Mention every ADR when a commit implements
-  more than one.
+- When the task names a Change Spec, read that one spec as the delivery
+  contract. Do not scan `docs/changes/` for normal implementation discovery.
+- For a new or revised feature/functionality specification, follow
+  `docs/changes/README.md`. For an architectural decision, follow
+  `docs/adr/README.md`.
+- When a commit implements a Change Spec or ADR, identify each applicable
+  document by number in the commit message (for example, `Change Spec 0003` or
+  `ADR 0014`).

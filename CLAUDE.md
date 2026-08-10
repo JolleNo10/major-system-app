@@ -22,6 +22,19 @@ features unless the task crosses feature boundaries. Start discovery from the
 source anchors in the selected current-state document and stop when context is
 sufficient.
 
+Work-contract routing:
+
+- named Change Spec -> read only that file under `docs/changes/`;
+- authoring or revising feature/functionality scope ->
+  `docs/changes/README.md`;
+- making or revisiting an architectural decision -> `docs/adr/README.md`;
+- interpreting a pre-migration ADR ->
+  `docs/adr/LEGACY_CLASSIFICATION.md` before the original record.
+
+GitHub issues track work. A linked Change Spec supplies the compiled delivery
+contract for substantial work. Normal discovery does not scan Change Specs or
+legacy ADRs.
+
 ## Global invariants
 
 - `core/` contains feature-independent abstractions and must not import `app/`

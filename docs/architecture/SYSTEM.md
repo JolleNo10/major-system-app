@@ -19,6 +19,11 @@ Do not load every linked document. A feature-local change normally needs only
 that feature document and relevant source. Load a specific ADR only when the
 rationale behind a current rule is needed.
 
+A named Change Spec under `docs/changes/` is delivery context, not an
+architecture source. Load only the spec linked by the task or issue and resolve
+any conflict in favor of this current-state layer until the architectural
+change is explicitly decided and implemented.
+
 ## Runtime model
 
 Mnemonics is a client-only React 19 and TypeScript single-page application
@@ -125,5 +130,6 @@ The package-by-feature and composition boundaries resolve
 [ADR 0001](../adr/0001-page-layout-panel-pattern.md) and
 [ADR 0002](../adr/0002-package-by-feature.md). The current documentation and
 context-loading model resolves
-[ADR 0012](../adr/0012-agent-oriented-current-state-architecture-documentation.md).
+[ADR 0012](../adr/0012-agent-oriented-current-state-architecture-documentation.md)
+and [ADR 0021](../adr/0021-separate-architectural-decisions-from-change-specifications.md).
 Load those ADRs only when their rationale is needed.

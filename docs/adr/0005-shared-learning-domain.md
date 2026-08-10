@@ -1,5 +1,12 @@
 # ADR 0005 — Shared learning model for reusable scoring, mastery, scheduling, and study workflows
 
+> **Legacy expanded ADR.** The architectural decision and rationale are
+> retained. Implementation phases, acceptance criteria, and agent guidance in
+> this record are historical delivery detail, not current requirements. See the
+> [classification ledger](LEGACY_CLASSIFICATION.md) and current
+> [Core](../architecture/CORE.md) and
+> [persistence](../architecture/PERSISTENCE.md) architecture.
+
 * **Status:** Accepted
 * **Date:** 2026-08-08
 * **Builds on:** existing `core/scoring`, Pi learning workflows, and World Countries feature

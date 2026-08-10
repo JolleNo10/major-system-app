@@ -1,5 +1,12 @@
 # ADR 0009 — Subregion Memo country-learning workflow
 
+> **Archived legacy change record.** This mixed-purpose workflow specification
+> is retained at its original path for history and stable links. It is not an
+> architectural or delivery authority. Use the current
+> [World Countries architecture](../architecture/features/WORLD_COUNTRIES.md),
+> source, tests, and any named Change Spec. See the
+> [classification ledger](LEGACY_CLASSIFICATION.md).
+
 * **Status:** Accepted
 * **Date:** 2026-08-09
 * **Builds on:** ADR 0007 — World Countries Memo workflow

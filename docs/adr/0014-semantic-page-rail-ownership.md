@@ -1,5 +1,12 @@
 # ADR 0014 — Semantic ownership of page side rails
 
+> **Legacy expanded ADR.** The semantic layout-ownership decision and rationale
+> are retained. Per-screen feature behavior, validation, and implementation
+> guidance is historical delivery detail. See the
+> [classification ledger](LEGACY_CLASSIFICATION.md), current
+> [system architecture](../architecture/SYSTEM.md), and
+> [World Countries architecture](../architecture/features/WORLD_COUNTRIES.md).
+
 * **Status:** Accepted
 * **Date:** 2026-08-09
 * **Refines:** ADR 0001 — `PageLayout`: one base pattern for center + side rails

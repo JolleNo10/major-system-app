@@ -38,9 +38,11 @@ architecture document.
 - When a change moves ownership, changes a dependency or public boundary,
   changes persistent-state ownership/schema, or changes an invariant, update
   the affected document under `docs/architecture/` in the same change.
-- ADRs preserve historical rationale. Current implementation decisions belong
-  here and in the relevant current-state architecture document, not only in a
-  new ADR.
+- ADRs preserve durable architectural rationale; Change Specs define delivery
+  scope for substantial feature/functionality work. Neither replaces current-
+  state architecture.
+- Current implementation decisions belong here and in the relevant current-
+  state architecture document, not only in an ADR, Change Spec, issue, or chat.
 
 ## Clarifications
 
@@ -57,6 +59,7 @@ not candidates for generic `core/` merely because several features use them.
 ## Historical rationale
 
 This canonical invariant set implements
-[ADR 0012](../adr/0012-agent-oriented-current-state-architecture-documentation.md).
-Load that ADR only when reconsidering the documentation or context-routing
-model.
+[ADR 0012](../adr/0012-agent-oriented-current-state-architecture-documentation.md)
+and its documentation-artifact refinement,
+[ADR 0021](../adr/0021-separate-architectural-decisions-from-change-specifications.md).
+Load them only when reconsidering the documentation or context-routing model.

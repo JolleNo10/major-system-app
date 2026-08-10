@@ -1,5 +1,11 @@
 # ADR 0011 — World Countries capability ownership correction
 
+> **Legacy expanded ADR.** The corrected capability-ownership decisions and
+> rationale are retained. Migration, validation, acceptance, and implementation
+> guidance is historical delivery detail. See the
+> [classification ledger](LEGACY_CLASSIFICATION.md) and current
+> [World Countries architecture](../architecture/features/WORLD_COUNTRIES.md).
+
 * **Status:** Accepted
 * **Date:** 2026-08-09
 * **Builds on:** ADR 0010 — World Countries feature architecture and structural reset

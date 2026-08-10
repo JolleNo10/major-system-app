@@ -1,5 +1,12 @@
 # ADR 0017: World Countries Drill Scope and Recall Modes
 
+> **Legacy expanded ADR.** The scope identity, recall-skill, evidence, and
+> ownership decisions and their rationale are retained. Detailed workflow and
+> delivery material is historical. See the
+> [classification ledger](LEGACY_CLASSIFICATION.md), current
+> [World Countries architecture](../architecture/features/WORLD_COUNTRIES.md),
+> and [persistence architecture](../architecture/PERSISTENCE.md).
+
 ## Status
 
 Accepted
