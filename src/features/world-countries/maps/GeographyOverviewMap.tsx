@@ -115,7 +115,7 @@ export function GeographyOverviewMap({
     const colors: Array<readonly [string, string]> = []
     if (countryColorsById) colors.push(...createCountryColorsById(visibleCountries, countryColorsById, mapCountryIds))
     if (!countryColorsById) colors.push(...createCountryColors(visibleCountries, coloredCountryIds, mapCountryIds, countryColor))
-    if (selectedSubregionIds !== undefined) {
+    if (selectedSubregionIds !== undefined && !countryColorsById) {
       colors.push(...createCountryColors(visibleCountries, selectedCountries.map(country => country.id), mapCountryIds, '#0e7490'))
     }
     return colors

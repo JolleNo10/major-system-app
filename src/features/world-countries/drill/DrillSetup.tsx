@@ -1,5 +1,9 @@
-import { useCallback } from 'react'
-import type { Continent } from '@/features/world-countries/data/countries'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { countries, type Continent } from '@/features/world-countries/data/countries'
+import {
+  loadWorldCountriesRecallProgress,
+  type RecallProgress,
+} from '@/features/world-countries/learning/recallProgress'
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
 import {
   getDrillSubregions,
@@ -7,7 +11,8 @@ import {
   toggleDrillSubregion,
   type WorldCountriesDrillSelection,
 } from './drillSelection'
-import { getDrillModeDefinition, type WorldCountriesDrillMode } from './drillModes'
+import { getDrillModeDefinition, getSkillsForDrillMode, type WorldCountriesDrillMode } from './drillModes'
+import { createDrillProgressColors, getDrillProgressLegend } from './drillProgressPresentation'
 import { DrillSetupRails } from './DrillRails'
 
 export function DrillSetup({
@@ -34,6 +39,25 @@ export function DrillSetup({
   onSelectContinent: (continent: Continent) => void
 }) {
   const subregions = getDrillSubregions(selection.continent)
+  const skills = getSkillsForDrillMode(mode)
+  const [recallProgress, setRecallProgress] = useState<RecallProgress | null>(null)
+
+  useEffect(() => {
+    let active = true
+    setRecallProgress(null)
+    void loadWorldCountriesRecallProgress({
+      countryIds: countries.map(country => country.id),
+      skills,
+    }).then(progress => {
+      if (active) setRecallProgress(progress)
+    })
+    return () => { active = false }
+  }, [skills])
+
+  const countryColorsById = useMemo(
+    () => recallProgress ? createDrillProgressColors(mode, countries, recallProgress) : undefined,
+    [mode, recallProgress],
+  )
 
   const toggleEntireContinent = useCallback(
     () => onSelectionChange(toggleEntireContinentSelection(selection)),
@@ -76,6 +100,7 @@ export function DrillSetup({
           level={level}
           continent={level === 'continent' ? selection.continent : undefined}
           selectedSubregionIds={level === 'continent' ? selection.subregionIds : undefined}
+          countryColorsById={countryColorsById}
           hoveredGroupId={hoveredGroupId}
           onHoverGroup={onHoverGroup}
           onCountryClick={country => {
@@ -89,6 +114,9 @@ export function DrillSetup({
           {level === 'world'
             ? 'Hover a Continent in the rail or map. Select it from either surface to continue.'
             : `Selected ${selection.subregionIds.length} of ${subregions.length} Subregions. Click a Country to toggle its Subregion.`}
+        </p>
+        <p className="px-1 text-xs text-zinc-500" aria-label="Drill setup map progress legend">
+          Durable progress: {getDrillProgressLegend(mode)}
         </p>
 
         <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 xl:hidden" aria-label="Drill setup summary">

@@ -7,22 +7,10 @@ import { getDrillModeDefinition, getDrillSkillLabel, getSkillsForDrillMode, type
 import type { DrillAnswerRecord } from './drillSessionState'
 import { summarizeDrillAnswers } from './drillResultSummary'
 import {
-  deriveCountryRecallProgress,
-  deriveWorldCountriesCountryProgress,
   loadWorldCountriesRecallProgress,
   type RecallProgress,
 } from '@/features/world-countries/learning/recallProgress'
-import { getCountryProgressState } from '@/features/world-countries/learning/progressPresentation'
-import type { WorldCountriesProgressPerspective } from '@/features/world-countries/learning/progressPresentation'
-
-const PROGRESS_COLORS: Readonly<Record<string, string>> = {
-  unpractised: '#52525b',
-  weak: '#dc2626',
-  developing: '#d97706',
-  strong: '#2563eb',
-  mastered: '#16a34a',
-  complete: '#16a34a',
-}
+import { createDrillProgressColors, getDrillProgressLegend } from './drillProgressPresentation'
 
 export function DrillResults({
   mode,
@@ -42,7 +30,6 @@ export function DrillResults({
   const summary = summarizeDrillAnswers(answers)
   const definition = getDrillModeDefinition(mode)
   const skills = getSkillsForDrillMode(mode)
-  const perspective: WorldCountriesProgressPerspective = mode === 'countries-capitals' ? 'core' : skills[0]
   const [recallProgress, setRecallProgress] = useState<RecallProgress | null>(null)
 
   useEffect(() => {
@@ -59,14 +46,8 @@ export function DrillResults({
 
   const countryColorsById = useMemo(() => {
     if (!recallProgress) return undefined
-    return new Map(scopeCountries.map(country => {
-      const progress = perspective === 'core'
-        ? deriveWorldCountriesCountryProgress(country.id, recallProgress)
-        : deriveCountryRecallProgress(country.id, skills, recallProgress)
-      const state = getCountryProgressState(progress, perspective)
-      return [country.id, PROGRESS_COLORS[state] ?? PROGRESS_COLORS.unpractised] as const
-    }))
-  }, [perspective, recallProgress, scopeCountries, skills])
+    return createDrillProgressColors(mode, scopeCountries, recallProgress)
+  }, [mode, recallProgress, scopeCountries])
 
   return (
     <>
@@ -92,7 +73,7 @@ export function DrillResults({
           ariaLabel={`Results map for ${continent} Drill Countries`}
         />
         <p className="px-1 text-xs text-zinc-500" aria-label="Results map progress legend">
-          Durable progress: {perspective === 'core' ? 'core Country state — Unpractised · Weak · Developing · Strong · Complete' : `${getDrillSkillLabel(perspective)} — Unpractised · Weak · Developing · Strong · Mastered`}
+          Durable progress: {getDrillProgressLegend(mode)}
         </p>
 
         <section className="grid grid-cols-3 gap-2" aria-label="Drill summary">
