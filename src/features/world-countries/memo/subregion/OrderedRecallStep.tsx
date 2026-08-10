@@ -75,6 +75,7 @@ export function OrderedRecallStep({
           scopeCountries={entries}
           highlightedCountryId={displayCountry.id}
           namedCountryId={feedback?.correct ? feedback.expectedId : null}
+          showHighlightedNames={false}
           ariaLabel="Highlighted country for ordered blind recall"
         />
         {feedback && (
