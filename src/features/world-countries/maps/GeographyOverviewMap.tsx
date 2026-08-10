@@ -14,6 +14,10 @@ import {
 import { getMemoMapDefinition, MEMO_MAP_DEFINITIONS } from './mapDefinitions'
 import { SvgMapView, type SvgMapCountry } from './SvgMapView'
 
+const GEOGRAPHY_OVERVIEW_HOVER_FILL = '#0f766e'
+const GEOGRAPHY_OVERVIEW_HOVER_STROKE = '#d4d4d8'
+const GEOGRAPHY_OVERVIEW_HOVER_STROKE_WIDTH = '2px'
+
 export interface GeographyOverviewMapProps {
   level: 'world' | 'continent'
   continent?: Continent
@@ -149,9 +153,9 @@ export function GeographyOverviewMap({
           hoverHighlight: true,
           hoverShowName: level !== 'world',
           hoverScope: 'group',
-          hoverFill: '#0f766e',
-          hoverStroke: '#d4d4d8',
-          hoverStrokeWidth: '2px',
+          hoverFill: GEOGRAPHY_OVERVIEW_HOVER_FILL,
+          hoverStroke: GEOGRAPHY_OVERVIEW_HOVER_STROKE,
+          hoverStrokeWidth: GEOGRAPHY_OVERVIEW_HOVER_STROKE_WIDTH,
           showHighlightedNames: false,
         }}
         hoverGroups={hoverGroups}

@@ -818,7 +818,7 @@ export class SvgMapController {
         ? this.settings.mutedFill
         : baseFill
 
-      const styled = this.highlighted.has(country.id) || this.countryColors.has(country.id)
+      const styled = this.highlighted.has(country.id) || hasSemanticColor
       const stroke = hovered && this.settings.hoverStroke !== null
         ? this.settings.hoverStroke
         : styled && this.settings.highlightStroke !== null
