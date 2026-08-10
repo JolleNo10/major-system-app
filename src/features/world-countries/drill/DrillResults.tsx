@@ -10,7 +10,8 @@ import {
   loadWorldCountriesRecallProgress,
   type RecallProgress,
 } from '@/features/world-countries/learning/recallProgress'
-import { createDrillProgressColors, getDrillProgressLegend } from './drillProgressPresentation'
+import { createDrillProgressColors } from './drillProgressPresentation'
+import { DrillProgressLegend } from './DrillProgressLegend'
 
 export function DrillResults({
   mode,
@@ -72,9 +73,7 @@ export function DrillResults({
           countryColorsById={countryColorsById}
           ariaLabel={`Results map for ${continent} Drill Countries`}
         />
-        <p className="px-1 text-xs text-zinc-500" aria-label="Results map progress legend">
-          Durable progress: {getDrillProgressLegend(mode)}
-        </p>
+        <DrillProgressLegend mode={mode} />
 
         <section className="grid grid-cols-3 gap-2" aria-label="Drill summary">
           <DrillResultStat label="Correct" value={`${summary.correct}/${answers.length}`} />

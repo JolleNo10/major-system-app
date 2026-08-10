@@ -12,8 +12,9 @@ import {
   type WorldCountriesDrillSelection,
 } from './drillSelection'
 import { getDrillModeDefinition, getSkillsForDrillMode, type WorldCountriesDrillMode } from './drillModes'
-import { createDrillProgressColors, getDrillProgressLegend } from './drillProgressPresentation'
+import { createDrillProgressColors } from './drillProgressPresentation'
 import { DrillSetupRails } from './DrillRails'
+import { DrillProgressLegend } from './DrillProgressLegend'
 
 export function DrillSetup({
   level,
@@ -115,9 +116,7 @@ export function DrillSetup({
             ? 'Hover a Continent in the rail or map. Select it from either surface to continue.'
             : `Selected ${selection.subregionIds.length} of ${subregions.length} Subregions. Click a Country to toggle its Subregion.`}
         </p>
-        <p className="px-1 text-xs text-zinc-500" aria-label="Drill setup map progress legend">
-          Durable progress: {getDrillProgressLegend(mode)}
-        </p>
+        <DrillProgressLegend mode={mode} />
 
         <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 xl:hidden" aria-label="Drill setup summary">
           <div className="flex items-baseline justify-between gap-3 text-sm">

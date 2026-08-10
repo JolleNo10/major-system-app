@@ -5,6 +5,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createDrillSelection } from './drillSelection'
 import { DrillSetup } from './DrillSetup'
+import { getDrillProgressLegendEntries } from './drillProgressPresentation'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -67,6 +68,20 @@ describe('DrillSetup rail presentation', () => {
     expect(mapProps.countryColorsById).toBeInstanceOf(Map)
     expect(loadRecallProgressMock).toHaveBeenCalled()
     expect(mount.textContent).toContain('Location → Country')
+    const legend = mount.querySelector('[aria-label="Durable progress legend"]')
+    expect(legend?.textContent).toContain('Unpractised')
+    expect(legend?.textContent).toContain('Weak')
+    expect(legend?.textContent).toContain('Developing')
+    expect(legend?.textContent).toContain('Strong')
+    expect(legend?.textContent).toContain('Mastered')
+    expect(legend?.textContent).toContain('teal/cyan is temporary hover or recall focus')
+    expect(getDrillProgressLegendEntries('countries').map(entry => entry.color)).toEqual([
+      '#52525b',
+      '#dc2626',
+      '#d97706',
+      '#2563eb',
+      '#16a34a',
+    ])
   })
 
   it('publishes geographic scope on the left and drill controls on the right', async () => {

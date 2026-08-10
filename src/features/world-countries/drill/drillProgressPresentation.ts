@@ -13,6 +13,7 @@ import {
   getSkillsForDrillMode,
   type WorldCountriesDrillMode,
 } from './drillModes'
+import type { ProgressMapLegendEntry } from '@/features/world-countries/learning/ProgressMapLegend'
 
 const DRILL_PROGRESS_COLORS: Readonly<Record<string, string>> = {
   unpractised: '#52525b',
@@ -46,9 +47,34 @@ export function createDrillProgressColors(
   }))
 }
 
-export function getDrillProgressLegend(mode: WorldCountriesDrillMode): string {
+export function getDrillProgressLegendTitle(mode: WorldCountriesDrillMode): string {
   const perspective = getDrillProgressPerspective(mode)
   return perspective === 'core'
-    ? 'Core Country progress — Unpractised · Weak · Developing · Strong · Complete'
-    : `${getDrillSkillLabel(perspective)} progress — Unpractised · Weak · Developing · Strong · Mastered`
+    ? 'Core Country progress'
+    : `${getDrillSkillLabel(perspective)} progress`
+}
+
+export function getDrillProgressLegendEntries(
+  mode: WorldCountriesDrillMode,
+): readonly ProgressMapLegendEntry[] {
+  const completedState = getDrillProgressPerspective(mode) === 'core' ? 'complete' : 'mastered'
+  const labels: Readonly<Record<string, string>> = {
+    unpractised: 'Unpractised',
+    weak: 'Weak',
+    developing: 'Developing',
+    strong: 'Strong',
+    mastered: 'Mastered',
+    complete: 'Complete',
+  }
+  return ['unpractised', 'weak', 'developing', 'strong', completedState].map(state => ({
+    state,
+    label: labels[state],
+    color: DRILL_PROGRESS_COLORS[state],
+  }))
+}
+
+export function getDrillProgressExplanation(mode: WorldCountriesDrillMode): string {
+  return getDrillProgressPerspective(mode) === 'core'
+    ? 'Complete requires both Location → Country and Country → Capital to be Mastered.'
+    : 'Weak means the latest attempt was incorrect; Strong means repeated success; Mastered requires successful free recall on two different dates.'
 }
