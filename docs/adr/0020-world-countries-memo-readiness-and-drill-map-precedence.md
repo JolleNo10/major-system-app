@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted
 
 ## Date
 
@@ -71,6 +71,7 @@ Existing persistence already records the required coarse instructional facts:
 
 ```ts
 interface SubregionLearningState {
+  subregionId: SubregionId
   countriesLearnedAt?: number
   capitalsLearnedAt?: number
 }
@@ -169,6 +170,18 @@ The presentation palette is:
 Purple-family colors identify instructional preparation. They are deliberately
 separate from the red, amber, blue, and green Drill proficiency palette.
 
+These hex values are the initial presentation palette adopted by this ADR, not
+colors inherited from ADR 0018 or ADR 0019. Before implementation is accepted,
+the two purple states must be evaluated under common color-vision-deficiency
+simulations. If hue and luminance are not sufficiently distinguishable, the
+presentation must adjust the palette or add a visible non-color differentiator
+without changing the three semantic states.
+
+Every Memo overview map must expose a text legend with all three readiness
+states. The same readiness must also be available through non-color UI, such as
+the Subregion status text and the accessible description for a mapped Country.
+Color alone must not be required to identify Memo readiness.
+
 Teal or cyan hover/navigation treatment is temporary map interaction, not Memo
 readiness.
 
@@ -192,6 +205,10 @@ A Subregion in `COUNTRIES_AND_CAPITALS_MEMOED` contributes to both counts.
 World progress aggregates all current canonical Subregions. Continent progress
 aggregates the current canonical Subregions in that Continent. Individual
 Subregion rows expose their exact one-of-three readiness state.
+
+The unit is explicit in visible progress text. Presentations use wording such
+as `5/8 Subregions`, never an unexplained bare `5/8` that could be mistaken for
+Countries.
 
 Memo rails do not also show ADR 0019 Country core proficiency summaries.
 
@@ -217,6 +234,12 @@ The workflow boundary must also reject entry when the UI is bypassed. A disabled
 button alone is not the capability rule.
 
 This gate does not delete or overwrite a legacy `capitalsLearnedAt` value.
+
+The legacy review lockout is deliberate. A learner with `capitalsLearnedAt`
+but no `countriesLearnedAt` cannot review or practise Capitals through Memo
+until Countries Memo is complete. The UI must acknowledge the preserved Capital
+completion while explaining that Countries completion is required to unlock it;
+it must not present the learner as though the earlier Capital work was lost.
 
 ### 7. Drill uses Memo readiness only when relevant evidence is absent
 
@@ -295,7 +318,7 @@ core state.
 it is not shown as a fourth competing fill when the map presents the more useful
 three-state Memo readiness fallback.
 
-The Drill proficiency palette remains:
+This ADR adopts the following initial Drill proficiency palette:
 
 | Drill state | Color |
 |---|---:|
@@ -305,6 +328,19 @@ The Drill proficiency palette remains:
 | Mastered / Complete | `#16a34a` |
 
 Legends must pair color swatches with text. Color alone is not the status label.
+
+The shared gray `#52525b` is intentional. On a rendered Memo or Drill progress
+map it means `Not memoed`. Although ADR 0019 still defines `Unpractised` as the
+zero-attempt proficiency fact, section 9 replaces that map fill with one of the
+three more informative Memo-readiness states. `Not memoed` and `Unpractised`
+therefore do not compete as simultaneous map statuses.
+
+A Drill map can contain up to seven semantic fills across the two legend groups.
+Implementation acceptance requires a representative World and Continent design
+review covering all seven states, responsive legend wrapping, color-vision
+deficiency, and the temporary teal/cyan hover treatment. If the map cannot be
+scanned reliably, presentation colors or non-color differentiators must change;
+the readiness/proficiency semantics and precedence rule remain fixed.
 
 ### 10. Active recall suppresses both presentation layers
 
@@ -402,6 +438,10 @@ the zero-evidence information gap without redefining proficiency.
   Country learning.
 * A legacy Capitals-first completion is temporarily invisible in readiness
   presentation until Countries Memo is completed.
+* A legacy Capitals-first learner is also deliberately locked out of Capital
+  review and practice until Countries Memo is completed.
+* Drill setup and results can present as many as seven fills, increasing legend
+  and visual-discrimination demands.
 
 ---
 
@@ -415,6 +455,8 @@ Implementation must verify at least:
 * cumulative World and Continent Subregion summaries;
 * Memo maps and rails contain no Drill-derived proficiency state;
 * Capital entry controls and workflow handlers are gated;
+* legacy Capitals-first UI acknowledges preserved completion while explaining
+  the review/practice lock;
 * legacy Capital completion reappears after Countries completion;
 * each Drill mode uses only its relevant evidence;
 * unrelated skill evidence does not displace readiness;
@@ -423,7 +465,12 @@ Implementation must verify at least:
 * Countries + Capitals activates combined core state after either core attempt;
 * Mastered versus Complete terminology remains correct;
 * active recall suppresses both readiness and proficiency;
-* legends include accessible text labels in addition to swatches;
+* Memo and Drill legends include accessible text labels in addition to swatches;
+* Memo readiness is available through non-color status text and mapped-Country
+  accessible descriptions;
+* the initial palette is checked under common color-vision-deficiency
+  simulations and all seven Drill fills receive a representative design review;
+* progress counts explicitly label their unit as Subregions;
 * no persistence migration or duplicate status cache is introduced.
 
 ---
