@@ -3,7 +3,7 @@ import type { Continent } from '@/features/world-countries/data/countries'
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
 import {
   getDrillSubregions,
-  withAllDrillSubregions,
+  toggleEntireContinentSelection,
   toggleDrillSubregion,
   type WorldCountriesDrillSelection,
 } from './drillSelection'
@@ -35,7 +35,10 @@ export function DrillSetup({
 }) {
   const subregions = getDrillSubregions(selection.continent)
 
-  const selectEntireContinent = useCallback(() => onSelectionChange(withAllDrillSubregions(selection.continent)), [onSelectionChange, selection.continent])
+  const toggleEntireContinent = useCallback(
+    () => onSelectionChange(toggleEntireContinentSelection(selection)),
+    [onSelectionChange, selection],
+  )
   const toggleSubregion = useCallback((subregionId: Parameters<typeof toggleDrillSubregion>[1]) => {
     onSelectionChange(toggleDrillSubregion(selection, subregionId))
   }, [onSelectionChange, selection])
@@ -51,7 +54,7 @@ export function DrillSetup({
         onWorld={onWorld}
         onSelectContinent={onSelectContinent}
         onToggleSubregion={toggleSubregion}
-        onSelectEntireContinent={selectEntireContinent}
+        onSelectEntireContinent={toggleEntireContinent}
         onModeChange={onModeChange}
         onStart={onStart}
       />

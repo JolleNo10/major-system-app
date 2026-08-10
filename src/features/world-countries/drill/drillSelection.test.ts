@@ -5,6 +5,7 @@ import {
   getAllDrillSubregionIds,
   getCountriesForDrillSelection,
   isEntireContinentSelection,
+  toggleEntireContinentSelection,
   toggleDrillSubregion,
 } from './drillSelection'
 
@@ -35,5 +36,19 @@ describe('World Countries Drill selection', () => {
 
     const invalid = createDrillSelection('Europe', ['northern-europe', 'south-asia'])
     expect(invalid.subregionIds).toEqual(['northern-europe'])
+  })
+
+  it('toggles Entire Continent between all and no Subregions', () => {
+    const partial = createDrillSelection('Europe', ['northern-europe'])
+    const all = toggleEntireContinentSelection(partial)
+    expect(all.subregionIds).toEqual(getAllDrillSubregionIds('Europe'))
+    expect(isEntireContinentSelection(all)).toBe(true)
+
+    const none = toggleEntireContinentSelection(all)
+    expect(none).toEqual({ continent: 'Europe', subregionIds: [] })
+    expect(isEntireContinentSelection(none)).toBe(false)
+
+    const allAgain = toggleEntireContinentSelection(none)
+    expect(allAgain.subregionIds).toEqual(getAllDrillSubregionIds('Europe'))
   })
 })

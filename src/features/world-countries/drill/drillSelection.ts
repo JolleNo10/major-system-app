@@ -80,6 +80,15 @@ export function withAllDrillSubregions(
   return createDrillSelection(continent, getAllDrillSubregionIds(continent, entries), entries)
 }
 
+export function toggleEntireContinentSelection(
+  selection: WorldCountriesDrillSelection,
+  entries: readonly Country[] = countries,
+): WorldCountriesDrillSelection {
+  return isEntireContinentSelection(selection, entries)
+    ? createDrillSelection(selection.continent, [], entries)
+    : withAllDrillSubregions(selection.continent, entries)
+}
+
 export function toggleDrillSubregion(
   selection: WorldCountriesDrillSelection,
   subregionId: SubregionId,
