@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import type { Continent } from '@/features/world-countries/data/countries'
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
 import {
@@ -34,10 +35,10 @@ export function DrillSetup({
 }) {
   const subregions = getDrillSubregions(selection.continent)
 
-  const selectEntireContinent = () => onSelectionChange(withAllDrillSubregions(selection.continent))
-  const toggleSubregion = (subregionId: Parameters<typeof toggleDrillSubregion>[1]) => {
+  const selectEntireContinent = useCallback(() => onSelectionChange(withAllDrillSubregions(selection.continent)), [onSelectionChange, selection.continent])
+  const toggleSubregion = useCallback((subregionId: Parameters<typeof toggleDrillSubregion>[1]) => {
     onSelectionChange(toggleDrillSubregion(selection, subregionId))
-  }
+  }, [onSelectionChange, selection])
 
   return (
     <>

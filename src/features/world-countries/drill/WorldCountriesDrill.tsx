@@ -3,7 +3,7 @@ import type { AnswerMode } from '@/core/types'
 import { useSettings } from '@/app/settings/SettingsContext'
 import type { Continent } from '@/features/world-countries/data/countries'
 import { recordWorldCountriesAttempt } from '@/features/world-countries/learning/recallProgress'
-import { getCountriesForDrillSelection, withAllDrillSubregions } from './drillSelection'
+import { getCountriesForDrillSelection, withAllDrillSubregions, type WorldCountriesDrillSelection } from './drillSelection'
 import { DrillResults } from './DrillResults'
 import { DrillSession } from './DrillSession'
 import { DrillSetup } from './DrillSetup'
@@ -90,6 +90,14 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
     setHoveredGroupId(null)
   }, [])
 
+  const handleSelectionChange = useCallback((selection: WorldCountriesDrillSelection) => {
+    updatePreferences({ ...selection, mode: preferences.mode })
+  }, [preferences.mode, updatePreferences])
+
+  const handleModeChange = useCallback((mode: WorldCountriesDrillMode) => {
+    updatePreferences({ ...preferences, mode })
+  }, [preferences, updatePreferences])
+
   if (phase === 'recall' && session) {
     return (
       <DrillSession
@@ -125,8 +133,8 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
       mode={preferences.mode}
       hoveredGroupId={hoveredGroupId}
       onHoverGroup={setHoveredGroupId}
-      onSelectionChange={selection => updatePreferences({ ...selection, mode: preferences.mode })}
-      onModeChange={(mode: WorldCountriesDrillMode) => updatePreferences({ ...preferences, mode })}
+      onSelectionChange={handleSelectionChange}
+      onModeChange={handleModeChange}
       onStart={start}
       onWorld={goToWorld}
       onSelectContinent={selectContinent}
