@@ -72,6 +72,12 @@ describe('Drill setup PageLayout integration', () => {
     })
 
     expect(mount.textContent).toContain('Europe Drill')
+    expect(mount.textContent).toContain('Current drill')
+    expect(mount.textContent).toContain('1 Subregion selected')
+    expect(mount.textContent).toContain('Start Drill')
+    const drillControls = mount.querySelector('#world-countries-drill-controls-heading')?.closest('section')
+    expect(drillControls?.textContent).not.toContain('Current drill')
+    expect(drillControls?.textContent).not.toContain('Start Drill')
   })
 
   it('keeps the real Drill coordinator stable while PageLayout publishes rails', async () => {
@@ -216,6 +222,20 @@ describe('Drill setup PageLayout integration', () => {
       await act(async () => modeButton?.click())
       expect(modeButton?.getAttribute('aria-pressed')).toBe('true')
     }
+
+    const headings = [...mount.querySelectorAll('h3')]
+    const recallModesHeading = headings.find(heading => heading.textContent === 'Recall modes')
+    const practiceHeading = headings.find(heading => heading.textContent === 'Practice')
+    const buttonLabelsUnder = (heading: Element | undefined) => [...(heading?.parentElement?.querySelectorAll('button') ?? [])]
+      .map(button => button.querySelector('span')?.textContent)
+
+    expect(buttonLabelsUnder(recallModesHeading)).toEqual([
+      'Countries',
+      'Countries + Capitals',
+      'Countries from Capitals',
+    ])
+    expect(buttonLabelsUnder(practiceHeading)).toEqual(['Capitals'])
+    expect(practiceHeading?.parentElement?.textContent).toContain('Practise capitals before Countries + Capitals.')
 
     const rightDrawerToggle = [...mount.querySelectorAll('button')]
       .find(button => button.textContent?.includes('Drill controls'))

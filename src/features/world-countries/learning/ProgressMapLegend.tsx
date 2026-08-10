@@ -17,6 +17,7 @@ export function ProgressMapLegend({
   mapCues,
   groups,
   ariaLabel = 'Progress map legend',
+  collapsibleDetails = false,
 }: {
   title: string
   entries: readonly ProgressMapLegendEntry[]
@@ -24,13 +25,22 @@ export function ProgressMapLegend({
   mapCues: string
   groups?: readonly ProgressMapLegendGroup[]
   ariaLabel?: string
+  collapsibleDetails?: boolean
 }) {
   const visibleGroups = groups ?? [{ title, entries, explanation }]
+  const details = (
+    <>
+      <p>{explanation}</p>
+      <p className="text-zinc-500">{mapCues}</p>
+    </>
+  )
+
   return (
     <section
       className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-900/70 px-3 py-2.5 text-xs text-zinc-400"
       aria-label={ariaLabel}
     >
+      {groups && <p className="font-semibold text-zinc-300">{title}</p>}
       <div className="space-y-2">
         {visibleGroups.map(group => (
           <div key={group.title} className="flex flex-wrap items-center gap-x-4 gap-y-2" data-progress-group={group.title}>
@@ -55,8 +65,21 @@ export function ProgressMapLegend({
           </div>
         ))}
       </div>
-      {!groups && <p>{explanation}</p>}
-      <p className="text-zinc-500">{mapCues}</p>
+      {collapsibleDetails ? (
+        <details className="border-t border-zinc-800 pt-2">
+          <summary className="cursor-pointer select-none font-medium text-zinc-400 transition-colors hover:text-zinc-200">
+            How progress works
+          </summary>
+          <div className="mt-2 space-y-2">
+            {details}
+          </div>
+        </details>
+      ) : (
+        <>
+          {!groups && <p>{explanation}</p>}
+          <p className="text-zinc-500">{mapCues}</p>
+        </>
+      )}
     </section>
   )
 }

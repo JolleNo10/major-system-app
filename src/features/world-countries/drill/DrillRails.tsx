@@ -5,7 +5,13 @@ import { getContinents } from '@/features/world-countries/geography/queries'
 import { getContinentHoverGroupId, getSubregionHoverGroupId } from '@/features/world-countries/maps/geographyMapAdapter'
 import { DrillResultStat } from './DrillResultStat'
 import { getDrillSubregions, isEntireContinentSelection, type WorldCountriesDrillSelection } from './drillSelection'
-import { getDrillModeDefinition, getDrillSkillLabel, WORLD_COUNTRIES_DRILL_MODES, type WorldCountriesDrillMode } from './drillModes'
+import {
+  getDrillModeDefinition,
+  getDrillSkillLabel,
+  WORLD_COUNTRIES_DRILL_MODES,
+  type DrillModeDefinition,
+  type WorldCountriesDrillMode,
+} from './drillModes'
 import { getCurrentDrillStep, getDrillSessionTotalSteps, type DrillAnswerRecord, type DrillSessionState } from './drillSessionState'
 import { summarizeDrillAnswers } from './drillResultSummary'
 
@@ -20,7 +26,6 @@ export function DrillSetupRails({
   onToggleSubregion,
   onSelectEntireContinent,
   onModeChange,
-  onStart,
 }: {
   level: 'world' | 'continent'
   selection: WorldCountriesDrillSelection
@@ -32,7 +37,6 @@ export function DrillSetupRails({
   onToggleSubregion: (subregionId: SubregionId) => void
   onSelectEntireContinent: () => void
   onModeChange: (mode: WorldCountriesDrillMode) => void
-  onStart: () => void
 }) {
   const subregions = getDrillSubregions(selection.continent)
   const entireContinent = isEntireContinentSelection(selection)
@@ -118,34 +122,25 @@ export function DrillSetupRails({
       ),
       right: (
         <DrillModeRail
-          level={level}
           mode={mode}
-          canStart={level === 'continent' && selectedCount > 0}
           onModeChange={onModeChange}
-          onStart={onStart}
         />
       ),
       leftLabel: level === 'world' ? 'Drill geography' : 'Drill scope',
       rightLabel: 'Drill controls',
     },
-    [level, mode, selection.continent, selection.subregionIds, hoveredGroupId, onHoverGroup, onWorld, onSelectContinent, onToggleSubregion, onSelectEntireContinent, onModeChange, onStart],
+    [level, mode, selection.continent, selection.subregionIds, hoveredGroupId, onHoverGroup, onWorld, onSelectContinent, onToggleSubregion, onSelectEntireContinent, onModeChange],
   )
 
   return null
 }
 
 function DrillModeRail({
-  level,
   mode,
-  canStart,
   onModeChange,
-  onStart,
 }: {
-  level: 'world' | 'continent'
   mode: WorldCountriesDrillMode
-  canStart: boolean
   onModeChange: (mode: WorldCountriesDrillMode) => void
-  onStart: () => void
 }) {
   return (
     <section className="space-y-4" aria-labelledby="world-countries-drill-controls-heading">
@@ -154,40 +149,61 @@ function DrillModeRail({
         <h2 id="world-countries-drill-controls-heading" className="mt-1 text-lg font-bold text-zinc-100">Controls</h2>
       </div>
       <div>
-        <h3 className="text-sm font-semibold text-zinc-200">Recall mode</h3>
+        <h3 className="text-sm font-semibold text-zinc-200">Recall modes</h3>
         <div className="mt-3 space-y-2">
-          {WORLD_COUNTRIES_DRILL_MODES.map(candidate => {
-            const selected = candidate.id === mode
-            return (
-              <button
+          {WORLD_COUNTRIES_DRILL_MODES
+            .filter(candidate => candidate.id !== 'capitals')
+            .map(candidate => (
+              <DrillModeButton
                 key={candidate.id}
-                type="button"
-                aria-pressed={selected}
-                onClick={() => onModeChange(candidate.id)}
-                className={`w-full rounded-lg border px-3 py-2.5 text-left transition-colors ${selected
-                  ? 'border-violet-500 bg-violet-500/15'
-                  : 'border-zinc-700 bg-zinc-800 hover:border-violet-600'}
-                `}
-              >
-                <span className={`block text-sm font-semibold ${selected ? 'text-violet-200' : 'text-zinc-200'}`}>{candidate.label}</span>
-                <span className="mt-1 block text-xs leading-relaxed text-zinc-500">{candidate.description}</span>
-              </button>
-            )
-          })}
+                candidate={candidate}
+                selected={candidate.id === mode}
+                onSelect={onModeChange}
+              />
+            ))}
         </div>
       </div>
-      <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3 text-sm text-zinc-400">
-        {level === 'world' ? 'Choose a Continent to configure its Subregions.' : 'The map and Subregions rail represent the same selection.'}
+      <div className="border-t border-zinc-800 pt-4">
+        <h3 className="text-sm font-semibold text-zinc-200">Practice</h3>
+        <div className="mt-3 space-y-2">
+          {WORLD_COUNTRIES_DRILL_MODES
+            .filter(candidate => candidate.id === 'capitals')
+            .map(candidate => (
+              <DrillModeButton
+                key={candidate.id}
+                candidate={candidate}
+                selected={candidate.id === mode}
+                onSelect={onModeChange}
+              />
+            ))}
+        </div>
       </div>
-      <button
-        type="button"
-        disabled={!canStart}
-        onClick={onStart}
-        className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        Start Drill
-      </button>
     </section>
+  )
+}
+
+function DrillModeButton({
+  candidate,
+  selected,
+  onSelect,
+}: {
+  candidate: DrillModeDefinition
+  selected: boolean
+  onSelect: (mode: WorldCountriesDrillMode) => void
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={() => onSelect(candidate.id)}
+      className={`w-full rounded-lg border px-3 py-2.5 text-left transition-colors ${selected
+        ? 'border-violet-500 bg-violet-500/15'
+        : 'border-zinc-700 bg-zinc-800 hover:border-violet-600'}
+      `}
+    >
+      <span className={`block text-sm font-semibold ${selected ? 'text-violet-200' : 'text-zinc-200'}`}>{candidate.label}</span>
+      <span className="mt-1 block text-xs leading-relaxed text-zinc-500">{candidate.description}</span>
+    </button>
   )
 }
 

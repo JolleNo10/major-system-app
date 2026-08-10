@@ -4,13 +4,12 @@ import {
   DRILL_MEMO_READINESS_LEGEND_ENTRIES,
   getDrillProgressExplanation,
   getDrillProgressLegendEntries,
-  getDrillProgressLegendTitle,
 } from './drillProgressPresentation'
 
 export function DrillProgressLegend({ mode }: { mode: WorldCountriesDrillMode }) {
   return (
     <ProgressMapLegend
-      title="Drill map status"
+      title="Progress"
       entries={getDrillProgressLegendEntries(mode)}
       explanation={getDrillProgressExplanation(mode)}
       mapCues="Map cues: teal/cyan is temporary hover or recall focus, not progress; Countries outside the selected scope are dimmed."
@@ -21,12 +20,13 @@ export function DrillProgressLegend({ mode }: { mode: WorldCountriesDrillMode })
           explanation: 'Memo readiness is shown only until the selected Drill perspective has relevant evidence.',
         },
         {
-          title: `Drill proficiency · ${getDrillProgressLegendTitle(mode)}`,
+          title: 'Drill proficiency',
           entries: getDrillProgressLegendEntries(mode),
           explanation: getDrillProgressExplanation(mode),
         },
       ]}
       ariaLabel="Durable progress legend"
+      collapsibleDetails
     />
   )
 }

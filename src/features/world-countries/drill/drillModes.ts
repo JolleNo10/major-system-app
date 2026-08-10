@@ -29,7 +29,7 @@ export const WORLD_COUNTRIES_DRILL_MODES: readonly DrillModeDefinition[] = [
   {
     id: 'capitals',
     label: 'Capitals',
-    description: 'Given a Country, recall its Capital.',
+    description: 'Practise capitals before Countries + Capitals.',
     skills: ['country-to-capital'],
   },
   {
@@ -54,6 +54,10 @@ export function getDrillModeDefinition(mode: WorldCountriesDrillMode): DrillMode
 
 export function getSkillsForDrillMode(mode: WorldCountriesDrillMode): readonly WorldCountriesRecallSkill[] {
   return getDrillModeDefinition(mode).skills
+}
+
+export function isDrillPracticeMode(mode: WorldCountriesDrillMode): boolean {
+  return mode === 'capitals'
 }
 
 export function getDrillSkillLabel(skill: WorldCountriesRecallSkill): string {
