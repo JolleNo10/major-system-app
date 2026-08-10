@@ -24,51 +24,72 @@ export interface RailConfig {
 
 const EMPTY_RAILS: RailConfig = {}
 
-interface Ctx {
+interface PageLayoutReadContext {
   rails: RailConfig
-  setRails: (rails: RailConfig) => void
   header: ReactNode
+}
+
+interface PageLayoutWriteContext {
+  setRails: (rails: RailConfig) => void
   setHeader: (header: ReactNode) => void
 }
 
-const PageLayoutCtx = createContext<Ctx | null>(null)
+const PageLayoutReadCtx = createContext<PageLayoutReadContext | null>(null)
+const PageLayoutWriteCtx = createContext<PageLayoutWriteContext | null>(null)
 
 export function PageLayoutProvider({ children }: { children: ReactNode }) {
   const [rails, setRails] = useState<RailConfig>(EMPTY_RAILS)
   const [header, setHeader] = useState<ReactNode>(null)
-  // The setters are stable useState dispatchers; memoize the value so the
-  // context only changes identity when a slot actually changes.
-  const value = useMemo<Ctx>(
-    () => ({ rails, setRails, header, setHeader }),
+  // Publishers receive a separate, stable context so publishing a slot does
+  // not re-render the component that owns that slot. This matters because
+  // useRails/useLayoutHeader accept dependency arrays and their callers may
+  // create ReactNodes or functions while rendering.
+  const readValue = useMemo<PageLayoutReadContext>(
+    () => ({ rails, header }),
     [rails, header],
   )
-  return <PageLayoutCtx.Provider value={value}>{children}</PageLayoutCtx.Provider>
+  const writeValue = useMemo<PageLayoutWriteContext>(
+    () => ({ setRails, setHeader }),
+    [],
+  )
+  return (
+    <PageLayoutWriteCtx.Provider value={writeValue}>
+      <PageLayoutReadCtx.Provider value={readValue}>{children}</PageLayoutReadCtx.Provider>
+    </PageLayoutWriteCtx.Provider>
+  )
 }
 
-function usePageLayoutCtx(): Ctx {
-  const ctx = useContext(PageLayoutCtx)
+function usePageLayoutRead(): PageLayoutReadContext {
+  const ctx = useContext(PageLayoutReadCtx)
+  if (!ctx) throw new Error('usePageLayout must be used within PageLayoutProvider')
+  return ctx
+}
+
+function usePageLayoutWrite(): PageLayoutWriteContext {
+  const ctx = useContext(PageLayoutWriteCtx)
   if (!ctx) throw new Error('usePageLayout must be used within PageLayoutProvider')
   return ctx
 }
 
 /** PageLayout reads the currently-registered rails. */
 export function usePageRails(): RailConfig {
-  return usePageLayoutCtx().rails
+  return usePageLayoutRead().rails
 }
 
 /** PageLayout reads the currently-registered header (chrome above the rail row). */
 export function usePageHeader(): ReactNode {
-  return usePageLayoutCtx().header
+  return usePageLayoutRead().header
 }
 
 /**
  * Register the rails for the current view. Pass a `deps` array (like useMemo):
- * the rails are re-published only when a dep changes — this is what prevents an
- * update loop, since a fresh ReactNode is created on every render. Rails are
- * cleared automatically on unmount (e.g. switching Pi tabs).
+ * the rails are re-published only when a dep changes, avoiding unnecessary slot
+ * updates when a fresh ReactNode is created on every render. Publishers use a
+ * write-only context, so publishing cannot re-render the publisher itself.
+ * Rails are cleared automatically on unmount (e.g. switching Pi tabs).
  */
 export function useRails(config: RailConfig, deps: DependencyList): void {
-  const { setRails } = usePageLayoutCtx()
+  const { setRails } = usePageLayoutWrite()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const memoized = useMemo(() => config, deps)
   useLayoutEffect(() => {
@@ -83,7 +104,7 @@ export function useRails(config: RailConfig, deps: DependencyList): void {
  * unmount.
  */
 export function useLayoutHeader(node: ReactNode, deps: DependencyList): void {
-  const { setHeader } = usePageLayoutCtx()
+  const { setHeader } = usePageLayoutWrite()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const memoized = useMemo(() => node, deps)
   useLayoutEffect(() => {

@@ -48,6 +48,11 @@ Feature workflow state determines the current rail composition. Feature-owned
 rail composition publishes the appropriate capabilities through `useRails`, and
 `PageLayout` owns only rail geometry and responsive presentation. `PageLayout`
 remains unaware of feature workflow concepts such as recall or learning phases.
+The layout slot context separates read access (used by `PageLayout`) from the
+stable write channel used by `useRails` and `useLayoutHeader`, so publishing a
+slot cannot re-render the component that publishes it. Publishers still pass
+stable dependency values to avoid unnecessary re-registration; provider-boundary
+tests cover accidental dependency recreation and real feature transitions.
 
 Unless a diagram says otherwise, an arrow means the source depends on or uses
 the target. The primary dependency direction is:

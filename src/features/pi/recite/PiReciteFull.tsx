@@ -25,6 +25,10 @@ const SEL_END_KEY = 'major-pi-sel-end'
 
 const PAIRS_PER_ROW = 10
 
+function formatPiRate(rate: number): string {
+  return rate.toFixed(rate < 10 ? 2 : 1)
+}
+
 export type Phase = 'setup' | 'quiz'
 interface Props {
   answerMode: AnswerMode
@@ -128,8 +132,6 @@ export function PiReciteFull({ answerMode, maxPiPairs, mode, onModeChange }: Pro
 
   const panelCls = 'bg-zinc-900 border border-zinc-800 rounded-xl'
 
-  const formatRate = (rate: number) => rate.toFixed(rate < 10 ? 2 : 1)
-
   const numButtons = Math.ceil(maxPiPairs / PAIRS_PER_ROW)
 
   // Rails — only during setup (the quiz phase has no rail): run history on the
@@ -137,7 +139,7 @@ export function PiReciteFull({ answerMode, maxPiPairs, mode, onModeChange }: Pro
   usePiReciteRail({
     phase,
     piSessions,
-    formatRate,
+    formatRate: formatPiRate,
     pendingRanges,
     statusesLoading,
     availableMemoedCount,
