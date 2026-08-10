@@ -40,7 +40,7 @@ export const DEFAULT_SETTINGS: Settings = {
   piPairsPerAnswer: 1,
   piMaintainBatchSegs: 5, // 5 segments = 100 digits per maintenance batch
   sessionUnmasteredShare: 0.5, // even split between unmastered and mastered pools
-  worldCountriesFuzzyAnswerMatching: false,
+  worldCountriesFuzzyAnswerMatching: true,
   worldCountriesLocationCleanTargetMinimum: 10,
 }
 
