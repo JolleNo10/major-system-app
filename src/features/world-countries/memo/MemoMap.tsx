@@ -1,5 +1,6 @@
 import type { Continent } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
+import { getWorldCountriesProgressLegend } from '@/features/world-countries/learning/progressPresentation'
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
 
 export interface MemoMapProps {
@@ -53,7 +54,7 @@ export function MemoMap({
       <div className="flex items-center justify-between gap-3 px-1 text-xs text-zinc-500">
         <span>Hover a country to see its {level === 'world' ? 'Continent' : 'Subregion'}.</span>
         <span>{progressLegend
-          ? `${progressLegend}: Unpractised · Weak · Developing · Strong · Complete`
+          ? `${progressLegend}: ${getWorldCountriesProgressLegend('core')}`
           : <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-green-600" /> Countries learned</span>}
         </span>
       </div>

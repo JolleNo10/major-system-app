@@ -36,7 +36,9 @@ PAO-specific concepts must not leak into `core/`.
   namespaces, validation, feature metadata, and backup envelopes.
 - `scoring/` owns the established Major/Pi scoring and scheduling machinery:
   per-item SM-2 state, attempt logging, timing adjustment, round scheduling,
-  statistics, and related hooks.
+  statistics, related hooks, and attempt-history retention policy. The
+  `AttemptWriteOptions` contract is owned by `scoring/attemptStore`; learning
+  callers may forward it but must not define scoring persistence policy.
 - `storage.ts` provides guarded localStorage reads/writes; it does not assign
   ownership of keys or schemas.
 - `ui/` owns reusable answer controls and primitives. It must remain free of

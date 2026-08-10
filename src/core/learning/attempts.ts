@@ -2,8 +2,9 @@ import {
   addAttemptRaw,
   getAllAttempts as getStoredAttempts,
   getAttemptsForKey,
+  type AttemptWriteOptions,
 } from '@/core/scoring/attemptStore'
-import type { Attempt, AttemptWriteOptions, RecallItemId } from './types'
+import type { Attempt, RecallItemId } from './types'
 
 /** Record evidence against an atomic learning identity. */
 export function recordAttempt(

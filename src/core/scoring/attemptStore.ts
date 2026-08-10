@@ -1,5 +1,4 @@
 import type { Direction } from '@/core/types'
-import type { AttemptWriteOptions } from '@/core/learning/types'
 import {
   type Attempt, itemKey, STORAGE_KEY,
   HISTORY_RETENTION_DAYS, HISTORY_MAX, DAY_MS,
@@ -23,6 +22,11 @@ const MIGRATED_KEY = 'major-attempts-migrated'
 interface AttemptRecord extends Attempt {
   id?: number
   key: string
+}
+
+/** Persistence policy for append-heavy attempt history. */
+export interface AttemptWriteOptions {
+  pruneHistory?: boolean
 }
 
 export function shouldPruneAttemptHistory(options: AttemptWriteOptions = {}): boolean {

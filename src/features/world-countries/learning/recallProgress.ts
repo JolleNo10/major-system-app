@@ -74,7 +74,7 @@ function localDateForTimestamp(at: number): string {
 }
 
 export interface RecordWorldCountriesAttempt extends Attempt {
-  /** New callers should provide this; omitted values default to free recall. */
+  /** New callers should provide this; omitted values remain legacy/unknown. */
   evidenceKind?: AttemptEvidenceKind
   /** Filled from `at` when omitted, using the current local timezone. */
   localDate?: string
@@ -89,13 +89,15 @@ export function recordWorldCountriesAttempt(
   skill: WorldCountriesRecallSkill,
   attempt: RecordWorldCountriesAttempt,
 ): Promise<void> {
+  const { evidenceKind, ...attemptWithoutEvidenceKind } = attempt
+  const recordedAttempt: Attempt = {
+    ...attemptWithoutEvidenceKind,
+    ...(evidenceKind === undefined ? {} : { evidenceKind }),
+    localDate: attempt.localDate ?? localDateForTimestamp(attempt.at),
+  }
   return recordAttempt(
     recallTargetIdFor(countryId, skill),
-    {
-      ...attempt,
-      evidenceKind: attempt.evidenceKind ?? 'recall',
-      localDate: attempt.localDate ?? localDateForTimestamp(attempt.at),
-    },
+    recordedAttempt,
     { pruneHistory: false },
   )
 }

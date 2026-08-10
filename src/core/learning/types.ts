@@ -20,11 +20,6 @@ export interface LearningScope {
 /** Cognitive interaction represented by an answer attempt. */
 export type AttemptEvidenceKind = 'recall' | 'recognition'
 
-/** Generic persistence control for append-heavy attempt history. */
-export interface AttemptWriteOptions {
-  pruneHistory?: boolean
-}
-
 export interface Attempt {
   at: number
   ok: boolean

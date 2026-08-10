@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { deriveWorldCountriesCountryProgress, deriveWorldCountriesRecallProgress } from './recallProgress'
-import { getCountryProgressState } from './progressPresentation'
+import {
+  getCountryProgressColor,
+  getCountryProgressState,
+  getWorldCountriesProgressLegend,
+} from './progressPresentation'
 import { recallTargetIdFor, WORLD_COUNTRIES_RECALL_SKILLS } from './recallTargets'
 
 describe('World Countries progress presentation semantics', () => {
@@ -19,5 +23,9 @@ describe('World Countries progress presentation semantics', () => {
 
     expect(getCountryProgressState(progress, 'core')).toBe('complete')
     expect(getCountryProgressState(progress, 'capital-to-country')).toBe('weak')
+    expect(getCountryProgressColor('complete')).toBe('#16a34a')
+    expect(getCountryProgressColor('mastered')).toBe('#16a34a')
+    expect(getWorldCountriesProgressLegend('core')).toBe('Unpractised · Weak · Developing · Strong · Complete')
+    expect(getWorldCountriesProgressLegend('skill')).toBe('Unpractised · Weak · Developing · Strong · Mastered')
   })
 })

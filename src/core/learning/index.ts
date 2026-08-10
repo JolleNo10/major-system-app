@@ -1,12 +1,12 @@
 export type {
   Attempt,
   AttemptEvidenceKind,
-  AttemptWriteOptions,
   LearningScope,
   LearningScopeId,
   RecallItem,
   RecallItemId,
 } from './types'
+export type { AttemptWriteOptions } from '@/core/scoring/attemptStore'
 export {
   DEFAULT_RECENT_ATTEMPTS,
   deriveItemProgress,

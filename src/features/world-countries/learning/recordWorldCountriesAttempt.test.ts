@@ -31,7 +31,7 @@ describe('World Countries attempt evidence adapter', () => {
     )
   })
 
-  it('defaults direct World Countries records to explicit free recall', async () => {
+  it('does not promote records with omitted evidence kind to mastery evidence', async () => {
     await recordWorldCountriesAttempt('NO', 'location-to-country', {
       at: Date.UTC(2026, 7, 10, 18),
       ok: true,
@@ -41,7 +41,12 @@ describe('World Countries attempt evidence adapter', () => {
 
     expect(recordAttemptMock).toHaveBeenCalledWith(
       'world-countries:location-to-country:NO',
-      expect.objectContaining({ evidenceKind: 'recall', localDate: '2026-08-10' }),
+      expect.not.objectContaining({ evidenceKind: 'recall' }),
+      { pruneHistory: false },
+    )
+    expect(recordAttemptMock).toHaveBeenCalledWith(
+      'world-countries:location-to-country:NO',
+      expect.objectContaining({ localDate: '2026-08-10' }),
       { pruneHistory: false },
     )
   })

@@ -294,6 +294,7 @@ adapters, and map adapters remain private until a real external consumer exists.
 - `src/features/world-countries/learning/recallMastery.ts`
 - `src/features/world-countries/learning/scopeProgress.ts`
 - `src/features/world-countries/learning/progressPresentation.ts`
+- `src/features/world-countries/learning/useWorldCountriesCountryColors.ts`
 - `src/features/world-countries/learning/subregionLearningStore.ts`
 - `src/features/world-countries/drill/WorldCountriesDrill.tsx`
 - `src/features/world-countries/drill/drillSelection.ts`
