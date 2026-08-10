@@ -43,7 +43,7 @@ Significant object stores:
 
 | Store | Purpose and identity |
 | --- | --- |
-| `attempts` | Append-heavy, retention-pruned answer evidence keyed by an auto ID and indexed by opaque string `key` and time. Existing namespaces include `enc:NN`, `dec:NN`, `pi:<position>`, `piseg:<segment>`, and `pi:pair:<position>`; `core/learning` exposes the same store as opaque recall-item evidence. |
+| `attempts` | Append-heavy answer evidence keyed by an auto ID and indexed by opaque string `key` and time. Records may include `evidenceKind` (`recall` or `recognition`) and a recorded learner-local `localDate`; older records omit both and are legacy/unknown. Existing namespaces include `enc:NN`, `dec:NN`, `pi:<position>`, `piseg:<segment>`, and `pi:pair:<position>`; `core/learning` exposes the same store as opaque recall-item evidence. |
 | `mnemonics` | Shared user-authored `{targetId, text, image, updatedAt, ...featureMetadata}` records keyed by feature-owned `targetId`. Current namespaces include `pi:segment:<index>` and `geo:*`. |
 | `pi_stories` | Legacy Pi records keyed by zero-based `seg`. Retained for lazy read migration; new writes go to `mnemonics`. |
 
@@ -90,7 +90,9 @@ follows the defining module and feature namespace.
   `world-countries:<skill>:<CountryId>` namespace, where the skill is one of
   `location-to-country`, `country-to-capital`, or `capital-to-country`.
   Countries + Capitals writes two atomic records when both steps are answered;
-  its mode name is not part of either ID.
+  its mode name is not part of either ID. New attempts record whether the
+  interaction was recall or recognition and preserve the local calendar date
+  at answer time.
 
 ## Migration and isolation rules
 
@@ -106,6 +108,9 @@ follows the defining module and feature namespace.
   fingerprint and therefore does not invalidate completion.
 - IndexedDB upgrade work must preserve all existing stores. Store creation is
   idempotent because users can arrive from different historical versions.
+- `world-countries:<skill>:<CountryId>` attempts are currently exempt from both
+  age-based and per-target count pruning. Generic retention remains unchanged
+  for Major System, Pi, and every other namespace.
 - Pi story reads lazily copy legacy `pi_stories` records to `mnemonics`; explicit
   deletion removes both so deleted content cannot reappear.
 - Best-effort telemetry/attempt writes may swallow storage failures. Authored

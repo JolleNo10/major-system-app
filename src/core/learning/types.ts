@@ -17,8 +17,20 @@ export interface LearningScope {
   itemIds: readonly RecallItemId[]
 }
 
+/** Cognitive interaction represented by an answer attempt. */
+export type AttemptEvidenceKind = 'recall' | 'recognition'
+
+/** Generic persistence control for append-heavy attempt history. */
+export interface AttemptWriteOptions {
+  pruneHistory?: boolean
+}
+
 export interface Attempt {
   at: number
   ok: boolean
   ms: number
+  /** Absent on attempts written before evidence quality was introduced. */
+  evidenceKind?: AttemptEvidenceKind
+  /** Learner-local calendar date captured when the attempt was answered. */
+  localDate?: string
 }

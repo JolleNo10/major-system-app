@@ -119,4 +119,29 @@ describe('GeographyOverviewMap', () => {
     await act(async () => greenland?.dispatchEvent(new Event('pointerenter', { bubbles: true })))
     expect(greenland?.style.fill).toBe('#0f766e')
   })
+
+  it('renders caller-provided semantic Country progress colors', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      text: async () => `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+          <g><path id="Norway"/><text id="Norway_label">Norway</text></g>
+        </svg>`,
+    })))
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(GeographyOverviewMap, {
+        level: 'world',
+        countryColorsById: new Map([['NO', '#16a34a']]),
+        ariaLabel: 'World progress map',
+      }))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toBe('#16a34a')
+  })
 })

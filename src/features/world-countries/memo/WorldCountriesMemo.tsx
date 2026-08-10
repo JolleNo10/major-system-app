@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { AnswerMode } from '@/core/types'
 import { Overlay } from '@/app/layout/Overlay'
 import { useSettings } from '@/app/settings/SettingsContext'
@@ -6,6 +6,19 @@ import { countries, type Continent } from '@/features/world-countries/data/count
 import type { SubregionDefinition, SubregionId } from '@/features/world-countries/data/subregions'
 import { getAllSubregionLearningStates } from '@/features/world-countries/learning/subregionLearningStore'
 import { isSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningState'
+import {
+  deriveWorldCountriesCountryProgress,
+  loadWorldCountriesRecallProgress,
+  type RecallProgress,
+} from '@/features/world-countries/learning/recallProgress'
+import { getCountryProgressState } from '@/features/world-countries/learning/progressPresentation'
+import { WORLD_COUNTRIES_RECALL_SKILLS } from '@/features/world-countries/learning/recallTargets'
+import {
+  deriveWorldCountriesContinentProgress,
+  deriveWorldCountriesSubregionProgress,
+  deriveWorldCountriesWorldProgress,
+  type WorldCountriesScopeProgress,
+} from '@/features/world-countries/learning/scopeProgress'
 import { getContinents, getSubregionsForContinentInEffectiveOrder } from '@/features/world-countries/geography/queries'
 import { getContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
 import { getContinentMemoProgress, getWorldMemoProgress, type MemoProgress } from './memoProgress'
@@ -13,6 +26,14 @@ import { MemoMap } from './MemoMap'
 import { ContinentOrderEditor } from './continent/ContinentOrderEditor'
 import { SubregionMemoScreen } from './subregion/SubregionMemoScreen'
 import { ContinentOverviewRails, WorldOverviewRails } from './WorldCountriesMemoRails'
+
+const CORE_PROGRESS_COLORS: Readonly<Record<string, string>> = {
+  unpractised: '#52525b',
+  weak: '#dc2626',
+  developing: '#d97706',
+  strong: '#2563eb',
+  complete: '#16a34a',
+}
 
 function learnedCountryIds(): Set<string> {
   const states = new Map(getAllSubregionLearningStates().map(state => [state.subregionId, state]))
@@ -27,9 +48,35 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
   const [subregion, setSubregion] = useState<SubregionId | null>(null)
   const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null)
   const [learningVersion, setLearningVersion] = useState(0)
+  const [recallProgress, setRecallProgress] = useState<RecallProgress | null>(null)
   const continents = useMemo(() => getContinents(), [])
   const learnedIds = useMemo(() => learnedCountryIds(), [learningVersion])
   const worldProgress = getWorldMemoProgress(learnedIds)
+
+  useEffect(() => {
+    let active = true
+    setRecallProgress(null)
+    void loadWorldCountriesRecallProgress({
+      countryIds: countries.map(country => country.id),
+      skills: WORLD_COUNTRIES_RECALL_SKILLS,
+    }).then(progress => {
+      if (active) setRecallProgress(progress)
+    })
+    return () => { active = false }
+  }, [learningVersion])
+
+  const countryColorsById = useMemo(() => {
+    if (!recallProgress) return undefined
+    return new Map(countries.map(country => {
+      const progress = deriveWorldCountriesCountryProgress(country.id, recallProgress)
+      const state = getCountryProgressState(progress, 'core')
+      return [country.id, CORE_PROGRESS_COLORS[state] ?? CORE_PROGRESS_COLORS.unpractised] as const
+    }))
+  }, [recallProgress])
+  const worldLearningProgress = useMemo(
+    () => recallProgress ? deriveWorldCountriesWorldProgress(recallProgress) : null,
+    [recallProgress],
+  )
 
   const refreshLearning = useCallback(() => setLearningVersion(version => version + 1), [])
 
@@ -67,6 +114,10 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
         onSelectSubregion={selectSubregion}
         onExit={backToContinent}
         onWorld={backToWorld}
+        countryColorsById={countryColorsById}
+        learningProgress={subregion && recallProgress
+          ? deriveWorldCountriesSubregionProgress(subregion, recallProgress)
+          : null}
       />
     )
   }
@@ -82,6 +133,10 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
         onSelectSubregion={selectSubregion}
         onHoverGroup={setHoveredGroupId}
         onLearningChanged={refreshLearning}
+        countryColorsById={countryColorsById}
+        learningProgress={continent && recallProgress
+          ? deriveWorldCountriesContinentProgress(continent, recallProgress)
+          : null}
       />
     )
   }
@@ -94,6 +149,8 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
       hoveredGroupId={hoveredGroupId}
       onSelectContinent={selectContinent}
       onHoverGroup={setHoveredGroupId}
+      countryColorsById={countryColorsById}
+      learningProgress={worldLearningProgress}
     />
   )
 }
@@ -105,6 +162,8 @@ function WorldMemoOverview({
   hoveredGroupId,
   onSelectContinent,
   onHoverGroup,
+  countryColorsById,
+  learningProgress,
 }: {
   continents: readonly Continent[]
   progress: MemoProgress
@@ -112,6 +171,8 @@ function WorldMemoOverview({
   hoveredGroupId: string | null
   onSelectContinent: (continent: Continent) => void
   onHoverGroup: (groupId: string | null) => void
+  countryColorsById?: ReadonlyMap<string, string>
+  learningProgress?: WorldCountriesScopeProgress | null
 }) {
   return (
     <MemoOverviewShell
@@ -123,6 +184,7 @@ function WorldMemoOverview({
           hoveredGroupId={hoveredGroupId}
           onSelectContinent={onSelectContinent}
           onHoverGroup={onHoverGroup}
+          learningProgress={learningProgress}
         />
       }
       map={
@@ -132,6 +194,8 @@ function WorldMemoOverview({
           hoveredGroupId={hoveredGroupId}
           onHoverGroup={onHoverGroup}
           onSelectContinent={onSelectContinent}
+          countryColorsById={countryColorsById}
+          progressLegend={countryColorsById ? 'Core Country progress' : undefined}
         />
       }
     />
@@ -147,6 +211,8 @@ function ContinentMemoOverview({
   onSelectSubregion,
   onHoverGroup,
   onLearningChanged,
+  countryColorsById,
+  learningProgress,
 }: {
   continent: Continent
   memoedCountryIds: ReadonlySet<string>
@@ -156,6 +222,8 @@ function ContinentMemoOverview({
   onSelectSubregion: (subregion: SubregionId) => void
   onHoverGroup: (groupId: string | null) => void
   onLearningChanged: () => void
+  countryColorsById?: ReadonlyMap<string, string>
+  learningProgress?: WorldCountriesScopeProgress | null
 }) {
   const [editingOrder, setEditingOrder] = useState(false)
   const [draftSubregions, setDraftSubregions] = useState<readonly SubregionDefinition[] | null>(null)
@@ -193,6 +261,7 @@ function ContinentMemoOverview({
             onSelectSubregion={onSelectSubregion}
             onHoverGroup={onHoverGroup}
             onEditOrder={openOrderEditor}
+            learningProgress={learningProgress}
           />
         }
         map={
@@ -203,6 +272,8 @@ function ContinentMemoOverview({
             hoveredGroupId={hoveredGroupId}
             onHoverGroup={onHoverGroup}
             onSelectSubregion={onSelectSubregion}
+            countryColorsById={countryColorsById}
+            progressLegend={countryColorsById ? 'Core Country progress' : undefined}
           />
         }
       />

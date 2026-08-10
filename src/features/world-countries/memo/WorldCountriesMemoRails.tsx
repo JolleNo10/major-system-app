@@ -6,6 +6,7 @@ import { getContinentMemoProgress, getNextSubregionToMemo, getSubregionMemoProgr
 import { getContinentHoverGroupId, getSubregionHoverGroupId } from '@/features/world-countries/maps/geographyMapAdapter'
 import { countryCapitalMnemonicId, subregionMnemonicId } from '@/features/world-countries/mnemonics/geographyMnemonicIds'
 import type { MemoProgress } from './memoProgress'
+import type { WorldCountriesScopeProgress } from '@/features/world-countries/learning/scopeProgress'
 import type { CountryLearningPhase } from '@/features/world-countries/learning/countryLearningFlow'
 import type { CapitalLearningPhase } from '@/features/world-countries/learning/capitalLearningFlow'
 import { MemoMnemonicCard } from './MemoMnemonicCard'
@@ -14,6 +15,7 @@ interface WorldOverviewRailsProps {
   continents: readonly Continent[]
   memoedCountryIds: ReadonlySet<string>
   progress: MemoProgress
+  learningProgress?: WorldCountriesScopeProgress | null
   hoveredGroupId: string | null
   onSelectContinent: (continent: Continent) => void
   onHoverGroup: (groupId: string | null) => void
@@ -23,6 +25,7 @@ export function WorldOverviewRails({
   continents,
   memoedCountryIds,
   progress,
+  learningProgress,
   hoveredGroupId,
   onSelectContinent,
   onHoverGroup,
@@ -37,6 +40,7 @@ export function WorldOverviewRails({
           </div>
 
           <ProgressSummary label="World progress" progress={progress} />
+          {learningProgress && <LearningProgressSummary progress={learningProgress} />}
 
           <nav aria-label="Continents">
             <ul className="space-y-1.5">
@@ -57,7 +61,7 @@ export function WorldOverviewRails({
       ),
       leftLabel: 'Continents',
     },
-    [continents, memoedCountryIds, progress.memoedCount, progress.totalCount, progress.ratio, hoveredGroupId, onSelectContinent, onHoverGroup],
+    [continents, learningProgress, memoedCountryIds, progress.memoedCount, progress.totalCount, progress.ratio, hoveredGroupId, onSelectContinent, onHoverGroup],
   )
 
   return null
@@ -68,6 +72,7 @@ interface ContinentOverviewRailsProps {
   subregions: readonly SubregionDefinition[]
   memoedCountryIds: ReadonlySet<string>
   progress: MemoProgress
+  learningProgress?: WorldCountriesScopeProgress | null
   hoveredGroupId: string | null
   onWorld: () => void
   onSelectSubregion: (subregion: SubregionId) => void
@@ -80,6 +85,7 @@ export function ContinentOverviewRails({
   subregions,
   memoedCountryIds,
   progress,
+  learningProgress,
   hoveredGroupId,
   onWorld,
   onSelectSubregion,
@@ -112,6 +118,7 @@ export function ContinentOverviewRails({
           </div>
 
           <ProgressSummary label="Continent progress" progress={progress} />
+          {learningProgress && <LearningProgressSummary progress={learningProgress} />}
 
           <nav aria-label={`${continent} Subregions`}>
             <ol className="space-y-1.5">
@@ -140,7 +147,7 @@ export function ContinentOverviewRails({
       leftLabel: 'Subregions',
       rightLabel: 'Next to memo',
     },
-    [continent, subregions, memoedCountryIds, nextSubregion, progress.memoedCount, progress.totalCount, progress.ratio, hoveredGroupId, onWorld, onSelectSubregion, onHoverGroup, onEditOrder],
+    [continent, learningProgress, subregions, memoedCountryIds, nextSubregion, progress.memoedCount, progress.totalCount, progress.ratio, hoveredGroupId, onWorld, onSelectSubregion, onHoverGroup, onEditOrder],
   )
 
   return null
@@ -207,6 +214,7 @@ interface SubregionRailContent {
   entries: readonly Country[]
   learned: boolean
   capitalsLearned: boolean
+  learningProgress?: WorldCountriesScopeProgress | null
   track: 'countries' | 'capitals'
   capitalWalkthroughCountryId: string | null
   capitalRecallCorrectionCountryId: string | null
@@ -228,7 +236,7 @@ export function SubregionOverviewRails({
   onEditOrder,
 }: SubregionOverviewRailsProps) {
   const { continent, subregion, onWorld, onContinent, nextSubregion, onSelectSubregion } = navigation
-  const { entries, learned, capitalsLearned, track, capitalWalkthroughCountryId, capitalRecallCorrectionCountryId, mnemonicVersion, onMnemonicChanged } = content
+  const { entries, learned, capitalsLearned, learningProgress, track, capitalWalkthroughCountryId, capitalRecallCorrectionCountryId, mnemonicVersion, onMnemonicChanged } = content
   const visible = phase !== 'ordered-recall' && phase !== 'recall' && phase !== 'complete'
   const showSubregionMnemonic = visible && track === 'countries'
   const capitalWalkthroughCountry = capitalWalkthroughCountryId
@@ -279,6 +287,7 @@ export function SubregionOverviewRails({
               </p>
             )}
           </div>
+          {learningProgress && <LearningProgressSummary progress={learningProgress} />}
 
           <section aria-labelledby="learning-order-rail-heading">
             <div className="flex items-center justify-between gap-2">
@@ -339,7 +348,7 @@ export function SubregionOverviewRails({
       leftLabel: 'Learning context',
       rightLabel: showNextToMemo ? 'Memo tools' : showSubregionMnemonic || showCapitalMnemonic || showCapitalCorrectionMnemonic ? 'Memory aid' : undefined,
     },
-    [visible, showNextToMemo, showSubregionMnemonic, showCapitalMnemonic, showCapitalCorrectionMnemonic, capitalWalkthroughCountry, capitalRecallCorrectionCountry, continent, subregion, entries, track, trackPresentation.learned, trackPresentation.label, mnemonicVersion, onWorld, onContinent, nextSubregion, onSelectSubregion, onEditOrder, onMnemonicChanged],
+    [learningProgress, visible, showNextToMemo, showSubregionMnemonic, showCapitalMnemonic, showCapitalCorrectionMnemonic, capitalWalkthroughCountry, capitalRecallCorrectionCountry, continent, subregion, entries, track, trackPresentation.learned, trackPresentation.label, mnemonicVersion, onWorld, onContinent, nextSubregion, onSelectSubregion, onEditOrder, onMnemonicChanged],
   )
 
   return null
@@ -391,6 +400,21 @@ function ProgressSummary({ label, progress }: { label: string; progress: MemoPro
       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-800">
         <div className="h-full rounded-full bg-green-500 transition-all" style={{ width: `${progress.ratio * 100}%` }} />
       </div>
+    </div>
+  )
+}
+
+function LearningProgressSummary({ progress }: { progress: WorldCountriesScopeProgress }) {
+  const counts = progress.countryStateCounts
+  return (
+    <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3" aria-label="Core Country learning progress">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-xs uppercase tracking-wider text-cyan-300">Core Country progress</span>
+        <span className="text-sm font-semibold tabular-nums text-cyan-200">{progress.completeCountries}/{progress.totalCountries} complete</span>
+      </div>
+      <p className="mt-2 text-xs leading-relaxed text-zinc-400">
+        Complete {counts.complete} · Strong {counts.strong} · Developing {counts.developing} · Weak {counts.weak} · Unpractised {counts.unpractised}
+      </p>
     </div>
   )
 }

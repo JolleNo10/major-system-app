@@ -7,6 +7,8 @@ export interface MemoMapProps {
   continent?: Continent
   selectedSubregion?: SubregionId | null
   memoedCountryIds: ReadonlySet<string>
+  countryColorsById?: ReadonlyMap<string, string>
+  progressLegend?: string
   hoveredGroupId?: string | null
   onHoverGroup?: (groupId: string | null) => void
   onSelectContinent?: (continent: Continent) => void
@@ -19,6 +21,8 @@ export function MemoMap({
   continent,
   selectedSubregion = null,
   memoedCountryIds,
+  countryColorsById,
+  progressLegend,
   hoveredGroupId = null,
   onHoverGroup,
   onSelectContinent,
@@ -37,6 +41,7 @@ export function MemoMap({
         focusedSubregionId={selectedSubregion}
         coloredCountryIds={memoedCountryIds}
         countryColor="#16a34a"
+        countryColorsById={countryColorsById}
         hoveredGroupId={hoveredGroupId}
         onHoverGroup={onHoverGroup}
         onCountryClick={country => {
@@ -47,7 +52,10 @@ export function MemoMap({
       />
       <div className="flex items-center justify-between gap-3 px-1 text-xs text-zinc-500">
         <span>Hover a country to see its {level === 'world' ? 'Continent' : 'Subregion'}.</span>
-        <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-green-600" /> Countries learned</span>
+        <span>{progressLegend
+          ? `${progressLegend}: Unpractised · Weak · Developing · Strong · Complete`
+          : <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-green-600" /> Countries learned</span>}
+        </span>
       </div>
     </div>
   )

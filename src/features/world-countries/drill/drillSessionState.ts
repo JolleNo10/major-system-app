@@ -1,4 +1,5 @@
 import type { CountryId } from '@/features/world-countries/data/countries'
+import type { AttemptEvidenceKind } from '@/core/learning'
 import type { WorldCountriesRecallSkill } from '@/features/world-countries/learning/recallTargets'
 import { getSkillsForDrillMode, type WorldCountriesDrillMode } from './drillModes'
 
@@ -9,6 +10,8 @@ export interface DrillAnswerRecord {
   correct: boolean
   at: number
   ms: number
+  /** Populated by the active UI; absent only for legacy/session fixtures. */
+  evidenceKind?: AttemptEvidenceKind
 }
 
 export interface DrillSessionConfig {

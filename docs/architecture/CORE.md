@@ -28,6 +28,8 @@ PAO-specific concepts must not leak into `core/`.
 
 - `learning/` models domain-neutral recall IDs/scopes, atomic attempts,
   derived item/scope progress, mastery policy, and next-item selection.
+  Attempts may carry optional `evidenceKind` (`recall` or `recognition`) and
+  learner-local `localDate`; missing metadata is legacy/unknown evidence.
   Features own ID construction and the meaning of a scope.
 - `mnemonics/` owns generic text-plus-image records, image processing, hooks,
   persistence access, and generic JSON encoding. Feature adapters own target
@@ -51,6 +53,9 @@ PAO-specific concepts must not leak into `core/`.
   or `MnemonicTargetId`; core treats those strings as opaque.
 - Atomic learning evidence may be shared. Feature milestones, workflow phases,
   and instructional policy stay feature-local.
+- Feature-specific mastery may derive directly from retained raw attempts when
+  aggregate `ItemProgress` cannot express the feature policy. The generic
+  mastery policy remains available and unchanged for existing consumers.
 - Do not merge `core/learning` and `core/scoring` casually. `learning/` is the
   newer domain-neutral evidence/progress API; `scoring/` still owns the active
   Major/Pi SM-2 and round mechanisms plus the IndexedDB connection. A change
@@ -87,6 +92,8 @@ owner.
 - Core identities are opaque strings; feature meaning is not parsed in core.
 - Scope progress is derived from atomic item evidence rather than separate
   scope attempts.
+- The shared learning layer preserves evidence metadata without interpreting
+  feature concepts such as Country, Capital, or feature-specific mastery.
 - Shared mnemonic records have generic fields; feature-specific metadata may
   pass through but is interpreted only by feature adapters.
 - Existing shared APIs are not expanded for hypothetical reuse.

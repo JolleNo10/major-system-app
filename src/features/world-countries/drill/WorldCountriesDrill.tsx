@@ -59,6 +59,7 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
       at: record.at,
       ok: record.correct,
       ms: record.ms,
+      evidenceKind: record.evidenceKind,
     })
   }, [])
 

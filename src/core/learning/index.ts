@@ -1,5 +1,7 @@
 export type {
   Attempt,
+  AttemptEvidenceKind,
+  AttemptWriteOptions,
   LearningScope,
   LearningScopeId,
   RecallItem,

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { countriesToSvgIds } from '@/features/world-countries/maps/countryMapIds'
 import { SvgMapView, type SvgMapCountry } from '@/features/world-countries/maps/SvgMapView'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
-import { createCountryOrderLabels, getCountryForSvgId, resolveCountriesToSvgIds } from '@/features/world-countries/maps/geographyMapAdapter'
+import { createCountryColorsById, createCountryOrderLabels, getCountryForSvgId, resolveCountriesToSvgIds } from '@/features/world-countries/maps/geographyMapAdapter'
 import { getMemoMapDefinition } from '@/features/world-countries/maps/mapDefinitions'
 
 export interface CountryLearningMapProps {
@@ -13,6 +13,8 @@ export interface CountryLearningMapProps {
   namedCountryId?: string | null
   highlightedCountryId?: string | null
   showHighlightedNames?: boolean
+  /** Optional caller-owned result/overview progress colors. */
+  countryColorsById?: ReadonlyMap<string, string>
   onCountryClick?: (countryId: string) => void
   ariaLabel: string
 }
@@ -34,6 +36,7 @@ export function CountryLearningMap({
   namedCountryId = null,
   highlightedCountryId = null,
   showHighlightedNames = true,
+  countryColorsById,
   onCountryClick,
   ariaLabel,
 }: CountryLearningMapProps) {
@@ -60,6 +63,12 @@ export function CountryLearningMap({
     [discoveredIds, scopeCountries, showOrderNumbers],
   )
   const zoomIds = getCountryLearningMapZoomIds(continent, scopeSvgIds)
+  const countryColors = useMemo(
+    () => countryColorsById
+      ? createCountryColorsById(scopeCountries, countryColorsById, discoveredIds)
+      : [],
+    [countryColorsById, discoveredIds, scopeCountries],
+  )
 
   return (
     <SvgMapView
@@ -69,6 +78,7 @@ export function CountryLearningMap({
       mutedIds={discoveredIds.filter(id => !scopeSvgIds.includes(id))}
       namedIds={namedSvgIds}
       countryLabels={countryLabels}
+      countryColors={countryColors}
       zoomIds={zoomIds}
       settings={{ showHighlightedNames }}
       onCountriesLoaded={setDiscovered}

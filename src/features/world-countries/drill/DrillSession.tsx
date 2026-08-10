@@ -103,6 +103,7 @@ export function DrillSession({
       correct,
       at: Date.now(),
       ms: elapsed,
+      evidenceKind: answerMode === 'typing' ? 'recall' : 'recognition',
     })
   }
 

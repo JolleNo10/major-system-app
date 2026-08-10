@@ -9,6 +9,7 @@ export function SubregionOverview({
   entries,
   learned,
   capitalsLearned,
+  countryColorsById,
   onStart,
   onPracticeStageB,
   onStartCapitals,
@@ -20,6 +21,7 @@ export function SubregionOverview({
   entries: readonly Country[]
   learned: boolean
   capitalsLearned: boolean
+  countryColorsById?: ReadonlyMap<string, string>
   onStart: () => void
   onPracticeStageB: () => void
   onStartCapitals: () => void
@@ -45,6 +47,7 @@ export function SubregionOverview({
         scopeCountries={mapEntries}
         showNames
         showOrderNumbers
+        countryColorsById={countryColorsById}
         ariaLabel={`Map of ${definition.label}`}
       />
 

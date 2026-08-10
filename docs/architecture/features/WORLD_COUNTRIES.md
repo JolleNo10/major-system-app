@@ -51,8 +51,9 @@ tracks.
   the effective-order resolvers, and metadata persistence.
 - `learning/` — reusable World Countries recall semantics: skill-specific
   answer matching, Country + skill target IDs, atomic evidence adapters,
-  Country-level progress aggregation, reusable learning map presentation, pure
-  Memo session mechanics, and durable Subregion Memo learning facts. Capital
+  feature-local proficiency/mastery, core-vs-additional Country aggregation,
+  direct Country-population scope progress, reusable learning map presentation,
+  pure Memo session mechanics, and durable Subregion Memo learning facts. Capital
   Memo recalls Country → Capital; Drill also defines the independent Location
   → Country and Capital → Country skills.
 - `maps/` — SVG controller/view, map definitions/assets, Country-to-SVG
@@ -90,8 +91,10 @@ feature-local `domain/` or `persistence/` layers, generic `common/`, a root
   persisted.
 - `learning/` owns the atomic skills `location-to-country`,
   `country-to-capital`, and `capital-to-country`, and centrally constructs
-  their opaque shared-learning IDs. `Countries + Capitals` combines the first
-  two skills but has no combined evidence identity.
+  their opaque shared-learning IDs. `location-to-country` and
+  `country-to-capital` are core skills; `capital-to-country` is additional.
+  `Countries + Capitals` combines the first two skills but has no combined
+  evidence identity.
 - SVG loading, DOM behavior, assets, definitions, and ID translation belong in
   `maps/`; learning policy does not.
 - Geography mnemonic target construction, metadata, and backup rules belong in
@@ -162,7 +165,9 @@ the current app layout integration seam.
   the shared IndexedDB `attempts` store. Atomic IDs are constructed by
   `learning/recallTargets.ts` in the `world-countries:<skill>:<CountryId>`
   namespace. Country → Capital evidence from `Countries + Capitals` therefore
-  shares history with `Capitals`; no mnemonic target ID is reused.
+  shares history with `Capitals`; no mnemonic target ID is reused. Attempts
+  preserve recall/recognition evidence and their recorded local calendar date;
+  World Countries atomic attempts are not age- or count-pruned.
 - The feature's version-3 JSON backup envelope contains Geography mnemonics,
   Subregion metadata, and Continent metadata; the import also accepts the
   version-2 (mnemonics plus Subregion metadata) and older mnemonic-only
@@ -248,6 +253,19 @@ adapters, and map adapters remain private until a real external consumer exists.
   recall map; it is not replaced by the overview map.
 - Workflow folders do not depend on sibling workflow internals.
 - World Countries persistence does not modify unrelated feature state.
+- Atomic skill proficiency is derived as `UNPRACTISED`, `WEAK`, `DEVELOPING`,
+  `STRONG`, or `MASTERED`. Mastery requires successful explicit free recall on
+  two distinct recorded local calendar dates after the latest failure;
+  recognition and legacy successes improve proficiency but cannot establish
+  mastery. Any incorrect attempt starts a new evidence boundary, and time or
+  additional success alone never removes mastery.
+- Country completeness means all core skills are mastered. Additional skill
+  mastery is reported separately and cannot make a complete Country
+  incomplete. Subregion, Continent, and World progress count current canonical
+  Countries directly and default to core Country completion.
+- Drill session accuracy is transient and distinct from durable proficiency,
+  mastery, and Country completeness. Multi-skill results expose per-skill
+  summaries. Active recall maps do not render target-revealing progress.
 - Capital learning starts without requiring `countriesLearnedAt`, while the
   overview still recommends Countries first.
 - Completed Country and Capital tracks expose parallel review and direct
@@ -273,6 +291,9 @@ adapters, and map adapters remain private until a real external consumer exists.
 - `src/features/world-countries/learning/recallTargets.ts`
 - `src/features/world-countries/learning/recallAnswerMatching.ts`
 - `src/features/world-countries/learning/recallProgress.ts`
+- `src/features/world-countries/learning/recallMastery.ts`
+- `src/features/world-countries/learning/scopeProgress.ts`
+- `src/features/world-countries/learning/progressPresentation.ts`
 - `src/features/world-countries/learning/subregionLearningStore.ts`
 - `src/features/world-countries/drill/WorldCountriesDrill.tsx`
 - `src/features/world-countries/drill/drillSelection.ts`

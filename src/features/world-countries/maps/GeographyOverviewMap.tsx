@@ -6,6 +6,7 @@ import { getCountriesForContinent, getCountriesForSubregion } from '@/features/w
 import {
   createContinentHoverGroups,
   createCountryColors,
+  createCountryColorsById,
   createSubregionHoverGroups,
   getCountryForSvgId,
   resolveCountriesToSvgIds,
@@ -23,6 +24,8 @@ export interface GeographyOverviewMapProps {
   /** Generic Country emphasis owned by the caller (for example learned Countries). */
   coloredCountryIds?: ReadonlySet<CountryId> | readonly CountryId[]
   countryColor?: string
+  /** Caller-resolved semantic progress colors; this map does not interpret them. */
+  countryColorsById?: ReadonlyMap<CountryId, string>
   hoveredGroupId?: string | null
   onHoverGroup?: (groupId: string | null) => void
   onCountryClick?: (country: Country) => void
@@ -43,6 +46,7 @@ export function GeographyOverviewMap({
   selectedSubregionIds,
   coloredCountryIds = [],
   countryColor = '#16a34a',
+  countryColorsById,
   hoveredGroupId = null,
   onHoverGroup,
   onCountryClick,
@@ -109,12 +113,13 @@ export function GeographyOverviewMap({
   }, [focusSvgIds, focusedSubregionId, mapCountryIds, selectedSubregionIds, selectedSvgIds])
   const countryColors = useMemo(() => {
     const colors: Array<readonly [string, string]> = []
+    if (countryColorsById) colors.push(...createCountryColorsById(visibleCountries, countryColorsById, mapCountryIds))
+    if (!countryColorsById) colors.push(...createCountryColors(visibleCountries, coloredCountryIds, mapCountryIds, countryColor))
     if (selectedSubregionIds !== undefined) {
       colors.push(...createCountryColors(visibleCountries, selectedCountries.map(country => country.id), mapCountryIds, '#0e7490'))
     }
-    colors.push(...createCountryColors(visibleCountries, coloredCountryIds, mapCountryIds, countryColor))
     return colors
-  }, [coloredCountryIds, countryColor, mapCountryIds, selectedCountries, selectedSubregionIds, visibleCountries])
+  }, [coloredCountryIds, countryColor, countryColorsById, mapCountryIds, selectedCountries, selectedSubregionIds, visibleCountries])
 
   const hoveredCountryId = useMemo(
     () => hoverGroups.find(group => group.id === hoveredGroupId)?.countryIds[0] ?? null,

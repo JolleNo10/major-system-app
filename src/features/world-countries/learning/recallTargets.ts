@@ -9,6 +9,30 @@ export const WORLD_COUNTRIES_RECALL_SKILLS = [
 
 export type WorldCountriesRecallSkill = typeof WORLD_COUNTRIES_RECALL_SKILLS[number]
 
+/** Skills that define the primary World Countries learning goal. */
+export const WORLD_COUNTRIES_CORE_RECALL_SKILLS = [
+  'location-to-country',
+  'country-to-capital',
+] as const satisfies readonly WorldCountriesRecallSkill[]
+
+/** Useful Country knowledge that does not move the primary finish line. */
+export const WORLD_COUNTRIES_ADDITIONAL_RECALL_SKILLS = [
+  'capital-to-country',
+] as const satisfies readonly WorldCountriesRecallSkill[]
+
+export type WorldCountriesCoreRecallSkill = typeof WORLD_COUNTRIES_CORE_RECALL_SKILLS[number]
+export type WorldCountriesAdditionalRecallSkill = typeof WORLD_COUNTRIES_ADDITIONAL_RECALL_SKILLS[number]
+
+export type WorldCountriesRecallSkillCategory = 'core' | 'additional'
+
+export function getWorldCountriesRecallSkillCategory(
+  skill: WorldCountriesRecallSkill,
+): WorldCountriesRecallSkillCategory {
+  return (WORLD_COUNTRIES_CORE_RECALL_SKILLS as readonly string[]).includes(skill)
+    ? 'core'
+    : 'additional'
+}
+
 export interface WorldCountriesRecallTarget {
   countryId: CountryId
   skill: WorldCountriesRecallSkill

@@ -1,4 +1,5 @@
 import type { Direction } from '@/core/types'
+import type { AttemptWriteOptions } from '@/core/learning/types'
 import {
   type Attempt, itemKey, STORAGE_KEY,
   HISTORY_RETENTION_DAYS, HISTORY_MAX, DAY_MS,
@@ -22,6 +23,10 @@ const MIGRATED_KEY = 'major-attempts-migrated'
 interface AttemptRecord extends Attempt {
   id?: number
   key: string
+}
+
+export function shouldPruneAttemptHistory(options: AttemptWriteOptions = {}): boolean {
+  return options.pruneHistory !== false
 }
 
 export const hasIdb = typeof indexedDB !== 'undefined'
@@ -106,15 +111,24 @@ async function migrateOnce(db: IDBDatabase): Promise<void> {
 }
 
 // Append one attempt under a raw key and prune that key's history
-// (time window + hard cap). `key` is any string namespace (e.g. "enc:07" or
-// "pi:42") — same store, indexes, and per-key pruning for all of them.
-export async function addAttemptRaw(key: string, attempt: Attempt): Promise<void> {
+// (time window + hard cap). Callers may disable pruning when their learning
+// semantics require complete retained evidence.
+export async function addAttemptRaw(
+  key: string,
+  attempt: Attempt,
+  options: AttemptWriteOptions = {},
+): Promise<void> {
   if (!hasIdb) return
   try {
     const db = await getDb()
     const tx = db.transaction(STORE, 'readwrite')
     const os = tx.objectStore(STORE)
-    os.add({ key, at: attempt.at, ok: attempt.ok, ms: attempt.ms } as AttemptRecord)
+    os.add({ key, ...attempt } as AttemptRecord)
+
+    if (!shouldPruneAttemptHistory(options)) {
+      await txDone(tx)
+      return
+    }
 
     const idx = os.index('by_key_at')
     const cutoff = attempt.at - HISTORY_RETENTION_DAYS * DAY_MS
@@ -160,7 +174,7 @@ export async function getAttemptsForKey(key: string): Promise<Attempt[]> {
     const idx = db.transaction(STORE, 'readonly').objectStore(STORE).index('by_key_at')
     const range = IDBKeyRange.bound([key], [key, []])
     const recs = await reqToPromise(idx.getAll(range))
-    return recs.map(({ at, ok, ms }) => ({ at, ok, ms }))
+    return recs.map(({ id: _id, key: _key, ...attempt }) => attempt)
   } catch {
     return []
   }
@@ -176,7 +190,7 @@ export async function getAllAttempts(): Promise<Array<{ key: string } & Attempt>
     const db = await getDb()
     const os = db.transaction(STORE, 'readonly').objectStore(STORE)
     const recs = await reqToPromise(os.getAll())
-    return recs.map(({ key, at, ok, ms }) => ({ key, at, ok, ms }))
+    return recs.map(({ id: _id, ...attempt }) => attempt)
   } catch {
     return []
   }

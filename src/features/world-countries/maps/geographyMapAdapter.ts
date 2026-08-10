@@ -115,6 +115,20 @@ export function createCountryColors(
     : [])
 }
 
+/** Translate caller-owned per-Country presentation colors to SVG IDs. */
+export function createCountryColorsById(
+  entries: readonly Country[],
+  colorsByCountryId: ReadonlyMap<CountryId, string>,
+  discoveredSvgIds: ReadonlySet<string> | readonly string[],
+): Array<readonly [string, string]> {
+  return entries.flatMap(entry => {
+    const color = colorsByCountryId.get(entry.id)
+    return color === undefined
+      ? []
+      : resolveCountryToSvgIds(entry, discoveredSvgIds).map(id => [id, color] as const)
+  })
+}
+
 /**
  * Best-effort visual ordering using the horizontal position of each map label.
  * Countries that cannot be paired with a labelled SVG path retain their
