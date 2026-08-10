@@ -1,140 +1,113 @@
 import type { Continent } from '@/features/world-countries/data/countries'
-import { getContinents } from '@/features/world-countries/geography/queries'
+import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
 import {
   getDrillSubregions,
-  isEntireContinentSelection,
   withAllDrillSubregions,
   toggleDrillSubregion,
   type WorldCountriesDrillSelection,
 } from './drillSelection'
-import {
-  WORLD_COUNTRIES_DRILL_MODES,
-  type WorldCountriesDrillMode,
-} from './drillModes'
+import { getDrillModeDefinition, type WorldCountriesDrillMode } from './drillModes'
+import { DrillSetupRails } from './DrillRails'
 
 export function DrillSetup({
+  level,
   selection,
   mode,
+  hoveredGroupId,
+  onHoverGroup,
   onSelectionChange,
   onModeChange,
   onStart,
+  onWorld,
+  onSelectContinent,
 }: {
+  level: 'world' | 'continent'
   selection: WorldCountriesDrillSelection
   mode: WorldCountriesDrillMode
+  hoveredGroupId: string | null
+  onHoverGroup: (groupId: string | null) => void
   onSelectionChange: (selection: WorldCountriesDrillSelection) => void
   onModeChange: (mode: WorldCountriesDrillMode) => void
   onStart: () => void
+  onWorld: () => void
+  onSelectContinent: (continent: Continent) => void
 }) {
-  const continents = getContinents()
   const subregions = getDrillSubregions(selection.continent)
-  const entireContinent = isEntireContinentSelection(selection)
-  const selectedSubregionCount = selection.subregionIds.length
 
-  const changeContinent = (continent: Continent) => {
-    onSelectionChange(withAllDrillSubregions(continent))
+  const selectEntireContinent = () => onSelectionChange(withAllDrillSubregions(selection.continent))
+  const toggleSubregion = (subregionId: Parameters<typeof toggleDrillSubregion>[1]) => {
+    onSelectionChange(toggleDrillSubregion(selection, subregionId))
   }
 
   return (
-    <div className="space-y-4 animate-fade-in">
-      <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-        <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Drill setup</p>
-        <h1 id="world-countries-drill-heading" className="mt-1 text-2xl font-bold text-zinc-100">Deliberate practice</h1>
-        <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-          Choose one Continent, the Subregions to practise, and the recall relationship to test.
+    <>
+      <DrillSetupRails
+        level={level}
+        selection={selection}
+        mode={mode}
+        hoveredGroupId={hoveredGroupId}
+        onHoverGroup={onHoverGroup}
+        onWorld={onWorld}
+        onSelectContinent={onSelectContinent}
+        onToggleSubregion={toggleSubregion}
+        onSelectEntireContinent={selectEntireContinent}
+        onModeChange={onModeChange}
+        onStart={onStart}
+      />
+
+      <div className="space-y-3 animate-fade-in">
+        <section className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World Countries Drill</p>
+          <h1 id="world-countries-drill-heading" className="text-2xl font-bold text-zinc-100">
+            {level === 'world' ? 'Choose a Continent' : `${selection.continent} Drill`}
+          </h1>
+          <p className="text-sm leading-relaxed text-zinc-400">
+            {level === 'world'
+              ? 'Use the World map to stay oriented, then choose the geographic root for your practice.'
+              : 'Choose the Subregions and recall relationship while the map keeps the geographic context in view.'}
+          </p>
+        </section>
+
+        <GeographyOverviewMap
+          level={level}
+          continent={level === 'continent' ? selection.continent : undefined}
+          selectedSubregionIds={level === 'continent' ? selection.subregionIds : undefined}
+          hoveredGroupId={hoveredGroupId}
+          onHoverGroup={onHoverGroup}
+          onCountryClick={country => {
+            if (level === 'world') onSelectContinent(country.continent)
+            else toggleSubregion(country.subregionId)
+          }}
+          ariaLabel={level === 'world' ? 'World map for choosing a Continent' : `${selection.continent} map for choosing Drill Subregions`}
+        />
+
+        <p className="px-1 text-xs text-zinc-500">
+          {level === 'world'
+            ? 'Hover a Continent in the rail or map. Select it from either surface to continue.'
+            : `Selected ${selection.subregionIds.length} of ${subregions.length} Subregions. Click a Country to toggle its Subregion.`}
         </p>
-      </section>
 
-      <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 space-y-4">
-        <div>
-          <label htmlFor="world-countries-drill-continent" className="block text-sm font-semibold text-zinc-200">Continent</label>
-          <select
-            id="world-countries-drill-continent"
-            value={selection.continent}
-            onChange={event => changeContinent(event.target.value as Continent)}
-            className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-cyan-500 sm:w-64"
+        <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 xl:hidden" aria-label="Drill setup summary">
+          <div className="flex items-baseline justify-between gap-3 text-sm">
+            <span className="text-zinc-500">{level === 'world' ? 'Geography' : 'Scope'}</span>
+            <span className="text-right font-semibold text-zinc-200">
+              {level === 'world' ? 'Choose a Continent' : `${selection.subregionIds.length} Subregions`}
+            </span>
+          </div>
+          <div className="mt-2 flex items-baseline justify-between gap-3 text-sm">
+            <span className="text-zinc-500">Recall mode</span>
+            <span className="text-right font-semibold text-violet-200">{getDrillModeDefinition(mode).label}</span>
+          </div>
+          <button
+            type="button"
+            disabled={level !== 'continent' || selection.subregionIds.length === 0}
+            onClick={onStart}
+            className="mt-4 w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {continents.map(continent => <option key={continent}>{continent}</option>)}
-          </select>
-        </div>
-
-        <div className="border-t border-zinc-800 pt-4">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <div>
-              <h2 className="text-sm font-semibold text-zinc-200">Geographic scope</h2>
-              <p className="mt-1 text-xs text-zinc-500">Select the whole Continent or one or more Subregions.</p>
-            </div>
-            <span className="text-xs tabular-nums text-cyan-300">{selectedSubregionCount} Subregion{selectedSubregionCount === 1 ? '' : 's'} selected</span>
-          </div>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            <button
-              type="button"
-              aria-pressed={entireContinent}
-              onClick={() => onSelectionChange(withAllDrillSubregions(selection.continent))}
-              className={`rounded-lg border px-3 py-3 text-left text-sm transition-colors ${entireContinent
-                ? 'border-cyan-500 bg-cyan-500/15 text-cyan-100'
-                : 'border-zinc-700 bg-zinc-800 text-zinc-300 hover:border-cyan-600'}
-              `}
-            >
-              <span className="font-semibold">Entire Continent</span>
-              <span className="mt-1 block text-xs text-zinc-500">All currently defined Subregions</span>
-            </button>
-            {subregions.map(subregion => {
-              const selected = selection.subregionIds.includes(subregion.id)
-              return (
-                <button
-                  key={subregion.id}
-                  type="button"
-                  aria-pressed={selected}
-                  onClick={() => onSelectionChange(toggleDrillSubregion(selection, subregion.id))}
-                  className={`rounded-lg border px-3 py-3 text-left text-sm transition-colors ${selected
-                    ? 'border-cyan-500 bg-cyan-500/15 text-cyan-100'
-                    : 'border-zinc-700 bg-zinc-800 text-zinc-300 hover:border-cyan-600'}
-                  `}
-                >
-                  <span className="mr-2 text-cyan-400">{selected ? '✓' : '○'}</span>
-                  {subregion.label}
-                </button>
-              )
-            })}
-          </div>
-          {selection.subregionIds.length === 0 && (
-            <p className="mt-3 text-sm text-amber-300" role="alert">Select at least one Subregion to start.</p>
-          )}
-        </div>
-      </section>
-
-      <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-        <h2 className="text-sm font-semibold text-zinc-200">Recall mode</h2>
-        <div className="mt-3 grid gap-2 md:grid-cols-2">
-          {WORLD_COUNTRIES_DRILL_MODES.map(candidate => {
-            const selected = candidate.id === mode
-            return (
-              <button
-                key={candidate.id}
-                type="button"
-                aria-pressed={selected}
-                onClick={() => onModeChange(candidate.id)}
-                className={`rounded-lg border px-4 py-3 text-left transition-colors ${selected
-                  ? 'border-violet-500 bg-violet-500/15'
-                  : 'border-zinc-700 bg-zinc-800 hover:border-violet-600'}
-                `}
-              >
-                <span className={`block text-sm font-semibold ${selected ? 'text-violet-200' : 'text-zinc-200'}`}>{candidate.label}</span>
-                <span className="mt-1 block text-xs leading-relaxed text-zinc-500">{candidate.description}</span>
-              </button>
-            )
-          })}
-        </div>
-      </section>
-
-      <button
-        type="button"
-        disabled={selection.subregionIds.length === 0}
-        onClick={onStart}
-        className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        Start Drill
-      </button>
-    </div>
+            {level === 'world' ? 'Choose a Continent first' : 'Start Drill'}
+          </button>
+        </section>
+      </div>
+    </>
   )
 }

@@ -12,6 +12,7 @@ export interface CountryLearningMapProps {
   showOrderNumbers?: boolean
   namedCountryId?: string | null
   highlightedCountryId?: string | null
+  showHighlightedNames?: boolean
   onCountryClick?: (countryId: string) => void
   ariaLabel: string
 }
@@ -32,6 +33,7 @@ export function CountryLearningMap({
   showOrderNumbers = false,
   namedCountryId = null,
   highlightedCountryId = null,
+  showHighlightedNames = true,
   onCountryClick,
   ariaLabel,
 }: CountryLearningMapProps) {
@@ -68,6 +70,7 @@ export function CountryLearningMap({
       namedIds={namedSvgIds}
       countryLabels={countryLabels}
       zoomIds={zoomIds}
+      settings={{ showHighlightedNames }}
       onCountriesLoaded={setDiscovered}
       onCountryClick={svgId => {
         const country = getCountryForSvgId(svgId, scopeCountries)
@@ -76,4 +79,3 @@ export function CountryLearningMap({
     />
   )
 }
-

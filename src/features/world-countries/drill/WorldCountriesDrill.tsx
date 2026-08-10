@@ -1,12 +1,13 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import type { AnswerMode } from '@/core/types'
 import { useSettings } from '@/app/settings/SettingsContext'
+import type { Continent } from '@/features/world-countries/data/countries'
 import { recordWorldCountriesAttempt } from '@/features/world-countries/learning/recallProgress'
-import { getCountriesForDrillSelection } from './drillSelection'
+import { getCountriesForDrillSelection, withAllDrillSubregions } from './drillSelection'
 import { DrillResults } from './DrillResults'
 import { DrillSession } from './DrillSession'
 import { DrillSetup } from './DrillSetup'
-import { getSkillsForDrillMode, type WorldCountriesDrillMode } from './drillModes'
+import { type WorldCountriesDrillMode } from './drillModes'
 import {
   createDrillSession,
   submitDrillStep,
@@ -26,6 +27,8 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
   const { settings } = useSettings()
   const [preferences, setPreferences] = useState<WorldCountriesDrillPreferences>(loadDrillPreferences)
   const [phase, setPhase] = useState<DrillPhase>('setup')
+  const [setupContinent, setSetupContinent] = useState<Continent | null>(null)
+  const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null)
   const [session, setSession] = useState<DrillSessionState | null>(null)
   const [answers, setAnswers] = useState<DrillAnswerRecord[]>([])
 
@@ -34,12 +37,12 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
     [preferences],
   )
 
-  const updatePreferences = (next: WorldCountriesDrillPreferences) => {
+  const updatePreferences = useCallback((next: WorldCountriesDrillPreferences) => {
     setPreferences(next)
     saveDrillPreferences(next)
-  }
+  }, [])
 
-  const start = () => {
+  const start = useCallback(() => {
     if (entries.length === 0) return
     saveDrillPreferences(preferences)
     setAnswers([])
@@ -48,28 +51,44 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
       countryIds: entries.map(entry => entry.id),
     }))
     setPhase('recall')
-  }
+  }, [entries, preferences])
 
-  const answer = (record: DrillAnswerRecord) => {
+  const answer = useCallback((record: DrillAnswerRecord) => {
     setAnswers(previous => [...previous, record])
     void recordWorldCountriesAttempt(record.countryId, record.skill, {
       at: record.at,
       ok: record.correct,
       ms: record.ms,
     })
-  }
+  }, [])
 
-  const continueSession = (correct: boolean) => {
+  const continueSession = useCallback((correct: boolean) => {
     if (!session) return
     const result = submitDrillStep(session, correct)
     setSession(result.state)
     if (result.completedNow) setPhase('results')
-  }
+  }, [session])
 
-  const exitToSetup = () => {
+  const exitToSetup = useCallback(() => {
     setSession(null)
     setPhase('setup')
-  }
+    setSetupContinent(null)
+    setHoveredGroupId(null)
+  }, [])
+
+  const selectContinent = useCallback((continent: Continent) => {
+    updatePreferences({
+      ...withAllDrillSubregions(continent),
+      mode: preferences.mode,
+    })
+    setSetupContinent(continent)
+    setHoveredGroupId(null)
+  }, [preferences.mode, updatePreferences])
+
+  const goToWorld = useCallback(() => {
+    setSetupContinent(null)
+    setHoveredGroupId(null)
+  }, [])
 
   if (phase === 'recall' && session) {
     return (
@@ -77,6 +96,7 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
         answerMode={answerMode}
         fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching}
         state={session}
+        selection={preferences}
         entries={entries}
         onAnswer={answer}
         onContinue={continueSession}
@@ -89,6 +109,7 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
     return (
       <DrillResults
         mode={preferences.mode}
+        continent={preferences.continent}
         entries={entries}
         answers={answers}
         onAgain={start}
@@ -99,11 +120,16 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
 
   return (
     <DrillSetup
+      level={setupContinent ? 'continent' : 'world'}
       selection={preferences}
       mode={preferences.mode}
+      hoveredGroupId={hoveredGroupId}
+      onHoverGroup={setHoveredGroupId}
       onSelectionChange={selection => updatePreferences({ ...selection, mode: preferences.mode })}
       onModeChange={(mode: WorldCountriesDrillMode) => updatePreferences({ ...preferences, mode })}
       onStart={start}
+      onWorld={goToWorld}
+      onSelectContinent={selectContinent}
     />
   )
 }

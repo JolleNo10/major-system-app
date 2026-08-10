@@ -56,7 +56,9 @@ tracks.
   Memo recalls Country → Capital; Drill also defines the independent Location
   → Country and Capital → Country skills.
 - `maps/` — SVG controller/view, map definitions/assets, Country-to-SVG
-  adapters, temporary display-label overrides, and experimental workarea.
+  adapters, the reusable World/Continent `GeographyOverviewMap` presentation,
+  temporary display-label overrides, and experimental workarea. Overview-map
+  callbacks are workflow-neutral; callers interpret geographic clicks.
 - `mnemonics/` — feature target IDs, geography mnemonic semantics, feature
   backup envelope, and adapters over shared mnemonic storage.
 - `memo/` — instructional navigation, maps, mnemonic UI, Memo rail
@@ -236,6 +238,13 @@ adapters, and map adapters remain private until a real external consumer exists.
 - `SvgMapView.tsx` is the React adapter around that controller.
 - `learning/CountryLearningMap.tsx` is the reusable feature map presentation used
   by Memo and Drill; workflow folders do not import one another's internals.
+- `maps/GeographyOverviewMap.tsx` owns World/Continent exploration, grouped
+  hover synchronization, geographic click reporting, scope muting, and
+  selection presentation. Memo-specific learned coloring stays in its thin
+  `memo/MemoMap.tsx` wrapper; Drill-specific selection and navigation stay in
+  `drill/`.
+- `learning/CountryLearningMap.tsx` remains the individual Country learning and
+  recall map; it is not replaced by the overview map.
 - Workflow folders do not depend on sibling workflow internals.
 - World Countries persistence does not modify unrelated feature state.
 - Capital learning starts without requiring `countriesLearnedAt`, while the
@@ -269,6 +278,7 @@ adapters, and map adapters remain private until a real external consumer exists.
 - `src/features/world-countries/drill/drillSessionState.ts`
 - `src/features/world-countries/drill/drillPreferences.ts`
 - `src/features/world-countries/maps/SvgMapController.ts`
+- `src/features/world-countries/maps/GeographyOverviewMap.tsx`
 - `src/features/world-countries/learning/CountryLearningMap.tsx`
 - `src/features/world-countries/mnemonics/geographyMnemonics.ts`
 - `src/features/world-countries/memo/WorldCountriesMemo.tsx`

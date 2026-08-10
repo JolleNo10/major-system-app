@@ -91,6 +91,7 @@ export function SvgMapView({
   useEffect(() => {
     const controller = controllerRef.current
     if (!controller || countries.length === 0) return
+    controller.updateSettings(settings)
     controller.setHighlighted(highlightedIds)
     controller.setMutedCountries(mutedIds)
     controller.clearCountryLabels()
@@ -100,7 +101,7 @@ export function SvgMapView({
     if (namedIds.length) controller.setNamesVisible(namedIds, true)
     if (zoomIds.length) controller.setZoomArea(zoomIds, zoomPadding)
     else controller.resetZoom()
-  }, [countries, countryLabels, highlightedIds, mutedIds, namedIds, zoomIds, zoomPadding])
+  }, [countries, countryLabels, highlightedIds, mutedIds, namedIds, settings, zoomIds, zoomPadding])
 
   return (
     <div className="space-y-2">

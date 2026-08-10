@@ -8,10 +8,11 @@ import type { Country } from '@/features/world-countries/data/countries'
 import { classifyRecallAnswer } from '@/features/world-countries/learning/recallAnswerMatching'
 import type { WorldCountriesRecallSkill } from '@/features/world-countries/learning/recallTargets'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
+import type { WorldCountriesDrillSelection } from './drillSelection'
+import { DrillSessionRails } from './DrillRails'
 import { getDrillSkillLabel } from './drillModes'
 import {
   getCurrentDrillStep,
-  getDrillSessionTotalSteps,
   type DrillAnswerRecord,
   type DrillSessionState,
 } from './drillSessionState'
@@ -35,6 +36,7 @@ export function DrillSession({
   answerMode,
   fuzzyMatching,
   state,
+  selection,
   entries,
   onAnswer,
   onContinue,
@@ -43,6 +45,7 @@ export function DrillSession({
   answerMode: AnswerMode
   fuzzyMatching: boolean
   state: DrillSessionState
+  selection: WorldCountriesDrillSelection
   entries: readonly Country[]
   onAnswer: (record: DrillAnswerRecord) => void
   onContinue: (correct: boolean) => void
@@ -115,80 +118,64 @@ export function DrillSession({
         : 'Correct.'
       : `The correct ${isCapitalQuestion || isLocationQuestion ? 'country' : 'capital'} is ${expectedAnswer}.`
     : null
-  const totalSteps = getDrillSessionTotalSteps(state)
-  const stepsPerCountry = totalSteps / state.countryOrder.length
-  const progressPercent = ((state.countryIndex * stepsPerCountry + state.stepIndex + 1) / totalSteps) * 100
+  const highlightedCountryId = isCapitalQuestion ? (feedback ? country.id : null) : country.id
+  const namedCountryId = isLocationQuestion || isCapitalQuestion
+    ? feedback ? country.id : null
+    : country.id
 
   return (
-    <div className="space-y-4 animate-fade-in">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World Countries Drill</p>
-          <p className="mt-1 text-sm text-zinc-500">Country {state.countryIndex + 1} / {state.countryOrder.length} · {getDrillSkillLabel(step.skill)}</p>
-        </div>
-        <button type="button" onClick={onExit} className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100">Exit</button>
-      </div>
-
-      <div className="h-1.5 overflow-hidden rounded-full bg-zinc-800" aria-label="Drill progress">
-        <div
-          className="h-full rounded-full bg-cyan-500 transition-[width]"
-          style={{ width: `${Math.max(2, progressPercent)}%` }}
-        />
-      </div>
-
-      {isLocationQuestion ? (
-        <section className="space-y-3">
-          <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-4 text-center">
-            <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Location recall</p>
+    <>
+      <DrillSessionRails selection={selection} mode={state.mode} state={state} onExit={onExit} />
+      <div className="space-y-4 animate-fade-in">
+        <section className="rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-4 text-center">
+          <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">{getDrillSkillLabel(step.skill)}</p>
+          {isLocationQuestion ? (
             <h1 className="mt-1 text-2xl font-black text-zinc-100">{prompt}</h1>
-            <p className="mt-1 text-xs text-zinc-500">The highlighted location is the same Country used for any following Capital question.</p>
-          </div>
-          <div className="relative">
-            <CountryLearningMap
-              continent={country.continent}
-              scopeCountries={scopeCountries}
-              highlightedCountryId={country.id}
-              ariaLabel="Map with one Country location highlighted for recall"
-            />
-            {feedback && (
-              <RecallFeedback correct={feedback.correct} message={feedbackText} />
-            )}
-          </div>
-        </section>
-      ) : (
-        <div className="space-y-3">
-          <section className="rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-5 text-center">
-            <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">{getDrillSkillLabel(step.skill)}</p>
-            <h1 className="mt-2 text-3xl font-black text-zinc-100">{isCapitalQuestion ? country.capital : country.country}</h1>
-            <p className="mt-2 text-sm text-zinc-500">{prompt}</p>
-          </section>
-          {feedback && (
-            <RecallFeedback correct={feedback.correct} message={feedbackText} variant="inline" />
+          ) : (
+            <>
+              <h1 className="mt-1 text-3xl font-black text-zinc-100">{isCapitalQuestion ? country.capital : country.country}</h1>
+              <p className="mt-1 text-sm text-zinc-500">{prompt}</p>
+            </>
           )}
+          {isLocationQuestion && <p className="mt-1 text-xs text-zinc-500">The highlighted location remains the same Country used for any following Capital question.</p>}
+        </section>
+
+        <div className="relative">
+          <CountryLearningMap
+            continent={selection.continent}
+            scopeCountries={scopeCountries}
+            highlightedCountryId={highlightedCountryId}
+            namedCountryId={namedCountryId}
+            showHighlightedNames={Boolean(namedCountryId)}
+            ariaLabel={isCapitalQuestion && !feedback
+              ? 'Map of the selected geographic scope without the target Country revealed'
+              : `Map with ${country.country} highlighted for Drill recall`}
+          />
+          {feedback && <RecallFeedback correct={feedback.correct} message={feedbackText} />}
         </div>
-      )}
 
-      <section className="space-y-3">
-        {answerMode === 'multiple-choice' ? (
-          <MultipleChoice
-            key={`${step.countryId}-${step.skill}`}
-            options={answerOptions}
-            correctAnswer={expectedAnswer}
-            onAnswer={submit}
-            answered={feedback?.answer ?? null}
-          />
-        ) : (
-          <TypingInput
-            key={`${step.countryId}-${step.skill}`}
-            onAnswer={submit}
-            answeredCorrect={feedback?.correct ?? null}
-            correctAnswer={expectedAnswer}
-            showCorrectAnswer={false}
-            placeholder={isCapitalQuestion ? 'Type the country…' : isLocationQuestion ? 'Type the country…' : 'Type the capital…'}
-          />
-        )}
+        <section className="space-y-3">
+          {answerMode === 'multiple-choice' ? (
+            <MultipleChoice
+              key={`${step.countryId}-${step.skill}`}
+              options={answerOptions}
+              correctAnswer={expectedAnswer}
+              onAnswer={submit}
+              answered={feedback?.answer ?? null}
+            />
+          ) : (
+            <TypingInput
+              key={`${step.countryId}-${step.skill}`}
+              onAnswer={submit}
+              answeredCorrect={feedback?.correct ?? null}
+              correctAnswer={expectedAnswer}
+              showCorrectAnswer={false}
+              placeholder={isCapitalQuestion ? 'Type the country…' : isLocationQuestion ? 'Type the country…' : 'Type the capital…'}
+            />
+          )}
 
-      </section>
-    </div>
+        </section>
+      </div>
+    </>
   )
 }
