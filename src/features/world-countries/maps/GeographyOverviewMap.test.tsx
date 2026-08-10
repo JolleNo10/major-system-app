@@ -120,6 +120,39 @@ describe('GeographyOverviewMap', () => {
     expect(greenland?.style.fill).toBe('#0f766e')
   })
 
+  it('renders a visual core-progress legend for Memo maps', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      text: async () => `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+          <g><path id="Norway"/><text id="Norway_label">Norway</text></g>
+        </svg>`,
+    })))
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(MemoMap, {
+        level: 'world',
+        memoedCountryIds: new Set<string>(),
+        countryColorsById: new Map([['NO', '#16a34a']]),
+        progressLegend: 'Core Country progress',
+      }))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const legend = mount.querySelector('[aria-label="Core Country progress legend"]')
+    expect(legend?.querySelectorAll('[data-progress-state]')).toHaveLength(5)
+    expect(legend?.textContent).toContain('Unpractised')
+    expect(legend?.textContent).toContain('Weak')
+    expect(legend?.textContent).toContain('Developing')
+    expect(legend?.textContent).toContain('Strong')
+    expect(legend?.textContent).toContain('Complete')
+    expect(legend?.textContent).toContain('teal is temporary hover or navigation focus')
+  })
+
   it('renders caller-provided semantic Country progress colors', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({
       ok: true,
@@ -137,6 +170,33 @@ describe('GeographyOverviewMap', () => {
         level: 'world',
         countryColorsById: new Map([['NO', '#16a34a']]),
         ariaLabel: 'World progress map',
+      }))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toBe('#16a34a')
+  })
+
+  it('keeps progress fill separate from Drill geographic selection', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      text: async () => `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+          <g><path id="Norway"/><text id="Norway_label">Norway</text></g>
+        </svg>`,
+    })))
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(GeographyOverviewMap, {
+        level: 'continent',
+        continent: 'Europe',
+        selectedSubregionIds: ['northern-europe'],
+        countryColorsById: new Map([['NO', '#16a34a']]),
+        ariaLabel: 'Europe Drill progress map',
       }))
       await Promise.resolve()
       await Promise.resolve()

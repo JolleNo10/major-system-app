@@ -5,11 +5,9 @@ import { DrillResultsRails } from './DrillRails'
 import { getDrillModeDefinition, getDrillSkillLabel, getSkillsForDrillMode, type WorldCountriesDrillMode } from './drillModes'
 import type { DrillAnswerRecord } from './drillSessionState'
 import { summarizeDrillAnswers } from './drillResultSummary'
-import {
-  getWorldCountriesProgressLegend,
-  type WorldCountriesProgressPerspective,
-} from '@/features/world-countries/learning/progressPresentation'
+import type { WorldCountriesProgressPerspective } from '@/features/world-countries/learning/progressPresentation'
 import { useWorldCountriesCountryColors } from '@/features/world-countries/learning/useWorldCountriesCountryColors'
+import { DrillProgressLegend } from './DrillProgressLegend'
 
 export function DrillResults({
   mode,
@@ -35,9 +33,6 @@ export function DrillResults({
     skills,
     perspective,
   })
-  const progressLegend = perspective === 'core'
-    ? `core Country state — ${getWorldCountriesProgressLegend('core')}`
-    : `${getDrillSkillLabel(perspective)} — ${getWorldCountriesProgressLegend('skill')}`
 
   return (
     <>
@@ -62,9 +57,7 @@ export function DrillResults({
           countryColorsById={countryColorsById}
           ariaLabel={`Results map for ${continent} Drill Countries`}
         />
-        <p className="px-1 text-xs text-zinc-500" aria-label="Results map progress legend">
-          Durable progress: {progressLegend}
-        </p>
+        <DrillProgressLegend mode={mode} />
 
         <section className="grid grid-cols-3 gap-2" aria-label="Drill summary">
           <DrillResultStat label="Correct" value={`${summary.correct}/${answers.length}`} />

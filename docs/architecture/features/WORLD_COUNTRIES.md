@@ -264,8 +264,11 @@ adapters, and map adapters remain private until a real external consumer exists.
   incomplete. Subregion, Continent, and World progress count current canonical
   Countries directly and default to core Country completion.
 - Drill session accuracy is transient and distinct from durable proficiency,
-  mastery, and Country completeness. Multi-skill results expose per-skill
-  summaries. Active recall maps do not render target-revealing progress.
+  mastery, and Country completeness. Drill setup and results maps present the
+  current mode's durable progress perspective with a legend while keeping
+  geographic scope selection visually separate. Multi-skill results expose
+  per-skill summaries. Active recall maps do not render target-revealing
+  progress.
 - Capital learning starts without requiring `countriesLearnedAt`, while the
   overview still recommends Countries first.
 - Completed Country and Capital tracks expose parallel review and direct

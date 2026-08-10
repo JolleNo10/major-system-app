@@ -5,17 +5,28 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createDrillSelection } from './drillSelection'
 import { DrillSetup } from './DrillSetup'
+import { getDrillProgressLegendEntries } from './drillProgressPresentation'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 const useRailsMock = vi.hoisted(() => vi.fn())
+const geographyOverviewMapMock = vi.hoisted(() => vi.fn())
+const loadRecallProgressMock = vi.hoisted(() => vi.fn(async () => new Map()))
 
 vi.mock('@/app/layout/PageLayoutContext', () => ({
   useRails: useRailsMock,
 }))
 
 vi.mock('@/features/world-countries/maps/GeographyOverviewMap', () => ({
-  GeographyOverviewMap: () => createElement('div', { 'data-testid': 'geography-map' }),
+  GeographyOverviewMap: (props: Record<string, unknown>) => {
+    geographyOverviewMapMock(props)
+    return createElement('div', { 'data-testid': 'geography-map' })
+  },
+}))
+
+vi.mock('@/features/world-countries/learning/recallProgress', async importOriginal => ({
+  ...await importOriginal<typeof import('@/features/world-countries/learning/recallProgress')>(),
+  loadWorldCountriesRecallProgress: loadRecallProgressMock,
 }))
 
 let root: Root | null = null
@@ -25,9 +36,54 @@ afterEach(() => {
   root = null
   document.body.replaceChildren()
   useRailsMock.mockReset()
+  geographyOverviewMapMock.mockReset()
+  loadRecallProgressMock.mockClear()
 })
 
 describe('DrillSetup rail presentation', () => {
+  it('shows durable recall progress on the setup map', async () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(DrillSetup, {
+        level: 'continent',
+        selection: createDrillSelection('Europe', ['northern-europe']),
+        mode: 'countries',
+        onSelectionChange: vi.fn(),
+        onModeChange: vi.fn(),
+        onStart: vi.fn(),
+        onWorld: vi.fn(),
+        onSelectContinent: vi.fn(),
+        hoveredGroupId: null,
+        onHoverGroup: vi.fn(),
+      }))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const lastMapCall = geographyOverviewMapMock.mock.calls[geographyOverviewMapMock.mock.calls.length - 1]
+    const mapProps = lastMapCall?.[0] as Record<string, unknown>
+    expect(mapProps.countryColorsById).toBeInstanceOf(Map)
+    expect(loadRecallProgressMock).toHaveBeenCalled()
+    expect(mount.textContent).toContain('Location → Country')
+    const legend = mount.querySelector('[aria-label="Durable progress legend"]')
+    expect(legend?.textContent).toContain('Unpractised')
+    expect(legend?.textContent).toContain('Weak')
+    expect(legend?.textContent).toContain('Developing')
+    expect(legend?.textContent).toContain('Strong')
+    expect(legend?.textContent).toContain('Mastered')
+    expect(legend?.textContent).toContain('teal/cyan is temporary hover or recall focus')
+    expect(getDrillProgressLegendEntries('countries').map(entry => entry.color)).toEqual([
+      '#52525b',
+      '#dc2626',
+      '#d97706',
+      '#2563eb',
+      '#16a34a',
+    ])
+  })
+
   it('publishes geographic scope on the left and drill controls on the right', async () => {
     const onSelectionChange = vi.fn()
     const mount = document.createElement('div')
