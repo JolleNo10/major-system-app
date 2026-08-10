@@ -1,7 +1,7 @@
 import type { Country } from '@/features/world-countries/data/countries'
 import type { Continent } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
-import { CountryLearningMap } from './CountryLearningMap'
+import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 
 export function SubregionOverview({
   continent,

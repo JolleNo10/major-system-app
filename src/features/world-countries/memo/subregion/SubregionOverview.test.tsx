@@ -6,7 +6,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import type { Country } from '@/features/world-countries/data/countries'
 import { SubregionOverview } from './SubregionOverview'
 
-vi.mock('./CountryLearningMap', () => ({
+vi.mock('@/features/world-countries/learning/CountryLearningMap', () => ({
   CountryLearningMap: () => <div data-testid="country-learning-map" />,
 }))
 

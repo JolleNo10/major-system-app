@@ -7,7 +7,7 @@ import type { Country } from '@/features/world-countries/data/countries'
 import { createCapitalLearningFlow, startCapitalRecall } from '@/features/world-countries/learning/capitalLearningFlow'
 import { CapitalRecallStep } from './CapitalRecallStep'
 
-vi.mock('./CountryLearningMap', () => ({
+vi.mock('@/features/world-countries/learning/CountryLearningMap', () => ({
   CountryLearningMap: () => <div data-testid="country-learning-map" />,
 }))
 

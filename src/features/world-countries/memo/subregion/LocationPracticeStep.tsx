@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
+import { RecallFeedback } from '@/core/ui/RecallFeedback'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
 import type { CountryLearningFlowState } from '@/features/world-countries/learning/countryLearningFlow'
-import { CountryLearningMap } from './CountryLearningMap'
+import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import { LearningHeader } from './MemoryPreviewStep'
 
 export function LocationPracticeStep({
@@ -69,11 +70,10 @@ export function LocationPracticeStep({
           ariaLabel="Unlabeled map for location recall"
         />
         {feedback && (
-          <section className={`pointer-events-none absolute bottom-2 left-2 right-2 rounded-xl border p-4 bg-zinc-900/90 ${feedback.correct ? 'border-green-500/30' : 'border-red-500/30'}`}>
-            <p className={`text-sm font-semibold ${feedback.correct ? 'text-green-300' : 'text-red-300'}`}>
-              {feedback.correct ? 'Correct location.' : `That was ${entries.find(entry => entry.id === feedback.selectedId)?.country ?? 'not the target'} — ${entries.find(entry => entry.id === feedback.expectedId)?.country ?? 'unknown'} is highlighted.`}
-            </p>
-          </section>
+          <RecallFeedback
+            correct={feedback.correct}
+            message={feedback.correct ? 'Correct location.' : `That was ${entries.find(entry => entry.id === feedback.selectedId)?.country ?? 'not the target'} — ${entries.find(entry => entry.id === feedback.expectedId)?.country ?? 'unknown'} is highlighted.`}
+          />
         )}
       </div>
     </div>

@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
+import { RecallFeedback } from '@/core/ui/RecallFeedback'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
 import type { CapitalLearningFlowState } from '@/features/world-countries/learning/capitalLearningFlow'
 import { classifyPlaceName } from '@/features/world-countries/learning/answerMatching'
-import { CountryLearningMap } from './CountryLearningMap'
+import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import { LearningHeader } from './MemoryPreviewStep'
 
 interface CapitalRecallFeedback {
@@ -88,16 +89,15 @@ export function CapitalRecallStep({
           ariaLabel={`${expected.country} highlighted on the map`}
         />
         {feedback && (
-          <section className={`pointer-events-none absolute bottom-2 left-2 right-2 rounded-xl border p-4 bg-zinc-900/90 ${feedback.correct ? 'border-green-500/30' : 'border-red-500/30'}`}>
-            <p className={`text-sm font-semibold ${feedback.correct ? 'text-green-300' : 'text-red-300'}`}>
-              {feedback.correct
-                ? feedback.fuzzyMatch
-                  ? `Correct. The canonical answer is ${expected.capital}.`
-                  : 'Correct.'
-                : `The correct capital is ${expected.capital}.`}
-            </p>
-            {!feedback.correct && <p className="mt-1 text-xs text-zinc-500">This shuffled round is now non-qualifying. Continue and complete a fresh clean round.</p>}
-          </section>
+          <RecallFeedback
+            correct={feedback.correct}
+            message={feedback.correct
+              ? feedback.fuzzyMatch
+                ? `Correct. The canonical answer is ${expected.capital}.`
+                : 'Correct.'
+              : `The correct capital is ${expected.capital}.`}
+            detail={!feedback.correct ? 'This shuffled round is now non-qualifying. Continue and complete a fresh clean round.' : undefined}
+          />
         )}
       </div>
       <form onSubmit={event => { event.preventDefault(); submit() }} className="space-y-3">

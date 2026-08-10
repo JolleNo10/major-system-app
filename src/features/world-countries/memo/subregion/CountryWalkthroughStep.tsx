@@ -1,7 +1,7 @@
 import type { Country } from '@/features/world-countries/data/countries'
 import type { Continent } from '@/features/world-countries/data/countries'
 import type { CountryLearningFlowState } from '@/features/world-countries/learning/countryLearningFlow'
-import { CountryLearningMap } from './CountryLearningMap'
+import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import { LearningHeader } from './MemoryPreviewStep'
 
 export function CountryWalkthroughStep({

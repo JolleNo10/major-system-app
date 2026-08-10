@@ -1,6 +1,6 @@
 import type { Continent, Country } from '@/features/world-countries/data/countries'
 import type { CapitalLearningFlowState } from '@/features/world-countries/learning/capitalLearningFlow'
-import { CountryLearningMap } from './CountryLearningMap'
+import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import { LearningHeader } from './MemoryPreviewStep'
 
 export function CapitalWalkthroughStep({

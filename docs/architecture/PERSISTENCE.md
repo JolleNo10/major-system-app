@@ -81,6 +81,16 @@ follows the defining module and feature namespace.
   and display labels are not persistence identity.
 - Shared mnemonic target IDs are opaque to core. Feature adapters own namespace
   construction and import validation.
+- World Countries Drill preferences use the small localStorage key
+  `world-countries-drill-preferences` and contain only setup state: one
+  Continent, selected Subregion IDs, and a Drill mode. They never contain a
+  flattened Country membership list.
+- World Countries atomic Drill evidence uses the existing shared `attempts`
+  store through `core/learning`. The feature constructs opaque IDs in the
+  `world-countries:<skill>:<CountryId>` namespace, where the skill is one of
+  `location-to-country`, `country-to-capital`, or `capital-to-country`.
+  Countries + Capitals writes two atomic records when both steps are answered;
+  its mode name is not part of either ID.
 
 ## Migration and isolation rules
 
@@ -124,6 +134,8 @@ follows the defining module and feature namespace.
 - `src/features/world-countries/geography/subregionMetadataStore.ts`
 - `src/features/world-countries/geography/continentMetadataStore.ts`
 - `src/features/world-countries/learning/subregionLearningStore.ts`
+- `src/features/world-countries/learning/recallProgress.ts`
+- `src/features/world-countries/drill/drillPreferences.ts`
 
 ## Historical rationale
 

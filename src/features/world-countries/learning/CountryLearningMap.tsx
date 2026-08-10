@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react'
 import { countriesToSvgIds } from '@/features/world-countries/maps/countryMapIds'
 import { SvgMapView, type SvgMapCountry } from '@/features/world-countries/maps/SvgMapView'
-import type { Country } from '@/features/world-countries/data/countries'
-import type { Continent } from '@/features/world-countries/data/countries'
+import type { Continent, Country } from '@/features/world-countries/data/countries'
 import { createCountryOrderLabels, getCountryForSvgId, resolveCountriesToSvgIds } from '@/features/world-countries/maps/geographyMapAdapter'
 import { getMemoMapDefinition } from '@/features/world-countries/maps/mapDefinitions'
 
@@ -25,6 +24,7 @@ export function getCountryLearningMapZoomIds(
   return continent === 'Oceania' ? [] : scopeSvgIds
 }
 
+/** Reusable map presentation for World Countries learning workflows. */
 export function CountryLearningMap({
   continent,
   scopeCountries,
@@ -76,3 +76,4 @@ export function CountryLearningMap({
     />
   )
 }
+

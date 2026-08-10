@@ -49,10 +49,12 @@ tracks.
 - `geography/` — geography queries, user-authored ordering metadata at both
   hierarchy levels (Continent → Subregion order and Subregion → Country order),
   the effective-order resolvers, and metadata persistence.
-- `learning/` — answer matching, reusable session mechanics, pure
-  `CountryLearningFlow` and `CapitalLearningFlow` state, durable Subregion
-  learning facts, and their store. Capital Memo recalls Country → Capital;
-  reverse Capital → Country recall is a separate future skill.
+- `learning/` — reusable World Countries recall semantics: skill-specific
+  answer matching, Country + skill target IDs, atomic evidence adapters,
+  Country-level progress aggregation, reusable learning map presentation, pure
+  Memo session mechanics, and durable Subregion Memo learning facts. Capital
+  Memo recalls Country → Capital; Drill also defines the independent Location
+  → Country and Capital → Country skills.
 - `maps/` — SVG controller/view, map definitions/assets, Country-to-SVG
   adapters, temporary display-label overrides, and experimental workarea.
 - `mnemonics/` — feature target IDs, geography mnemonic semantics, feature
@@ -62,8 +64,13 @@ tracks.
   sortable learning-order editor (`LearningOrderEditor`) used at both hierarchy
   levels for Continent Subregion order and Subregion Country order, including
   the best-effort "Order left to right" map action.
-- `drill/`, `recite/`, `maintenance/` — sibling workflow owners for deliberate
-  practice, complete recall, and review selection.
+- `drill/` — Drill-only setup and preferences, Continent/Subregion selection,
+  four recall-mode definitions, visible Country scheduling, active session
+  orchestration, and results. A Drill mode is a workflow combination of
+  atomic learning skills; it is not part of learning-evidence identity.
+- `recite/`, `maintenance/` — sibling workflow owners for complete recall and
+  review selection. They may consume shared World Countries evidence without
+  importing Drill internals.
 
 There is no World Countries Quiz architecture. Do not recreate `quiz/`, broad
 feature-local `domain/` or `persistence/` layers, generic `common/`, a root
@@ -75,6 +82,14 @@ feature-local `domain/` or `persistence/` layers, generic `common/`, a root
 - Queries and user-specific Subregion metadata/order belong in `geography/`.
 - Answer evaluation, reusable recall/session mechanics, and learning state
   belong in `learning/`; Memo-specific orchestration stays in `memo/`.
+- Drill geographic selection belongs in `drill/` and always contains exactly
+  one Continent plus current Subregion IDs from canonical geography. Country
+  membership is derived at runtime; a flattened Country scope is never
+  persisted.
+- `learning/` owns the atomic skills `location-to-country`,
+  `country-to-capital`, and `capital-to-country`, and centrally constructs
+  their opaque shared-learning IDs. `Countries + Capitals` combines the first
+  two skills but has no combined evidence identity.
 - SVG loading, DOM behavior, assets, definitions, and ID translation belong in
   `maps/`; learning policy does not.
 - Geography mnemonic target construction, metadata, and backup rules belong in
@@ -94,6 +109,7 @@ Unless stated otherwise, arrows mean dependency:
 flowchart TD
     Geography["geography/"] --> Data["data/"]
     Learning["learning/"] --> Data
+    Learning --> Maps
     Maps["maps/"] --> Geography
     Maps --> Data
     Mnemonics["mnemonics/"] --> Geography
@@ -136,6 +152,14 @@ the current app layout integration seam.
 - Country–Capital mnemonic records use `geo:country-capital:<CountryId>` and are
   owned by `mnemonics/`. This identifies optional Country ↔ Capital content,
   not Memo completion or future per-target learning performance.
+- Drill preferences use the feature-owned `world-countries-drill-preferences`
+  localStorage key and contain only the last Continent, Subregion IDs, and
+  Drill mode. They are convenience state, not learning evidence.
+- Drill attempts use the existing domain-neutral `core/learning` adapter and
+  the shared IndexedDB `attempts` store. Atomic IDs are constructed by
+  `learning/recallTargets.ts` in the `world-countries:<skill>:<CountryId>`
+  namespace. Country → Capital evidence from `Countries + Capitals` therefore
+  shares history with `Capitals`; no mnemonic target ID is reused.
 - The feature's version-3 JSON backup envelope contains Geography mnemonics,
   Subregion metadata, and Continent metadata; the import also accepts the
   version-2 (mnemonics plus Subregion metadata) and older mnemonic-only
@@ -179,8 +203,19 @@ adapters, and map adapters remain private until a real external consumer exists.
   Country → Capital recall, clean-round qualification, and transitions;
   `memo/subregion/CapitalLearningFlow.tsx` owns its Memo UI orchestration.
 - `SubregionLearningState` owns only coarse Memo completion timestamps. Future
-  per-Country/per-skill performance belongs to a separate Drill, Recite, and
-  Maintenance learning-evidence model and must not reuse mnemonic IDs.
+  per-Country/per-skill performance belongs to the atomic World Countries
+  learning-evidence model and must not reuse mnemonic IDs. The evidence is
+  keyed by Country + recall skill and is independent for each direction.
+- Drill setup offers one Continent, Entire Continent (all current Subregions),
+  or a subset of that Continent's Subregions. Countries, Capitals, and
+  Countries from Capitals all use the same derived Country population.
+- Drill setup and active recall are separate phases. During active recall the
+  setup controls are absent; after all selected Countries have been processed,
+  results can start another run or return to setup.
+- Map-based Drill modes schedule Countries as visible units. In
+  `Countries + Capitals`, a wrong Location → Country answer is followed by a
+  Country → Capital attempt for the canonical mapped Country, never for the
+  learner's guessed Country. Both attempts are recorded independently.
 - Memo overview rail composition owns the World → Continent → Subregion
   navigation and scope presentation: World Continents and progress use the left
   rail, Continent Subregions and progress use the left rail, and Subregion
@@ -199,6 +234,8 @@ adapters, and map adapters remain private until a real external consumer exists.
   overrides are per-controller presentation state and must not mutate the
   discovered `SvgMapCountry.name` metadata or bundled SVG assets.
 - `SvgMapView.tsx` is the React adapter around that controller.
+- `learning/CountryLearningMap.tsx` is the reusable feature map presentation used
+  by Memo and Drill; workflow folders do not import one another's internals.
 - Workflow folders do not depend on sibling workflow internals.
 - World Countries persistence does not modify unrelated feature state.
 - Capital learning starts without requiring `countriesLearnedAt`, while the
@@ -223,8 +260,16 @@ adapters, and map adapters remain private until a real external consumer exists.
 - `src/features/world-countries/learning/countryLearningFlow.ts`
 - `src/features/world-countries/learning/capitalLearningFlow.ts`
 - `src/features/world-countries/learning/capitalLearningCompletion.ts`
+- `src/features/world-countries/learning/recallTargets.ts`
+- `src/features/world-countries/learning/recallAnswerMatching.ts`
+- `src/features/world-countries/learning/recallProgress.ts`
 - `src/features/world-countries/learning/subregionLearningStore.ts`
+- `src/features/world-countries/drill/WorldCountriesDrill.tsx`
+- `src/features/world-countries/drill/drillSelection.ts`
+- `src/features/world-countries/drill/drillSessionState.ts`
+- `src/features/world-countries/drill/drillPreferences.ts`
 - `src/features/world-countries/maps/SvgMapController.ts`
+- `src/features/world-countries/learning/CountryLearningMap.tsx`
 - `src/features/world-countries/mnemonics/geographyMnemonics.ts`
 - `src/features/world-countries/memo/WorldCountriesMemo.tsx`
 - `src/features/world-countries/memo/WorldCountriesMemoRails.tsx`

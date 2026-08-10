@@ -11,9 +11,10 @@ interface Props {
   correctAnswer: string
   placeholder?: string
   numeric?: boolean
+  showCorrectAnswer?: boolean
 }
 
-export function TypingInput({ onAnswer, answeredCorrect, correctAnswer, placeholder = 'Type the answer...', numeric = false }: Props) {
+export function TypingInput({ onAnswer, answeredCorrect, correctAnswer, placeholder = 'Type the answer...', numeric = false, showCorrectAnswer = true }: Props) {
   const [value, setValue] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -108,7 +109,7 @@ export function TypingInput({ onAnswer, answeredCorrect, correctAnswer, placehol
         )}
       </div>
 
-      {answeredCorrect === false && (
+      {answeredCorrect === false && showCorrectAnswer && (
         <div className="px-4 py-3 rounded-lg bg-green-500/10 border border-green-500/30 text-sm">
           <span className="text-zinc-400">Correct answer: </span>
           <span className="text-green-300 font-bold">{correctAnswer}</span>
