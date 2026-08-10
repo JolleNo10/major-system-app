@@ -90,9 +90,11 @@ follows the defining module and feature namespace.
   `world-countries:<skill>:<CountryId>` namespace, where the skill is one of
   `location-to-country`, `country-to-capital`, or `capital-to-country`.
   Countries + Capitals writes two atomic records when both steps are answered;
-  its mode name is not part of either ID. New attempts record whether the
-  interaction was recall or recognition and preserve the local calendar date
-  at answer time.
+  its mode name is not part of either ID. The Capitals Drill helper is
+  deliberately non-recording: its answers do not write atomic evidence or
+  change durable progress. New recorded attempts preserve whether the
+  interaction was recall or recognition and the local calendar date at answer
+  time.
 
 ## Migration and isolation rules
 

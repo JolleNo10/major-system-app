@@ -9,7 +9,6 @@ import {
   type WorldCountriesProgressPerspective,
 } from '@/features/world-countries/learning/progressPresentation'
 import {
-  getDrillSkillLabel,
   getSkillsForDrillMode,
   type WorldCountriesDrillMode,
 } from './drillModes'
@@ -45,13 +44,6 @@ export function createDrillProgressColors(
     const state = getCountryProgressState(progress, perspective)
     return [country.id, DRILL_PROGRESS_COLORS[state] ?? DRILL_PROGRESS_COLORS.unpractised]
   }))
-}
-
-export function getDrillProgressLegendTitle(mode: WorldCountriesDrillMode): string {
-  const perspective = getDrillProgressPerspective(mode)
-  return perspective === 'core'
-    ? 'Core Country progress'
-    : `${getDrillSkillLabel(perspective)} progress`
 }
 
 export function getDrillProgressLegendEntries(

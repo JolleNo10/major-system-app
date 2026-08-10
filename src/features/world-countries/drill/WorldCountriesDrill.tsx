@@ -7,7 +7,7 @@ import { getCountriesForDrillSelection, withAllDrillSubregions, type WorldCountr
 import { DrillResults } from './DrillResults'
 import { DrillSession } from './DrillSession'
 import { DrillSetup } from './DrillSetup'
-import { type WorldCountriesDrillMode } from './drillModes'
+import { isDrillPracticeMode, type WorldCountriesDrillMode } from './drillModes'
 import {
   createDrillSession,
   submitDrillStep,
@@ -55,13 +55,14 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
 
   const answer = useCallback((record: DrillAnswerRecord) => {
     setAnswers(previous => [...previous, record])
+    if (isDrillPracticeMode(preferences.mode)) return
     void recordWorldCountriesAttempt(record.countryId, record.skill, {
       at: record.at,
       ok: record.correct,
       ms: record.ms,
       evidenceKind: record.evidenceKind,
     })
-  }, [])
+  }, [preferences.mode])
 
   const continueSession = useCallback((correct: boolean) => {
     if (!session) return

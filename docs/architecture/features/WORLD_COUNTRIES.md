@@ -164,10 +164,12 @@ the current app layout integration seam.
 - Drill attempts use the existing domain-neutral `core/learning` adapter and
   the shared IndexedDB `attempts` store. Atomic IDs are constructed by
   `learning/recallTargets.ts` in the `world-countries:<skill>:<CountryId>`
-  namespace. Country → Capital evidence from `Countries + Capitals` therefore
-  shares history with `Capitals`; no mnemonic target ID is reused. Attempts
-  preserve recall/recognition evidence and their recorded local calendar date;
-  World Countries atomic attempts are not age- or count-pruned.
+  namespace. `Countries + Capitals` writes the Country → Capital evidence used
+  by its core progress; the Capitals Drill helper is intentionally
+  non-recording and does not change durable evidence or progress. No mnemonic
+  target ID is reused. Recorded attempts preserve recall/recognition evidence
+  and their local calendar date; World Countries atomic attempts are not age-
+  or count-pruned.
 - The feature's version-3 JSON backup envelope contains Geography mnemonics,
   Subregion metadata, and Continent metadata; the import also accepts the
   version-2 (mnemonics plus Subregion metadata) and older mnemonic-only
@@ -264,11 +266,12 @@ adapters, and map adapters remain private until a real external consumer exists.
   incomplete. Subregion, Continent, and World progress count current canonical
   Countries directly and default to core Country completion.
 - Drill session accuracy is transient and distinct from durable proficiency,
-  mastery, and Country completeness. Drill setup and results maps present the
+  mastery, and Country completeness. Progress-bearing Drill modes present the
   current mode's durable progress perspective with a legend while keeping
-  geographic scope selection visually separate. Multi-skill results expose
-  per-skill summaries. Active recall maps do not render target-revealing
-  progress.
+  geographic scope selection visually separate. Capitals is a non-recording
+  helper and reads the Country → Capital progress colors and legend as
+  read-only practice guidance. Multi-skill results expose per-skill summaries.
+  Active recall maps do not render target-revealing progress.
 - Capital learning starts without requiring `countriesLearnedAt`, while the
   overview still recommends Countries first.
 - Completed Country and Capital tracks expose parallel review and direct

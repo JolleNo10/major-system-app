@@ -81,7 +81,6 @@ export function DrillSetup({
         onToggleSubregion={toggleSubregion}
         onSelectEntireContinent={toggleEntireContinent}
         onModeChange={onModeChange}
-        onStart={onStart}
       />
 
       <div className="space-y-3 animate-fade-in">
@@ -118,11 +117,16 @@ export function DrillSetup({
         </p>
         <DrillProgressLegend mode={mode} />
 
-        <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 xl:hidden" aria-label="Drill setup summary">
-          <div className="flex items-baseline justify-between gap-3 text-sm">
+        <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4" aria-labelledby="world-countries-current-drill-heading">
+          <h2 id="world-countries-current-drill-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+            Current drill
+          </h2>
+          <div className="mt-3 flex items-baseline justify-between gap-3 text-sm">
             <span className="text-zinc-500">{level === 'world' ? 'Geography' : 'Scope'}</span>
             <span className="text-right font-semibold text-zinc-200">
-              {level === 'world' ? 'Choose a Continent' : `${selection.subregionIds.length} Subregions`}
+              {level === 'world'
+                ? 'Choose a Continent'
+                : `${selection.subregionIds.length} ${selection.subregionIds.length === 1 ? 'Subregion' : 'Subregions'} selected`}
             </span>
           </div>
           <div className="mt-2 flex items-baseline justify-between gap-3 text-sm">

@@ -10,13 +10,22 @@ export function ProgressMapLegend({
   explanation,
   mapCues,
   ariaLabel = 'Progress map legend',
+  collapsibleDetails = false,
 }: {
   title: string
   entries: readonly ProgressMapLegendEntry[]
   explanation: string
   mapCues: string
   ariaLabel?: string
+  collapsibleDetails?: boolean
 }) {
+  const details = (
+    <>
+      <p>{explanation}</p>
+      <p className="text-zinc-500">{mapCues}</p>
+    </>
+  )
+
   return (
     <section
       className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-900/70 px-3 py-2.5 text-xs text-zinc-400"
@@ -41,8 +50,16 @@ export function ProgressMapLegend({
           ))}
         </ul>
       </div>
-      <p>{explanation}</p>
-      <p className="text-zinc-500">{mapCues}</p>
+      {collapsibleDetails ? (
+        <details className="border-t border-zinc-800 pt-2">
+          <summary className="cursor-pointer select-none font-medium text-zinc-400 transition-colors hover:text-zinc-200">
+            How progress works
+          </summary>
+          <div className="mt-2 space-y-2">
+            {details}
+          </div>
+        </details>
+      ) : details}
     </section>
   )
 }

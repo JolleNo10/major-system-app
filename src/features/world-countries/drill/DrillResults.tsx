@@ -33,7 +33,6 @@ export function DrillResults({
     skills,
     perspective,
   })
-
   return (
     <>
       <DrillResultsRails

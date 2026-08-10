@@ -67,14 +67,18 @@ describe('DrillSetup rail presentation', () => {
     const mapProps = lastMapCall?.[0] as Record<string, unknown>
     expect(mapProps.countryColorsById).toBeInstanceOf(Map)
     expect(loadRecallProgressMock).toHaveBeenCalled()
-    expect(mount.textContent).toContain('Location → Country')
     const legend = mount.querySelector('[aria-label="Durable progress legend"]')
+    expect(legend?.textContent).toContain('Progress')
+    expect(legend?.textContent).not.toContain('Location → Country progress')
     expect(legend?.textContent).toContain('Unpractised')
     expect(legend?.textContent).toContain('Weak')
     expect(legend?.textContent).toContain('Developing')
     expect(legend?.textContent).toContain('Strong')
     expect(legend?.textContent).toContain('Mastered')
     expect(legend?.textContent).toContain('teal/cyan is temporary hover or recall focus')
+    const legendDetails = legend?.querySelector('details')
+    expect(legendDetails?.hasAttribute('open')).toBe(false)
+    expect(legendDetails?.querySelector('summary')?.textContent).toContain('How progress works')
     expect(getDrillProgressLegendEntries('countries').map(entry => entry.color)).toEqual([
       '#52525b',
       '#dc2626',
@@ -82,6 +86,34 @@ describe('DrillSetup rail presentation', () => {
       '#2563eb',
       '#16a34a',
     ])
+  })
+
+  it('shows read-only Country to Capital status for Capitals practice', async () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(DrillSetup, {
+        level: 'continent',
+        selection: createDrillSelection('Europe', ['northern-europe']),
+        mode: 'capitals',
+        onSelectionChange: vi.fn(),
+        onModeChange: vi.fn(),
+        onStart: vi.fn(),
+        onWorld: vi.fn(),
+        onSelectContinent: vi.fn(),
+        hoveredGroupId: null,
+        onHoverGroup: vi.fn(),
+      }))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const lastMapCall = geographyOverviewMapMock.mock.calls[geographyOverviewMapMock.mock.calls.length - 1]
+    const mapProps = lastMapCall?.[0] as Record<string, unknown>
+    expect(mapProps.countryColorsById).toBeInstanceOf(Map)
+    expect(mount.querySelector('[aria-label="Durable progress legend"]')).not.toBeNull()
   })
 
   it('publishes geographic scope on the left and drill controls on the right', async () => {
@@ -105,7 +137,9 @@ describe('DrillSetup rail presentation', () => {
       }))
     })
 
-    expect(mount.querySelector('[aria-label="Drill setup summary"]')).not.toBeNull()
+    const currentDrill = mount.querySelector('[aria-labelledby="world-countries-current-drill-heading"]')
+    expect(currentDrill).not.toBeNull()
+    expect(currentDrill?.textContent).toContain('Start Drill')
     const railConfig = useRailsMock.mock.calls[0][0] as { left: ReactNode; right: ReactNode }
     await act(async () => {
       root?.render(createElement('div', null, railConfig.left, railConfig.right))
@@ -114,7 +148,7 @@ describe('DrillSetup rail presentation', () => {
     expect(mount.textContent).toContain('Entire Continent')
     expect(mount.textContent).toContain('Northern Europe')
     expect(mount.textContent).toContain('Recall mode')
-    expect(mount.textContent).toContain('Start Drill')
+    expect(mount.textContent).not.toContain('Start Drill')
 
     const entireContinentButton = [...mount.querySelectorAll('button')]
       .find(button => button.textContent?.includes('Entire Continent'))
