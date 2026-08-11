@@ -21,6 +21,7 @@ interface CapitalLearningFlowProps {
   continent: Continent
   subregion: SubregionId
   entries: readonly Country[]
+  activeCountries?: readonly Country[]
   fuzzyMatching: boolean
   onPhaseChange: (phase: CapitalLearningPhase) => void
   onExit: () => void
@@ -31,7 +32,7 @@ interface CapitalLearningFlowProps {
 }
 
 export function CapitalLearningFlow({ countriesLearned, ...props }: CapitalLearningFlowProps) {
-  const canEnter = countriesLearned ?? canEnterCapitalMemo(getSubregionLearningState(props.subregion))
+  const canEnter = countriesLearned ?? canEnterCapitalMemo(getSubregionLearningState(props.subregion, props.activeCountries ?? props.entries))
   if (!canEnter) return <CapitalMemoLocked onExit={props.onExit} />
   return <EnabledCapitalLearningFlow {...props} countriesLearned />
 }
@@ -40,6 +41,7 @@ function EnabledCapitalLearningFlow({
   continent,
   subregion,
   entries,
+  activeCountries,
   fuzzyMatching,
   onPhaseChange,
   onExit,
@@ -53,7 +55,7 @@ function EnabledCapitalLearningFlow({
     const initialFlow = createCapitalLearningFlow({ countryIds, countriesLearned })
     return startInRecall ? startCapitalRecall(initialFlow) : initialFlow
   })
-  const completionReporter = useRef(createSubregionCapitalCompletionReporter(subregion))
+  const completionReporter = useRef(createSubregionCapitalCompletionReporter(subregion, activeCountries))
 
   useEffect(() => {
     onWalkthroughCountryChange?.(

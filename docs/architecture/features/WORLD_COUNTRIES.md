@@ -32,7 +32,9 @@ tracks.
 ## Entry points
 
 - `WorldCountries.tsx` composes Memo, Drill, Recite, and a high-level
-  Maintenance entry; capability rules do not belong here.
+  Maintenance entry. It resolves the Settings country-set policy once and
+  provides the resulting active population to those workflows; capability
+  rules do not belong here.
 - `index.ts` is the public boundary.
 - `memo/WorldCountriesMemo.tsx` is the implemented instructional workflow
   entry.
@@ -43,10 +45,13 @@ tracks.
 ## Ownership
 
 - `data/` — canonical Country, Continent, Subregion identity, membership,
-  classification, and bundled reference data. `Country.capital` is the
-  canonical Capital answer taught by World Countries; Subregions define the
-  Country scope and never duplicate Capital data.
-- `geography/` — geography queries, user-authored ordering metadata at both
+  geopolitical classification, and bundled reference data. The canonical
+  dataset contains all 200 known entities; it is not the learner's active
+  population. `Country.capital` is the canonical Capital answer taught by
+  World Countries; Subregions define the Country scope and never duplicate
+  Capital data.
+- `geography/` — geography queries, country-set group definitions and the pure
+  active-population resolver, user-authored ordering metadata at both
   hierarchy levels (Continent → Subregion order and Subregion → Country order),
   the effective-order resolvers, and metadata persistence.
 - `learning/` — reusable World Countries recall semantics: skill-specific
@@ -89,6 +94,12 @@ feature-local `domain/` or `persistence/` layers, generic `common/`, a root
 ## Decision rules
 
 - Canonical geography content or identity belongs in `data/`.
+- Canonical geopolitical classification belongs in
+  `data/countryClassification.ts`; derived country-set policy belongs in
+  `geography/countrySet.ts`.
+- The active learning population is the union of UN Member States and the
+  selected optional groups. It is resolved once at the World Countries shell
+  and is never persisted as Country IDs.
 - Queries and user-specific Subregion metadata/order belong in `geography/`.
 - Answer evaluation, reusable recall/session mechanics, and learning state
   belong in `learning/`; Memo-specific orchestration stays in `memo/`.
@@ -111,7 +122,9 @@ feature-local `domain/` or `persistence/` layers, generic `common/`, a root
 - Pure and impure modules may share a capability owner. Do not create generic
   `domain/` or `persistence/` buckets solely to separate them technically.
 - `WorldCountries.tsx` composes capabilities. It does not decide membership,
-  learning transitions, scheduling, map translation, or mnemonic identity.
+  learning transitions, scheduling, map translation, or mnemonic identity;
+  its only membership responsibility is passing the shell-resolved population
+  into workflow composition.
 
 ## Dependencies
 
@@ -157,8 +170,9 @@ the current app layout integration seam.
   through `geography/`.
 - `world-countries-subregion-learning` stores durable Subregion Memo completion
   facts through `learning/`: `countriesLearnedAt` and `capitalsLearnedAt` are
-  independent fields. A companion membership fingerprint is used to discard
-  completion rows that predate a canonical Subregion membership change.
+  independent fields. A companion membership fingerprint hides completion
+  rows that do not apply to the active Subregion membership while retaining
+  selectable membership history.
 - Geography mnemonics use the shared IndexedDB `mnemonics` store with `geo:*`
   target IDs. Subregion mnemonic records also retain the Country IDs/order they
   describe so stale stories can be detected.
@@ -168,6 +182,10 @@ the current app layout integration seam.
 - Drill preferences use the feature-owned `world-countries-drill-preferences`
   localStorage key and contain only the last Continent, Subregion IDs, and
   Drill mode. They are convenience state, not learning evidence.
+- App Settings persists optional country-set group IDs in the existing
+  `major-settings` record as `worldCountriesIncludedEntityGroups`. The default
+  empty array means the 193 UN Member States; unknown IDs are discarded on
+  load.
 - Drill attempts use the existing domain-neutral `core/learning` adapter and
   the shared IndexedDB `attempts` store. Atomic IDs are constructed by
   `learning/recallTargets.ts` in the `world-countries:<skill>:<CountryId>`
@@ -189,9 +207,10 @@ change Pi, Major System, Cards, global settings, or shared database ownership.
 ## Public boundary
 
 Consumers outside this feature import from `@/features/world-countries`.
-`index.ts` currently exports only `WorldCountries` and `MapWorkarea`, matching
-the app mode registry. Internal stores, queries, session mechanics, mnemonic
-adapters, and map adapters remain private until a real external consumer exists.
+`index.ts` exports `WorldCountries`, `MapWorkarea`, and the deliberately narrow
+country-set settings contracts used by app settings. Internal stores, queries,
+session mechanics, mnemonic adapters, and map adapters remain private until a
+real external consumer exists.
 
 ## Invariants
 
@@ -274,6 +293,13 @@ adapters, and map adapters remain private until a real external consumer exists.
   treatments until feedback, preserving recall safety.
 - Workflow folders do not depend on sibling workflow internals.
 - World Countries persistence does not modify unrelated feature state.
+- Country-set changes do not delete attempts or change atomic target IDs.
+- Subregion Memo completion is keyed by the active Country-membership
+  fingerprint. Completion facts for prior selectable memberships remain in the
+  existing learning keys and become applicable again when that membership is
+  restored.
+- User-authored Country order is projected over the active population while
+  hidden stable Country IDs remain in stored metadata.
 - Atomic skill proficiency is derived as `UNPRACTISED`, `WEAK`, `DEVELOPING`,
   `STRONG`, or `MASTERED`. Mastery requires successful explicit free recall on
   two distinct recorded local calendar dates after the latest failure;
@@ -310,8 +336,10 @@ adapters, and map adapters remain private until a real external consumer exists.
 - `src/features/world-countries/WorldCountries.tsx`
 - `src/features/world-countries/index.ts`
 - `src/features/world-countries/data/countries.ts`
+- `src/features/world-countries/data/countryClassification.ts`
 - `src/features/world-countries/data/subregions.ts`
 - `src/features/world-countries/geography/queries.ts`
+- `src/features/world-countries/geography/countrySet.ts`
 - `src/features/world-countries/geography/continentMetadataStore.ts`
 - `src/features/world-countries/learning/countryLearningFlow.ts`
 - `src/features/world-countries/learning/capitalLearningFlow.ts`
@@ -325,6 +353,7 @@ adapters, and map adapters remain private until a real external consumer exists.
 - `src/features/world-countries/learning/progressPresentation.ts`
 - `src/features/world-countries/learning/useWorldCountriesCountryColors.ts`
 - `src/features/world-countries/learning/subregionLearningStore.ts`
+- `src/features/world-countries/worldCountriesPopulation.tsx`
 - `src/features/world-countries/memo/memoProgress.ts`
 - `src/features/world-countries/drill/WorldCountriesDrill.tsx`
 - `src/features/world-countries/drill/drillSelection.ts`

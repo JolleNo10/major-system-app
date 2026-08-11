@@ -1,4 +1,5 @@
 import type { SubregionId } from '@/features/world-countries/data/subregions'
+import type { Country } from '@/features/world-countries/data/countries'
 import { markSubregionCapitalsLearned } from './subregionLearningStore'
 
 export interface CapitalCompletionReporter {
@@ -25,8 +26,9 @@ export function createCapitalCompletionReporter(onCompleted: () => void): Capita
 /** Learning-layer completion boundary used by Memo orchestration. */
 export function createSubregionCapitalCompletionReporter(
   subregionId: SubregionId,
+  entries?: readonly Country[],
 ): CapitalCompletionReporter {
   return createCapitalCompletionReporter(() => {
-    markSubregionCapitalsLearned(subregionId)
+    markSubregionCapitalsLearned(subregionId, Date.now(), entries)
   })
 }

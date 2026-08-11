@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   createDrillSession,
   getCurrentDrillStep,
+  isDrillSessionCompatible,
   submitDrillStep,
 } from './drillSessionState'
 
@@ -35,5 +36,10 @@ describe('World Countries Drill session', () => {
     expect(location.state.countryOrder).toEqual(['NO'])
     expect(getCurrentDrillStep(location.state)?.countryId).toBe('NO')
   })
-})
 
+  it('detects when a live population change invalidates a session', () => {
+    const state = createDrillSession({ mode: 'countries', countryIds: ['NO', 'SE'] })
+    expect(isDrillSessionCompatible(state, [{ id: 'NO' }, { id: 'SE' }])).toBe(true)
+    expect(isDrillSessionCompatible(state, [{ id: 'NO' }])).toBe(false)
+  })
+})

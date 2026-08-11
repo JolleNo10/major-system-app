@@ -12,6 +12,10 @@ import { masteryFastMs, RECALL_SLOW_MS } from '@/core/scoring/scoring'
 import { Overlay } from '@/app/layout/Overlay'
 import { PI_PAIRS } from '@/features/pi'
 import { Switch } from '@/core/ui/Switch'
+import {
+  WORLD_COUNTRIES_ENTITY_GROUP_DEFINITIONS,
+  UN_MEMBER_COUNTRY_IDS,
+} from '@/features/world-countries'
 import type { PwaUpdate } from '@/app/settings/usePwaUpdate'
 import type { ReactNode } from 'react'
 
@@ -206,6 +210,33 @@ export function SettingsOverlay({ onClose, pwa }: Props) {
           </SettingsGroup>
 
           <SettingsGroup label="World Countries">
+          <section>
+            <h3 className="font-semibold text-zinc-100">Primary Country set</h3>
+            <p className="mt-1 text-sm text-zinc-500">UN Member States ({UN_MEMBER_COUNTRY_IDS.length}) are always included. Add optional geopolitical groups below.</p>
+            <div className="mt-4 space-y-3">
+              {WORLD_COUNTRIES_ENTITY_GROUP_DEFINITIONS.map(group => {
+                const checked = settings.worldCountriesIncludedEntityGroups.includes(group.id)
+                return (
+                  <div key={group.id} className="flex items-start justify-between gap-4 rounded-lg border border-zinc-800 bg-zinc-900 p-3">
+                    <div className="min-w-0">
+                      <h4 className="text-sm font-semibold text-zinc-200">{group.label}</h4>
+                      <p className="mt-1 text-xs leading-relaxed text-zinc-500">{group.description}</p>
+                    </div>
+                    <Switch
+                      checked={checked}
+                      onChange={enabled => update({
+                        worldCountriesIncludedEntityGroups: enabled
+                          ? [...settings.worldCountriesIncludedEntityGroups, group.id]
+                          : settings.worldCountriesIncludedEntityGroups.filter(id => id !== group.id),
+                      })}
+                      label={`Include ${group.label}`}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+
           <section>
             <div className="flex items-center justify-between gap-4 mb-1">
               <h3 className="font-semibold text-zinc-100">Fuzzy answer matching</h3>

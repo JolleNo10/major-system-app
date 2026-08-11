@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import type { AnswerMode } from '@/core/types'
 import { Overlay } from '@/app/layout/Overlay'
 import { useSettings } from '@/app/settings/SettingsContext'
-import { countries, type Continent } from '@/features/world-countries/data/countries'
+import type { Continent } from '@/features/world-countries/data/countries'
 import type { SubregionDefinition, SubregionId } from '@/features/world-countries/data/subregions'
 import { getAllSubregionLearningStates } from '@/features/world-countries/learning/subregionLearningStore'
 import {
@@ -11,6 +11,7 @@ import {
 } from '@/features/world-countries/learning/memoReadiness'
 import { getContinents, getSubregionsForContinentInEffectiveOrder } from '@/features/world-countries/geography/queries'
 import { getContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
+import { useWorldCountriesPopulation } from '@/features/world-countries/worldCountriesPopulation'
 import {
   getContinentMemoReadinessProgress,
   getWorldMemoReadinessProgress,
@@ -23,20 +24,21 @@ import { ContinentOverviewRails, WorldOverviewRails } from './WorldCountriesMemo
 
 export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: AnswerMode }) {
   const { settings } = useSettings()
+  const activeCountries = useWorldCountriesPopulation()
   const [continent, setContinent] = useState<Continent | null>(null)
   const [subregion, setSubregion] = useState<SubregionId | null>(null)
   const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null)
   const [learningVersion, setLearningVersion] = useState(0)
-  const continents = useMemo(() => getContinents(), [])
-  const learningStates = useMemo(() => getAllSubregionLearningStates(), [learningVersion])
-  const worldProgress = useMemo(() => getWorldMemoReadinessProgress(learningStates), [learningStates])
+  const continents = useMemo(() => getContinents(activeCountries), [activeCountries])
+  const learningStates = useMemo(() => getAllSubregionLearningStates(activeCountries), [activeCountries, learningVersion])
+  const worldProgress = useMemo(() => getWorldMemoReadinessProgress(learningStates, activeCountries), [activeCountries, learningStates])
   const memoReadinessColorsById = useMemo(
-    () => createWorldCountriesMemoReadinessColors(countries, learningStates),
-    [learningStates],
+    () => createWorldCountriesMemoReadinessColors(activeCountries, learningStates),
+    [activeCountries, learningStates],
   )
   const memoReadinessByCountryId = useMemo(
-    () => createWorldCountriesMemoReadinessByCountry(countries, learningStates),
-    [learningStates],
+    () => createWorldCountriesMemoReadinessByCountry(activeCountries, learningStates),
+    [activeCountries, learningStates],
   )
 
   const refreshLearning = useCallback(() => setLearningVersion(version => version + 1), [])
@@ -68,6 +70,7 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
       <SubregionMemoScreen
         continent={continent}
         subregion={subregion}
+        activeCountries={activeCountries}
         learningVersion={learningVersion}
         locationCleanTargetMinimum={settings.worldCountriesLocationCleanTargetMinimum}
         fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching}
@@ -92,6 +95,7 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
         onLearningChanged={refreshLearning}
         memoReadinessColorsById={memoReadinessColorsById}
         memoReadinessByCountryId={memoReadinessByCountryId}
+        entries={activeCountries}
       />
     )
   }
@@ -99,6 +103,7 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
   return (
     <WorldMemoOverview
       continents={continents}
+      entries={activeCountries}
       progress={worldProgress}
       learningStates={learningStates}
       hoveredGroupId={hoveredGroupId}
@@ -112,6 +117,7 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
 
 function WorldMemoOverview({
   continents,
+  entries,
   progress,
   learningStates,
   hoveredGroupId,
@@ -121,6 +127,7 @@ function WorldMemoOverview({
   memoReadinessByCountryId,
 }: {
   continents: readonly Continent[]
+  entries: readonly import('@/features/world-countries/data/countries').Country[]
   progress: MemoReadinessProgress
   learningStates: ReturnType<typeof getAllSubregionLearningStates>
   hoveredGroupId: string | null
@@ -134,6 +141,7 @@ function WorldMemoOverview({
       rails={
         <WorldOverviewRails
           continents={continents}
+          entries={entries}
           learningStates={learningStates}
           progress={progress}
           hoveredGroupId={hoveredGroupId}
@@ -157,6 +165,7 @@ function WorldMemoOverview({
 
 function ContinentMemoOverview({
   continent,
+  entries,
   learningStates,
   hoveredGroupId,
   learningVersion,
@@ -168,6 +177,7 @@ function ContinentMemoOverview({
   memoReadinessByCountryId,
 }: {
   continent: Continent
+  entries: readonly import('@/features/world-countries/data/countries').Country[]
   learningStates: ReturnType<typeof getAllSubregionLearningStates>
   hoveredGroupId: string | null
   learningVersion: number
@@ -181,10 +191,10 @@ function ContinentMemoOverview({
   const [editingOrder, setEditingOrder] = useState(false)
   const [draftSubregions, setDraftSubregions] = useState<readonly SubregionDefinition[] | null>(null)
   const subregions = useMemo(
-    () => getSubregionsForContinentInEffectiveOrder(continent, undefined, getContinentMetadata(continent)),
-    [continent, learningVersion],
+    () => getSubregionsForContinentInEffectiveOrder(continent, entries, getContinentMetadata(continent)),
+    [continent, entries, learningVersion],
   )
-  const progress = useMemo(() => getContinentMemoReadinessProgress(continent, learningStates), [continent, learningStates])
+  const progress = useMemo(() => getContinentMemoReadinessProgress(continent, learningStates, entries), [continent, entries, learningStates])
   const railSubregions = draftSubregions ?? subregions
 
   const openOrderEditor = useCallback(() => {
@@ -207,6 +217,7 @@ function ContinentMemoOverview({
           <ContinentOverviewRails
             continent={continent}
             subregions={railSubregions}
+            entries={entries}
             learningStates={learningStates}
             progress={progress}
             hoveredGroupId={hoveredGroupId}

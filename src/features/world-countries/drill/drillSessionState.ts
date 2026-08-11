@@ -72,6 +72,15 @@ export function getCurrentDrillStep(state: DrillSessionState): DrillSessionStep 
   return countryId === undefined || skill === undefined ? null : { countryId, skill }
 }
 
+/** A live settings change must not leave a session targeting inactive Countries. */
+export function isDrillSessionCompatible(
+  state: DrillSessionState,
+  entries: readonly Pick<{ id: CountryId }, 'id'>[],
+): boolean {
+  const availableIds = new Set(entries.map(entry => entry.id))
+  return state.countryIds.every(countryId => availableIds.has(countryId))
+}
+
 export function getDrillSessionTotalSteps(state: DrillSessionState): number {
   return state.countryOrder.length * getDrillSessionSkills(state).length
 }

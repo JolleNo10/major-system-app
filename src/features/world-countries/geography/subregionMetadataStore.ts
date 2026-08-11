@@ -1,5 +1,5 @@
 import { readJSON, safeSet } from '@/core/storage'
-import type { CountryId } from '@/features/world-countries/data/countries'
+import { countries, type Country, type CountryId } from '@/features/world-countries/data/countries'
 import {
   isSubregionId,
   type SubregionId,
@@ -52,13 +52,52 @@ export function setSubregionMetadata(metadata: SubregionMetadata): void {
 export function setSubregionCountryOrder(
   subregionId: SubregionId,
   countryIds: readonly CountryId[],
+  currentCountries: readonly Country[] = countries,
 ): void {
   if (!isSubregionId(subregionId)) throw new Error(`Unknown Subregion ID: ${subregionId}`)
+  const orderedIds = [...new Set(countryIds.filter(id => id.trim().length > 0))]
+  const canonicalIds = countries
+    .filter(country => country.subregionId === subregionId)
+    .map(country => country.id)
+  const activeIds = new Set(currentCountries
+    .filter(country => country.subregionId === subregionId)
+    .map(country => country.id))
+  const isFullMembership = canonicalIds.every(id => activeIds.has(id))
+  const existing = getSubregionMetadata(subregionId)?.countryOrder ?? canonicalIds
+  const persistedIds = isFullMembership
+    ? orderedIds
+    : mergeVisibleCountryOrder(existing, orderedIds, activeIds, canonicalIds)
   setSubregionMetadata({
     subregionId,
-    countryOrder: [...new Set(countryIds.filter(id => id.trim().length > 0))],
+    countryOrder: persistedIds,
     updatedAt: Date.now(),
   })
+}
+
+function mergeVisibleCountryOrder(
+  previousOrder: readonly CountryId[],
+  visibleOrder: readonly CountryId[],
+  visibleIds: ReadonlySet<CountryId>,
+  canonicalIds: readonly CountryId[],
+): CountryId[] {
+  const nextVisible = [...visibleOrder]
+  const result: CountryId[] = []
+  let visibleIndex = 0
+  for (const id of previousOrder) {
+    if (visibleIds.has(id)) {
+      const replacement = nextVisible[visibleIndex++]
+      if (replacement !== undefined && !result.includes(replacement)) result.push(replacement)
+    } else if (!result.includes(id)) {
+      result.push(id)
+    }
+  }
+  for (const id of nextVisible.slice(visibleIndex)) {
+    if (!result.includes(id)) result.push(id)
+  }
+  for (const id of canonicalIds) {
+    if (!result.includes(id)) result.push(id)
+  }
+  return result
 }
 
 export function resetSubregionCountryOrder(subregionId: SubregionId): void {

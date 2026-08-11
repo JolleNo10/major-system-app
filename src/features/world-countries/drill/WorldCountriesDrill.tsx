@@ -1,15 +1,17 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { AnswerMode } from '@/core/types'
 import { useSettings } from '@/app/settings/SettingsContext'
 import type { Continent } from '@/features/world-countries/data/countries'
+import { useWorldCountriesPopulation } from '@/features/world-countries/worldCountriesPopulation'
 import { recordWorldCountriesAttempt } from '@/features/world-countries/learning/recallProgress'
-import { getCountriesForDrillSelection, withAllDrillSubregions, type WorldCountriesDrillSelection } from './drillSelection'
+import { getCountriesForDrillSelection, normalizeDrillSelection, withAllDrillSubregions, type WorldCountriesDrillSelection } from './drillSelection'
 import { DrillResults } from './DrillResults'
 import { DrillSession } from './DrillSession'
 import { DrillSetup } from './DrillSetup'
 import { isDrillPracticeMode, type WorldCountriesDrillMode } from './drillModes'
 import {
   createDrillSession,
+  isDrillSessionCompatible,
   submitDrillStep,
   type DrillAnswerRecord,
   type DrillSessionState,
@@ -25,17 +27,32 @@ type DrillPhase = 'setup' | 'recall' | 'results'
 /** Thin coordinator for Drill setup, active recall, evidence, and results. */
 export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) {
   const { settings } = useSettings()
+  const activeCountries = useWorldCountriesPopulation()
   const [preferences, setPreferences] = useState<WorldCountriesDrillPreferences>(loadDrillPreferences)
   const [phase, setPhase] = useState<DrillPhase>('setup')
   const [setupContinent, setSetupContinent] = useState<Continent | null>(null)
   const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null)
   const [session, setSession] = useState<DrillSessionState | null>(null)
   const [answers, setAnswers] = useState<DrillAnswerRecord[]>([])
+  const effectivePreferences = useMemo(
+    () => ({ ...normalizeDrillSelection(preferences, activeCountries), mode: preferences.mode }),
+    [activeCountries, preferences],
+  )
 
   const entries = useMemo(
-    () => getCountriesForDrillSelection(preferences),
-    [preferences],
+    () => getCountriesForDrillSelection(effectivePreferences, activeCountries),
+    [activeCountries, effectivePreferences],
   )
+  const sessionMatchesActivePopulation = session
+    ? isDrillSessionCompatible(session, entries)
+    : false
+
+  useEffect(() => {
+    if (phase !== 'recall' || !session || sessionMatchesActivePopulation) return
+    setSession(null)
+    setAnswers([])
+    setPhase('setup')
+  }, [phase, session, sessionMatchesActivePopulation])
 
   const updatePreferences = useCallback((next: WorldCountriesDrillPreferences) => {
     setPreferences(next)
@@ -47,22 +64,22 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
     saveDrillPreferences(preferences)
     setAnswers([])
     setSession(createDrillSession({
-      mode: preferences.mode,
+      mode: effectivePreferences.mode,
       countryIds: entries.map(entry => entry.id),
     }))
     setPhase('recall')
-  }, [entries, preferences])
+  }, [entries, effectivePreferences, preferences])
 
   const answer = useCallback((record: DrillAnswerRecord) => {
     setAnswers(previous => [...previous, record])
-    if (isDrillPracticeMode(preferences.mode)) return
+    if (isDrillPracticeMode(effectivePreferences.mode)) return
     void recordWorldCountriesAttempt(record.countryId, record.skill, {
       at: record.at,
       ok: record.correct,
       ms: record.ms,
       evidenceKind: record.evidenceKind,
     })
-  }, [preferences.mode])
+  }, [effectivePreferences.mode])
 
   const continueSession = useCallback((correct: boolean) => {
     if (!session) return
@@ -80,12 +97,12 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
 
   const selectContinent = useCallback((continent: Continent) => {
     updatePreferences({
-      ...withAllDrillSubregions(continent),
+      ...withAllDrillSubregions(continent, activeCountries),
       mode: preferences.mode,
     })
     setSetupContinent(continent)
     setHoveredGroupId(null)
-  }, [preferences.mode, updatePreferences])
+  }, [activeCountries, preferences.mode, updatePreferences])
 
   const goToWorld = useCallback(() => {
     setSetupContinent(null)
@@ -100,13 +117,13 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
     updatePreferences({ ...preferences, mode })
   }, [preferences, updatePreferences])
 
-  if (phase === 'recall' && session) {
+  if (phase === 'recall' && session && sessionMatchesActivePopulation) {
     return (
       <DrillSession
         answerMode={answerMode}
         fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching}
         state={session}
-        selection={preferences}
+        selection={effectivePreferences}
         entries={entries}
         onAnswer={answer}
         onContinue={continueSession}
@@ -118,8 +135,8 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
   if (phase === 'results') {
     return (
       <DrillResults
-        mode={preferences.mode}
-        continent={preferences.continent}
+        mode={effectivePreferences.mode}
+        continent={effectivePreferences.continent}
         scopeCountries={entries}
         answers={answers}
         onAgain={start}
@@ -131,8 +148,8 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
   return (
     <DrillSetup
       level={setupContinent ? 'continent' : 'world'}
-      selection={preferences}
-      mode={preferences.mode}
+      selection={effectivePreferences}
+      mode={effectivePreferences.mode}
       hoveredGroupId={hoveredGroupId}
       onHoverGroup={setHoveredGroupId}
       onSelectionChange={handleSelectionChange}
@@ -140,6 +157,7 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
       onStart={start}
       onWorld={goToWorld}
       onSelectContinent={selectContinent}
+      entries={activeCountries}
     />
   )
 }

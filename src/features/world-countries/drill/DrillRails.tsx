@@ -1,5 +1,5 @@
 import { useRails } from '@/app/layout/PageLayoutContext'
-import type { Continent, Country } from '@/features/world-countries/data/countries'
+import { countries, type Continent, type Country } from '@/features/world-countries/data/countries'
 import type { SubregionId } from '@/features/world-countries/data/subregions'
 import { getContinents } from '@/features/world-countries/geography/queries'
 import { getContinentHoverGroupId, getSubregionHoverGroupId } from '@/features/world-countries/maps/geographyMapAdapter'
@@ -26,6 +26,7 @@ export function DrillSetupRails({
   onToggleSubregion,
   onSelectEntireContinent,
   onModeChange,
+  entries = countries,
 }: {
   level: 'world' | 'continent'
   selection: WorldCountriesDrillSelection
@@ -37,9 +38,10 @@ export function DrillSetupRails({
   onToggleSubregion: (subregionId: SubregionId) => void
   onSelectEntireContinent: () => void
   onModeChange: (mode: WorldCountriesDrillMode) => void
+  entries?: readonly Country[]
 }) {
-  const subregions = getDrillSubregions(selection.continent)
-  const entireContinent = isEntireContinentSelection(selection)
+  const subregions = getDrillSubregions(selection.continent, entries)
+  const entireContinent = isEntireContinentSelection(selection, entries)
   const selectedCount = selection.subregionIds.length
 
   useRails(
@@ -53,7 +55,7 @@ export function DrillSetupRails({
           <p className="text-sm leading-relaxed text-zinc-400">Choose a Continent to enter its map-centered Drill setup.</p>
           <nav aria-label="Continents">
             <ul className="space-y-1.5">
-              {getContinents().map(continent => (
+              {getContinents(entries).map(continent => (
                 <DrillHierarchyRailRow
                   key={continent}
                   label={continent}
@@ -129,7 +131,7 @@ export function DrillSetupRails({
       leftLabel: level === 'world' ? 'Drill geography' : 'Drill scope',
       rightLabel: 'Drill controls',
     },
-    [level, mode, selection.continent, selection.subregionIds, hoveredGroupId, onHoverGroup, onWorld, onSelectContinent, onToggleSubregion, onSelectEntireContinent, onModeChange],
+    [entries, level, mode, selection.continent, selection.subregionIds, hoveredGroupId, onHoverGroup, onWorld, onSelectContinent, onToggleSubregion, onSelectEntireContinent, onModeChange],
   )
 
   return null
@@ -253,17 +255,19 @@ export function DrillSessionRails({
   mode,
   state,
   onExit,
+  entries,
 }: {
   selection: WorldCountriesDrillSelection
   mode: WorldCountriesDrillMode
   state: DrillSessionState
   onExit: () => void
+  entries: readonly Country[]
 }) {
   const step = getCurrentDrillStep(state)
   const totalSteps = getDrillSessionTotalSteps(state)
   const completedSteps = state.countryIndex * getDrillModeDefinition(mode).skills.length + state.stepIndex
   const progressPercent = totalSteps ? Math.round((completedSteps / totalSteps) * 100) : 0
-  const subregions = getDrillSubregions(selection.continent)
+  const subregions = getDrillSubregions(selection.continent, entries)
 
   useRails(
     {
@@ -309,7 +313,7 @@ export function DrillSessionRails({
       leftLabel: 'Drill context',
       rightLabel: 'Session',
     },
-    [mode, onExit, selection.continent, selection.subregionIds, state.countryIndex, state.countryOrder.length, state.stepIndex, step?.skill, totalSteps, progressPercent],
+    [entries, mode, onExit, selection.continent, selection.subregionIds, state.countryIndex, state.countryOrder.length, state.stepIndex, step?.skill, totalSteps, progressPercent],
   )
 
   return null

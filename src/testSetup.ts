@@ -10,6 +10,14 @@ if (jsdomWindow) {
     configurable: true,
     value: jsdomWindow.localStorage,
   })
+
+  if (typeof globalThis.ResizeObserver === 'undefined') {
+    globalThis.ResizeObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as typeof ResizeObserver
+  }
 }
 
 // React 19 uses this flag to enable act() warnings/flush behavior in jsdom

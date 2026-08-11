@@ -1,6 +1,6 @@
 import { useRails } from '@/app/layout/PageLayoutContext'
 import type { ReactNode } from 'react'
-import type { Continent, Country } from '@/features/world-countries/data/countries'
+import { countries, type Continent, type Country } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition, type SubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
 import {
   getContinentMemoReadinessProgress,
@@ -22,6 +22,7 @@ import { MemoMnemonicCard } from './MemoMnemonicCard'
 
 interface WorldOverviewRailsProps {
   continents: readonly Continent[]
+  entries?: readonly Country[]
   progress: MemoReadinessProgress
   learningStates: MemoLearningStates
   hoveredGroupId: string | null
@@ -31,6 +32,7 @@ interface WorldOverviewRailsProps {
 
 export function WorldOverviewRails({
   continents,
+  entries = countries,
   progress,
   learningStates,
   hoveredGroupId,
@@ -58,7 +60,7 @@ export function WorldOverviewRails({
                   hoveredGroupId={hoveredGroupId}
                   onClick={() => onSelectContinent(continent)}
                   onHoverGroup={onHoverGroup}
-                  trailing={formatContinentProgress(getContinentMemoReadinessProgress(continent, learningStates))}
+                  trailing={formatContinentProgress(getContinentMemoReadinessProgress(continent, learningStates, entries))}
                 />
               ))}
             </ul>
@@ -67,7 +69,7 @@ export function WorldOverviewRails({
       ),
       leftLabel: 'Continents',
     },
-    [continents, learningStates, progress, hoveredGroupId, onSelectContinent, onHoverGroup],
+    [continents, entries, learningStates, progress, hoveredGroupId, onSelectContinent, onHoverGroup],
   )
 
   return null
@@ -76,6 +78,7 @@ export function WorldOverviewRails({
 interface ContinentOverviewRailsProps {
   continent: Continent
   subregions: readonly SubregionDefinition[]
+  entries?: readonly Country[]
   progress: MemoReadinessProgress
   learningStates: MemoLearningStates
   hoveredGroupId: string | null
@@ -88,6 +91,7 @@ interface ContinentOverviewRailsProps {
 export function ContinentOverviewRails({
   continent,
   subregions,
+  entries = countries,
   progress,
   learningStates,
   hoveredGroupId,
@@ -98,7 +102,7 @@ export function ContinentOverviewRails({
 }: ContinentOverviewRailsProps) {
   const nextSubregion = getNextSubregionToMemo(
     subregions,
-    subregion => getSubregionMemoReadinessProgress(subregion, learningStates).readiness !== 'NOT_MEMOED',
+    subregion => getSubregionMemoReadinessProgress(subregion, learningStates, entries).readiness !== 'NOT_MEMOED',
   )
 
   useRails(
@@ -134,7 +138,7 @@ export function ContinentOverviewRails({
                   onClick={() => onSelectSubregion(subregion.id)}
                   onHoverGroup={onHoverGroup}
                   sequenceNumber={index + 1}
-                  trailing={getWorldCountriesMemoReadinessLabel(getSubregionMemoReadinessProgress(subregion.id, learningStates).readiness)}
+                  trailing={getWorldCountriesMemoReadinessLabel(getSubregionMemoReadinessProgress(subregion.id, learningStates, entries).readiness)}
                 />
               ))}
             </ol>
@@ -150,7 +154,7 @@ export function ContinentOverviewRails({
       leftLabel: 'Subregions',
       rightLabel: 'Next to memo',
     },
-    [continent, learningStates, subregions, nextSubregion, progress, hoveredGroupId, onWorld, onSelectSubregion, onHoverGroup, onEditOrder],
+    [continent, entries, learningStates, subregions, nextSubregion, progress, hoveredGroupId, onWorld, onSelectSubregion, onHoverGroup, onEditOrder],
   )
 
   return null

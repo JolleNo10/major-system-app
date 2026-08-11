@@ -1,10 +1,15 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { AnswerMode } from '@/core/types'
 import { useLayoutHeader } from '@/app/layout/PageLayoutContext'
+import { useSettings } from '@/app/settings/SettingsContext'
+import { countries } from './data/countries'
+import { countryClassifications } from './data/countryClassification'
+import { resolveCountrySet } from './geography/countrySet'
 import { WorldCountriesDrill } from '@/features/world-countries/drill/WorldCountriesDrill'
 import { WorldCountriesMaintenance } from '@/features/world-countries/maintenance/WorldCountriesMaintenance'
 import { WorldCountriesMemo } from '@/features/world-countries/memo/WorldCountriesMemo'
 import { WorldCountriesRecite } from '@/features/world-countries/recite/WorldCountriesRecite'
+import { WorldCountriesPopulationProvider } from './worldCountriesPopulation'
 
 type WorldCountriesArea = 'memo' | 'drill' | 'recite' | 'maintenance'
 
@@ -16,7 +21,12 @@ const AREAS: readonly { id: WorldCountriesArea; label: string }[] = [
 
 /** World Countries application shell; workflows own their behavior and state. */
 export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
+  const { settings } = useSettings()
   const [area, setArea] = useState<WorldCountriesArea>('memo')
+  const activeCountries = useMemo(
+    () => resolveCountrySet(countries, countryClassifications, settings.worldCountriesIncludedEntityGroups),
+    [settings.worldCountriesIncludedEntityGroups],
+  )
 
   useLayoutHeader(
     <div className="w-full space-y-4 pb-4">
@@ -59,11 +69,11 @@ export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
   )
 
   return (
-    <>
+    <WorldCountriesPopulationProvider countries={activeCountries}>
       {area === 'memo' && <WorldCountriesMemo answerMode={answerMode} />}
       {area === 'drill' && <WorldCountriesDrill answerMode={answerMode} />}
       {area === 'recite' && <WorldCountriesRecite answerMode={answerMode} />}
       {area === 'maintenance' && <WorldCountriesMaintenance answerMode={answerMode} />}
-    </>
+    </WorldCountriesPopulationProvider>
   )
 }

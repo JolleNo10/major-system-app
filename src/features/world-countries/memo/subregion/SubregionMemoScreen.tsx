@@ -19,6 +19,7 @@ import { SubregionOrderEditor } from './SubregionOrderEditor'
 export function SubregionMemoScreen({
   continent,
   subregion,
+  activeCountries,
   learningVersion,
   locationCleanTargetMinimum,
   fuzzyMatching,
@@ -29,6 +30,7 @@ export function SubregionMemoScreen({
 }: {
   continent: Continent
   subregion: SubregionId
+  activeCountries: readonly Country[]
   learningVersion: number
   locationCleanTargetMinimum: number
   fuzzyMatching: boolean
@@ -37,19 +39,19 @@ export function SubregionMemoScreen({
   onExit: () => void
   onWorld: () => void
 }) {
-  const entries = useMemo(() => getCountriesForSubregionInEffectiveOrder(subregion, undefined, getSubregionMetadata(subregion)), [learningVersion, subregion])
+  const entries = useMemo(() => getCountriesForSubregionInEffectiveOrder(subregion, activeCountries, getSubregionMetadata(subregion)), [activeCountries, learningVersion, subregion])
   const nextSubregion = useMemo(() => {
     const learnedSubregionIds = new Set(
-      getAllSubregionLearningStates()
+      getAllSubregionLearningStates(activeCountries)
         .filter(state => isSubregionCountriesLearned(state))
         .map(state => state.subregionId),
     )
     return getNextSubregionToMemo(
-      getSubregionsForContinentInEffectiveOrder(continent, undefined, getContinentMetadata(continent)),
+      getSubregionsForContinentInEffectiveOrder(continent, activeCountries, getContinentMetadata(continent)),
       candidateId => learnedSubregionIds.has(candidateId),
     )
-  }, [continent, learningVersion])
-  const learningState = getSubregionLearningState(subregion)
+  }, [activeCountries, continent, learningVersion])
+  const learningState = getSubregionLearningState(subregion, activeCountries)
   const learned = isSubregionCountriesLearned(learningState)
   const capitalsLearned = isSubregionCapitalsLearned(learningState)
   return (
@@ -59,6 +61,7 @@ export function SubregionMemoScreen({
         <SubregionScreenBody
           continent={continent}
           subregion={subregion}
+          activeCountries={activeCountries}
           entries={entries}
           learned={learned}
           capitalsLearned={capitalsLearned}
@@ -78,6 +81,7 @@ export function SubregionMemoScreen({
 function SubregionScreenBody({
   continent,
   subregion,
+  activeCountries,
   entries,
   learned,
   capitalsLearned,
@@ -91,6 +95,7 @@ function SubregionScreenBody({
 }: {
   continent: Continent
   subregion: SubregionId
+  activeCountries: readonly Country[]
   entries: ReturnType<typeof getCountriesForSubregionInEffectiveOrder>
   learned: boolean
   capitalsLearned: boolean
@@ -143,6 +148,7 @@ function SubregionScreenBody({
       continent={continent}
       subregion={subregion}
       entries={entries}
+      currentCountries={activeCountries}
       entryPoint={entryPoint}
       locationCleanTargetMinimum={locationCleanTargetMinimum}
       fuzzyMatching={fuzzyMatching}
@@ -155,6 +161,7 @@ function SubregionScreenBody({
       continent={continent}
       subregion={subregion}
       entries={entries}
+      activeCountries={activeCountries}
       countriesLearned={learned}
       fuzzyMatching={fuzzyMatching}
       onPhaseChange={reportLearningPhase}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { countries, type Continent } from '@/features/world-countries/data/countries'
+import { countries, type Continent, type Country } from '@/features/world-countries/data/countries'
 import {
   loadWorldCountriesRecallProgress,
   type RecallProgress,
@@ -28,6 +28,7 @@ export function DrillSetup({
   onStart,
   onWorld,
   onSelectContinent,
+  entries = countries,
 }: {
   level: 'world' | 'continent'
   selection: WorldCountriesDrillSelection
@@ -39,40 +40,41 @@ export function DrillSetup({
   onStart: () => void
   onWorld: () => void
   onSelectContinent: (continent: Continent) => void
+  entries?: readonly Country[]
 }) {
-  const subregions = getDrillSubregions(selection.continent)
+  const subregions = getDrillSubregions(selection.continent, entries)
   const skills = getSkillsForDrillMode(mode)
-  const memoLearningStates = useMemo(() => getAllSubregionLearningStates(), [])
+  const memoLearningStates = useMemo(() => getAllSubregionLearningStates(entries), [entries])
   const [recallProgress, setRecallProgress] = useState<RecallProgress | null>(null)
 
   useEffect(() => {
     let active = true
     setRecallProgress(null)
     void loadWorldCountriesRecallProgress({
-      countryIds: countries.map(country => country.id),
+      countryIds: entries.map(country => country.id),
       skills,
     }).then(progress => {
       if (active) setRecallProgress(progress)
     })
     return () => { active = false }
-  }, [skills])
+  }, [entries, skills])
 
   const countryColorsById = useMemo(
-    () => recallProgress ? createDrillProgressColors({ mode, scopeCountries: countries, recallProgress, learningStates: memoLearningStates }) : undefined,
-    [memoLearningStates, mode, recallProgress],
+    () => recallProgress ? createDrillProgressColors({ mode, scopeCountries: entries, recallProgress, learningStates: memoLearningStates }) : undefined,
+    [entries, memoLearningStates, mode, recallProgress],
   )
   const countryAccessibleDescriptionsById = useMemo(
-    () => recallProgress ? createDrillProgressDescriptions({ mode, scopeCountries: countries, recallProgress, learningStates: memoLearningStates }) : undefined,
-    [memoLearningStates, mode, recallProgress],
+    () => recallProgress ? createDrillProgressDescriptions({ mode, scopeCountries: entries, recallProgress, learningStates: memoLearningStates }) : undefined,
+    [entries, memoLearningStates, mode, recallProgress],
   )
 
   const toggleEntireContinent = useCallback(
-    () => onSelectionChange(toggleEntireContinentSelection(selection)),
-    [onSelectionChange, selection],
+    () => onSelectionChange(toggleEntireContinentSelection(selection, entries)),
+    [entries, onSelectionChange, selection],
   )
   const toggleSubregion = useCallback((subregionId: Parameters<typeof toggleDrillSubregion>[1]) => {
-    onSelectionChange(toggleDrillSubregion(selection, subregionId))
-  }, [onSelectionChange, selection])
+    onSelectionChange(toggleDrillSubregion(selection, subregionId, entries))
+  }, [entries, onSelectionChange, selection])
 
   return (
     <>
@@ -87,6 +89,7 @@ export function DrillSetup({
         onToggleSubregion={toggleSubregion}
         onSelectEntireContinent={toggleEntireContinent}
         onModeChange={onModeChange}
+        entries={entries}
       />
 
       <div className="space-y-3 animate-fade-in">

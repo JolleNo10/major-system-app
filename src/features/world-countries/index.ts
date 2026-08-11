@@ -3,3 +3,9 @@
 
 export { WorldCountries } from './WorldCountries'
 export { MapWorkarea } from './maps/workarea/MapWorkarea'
+export {
+  WORLD_COUNTRIES_ENTITY_GROUP_DEFINITIONS,
+  normalizeWorldCountriesIncludedEntityGroups,
+} from './geography/countrySet'
+export { UN_MEMBER_COUNTRY_IDS } from './data/countryClassification'
+export type { WorldCountriesEntityGroupId } from './geography/countrySet'

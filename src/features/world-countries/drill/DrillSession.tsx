@@ -126,7 +126,7 @@ export function DrillSession({
 
   return (
     <>
-      <DrillSessionRails selection={selection} mode={state.mode} state={state} onExit={onExit} />
+      <DrillSessionRails selection={selection} mode={state.mode} state={state} onExit={onExit} entries={entries} />
       <div className="space-y-4 animate-fade-in">
         <section className="rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-4 text-center">
           <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">{getDrillSkillLabel(step.skill)}</p>

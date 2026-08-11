@@ -1,6 +1,10 @@
 // User-adjustable settings (localStorage).
 
 import { readJSON, readString, safeSet } from '@/core/storage'
+import {
+  normalizeWorldCountriesIncludedEntityGroups,
+  type WorldCountriesEntityGroupId,
+} from '@/features/world-countries'
 
 export interface Settings {
   // Multiplier on RECALL_FAST_MS for the mastery "fast enough" bar. 1 = strict
@@ -28,6 +32,8 @@ export interface Settings {
   worldCountriesFuzzyAnswerMatching: boolean
   // Minimum consecutive correct map selections in World Countries Memo Stage A.
   worldCountriesLocationCleanTargetMinimum: number
+  // Optional canonical geopolitical groups added to the default UN Member State set.
+  worldCountriesIncludedEntityGroups: WorldCountriesEntityGroupId[]
 }
 
 const KEY = 'major-settings'
@@ -42,6 +48,7 @@ export const DEFAULT_SETTINGS: Settings = {
   sessionUnmasteredShare: 0.5, // even split between unmastered and mastered pools
   worldCountriesFuzzyAnswerMatching: true,
   worldCountriesLocationCleanTargetMinimum: 10,
+  worldCountriesIncludedEntityGroups: [],
 }
 
 export const UNMASTERED_SHARE_MIN = 0
@@ -65,7 +72,13 @@ export const WORLD_COUNTRIES_LOCATION_CLEAN_TARGET_STEP = 1
 
 export function loadSettings(): Settings {
   const stored = readJSON<Partial<Settings>>(KEY, {})
-  const merged = { ...DEFAULT_SETTINGS, ...stored }
+  const merged: Settings = {
+    ...DEFAULT_SETTINGS,
+    ...stored,
+    worldCountriesIncludedEntityGroups: normalizeWorldCountriesIncludedEntityGroups(
+      stored.worldCountriesIncludedEntityGroups,
+    ),
+  }
   // One-time migration: pairs-per-answer used to live in its own localStorage key.
   if (stored.piPairsPerAnswer === undefined && readString(LEGACY_PAIRS_KEY) === '10') {
     merged.piPairsPerAnswer = 10
@@ -74,5 +87,10 @@ export function loadSettings(): Settings {
 }
 
 export function saveSettings(s: Settings): void {
-  safeSet(KEY, JSON.stringify(s))
+  safeSet(KEY, JSON.stringify({
+    ...s,
+    worldCountriesIncludedEntityGroups: normalizeWorldCountriesIncludedEntityGroups(
+      s.worldCountriesIncludedEntityGroups,
+    ),
+  }))
 }

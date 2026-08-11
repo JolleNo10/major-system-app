@@ -23,7 +23,7 @@ export function SubregionOrderEditor({
       getId={country => country.id}
       getLabel={country => country.country}
       onDraftChanged={onDraftChanged}
-      persistOrder={orderedIds => setSubregionCountryOrder(subregion, orderedIds)}
+      persistOrder={orderedIds => setSubregionCountryOrder(subregion, orderedIds, entries)}
       resetOrder={() => resetSubregionCountryOrder(subregion)}
       onChanged={onChanged}
       onClose={onClose}

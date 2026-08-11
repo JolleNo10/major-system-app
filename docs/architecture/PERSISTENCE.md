@@ -60,7 +60,7 @@ Architecturally significant groups are:
 | Owner | Keys/state |
 | --- | --- |
 | `core/scoring` | `major-item-data`, `major-attempts-migrated`, typing-speed state; schemas support Major/Pi scoring consumers. |
-| `core/ui` and `app/settings` | global answer/UI preferences and `major-settings`. Settings are app-owned even when features consume them. |
+| `core/ui` and `app/settings` | global answer/UI preferences and `major-settings`, including the World Countries `worldCountriesIncludedEntityGroups` group-ID selection. Settings are app-owned even when features consume them. |
 | Major System | `major-word-*`, `major-soundkey-*`, sequence/speed preferences. Layered word and sound-key records use `createWordStore`. |
 | Cards | `major-cardword-*`, `major-pao-*`, deck-memo histories, drill/suit/range preferences. Themed and PAO stores are independent even when PAO seeds Person values from Themed. |
 | Pi | `major-pi-*` session, selection, memoed/flawless, anchor, story-era, and maintenance state. Exact keys are defined beside their owners. |
@@ -102,12 +102,19 @@ follows the defining module and feature namespace.
   delegated shared records. Never call `localStorage.clear()` in production.
 - World Countries structural work may reset World Countries state when its
   feature architecture allows it, but must not alter Pi or other feature state.
+- World Countries country-set policy changes are routine scope changes: the
+  existing settings record stores optional group IDs only, never resolved
+  Country IDs. Attempts and atomic target identities remain untouched.
   Subregion Memo completion rows preserve `countriesLearnedAt` and
   `capitalsLearnedAt` independently. The learning store records a canonical
-  Country-membership fingerprint separately and conservatively discards legacy
-  or mismatched completion rows, so both completion dimensions describe the
-  current Country set. User-authored Country order is not part of that
-  fingerprint and therefore does not invalidate completion.
+  Country-membership fingerprint separately. Mismatched completion rows are
+  hidden for the current population but retained by fingerprint so switching
+  back can restore their applicability; both completion dimensions still
+  describe the current Country set. User-authored Country order is not part of
+  that fingerprint and therefore does not invalidate completion.
+- User-authored Country order stores stable IDs for the canonical Subregion;
+  reads project that order over the active population, and saving an active
+  projection preserves hidden IDs for later re-enablement.
 - IndexedDB upgrade work must preserve all existing stores. Store creation is
   idempotent because users can arrive from different historical versions.
 - `world-countries:<skill>:<CountryId>` attempts are currently exempt from both
@@ -140,6 +147,7 @@ follows the defining module and feature namespace.
 - `src/features/pi/shared/story/piStories.ts`
 - `src/features/world-countries/geography/subregionMetadataStore.ts`
 - `src/features/world-countries/geography/continentMetadataStore.ts`
+- `src/features/world-countries/geography/countrySet.ts`
 - `src/features/world-countries/learning/subregionLearningStore.ts`
 - `src/features/world-countries/learning/recallProgress.ts`
 - `src/features/world-countries/drill/drillPreferences.ts`

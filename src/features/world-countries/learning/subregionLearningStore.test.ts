@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it } from 'vitest'
-import { getCanonicalCountryIdsForSubregion } from '@/features/world-countries/data/countries'
+import { countries, getCanonicalCountryIdsForSubregion } from '@/features/world-countries/data/countries'
 import { setSubregionCountryOrder } from '@/features/world-countries/geography/subregionMetadataStore'
 import {
   clearSubregionCapitalsLearned,
@@ -72,5 +72,16 @@ describe('Subregion learning store', () => {
     localStorage.setItem(SUBREGION_LEARNING_MEMBERSHIP_KEY, JSON.stringify({ 'northern-europe': 'changed' }))
     expect(getSubregionLearningState('northern-europe')).toBeNull()
     expect(JSON.parse(localStorage.getItem(SUBREGION_LEARNING_STORAGE_KEY)!)).toEqual([])
+  })
+
+  it('restores completion when a previously learned Country membership is re-enabled', () => {
+    const fullMembership = countries
+    const withoutGreenland = countries.filter(country => country.id !== 'GL')
+    markSubregionCountriesLearned('northern-america', 1234, fullMembership)
+    expect(getSubregionLearningState('northern-america', withoutGreenland)).toBeNull()
+    expect(getSubregionLearningState('northern-america', fullMembership)).toEqual({
+      subregionId: 'northern-america',
+      countriesLearnedAt: 1234,
+    })
   })
 })

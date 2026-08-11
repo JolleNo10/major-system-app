@@ -11,6 +11,7 @@ import { useWorldCountriesCountryColors } from '@/features/world-countries/learn
 import { DrillProgressLegend } from './DrillProgressLegend'
 import { getAllSubregionLearningStates } from '@/features/world-countries/learning/subregionLearningStore'
 import { createDrillProgressColors, createDrillProgressDescriptions } from './drillProgressPresentation'
+import { useWorldCountriesPopulation } from '@/features/world-countries/worldCountriesPopulation'
 
 export function DrillResults({
   mode,
@@ -29,9 +30,10 @@ export function DrillResults({
 }) {
   const summary = summarizeDrillAnswers(answers)
   const definition = getDrillModeDefinition(mode)
+  const activeCountries = useWorldCountriesPopulation()
   const skills = getSkillsForDrillMode(mode)
   const perspective: WorldCountriesProgressPerspective = mode === 'countries-capitals' ? 'core' : skills[0]
-  const memoLearningStates = useMemo(() => getAllSubregionLearningStates(), [])
+  const memoLearningStates = useMemo(() => getAllSubregionLearningStates(activeCountries), [activeCountries])
   const { recallProgress } = useWorldCountriesCountryColors({
     countries: scopeCountries,
     skills,
