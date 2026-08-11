@@ -93,6 +93,33 @@ describe('GeographyOverviewMap', () => {
     }))
   })
 
+  it('keeps progress colors visible before any Subregion is selected', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      text: async () => `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+          <g><path id="Norway"/><text id="Norway_label">Norway</text></g>
+        </svg>`,
+    })))
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(GeographyOverviewMap, {
+        level: 'continent',
+        continent: 'Europe',
+        selectedSubregionIds: [],
+        countryColorsById: new Map([['NO', '#16834f']]),
+        ariaLabel: 'Europe map',
+      }))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toBe('#16834f')
+  })
+
   it('mutes and deactivates Countries outside a hovered Subregion', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({
       ok: true,
@@ -401,14 +428,14 @@ describe('GeographyOverviewMap', () => {
       root = createRoot(mount)
       root.render(createElement(GeographyOverviewMap, {
         level: 'world',
-        countryColorsById: new Map([['NO', '#15803d']]),
+        countryColorsById: new Map([['NO', '#16834f']]),
         ariaLabel: 'World progress map',
       }))
       await Promise.resolve()
       await Promise.resolve()
     })
 
-    expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toBe('#15803d')
+    expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toBe('#16834f')
   })
 
   it('keeps progress fill separate from Drill geographic selection', async () => {
@@ -428,14 +455,14 @@ describe('GeographyOverviewMap', () => {
         level: 'continent',
         continent: 'Europe',
         selectedSubregionIds: ['northern-europe'],
-        countryColorsById: new Map([['NO', '#15803d']]),
+        countryColorsById: new Map([['NO', '#16834f']]),
         ariaLabel: 'Europe Drill progress map',
       }))
       await Promise.resolve()
       await Promise.resolve()
     })
 
-    expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toBe('#15803d')
+    expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toBe('#16834f')
   })
 
   it('exposes non-color descriptions on individual Country maps', async () => {

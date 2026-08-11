@@ -145,7 +145,7 @@ describe('Drill setup PageLayout integration', () => {
     })
 
     const europeButton = [...mount.querySelectorAll('button')]
-      .find(button => button.textContent?.trim().startsWith('Europe'))
+      .find(button => button.textContent?.includes('Europe'))
     expect(europeButton).not.toBeUndefined()
 
     await act(async () => {
@@ -209,12 +209,13 @@ describe('Drill setup PageLayout integration', () => {
     await act(async () => norway?.dispatchEvent(new Event('pointerenter', { bubbles: true })))
     const northernEurope = [...mount.querySelectorAll('button')]
       .find(button => button.textContent?.includes('Northern Europe'))
+    expect(northernEurope?.getAttribute('aria-pressed')).toBe('false')
     expect(northernEurope?.className).toContain('border-cyan-500')
 
     await act(async () => norway?.dispatchEvent(new Event('click', { bubbles: true })))
-    expect(northernEurope?.getAttribute('aria-pressed')).toBe('false')
-    await act(async () => norway?.dispatchEvent(new Event('click', { bubbles: true })))
     expect(northernEurope?.getAttribute('aria-pressed')).toBe('true')
+    await act(async () => norway?.dispatchEvent(new Event('click', { bubbles: true })))
+    expect(northernEurope?.getAttribute('aria-pressed')).toBe('false')
 
     for (const label of ['Countries', 'Countries + Capitals', 'Capitals', 'Countries from Capitals']) {
       const modeButton = [...mount.querySelectorAll('button')]

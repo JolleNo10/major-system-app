@@ -83,10 +83,10 @@ describe('DrillSetup rail presentation', () => {
     expect(legendDetails?.hasAttribute('open')).toBe(false)
     expect(legendDetails?.querySelector('summary')?.textContent).toContain('How progress works')
     expect(getDrillProgressLegendEntries('countries').map(entry => entry.color)).toEqual([
-      '#92400e',
-      '#d97706',
-      '#22c55e',
-      '#15803d',
+      '#8a665b',
+      '#a79566',
+      '#45a66b',
+      '#16834f',
     ])
   })
 

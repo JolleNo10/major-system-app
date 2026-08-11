@@ -35,7 +35,7 @@ export function getAllDrillSubregionIds(
 
 export function createDrillSelection(
   continent: Continent,
-  subregionIds: readonly SubregionId[] = getAllDrillSubregionIds(continent),
+  subregionIds: readonly SubregionId[] = [],
   entries: readonly Country[] = countries,
 ): WorldCountriesDrillSelection {
   return normalizeDrillSelection({ continent, subregionIds }, entries)

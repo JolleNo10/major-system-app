@@ -28,6 +28,7 @@ interface WorldOverviewRailsProps {
   hoveredGroupId: string | null
   onSelectContinent: (continent: Continent) => void
   onHoverGroup: (groupId: string | null) => void
+  onEditOrder: () => void
 }
 
 export function WorldOverviewRails({
@@ -38,21 +39,27 @@ export function WorldOverviewRails({
   hoveredGroupId,
   onSelectContinent,
   onHoverGroup,
+  onEditOrder,
 }: WorldOverviewRailsProps) {
   useRails(
     {
       left: (
         <section className="space-y-4" aria-labelledby="world-countries-continents-rail-heading">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World</p>
-            <h2 id="world-countries-continents-rail-heading" className="mt-1 text-lg font-bold text-zinc-100">Continents</h2>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World</p>
+              <h2 id="world-countries-continents-rail-heading" className="mt-1 text-lg font-bold text-zinc-100">Continents</h2>
+            </div>
+            <button type="button" onClick={onEditOrder} className="shrink-0 rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 py-1.5 text-xs font-medium text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">
+              Edit order
+            </button>
           </div>
 
           <ProgressSummary label="World Memo progress" progress={progress} />
 
           <nav aria-label="Continents">
             <ul className="space-y-1.5">
-              {continents.map(continent => (
+              {continents.map((continent, index) => (
                 <MemoHierarchyRailRow
                   key={continent}
                   label={continent}
@@ -61,6 +68,7 @@ export function WorldOverviewRails({
                   onClick={() => onSelectContinent(continent)}
                   onHoverGroup={onHoverGroup}
                   trailing={formatContinentProgress(getContinentMemoReadinessProgress(continent, learningStates, activeCountries))}
+                  sequenceNumber={index + 1}
                 />
               ))}
             </ul>
@@ -69,7 +77,7 @@ export function WorldOverviewRails({
       ),
       leftLabel: 'Continents',
     },
-    [continents, activeCountries, learningStates, progress, hoveredGroupId, onSelectContinent, onHoverGroup],
+    [continents, activeCountries, learningStates, progress, hoveredGroupId, onSelectContinent, onHoverGroup, onEditOrder],
   )
 
   return null

@@ -7,11 +7,17 @@ import {
   isEntireContinentSelection,
   toggleEntireContinentSelection,
   toggleDrillSubregion,
+  withAllDrillSubregions,
 } from './drillSelection'
 
 describe('World Countries Drill selection', () => {
-  it('derives an entire Continent from its canonical Subregions', () => {
-    const selection = createDrillSelection('Europe')
+  it('starts empty and can opt into an entire Continent', () => {
+    const emptySelection = createDrillSelection('Europe')
+    expect(emptySelection.subregionIds).toEqual([])
+    expect(isEntireContinentSelection(emptySelection)).toBe(false)
+    expect(getCountriesForDrillSelection(emptySelection)).toEqual([])
+
+    const selection = withAllDrillSubregions('Europe')
     const expectedSubregions = getAllDrillSubregionIds('Europe')
     expect(selection.subregionIds).toEqual(expectedSubregions)
     expect(isEntireContinentSelection(selection)).toBe(true)

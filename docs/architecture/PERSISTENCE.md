@@ -64,7 +64,7 @@ Architecturally significant groups are:
 | Major System | `major-word-*`, `major-soundkey-*`, sequence/speed preferences. Layered word and sound-key records use `createWordStore`. |
 | Cards | `major-cardword-*`, `major-pao-*`, deck-memo histories, drill/suit/range preferences. Themed and PAO stores are independent even when PAO seeds Person values from Themed. |
 | Pi | `major-pi-*` session, selection, memoed/flawless, anchor, story-era, and maintenance state. Exact keys are defined beside their owners. |
-| World Countries | `world-countries-subregion-metadata`, `world-countries-continent-metadata`, `world-countries-subregion-learning`, and `world-countries-subregion-learning-membership`. |
+| World Countries | `world-countries-world-metadata`, `world-countries-continent-metadata`, `world-countries-subregion-metadata`, `world-countries-subregion-learning`, and `world-countries-subregion-learning-membership`. |
 
 Small view preferences need not be catalogued here. Their ownership still
 follows the defining module and feature namespace.
@@ -132,8 +132,8 @@ follows the defining module and feature namespace.
 - Pi exports shared mnemonic format and accepts both it and the legacy Pi story
   array format.
 - World Countries owns a version-3 feature envelope containing Geography
-  mnemonics plus Subregion and Continent ordering metadata, and accepts the
-  earlier version-2 (mnemonics plus Subregion metadata) and mnemonic-only
+  mnemonics plus World, Continent, and Subregion ordering metadata, and accepts
+  the earlier version-2 (mnemonics plus Subregion metadata) and mnemonic-only
   formats. The complete payload is parsed before writes begin.
 - Dictionary CSV import/export remains owned by each layered store/parser;
   browser exports never rewrite bundled repository CSV files.
@@ -148,6 +148,7 @@ follows the defining module and feature namespace.
 - `src/features/world-countries/geography/subregionMetadataStore.ts`
 - `src/features/world-countries/geography/continentMetadataStore.ts`
 - `src/features/world-countries/geography/countrySet.ts`
+- `src/features/world-countries/geography/worldMetadataStore.ts`
 - `src/features/world-countries/learning/subregionLearningStore.ts`
 - `src/features/world-countries/learning/recallProgress.ts`
 - `src/features/world-countries/drill/drillPreferences.ts`

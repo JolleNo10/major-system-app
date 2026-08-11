@@ -33,6 +33,7 @@ afterEach(() => {
 describe('World Countries Memo hierarchy rail rows', () => {
   it('synchronizes mouse and keyboard hover without using aria-current', async () => {
     const onHoverGroup = vi.fn()
+    const onEditOrder = vi.fn()
     const progress: MemoReadinessProgress = {
       countriesMemoed: { count: 0, total: 1, ratio: 0 },
       countriesAndCapitalsMemoed: { count: 0, total: 1, ratio: 0 },
@@ -50,6 +51,7 @@ describe('World Countries Memo hierarchy rail rows', () => {
         hoveredGroupId: null,
         onSelectContinent: vi.fn(),
         onHoverGroup,
+        onEditOrder,
       }))
     })
 
@@ -58,7 +60,8 @@ describe('World Countries Memo hierarchy rail rows', () => {
       root?.render(railConfig.left)
     })
 
-    const button = mount.querySelector('button')
+    const button = [...mount.querySelectorAll('button')]
+      .find(candidate => candidate.textContent?.includes('Europe'))
     expect(button).not.toBeNull()
     expect(button?.hasAttribute('aria-current')).toBe(false)
 
@@ -81,6 +84,11 @@ describe('World Countries Memo hierarchy rail rows', () => {
       button?.blur()
     })
     expect(onHoverGroup).toHaveBeenLastCalledWith(null)
+
+    const editOrderButton = [...mount.querySelectorAll('button')]
+      .find(candidate => candidate.textContent === 'Edit order')
+    await act(async () => editOrderButton?.click())
+    expect(onEditOrder).toHaveBeenCalledTimes(1)
   })
 
   it('keeps the Subregion mnemonic for Country learning and moves Capital mnemonics to the appropriate rail phase', async () => {

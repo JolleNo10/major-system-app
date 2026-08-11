@@ -111,10 +111,11 @@ export function GeographyOverviewMap({
     [activeHoveredGroupId, hoverGroups],
   )
   const hasContinentScope = level === 'continent'
+  const hasSelectedSubregions = selectedSubregionIds !== undefined && selectedSubregionIds.length > 0
   const hasHoveredSubregionScope = level === 'continent' && Boolean(activeHoveredGroupId)
   const scopedSvgIds = focusedSubregionId
     ? focusSvgIds
-    : selectedSubregionIds !== undefined
+    : hasSelectedSubregions
       ? selectedSvgIds
       : hasHoveredSubregionScope
         ? hoveredGroupSvgIds

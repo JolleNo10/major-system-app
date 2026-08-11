@@ -6,6 +6,13 @@ import { DRILL_PREFERENCES_STORAGE_KEY, loadDrillPreferences, saveDrillPreferenc
 afterEach(() => localStorage.clear())
 
 describe('World Countries Drill preferences', () => {
+  it('defaults to no selected Subregions', () => {
+    expect(loadDrillPreferences()).toMatchObject({
+      subregionIds: [],
+      mode: 'countries',
+    })
+  })
+
   it('persists setup preferences without flattening Country membership', () => {
     saveDrillPreferences({
       continent: 'Europe',

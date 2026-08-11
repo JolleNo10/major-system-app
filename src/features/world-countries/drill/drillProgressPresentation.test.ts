@@ -59,21 +59,21 @@ describe('World Countries Drill map precedence', () => {
     const capitalColors = createColors('capitals', progressFor('country-to-capital'), [
       { subregionId: 'northern-europe', countriesLearnedAt: 1 },
     ])
-    expect(capitalColors.get('NO')).toBe('#92400e')
+    expect(capitalColors.get('NO')).toBe('#8a665b')
   })
 
   it('activates Countries + Capitals after either core skill has evidence', () => {
     const colors = createColors('countries-capitals', progressFor('location-to-country'), [
       { subregionId: 'northern-europe', countriesLearnedAt: 1 },
     ])
-    expect(colors.get('NO')).toBe('#92400e')
+    expect(colors.get('NO')).toBe('#8a665b')
   })
 
   it('uses the Capital → Country perspective for Countries from Capitals', () => {
     const colors = createColors('countries-from-capitals', progressFor('capital-to-country'), [
       { subregionId: 'northern-europe', countriesLearnedAt: 1 },
     ])
-    expect(colors.get('NO')).toBe('#92400e')
+    expect(colors.get('NO')).toBe('#8a665b')
   })
 
   it('activates Drill coloring for recognition evidence too', () => {
@@ -90,7 +90,7 @@ describe('World Countries Drill map precedence', () => {
     const colors = createColors('countries', progress, [
       { subregionId: 'northern-europe', countriesLearnedAt: 1 },
     ])
-    expect(colors.get('NO')).toBe('#d97706')
+    expect(colors.get('NO')).toBe('#a79566')
   })
 
   it('describes fallback readiness and evidence-based Drill state without relying on color', () => {

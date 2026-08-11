@@ -13,6 +13,11 @@ import {
   resolveContinentSubregionOrder,
   type ContinentMetadata,
 } from './continentMetadata'
+import {
+  getCanonicalWorldContinents,
+  resolveWorldContinentOrder,
+  type WorldMetadata,
+} from './worldMetadata'
 
 function unique<T>(values: Iterable<T>): T[] {
   return [...new Set(values)]
@@ -20,7 +25,19 @@ function unique<T>(values: Iterable<T>): T[] {
 
 /** Return Continents in the canonical order used by the country data. */
 export function getContinents(entries: readonly Country[] = countries): Continent[] {
-  return unique(entries.map(entry => entry.continent))
+  return getCanonicalWorldContinents(entries)
+}
+
+/**
+ * Resolve the effective user Continent order from supplied World metadata.
+ * Storage is deliberately not consulted here; callers inject the metadata
+ * they read.
+ */
+export function getContinentsInEffectiveOrder(
+  entries: readonly Country[] = countries,
+  metadata?: Pick<WorldMetadata, 'continentOrder'> | null,
+): Continent[] {
+  return resolveWorldContinentOrder(entries, metadata)
 }
 
 export function getCountriesForContinent(

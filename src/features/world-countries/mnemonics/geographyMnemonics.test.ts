@@ -16,6 +16,7 @@ import {
 import { getSubregionMetadata } from '@/features/world-countries/geography/subregionMetadataStore'
 import { setSubregionCountryOrder } from '@/features/world-countries/geography/subregionMetadataStore'
 import { getContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
+import { getWorldMetadata, setWorldContinentOrder } from '@/features/world-countries/geography/worldMetadataStore'
 
 afterEach(() => localStorage.clear())
 
@@ -75,6 +76,7 @@ describe('Geography mnemonic adapters', () => {
 
   it('exports custom order even when no mnemonic exists', async () => {
     setSubregionCountryOrder('northern-europe', ['NO', 'SE'])
+    setWorldContinentOrder(['europe', 'asia'])
     const blob = await exportGeographyMnemonics()
     const json = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader()
@@ -89,6 +91,26 @@ describe('Geography mnemonic adapters', () => {
       mnemonics: [],
       subregions: [{ subregionId: 'northern-europe', countryOrder: ['NO', 'SE'] }],
       continents: [],
+      world: { continentOrder: ['europe', 'asia'] },
+    })
+  })
+
+  it('imports v3 World Continent order', async () => {
+    const count = await importGeographyMnemonics(JSON.stringify({
+      version: 3,
+      feature: 'world-countries',
+      mnemonics: [],
+      subregions: [],
+      continents: [],
+      world: {
+        continentOrder: ['north-america', 'europe'],
+        updatedAt: 123,
+      },
+    }))
+    expect(count).toBe(0)
+    expect(getWorldMetadata()).toMatchObject({
+      continentOrder: ['north-america', 'europe'],
+      updatedAt: 123,
     })
   })
 

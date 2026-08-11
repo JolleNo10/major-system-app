@@ -4,7 +4,7 @@ import { useSettings } from '@/app/settings/SettingsContext'
 import type { Continent } from '@/features/world-countries/data/countries'
 import { useWorldCountriesPopulation } from '@/features/world-countries/worldCountriesPopulation'
 import { recordWorldCountriesAttempt } from '@/features/world-countries/learning/recallProgress'
-import { getCountriesForDrillSelection, normalizeDrillSelection, withAllDrillSubregions, type WorldCountriesDrillSelection } from './drillSelection'
+import { createDrillSelection, getCountriesForDrillSelection, normalizeDrillSelection, type WorldCountriesDrillSelection } from './drillSelection'
 import { DrillResults } from './DrillResults'
 import { DrillSession } from './DrillSession'
 import { DrillSetup } from './DrillSetup'
@@ -97,7 +97,7 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
 
   const selectContinent = useCallback((continent: Continent) => {
     updatePreferences({
-      ...withAllDrillSubregions(continent, activeCountries),
+      ...createDrillSelection(continent, [], activeCountries),
       mode: preferences.mode,
     })
     setSetupContinent(continent)

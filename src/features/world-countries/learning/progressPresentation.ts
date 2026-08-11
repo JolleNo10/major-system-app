@@ -8,11 +8,11 @@ export type WorldCountriesProgressLegendKind = 'core' | 'skill'
 
 export const WORLD_COUNTRIES_PROGRESS_COLORS: Readonly<Record<WorldCountriesProgressState, string>> = {
   unpractised: '#52525b',
-  weak: '#92400e',
-  developing: '#d97706',
-  strong: '#22c55e',
-  mastered: '#15803d',
-  complete: '#15803d',
+  weak: '#8a665b',
+  developing: '#a79566',
+  strong: '#45a66b',
+  mastered: '#16834f',
+  complete: '#16834f',
 }
 
 const CORE_PROGRESS_LEGEND = 'Unpractised · Weak · Developing · Strong · Complete'
