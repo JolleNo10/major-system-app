@@ -5,6 +5,8 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MemoMap } from '@/features/world-countries/memo/MemoMap'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
+import { countries } from '@/features/world-countries/data/countries'
+import { WorldCountriesPopulationProvider } from '@/features/world-countries/worldCountriesPopulation'
 import europeSvg from '@/features/world-countries/maps/assets/MapChart_Map_Europe_names.svg?raw'
 import { GeographyOverviewMap } from './GeographyOverviewMap'
 
@@ -158,6 +160,39 @@ describe('GeographyOverviewMap', () => {
 
     await act(async () => mount.querySelector('path#Norway')?.dispatchEvent(new Event('click', { bubbles: true })))
     expect(onCountryClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'NO' }))
+  })
+
+  it('keeps inactive canonical Countries out of active map hover groups', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      text: async () => `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+          <g><path id="Greenland"/><text id="Greenland_label">Greenland</text></g>
+          <g><path id="Norway"/><text id="Norway_label">Norway</text></g>
+        </svg>`,
+    })))
+    const onHoverGroup = vi.fn()
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(WorldCountriesPopulationProvider, {
+        countries: countries.filter(country => country.id !== 'GL'),
+        children: createElement(GeographyOverviewMap, {
+          level: 'world',
+          onHoverGroup,
+          ariaLabel: 'World map',
+        }),
+      }))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const greenland = mount.querySelector('path#Greenland') as SVGPathElement | null
+    await act(async () => greenland?.dispatchEvent(new Event('pointerenter', { bubbles: true })))
+    expect(onHoverGroup).not.toHaveBeenCalled()
+    expect(greenland?.style.fill).toBe('#52525b')
   })
 
   it('applies the Subregion scope through the Memo Continent wrapper', async () => {

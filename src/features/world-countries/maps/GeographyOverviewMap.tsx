@@ -1,8 +1,8 @@
 import { useCallback, useId, useMemo, useState } from 'react'
 import type { Continent, Country, CountryId } from '@/features/world-countries/data/countries'
-import { countries } from '@/features/world-countries/data/countries'
 import type { SubregionId } from '@/features/world-countries/data/subregions'
 import { getCountriesForContinent, getCountriesForSubregion } from '@/features/world-countries/geography/queries'
+import { useWorldCountriesPopulation } from '@/features/world-countries/worldCountriesPopulation'
 import {
   createContinentHoverGroups,
   createCountryColors,
@@ -60,6 +60,7 @@ export function GeographyOverviewMap({
   onCountryClick,
   ariaLabel,
 }: GeographyOverviewMapProps) {
+  const activeCountries = useWorldCountriesPopulation()
   const definition = useMemo(
     () => level === 'world' || !continent
       ? MEMO_MAP_DEFINITIONS.find(candidate => candidate.id === 'world') ?? MEMO_MAP_DEFINITIONS[0]
@@ -67,8 +68,8 @@ export function GeographyOverviewMap({
     [continent, level],
   )
   const visibleCountries = useMemo(
-    () => level === 'world' || !continent ? countries : getCountriesForContinent(continent),
-    [continent, level],
+    () => level === 'world' || !continent ? activeCountries : getCountriesForContinent(continent, activeCountries),
+    [activeCountries, continent, level],
   )
   const focusCountries = useMemo(
     () => focusedSubregionId && continent
@@ -123,7 +124,7 @@ export function GeographyOverviewMap({
   const hasScopedCountries = Boolean(
     focusedSubregionId || selectedSubregionIds !== undefined || hasHoveredSubregionScope || hasContinentScope,
   )
-  const hoverableSvgIds = hasScopedCountries ? scopedSvgIds : undefined
+  const hoverableSvgIds = hasScopedCountries ? scopedSvgIds : visibleSvgIds
   const restrictCountryClicks = Boolean(
     focusedSubregionId || (selectedSubregionIds === undefined && hasHoveredSubregionScope),
   )

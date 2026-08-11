@@ -274,9 +274,11 @@ real external consumer exists.
   by Memo and Drill; workflow folders do not import one another's internals.
 - `maps/GeographyOverviewMap.tsx` owns World/Continent exploration, grouped
   hover synchronization, geographic click reporting, scope muting, and
-  selection presentation. Memo-specific learned coloring stays in its thin
-  `memo/MemoMap.tsx` wrapper; Drill-specific selection and navigation stay in
-  `drill/`.
+  selection presentation. Within World Countries composition it uses the
+  shell-resolved active population for interactive/grouped Countries while
+  inactive canonical SVG geometry remains a neutral background. Memo-specific
+  learned coloring stays in its thin `memo/MemoMap.tsx` wrapper; Drill-specific
+  selection and navigation stay in `drill/`.
 - `learning/CountryLearningMap.tsx` remains the individual Country learning and
   recall map; it is not replaced by the overview map.
 - Subregion Memo readiness is exactly `NOT_MEMOED`, `COUNTRIES_MEMOED`, or
