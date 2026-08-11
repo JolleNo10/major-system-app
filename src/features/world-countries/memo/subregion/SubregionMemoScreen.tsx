@@ -112,6 +112,7 @@ function SubregionScreenBody({
   const [learningPhase, setLearningPhase] = useState<CountryLearningPhase | CapitalLearningPhase>('memory-preview')
   const [editingOrder, setEditingOrder] = useState(false)
   const [draftEntries, setDraftEntries] = useState<readonly Country[] | null>(null)
+  const [hoveredCountryId, setHoveredCountryId] = useState<string | null>(null)
   const [mnemonicVersion, setMnemonicVersion] = useState(0)
   const [capitalWalkthroughCountryId, setCapitalWalkthroughCountryId] = useState<string | null>(null)
   const [capitalRecallCorrectionCountryId, setCapitalRecallCorrectionCountryId] = useState<string | null>(null)
@@ -126,9 +127,11 @@ function SubregionScreenBody({
   const closeOrderEditor = useCallback(() => {
     setDraftEntries(null)
     setEditingOrder(false)
+    setHoveredCountryId(null)
   }, [])
   const handleOrderChanged = useCallback(() => {
     setDraftEntries(null)
+    setHoveredCountryId(null)
     onLearningChanged()
   }, [onLearningChanged])
   const refreshMnemonic = useCallback(() => setMnemonicVersion(version => version + 1), [])
@@ -176,6 +179,7 @@ function SubregionScreenBody({
       subregion={subregion}
       entries={entries}
       mapEntries={mapEntries}
+      highlightedCountryId={hoveredCountryId}
       learned={learned}
       capitalsLearned={capitalsLearned}
       onStart={() => {
@@ -246,6 +250,7 @@ function SubregionScreenBody({
           <SubregionOrderEditor
             subregion={subregion}
             entries={entries}
+            onHoverCountry={setHoveredCountryId}
             onDraftChanged={setDraftEntries}
             onChanged={handleOrderChanged}
             onClose={closeOrderEditor}

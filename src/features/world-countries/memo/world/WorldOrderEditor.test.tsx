@@ -12,6 +12,7 @@ const learningOrderEditorMock = vi.hoisted(() => vi.fn())
 vi.mock('../LearningOrderEditor', () => ({
   LearningOrderEditor: (props: {
     persistOrder: (orderedIds: string[]) => void
+    onItemHover?: (item: string | null) => void
     onChanged: () => void
     onClose: () => void
   }) => {
@@ -62,6 +63,32 @@ describe('World Countries World order editor', () => {
     expect(getContinentsInEffectiveOrder(countries, getWorldMetadata()).slice(0, 2)).toEqual([
       'North America',
       'Europe',
+    ])
+  })
+
+  it('maps drag-handle hover to the matching World map group', async () => {
+    const onHoverGroup = vi.fn()
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(WorldOrderEditor, {
+        entries: ['Europe', 'North America'],
+        onHoverGroup,
+        onDraftChanged: vi.fn(),
+        onChanged: vi.fn(),
+        onClose: vi.fn(),
+      }))
+    })
+
+    const props = learningOrderEditorMock.mock.calls[0]?.[0]
+    props?.onItemHover?.('Europe')
+    props?.onItemHover?.(null)
+
+    expect(onHoverGroup.mock.calls).toEqual([
+      ['continent-europe'],
+      [null],
     ])
   })
 })

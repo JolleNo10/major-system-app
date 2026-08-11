@@ -7,6 +7,7 @@ export function SubregionOverview({
   continent,
   subregion,
   entries,
+  highlightedCountryId = null,
   learned,
   capitalsLearned,
   onStart,
@@ -18,6 +19,7 @@ export function SubregionOverview({
   continent: Continent
   subregion: SubregionId
   entries: readonly Country[]
+  highlightedCountryId?: string | null
   learned: boolean
   capitalsLearned: boolean
   onStart: () => void
@@ -45,6 +47,7 @@ export function SubregionOverview({
         scopeCountries={mapEntries}
         showNames
         showOrderNumbers
+        highlightedCountryId={highlightedCountryId}
         ariaLabel={`Map of ${definition.label}`}
       />
 

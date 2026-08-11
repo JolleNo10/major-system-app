@@ -25,6 +25,7 @@ export function LearningOrderEditor<T>({
   entries,
   getId,
   getLabel,
+  onItemHover,
   onDraftChanged,
   persistOrder,
   resetOrder,
@@ -35,6 +36,7 @@ export function LearningOrderEditor<T>({
   entries: readonly T[]
   getId: (item: T) => string
   getLabel: (item: T) => string
+  onItemHover?: (item: T | null) => void
   onDraftChanged: (draft: readonly T[]) => void
   persistOrder: (orderedIds: string[]) => void
   resetOrder: () => void
@@ -129,7 +131,14 @@ export function LearningOrderEditor<T>({
       >
         <ol className="mt-4 space-y-2" aria-describedby="order-editor-instructions">
           {draft.map((item, index) => (
-            <SortableOrderRow key={getId(item)} id={getId(item)} label={getLabel(item)} index={index} />
+            <SortableOrderRow
+              key={getId(item)}
+              id={getId(item)}
+              label={getLabel(item)}
+              index={index}
+              onHover={onItemHover ? () => onItemHover(item) : undefined}
+              onLeave={onItemHover ? () => onItemHover(null) : undefined}
+            />
           ))}
         </ol>
       </DragDropProvider>
@@ -142,7 +151,19 @@ export function LearningOrderEditor<T>({
   )
 }
 
-function SortableOrderRow({ id, label, index }: { id: string; label: string; index: number }) {
+function SortableOrderRow({
+  id,
+  label,
+  index,
+  onHover,
+  onLeave,
+}: {
+  id: string
+  label: string
+  index: number
+  onHover?: () => void
+  onLeave?: () => void
+}) {
   const { ref, handleRef, isDragging, isDropTarget } = useSortable({
     id,
     index,
@@ -163,6 +184,10 @@ function SortableOrderRow({ id, label, index }: { id: string; label: string; ind
       <button
         ref={handleRef}
         type="button"
+        onMouseEnter={onHover}
+        onMouseLeave={onLeave}
+        onFocus={onHover}
+        onBlur={onLeave}
         className="touch-none cursor-grab rounded border border-transparent px-1.5 py-1 text-lg leading-none text-zinc-500 hover:border-zinc-700 hover:text-cyan-300 active:cursor-grabbing"
         aria-label={`Reorder ${label}`}
         aria-describedby="order-editor-instructions"

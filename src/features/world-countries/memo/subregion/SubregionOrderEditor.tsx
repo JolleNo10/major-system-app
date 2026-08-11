@@ -7,12 +7,14 @@ import { LearningOrderEditor } from '../LearningOrderEditor'
 export function SubregionOrderEditor({
   subregion,
   entries,
+  onHoverCountry,
   onDraftChanged,
   onChanged,
   onClose,
 }: {
   subregion: SubregionId
   entries: readonly Country[]
+  onHoverCountry?: (countryId: string | null) => void
   onDraftChanged: (draft: readonly Country[]) => void
   onChanged: () => void
   onClose: () => void
@@ -22,6 +24,9 @@ export function SubregionOrderEditor({
       entries={entries}
       getId={country => country.id}
       getLabel={country => country.country}
+      onItemHover={onHoverCountry
+        ? country => onHoverCountry(country?.id ?? null)
+        : undefined}
       onDraftChanged={onDraftChanged}
       persistOrder={orderedIds => setSubregionCountryOrder(subregion, orderedIds, entries)}
       resetOrder={() => resetSubregionCountryOrder(subregion)}

@@ -155,11 +155,13 @@ function WorldMemoOverview({
   const closeOrderEditor = useCallback(() => {
     setDraftContinents(null)
     setEditingOrder(false)
-  }, [])
+    onHoverGroup(null)
+  }, [onHoverGroup])
   const handleOrderChanged = useCallback(() => {
     setDraftContinents(null)
+    onHoverGroup(null)
     onLearningChanged()
-  }, [onLearningChanged])
+  }, [onHoverGroup, onLearningChanged])
 
   return (
     <>
@@ -198,6 +200,7 @@ function WorldMemoOverview({
         >
           <WorldOrderEditor
             entries={continents}
+            onHoverGroup={onHoverGroup}
             onDraftChanged={setDraftContinents}
             onChanged={handleOrderChanged}
             onClose={closeOrderEditor}
@@ -249,11 +252,13 @@ function ContinentMemoOverview({
   const closeOrderEditor = useCallback(() => {
     setDraftSubregions(null)
     setEditingOrder(false)
-  }, [])
+    onHoverGroup(null)
+  }, [onHoverGroup])
   const handleOrderChanged = useCallback(() => {
     setDraftSubregions(null)
+    onHoverGroup(null)
     onLearningChanged()
-  }, [onLearningChanged])
+  }, [onHoverGroup, onLearningChanged])
 
   return (
     <>
@@ -296,6 +301,7 @@ function ContinentMemoOverview({
           <ContinentOrderEditor
             continent={continent}
             entries={subregions}
+            onHoverGroup={onHoverGroup}
             onDraftChanged={setDraftSubregions}
             onChanged={handleOrderChanged}
             onClose={closeOrderEditor}
