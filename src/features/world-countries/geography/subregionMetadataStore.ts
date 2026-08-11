@@ -52,21 +52,21 @@ export function setSubregionMetadata(metadata: SubregionMetadata): void {
 export function setSubregionCountryOrder(
   subregionId: SubregionId,
   countryIds: readonly CountryId[],
-  currentCountries: readonly Country[] = countries,
+  visibleCountries: readonly Country[] = countries,
 ): void {
   if (!isSubregionId(subregionId)) throw new Error(`Unknown Subregion ID: ${subregionId}`)
   const orderedIds = [...new Set(countryIds.filter(id => id.trim().length > 0))]
   const canonicalIds = countries
     .filter(country => country.subregionId === subregionId)
     .map(country => country.id)
-  const activeIds = new Set(currentCountries
+  const visibleIds = new Set(visibleCountries
     .filter(country => country.subregionId === subregionId)
     .map(country => country.id))
-  const isFullMembership = canonicalIds.every(id => activeIds.has(id))
+  const isFullMembership = canonicalIds.every(id => visibleIds.has(id))
   const existing = getSubregionMetadata(subregionId)?.countryOrder ?? canonicalIds
   const persistedIds = isFullMembership
     ? orderedIds
-    : mergeVisibleCountryOrder(existing, orderedIds, activeIds, canonicalIds)
+    : mergeVisibleCountryOrder(existing, orderedIds, visibleIds, canonicalIds)
   setSubregionMetadata({
     subregionId,
     countryOrder: persistedIds,

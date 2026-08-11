@@ -17,11 +17,11 @@ export interface ContinentMetadata {
 /** Return the Continent's Subregions in the canonical order of the country data. */
 export function getCanonicalContinentSubregions(
   continent: Continent | string,
-  currentCountries: readonly Country[] = countries,
+  availableCountries: readonly Country[] = countries,
 ): SubregionDefinition[] {
   const seen = new Set<SubregionId>()
   const result: SubregionDefinition[] = []
-  for (const country of currentCountries) {
+  for (const country of availableCountries) {
     if (country.continent !== continent || seen.has(country.subregionId)) continue
     seen.add(country.subregionId)
     result.push(getSubregionDefinition(country.subregionId))
@@ -36,10 +36,10 @@ export function getCanonicalContinentSubregions(
  */
 export function resolveContinentSubregionOrder(
   continent: Continent | string,
-  currentCountries: readonly Country[] = countries,
+  availableCountries: readonly Country[] = countries,
   metadata?: Pick<ContinentMetadata, 'continentId' | 'subregionOrder'> | null,
 ): SubregionDefinition[] {
-  const canonical = getCanonicalContinentSubregions(continent, currentCountries)
+  const canonical = getCanonicalContinentSubregions(continent, availableCountries)
   const continentId = continentIdFor(continent)
   if (!metadata || !continentId || metadata.continentId !== continentId) return canonical
 
@@ -62,10 +62,10 @@ export function resolveContinentSubregionOrder(
 
 export function resolveContinentSubregionIds(
   continent: Continent | string,
-  currentCountries: readonly Country[] = countries,
+  availableCountries: readonly Country[] = countries,
   metadata?: Pick<ContinentMetadata, 'continentId' | 'subregionOrder'> | null,
 ): SubregionId[] {
-  return resolveContinentSubregionOrder(continent, currentCountries, metadata).map(subregion => subregion.id)
+  return resolveContinentSubregionOrder(continent, availableCountries, metadata).map(subregion => subregion.id)
 }
 
 export function isValidContinentMetadata(value: unknown): value is ContinentMetadata {

@@ -148,7 +148,7 @@ function SubregionScreenBody({
       continent={continent}
       subregion={subregion}
       entries={entries}
-      currentCountries={activeCountries}
+      activeCountries={activeCountries}
       entryPoint={entryPoint}
       locationCleanTargetMinimum={locationCleanTargetMinimum}
       fuzzyMatching={fuzzyMatching}

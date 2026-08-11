@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import type { AnswerMode } from '@/core/types'
 import { Overlay } from '@/app/layout/Overlay'
 import { useSettings } from '@/app/settings/SettingsContext'
-import type { Continent } from '@/features/world-countries/data/countries'
+import type { Continent, Country } from '@/features/world-countries/data/countries'
 import type { SubregionDefinition, SubregionId } from '@/features/world-countries/data/subregions'
 import { getAllSubregionLearningStates } from '@/features/world-countries/learning/subregionLearningStore'
 import {
@@ -95,7 +95,7 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
         onLearningChanged={refreshLearning}
         memoReadinessColorsById={memoReadinessColorsById}
         memoReadinessByCountryId={memoReadinessByCountryId}
-        entries={activeCountries}
+        activeCountries={activeCountries}
       />
     )
   }
@@ -103,7 +103,7 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
   return (
     <WorldMemoOverview
       continents={continents}
-      entries={activeCountries}
+      activeCountries={activeCountries}
       progress={worldProgress}
       learningStates={learningStates}
       hoveredGroupId={hoveredGroupId}
@@ -117,7 +117,7 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
 
 function WorldMemoOverview({
   continents,
-  entries,
+  activeCountries,
   progress,
   learningStates,
   hoveredGroupId,
@@ -127,7 +127,7 @@ function WorldMemoOverview({
   memoReadinessByCountryId,
 }: {
   continents: readonly Continent[]
-  entries: readonly import('@/features/world-countries/data/countries').Country[]
+  activeCountries: readonly Country[]
   progress: MemoReadinessProgress
   learningStates: ReturnType<typeof getAllSubregionLearningStates>
   hoveredGroupId: string | null
@@ -141,7 +141,7 @@ function WorldMemoOverview({
       rails={
         <WorldOverviewRails
           continents={continents}
-          entries={entries}
+          activeCountries={activeCountries}
           learningStates={learningStates}
           progress={progress}
           hoveredGroupId={hoveredGroupId}
@@ -165,7 +165,7 @@ function WorldMemoOverview({
 
 function ContinentMemoOverview({
   continent,
-  entries,
+  activeCountries,
   learningStates,
   hoveredGroupId,
   learningVersion,
@@ -177,7 +177,7 @@ function ContinentMemoOverview({
   memoReadinessByCountryId,
 }: {
   continent: Continent
-  entries: readonly import('@/features/world-countries/data/countries').Country[]
+  activeCountries: readonly Country[]
   learningStates: ReturnType<typeof getAllSubregionLearningStates>
   hoveredGroupId: string | null
   learningVersion: number
@@ -191,10 +191,10 @@ function ContinentMemoOverview({
   const [editingOrder, setEditingOrder] = useState(false)
   const [draftSubregions, setDraftSubregions] = useState<readonly SubregionDefinition[] | null>(null)
   const subregions = useMemo(
-    () => getSubregionsForContinentInEffectiveOrder(continent, entries, getContinentMetadata(continent)),
-    [continent, entries, learningVersion],
+    () => getSubregionsForContinentInEffectiveOrder(continent, activeCountries, getContinentMetadata(continent)),
+    [activeCountries, continent, learningVersion],
   )
-  const progress = useMemo(() => getContinentMemoReadinessProgress(continent, learningStates, entries), [continent, entries, learningStates])
+  const progress = useMemo(() => getContinentMemoReadinessProgress(continent, learningStates, activeCountries), [activeCountries, continent, learningStates])
   const railSubregions = draftSubregions ?? subregions
 
   const openOrderEditor = useCallback(() => {
@@ -217,7 +217,7 @@ function ContinentMemoOverview({
           <ContinentOverviewRails
             continent={continent}
             subregions={railSubregions}
-            entries={entries}
+            activeCountries={activeCountries}
             learningStates={learningStates}
             progress={progress}
             hoveredGroupId={hoveredGroupId}

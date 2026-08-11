@@ -24,7 +24,7 @@ export function CountryLearningFlow({
   continent,
   subregion,
   entries,
-  currentCountries,
+  activeCountries,
   entryPoint = 'beginning',
   locationCleanTargetMinimum,
   fuzzyMatching,
@@ -34,7 +34,7 @@ export function CountryLearningFlow({
   continent: Continent
   subregion: SubregionId
   entries: readonly Country[]
-  currentCountries?: readonly Country[]
+  activeCountries?: readonly Country[]
   entryPoint?: CountryLearningEntryPoint
   locationCleanTargetMinimum: number
   fuzzyMatching: boolean
@@ -64,7 +64,7 @@ export function CountryLearningFlow({
     transition(next.state)
     if (next.result.completedNow && !completionReported.current) {
       completionReported.current = true
-      markSubregionCountriesLearned(subregion, Date.now(), currentCountries)
+      markSubregionCountriesLearned(subregion, Date.now(), activeCountries)
     }
   }
 

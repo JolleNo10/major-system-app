@@ -12,9 +12,9 @@ export interface SubregionMetadata {
 
 export function getCanonicalSubregionCountries(
   subregionId: SubregionId,
-  currentCountries: readonly Country[] = countries,
+  availableCountries: readonly Country[] = countries,
 ): Country[] {
-  return currentCountries.filter(country => country.subregionId === subregionId)
+  return availableCountries.filter(country => country.subregionId === subregionId)
 }
 
 /**
@@ -24,10 +24,10 @@ export function getCanonicalSubregionCountries(
  */
 export function resolveSubregionCountryOrder(
   subregionId: SubregionId,
-  currentCountries: readonly Country[] = countries,
+  availableCountries: readonly Country[] = countries,
   metadata?: Pick<SubregionMetadata, 'subregionId' | 'countryOrder'> | null,
 ): Country[] {
-  const canonical = getCanonicalSubregionCountries(subregionId, currentCountries)
+  const canonical = getCanonicalSubregionCountries(subregionId, availableCountries)
   if (!metadata || metadata.subregionId !== subregionId) return canonical
 
   const currentById = new Map(canonical.map(country => [country.id, country]))
@@ -50,10 +50,10 @@ export function resolveSubregionCountryOrder(
 
 export function resolveSubregionCountryIds(
   subregionId: SubregionId,
-  currentCountries: readonly Country[] = countries,
+  availableCountries: readonly Country[] = countries,
   metadata?: Pick<SubregionMetadata, 'subregionId' | 'countryOrder'> | null,
 ): CountryId[] {
-  return resolveSubregionCountryOrder(subregionId, currentCountries, metadata).map(country => country.id)
+  return resolveSubregionCountryOrder(subregionId, availableCountries, metadata).map(country => country.id)
 }
 
 export function isValidSubregionMetadata(value: unknown): value is SubregionMetadata {

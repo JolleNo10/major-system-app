@@ -80,11 +80,11 @@ function writeStates(states: readonly SubregionLearningState[]): void {
   safeSet(SUBREGION_LEARNING_STORAGE_KEY, JSON.stringify(states))
 }
 
-function currentMembershipFingerprint(
+function activeMembershipFingerprint(
   subregionId: SubregionId,
-  currentCountries: readonly Country[] = countries,
+  activeCountries: readonly Country[] = countries,
 ): string {
-  return currentCountries
+  return activeCountries
     .filter(country => country.subregionId === subregionId)
     .map(country => country.id)
     .sort()
@@ -120,7 +120,7 @@ function compactMembershipRecord(record: MembershipRecord): PersistedMembership 
  * Read completion for the active Country membership while retaining facts for
  * other memberships in the existing learning storage keys.
  */
-function readCurrentStates(currentCountries: readonly Country[] = countries): SubregionLearningState[] {
+function readActiveStates(activeCountries: readonly Country[] = countries): SubregionLearningState[] {
   const states = readStoredStates()
   const records = readMembershipRecords()
   const nextStates: SubregionLearningState[] = []
@@ -128,7 +128,7 @@ function readCurrentStates(currentCountries: readonly Country[] = countries): Su
   let recordsChanged = false
 
   for (const state of states) {
-    const currentFingerprint = currentMembershipFingerprint(state.subregionId, currentCountries)
+    const currentFingerprint = activeMembershipFingerprint(state.subregionId, activeCountries)
     const stored = asMembershipRecord(records[state.subregionId])
     if (!stored) {
       statesChanged = true
@@ -154,7 +154,7 @@ function readCurrentStates(currentCountries: readonly Country[] = countries): Su
   for (const [subregionId, value] of Object.entries(records)) {
     if (!isSubregionId(subregionId)) continue
     if (nextStates.some(state => state.subregionId === subregionId)) continue
-    const currentFingerprint = currentMembershipFingerprint(subregionId, currentCountries)
+    const currentFingerprint = activeMembershipFingerprint(subregionId, activeCountries)
     const stored = asMembershipRecord(value)
     const historical = stored?.history[currentFingerprint]
     if (!stored || !historical) continue
@@ -175,12 +175,12 @@ function updateCompletion(
   subregionId: SubregionId,
   field: CompletionField,
   learnedAt: number | undefined,
-  currentCountries: readonly Country[] = countries,
+  activeCountries: readonly Country[] = countries,
 ): SubregionLearningState | null {
   if (!isSubregionId(subregionId)) throw new Error(`Unknown Subregion ID: ${subregionId}`)
   if (learnedAt !== undefined && !Number.isFinite(learnedAt)) throw new Error(`${field} must be finite`)
 
-  const states = readCurrentStates(currentCountries)
+  const states = readActiveStates(activeCountries)
   const current = states.find(candidate => candidate.subregionId === subregionId)
   const updatedState: SubregionLearningState | null = current
     ? { ...current, ...(learnedAt === undefined ? {} : { [field]: learnedAt }) }
@@ -197,7 +197,7 @@ function updateCompletion(
   writeStates(nextStates)
 
   const records = readMembershipRecords()
-  const fingerprint = currentMembershipFingerprint(subregionId, currentCountries)
+  const fingerprint = activeMembershipFingerprint(subregionId, activeCountries)
   const record = asMembershipRecord(records[subregionId]) ?? { current: fingerprint, history: {} }
   record.current = fingerprint
   if (nextState) {
@@ -213,45 +213,45 @@ function updateCompletion(
 }
 
 export function getAllSubregionLearningStates(
-  currentCountries: readonly Country[] = countries,
+  activeCountries: readonly Country[] = countries,
 ): SubregionLearningState[] {
-  return readCurrentStates(currentCountries).map(state => ({ ...state }))
+  return readActiveStates(activeCountries).map(state => ({ ...state }))
 }
 
 export function getSubregionLearningState(
   subregionId: SubregionId,
-  currentCountries: readonly Country[] = countries,
+  activeCountries: readonly Country[] = countries,
 ): SubregionLearningState | null {
-  const state = readCurrentStates(currentCountries).find(candidate => candidate.subregionId === subregionId)
+  const state = readActiveStates(activeCountries).find(candidate => candidate.subregionId === subregionId)
   return state ? { ...state } : null
 }
 
 export function markSubregionCountriesLearned(
   subregionId: SubregionId,
   learnedAt = Date.now(),
-  currentCountries: readonly Country[] = countries,
+  activeCountries: readonly Country[] = countries,
 ): SubregionLearningState {
-  return updateCompletion(subregionId, 'countriesLearnedAt', learnedAt, currentCountries)!
+  return updateCompletion(subregionId, 'countriesLearnedAt', learnedAt, activeCountries)!
 }
 
 export function clearSubregionCountriesLearned(
   subregionId: SubregionId,
-  currentCountries: readonly Country[] = countries,
+  activeCountries: readonly Country[] = countries,
 ): void {
-  updateCompletion(subregionId, 'countriesLearnedAt', undefined, currentCountries)
+  updateCompletion(subregionId, 'countriesLearnedAt', undefined, activeCountries)
 }
 
 export function markSubregionCapitalsLearned(
   subregionId: SubregionId,
   learnedAt = Date.now(),
-  currentCountries: readonly Country[] = countries,
+  activeCountries: readonly Country[] = countries,
 ): SubregionLearningState {
-  return updateCompletion(subregionId, 'capitalsLearnedAt', learnedAt, currentCountries)!
+  return updateCompletion(subregionId, 'capitalsLearnedAt', learnedAt, activeCountries)!
 }
 
 export function clearSubregionCapitalsLearned(
   subregionId: SubregionId,
-  currentCountries: readonly Country[] = countries,
+  activeCountries: readonly Country[] = countries,
 ): void {
-  updateCompletion(subregionId, 'capitalsLearnedAt', undefined, currentCountries)
+  updateCompletion(subregionId, 'capitalsLearnedAt', undefined, activeCountries)
 }
