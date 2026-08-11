@@ -295,7 +295,7 @@ real external consumer exists.
 - Drill setup and results use relevant-evidence precedence per Country and
   selected mode: relevant atomic attempts own the map state, otherwise the map
   falls back to Subregion Memo readiness. Countries + Capitals activates its
-  combined core presentation after either core skill has an attempt. Memo
+  combined core presentation only after both core skills have an attempt. Memo
   readiness never creates or changes Drill evidence.
 - Active Drill recall suppresses both Memo readiness and Drill proficiency map
   treatments until feedback, preserving recall safety.

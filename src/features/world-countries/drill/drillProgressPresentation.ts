@@ -127,7 +127,7 @@ function getDrillCountryEvidence(
     const progress = deriveWorldCountriesCountryProgress(countryId, recallProgress)
     return {
       progress,
-      hasRelevantEvidence: [...progress.coreSkills.values()].some(skill => skill.attempts > 0),
+      hasRelevantEvidence: [...progress.coreSkills.values()].every(skill => skill.attempts > 0),
     }
   }
   const progress = deriveCountryRecallProgress(countryId, skills, recallProgress)

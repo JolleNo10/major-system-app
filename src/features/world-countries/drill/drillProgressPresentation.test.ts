@@ -32,11 +32,12 @@ function createDescriptions(
 function progressFor(
   skill: 'location-to-country' | 'country-to-capital' | 'capital-to-country',
   evidenceKind: 'recall' | 'recognition' = 'recall',
+  ok = false,
 ) {
   return deriveWorldCountriesRecallProgress({ countryIds: ['NO'], skills: [skill] }, [{
     itemId: recallTargetIdFor('NO', skill),
     at: 1,
-    ok: false,
+    ok,
     ms: 500,
     evidenceKind,
   }])
@@ -62,8 +63,34 @@ describe('World Countries Drill map precedence', () => {
     expect(capitalColors.get('NO')).toBe('#8a665b')
   })
 
-  it('activates Countries + Capitals after either core skill has evidence', () => {
-    const colors = createColors('countries-capitals', progressFor('location-to-country'), [
+  it('keeps Countries + Capitals at Memo readiness until both core skills have evidence', () => {
+    const colors = createColors('countries-capitals', progressFor('location-to-country', 'recall', true), [
+      { subregionId: 'northern-europe', countriesLearnedAt: 1 },
+    ])
+    expect(colors.get('NO')).toBe('#71717a')
+  })
+
+  it('uses Countries + Capitals progress after both core skills have evidence', () => {
+    const recallProgress = deriveWorldCountriesRecallProgress({
+      countryIds: ['NO'],
+      skills: ['location-to-country', 'country-to-capital'],
+    }, [
+      {
+        itemId: recallTargetIdFor('NO', 'location-to-country'),
+        at: 1,
+        ok: true,
+        ms: 500,
+        evidenceKind: 'recall',
+      },
+      {
+        itemId: recallTargetIdFor('NO', 'country-to-capital'),
+        at: 2,
+        ok: false,
+        ms: 500,
+        evidenceKind: 'recall',
+      },
+    ])
+    const colors = createColors('countries-capitals', recallProgress, [
       { subregionId: 'northern-europe', countriesLearnedAt: 1 },
     ])
     expect(colors.get('NO')).toBe('#8a665b')
