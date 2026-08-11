@@ -4,6 +4,8 @@ import { useSettings } from '@/app/settings/SettingsContext'
 import type { Continent } from '@/features/world-countries/data/countries'
 import { useWorldCountriesPopulation } from '@/features/world-countries/worldCountriesPopulation'
 import { recordWorldCountriesAttempt } from '@/features/world-countries/learning/recallProgress'
+import { getSubregionLearningState } from '@/features/world-countries/learning/subregionLearningStore'
+import { isSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningState'
 import { getAllSubregionMetadata } from '@/features/world-countries/geography/subregionMetadataStore'
 import { getContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
 import { createDrillSelection, getCountriesForDrillSelectionInEffectiveOrder, normalizeDrillSelection, type WorldCountriesDrillSelection } from './drillSelection'
@@ -24,8 +26,10 @@ import {
   saveDrillPreferences,
   type WorldCountriesDrillPreferences,
 } from './drillPreferences'
+import { DrillGuidedLearning } from './DrillGuidedLearning'
+import type { GuidedLearningActionId } from './guidedLearning'
 
-type DrillPhase = 'setup' | 'recall' | 'results'
+type DrillPhase = 'setup' | 'guided' | 'recall' | 'results'
 
 /** Thin coordinator for Drill setup, active recall, evidence, and results. */
 export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) {
@@ -33,6 +37,7 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
   const activeCountries = useWorldCountriesPopulation()
   const [preferences, setPreferences] = useState<WorldCountriesDrillPreferences>(loadDrillPreferences)
   const [phase, setPhase] = useState<DrillPhase>('setup')
+  const [guidedAction, setGuidedAction] = useState<GuidedLearningActionId | null>(null)
   const [setupContinent, setSetupContinent] = useState<Continent | null>(null)
   const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null)
   const [session, setSession] = useState<DrillSessionState | null>(null)
@@ -67,20 +72,29 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
     saveDrillPreferences(next)
   }, [])
 
-  const start = useCallback(() => {
-    if (entries.length === 0) return
-    saveDrillPreferences(preferences)
+  const startSession = useCallback((startPreferences: WorldCountriesDrillPreferences) => {
+    const startEntries = getCountriesForDrillSelectionInEffectiveOrder(
+      startPreferences,
+      activeCountries,
+      getContinentMetadata(startPreferences.continent),
+      getAllSubregionMetadata(),
+    )
+    if (startEntries.length === 0) return
+    saveDrillPreferences(startPreferences)
     setAnswers([])
     setSession(createDrillSession({
-      mode: effectivePreferences.mode,
-      countryIds: entries.map(entry => entry.id),
+      mode: startPreferences.mode,
+      countryIds: startEntries.map(entry => entry.id),
       countryOrder: createDrillCountryOrder(
-        entries.map(entry => entry.id),
-        effectivePreferences.order,
+        startEntries.map(entry => entry.id),
+        startPreferences.order,
       ),
     }))
+    setGuidedAction(null)
     setPhase('recall')
-  }, [entries, effectivePreferences, preferences])
+  }, [activeCountries])
+
+  const start = useCallback(() => startSession(effectivePreferences), [effectivePreferences, startSession])
 
   const answer = useCallback((record: DrillAnswerRecord) => {
     setAnswers(previous => [...previous, record])
@@ -102,6 +116,7 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
 
   const exitToSetup = useCallback(() => {
     setSession(null)
+    setGuidedAction(null)
     setPhase('setup')
     setSetupContinent(null)
     setHoveredGroupId(null)
@@ -133,6 +148,36 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
   const handleOrderChange = useCallback((order: WorldCountriesDrillOrder) => {
     updatePreferences({ ...preferences, order })
   }, [preferences, updatePreferences])
+
+  const handleGuidedAction = useCallback((action: GuidedLearningActionId) => {
+    if (action === 'drill-countries-capitals') {
+      const nextPreferences = { ...preferences, mode: 'countries-capitals' as const }
+      updatePreferences(nextPreferences)
+      startSession(nextPreferences)
+      return
+    }
+    setGuidedAction(action)
+    setPhase('guided')
+  }, [preferences, startSession, updatePreferences])
+
+  if (phase === 'guided' && guidedAction && guidedAction !== 'drill-countries-capitals' && effectivePreferences.subregionIds.length === 1) {
+    const subregion = effectivePreferences.subregionIds[0]
+    const learningState = getSubregionLearningState(subregion, activeCountries)
+    return (
+      <DrillGuidedLearning
+        key={`${guidedAction}:${activeCountries.map(country => country.id).join('|')}:${entries.map(country => country.id).join('|')}`}
+        action={guidedAction}
+        continent={effectivePreferences.continent}
+        subregion={subregion}
+        entries={entries}
+        activeCountries={activeCountries}
+        countriesLearned={isSubregionCountriesLearned(learningState)}
+        locationCleanTargetMinimum={settings.worldCountriesLocationCleanTargetMinimum}
+        fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching}
+        onExit={exitToSetup}
+      />
+    )
+  }
 
   if (phase === 'recall' && session && sessionMatchesActivePopulation) {
     return (
@@ -176,6 +221,7 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
       onStart={start}
       onWorld={goToWorld}
       onSelectContinent={selectContinent}
+      onGuidedAction={handleGuidedAction}
       entries={activeCountries}
     />
   )

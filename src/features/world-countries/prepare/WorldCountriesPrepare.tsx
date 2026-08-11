@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import type { AnswerMode } from '@/core/types'
 import { Overlay } from '@/app/layout/Overlay'
-import { useSettings } from '@/app/settings/SettingsContext'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
 import type { SubregionDefinition, SubregionId } from '@/features/world-countries/data/subregions'
 import { getAllSubregionLearningStates } from '@/features/world-countries/learning/subregionLearningStore'
@@ -17,15 +16,14 @@ import {
   getContinentMemoReadinessProgress,
   getWorldMemoReadinessProgress,
   type MemoReadinessProgress,
-} from './memoProgress'
-import { MemoMap } from './MemoMap'
+} from '@/features/world-countries/learning/memoProgress'
+import { PrepareMap } from './PrepareMap'
 import { ContinentOrderEditor } from './continent/ContinentOrderEditor'
 import { WorldOrderEditor } from './world/WorldOrderEditor'
-import { SubregionMemoScreen } from './subregion/SubregionMemoScreen'
-import { ContinentOverviewRails, WorldOverviewRails } from './WorldCountriesMemoRails'
+import { SubregionPrepareScreen } from './subregion/SubregionPrepareScreen'
+import { ContinentOverviewRails, WorldOverviewRails } from './WorldCountriesPrepareRails'
 
-export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: AnswerMode }) {
-  const { settings } = useSettings()
+export function WorldCountriesPrepare({ answerMode: _answerMode }: { answerMode: AnswerMode }) {
   const activeCountries = useWorldCountriesPopulation()
   const [continent, setContinent] = useState<Continent | null>(null)
   const [subregion, setSubregion] = useState<SubregionId | null>(null)
@@ -72,13 +70,11 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
 
   if (continent && subregion) {
     return (
-      <SubregionMemoScreen
+      <SubregionPrepareScreen
         continent={continent}
         subregion={subregion}
         activeCountries={activeCountries}
         learningVersion={learningVersion}
-        locationCleanTargetMinimum={settings.worldCountriesLocationCleanTargetMinimum}
-        fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching}
         onLearningChanged={refreshLearning}
         onSelectSubregion={selectSubregion}
         onExit={backToContinent}
@@ -89,7 +85,7 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
 
   if (continent) {
     return (
-      <ContinentMemoOverview
+      <ContinentPrepareOverview
         continent={continent}
         learningStates={learningStates}
         hoveredGroupId={hoveredGroupId}
@@ -106,7 +102,7 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
   }
 
   return (
-    <WorldMemoOverview
+    <WorldPrepareOverview
       continents={continents}
       activeCountries={activeCountries}
       progress={worldProgress}
@@ -121,7 +117,7 @@ export function WorldCountriesMemo({ answerMode: _answerMode }: { answerMode: An
   )
 }
 
-function WorldMemoOverview({
+function WorldPrepareOverview({
   continents,
   activeCountries,
   progress,
@@ -165,7 +161,7 @@ function WorldMemoOverview({
 
   return (
     <>
-      <MemoOverviewShell
+      <PrepareOverviewShell
         rails={
           <WorldOverviewRails
             continents={railContinents}
@@ -179,7 +175,7 @@ function WorldMemoOverview({
           />
         }
         map={
-          <MemoMap
+          <PrepareMap
             level="world"
             memoReadinessColorsById={memoReadinessColorsById}
             memoReadinessByCountryId={memoReadinessByCountryId}
@@ -211,7 +207,7 @@ function WorldMemoOverview({
   )
 }
 
-function ContinentMemoOverview({
+function ContinentPrepareOverview({
   continent,
   activeCountries,
   learningStates,
@@ -262,7 +258,7 @@ function ContinentMemoOverview({
 
   return (
     <>
-      <MemoOverviewShell
+      <PrepareOverviewShell
         rails={
           <ContinentOverviewRails
             continent={continent}
@@ -278,7 +274,7 @@ function ContinentMemoOverview({
           />
         }
         map={
-          <MemoMap
+          <PrepareMap
             level="continent"
             continent={continent}
             memoReadinessColorsById={memoReadinessColorsById}
@@ -312,7 +308,7 @@ function ContinentMemoOverview({
   )
 }
 
-function MemoOverviewShell({ rails, map }: { rails: ReactNode; map: ReactNode }) {
+function PrepareOverviewShell({ rails, map }: { rails: ReactNode; map: ReactNode }) {
   return (
     <>
       {rails}

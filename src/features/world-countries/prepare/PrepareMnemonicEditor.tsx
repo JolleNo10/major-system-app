@@ -9,7 +9,7 @@ import {
 import type { Mnemonic } from '@/core/mnemonics'
 import { isSubregionMnemonicStale } from '@/features/world-countries/mnemonics/geographyMnemonics'
 
-interface MemoMnemonicCardProps {
+interface PrepareMnemonicEditorProps {
   targetId: string
   title: string
   subtitle: string
@@ -17,14 +17,14 @@ interface MemoMnemonicCardProps {
   refreshKey: unknown
   onChanged: () => void
 }
-export function MemoMnemonicCard({
+export function PrepareMnemonicEditor({
   targetId,
   title,
   subtitle,
   countryIds,
   refreshKey,
   onChanged,
-}: MemoMnemonicCardProps) {
+}: PrepareMnemonicEditorProps) {
   const { mnemonic, loading } = useMnemonic(targetId, refreshKey)
   const [editing, setEditing] = useState(false)
   const [draftText, setDraftText] = useState('')

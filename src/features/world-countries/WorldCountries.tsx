@@ -7,14 +7,14 @@ import { countryClassifications } from './data/countryClassification'
 import { resolveCountrySet } from './geography/countrySet'
 import { WorldCountriesDrill } from '@/features/world-countries/drill/WorldCountriesDrill'
 import { WorldCountriesMaintenance } from '@/features/world-countries/maintenance/WorldCountriesMaintenance'
-import { WorldCountriesMemo } from '@/features/world-countries/memo/WorldCountriesMemo'
+import { WorldCountriesPrepare } from '@/features/world-countries/prepare/WorldCountriesPrepare'
 import { WorldCountriesRecite } from '@/features/world-countries/recite/WorldCountriesRecite'
 import { WorldCountriesPopulationProvider } from './worldCountriesPopulation'
 
-type WorldCountriesArea = 'memo' | 'drill' | 'recite' | 'maintenance'
+type WorldCountriesArea = 'prepare' | 'drill' | 'recite' | 'maintenance'
 
 const AREAS: readonly { id: WorldCountriesArea; label: string }[] = [
-  { id: 'memo', label: 'Memo' },
+  { id: 'prepare', label: 'Prepare' },
   { id: 'drill', label: 'Drill' },
   { id: 'recite', label: 'Recite' },
 ]
@@ -22,7 +22,7 @@ const AREAS: readonly { id: WorldCountriesArea; label: string }[] = [
 /** World Countries application shell; workflows own their behavior and state. */
 export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
   const { settings } = useSettings()
-  const [area, setArea] = useState<WorldCountriesArea>('memo')
+  const [area, setArea] = useState<WorldCountriesArea>('prepare')
   const activeCountries = useMemo(
     () => resolveCountrySet(countries, countryClassifications, settings.worldCountriesIncludedEntityGroups),
     [settings.worldCountriesIncludedEntityGroups],
@@ -70,7 +70,7 @@ export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
 
   return (
     <WorldCountriesPopulationProvider countries={activeCountries}>
-      {area === 'memo' && <WorldCountriesMemo answerMode={answerMode} />}
+      {area === 'prepare' && <WorldCountriesPrepare answerMode={answerMode} />}
       {area === 'drill' && <WorldCountriesDrill answerMode={answerMode} />}
       {area === 'recite' && <WorldCountriesRecite answerMode={answerMode} />}
       {area === 'maintenance' && <WorldCountriesMaintenance answerMode={answerMode} />}

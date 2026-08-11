@@ -8,6 +8,7 @@ import { DrillSetup } from './DrillSetup'
 import { getDrillProgressLegendEntries } from './drillProgressPresentation'
 import { resetContinentSubregionOrder, setContinentSubregionOrder } from '@/features/world-countries/geography/continentMetadataStore'
 import { resetWorldContinentOrder, setWorldContinentOrder } from '@/features/world-countries/geography/worldMetadataStore'
+import { markSubregionCountriesLearned, markSubregionCapitalsLearned } from '@/features/world-countries/learning/subregionLearningStore'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -42,9 +43,74 @@ afterEach(() => {
   useRailsMock.mockReset()
   geographyOverviewMapMock.mockReset()
   loadRecallProgressMock.mockClear()
+  localStorage.clear()
 })
 
 describe('DrillSetup rail presentation', () => {
+  it('shows the state-driven primary action above applicable guided reviews', async () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+    const onGuidedAction = vi.fn()
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(DrillSetup, {
+        level: 'continent',
+        selection: createDrillSelection('Europe', ['northern-europe']),
+        mode: 'countries',
+        order: 'ordered',
+        onSelectionChange: vi.fn(),
+        onModeChange: vi.fn(),
+        onOrderChange: vi.fn(),
+        onStart: vi.fn(),
+        onWorld: vi.fn(),
+        onSelectContinent: vi.fn(),
+        onGuidedAction,
+        hoveredGroupId: null,
+        onHoverGroup: vi.fn(),
+      }))
+    })
+
+    const railConfig = useRailsMock.mock.calls[0][0] as { right: ReactNode }
+    await act(async () => root?.render(railConfig.right))
+    expect(mount.textContent).toContain('Learn Countries')
+    expect(mount.textContent).toContain('Drill')
+    expect(mount.textContent).not.toContain('Review Countries')
+    await act(async () => [...mount.querySelectorAll('button')].find(button => button.textContent === 'Learn Countries')?.click())
+    expect(onGuidedAction).toHaveBeenCalledWith('learn-countries')
+
+    act(() => root?.unmount())
+    root = null
+    document.body.replaceChildren()
+    markSubregionCountriesLearned('northern-europe', 1)
+    markSubregionCapitalsLearned('northern-europe', 2)
+    const completedMount = document.createElement('div')
+    document.body.append(completedMount)
+    await act(async () => {
+      root = createRoot(completedMount)
+      root.render(createElement(DrillSetup, {
+        level: 'continent',
+        selection: createDrillSelection('Europe', ['northern-europe']),
+        mode: 'countries',
+        order: 'ordered',
+        onSelectionChange: vi.fn(),
+        onModeChange: vi.fn(),
+        onOrderChange: vi.fn(),
+        onStart: vi.fn(),
+        onWorld: vi.fn(),
+        onSelectContinent: vi.fn(),
+        onGuidedAction,
+        hoveredGroupId: null,
+        onHoverGroup: vi.fn(),
+      }))
+    })
+    const completedRails = useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1][0] as { right: ReactNode }
+    await act(async () => root?.render(completedRails.right))
+    expect(completedMount.textContent).toContain('Drill Countries + Capitals')
+    expect(completedMount.textContent).toContain('Review Countries')
+    expect(completedMount.textContent).toContain('Review Capitals')
+  })
+
   it('shows durable recall progress on the setup map', async () => {
     const mount = document.createElement('div')
     document.body.append(mount)

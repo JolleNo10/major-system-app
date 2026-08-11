@@ -46,6 +46,27 @@ afterEach(() => {
 })
 
 describe('Drill setup PageLayout integration', () => {
+  it('exposes Prepare as the default activity instead of Memo', async () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(SettingsProvider, null,
+        createElement(PageLayoutProvider, null,
+          createElement(PageLayout, null,
+            createElement(WorldCountries, { answerMode: 'typing' }),
+          ),
+        ),
+      ))
+      await Promise.resolve()
+    })
+
+    expect([...mount.querySelectorAll('[role="tab"]')].map(tab => tab.textContent)).toEqual(['Prepare', 'Drill', 'Recite'])
+    expect(mount.textContent).toContain('Continents')
+    expect([...mount.querySelectorAll('[role="tab"]')].map(tab => tab.textContent)).not.toContain('Memo')
+  })
+
   it('registers setup rails without entering an update loop', async () => {
     const mount = document.createElement('div')
     document.body.append(mount)
@@ -103,7 +124,7 @@ describe('Drill setup PageLayout integration', () => {
     expect(mount.textContent).toContain('Choose a Continent')
   })
 
-  it('switches from Memo to Drill without looping through rail cleanup', async () => {
+  it('switches from Prepare to Drill without looping through rail cleanup', async () => {
     const mount = document.createElement('div')
     document.body.append(mount)
 
@@ -127,7 +148,7 @@ describe('Drill setup PageLayout integration', () => {
     expect(mount.textContent).toContain('Choose a Continent')
   })
 
-  it('keeps the Continent Memo rails stable while the layout publishes them', async () => {
+  it('keeps the Continent Prepare rails stable while the layout publishes them', async () => {
     const mount = document.createElement('div')
     document.body.append(mount)
 

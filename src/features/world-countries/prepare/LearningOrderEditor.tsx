@@ -80,7 +80,7 @@ export function LearningOrderEditor<T>({
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 id="order-editor-heading" className="font-semibold text-zinc-100">Edit learning order</h3>
-          <p className="mt-1 text-xs text-zinc-500">This order is shared by Memo and future Recite workflows.</p>
+          <p className="mt-1 text-xs text-zinc-500">This order is shared by Prepare and future Recite workflows.</p>
         </div>
         <button type="button" onClick={onClose} className="text-sm text-zinc-500 hover:text-zinc-200">Close</button>
       </div>

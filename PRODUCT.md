@@ -43,9 +43,9 @@ contracts fit; feature workflows keep their own progress semantics.
   run history, and per-segment stories
 - Cards: Major Card→Word/Number and Deck Memo; Themed Deck with an independent
   word list; PAO Encode/Decode/Deck Memo
-- World Countries: canonical geography data, SVG maps, Subregion Memo learning,
-  authored geography mnemonics, and structural entries for Drill, Recite, and
-  Maintenance
+- World Countries: Prepare for canonical geography, order and mnemonic
+  authoring; Drill for guided Country/Capital learning and deliberate recall;
+  Recite and Due review remain separate activities
 - Answer modes: multiple-choice and typing input (with adaptive typing-speed compensation)
 - Word list is user-editable with import/export (same CSV format as shipped defaults)
 
@@ -67,7 +67,7 @@ contracts fit; feature workflows keep their own progress semantics.
 
 - Working implementation in the repository: Major System drills, shared
   learning/scoring/mnemonic infrastructure, Pi and Cards applications, and the
-  active World Countries Memo workflow.
+  World Countries Prepare, Drill, Recite, and Due review activities.
 - `src/features/major-system/words.csv`: 100 shipped keyword defaults (00–99).
 - `src/features/cards/themed/cardWords.csv`: 52 themed card-association defaults.
 - No marketing copy, testimonials, case studies, or external brand assets exist.

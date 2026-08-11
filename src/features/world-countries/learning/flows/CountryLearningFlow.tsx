@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
 import type { SubregionId } from '@/features/world-countries/data/subregions'
 import {
@@ -19,6 +19,7 @@ import { CountryWalkthroughStep } from './CountryWalkthroughStep'
 import { LocationPracticeStep } from './LocationPracticeStep'
 import { MemoryPreviewStep } from './MemoryPreviewStep'
 import { OrderedRecallStep } from './OrderedRecallStep'
+import { GuidedLearningRails } from './GuidedLearningRails'
 
 export function CountryLearningFlow({
   continent,
@@ -30,6 +31,7 @@ export function CountryLearningFlow({
   fuzzyMatching,
   onPhaseChange,
   onExit,
+  mnemonicVersion = 0,
 }: {
   continent: Continent
   subregion: SubregionId
@@ -40,6 +42,7 @@ export function CountryLearningFlow({
   fuzzyMatching: boolean
   onPhaseChange: (phase: CountryLearningPhase) => void
   onExit: () => void
+  mnemonicVersion?: number
 }) {
   const ids = useMemo(() => entries.map(country => country.id), [entries])
   const [flow, setFlow] = useState<CountryLearningFlowState>(() => createCountryLearningFlow({
@@ -68,16 +71,28 @@ export function CountryLearningFlow({
     }
   }
 
+  const rails = <GuidedLearningRails
+    continent={continent}
+    subregion={subregion}
+    entries={entries}
+    phase={flow.phase}
+    track="countries"
+    learned={false}
+    capitalsLearned={false}
+    mnemonicVersion={mnemonicVersion}
+  />
+  let content: ReactNode
   switch (flow.phase) {
     case 'memory-preview':
-      return (
+      content = (
         <MemoryPreviewStep
           onStart={() => transition(startCountryWalkthrough(flow))}
           onExit={onExit}
         />
       )
+      break
     case 'walkthrough':
-      return (
+      content = (
         <CountryWalkthroughStep
           continent={continent}
           entries={entries}
@@ -87,8 +102,9 @@ export function CountryLearningFlow({
           onExit={onExit}
         />
       )
+      break
     case 'location-practice':
-      return (
+      content = (
         <LocationPracticeStep
           continent={continent}
           entries={entries}
@@ -98,8 +114,9 @@ export function CountryLearningFlow({
           onExit={onExit}
         />
       )
+      break
     case 'ordered-recall':
-      return (
+      content = (
         <OrderedRecallStep
           continent={continent}
           entries={entries}
@@ -109,8 +126,9 @@ export function CountryLearningFlow({
           onExit={onExit}
         />
       )
+      break
     case 'complete':
-      return (
+      content = (
         <CountryLearningComplete
           subregion={subregion}
           countryCount={entries.length}
@@ -121,5 +139,7 @@ export function CountryLearningFlow({
           }}
         />
       )
+      break
   }
+  return <>{rails}{content}</>
 }

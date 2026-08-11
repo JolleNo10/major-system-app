@@ -5,6 +5,9 @@ import {
   type RecallProgress,
 } from '@/features/world-countries/learning/recallProgress'
 import { getAllSubregionLearningStates } from '@/features/world-countries/learning/subregionLearningStore'
+import { isSubregionCapitalsLearned, isSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningState'
+import { getCountriesForSubregionInEffectiveOrder } from '@/features/world-countries/geography/queries'
+import { getSubregionMetadata } from '@/features/world-countries/geography/subregionMetadataStore'
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
 import {
   getDrillSubregions,
@@ -17,6 +20,7 @@ import type { WorldCountriesDrillOrder } from './drillOrder'
 import { createDrillProgressColors, createDrillProgressDescriptions } from './drillProgressPresentation'
 import { DrillSetupRails } from './DrillRails'
 import { DrillProgressLegend } from './DrillProgressLegend'
+import { getGuidedLearningActions, type GuidedLearningActionId, type GuidedLearningActions } from './guidedLearning'
 
 export function DrillSetup({
   level,
@@ -31,6 +35,7 @@ export function DrillSetup({
   onStart,
   onWorld,
   onSelectContinent,
+  onGuidedAction = () => undefined,
   entries = countries,
 }: {
   level: 'world' | 'continent'
@@ -45,11 +50,25 @@ export function DrillSetup({
   onStart: () => void
   onWorld: () => void
   onSelectContinent: (continent: Continent) => void
+  onGuidedAction?: (action: GuidedLearningActionId) => void
   entries?: readonly Country[]
 }) {
   const subregions = getDrillSubregions(selection.continent, entries)
   const skills = getSkillsForDrillMode(mode)
   const memoLearningStates = useMemo(() => getAllSubregionLearningStates(entries), [entries])
+  const guidedActions = useMemo<GuidedLearningActions>(() => {
+    const selectedSubregion = selection.subregionIds.length === 1 ? selection.subregionIds[0] : null
+    const selectedEntries = selectedSubregion
+      ? getCountriesForSubregionInEffectiveOrder(selectedSubregion, entries, getSubregionMetadata(selectedSubregion))
+      : []
+    const state = selectedSubregion ? memoLearningStates.find(candidate => candidate.subregionId === selectedSubregion) : undefined
+    return getGuidedLearningActions({
+      subregionCount: selection.subregionIds.length,
+      countryCount: selectedEntries.length,
+      countriesLearned: isSubregionCountriesLearned(state),
+      capitalsLearned: isSubregionCapitalsLearned(state),
+    })
+  }, [entries, memoLearningStates, selection.subregionIds])
   const [recallProgress, setRecallProgress] = useState<RecallProgress | null>(null)
 
   useEffect(() => {
@@ -94,6 +113,8 @@ export function DrillSetup({
         onToggleSubregion={toggleSubregion}
         onSelectEntireContinent={toggleEntireContinent}
         onModeChange={onModeChange}
+        guidedActions={level === 'continent' ? guidedActions : { primary: null, secondary: [] }}
+        onGuidedAction={onGuidedAction}
         entries={entries}
       />
 

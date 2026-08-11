@@ -21,22 +21,21 @@ current result of those decisions is documented here.
 ## Purpose
 
 World Countries is one application with three user-directed activities:
-Memo teaches geography and authors memory structures; Drill is deliberate
-practice over a chosen scope; Recite is complete ordered recall. Maintenance is
-a separate system-directed review capability. The feature owns canonical
-geography, geography-specific learning and mnemonic adapters, map
-infrastructure, workflows, and World Countries persistence.
-Subregion Memo contains sibling Country and Country → Capital initial-learning
-tracks.
+Prepare constructs and inspects memory structures; Drill acquires, reviews, and
+practises Country and Capital memories over a chosen scope; Recite is complete
+ordered recall. Maintenance is a separate system-directed review capability.
+The feature owns canonical geography, geography-specific learning and mnemonic
+adapters, map infrastructure, workflows, and World Countries persistence.
+Memo readiness remains the internal name for the durable coarse milestones.
 
 ## Entry points
 
-- `WorldCountries.tsx` composes Memo, Drill, Recite, and a high-level
+- `WorldCountries.tsx` composes Prepare, Drill, Recite, and a high-level
   Maintenance entry. It resolves the Settings country-set policy once and
   provides the resulting active population to those workflows; capability
   rules do not belong here.
 - `index.ts` is the public boundary.
-- `memo/WorldCountriesMemo.tsx` is the implemented instructional workflow
+- `prepare/WorldCountriesPrepare.tsx` is the implemented preparation workflow
   entry.
 - `drill/WorldCountriesDrill.tsx`, `recite/WorldCountriesRecite.tsx`, and
   `maintenance/WorldCountriesMaintenance.tsx` are their workflow entries.
@@ -54,12 +53,14 @@ tracks.
   active-population resolver, user-authored ordering metadata at all hierarchy
   levels (World → Continent, Continent → Subregion, and Subregion → Country
   order), the effective-order resolvers, and metadata persistence.
-- `learning/` — reusable World Countries recall semantics: skill-specific
+- `learning/` — reusable World Countries recall semantics and guided flows:
+  skill-specific
   answer matching, Country + skill target IDs, atomic evidence adapters,
   feature-local proficiency/mastery, core-vs-additional Country aggregation,
   direct Country-population scope progress, reusable learning map presentation,
-  pure Memo session mechanics, durable Subregion Memo learning facts, and the
-  derived three-state Subregion Memo readiness model. Capital Memo recalls
+  pure learning session mechanics, durable Subregion learning facts, the
+  derived three-state Memo readiness model, and `flows/` presentation and
+  orchestration for guided Country and Capital learning. Capital learning recalls
   Country → Capital; Drill also defines the independent Location → Country and
   Capital → Country skills.
 - `maps/` — SVG controller/view, map definitions/assets, Country-to-SVG
@@ -67,14 +68,15 @@ tracks.
   temporary display-label overrides, and experimental workarea. Overview-map
   callbacks are workflow-neutral; callers interpret geographic clicks.
 - `mnemonics/` — feature target IDs, geography mnemonic semantics, feature
-  backup envelope, and adapters over shared mnemonic storage.
-- `memo/` — instructional navigation, maps, mnemonic UI, Memo rail
-  composition, Subregion Country and Capital learning orchestration, and one shared
-  sortable learning-order editor (`LearningOrderEditor`) used at both hierarchy
-  levels for Continent Subregion order and Subregion Country order, including
-  the best-effort "Order left to right" map action.
-- Memo overview maps and rails present Subregion Memo readiness, not Drill
-  proficiency. World and Continent Memo progress count current canonical
+  backup envelope, adapters over shared mnemonic storage, and workflow-neutral
+  read-only `GeographyMnemonicView` presentation. Authoring controls belong to
+  `prepare/`.
+- `prepare/` — map-centered World → Continent → Subregion preparation
+  navigation, readiness presentation, geography order authoring, preparation
+  rails, and mnemonic authoring. `LearningOrderEditor` is shared by all three
+  hierarchy levels, including the best-effort "Order left to right" map action.
+- Prepare overview maps and rails present Subregion Memo readiness, not Drill
+  proficiency. World and Continent Prepare progress count current canonical
   Subregions at the cumulative Countries and Countries + Capitals milestones.
 - `drill/` — Drill-only setup and preferences, Continent/Subregion selection,
   four recall-mode definitions, visible Country scheduling, active session
@@ -101,8 +103,9 @@ feature-local `domain/` or `persistence/` layers, generic `common/`, a root
   selected optional groups. It is resolved once at the World Countries shell
   and is never persisted as Country IDs.
 - Queries and user-specific Subregion metadata/order belong in `geography/`.
-- Answer evaluation, reusable recall/session mechanics, and learning state
-  belong in `learning/`; Memo-specific orchestration stays in `memo/`.
+- Answer evaluation, reusable recall/session mechanics, readiness, and learning
+  state belong in `learning/`; preparation orchestration stays in `prepare/` and
+  reusable guided-learning orchestration stays in `learning/flows/`.
 - Drill geographic selection belongs in `drill/` and always contains exactly
   one Continent plus current Subregion IDs from canonical geography. Country
   membership is derived at runtime; a flattened Country scope is never
@@ -140,17 +143,22 @@ flowchart TD
     Mnemonics["mnemonics/"] --> Geography
     Mnemonics --> Data
     Mnemonics --> CoreMnemonic["core/mnemonics"]
-    Memo["memo/"] --> Geography
-    Memo --> Learning
-    Memo --> Maps
-    Memo --> Mnemonics
+    Prepare["prepare/"] --> Geography
+    Prepare --> Learning
+    Prepare --> Maps
+    Prepare --> Mnemonics
+    Flows["learning/flows/"] --> Geography
+    Flows --> Learning
+    Flows --> Maps
+    Flows --> Mnemonics
     Drill["drill/"] --> Geography
     Drill --> Learning
     Drill --> Maps
     Recite["recite/"] --> Geography
     Recite --> Learning
     Maintenance["maintenance/"] --> Learning
-    Shell["WorldCountries.tsx"] --> Memo
+    Drill --> Flows
+    Shell["WorldCountries.tsx"] --> Prepare
     Shell --> Drill
     Shell --> Recite
     Shell --> Maintenance
@@ -158,7 +166,8 @@ flowchart TD
 
 The feature also consumes `core/types`, `core/storage`, `core/mnemonics`, and
 narrow app integration contracts for settings, overlays, and page rails.
-`MapWorkarea` and Memo's feature-owned rail composition publish rails through
+`MapWorkarea`, Prepare's feature-owned rail composition, and guided learning
+publish rails through
 the current app layout integration seam.
 
 ## Persistence
@@ -230,20 +239,20 @@ real external consumer exists.
   to canonical Geography order.
 - `WorldMetadata.continentOrder`, `ContinentMetadata.subregionOrder`, and
   `SubregionMetadata.countryOrder` are the durable user-authored sequences.
-  Memo's order editors keep drag-and-drop changes in a local draft until the
+  Prepare's order editors keep drag-and-drop changes in a local draft until the
   user explicitly saves; keyboard-accessible reordering is required at every
   level.
-- World Memo presents Continents in effective learning order and exposes the
-  World-level order editor on the Continents rail. Continent Memo presents
+- World Prepare presents Continents in effective learning order and exposes the
+  World-level order editor on the Continents rail. Continent Prepare presents
   Subregions in effective learning order and exposes the Continent-level order
   editor on the Subregions rail. Future complete World or Continent Recite
   traverses the effective hierarchy orders; flattened sequences are derived
   from the hierarchy and never persisted.
 - `learning/countryLearningFlow.ts` owns pure state and transitions;
-  `memo/subregion/CountryLearningFlow.tsx` owns Memo UI orchestration.
+  `learning/flows/CountryLearningFlow.tsx` owns reusable guided UI orchestration.
 - `learning/capitalLearningFlow.ts` owns pure Capital walkthrough, shuffled
   Country → Capital recall, clean-round qualification, and transitions;
-  `memo/subregion/CapitalLearningFlow.tsx` owns its Memo UI orchestration.
+  `learning/flows/CapitalLearningFlow.tsx` owns reusable guided UI orchestration.
 - `SubregionLearningState` owns only coarse Memo completion timestamps. Future
   per-Country/per-skill performance belongs to the atomic World Countries
   learning-evidence model and must not reuse mnemonic IDs. The evidence is
@@ -258,18 +267,10 @@ real external consumer exists.
   `Countries + Capitals`, a wrong Location → Country answer is followed by a
   Country → Capital attempt for the canonical mapped Country, never for the
   learner's guessed Country. Both attempts are recorded independently.
-- Memo overview rail composition owns the World → Continent → Subregion
-  navigation and scope presentation: World Continents and progress use the left
-  rail, Continent Subregions and progress use the left rail, and Subregion
-  learning context/order uses the left rail while the Country-learning
-  Subregion mnemonic uses the right rail. Capital learning removes that
-  Subregion mnemonic rail; the active Country–Capital mnemonic appears in the
-  walkthrough right rail, and a correction mnemonic appears in that rail only
-  after a wrong recall answer. Memo's safe learning phases retain the compact
-  learning context and mnemonic rails; recall starts with no answer-revealing
-  rail content, and completion omits the rails. The full Subregion order editor
-  opens in a larger overlay; the compact order remains feature context in the
-  left rail.
+- Prepare rail composition owns the World → Continent → Subregion navigation,
+  order authoring, and preparation presentation. Guided learning rails under
+  `learning/flows/` provide read-only context and mnemonic presentation; they
+  omit answer-revealing content during recall and completion.
 - `SvgMapController` remains imperative and framework-independent. It owns SVG
   loading, validation, discovery, styling, hover, labels, highlights, zoom,
   listeners, and cleanup—not geography learning rules. Temporary label
@@ -277,20 +278,21 @@ real external consumer exists.
   discovered `SvgMapCountry.name` metadata or bundled SVG assets.
 - `SvgMapView.tsx` is the React adapter around that controller.
 - `learning/CountryLearningMap.tsx` is the reusable feature map presentation used
-  by Memo and Drill; workflow folders do not import one another's internals.
+  by Prepare, guided learning, and Drill; workflow folders do not import one
+  another's internals.
 - `maps/GeographyOverviewMap.tsx` owns World/Continent exploration, grouped
   hover synchronization, geographic click reporting, scope muting, and
   selection presentation. Within World Countries composition it uses the
   shell-resolved active population for interactive/grouped Countries while
-  inactive canonical SVG geometry remains a neutral background. Memo-specific
-  learned coloring stays in its thin `memo/MemoMap.tsx` wrapper; Drill-specific
-  selection and navigation stay in `drill/`.
+  inactive canonical SVG geometry remains a neutral background. Prepare-specific
+  readiness coloring stays in its thin `prepare/PrepareMap.tsx` wrapper;
+  Drill-specific selection and navigation stay in `drill/`.
 - `learning/CountryLearningMap.tsx` remains the individual Country learning and
   recall map; it is not replaced by the overview map.
 - Subregion Memo readiness is exactly `NOT_MEMOED`, `COUNTRIES_MEMOED`, or
   `COUNTRIES_AND_CAPITALS_MEMOED`, derived from the existing
   `SubregionLearningState` timestamps. Countries completion is required before
-  any Capital Memo entry action; a legacy Capitals-only timestamp is preserved,
+  any Capital entry action; a legacy Capitals-only timestamp is preserved,
   acknowledged, and remains locked until Countries completion.
 - Drill setup and results use relevant-evidence precedence per Country and
   selected mode: relevant atomic attempts own the map state, otherwise the map
@@ -326,10 +328,11 @@ real external consumer exists.
   Country → Capital progress/readiness as read-only practice guidance.
   Multi-skill results expose per-skill summaries. Active recall maps do not
   render target-revealing progress.
-- Capital Memo learning, review, and direct practice require
-  `countriesLearnedAt`; the overview keeps Capital Memo actions visible but
-  locked with `Complete Countries first.` until the gate is satisfied. The
-  separate Capitals Drill helper is practice-only and does not write evidence.
+- Guided Capital learning, review, and direct practice require
+  `countriesLearnedAt`; Drill exposes those actions for a single Subregion and
+  keeps them locked with `Complete Countries first.` until the gate is
+  satisfied. The separate Capitals Drill helper is practice-only and does not
+  write evidence.
 - Completed Country and Capital tracks expose parallel review and direct
   practice actions; Capital review starts the walkthrough, while Capital
   practice starts a fresh shuffled recall session.
@@ -364,7 +367,7 @@ real external consumer exists.
 - `src/features/world-countries/learning/useWorldCountriesCountryColors.ts`
 - `src/features/world-countries/learning/subregionLearningStore.ts`
 - `src/features/world-countries/worldCountriesPopulation.tsx`
-- `src/features/world-countries/memo/memoProgress.ts`
+- `src/features/world-countries/learning/memoProgress.ts`
 - `src/features/world-countries/drill/WorldCountriesDrill.tsx`
 - `src/features/world-countries/drill/drillSelection.ts`
 - `src/features/world-countries/drill/drillSessionState.ts`
@@ -374,8 +377,8 @@ real external consumer exists.
 - `src/features/world-countries/maps/GeographyOverviewMap.tsx`
 - `src/features/world-countries/learning/CountryLearningMap.tsx`
 - `src/features/world-countries/mnemonics/geographyMnemonics.ts`
-- `src/features/world-countries/memo/WorldCountriesMemo.tsx`
-- `src/features/world-countries/memo/WorldCountriesMemoRails.tsx`
+- `src/features/world-countries/prepare/WorldCountriesPrepare.tsx`
+- `src/features/world-countries/prepare/WorldCountriesPrepareRails.tsx`
 
 ## Historical rationale
 

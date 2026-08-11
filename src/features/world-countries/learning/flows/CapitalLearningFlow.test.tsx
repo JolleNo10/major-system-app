@@ -7,6 +7,10 @@ import type { Country } from '@/features/world-countries/data/countries'
 import { getSubregionLearningState } from '@/features/world-countries/learning/subregionLearningStore'
 import { CapitalLearningFlow } from './CapitalLearningFlow'
 
+vi.mock('@/app/layout/PageLayoutContext', () => ({
+  useRails: vi.fn(),
+}))
+
 vi.mock('./CapitalWalkthroughStep', () => ({
   CapitalWalkthroughStep: ({ onStartRecall }: { onStartRecall: () => void }) => (
     <button type="button" data-testid="start-recall" onClick={onStartRecall}>Start recall</button>
@@ -86,7 +90,7 @@ describe('CapitalLearningFlow orchestration', () => {
     expect(phases).toEqual(['complete'])
   })
 
-  it('rejects direct workflow entry before Countries Memo is complete', () => {
+  it('rejects direct workflow entry before Countries learning is complete', () => {
     const container = renderFlow(vi.fn(), false, false)
     expect(container.textContent).toContain('Complete Countries first.')
     expect(container.querySelector('[data-testid="start-recall"]')).toBeNull()

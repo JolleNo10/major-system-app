@@ -16,6 +16,7 @@ import {
 } from './drillModes'
 import { getCurrentDrillStep, getDrillSessionTotalSteps, type DrillAnswerRecord, type DrillSessionState } from './drillSessionState'
 import { summarizeDrillAnswers } from './drillResultSummary'
+import type { GuidedLearningActionId, GuidedLearningActions } from './guidedLearning'
 
 export function DrillSetupRails({
   level,
@@ -28,6 +29,8 @@ export function DrillSetupRails({
   onToggleSubregion,
   onSelectEntireContinent,
   onModeChange,
+  guidedActions,
+  onGuidedAction,
   entries = countries,
 }: {
   level: 'world' | 'continent'
@@ -40,6 +43,8 @@ export function DrillSetupRails({
   onToggleSubregion: (subregionId: SubregionId) => void
   onSelectEntireContinent: () => void
   onModeChange: (mode: WorldCountriesDrillMode) => void
+  guidedActions: GuidedLearningActions
+  onGuidedAction: (action: GuidedLearningActionId) => void
   entries?: readonly Country[]
 }) {
   const subregions = getSubregionsForContinentInEffectiveOrder(
@@ -129,15 +134,17 @@ export function DrillSetupRails({
         </section>
       ),
       right: (
-        <DrillModeRail
+        <DrillSetupActionRail
           mode={mode}
           onModeChange={onModeChange}
+          guidedActions={guidedActions}
+          onGuidedAction={onGuidedAction}
         />
       ),
       leftLabel: level === 'world' ? 'Drill geography' : 'Drill scope',
       rightLabel: 'Drill controls',
     },
-    [entries, level, mode, selection.continent, selection.subregionIds, hoveredGroupId, onHoverGroup, onWorld, onSelectContinent, onToggleSubregion, onSelectEntireContinent, onModeChange],
+    [entries, level, mode, selection.continent, selection.subregionIds, hoveredGroupId, onHoverGroup, onWorld, onSelectContinent, onToggleSubregion, onSelectEntireContinent, onModeChange, guidedActions, onGuidedAction],
   )
 
   return null
@@ -188,6 +195,62 @@ function DrillModeRail({
       </div>
     </section>
   )
+}
+
+function DrillSetupActionRail({
+  mode,
+  onModeChange,
+  guidedActions,
+  onGuidedAction,
+}: {
+  mode: WorldCountriesDrillMode
+  onModeChange: (mode: WorldCountriesDrillMode) => void
+  guidedActions: GuidedLearningActions
+  onGuidedAction: (action: GuidedLearningActionId) => void
+}) {
+  return (
+    <section className="space-y-4">
+      {guidedActions.primary && (
+        <div className="space-y-2" aria-labelledby="world-countries-guided-primary-heading">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Primary</p>
+            <h2 id="world-countries-guided-primary-heading" className="mt-1 text-lg font-bold text-zinc-100">Recommended next</h2>
+          </div>
+          <button type="button" onClick={() => onGuidedAction(guidedActions.primary!)} className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-left text-sm font-semibold text-white shadow-lg shadow-cyan-950/30 hover:bg-cyan-500">
+            {guidedActionLabel(guidedActions.primary)}
+          </button>
+        </div>
+      )}
+
+      {guidedActions.secondary.length > 0 && (
+        <div className="space-y-2 border-t border-zinc-800 pt-4" aria-labelledby="world-countries-guided-secondary-heading">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-violet-400">Secondary</p>
+            <h2 id="world-countries-guided-secondary-heading" className="mt-1 text-lg font-bold text-zinc-100">Guided review</h2>
+          </div>
+          {guidedActions.secondary.map(action => (
+            <button key={action} type="button" onClick={() => onGuidedAction(action)} className="w-full rounded-lg border border-violet-500/40 bg-zinc-900 px-3 py-2.5 text-left text-sm font-semibold text-violet-200 hover:border-violet-400">
+              {guidedActionLabel(action)}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="border-t border-zinc-800 pt-4">
+        <DrillModeRail mode={mode} onModeChange={onModeChange} />
+      </div>
+    </section>
+  )
+}
+
+function guidedActionLabel(action: GuidedLearningActionId): string {
+  switch (action) {
+    case 'learn-countries': return 'Learn Countries'
+    case 'learn-capitals': return 'Learn Capitals'
+    case 'drill-countries-capitals': return 'Drill Countries + Capitals'
+    case 'review-countries': return 'Review Countries'
+    case 'review-capitals': return 'Review Capitals'
+  }
 }
 
 function DrillModeButton({

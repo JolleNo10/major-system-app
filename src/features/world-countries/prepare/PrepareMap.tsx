@@ -9,7 +9,7 @@ import {
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
 import { ProgressMapLegend } from '@/features/world-countries/learning/ProgressMapLegend'
 
-export interface MemoMapProps {
+export interface PrepareMapProps {
   level: 'world' | 'continent'
   continent?: Continent
   selectedSubregion?: SubregionId | null
@@ -21,8 +21,8 @@ export interface MemoMapProps {
   onSelectSubregion?: (subregion: SubregionId) => void
 }
 
-/** Memo-specific wrapper: readiness coloring and Memo navigation remain here. */
-export function MemoMap({
+/** Prepare-specific wrapper: readiness coloring and geography navigation remain here. */
+export function PrepareMap({
   level,
   continent,
   selectedSubregion = null,
@@ -32,7 +32,7 @@ export function MemoMap({
   onHoverGroup,
   onSelectContinent,
   onSelectSubregion,
-}: MemoMapProps) {
+}: PrepareMapProps) {
   const title = level === 'world' ? 'World' : continent ?? 'Continent'
   const selectedLabel = selectedSubregion
     ? `, focused on ${getSubregionDefinition(selectedSubregion).label}`
@@ -57,7 +57,7 @@ export function MemoMap({
           if (level === 'world') onSelectContinent?.(country.continent)
           else onSelectSubregion?.(country.subregionId)
         }}
-        ariaLabel={`Memo map of ${title}${selectedLabel}`}
+        ariaLabel={`Prepare map of ${title}${selectedLabel}`}
       />
       <ProgressMapLegend
         title="Memo readiness"

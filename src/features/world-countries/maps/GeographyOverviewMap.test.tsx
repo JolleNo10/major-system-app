@@ -3,7 +3,7 @@
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { MemoMap } from '@/features/world-countries/memo/MemoMap'
+import { PrepareMap } from '@/features/world-countries/prepare/PrepareMap'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import { countries } from '@/features/world-countries/data/countries'
 import { WorldCountriesPopulationProvider } from '@/features/world-countries/worldCountriesPopulation'
@@ -232,7 +232,7 @@ describe('GeographyOverviewMap', () => {
 
     await act(async () => {
       root = createRoot(mount)
-      root.render(createElement(MemoMap, {
+      root.render(createElement(PrepareMap, {
         level: 'continent',
         continent: 'Europe',
         hoveredGroupId: 'subregion-northern-europe',
@@ -300,7 +300,7 @@ describe('GeographyOverviewMap', () => {
 
     await act(async () => {
       root = createRoot(mount)
-      root.render(createElement(MemoMap, {
+      root.render(createElement(PrepareMap, {
         level: 'world',
         memoReadinessColorsById: new Map(),
         memoReadinessByCountryId: new Map(),
@@ -330,7 +330,7 @@ describe('GeographyOverviewMap', () => {
 
     await act(async () => {
       root = createRoot(mount)
-      root.render(createElement(MemoMap, {
+      root.render(createElement(PrepareMap, {
         level: 'world',
         memoReadinessColorsById: new Map([['NO', '#71717a']]),
         memoReadinessByCountryId: new Map([['NO', 'COUNTRIES_MEMOED' as const]]),
@@ -365,7 +365,7 @@ describe('GeographyOverviewMap', () => {
 
     await act(async () => {
       root = createRoot(mount)
-      root.render(createElement(MemoMap, {
+      root.render(createElement(PrepareMap, {
         level: 'world',
         memoReadinessColorsById: new Map([['NO', '#71717a']]),
         memoReadinessByCountryId: new Map([['NO', 'COUNTRIES_MEMOED' as const]]),
