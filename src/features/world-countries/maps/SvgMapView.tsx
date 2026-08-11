@@ -3,6 +3,7 @@ import {
   SvgMapController,
   type SvgMapCountryColors,
   type SvgMapCountry,
+  type SvgMapGroupOutline,
   type SvgMapHoverGroup,
   type SvgMapSettings,
 } from './SvgMapController'
@@ -17,6 +18,7 @@ export interface SvgMapViewProps {
   mutedIds?: readonly string[]
   hoverableIds?: readonly string[]
   hoverGroups?: readonly SvgMapHoverGroup[]
+  groupOutlines?: readonly SvgMapGroupOutline[]
   hoveredId?: string | null
   countryColors?: SvgMapCountryColors
   namedIds?: readonly string[]
@@ -39,6 +41,7 @@ export function SvgMapView({
   mutedIds = [],
   hoverableIds,
   hoverGroups,
+  groupOutlines = [],
   hoveredId = null,
   countryColors = [],
   namedIds = [],
@@ -110,6 +113,7 @@ export function SvgMapView({
     if (!controller || countries.length === 0) return
     controller.updateSettings(settings)
     if (hoverGroups !== undefined) controller.setHoverGroups(hoverGroups)
+    controller.setGroupOutlines(groupOutlines)
     if (hoverableIds === undefined) controller.resetHoverableCountries()
     else controller.setHoverableCountries(hoverableIds)
     controller.setHighlighted(highlightedIds)
@@ -123,7 +127,7 @@ export function SvgMapView({
     if (namedIds.length) controller.setNamesVisible(namedIds, true)
     if (zoomIds.length) controller.setZoomArea(zoomIds, zoomPadding)
     else controller.resetZoom()
-  }, [countries, countryColors, countryLabels, highlightedIds, hoverGroups, hoverableIds, mutedIds, namedIds, settings, zoomIds, zoomPadding])
+  }, [countries, countryColors, countryLabels, groupOutlines, highlightedIds, hoverGroups, hoverableIds, mutedIds, namedIds, settings, zoomIds, zoomPadding])
 
   useEffect(() => {
     const controller = controllerRef.current
@@ -131,10 +135,19 @@ export function SvgMapView({
     controller.hoverCountry(hoveredId)
   }, [countries, hoveredId])
 
+  const clearMapHover = () => {
+    const controller = controllerRef.current
+    if (!controller) return
+    controller.hoverCountry(null)
+    hoverRef.current?.(null)
+  }
+
   return (
     <div className="space-y-2">
       <div
         ref={mountRef}
+        onPointerLeave={clearMapHover}
+        onPointerCancel={clearMapHover}
         className={`world-map-svg overflow-hidden rounded-xl border border-zinc-800 bg-[#252525] shadow-lg ${loading || error ? 'hidden' : ''} ${className}`}
         role="img"
         aria-label={ariaLabel}

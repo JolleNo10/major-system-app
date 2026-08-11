@@ -694,6 +694,12 @@ export class SvgMapController {
   private attachHoverListeners(): void {
     for (const country of this.countries.values()) {
       const enter: EventListener = () => {
+        if (!this.isHoverable(country.id)) {
+          const hadHover = this.hoveredCountryId !== null || this.hoveredIds.size > 0
+          this.setHoveredCountry(null)
+          if (hadHover) this.countryHoverHandler?.(null)
+          return
+        }
         this.setHoveredCountry(country.id)
         this.countryHoverHandler?.(this.hoveredCountryId === country.id ? country.id : null)
       }

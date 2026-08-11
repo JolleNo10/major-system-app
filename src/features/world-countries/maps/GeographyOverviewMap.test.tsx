@@ -5,6 +5,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MemoMap } from '@/features/world-countries/memo/MemoMap'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
+import europeSvg from '@/features/world-countries/maps/assets/MapChart_Map_Europe_names.svg?raw'
 import { GeographyOverviewMap } from './GeographyOverviewMap'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -88,6 +89,138 @@ describe('GeographyOverviewMap', () => {
       id: 'NO',
       subregionId: 'northern-europe',
     }))
+  })
+
+  it('mutes and deactivates Countries outside a hovered Subregion', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      text: async () => `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+          <g><path id="Norway"/><text id="Norway_label">Norway</text></g>
+          <g><path id="Germany"/><text id="Germany_label">Germany</text></g>
+        </svg>`,
+    })))
+    const onHoverGroup = vi.fn()
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(GeographyOverviewMap, {
+        level: 'continent',
+        continent: 'Europe',
+        hoveredGroupId: 'subregion-northern-europe',
+        onHoverGroup,
+        ariaLabel: 'Europe Memo map',
+      }))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const norway = mount.querySelector('path#Norway') as SVGPathElement | null
+    const germany = mount.querySelector('path#Germany') as SVGPathElement | null
+    expect(norway?.style.fill).toBe('#0f766e')
+    expect(germany?.style.fill).toBe('#303036')
+
+    await act(async () => germany?.dispatchEvent(new Event('pointerenter', { bubbles: true })))
+    expect(germany?.style.fill).toBe('#303036')
+    expect(onHoverGroup).toHaveBeenLastCalledWith(null)
+  })
+
+  it('does not report clicks outside a hovered Subregion as Country selection', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      text: async () => `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+          <g><path id="Norway"/><text id="Norway_label">Norway</text></g>
+          <g><path id="Germany"/><text id="Germany_label">Germany</text></g>
+        </svg>`,
+    })))
+    const onCountryClick = vi.fn()
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(GeographyOverviewMap, {
+        level: 'continent',
+        continent: 'Europe',
+        hoveredGroupId: 'subregion-northern-europe',
+        onCountryClick,
+        ariaLabel: 'Europe Memo map',
+      }))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    await act(async () => mount.querySelector('path#Germany')?.dispatchEvent(new Event('click', { bubbles: true })))
+    expect(onCountryClick).not.toHaveBeenCalled()
+
+    await act(async () => mount.querySelector('path#Norway')?.dispatchEvent(new Event('click', { bubbles: true })))
+    expect(onCountryClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'NO' }))
+  })
+
+  it('applies the Subregion scope through the Memo Continent wrapper', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      text: async () => europeSvg,
+    })))
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(MemoMap, {
+        level: 'continent',
+        continent: 'Europe',
+        hoveredGroupId: 'subregion-northern-europe',
+        memoReadinessColorsById: new Map([
+          ['NO', '#71717a'],
+          ['DE', '#a1a1aa'],
+        ]),
+        memoReadinessByCountryId: new Map(),
+      }))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toBe('#71717a')
+    expect((mount.querySelector('path#Germany') as SVGPathElement | null)?.style.fill).toBe('#303036')
+  })
+
+  it('mutes and deactivates map paths outside the Continent scope', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      text: async () => europeSvg,
+    })))
+    const onHoverGroup = vi.fn()
+    const onCountryClick = vi.fn()
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(GeographyOverviewMap, {
+        level: 'continent',
+        continent: 'Europe',
+        onHoverGroup,
+        onCountryClick,
+        ariaLabel: 'Europe map',
+      }))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const germany = mount.querySelector('path#Germany') as SVGPathElement | null
+    const turkey = mount.querySelector('path#Türkiye') as SVGPathElement | null
+    expect(germany?.style.fill).toBe('#52525b')
+    expect(turkey?.style.fill).toBe('#303036')
+
+    await act(async () => turkey?.dispatchEvent(new Event('pointerenter', { bubbles: true })))
+    await act(async () => turkey?.dispatchEvent(new Event('click', { bubbles: true })))
+    expect(turkey?.style.fill).toBe('#303036')
+    expect(onHoverGroup).not.toHaveBeenCalled()
+    expect(onCountryClick).not.toHaveBeenCalled()
   })
 
   it("preserves Memo's interactive treatment for map-only geography", async () => {
@@ -185,8 +318,37 @@ describe('GeographyOverviewMap', () => {
     await act(async () => norway?.dispatchEvent(new Event('pointerenter', { bubbles: true })))
 
     expect(norway?.style.fill).toBe('#71717a')
-    expect(norway?.style.stroke).toBe('#d4d4d8')
-    expect(norway?.style.strokeWidth).toBe('2px')
+    expect(norway?.style.stroke).toBe('')
+    expect(mount.querySelector('[data-svg-map-group-outline="continent-europe"]')).not.toBeNull()
+  })
+
+  it('outlines a hovered geographic group as one boundary', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      text: async () => `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+          <g><path id="Norway"/><text id="Norway_label">Norway</text></g>
+          <g><path id="Sweden"/><text id="Sweden_label">Sweden</text></g>
+        </svg>`,
+    })))
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(GeographyOverviewMap, {
+        level: 'world',
+        hoveredGroupId: 'continent-europe',
+        ariaLabel: 'World progress map',
+      }))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mount.querySelector('[data-svg-map-group-outline="continent-europe"]')).not.toBeNull()
+    expect(mount.querySelector('[data-svg-map-group-outline="continent-europe"]')?.querySelectorAll('use')).toHaveLength(2)
+    expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.stroke).toBe('')
+    expect((mount.querySelector('path#Sweden') as SVGPathElement | null)?.style.stroke).toBe('')
   })
 
   it('renders caller-provided semantic Country progress colors', async () => {

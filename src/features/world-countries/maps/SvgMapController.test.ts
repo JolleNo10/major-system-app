@@ -337,6 +337,8 @@ describe('SvgMapController hover behavior', () => {
     await controller.load({ markup: TEST_MAP })
     controller.setHoverGroups([{ id: 'pair', countryIds: ['Alpha', 'Beta'] }])
     controller.updateSettings({ hoverHighlight: true, hoverShowName: true, hoverScope: 'group' })
+    const hovered: Array<string | null> = []
+    controller.setCountryHoverHandler(id => hovered.push(id))
 
     expect(controller.setHoverableCountries(['Alpha', 'Missing'])).toEqual({
       activeIds: ['Alpha'],
@@ -352,6 +354,7 @@ describe('SvgMapController hover behavior', () => {
     path(mount, 'Beta').dispatchEvent(new Event('pointerenter'))
     expect(path(mount, 'Beta').style.getPropertyValue('fill')).toBe('#737373')
     expect(label(mount, 'Beta_label').style.getPropertyValue('display')).toBe('none')
+    expect(hovered).toEqual(['Alpha', null])
 
     controller.hoverCountry('Beta', true)
     expect(label(mount, 'Beta_label').style.getPropertyValue('display')).toBe('none')
