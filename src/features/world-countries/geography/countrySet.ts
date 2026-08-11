@@ -1,4 +1,4 @@
-import type { Country, CountryId } from '@/features/world-countries/data/countries'
+import { countries, type Country, type CountryId } from '@/features/world-countries/data/countries'
 import {
   type CountryClassification,
   countryClassifications,
@@ -15,11 +15,15 @@ export interface WorldCountriesEntityGroupDefinition {
   id: WorldCountriesEntityGroupId
   label: string
   description: string
+  /** Canonical display names currently matched by this policy group. */
+  members: readonly string[]
   matches: (classification: CountryClassification) => boolean
 }
 
+type WorldCountriesEntityGroupPolicy = Omit<WorldCountriesEntityGroupDefinition, 'members'>
+
 /** Stable country-set policy registry. Predicates live here, not in workflows. */
-export const WORLD_COUNTRIES_ENTITY_GROUP_DEFINITIONS: readonly WorldCountriesEntityGroupDefinition[] = [
+const WORLD_COUNTRIES_ENTITY_GROUP_POLICIES: readonly WorldCountriesEntityGroupPolicy[] = [
   {
     id: 'observer-states',
     label: 'UN observer states',
@@ -49,6 +53,14 @@ export const WORLD_COUNTRIES_ENTITY_GROUP_DEFINITIONS: readonly WorldCountriesEn
     matches: classification => classification.entityType === 'territory',
   },
 ]
+
+export const WORLD_COUNTRIES_ENTITY_GROUP_DEFINITIONS: readonly WorldCountriesEntityGroupDefinition[] =
+  WORLD_COUNTRIES_ENTITY_GROUP_POLICIES.map(policy => ({
+    ...policy,
+    members: countries
+      .filter(country => policy.matches(countryClassifications.get(country.id)!))
+      .map(country => country.country),
+  }))
 
 const definitionsById = new Map(
   WORLD_COUNTRIES_ENTITY_GROUP_DEFINITIONS.map(definition => [definition.id, definition]),

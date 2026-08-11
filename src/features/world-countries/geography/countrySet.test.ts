@@ -51,4 +51,13 @@ describe('World Countries country-set resolver', () => {
     expect(normalizeWorldCountriesIncludedEntityGroups('territories')).toEqual([])
     expect(WORLD_COUNTRIES_ENTITY_GROUP_DEFINITIONS).toHaveLength(4)
   })
+
+  it('exposes the canonical members for each optional group', () => {
+    expect(WORLD_COUNTRIES_ENTITY_GROUP_DEFINITIONS.map(group => [group.id, group.members])).toEqual([
+      ['observer-states', ['Palestine', 'Vatican City']],
+      ['partially-recognized-sovereign-states', ['Kosovo', 'Taiwan']],
+      ['special-political-status', ['Cook Islands', 'Niue']],
+      ['territories', ['Greenland']],
+    ])
+  })
 })

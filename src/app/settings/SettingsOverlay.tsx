@@ -222,15 +222,41 @@ export function SettingsOverlay({ onClose, pwa }: Props) {
                       <h4 className="text-sm font-semibold text-zinc-200">{group.label}</h4>
                       <p className="mt-1 text-xs leading-relaxed text-zinc-500">{group.description}</p>
                     </div>
-                    <Switch
-                      checked={checked}
-                      onChange={enabled => update({
-                        worldCountriesIncludedEntityGroups: enabled
-                          ? [...settings.worldCountriesIncludedEntityGroups, group.id]
-                          : settings.worldCountriesIncludedEntityGroups.filter(id => id !== group.id),
-                      })}
-                      label={`Include ${group.label}`}
-                    />
+                    <div className="flex shrink-0 items-center gap-2">
+                      <div className="group relative">
+                        <span
+                          tabIndex={0}
+                          className="flex h-8 w-8 cursor-help items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-cyan-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+                          aria-label={`Show entities in ${group.label}`}
+                          aria-describedby={`world-countries-${group.id}-members`}
+                          title={`Show entities in ${group.label}`}
+                        >
+                          <span aria-hidden="true" className="text-base">ⓘ</span>
+                        </span>
+                        <div
+                          id={`world-countries-${group.id}-members`}
+                          role="tooltip"
+                          className="pointer-events-none invisible absolute right-0 top-10 z-20 w-72 max-w-[calc(100vw-2rem)] rounded-lg border border-zinc-700 bg-zinc-900 p-3 text-left opacity-0 shadow-xl transition-opacity group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:visible group-focus-within:opacity-100"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Included entities</p>
+                            <span className="text-xs tabular-nums text-cyan-300">{group.members.length}</span>
+                          </div>
+                          <ul className="mt-2 max-h-48 space-y-0.5 overflow-y-auto pr-1 text-xs leading-5 text-zinc-300">
+                            {group.members.map(member => <li key={member}>{member}</li>)}
+                          </ul>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={checked}
+                        onChange={enabled => update({
+                          worldCountriesIncludedEntityGroups: enabled
+                            ? [...settings.worldCountriesIncludedEntityGroups, group.id]
+                            : settings.worldCountriesIncludedEntityGroups.filter(id => id !== group.id),
+                        })}
+                        label={`Include ${group.label}`}
+                      />
+                    </div>
                   </div>
                 )
               })}
