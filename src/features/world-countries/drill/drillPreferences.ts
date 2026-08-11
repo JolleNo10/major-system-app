@@ -1,6 +1,7 @@
 import { readJSON, safeSet } from '@/core/storage'
 import { countries } from '@/features/world-countries/data/countries'
-import { getContinents } from '@/features/world-countries/geography/queries'
+import { getContinentsInEffectiveOrder } from '@/features/world-countries/geography/queries'
+import { getWorldMetadata } from '@/features/world-countries/geography/worldMetadataStore'
 import { isSubregionId, type SubregionId } from '@/features/world-countries/data/subregions'
 import {
   createDrillSelection,
@@ -20,7 +21,7 @@ export interface WorldCountriesDrillPreferences extends WorldCountriesDrillSelec
 }
 
 function defaultPreferences(): WorldCountriesDrillPreferences {
-  const continent = getContinents()[0] ?? 'Africa'
+  const continent = getContinentsInEffectiveOrder(undefined, getWorldMetadata())[0] ?? 'Africa'
   return { ...createDrillSelection(continent), mode: 'countries' }
 }
 

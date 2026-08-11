@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it } from 'vitest'
+import { setWorldContinentOrder } from '@/features/world-countries/geography/worldMetadataStore'
 import { DRILL_PREFERENCES_STORAGE_KEY, loadDrillPreferences, saveDrillPreferences } from './drillPreferences'
 
 afterEach(() => localStorage.clear())
@@ -11,6 +12,12 @@ describe('World Countries Drill preferences', () => {
       subregionIds: [],
       mode: 'countries',
     })
+  })
+
+  it('uses the effective World Continent order for a fresh preference', () => {
+    setWorldContinentOrder(['north-america', 'europe'])
+
+    expect(loadDrillPreferences().continent).toBe('North America')
   })
 
   it('persists setup preferences without flattening Country membership', () => {

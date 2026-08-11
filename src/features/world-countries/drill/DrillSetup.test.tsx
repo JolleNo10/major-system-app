@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createDrillSelection } from './drillSelection'
 import { DrillSetup } from './DrillSetup'
 import { getDrillProgressLegendEntries } from './drillProgressPresentation'
+import { resetWorldContinentOrder, setWorldContinentOrder } from '@/features/world-countries/geography/worldMetadataStore'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -35,6 +36,7 @@ afterEach(() => {
   act(() => root?.unmount())
   root = null
   document.body.replaceChildren()
+  resetWorldContinentOrder()
   useRailsMock.mockReset()
   geographyOverviewMapMock.mockReset()
   loadRecallProgressMock.mockClear()
@@ -188,5 +190,34 @@ describe('DrillSetup rail presentation', () => {
       .find(button => button.textContent?.includes('Europe'))
     await act(async () => europeButton?.click())
     expect(onSelectContinent).toHaveBeenCalledWith('Europe')
+  })
+
+  it('publishes the user-authored Continent order in the World rail', async () => {
+    setWorldContinentOrder(['north-america', 'europe'])
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(DrillSetup, {
+        level: 'world',
+        selection: createDrillSelection('Europe'),
+        mode: 'countries',
+        onSelectionChange: vi.fn(),
+        onModeChange: vi.fn(),
+        onStart: vi.fn(),
+        onWorld: vi.fn(),
+        onSelectContinent: vi.fn(),
+        hoveredGroupId: null,
+        onHoverGroup: vi.fn(),
+      }))
+    })
+
+    const railConfig = useRailsMock.mock.calls[0][0] as { left: ReactNode }
+    await act(async () => root?.render(railConfig.left))
+
+    const continents = [...mount.querySelectorAll('nav[aria-label="Continents"] button')]
+      .map(button => button.textContent)
+    expect(continents.slice(0, 2)).toEqual(['North America', 'Europe'])
   })
 })

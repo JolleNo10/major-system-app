@@ -1,7 +1,8 @@
 import { useRails } from '@/app/layout/PageLayoutContext'
 import { countries, type Continent, type Country } from '@/features/world-countries/data/countries'
 import type { SubregionId } from '@/features/world-countries/data/subregions'
-import { getContinents } from '@/features/world-countries/geography/queries'
+import { getContinentsInEffectiveOrder } from '@/features/world-countries/geography/queries'
+import { getWorldMetadata } from '@/features/world-countries/geography/worldMetadataStore'
 import { getContinentHoverGroupId, getSubregionHoverGroupId } from '@/features/world-countries/maps/geographyMapAdapter'
 import { DrillResultStat } from './DrillResultStat'
 import { getDrillSubregions, isEntireContinentSelection, type WorldCountriesDrillSelection } from './drillSelection'
@@ -55,7 +56,7 @@ export function DrillSetupRails({
           <p className="text-sm leading-relaxed text-zinc-400">Choose a Continent to enter its map-centered Drill setup.</p>
           <nav aria-label="Continents">
             <ul className="space-y-1.5">
-              {getContinents(entries).map(continent => (
+              {getContinentsInEffectiveOrder(entries, getWorldMetadata()).map(continent => (
                 <DrillHierarchyRailRow
                   key={continent}
                   label={continent}
