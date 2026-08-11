@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createDrillSelection } from './drillSelection'
 import { DrillSetup } from './DrillSetup'
 import { getDrillProgressLegendEntries } from './drillProgressPresentation'
+import { resetContinentSubregionOrder, setContinentSubregionOrder } from '@/features/world-countries/geography/continentMetadataStore'
 import { resetWorldContinentOrder, setWorldContinentOrder } from '@/features/world-countries/geography/worldMetadataStore'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -36,6 +37,7 @@ afterEach(() => {
   act(() => root?.unmount())
   root = null
   document.body.replaceChildren()
+  resetContinentSubregionOrder('Europe')
   resetWorldContinentOrder()
   useRailsMock.mockReset()
   geographyOverviewMapMock.mockReset()
@@ -53,8 +55,10 @@ describe('DrillSetup rail presentation', () => {
         level: 'continent',
         selection: createDrillSelection('Europe', ['northern-europe']),
         mode: 'countries',
+        order: 'ordered',
         onSelectionChange: vi.fn(),
         onModeChange: vi.fn(),
+        onOrderChange: vi.fn(),
         onStart: vi.fn(),
         onWorld: vi.fn(),
         onSelectContinent: vi.fn(),
@@ -102,8 +106,10 @@ describe('DrillSetup rail presentation', () => {
         level: 'continent',
         selection: createDrillSelection('Europe', ['northern-europe']),
         mode: 'capitals',
+        order: 'ordered',
         onSelectionChange: vi.fn(),
         onModeChange: vi.fn(),
+        onOrderChange: vi.fn(),
         onStart: vi.fn(),
         onWorld: vi.fn(),
         onSelectContinent: vi.fn(),
@@ -122,6 +128,7 @@ describe('DrillSetup rail presentation', () => {
 
   it('publishes geographic scope on the left and drill controls on the right', async () => {
     const onSelectionChange = vi.fn()
+    const onOrderChange = vi.fn()
     const mount = document.createElement('div')
     document.body.append(mount)
 
@@ -131,8 +138,10 @@ describe('DrillSetup rail presentation', () => {
         level: 'continent',
         selection: createDrillSelection('Europe', ['northern-europe']),
         mode: 'countries',
+        order: 'ordered',
         onSelectionChange,
         onModeChange: vi.fn(),
+        onOrderChange,
         onStart: vi.fn(),
         onWorld: vi.fn(),
         onSelectContinent: vi.fn(),
@@ -144,6 +153,13 @@ describe('DrillSetup rail presentation', () => {
     const currentDrill = mount.querySelector('[aria-labelledby="world-countries-current-drill-heading"]')
     expect(currentDrill).not.toBeNull()
     expect(currentDrill?.textContent).toContain('Start Drill')
+    expect(currentDrill?.textContent).toContain('Drill order')
+    const orderToggle = currentDrill?.querySelector('button[role="radio"][aria-checked="true"]') as HTMLButtonElement | null
+    expect(orderToggle?.textContent).toBe('In order')
+    const randomOrderButton = [...(currentDrill?.querySelectorAll('button[role="radio"]') ?? [])]
+      .find(button => button.textContent === 'Random') as HTMLButtonElement | undefined
+    await act(async () => randomOrderButton?.click())
+    expect(onOrderChange).toHaveBeenCalledWith('random')
     const railConfig = useRailsMock.mock.calls[0][0] as { left: ReactNode; right: ReactNode }
     await act(async () => {
       root?.render(createElement('div', null, railConfig.left, railConfig.right))
@@ -174,8 +190,10 @@ describe('DrillSetup rail presentation', () => {
         level: 'world',
         selection: createDrillSelection('Europe'),
         mode: 'countries',
+        order: 'ordered',
         onSelectionChange: vi.fn(),
         onModeChange: vi.fn(),
+        onOrderChange: vi.fn(),
         onStart: vi.fn(),
         onWorld: vi.fn(),
         onSelectContinent,
@@ -203,8 +221,10 @@ describe('DrillSetup rail presentation', () => {
         level: 'world',
         selection: createDrillSelection('Europe'),
         mode: 'countries',
+        order: 'ordered',
         onSelectionChange: vi.fn(),
         onModeChange: vi.fn(),
+        onOrderChange: vi.fn(),
         onStart: vi.fn(),
         onWorld: vi.fn(),
         onSelectContinent: vi.fn(),
@@ -219,5 +239,50 @@ describe('DrillSetup rail presentation', () => {
     const continents = [...mount.querySelectorAll('nav[aria-label="Continents"] button')]
       .map(button => button.textContent)
     expect(continents.slice(0, 2)).toEqual(['North America', 'Europe'])
+  })
+
+  it('publishes the user-authored Subregion order in the Continent rail', async () => {
+    setContinentSubregionOrder('Europe', [
+      'northern-europe',
+      'western-europe',
+      'balkans',
+      'central-europe',
+      'eastern-europe',
+      'southern-europe',
+    ])
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(DrillSetup, {
+        level: 'continent',
+        selection: createDrillSelection('Europe'),
+        mode: 'countries',
+        order: 'ordered',
+        onSelectionChange: vi.fn(),
+        onModeChange: vi.fn(),
+        onOrderChange: vi.fn(),
+        onStart: vi.fn(),
+        onWorld: vi.fn(),
+        onSelectContinent: vi.fn(),
+        hoveredGroupId: null,
+        onHoverGroup: vi.fn(),
+      }))
+    })
+
+    const railConfig = useRailsMock.mock.calls[0][0] as { left: ReactNode }
+    await act(async () => root?.render(railConfig.left))
+
+    const subregions = [...mount.querySelectorAll('nav[aria-label="Europe Subregions"] button')]
+      .map(button => button.textContent)
+    expect(subregions).toEqual([
+      'Northern Europe',
+      'Western Europe',
+      'Balkans',
+      'Central Europe',
+      'Eastern Europe',
+      'Southern Europe',
+    ])
   })
 })

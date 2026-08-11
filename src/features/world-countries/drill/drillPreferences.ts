@@ -13,16 +13,21 @@ import {
   isWorldCountriesDrillMode,
   type WorldCountriesDrillMode,
 } from './drillModes'
+import {
+  isWorldCountriesDrillOrder,
+  type WorldCountriesDrillOrder,
+} from './drillOrder'
 
 export const DRILL_PREFERENCES_STORAGE_KEY = 'world-countries-drill-preferences'
 
 export interface WorldCountriesDrillPreferences extends WorldCountriesDrillSelection {
   mode: WorldCountriesDrillMode
+  order: WorldCountriesDrillOrder
 }
 
 function defaultPreferences(): WorldCountriesDrillPreferences {
   const continent = getContinentsInEffectiveOrder(undefined, getWorldMetadata())[0] ?? 'Africa'
-  return { ...createDrillSelection(continent), mode: 'countries' }
+  return { ...createDrillSelection(continent), mode: 'countries', order: 'ordered' }
 }
 
 export function loadDrillPreferences(): WorldCountriesDrillPreferences {
@@ -37,11 +42,14 @@ export function loadDrillPreferences(): WorldCountriesDrillPreferences {
   const mode = typeof row.mode === 'string' && isWorldCountriesDrillMode(row.mode)
     ? row.mode
     : fallback.mode
+  const order = typeof row.order === 'string' && isWorldCountriesDrillOrder(row.order)
+    ? row.order
+    : fallback.order
   const selection = normalizeDrillSelection({
     continent,
     subregionIds,
   }, countries)
-  return { ...selection, mode }
+  return { ...selection, mode, order }
 }
 
 export function saveDrillPreferences(preferences: WorldCountriesDrillPreferences): void {
@@ -50,5 +58,6 @@ export function saveDrillPreferences(preferences: WorldCountriesDrillPreferences
     continent: selection.continent,
     subregionIds: [...selection.subregionIds],
     mode: preferences.mode,
+    order: preferences.order,
   }))
 }

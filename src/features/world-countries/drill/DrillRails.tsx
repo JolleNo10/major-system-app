@@ -1,11 +1,12 @@
 import { useRails } from '@/app/layout/PageLayoutContext'
 import { countries, type Continent, type Country } from '@/features/world-countries/data/countries'
 import type { SubregionId } from '@/features/world-countries/data/subregions'
-import { getContinentsInEffectiveOrder } from '@/features/world-countries/geography/queries'
+import { getContinentsInEffectiveOrder, getSubregionsForContinentInEffectiveOrder } from '@/features/world-countries/geography/queries'
+import { getContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
 import { getWorldMetadata } from '@/features/world-countries/geography/worldMetadataStore'
 import { getContinentHoverGroupId, getSubregionHoverGroupId } from '@/features/world-countries/maps/geographyMapAdapter'
 import { DrillResultStat } from './DrillResultStat'
-import { getDrillSubregions, isEntireContinentSelection, type WorldCountriesDrillSelection } from './drillSelection'
+import { isEntireContinentSelection, type WorldCountriesDrillSelection } from './drillSelection'
 import {
   getDrillModeDefinition,
   getDrillSkillLabel,
@@ -41,7 +42,11 @@ export function DrillSetupRails({
   onModeChange: (mode: WorldCountriesDrillMode) => void
   entries?: readonly Country[]
 }) {
-  const subregions = getDrillSubregions(selection.continent, entries)
+  const subregions = getSubregionsForContinentInEffectiveOrder(
+    selection.continent,
+    entries,
+    getContinentMetadata(selection.continent),
+  )
   const entireContinent = isEntireContinentSelection(selection, entries)
   const selectedCount = selection.subregionIds.length
 
@@ -268,7 +273,11 @@ export function DrillSessionRails({
   const totalSteps = getDrillSessionTotalSteps(state)
   const completedSteps = state.countryIndex * getDrillModeDefinition(mode).skills.length + state.stepIndex
   const progressPercent = totalSteps ? Math.round((completedSteps / totalSteps) * 100) : 0
-  const subregions = getDrillSubregions(selection.continent, entries)
+  const subregions = getSubregionsForContinentInEffectiveOrder(
+    selection.continent,
+    entries,
+    getContinentMetadata(selection.continent),
+  )
 
   useRails(
     {

@@ -4,10 +4,14 @@ import {
   type Country,
 } from '@/features/world-countries/data/countries'
 import {
+  getCountriesForSubregionInEffectiveOrder,
   getSubregionDefinitionsForContinent,
   getSubregionIdsForContinent,
   getContinents,
+  getSubregionsForContinentInEffectiveOrder,
 } from '@/features/world-countries/geography/queries'
+import type { ContinentMetadata } from '@/features/world-countries/geography/continentMetadata'
+import type { SubregionMetadata } from '@/features/world-countries/geography/subregionMetadata'
 import type { SubregionDefinition, SubregionId } from '@/features/world-countries/data/subregions'
 
 export interface WorldCountriesDrillSelection {
@@ -62,6 +66,26 @@ export function getCountriesForDrillSelection(
   const normalized = normalizeDrillSelection(selection, entries)
   const selected = new Set(normalized.subregionIds)
   return entries.filter(country => country.continent === normalized.continent && selected.has(country.subregionId))
+}
+
+/** Derive the selected Country population in the effective geographic order. */
+export function getCountriesForDrillSelectionInEffectiveOrder(
+  selection: WorldCountriesDrillSelection,
+  entries: readonly Country[] = countries,
+  continentMetadata?: Pick<ContinentMetadata, 'continentId' | 'subregionOrder'> | null,
+  subregionMetadata: readonly Pick<SubregionMetadata, 'subregionId' | 'countryOrder'>[] = [],
+): Country[] {
+  const normalized = normalizeDrillSelection(selection, entries)
+  const selected = new Set(normalized.subregionIds)
+  const metadataBySubregionId = new Map(subregionMetadata.map(metadata => [metadata.subregionId, metadata]))
+
+  return getSubregionsForContinentInEffectiveOrder(normalized.continent, entries, continentMetadata)
+    .filter(subregion => selected.has(subregion.id))
+    .flatMap(subregion => getCountriesForSubregionInEffectiveOrder(
+      subregion.id,
+      entries,
+      metadataBySubregionId.get(subregion.id),
+    ))
 }
 
 export function isEntireContinentSelection(

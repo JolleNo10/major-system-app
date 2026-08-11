@@ -4,6 +4,7 @@ import {
   createDrillSelection,
   getAllDrillSubregionIds,
   getCountriesForDrillSelection,
+  getCountriesForDrillSelectionInEffectiveOrder,
   isEntireContinentSelection,
   toggleEntireContinentSelection,
   toggleDrillSubregion,
@@ -30,6 +31,20 @@ describe('World Countries Drill selection', () => {
     expect(getCountriesForDrillSelection(selection).map(country => country.id)).toEqual(
       getCanonicalCountryIdsForSubregion('northern-europe'),
     )
+  })
+
+  it('projects saved geographic order into an ordered Drill Country population', () => {
+    const countryIds = getCanonicalCountryIdsForSubregion('northern-europe')
+    const reversedCountryIds = [...countryIds].reverse()
+
+    const orderedCountries = getCountriesForDrillSelectionInEffectiveOrder(
+      createDrillSelection('Europe', ['northern-europe']),
+      undefined,
+      { continentId: 'europe', subregionOrder: ['northern-europe'] },
+      [{ subregionId: 'northern-europe', countryOrder: reversedCountryIds }],
+    )
+
+    expect(orderedCountries.map(country => country.id)).toEqual(reversedCountryIds)
   })
 
   it('keeps selection inside one Continent and supports toggling Subregions', () => {

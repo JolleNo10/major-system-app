@@ -182,8 +182,9 @@ the current app layout integration seam.
   owned by `mnemonics/`. This identifies optional Country ↔ Capital content,
   not Memo completion or future per-target learning performance.
 - Drill preferences use the feature-owned `world-countries-drill-preferences`
-  localStorage key and contain only the last Continent, Subregion IDs, and
-  Drill mode. They are convenience state, not learning evidence.
+  localStorage key and contain only the last Continent, Subregion IDs, Drill
+  mode, and Country order (`ordered` or `random`). They are convenience state,
+  not learning evidence.
 - App Settings persists optional country-set group IDs in the existing
   `major-settings` record as `worldCountriesIncludedEntityGroups`. The default
   empty array means the 193 UN Member States; unknown IDs are discarded on

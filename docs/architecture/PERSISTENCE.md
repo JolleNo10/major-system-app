@@ -83,8 +83,9 @@ follows the defining module and feature namespace.
   construction and import validation.
 - World Countries Drill preferences use the small localStorage key
   `world-countries-drill-preferences` and contain only setup state: one
-  Continent, selected Subregion IDs, and a Drill mode. They never contain a
-  flattened Country membership list.
+  Continent, selected Subregion IDs, a Drill mode, and a Country order
+  (`ordered` or `random`). They never contain a flattened Country membership
+  list.
 - World Countries atomic Drill evidence uses the existing shared `attempts`
   store through `core/learning`. The feature constructs opaque IDs in the
   `world-countries:<skill>:<CountryId>` namespace, where the skill is one of
