@@ -12,11 +12,11 @@ import {
 } from '@/features/world-countries/learning/memoProgress'
 import {
   deriveWorldCountriesMemoReadinessFromTracks,
-  getWorldCountriesMemoReadinessLabel,
 } from '@/features/world-countries/learning/memoReadiness'
 import { getContinentHoverGroupId, getSubregionHoverGroupId } from '@/features/world-countries/maps/geographyMapAdapter'
 import { subregionMnemonicId } from '@/features/world-countries/mnemonics/geographyMnemonicIds'
 import { PrepareMnemonicEditor } from './PrepareMnemonicEditor'
+import { getPrepareStatusLabel } from './prepareStatus'
 
 interface WorldOverviewRailsProps {
   continents: readonly Continent[]
@@ -144,7 +144,7 @@ export function ContinentOverviewRails({
                   onClick={() => onSelectSubregion(subregion.id)}
                   onHoverGroup={onHoverGroup}
                   sequenceNumber={index + 1}
-                  trailing={getWorldCountriesMemoReadinessLabel(getSubregionMemoReadinessProgress(subregion.id, learningStates, activeCountries).readiness)}
+                  trailing={getPrepareStatusLabel(getSubregionMemoReadinessProgress(subregion.id, learningStates, activeCountries).readiness)}
                 />
               ))}
             </ol>
@@ -168,6 +168,7 @@ export interface PrepareSubregionRailsProps {
   learned: boolean
   capitalsLearned: boolean
   nextSubregion: SubregionDefinition | null
+  nextEmptyLabel?: string
   mnemonicVersion: number
   onWorld: () => void
   onContinent: () => void
@@ -183,6 +184,7 @@ export function PrepareSubregionRails({
   learned,
   capitalsLearned,
   nextSubregion,
+  nextEmptyLabel,
   mnemonicVersion,
   onWorld,
   onContinent,
@@ -208,11 +210,11 @@ export function PrepareSubregionRails({
           </div>
 
           <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
-            <p className="text-xs uppercase tracking-wider text-zinc-500">Learning status</p>
+            <p className="text-xs uppercase tracking-wider text-zinc-500">Preparation status</p>
             <div className="mt-1 space-y-1 text-sm font-semibold">
-              <p className="text-violet-300">Memo readiness: {getWorldCountriesMemoReadinessLabel(deriveWorldCountriesMemoReadinessFromTracks(learned, capitalsLearned))}</p>
-              <p className={learned ? 'text-green-300' : 'text-zinc-300'}>{learned ? 'Countries learned ✓' : 'Countries not learned'}</p>
-              <p className={capitalsLearned ? 'text-green-300' : 'text-zinc-300'}>{capitalsLearned ? 'Capitals learned ✓' : 'Capitals not learned'}</p>
+              <p className="text-violet-300">Preparation status: {getPrepareStatusLabel(deriveWorldCountriesMemoReadinessFromTracks(learned, capitalsLearned))}</p>
+              <p className={learned ? 'text-green-300' : 'text-zinc-300'}>{learned ? 'Countries prepared ✓' : 'Countries not prepared'}</p>
+              <p className={capitalsLearned ? 'text-green-300' : 'text-zinc-300'}>{capitalsLearned ? 'Capitals prepared ✓' : 'Capitals not prepared'}</p>
             </div>
           </div>
 
@@ -234,7 +236,7 @@ export function PrepareSubregionRails({
       ),
       right: (
         <div className="w-full space-y-3">
-          <NextToPreparePanel nextSubregion={nextSubregion} onSelectSubregion={onSelectSubregion} />
+          <NextToPreparePanel nextSubregion={nextSubregion} emptyLabel={nextEmptyLabel} onSelectSubregion={onSelectSubregion} />
           <PrepareMnemonicEditor
             targetId={subregionMnemonicId(subregion)}
             title="Subregion memory aid"
@@ -248,7 +250,7 @@ export function PrepareSubregionRails({
       leftLabel: 'Prepare context',
       rightLabel: 'Prepare tools',
     },
-    [continent, subregion, entries, learned, capitalsLearned, nextSubregion, mnemonicVersion, onWorld, onContinent, onSelectSubregion, onEditOrder, onMnemonicChanged],
+    [continent, subregion, entries, learned, capitalsLearned, nextSubregion, nextEmptyLabel, mnemonicVersion, onWorld, onContinent, onSelectSubregion, onEditOrder, onMnemonicChanged],
   )
 
   return null
@@ -293,9 +295,11 @@ function PrepareHierarchyRailRow({
 
 function NextToPreparePanel({
   nextSubregion,
+  emptyLabel = 'All subregions prepared',
   onSelectSubregion,
 }: {
   nextSubregion: SubregionDefinition | null
+  emptyLabel?: string
   onSelectSubregion: (subregion: SubregionId) => void
 }) {
   const hasNext = nextSubregion !== null
@@ -304,10 +308,10 @@ function NextToPreparePanel({
       <h3 id="world-countries-next-to-prepare-heading" className="text-sm font-semibold text-zinc-200">Prepare next</h3>
       <div className={`mt-3 rounded-lg border px-3 py-2.5 ${hasNext ? 'border-cyan-500/40 bg-cyan-600/10' : 'border-zinc-800 bg-zinc-800/40'}`}>
         <p className="text-[10px] uppercase tracking-wider text-zinc-500">{hasNext ? 'Unprepared subregion' : 'Complete'}</p>
-        <p className={`mt-1 text-sm font-semibold ${hasNext ? 'text-cyan-300' : 'text-zinc-500'}`}>{nextSubregion?.label ?? 'All subregions prepared'}</p>
+        <p className={`mt-1 text-sm font-semibold ${hasNext ? 'text-cyan-300' : 'text-zinc-500'}`}>{nextSubregion?.label ?? emptyLabel}</p>
       </div>
       <button type="button" onClick={() => { if (nextSubregion) onSelectSubregion(nextSubregion.id) }} disabled={!hasNext} className="mt-3 w-full rounded-xl bg-cyan-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-cyan-500 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500">
-        {hasNext ? 'Open subregion →' : 'All subregions prepared'}
+        {hasNext ? 'Open subregion →' : emptyLabel}
       </button>
     </section>
   )

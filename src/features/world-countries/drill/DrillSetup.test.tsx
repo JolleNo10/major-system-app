@@ -195,6 +195,7 @@ describe('DrillSetup rail presentation', () => {
   it('publishes geographic scope on the left and drill controls on the right', async () => {
     const onSelectionChange = vi.fn()
     const onOrderChange = vi.fn()
+    const onStart = vi.fn()
     const mount = document.createElement('div')
     document.body.append(mount)
 
@@ -208,7 +209,7 @@ describe('DrillSetup rail presentation', () => {
         onSelectionChange,
         onModeChange: vi.fn(),
         onOrderChange,
-        onStart: vi.fn(),
+        onStart,
         onWorld: vi.fn(),
         onSelectContinent: vi.fn(),
         hoveredGroupId: null,
@@ -216,9 +217,16 @@ describe('DrillSetup rail presentation', () => {
       }))
     })
 
+    expect(mount.querySelector('[aria-labelledby="world-countries-current-drill-heading"]')).toBeNull()
+    const railConfig = useRailsMock.mock.calls[0][0] as { left: ReactNode; right: ReactNode }
+    await act(async () => {
+      root?.render(createElement('div', null, railConfig.left, railConfig.right))
+    })
+
     const currentDrill = mount.querySelector('[aria-labelledby="world-countries-current-drill-heading"]')
     expect(currentDrill).not.toBeNull()
     expect(currentDrill?.textContent).toContain('Start Drill')
+    expect(currentDrill?.textContent).toContain('Learn Countries')
     expect(currentDrill?.textContent).toContain('Drill order')
     const orderToggle = currentDrill?.querySelector('button[role="radio"][aria-checked="true"]') as HTMLButtonElement | null
     expect(orderToggle?.textContent).toBe('In order')
@@ -226,16 +234,13 @@ describe('DrillSetup rail presentation', () => {
       .find(button => button.textContent === 'Random') as HTMLButtonElement | undefined
     await act(async () => randomOrderButton?.click())
     expect(onOrderChange).toHaveBeenCalledWith('random')
-    const railConfig = useRailsMock.mock.calls[0][0] as { left: ReactNode; right: ReactNode }
-    await act(async () => {
-      root?.render(createElement('div', null, railConfig.left, railConfig.right))
-    })
-
+    await act(async () => [...(currentDrill?.querySelectorAll('button') ?? [])].find(button => button.textContent === 'Start Drill')?.click())
+    expect(onStart).toHaveBeenCalled()
+    await act(async () => [...(currentDrill?.querySelectorAll('button') ?? [])].find(button => button.textContent === 'Learn Countries')?.click())
+    expect(useRailsMock.mock.calls[0]).toBeDefined()
     expect(mount.textContent).toContain('Entire Continent')
     expect(mount.textContent).toContain('Northern Europe')
     expect(mount.textContent).toContain('Recall mode')
-    expect(mount.textContent).not.toContain('Start Drill')
-
     const entireContinentButton = [...mount.querySelectorAll('button')]
       .find(button => button.textContent?.includes('Entire Continent'))
     await act(async () => entireContinentButton?.click())

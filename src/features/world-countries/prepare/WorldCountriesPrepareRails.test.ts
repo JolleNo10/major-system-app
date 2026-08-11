@@ -87,5 +87,7 @@ describe('World Countries Prepare hierarchy rails', () => {
     expect(mount.textContent).toContain('Continent Prepare progress')
     expect(mount.textContent).toContain('Edit order')
     expect(mount.textContent).toContain('Northern Europe')
+    expect(mount.textContent).toContain('Not prepared')
+    expect(mount.textContent).not.toContain('Not memoed')
   })
 })

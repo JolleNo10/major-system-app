@@ -42,10 +42,11 @@ export function SubregionPrepareScreen({
         .map(state => state.subregionId),
     )
     return getNextSubregionToMemo(
-      getSubregionsForContinentInEffectiveOrder(continent, activeCountries, getContinentMetadata(continent)),
+      getSubregionsForContinentInEffectiveOrder(continent, activeCountries, getContinentMetadata(continent))
+        .filter(candidate => candidate.id !== subregion),
       candidateId => learnedSubregionIds.has(candidateId),
     )
-  }, [activeCountries, continent, learningVersion])
+  }, [activeCountries, continent, learningVersion, subregion])
   const learningStates = getAllSubregionLearningStates(activeCountries)
   const learningState = learningStates.find(state => state.subregionId === subregion)
   const learned = isSubregionCountriesLearned(learningState)
@@ -81,6 +82,7 @@ export function SubregionPrepareScreen({
         learned={learned}
         capitalsLearned={capitalsLearned}
         nextSubregion={nextSubregion}
+        nextEmptyLabel="No other subregions to prepare"
         mnemonicVersion={mnemonicVersion}
         onWorld={onWorld}
         onContinent={onExit}
@@ -114,8 +116,6 @@ export function SubregionPrepareScreen({
         entries={entries}
         mapEntries={mapEntries}
         highlightedCountryId={hoveredCountryId}
-        learned={learned}
-        capitalsLearned={capitalsLearned}
         mnemonicVersion={mnemonicVersion}
         onMnemonicChanged={refreshMnemonic}
       />

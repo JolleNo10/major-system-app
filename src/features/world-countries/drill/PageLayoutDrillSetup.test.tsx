@@ -98,9 +98,8 @@ describe('Drill setup PageLayout integration', () => {
     expect(mount.textContent).toContain('Current drill')
     expect(mount.textContent).toContain('1 Subregion selected')
     expect(mount.textContent).toContain('Start Drill')
-    const drillControls = mount.querySelector('#world-countries-drill-controls-heading')?.closest('section')
-    expect(drillControls?.textContent).not.toContain('Current drill')
-    expect(drillControls?.textContent).not.toContain('Start Drill')
+    const currentDrill = mount.querySelector('[aria-labelledby="world-countries-current-drill-heading"]')
+    expect(currentDrill?.parentElement?.parentElement?.className).toContain('xl:block')
   })
 
   it('keeps the real Drill coordinator stable while PageLayout publishes rails', async () => {

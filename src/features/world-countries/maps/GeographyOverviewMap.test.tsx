@@ -317,7 +317,7 @@ describe('GeographyOverviewMap', () => {
     expect(greenland?.style.fill).toBe('#0f766e')
   })
 
-  it('renders all three Memo readiness states for Memo maps', async () => {
+  it('renders all three preparation status states for Prepare maps', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({
       ok: true,
       text: async () => `
@@ -339,17 +339,17 @@ describe('GeographyOverviewMap', () => {
       await Promise.resolve()
     })
 
-    const legend = mount.querySelector('[aria-label="Memo readiness legend"]')
+    const legend = mount.querySelector('[aria-label="Preparation status legend"]')
     expect(legend?.querySelectorAll('[data-progress-state]')).toHaveLength(3)
-    expect(legend?.textContent).toContain('Not memoed')
-    expect(legend?.textContent).toContain('Countries memoed')
-    expect(legend?.textContent).toContain('Countries + Capitals memoed')
+    expect(legend?.textContent).toContain('Not prepared')
+    expect(legend?.textContent).toContain('Countries prepared')
+    expect(legend?.textContent).toContain('Countries + Capitals prepared')
     expect(legend?.textContent).toContain('neutral outline marks temporary hover or navigation focus')
-    expect(mount.textContent).toContain('Norway: Countries memoed')
+    expect(mount.textContent).toContain('Norway: Countries prepared')
     const map = mount.querySelector('[role="img"]')
     const descriptionId = map?.getAttribute('aria-describedby')
     expect(descriptionId).toBeTruthy()
-    expect(mount.querySelector(`#${descriptionId}`)?.textContent).toContain('Norway: Countries memoed')
+    expect(mount.querySelector(`#${descriptionId}`)?.textContent).toContain('Norway: Countries prepared')
   })
 
   it('preserves a semantic Memo fill and adds a neutral outline on grouped hover', async () => {

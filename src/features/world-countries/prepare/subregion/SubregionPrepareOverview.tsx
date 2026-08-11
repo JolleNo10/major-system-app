@@ -11,8 +11,6 @@ export function SubregionPrepareOverview({
   subregion,
   entries,
   highlightedCountryId = null,
-  learned,
-  capitalsLearned,
   mnemonicVersion,
   onMnemonicChanged,
   mapEntries = entries,
@@ -21,8 +19,6 @@ export function SubregionPrepareOverview({
   subregion: SubregionId
   entries: readonly Country[]
   highlightedCountryId?: string | null
-  learned: boolean
-  capitalsLearned: boolean
   mnemonicVersion?: number
   onMnemonicChanged?: () => void
   mapEntries?: readonly Country[]
@@ -35,6 +31,15 @@ export function SubregionPrepareOverview({
         <h1 className="mt-1 text-2xl font-bold text-zinc-100">{definition.label}</h1>
         <p className="mt-1 text-sm text-zinc-500">{entries.length} countries · {continent}</p>
       </section>
+
+      <CountryLearningMap
+        continent={continent}
+        scopeCountries={mapEntries}
+        showNames
+        showOrderNumbers
+        highlightedCountryId={highlightedCountryId}
+        ariaLabel={`Map of ${definition.label} for preparation`}
+      />
 
       <section className="space-y-3" aria-labelledby="prepare-country-capital-mnemonics-heading">
         <div>
@@ -51,27 +56,6 @@ export function SubregionPrepareOverview({
             onChanged={onMnemonicChanged ?? (() => undefined)}
           />
         ))}
-      </section>
-
-      <CountryLearningMap
-        continent={continent}
-        scopeCountries={mapEntries}
-        showNames
-        showOrderNumbers
-        highlightedCountryId={highlightedCountryId}
-        ariaLabel={`Map of ${definition.label} for preparation`}
-      />
-
-      <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-        <h2 className="font-semibold text-zinc-100">Countries</h2>
-        <p className="mt-1 text-sm text-zinc-400">Inspect the map, reference material, mnemonic, and learning order here.</p>
-        <p className="mt-3 text-sm text-zinc-500">{learned ? 'Countries are marked learned.' : 'Countries are not learned yet.'}</p>
-      </section>
-
-      <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-        <h2 className="font-semibold text-zinc-100">Capitals</h2>
-        <p className="mt-1 text-sm text-zinc-400">Capital learning and review are launched from Drill.</p>
-        <p className="mt-3 text-sm text-zinc-500">{capitalsLearned ? 'Capitals are marked learned.' : 'Capitals are not learned yet.'}</p>
       </section>
     </div>
   )

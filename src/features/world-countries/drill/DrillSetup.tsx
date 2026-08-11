@@ -15,7 +15,7 @@ import {
   toggleDrillSubregion,
   type WorldCountriesDrillSelection,
 } from './drillSelection'
-import { getDrillModeDefinition, getSkillsForDrillMode, type WorldCountriesDrillMode } from './drillModes'
+import { getSkillsForDrillMode, type WorldCountriesDrillMode } from './drillModes'
 import type { WorldCountriesDrillOrder } from './drillOrder'
 import { createDrillProgressColors, createDrillProgressDescriptions } from './drillProgressPresentation'
 import { DrillSetupRails } from './DrillRails'
@@ -106,6 +106,7 @@ export function DrillSetup({
         level={level}
         selection={selection}
         mode={mode}
+        order={order}
         hoveredGroupId={hoveredGroupId}
         onHoverGroup={onHoverGroup}
         onWorld={onWorld}
@@ -113,6 +114,8 @@ export function DrillSetup({
         onToggleSubregion={toggleSubregion}
         onSelectEntireContinent={toggleEntireContinent}
         onModeChange={onModeChange}
+        onOrderChange={onOrderChange}
+        onStart={onStart}
         guidedActions={level === 'continent' ? guidedActions : { primary: null, secondary: [] }}
         onGuidedAction={onGuidedAction}
         entries={entries}
@@ -153,78 +156,7 @@ export function DrillSetup({
         </p>
         <DrillProgressLegend mode={mode} />
 
-        <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4" aria-labelledby="world-countries-current-drill-heading">
-          <h2 id="world-countries-current-drill-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-            Current drill
-          </h2>
-          <div className="mt-3 flex items-baseline justify-between gap-3 text-sm">
-            <span className="text-zinc-500">{level === 'world' ? 'Geography' : 'Scope'}</span>
-            <span className="text-right font-semibold text-zinc-200">
-              {level === 'world'
-                ? 'Choose a Continent'
-                : `${selection.subregionIds.length} ${selection.subregionIds.length === 1 ? 'Subregion' : 'Subregions'} selected`}
-            </span>
-          </div>
-          <div className="mt-2 flex items-baseline justify-between gap-3 text-sm">
-            <span className="text-zinc-500">Recall mode</span>
-            <span className="text-right font-semibold text-violet-200">{getDrillModeDefinition(mode).label}</span>
-          </div>
-          <div className="mt-2 flex items-center justify-between gap-3 text-sm">
-            <span id="world-countries-drill-order-label" className="text-zinc-500">Drill order</span>
-            <DrillOrderSelector order={order} onSelect={onOrderChange} />
-          </div>
-          <button
-            type="button"
-            disabled={level !== 'continent' || selection.subregionIds.length === 0}
-            onClick={onStart}
-            className="mt-4 w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {level === 'world' ? 'Choose a Continent first' : 'Start Drill'}
-          </button>
-        </section>
       </div>
     </>
-  )
-}
-
-function DrillOrderSelector({
-  order,
-  onSelect,
-}: {
-  order: WorldCountriesDrillOrder
-  onSelect: (order: WorldCountriesDrillOrder) => void
-}) {
-  return (
-    <div className="inline-flex h-7 shrink-0 rounded-md border border-zinc-800 bg-zinc-950/60 p-0.5" role="radiogroup" aria-labelledby="world-countries-drill-order-label">
-      <DrillOrderOption order="ordered" selected={order === 'ordered'} onSelect={onSelect}>In order</DrillOrderOption>
-      <DrillOrderOption order="random" selected={order === 'random'} onSelect={onSelect}>Random</DrillOrderOption>
-    </div>
-  )
-}
-
-function DrillOrderOption({
-  order,
-  selected,
-  onSelect,
-  children,
-}: {
-  order: WorldCountriesDrillOrder
-  selected: boolean
-  onSelect: (order: WorldCountriesDrillOrder) => void
-  children: string
-}) {
-  return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={selected}
-      onClick={() => onSelect(order)}
-      className={`min-w-[4.25rem] rounded px-2 text-xs font-semibold transition-colors ${selected
-        ? 'bg-cyan-600/40 text-cyan-100 shadow-sm'
-        : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200'}
-      `}
-    >
-      {children}
-    </button>
   )
 }

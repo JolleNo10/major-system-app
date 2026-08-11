@@ -1,13 +1,17 @@
 import type { Continent } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
 import {
-  getWorldCountriesMemoReadinessDescription,
-  getWorldCountriesMemoReadinessLabel,
   WORLD_COUNTRIES_MEMO_READINESS_LEGEND_ENTRIES,
   type WorldCountriesMemoReadiness,
 } from '@/features/world-countries/learning/memoReadiness'
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
 import { ProgressMapLegend } from '@/features/world-countries/learning/ProgressMapLegend'
+import { getPrepareStatusDescription, getPrepareStatusLabel } from './prepareStatus'
+
+const PREPARE_STATUS_LEGEND_ENTRIES = WORLD_COUNTRIES_MEMO_READINESS_LEGEND_ENTRIES.map(entry => ({
+  ...entry,
+  label: getPrepareStatusLabel(entry.state as WorldCountriesMemoReadiness),
+}))
 
 export interface PrepareMapProps {
   level: 'world' | 'continent'
@@ -40,7 +44,7 @@ export function PrepareMap({
   const countryAccessibleDescriptionsById = memoReadinessByCountryId
     ? new Map([...memoReadinessByCountryId.entries()].map(([countryId, readiness]) => [
       countryId,
-      `${getWorldCountriesMemoReadinessLabel(readiness)}. ${getWorldCountriesMemoReadinessDescription(readiness)}`,
+      `${getPrepareStatusLabel(readiness)}. ${getPrepareStatusDescription(readiness)}`,
     ] as const))
     : undefined
   return (
@@ -60,11 +64,11 @@ export function PrepareMap({
         ariaLabel={`Prepare map of ${title}${selectedLabel}`}
       />
       <ProgressMapLegend
-        title="Memo readiness"
-        entries={WORLD_COUNTRIES_MEMO_READINESS_LEGEND_ENTRIES}
-        explanation="Memo readiness is shared by every current Country in a Subregion and never represents Drill proficiency."
-        mapCues={`Map cues: a neutral outline marks temporary hover or navigation focus, not readiness. Hover a Country to see its ${level === 'world' ? 'Continent' : 'Subregion'}; the accessible map description names each Country’s readiness.`}
-        ariaLabel="Memo readiness legend"
+        title="Preparation status"
+        entries={PREPARE_STATUS_LEGEND_ENTRIES}
+        explanation="Preparation status is shared by every current Country in a Subregion and never represents Drill proficiency."
+        mapCues={`Map cues: a neutral outline marks temporary hover or navigation focus, not preparation status. Hover a Country to see its ${level === 'world' ? 'Continent' : 'Subregion'}; the accessible map description names each Country’s preparation status.`}
+        ariaLabel="Preparation status legend"
       />
     </div>
   )
