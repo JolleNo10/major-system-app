@@ -1,7 +1,7 @@
 import { useRails } from '@/app/layout/PageLayoutContext'
 import { countries, type Continent, type Country } from '@/features/world-countries/data/countries'
 import type { SubregionId } from '@/features/world-countries/data/subregions'
-import { getContinentsInEffectiveOrder, getSubregionsForContinentInEffectiveOrder } from '@/features/world-countries/geography/queries'
+import { getContinentsInEffectiveOrder, getCountriesForContinent, getSubregionsForContinentInEffectiveOrder } from '@/features/world-countries/geography/queries'
 import { getContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
 import { getWorldMetadata } from '@/features/world-countries/geography/worldMetadataStore'
 import { getContinentHoverGroupId, getSubregionHoverGroupId } from '@/features/world-countries/maps/geographyMapAdapter'
@@ -77,6 +77,7 @@ export function DrillSetupRails({
                 <DrillHierarchyRailRow
                   key={continent}
                   label={continent}
+                  summary={formatContinentSummary(continent, entries)}
                   groupId={getContinentHoverGroupId(continent)}
                   hoveredGroupId={hoveredGroupId}
                   onClick={() => onSelectContinent(continent)}
@@ -405,6 +406,7 @@ function DrillModeButton({
 
 function DrillHierarchyRailRow({
   label,
+  summary,
   groupId,
   hoveredGroupId,
   onClick,
@@ -412,6 +414,7 @@ function DrillHierarchyRailRow({
   selected = false,
 }: {
   label: string
+  summary?: string
   groupId: string
   hoveredGroupId: string | null
   onClick: () => void
@@ -438,10 +441,27 @@ function DrillHierarchyRailRow({
         }`}
       >
         {selected && <span aria-hidden="true" className="text-cyan-400">✓</span>}
-        <span className="min-w-0 flex-1 truncate">{label}</span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate">{label}</span>
+          {summary && <span className="mt-0.5 block text-xs text-zinc-500">{summary}</span>}
+        </span>
       </button>
     </li>
   )
+}
+
+function formatContinentSummary(continent: Continent, entries: readonly Country[]): string {
+  const subregionCount = getSubregionsForContinentInEffectiveOrder(
+    continent,
+    entries,
+    getContinentMetadata(continent),
+  ).length
+  const countryCount = getCountriesForContinent(continent, entries).length
+  return `${formatCount(subregionCount, 'Subregion', 'Subregions')} · ${formatCount(countryCount, 'Country', 'Countries')}`
+}
+
+function formatCount(count: number, singular: string, plural: string): string {
+  return `${count} ${count === 1 ? singular : plural}`
 }
 
 export function DrillSessionRails({

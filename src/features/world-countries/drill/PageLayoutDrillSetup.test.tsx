@@ -218,7 +218,7 @@ describe('Drill setup PageLayout integration', () => {
     await act(async () => (closeButton as HTMLButtonElement | null)?.click())
 
     const europeButton = [...mount.querySelectorAll('button')]
-      .find(button => button.textContent?.trim() === 'Europe')
+      .find(button => button.textContent?.startsWith('Europe'))
     await act(async () => europeButton?.click())
     await Promise.resolve()
     await Promise.resolve()

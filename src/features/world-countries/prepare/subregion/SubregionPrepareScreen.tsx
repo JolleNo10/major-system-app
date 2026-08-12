@@ -6,7 +6,7 @@ import { getContinentMetadata } from '@/features/world-countries/geography/conti
 import { getCountriesForSubregionInEffectiveOrder, getSubregionsForContinentInEffectiveOrder } from '@/features/world-countries/geography/queries'
 import { getSubregionMetadata } from '@/features/world-countries/geography/subregionMetadataStore'
 import { getAllSubregionLearningStates } from '@/features/world-countries/learning/subregionLearningStore'
-import { isSubregionCapitalsLearned, isSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningState'
+import { isSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningState'
 import { getNextSubregionToMemo } from '@/features/world-countries/learning/memoProgress'
 import { PrepareSubregionRails } from '../WorldCountriesPrepareRails'
 import { SubregionPrepareOverview } from './SubregionPrepareOverview'
@@ -48,9 +48,6 @@ export function SubregionPrepareScreen({
     )
   }, [activeCountries, continent, learningVersion, subregion])
   const learningStates = getAllSubregionLearningStates(activeCountries)
-  const learningState = learningStates.find(state => state.subregionId === subregion)
-  const learned = isSubregionCountriesLearned(learningState)
-  const capitalsLearned = isSubregionCapitalsLearned(learningState)
   const [editingOrder, setEditingOrder] = useState(false)
   const [draftEntries, setDraftEntries] = useState<readonly Country[] | null>(null)
   const [hoveredCountryId, setHoveredCountryId] = useState<string | null>(null)
@@ -79,8 +76,6 @@ export function SubregionPrepareScreen({
         continent={continent}
         subregion={subregion}
         entries={mapEntries}
-        learned={learned}
-        capitalsLearned={capitalsLearned}
         nextSubregion={nextSubregion}
         nextEmptyLabel="No other subregions to prepare"
         mnemonicVersion={mnemonicVersion}

@@ -5,7 +5,6 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Country } from '@/features/world-countries/data/countries'
 import { getContinentHoverGroupId } from '@/features/world-countries/maps/geographyMapAdapter'
-import type { MemoReadinessProgress } from '@/features/world-countries/learning/memoProgress'
 import { ContinentOverviewRails, WorldOverviewRails } from './WorldCountriesPrepareRails'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -25,12 +24,6 @@ afterEach(() => {
   useRailsMock.mockReset()
 })
 
-const progress: MemoReadinessProgress = {
-  countriesMemoed: { count: 0, total: 1, ratio: 0 },
-  countriesAndCapitalsMemoed: { count: 0, total: 1, ratio: 0 },
-  readinessBySubregion: new Map(),
-}
-
 describe('World Countries Prepare hierarchy rails', () => {
   it('synchronizes mouse and keyboard hover without using aria-current', async () => {
     const onHoverGroup = vi.fn()
@@ -42,7 +35,6 @@ describe('World Countries Prepare hierarchy rails', () => {
       root.render(createElement(WorldOverviewRails, {
         continents: ['Europe'],
         learningStates: [],
-        progress,
         hoveredGroupId: null,
         onSelectContinent: vi.fn(),
         onHoverGroup,
@@ -52,13 +44,14 @@ describe('World Countries Prepare hierarchy rails', () => {
 
     const railConfig = useRailsMock.mock.calls[0][0] as { left: ReactNode }
     await act(async () => root?.render(railConfig.left))
+    expect(mount.textContent).not.toContain('World Prepare progress')
     const button = [...mount.querySelectorAll('button')].find(candidate => candidate.textContent?.includes('Europe'))
     expect(button?.hasAttribute('aria-current')).toBe(false)
     await act(async () => button?.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
     expect(onHoverGroup).toHaveBeenLastCalledWith(getContinentHoverGroupId('Europe'))
   })
 
-  it('publishes preparation status and order controls for a Continent', async () => {
+  it('publishes subregion navigation and order controls for a Continent', async () => {
     const entry: Country = {
       id: 'NO', country: 'Norway', capital: 'Oslo', continent: 'Europe',
       subregionId: 'northern-europe', subregion: 'Northern Europe',
@@ -73,7 +66,6 @@ describe('World Countries Prepare hierarchy rails', () => {
         subregions: [{ id: 'northern-europe', label: 'Northern Europe', continent: 'Europe' }],
         activeCountries: [entry],
         learningStates: [],
-        progress,
         hoveredGroupId: null,
         onWorld: vi.fn(),
         onSelectSubregion: vi.fn(),
@@ -84,10 +76,11 @@ describe('World Countries Prepare hierarchy rails', () => {
 
     const railConfig = useRailsMock.mock.calls[0][0] as { left: ReactNode }
     await act(async () => root?.render(railConfig.left))
-    expect(mount.textContent).toContain('Continent Prepare progress')
+    expect(mount.textContent).not.toContain('Continent Prepare progress')
     expect(mount.textContent).toContain('Edit order')
     expect(mount.textContent).toContain('Northern Europe')
-    expect(mount.textContent).toContain('Not prepared')
+    expect(mount.textContent).not.toContain('Countries prepared')
+    expect(mount.textContent).not.toContain('Countries + Capitals prepared')
     expect(mount.textContent).not.toContain('Not memoed')
   })
 })

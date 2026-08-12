@@ -7,21 +7,15 @@ import {
   getNextSubregionToMemo,
   getSubregionMemoReadinessProgress,
   type MemoLearningStates,
-  type MemoMilestone,
   type MemoReadinessProgress,
 } from '@/features/world-countries/learning/memoProgress'
-import {
-  deriveWorldCountriesMemoReadinessFromTracks,
-} from '@/features/world-countries/learning/memoReadiness'
 import { getContinentHoverGroupId, getSubregionHoverGroupId } from '@/features/world-countries/maps/geographyMapAdapter'
 import { subregionMnemonicId } from '@/features/world-countries/mnemonics/geographyMnemonicIds'
 import { PrepareMnemonicEditor } from './PrepareMnemonicEditor'
-import { getPrepareStatusLabel } from './prepareStatus'
 
 interface WorldOverviewRailsProps {
   continents: readonly Continent[]
   activeCountries?: readonly Country[]
-  progress: MemoReadinessProgress
   learningStates: MemoLearningStates
   hoveredGroupId: string | null
   onSelectContinent: (continent: Continent) => void
@@ -32,7 +26,6 @@ interface WorldOverviewRailsProps {
 export function WorldOverviewRails({
   continents,
   activeCountries = countries,
-  progress,
   learningStates,
   hoveredGroupId,
   onSelectContinent,
@@ -52,8 +45,6 @@ export function WorldOverviewRails({
               Edit order
             </button>
           </div>
-
-          <ProgressSummary label="World Prepare progress" progress={progress} />
 
           <nav aria-label="Continents">
             <ul className="space-y-1.5">
@@ -75,7 +66,7 @@ export function WorldOverviewRails({
       ),
       leftLabel: 'Continents',
     },
-    [continents, activeCountries, learningStates, progress, hoveredGroupId, onSelectContinent, onHoverGroup, onEditOrder],
+    [continents, activeCountries, learningStates, hoveredGroupId, onSelectContinent, onHoverGroup, onEditOrder],
   )
 
   return null
@@ -85,7 +76,6 @@ interface ContinentOverviewRailsProps {
   continent: Continent
   subregions: readonly SubregionDefinition[]
   activeCountries?: readonly Country[]
-  progress: MemoReadinessProgress
   learningStates: MemoLearningStates
   hoveredGroupId: string | null
   onWorld: () => void
@@ -98,7 +88,6 @@ export function ContinentOverviewRails({
   continent,
   subregions,
   activeCountries = countries,
-  progress,
   learningStates,
   hoveredGroupId,
   onWorld,
@@ -131,8 +120,6 @@ export function ContinentOverviewRails({
             </button>
           </div>
 
-          <ProgressSummary label="Continent Prepare progress" progress={progress} />
-
           <nav aria-label={`${continent} Subregions`}>
             <ol className="space-y-1.5">
               {subregions.map((subregion, index) => (
@@ -144,7 +131,6 @@ export function ContinentOverviewRails({
                   onClick={() => onSelectSubregion(subregion.id)}
                   onHoverGroup={onHoverGroup}
                   sequenceNumber={index + 1}
-                  trailing={getPrepareStatusLabel(getSubregionMemoReadinessProgress(subregion.id, learningStates, activeCountries).readiness)}
                 />
               ))}
             </ol>
@@ -155,7 +141,7 @@ export function ContinentOverviewRails({
       leftLabel: 'Subregions',
       rightLabel: 'Prepare next',
     },
-    [continent, activeCountries, learningStates, subregions, nextSubregion, progress, hoveredGroupId, onWorld, onSelectSubregion, onHoverGroup, onEditOrder],
+    [continent, activeCountries, learningStates, subregions, nextSubregion, hoveredGroupId, onWorld, onSelectSubregion, onHoverGroup, onEditOrder],
   )
 
   return null
@@ -165,8 +151,6 @@ export interface PrepareSubregionRailsProps {
   continent: Continent
   subregion: SubregionId
   entries: readonly Country[]
-  learned: boolean
-  capitalsLearned: boolean
   nextSubregion: SubregionDefinition | null
   nextEmptyLabel?: string
   mnemonicVersion: number
@@ -181,8 +165,6 @@ export function PrepareSubregionRails({
   continent,
   subregion,
   entries,
-  learned,
-  capitalsLearned,
   nextSubregion,
   nextEmptyLabel,
   mnemonicVersion,
@@ -207,15 +189,6 @@ export function PrepareSubregionRails({
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Prepare</p>
             <h2 id="world-countries-prepare-context-heading" className="mt-1 text-lg font-bold text-zinc-100">Subregion structure</h2>
-          </div>
-
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
-            <p className="text-xs uppercase tracking-wider text-zinc-500">Preparation status</p>
-            <div className="mt-1 space-y-1 text-sm font-semibold">
-              <p className="text-violet-300">Preparation status: {getPrepareStatusLabel(deriveWorldCountriesMemoReadinessFromTracks(learned, capitalsLearned))}</p>
-              <p className={learned ? 'text-green-300' : 'text-zinc-300'}>{learned ? 'Countries prepared ✓' : 'Countries not prepared'}</p>
-              <p className={capitalsLearned ? 'text-green-300' : 'text-zinc-300'}>{capitalsLearned ? 'Capitals prepared ✓' : 'Capitals not prepared'}</p>
-            </div>
           </div>
 
           <section aria-labelledby="prepare-learning-order-heading">
@@ -250,7 +223,7 @@ export function PrepareSubregionRails({
       leftLabel: 'Prepare context',
       rightLabel: 'Prepare tools',
     },
-    [continent, subregion, entries, learned, capitalsLearned, nextSubregion, nextEmptyLabel, mnemonicVersion, onWorld, onContinent, onSelectSubregion, onEditOrder, onMnemonicChanged],
+    [continent, subregion, entries, nextSubregion, nextEmptyLabel, mnemonicVersion, onWorld, onContinent, onSelectSubregion, onEditOrder, onMnemonicChanged],
   )
 
   return null
@@ -314,30 +287,6 @@ function NextToPreparePanel({
         {hasNext ? 'Open subregion →' : emptyLabel}
       </button>
     </section>
-  )
-}
-
-function ProgressSummary({ label, progress }: { label: string; progress: MemoReadinessProgress }) {
-  return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3" aria-label={label}>
-      <p className="text-xs uppercase tracking-wider text-zinc-500">{label}</p>
-      <div className="mt-3 space-y-3">
-        <MemoMilestone label="Countries prepared" milestone={progress.countriesMemoed} color="bg-violet-500" />
-        <MemoMilestone label="Countries + Capitals prepared" milestone={progress.countriesAndCapitalsMemoed} color="bg-fuchsia-500" />
-      </div>
-    </div>
-  )
-}
-
-function MemoMilestone({ label, milestone, color }: { label: string; milestone: MemoMilestone; color: string }) {
-  return (
-    <div>
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="text-xs text-zinc-400">{label}</span>
-        <span className="text-xs font-semibold tabular-nums text-zinc-200">{milestone.count}/{milestone.total} Subregions</span>
-      </div>
-      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-zinc-800"><div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${milestone.ratio * 100}%` }} /></div>
-    </div>
   )
 }
 

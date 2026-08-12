@@ -3,6 +3,7 @@
 import { act, createElement, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { Country } from '@/features/world-countries/data/countries'
 import { createDrillSelection } from './drillSelection'
 import { DrillSetup } from './DrillSetup'
 import { getDrillProgressLegendEntries } from './drillProgressPresentation'
@@ -281,6 +282,42 @@ describe('DrillSetup rail presentation', () => {
     expect(onSelectContinent).toHaveBeenCalledWith('Europe')
   })
 
+  it('shows Subregion and Country counts on World Continent buttons', async () => {
+    const entries: Country[] = [
+      { id: 'NO', country: 'Norway', capital: 'Oslo', continent: 'Europe', subregionId: 'northern-europe', subregion: 'Northern Europe' },
+      { id: 'ES', country: 'Spain', capital: 'Madrid', continent: 'Europe', subregionId: 'southern-europe', subregion: 'Southern Europe' },
+      { id: 'JP', country: 'Japan', capital: 'Tokyo', continent: 'Asia', subregionId: 'east-asia', subregion: 'East Asia' },
+    ]
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(DrillSetup, {
+        level: 'world',
+        selection: createDrillSelection('Europe'),
+        mode: 'countries',
+        order: 'ordered',
+        entries,
+        onSelectionChange: vi.fn(),
+        onModeChange: vi.fn(),
+        onOrderChange: vi.fn(),
+        onStart: vi.fn(),
+        onWorld: vi.fn(),
+        onSelectContinent: vi.fn(),
+        hoveredGroupId: null,
+        onHoverGroup: vi.fn(),
+      }))
+    })
+
+    const railConfig = useRailsMock.mock.calls[0][0] as { left: ReactNode }
+    await act(async () => root?.render(railConfig.left))
+
+    const buttons = [...mount.querySelectorAll('nav[aria-label="Continents"] button')]
+    expect(buttons.find(button => button.textContent?.startsWith('Europe'))?.textContent).toContain('2 Subregions · 2 Countries')
+    expect(buttons.find(button => button.textContent?.startsWith('Asia'))?.textContent).toContain('1 Subregion · 1 Country')
+  })
+
   it('publishes the user-authored Continent order in the World rail', async () => {
     setWorldContinentOrder(['north-america', 'europe'])
     const mount = document.createElement('div')
@@ -308,7 +345,7 @@ describe('DrillSetup rail presentation', () => {
     await act(async () => root?.render(railConfig.left))
 
     const continents = [...mount.querySelectorAll('nav[aria-label="Continents"] button')]
-      .map(button => button.textContent)
+      .map(button => button.querySelector('span > span')?.textContent)
     expect(continents.slice(0, 2)).toEqual(['North America', 'Europe'])
   })
 

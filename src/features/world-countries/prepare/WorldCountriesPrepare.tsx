@@ -12,11 +12,6 @@ import { getContinentsInEffectiveOrder, getSubregionsForContinentInEffectiveOrde
 import { getContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
 import { useWorldCountriesPopulation } from '@/features/world-countries/worldCountriesPopulation'
 import { getWorldMetadata } from '@/features/world-countries/geography/worldMetadataStore'
-import {
-  getContinentMemoReadinessProgress,
-  getWorldMemoReadinessProgress,
-  type MemoReadinessProgress,
-} from '@/features/world-countries/learning/memoProgress'
 import { PrepareMap } from './PrepareMap'
 import { ContinentOrderEditor } from './continent/ContinentOrderEditor'
 import { WorldOrderEditor } from './world/WorldOrderEditor'
@@ -34,7 +29,6 @@ export function WorldCountriesPrepare({ answerMode: _answerMode }: { answerMode:
     [activeCountries, learningVersion],
   )
   const learningStates = useMemo(() => getAllSubregionLearningStates(activeCountries), [activeCountries, learningVersion])
-  const worldProgress = useMemo(() => getWorldMemoReadinessProgress(learningStates, activeCountries), [activeCountries, learningStates])
   const memoReadinessColorsById = useMemo(
     () => createWorldCountriesMemoReadinessColors(activeCountries, learningStates),
     [activeCountries, learningStates],
@@ -105,7 +99,6 @@ export function WorldCountriesPrepare({ answerMode: _answerMode }: { answerMode:
     <WorldPrepareOverview
       continents={continents}
       activeCountries={activeCountries}
-      progress={worldProgress}
       learningStates={learningStates}
       hoveredGroupId={hoveredGroupId}
       onLearningChanged={refreshLearning}
@@ -120,7 +113,6 @@ export function WorldCountriesPrepare({ answerMode: _answerMode }: { answerMode:
 function WorldPrepareOverview({
   continents,
   activeCountries,
-  progress,
   learningStates,
   hoveredGroupId,
   onLearningChanged,
@@ -131,7 +123,6 @@ function WorldPrepareOverview({
 }: {
   continents: readonly Continent[]
   activeCountries: readonly Country[]
-  progress: MemoReadinessProgress
   learningStates: ReturnType<typeof getAllSubregionLearningStates>
   hoveredGroupId: string | null
   onLearningChanged: () => void
@@ -167,7 +158,6 @@ function WorldPrepareOverview({
             continents={railContinents}
             activeCountries={activeCountries}
             learningStates={learningStates}
-            progress={progress}
             hoveredGroupId={hoveredGroupId}
             onSelectContinent={onSelectContinent}
             onHoverGroup={onHoverGroup}
@@ -238,7 +228,6 @@ function ContinentPrepareOverview({
     () => getSubregionsForContinentInEffectiveOrder(continent, activeCountries, getContinentMetadata(continent)),
     [activeCountries, continent, learningVersion],
   )
-  const progress = useMemo(() => getContinentMemoReadinessProgress(continent, learningStates, activeCountries), [activeCountries, continent, learningStates])
   const railSubregions = draftSubregions ?? subregions
 
   const openOrderEditor = useCallback(() => {
@@ -265,7 +254,6 @@ function ContinentPrepareOverview({
             subregions={railSubregions}
             activeCountries={activeCountries}
             learningStates={learningStates}
-            progress={progress}
             hoveredGroupId={hoveredGroupId}
             onWorld={onWorld}
             onSelectSubregion={onSelectSubregion}
