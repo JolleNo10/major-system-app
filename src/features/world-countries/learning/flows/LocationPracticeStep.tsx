@@ -11,7 +11,6 @@ export function LocationPracticeStep({
   flow,
   onSelect,
   onContinue,
-  onSkip,
   onExit,
 }: {
   continent: Continent
@@ -19,7 +18,6 @@ export function LocationPracticeStep({
   flow: CountryLearningFlowState
   onSelect: (countryId: string) => void
   onContinue: () => void
-  onSkip: () => void
   onExit: () => void
 }) {
   const [feedback, setFeedback] = useState<{ correct: boolean; expectedId: string; selectedId: string } | null>(null)
@@ -78,9 +76,6 @@ export function LocationPracticeStep({
           />
         )}
       </div>
-      <button type="button" onClick={onSkip} className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-400 hover:border-cyan-500 hover:text-zinc-200">
-        Skip to ordered recall
-      </button>
     </div>
   )
 }

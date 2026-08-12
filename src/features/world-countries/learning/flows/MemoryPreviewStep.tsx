@@ -28,7 +28,6 @@ export function LearningHeader({ label, title, onExit }: { label: string; title:
         <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">{label}</p>
         <h1 className="mt-1 text-2xl font-bold text-zinc-100">{title}</h1>
       </div>
-      <button type="button" onClick={onExit} className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-400 hover:text-zinc-100">Exit</button>
     </header>
   )
 }

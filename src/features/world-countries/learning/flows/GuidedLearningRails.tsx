@@ -17,6 +17,9 @@ export function GuidedLearningRails({
   capitalsLearned,
   mnemonicVersion,
   walkthroughCountryId,
+  onExit,
+  onSkip,
+  skipLabel,
 }: {
   continent: Continent
   subregion: SubregionId
@@ -27,11 +30,15 @@ export function GuidedLearningRails({
   capitalsLearned: boolean
   mnemonicVersion: number
   walkthroughCountryId?: string | null
+  onExit?: () => void
+  onSkip?: () => void
+  skipLabel?: string
 }) {
   const quietPhase = phase === 'ordered-recall' || phase === 'recall' || phase === 'complete'
   const walkthroughCountry = walkthroughCountryId ? entries.find(entry => entry.id === walkthroughCountryId) ?? null : null
   const showSubregionMnemonic = !quietPhase && track === 'countries'
   const showCapitalMnemonic = !quietPhase && track === 'capitals' && phase === 'walkthrough' && walkthroughCountry !== null
+  const showMemoryAid = showSubregionMnemonic || showCapitalMnemonic
 
   useRails(
     {
@@ -60,7 +67,18 @@ export function GuidedLearningRails({
           </section>
         </section>
       ),
-      right: showSubregionMnemonic ? (
+      right: showMemoryAid || onExit || onSkip ? (
+        <div className="space-y-4">
+          {(onExit || onSkip) && (
+            <section aria-labelledby="guided-learning-actions-heading" className="space-y-2">
+              <h3 id="guided-learning-actions-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Learning actions</h3>
+              {onExit && <button type="button" onClick={onExit} className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2.5 text-sm text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Exit</button>}
+              {onSkip && <button type="button" onClick={onSkip} className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-400 hover:border-cyan-500 hover:text-zinc-200">
+                {skipLabel ?? 'Skip'}
+              </button>}
+            </section>
+          )}
+          {showSubregionMnemonic ? (
         <GeographyMnemonicView
           targetId={subregionMnemonicId(subregion)}
           title="Subregion memory aid"
@@ -75,11 +93,13 @@ export function GuidedLearningRails({
           subtitle="Optional memory aid for this Country–Capital relationship"
           refreshKey={`${walkthroughCountry.id}-${mnemonicVersion}`}
         />
+          ) : null}
+        </div>
       ) : undefined,
       leftLabel: 'Learning context',
-      rightLabel: showSubregionMnemonic || showCapitalMnemonic ? 'Memory aid' : undefined,
+      rightLabel: showMemoryAid && (onExit || onSkip) ? 'Learning tools' : showMemoryAid ? 'Memory aid' : onExit || onSkip ? 'Learning actions' : undefined,
     },
-    [continent, subregion, entries, phase, track, learned, capitalsLearned, mnemonicVersion, walkthroughCountry, quietPhase, showSubregionMnemonic, showCapitalMnemonic],
+    [continent, subregion, entries, phase, track, learned, capitalsLearned, mnemonicVersion, walkthroughCountry, quietPhase, showSubregionMnemonic, showCapitalMnemonic, showMemoryAid, onExit, onSkip, skipLabel],
   )
 
   return null

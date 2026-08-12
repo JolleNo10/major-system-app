@@ -45,7 +45,7 @@ export function WorldCountriesDrill({ answerMode, onOpenSetup }: { answerMode: A
   const activeCountries = useWorldCountriesPopulation()
   const [preferences, setPreferences] = useState<WorldCountriesDrillPreferences>(loadDrillPreferences)
   const [phase, setPhase] = useState<DrillPhase>('setup')
-  const [purpose, setPurpose] = useState<ActivityPurpose>('drill')
+  const [purpose, setPurpose] = useState<ActivityPurpose | null>(null)
   const [learnPracticeMode, setLearnPracticeMode] = useState<WorldCountriesLearnPracticeMode>('learn-countries')
   const [learningRun, setLearningRun] = useState<LearningRun | null>(null)
   const [setupContinent, setSetupContinent] = useState<Continent | null>(null)

@@ -84,6 +84,13 @@ export function CountryLearningFlow({
     learned={false}
     capitalsLearned={false}
     mnemonicVersion={mnemonicVersion}
+    onExit={onExit}
+    onSkip={flow.phase === 'walkthrough'
+      ? () => transition(startLocationPractice(flow, locationCleanTargetMinimum))
+      : flow.phase === 'location-practice'
+        ? () => transition(startOrderedRecall(flow, 2))
+        : undefined}
+    skipLabel={flow.phase === 'walkthrough' ? 'Skip to locate countries' : flow.phase === 'location-practice' ? 'Skip location recall' : undefined}
   />
   let content: ReactNode
   switch (flow.phase) {
@@ -105,7 +112,6 @@ export function CountryLearningFlow({
           flow={flow}
           onMove={offset => transition(moveCountryWalkthrough(flow, offset))}
           onStartLocation={() => transition(startLocationPractice(flow, locationCleanTargetMinimum))}
-          onSkip={() => transition(startLocationPractice(flow, locationCleanTargetMinimum))}
           onExit={onExit}
         />
       )
@@ -118,7 +124,6 @@ export function CountryLearningFlow({
           flow={flow}
           onSelect={updateLocation}
           onContinue={() => transition(startOrderedRecall(flow, 2))}
-          onSkip={() => transition(startOrderedRecall(flow, 2))}
           onExit={onExit}
         />
       )

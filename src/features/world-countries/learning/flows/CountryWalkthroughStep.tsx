@@ -11,7 +11,6 @@ export function CountryWalkthroughStep({
   flow,
   onMove,
   onStartLocation,
-  onSkip,
   onExit,
 }: {
   continent: Continent
@@ -19,7 +18,6 @@ export function CountryWalkthroughStep({
   flow: CountryLearningFlowState
   onMove: (offset: -1 | 1) => void
   onStartLocation: () => void
-  onSkip: () => void
   onExit: () => void
 }) {
   const index = flow.walkthroughIndex
@@ -52,9 +50,6 @@ export function CountryWalkthroughStep({
       {index === entries.length - 1 && (
         <button type="button" onClick={() => onMove(-1)} className="w-full text-xs text-zinc-500 hover:text-zinc-300">Review walkthrough again</button>
       )}
-      <button type="button" onClick={onSkip} className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-400 hover:border-cyan-500 hover:text-zinc-200">
-        Skip to locate countries
-      </button>
     </div>
   )
 }

@@ -87,7 +87,7 @@ derived Drill selection and is not persisted as purpose state.
 
 ## Learning Readiness
 
-Learning Readiness is derived from the existing
+The canonical durable Learning Readiness is derived from the existing
 `SubregionLearningState.countriesLearnedAt` and
 `SubregionLearningState.capitalsLearnedAt` fields. It has exactly three states:
 
@@ -97,7 +97,11 @@ Learning Readiness is derived from the existing
 
 A Capitals-first completion persists `capitalsLearnedAt`, but remains Not
 learned until `countriesLearnedAt` exists. No fourth readiness state is added.
-Learning Readiness is contextual map and rail information; it is not Drill
+In the Drill-owned Learn & Practise setup, the display may promote a Subregion
+to Countries learned when every active Country has current Location → Country
+Drill proficiency of Developing or better. This is a derived, display-only
+bridge: it does not write a Learning milestone, alter Drill evidence, or change
+the durable readiness store. Learning Readiness remains distinct from Drill
 proficiency and does not create evidence.
 
 Learn Capitals is runnable before Countries learning. The selector shows an
@@ -173,6 +177,9 @@ flowchart TD
 
 - `Country.id` and `Country.subregionId` are runtime identity; persistence and
   workflows do not reconstruct identity from labels or SVG IDs.
+- Learn & Practise may display Drill-derived Countries learned readiness only
+  when every active Country in the Subregion is Developing or better for the
+  current Location → Country skill; this promotion is never persisted.
 - Effective hierarchy order can reorder existing members but cannot add
   Countries or Subregions.
 - Setup is structural and non-recording. It does not start Learning, Practice,
