@@ -47,9 +47,9 @@ architecture document.
 ## Clarifications
 
 The repository currently has intentional feature-to-feature dependencies:
-Pi and Major Cards consume the Major System word provider through its public
-barrel. Cards also has an internal PAO-to-Themed seeding edge. These are listed
-in [SYSTEM.md](SYSTEM.md) and the affected feature documents.
+Pi consumes the Major System word provider through its public barrel. Cards
+also has an internal PAO-to-Themed seeding edge. These are listed in
+[SYSTEM.md](SYSTEM.md) and the affected feature documents.
 
 The current feature-to-app integration seams are settings, page-layout rail or
 header publication, and shared overlay presentation. Changes to those seams

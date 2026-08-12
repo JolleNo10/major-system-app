@@ -35,5 +35,5 @@ Use the Docker fallback from the root `AGENTS.md` when Node/npm are unavailable.
 - Number keys remain fixed-width `00`–`99` strings.
 - Effective editable data layers shipped, then saved, then trial overrides.
 - Change shipped defaults in CSV source, not browser state.
-- Pi and Major Cards consume the public word provider; inspect both before
-  changing its contract.
+- Pi consumes the public word provider; inspect that consumer before changing
+  its contract.

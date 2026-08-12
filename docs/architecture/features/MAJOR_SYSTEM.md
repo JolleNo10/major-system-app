@@ -12,8 +12,8 @@ Load [CORE.md](../CORE.md) for shared scoring/UI/store changes,
 
 Major System owns the digit-to-sound key, the editable `00`–`99` word mapping,
 and drills that train encoding, decoding, sound recall, sequences, speed,
-weakness, and due repetition. It supplies the word provider used by Pi and the
-Major Cards flavor, but does not own those features' sequencing or workflows.
+weakness, and due repetition. It supplies the word provider used by Pi, but
+does not own Pi's sequencing or workflows.
 
 ## Entry points
 
@@ -52,9 +52,8 @@ Major Cards flavor, but does not own those features' sequencing or workflows.
 ## Dependencies
 
 The feature uses `core/scoring`, `core/ui`, `core/storage`, `core/answerMatch`,
-`core/wordsCsv`, and app settings for shared tolerance/focus. Pi and Major Cards
-depend on the Major System public boundary; Major System does not depend on
-them.
+`core/wordsCsv`, and app settings for shared tolerance/focus. Pi depends on the
+Major System public boundary; Major System does not depend on Pi.
 
 ## Persistence
 

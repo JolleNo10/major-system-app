@@ -41,8 +41,8 @@ contracts fit; feature workflows keep their own progress semantics.
 - Major System: bidirectional drilling (encode number→word, decode word→number), sound-key reference, weak-spot targeting, SM-2 repetition queue, speed rounds, sequences
 - Pi: Memo, Full/Anchors Recite, due-driven Maintain, per-position accuracy,
   run history, and per-segment stories
-- Cards: Major Card→Word/Number and Deck Memo; Themed Deck with an independent
-  word list; PAO Encode/Decode/Deck Memo
+- Cards: Themed Deck with an independent word list; PAO Encode/Decode/Deck
+  Memo
 - World Countries: Prepare for canonical geography, order and mnemonic
   authoring; Drill for guided Country/Capital learning and deliberate recall;
   Recite and Due review remain separate activities
