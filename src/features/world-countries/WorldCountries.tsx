@@ -9,7 +9,7 @@ import { WorldCountriesDrill } from '@/features/world-countries/drill/WorldCount
 import { WorldCountriesMaintenance } from '@/features/world-countries/maintenance/WorldCountriesMaintenance'
 import { WorldCountriesPrepare } from '@/features/world-countries/prepare/WorldCountriesPrepare'
 import { WorldCountriesRecite } from '@/features/world-countries/recite/WorldCountriesRecite'
-import { WorldCountriesPopulationProvider } from './worldCountriesPopulation'
+import { WorldCountriesPopulationProvider } from './WorldCountriesPopulationContext'
 
 type WorldCountriesArea = 'prepare' | 'drill' | 'recite' | 'maintenance'
 

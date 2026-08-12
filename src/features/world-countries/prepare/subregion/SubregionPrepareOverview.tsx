@@ -3,6 +3,7 @@ import type { Continent } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import { countryCapitalMnemonicId } from '@/features/world-countries/mnemonics/geographyMnemonicIds'
+import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
 import { PrepareMnemonicEditor } from '../PrepareMnemonicEditor'
 
 /** Map-centered inspection surface. It intentionally has no learning actions. */
@@ -26,11 +27,11 @@ export function SubregionPrepareOverview({
   const definition = getSubregionDefinition(subregion)
   return (
     <div className="space-y-4 animate-fade-in">
-      <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+      <WorldCountriesPanel>
         <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Prepare</p>
         <h1 className="mt-1 text-2xl font-bold text-zinc-100">{definition.label}</h1>
         <p className="mt-1 text-sm text-zinc-500">{entries.length} countries · {continent}</p>
-      </section>
+      </WorldCountriesPanel>
 
       <CountryLearningMap
         continent={continent}

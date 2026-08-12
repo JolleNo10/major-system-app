@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import type { AnswerMode } from '@/core/types'
-import { useWorldCountriesPopulation } from '@/features/world-countries/worldCountriesPopulation'
+import { useWorldCountriesPopulation } from '@/features/world-countries/WorldCountriesPopulationContext'
 import { createWorldCountriesReciteScope } from './reciteScope'
 
 /** Structural entry point for complete ordered World Countries recall. */

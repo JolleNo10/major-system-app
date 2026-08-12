@@ -1,5 +1,4 @@
 import { useRails } from '@/app/layout/PageLayoutContext'
-import type { ReactNode } from 'react'
 import { countries, type Continent, type Country } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition, type SubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
 import {
@@ -11,9 +10,10 @@ import {
 } from '@/features/world-countries/learning/memoProgress'
 import { getContinentHoverGroupId, getSubregionHoverGroupId } from '@/features/world-countries/maps/geographyMapAdapter'
 import { subregionMnemonicId } from '@/features/world-countries/mnemonics/geographyMnemonicIds'
+import { GeographyBreadcrumbs } from '@/features/world-countries/ui/GeographyBreadcrumbs'
+import { GeographyHierarchyRow } from '@/features/world-countries/ui/GeographyHierarchyRow'
+import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
 import { PrepareMnemonicEditor } from './PrepareMnemonicEditor'
-
-const PREPARE_RAIL_PANEL_CLS = 'rounded-xl border border-zinc-800 bg-zinc-900 p-4'
 
 interface WorldOverviewRailsProps {
   continents: readonly Continent[]
@@ -37,13 +37,13 @@ export function WorldOverviewRails({
   useRails(
     {
       left: (
-        <section className={`${PREPARE_RAIL_PANEL_CLS} space-y-4`} aria-labelledby="world-countries-continents-rail-heading">
+        <WorldCountriesPanel className="space-y-4" aria-labelledby="world-countries-continents-rail-heading">
           <div className="flex items-start justify-between gap-2">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World</p>
               <h2 id="world-countries-continents-rail-heading" className="mt-1 text-lg font-bold text-zinc-100">Continents</h2>
             </div>
-            <button type="button" onClick={onEditOrder} className="shrink-0 rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 py-1.5 text-xs font-medium text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">
+            <button type="button" onClick={onEditOrder} className="shrink-0 rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 py-1.5 text-xs font-medium text-zinc-300 hover:border-cyan-500 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">
               Edit order
             </button>
           </div>
@@ -51,7 +51,7 @@ export function WorldOverviewRails({
           <nav aria-label="Continents">
             <ul className="space-y-1.5">
               {continents.map((continent, index) => (
-                <PrepareHierarchyRailRow
+                <GeographyHierarchyRow
                   key={continent}
                   label={continent}
                   groupId={getContinentHoverGroupId(continent)}
@@ -64,7 +64,7 @@ export function WorldOverviewRails({
               ))}
             </ul>
           </nav>
-        </section>
+        </WorldCountriesPanel>
       ),
       leftLabel: 'Continents',
     },
@@ -105,19 +105,15 @@ export function ContinentOverviewRails({
   useRails(
     {
       left: (
-        <section className={`${PREPARE_RAIL_PANEL_CLS} space-y-4`} aria-labelledby="world-countries-subregions-rail-heading">
-          <nav aria-label="World Countries hierarchy" className="flex flex-wrap items-center gap-1.5 text-xs">
-            <button type="button" onClick={onWorld} className="text-zinc-500 hover:text-zinc-200">World</button>
-            <span className="text-zinc-700">/</span>
-            <span className="text-cyan-300">{continent}</span>
-          </nav>
+        <WorldCountriesPanel className="space-y-4" aria-labelledby="world-countries-subregions-rail-heading">
+          <GeographyBreadcrumbs items={[{ label: 'World', onSelect: onWorld }, { label: continent, current: true }]} />
 
           <div className="flex items-start justify-between gap-2">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">{continent}</p>
               <h2 id="world-countries-subregions-rail-heading" className="mt-1 text-lg font-bold text-zinc-100">Subregions</h2>
             </div>
-            <button type="button" onClick={onEditOrder} className="shrink-0 rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 py-1.5 text-xs font-medium text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">
+            <button type="button" onClick={onEditOrder} className="shrink-0 rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 py-1.5 text-xs font-medium text-zinc-300 hover:border-cyan-500 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">
               Edit order
             </button>
           </div>
@@ -125,7 +121,7 @@ export function ContinentOverviewRails({
           <nav aria-label={`${continent} Subregions`}>
             <ol className="space-y-1.5">
               {subregions.map((subregion, index) => (
-                <PrepareHierarchyRailRow
+                <GeographyHierarchyRow
                   key={subregion.id}
                   label={subregion.label}
                   groupId={getSubregionHoverGroupId(subregion.label)}
@@ -137,7 +133,7 @@ export function ContinentOverviewRails({
               ))}
             </ol>
           </nav>
-        </section>
+        </WorldCountriesPanel>
       ),
       right: <NextToPreparePanel nextSubregion={nextSubregion} onSelectSubregion={onSelectSubregion} />,
       leftLabel: 'Subregions',
@@ -179,14 +175,8 @@ export function PrepareSubregionRails({
   useRails(
     {
       left: (
-        <section className={`${PREPARE_RAIL_PANEL_CLS} space-y-4`} aria-labelledby="world-countries-prepare-context-heading">
-          <nav aria-label="World Countries hierarchy" className="flex flex-wrap items-center gap-1.5 text-xs">
-            <button type="button" onClick={onWorld} className="text-zinc-500 hover:text-zinc-200">World</button>
-            <span className="text-zinc-700">/</span>
-            <button type="button" onClick={onContinent} className="text-zinc-500 hover:text-zinc-200">{continent}</button>
-            <span className="text-zinc-700">/</span>
-            <span className="text-cyan-300">{getSubregionDefinition(subregion).label}</span>
-          </nav>
+        <WorldCountriesPanel className="space-y-4" aria-labelledby="world-countries-prepare-context-heading">
+          <GeographyBreadcrumbs items={[{ label: 'World', onSelect: onWorld }, { label: continent, onSelect: onContinent }, { label: getSubregionDefinition(subregion).label, current: true }]} />
 
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Prepare</p>
@@ -196,7 +186,7 @@ export function PrepareSubregionRails({
           <section aria-labelledby="prepare-learning-order-heading">
             <div className="flex items-center justify-between gap-2">
               <h3 id="prepare-learning-order-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Learning order</h3>
-              <button type="button" onClick={onEditOrder} className="shrink-0 rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 py-1.5 text-xs font-medium text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Edit order</button>
+              <button type="button" onClick={onEditOrder} className="shrink-0 rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 py-1.5 text-xs font-medium text-zinc-300 hover:border-cyan-500 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">Edit order</button>
             </div>
             <ol className="mt-3 space-y-1.5 text-sm text-zinc-300">
               {entries.map((entry, index) => (
@@ -207,7 +197,7 @@ export function PrepareSubregionRails({
               ))}
             </ol>
           </section>
-        </section>
+        </WorldCountriesPanel>
       ),
       right: (
         <div className="w-full space-y-3">
@@ -231,43 +221,6 @@ export function PrepareSubregionRails({
   return null
 }
 
-function PrepareHierarchyRailRow({
-  label,
-  onClick,
-  groupId,
-  hoveredGroupId,
-  onHoverGroup,
-  sequenceNumber,
-  trailing,
-}: {
-  label: string
-  onClick: () => void
-  groupId: string
-  hoveredGroupId: string | null
-  onHoverGroup: (groupId: string | null) => void
-  sequenceNumber?: number
-  trailing?: ReactNode
-}) {
-  const hovered = hoveredGroupId === groupId
-  return (
-    <li>
-      <button
-        type="button"
-        onClick={onClick}
-        onMouseEnter={() => onHoverGroup(groupId)}
-        onMouseLeave={() => onHoverGroup(null)}
-        onFocus={() => onHoverGroup(groupId)}
-        onBlur={() => onHoverGroup(null)}
-        className={`flex min-h-[40px] w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors ${hovered ? 'border-cyan-500 bg-cyan-950/60 text-zinc-100' : 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-cyan-500 hover:text-zinc-100'}`}
-      >
-        {sequenceNumber !== undefined && <span className="w-5 shrink-0 text-right text-xs tabular-nums text-zinc-600">{sequenceNumber}.</span>}
-        <span className="min-w-0 flex-1 truncate">{label}</span>
-        {trailing !== undefined && <span className="shrink-0 text-xs tabular-nums text-zinc-500">{trailing}</span>}
-      </button>
-    </li>
-  )
-}
-
 function NextToPreparePanel({
   nextSubregion,
   emptyLabel = 'All subregions prepared',
@@ -279,16 +232,16 @@ function NextToPreparePanel({
 }) {
   const hasNext = nextSubregion !== null
   return (
-    <section aria-labelledby="world-countries-next-to-prepare-heading" aria-disabled={!hasNext} className={`rounded-xl border bg-zinc-900 p-4 ${hasNext ? 'border-zinc-800' : 'border-zinc-800 opacity-70'}`}>
+    <WorldCountriesPanel aria-labelledby="world-countries-next-to-prepare-heading" aria-disabled={!hasNext} className={!hasNext ? 'opacity-70' : undefined}>
       <h3 id="world-countries-next-to-prepare-heading" className="text-sm font-semibold text-zinc-200">Prepare next</h3>
       <div className={`mt-3 rounded-lg border px-3 py-2.5 ${hasNext ? 'border-cyan-500/40 bg-cyan-600/10' : 'border-zinc-800 bg-zinc-800/40'}`}>
         <p className="text-[10px] uppercase tracking-wider text-zinc-500">{hasNext ? 'Unprepared subregion' : 'Complete'}</p>
         <p className={`mt-1 text-sm font-semibold ${hasNext ? 'text-cyan-300' : 'text-zinc-500'}`}>{nextSubregion?.label ?? emptyLabel}</p>
       </div>
-      <button type="button" onClick={() => { if (nextSubregion) onSelectSubregion(nextSubregion.id) }} disabled={!hasNext} className="mt-3 w-full rounded-xl bg-cyan-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-cyan-500 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500">
+      <button type="button" onClick={() => { if (nextSubregion) onSelectSubregion(nextSubregion.id) }} disabled={!hasNext} className="mt-3 w-full rounded-xl bg-cyan-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-cyan-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500">
         {hasNext ? 'Open subregion →' : emptyLabel}
       </button>
-    </section>
+    </WorldCountriesPanel>
   )
 }
 

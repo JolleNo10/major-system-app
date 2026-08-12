@@ -66,24 +66,35 @@ Memo readiness remains the internal name for the durable coarse milestones.
   adapters, the reusable World/Continent `GeographyOverviewMap` presentation,
   and temporary display-label overrides. Overview-map
   callbacks are workflow-neutral; callers interpret geographic clicks.
+- `ui/` — feature-local presentation shared by multiple World Countries
+  workflow or capability owners. `WorldCountriesPanel` is the canonical
+  contained surface, while `GeographyBreadcrumbs` and
+  `GeographyHierarchyRow` own shared hierarchy presentation and map-linked
+  hover/focus treatment. This directory contains no workflow state, stores,
+  selection policy, learning policy, or persistence.
 - `mnemonics/` — feature target IDs, geography mnemonic semantics, feature
   backup envelope, adapters over shared mnemonic storage, and workflow-neutral
   read-only `GeographyMnemonicView` presentation. Authoring controls belong to
   `prepare/`.
 - `prepare/` — map-centered World → Continent → Subregion preparation
   navigation, readiness presentation, geography order authoring, preparation
-  rails, and mnemonic authoring. `LearningOrderEditor` is shared by all three
-  hierarchy levels, including the best-effort "Order left to right" map action.
+  rails, and mnemonic authoring. `WorldCountriesPrepare.tsx` coordinates the
+  workflow; `WorldPrepareOverview.tsx`, `ContinentPrepareOverview.tsx`, and
+  `subregion/SubregionPrepareScreen.tsx` own their respective presentation
+  phases. `LearningOrderEditor` is shared by all three hierarchy levels,
+  including the best-effort "Order left to right" map action.
 - Prepare overview maps and rails present Subregion Memo readiness, not Drill
   proficiency. World and Continent Prepare progress count current canonical
   Subregions at the cumulative Countries and Countries + Capitals milestones.
 - `drill/` — Drill-only setup and preferences, Continent/Subregion selection,
   four recall-mode definitions, visible Country scheduling, active session
-  orchestration, and results. A Drill mode is a workflow combination of
-  atomic learning skills; it is not part of learning-evidence identity. Drill
-  is map-centered in both setup and active recall: scope and supporting controls
-  adapt around the map through the established PageLayout rails, while the
-  center retains the map and essential answer interaction.
+  orchestration, and results. `DrillSetupRails.tsx`, `DrillSessionRails.tsx`,
+  and `DrillResultsRails.tsx` publish phase-specific rail content. A Drill
+  mode is a workflow combination of atomic learning skills; it is not part of
+  learning-evidence identity. Drill is map-centered in both setup and active
+  recall: scope and supporting controls adapt around the map through the
+  established PageLayout rails, while the center retains the map and essential
+  answer interaction.
 - `recite/`, `maintenance/` — sibling workflow owners for complete recall and
   review selection. They may consume shared World Countries evidence without
   importing Drill internals.
@@ -121,6 +132,9 @@ feature-local `domain/` or `persistence/` layers, generic `common/`, a root
   `mnemonics/`; generic record/image mechanics stay in `core/mnemonics`.
 - A capability shared by workflows must not be owned by one workflow folder.
   Workflow folders are siblings and do not import one another's internals.
+- World Countries-specific presentation shared across workflow owners belongs
+  in `ui/`; those components accept data and callbacks and do not acquire
+  workflow or domain policy.
 - Pure and impure modules may share a capability owner. Do not create generic
   `domain/` or `persistence/` buckets solely to separate them technically.
 - `WorldCountries.tsx` composes capabilities. It does not decide membership,
@@ -146,17 +160,21 @@ flowchart TD
     Prepare --> Learning
     Prepare --> Maps
     Prepare --> Mnemonics
+    Prepare --> UI
     Flows["learning/flows/"] --> Geography
     Flows --> Learning
     Flows --> Maps
     Flows --> Mnemonics
+    Flows --> UI
     Drill["drill/"] --> Geography
     Drill --> Learning
     Drill --> Maps
+    Drill --> UI
     Recite["recite/"] --> Geography
     Recite --> Learning
     Maintenance["maintenance/"] --> Learning
     Drill --> Flows
+    UI["ui/"]
     Shell["WorldCountries.tsx"] --> Prepare
     Shell --> Drill
     Shell --> Recite
@@ -326,11 +344,11 @@ real external consumer exists.
   Country → Capital progress/readiness as read-only practice guidance.
   Multi-skill results expose per-skill summaries. Active recall maps do not
   render target-revealing progress.
-- Guided Capital learning, review, and direct practice require
-  `countriesLearnedAt`; Drill exposes those actions for a single Subregion and
-  keeps them locked with `Complete Countries first.` until the gate is
-  satisfied. The separate Capitals Drill helper is practice-only and does not
-  write evidence.
+- Guided Capital learning, review, and direct practice remain owned by
+  `learning/flows/` and require `countriesLearnedAt`; the current Drill setup
+  exposes guided Country learning only. The Capital flow retains its
+  `Complete Countries first.` gate at its capability boundary. The separate
+  Capitals Drill helper is practice-only and does not write evidence.
 - Completed Country and Capital tracks expose parallel review and direct
   practice actions; Capital review starts the walkthrough, while Capital
   practice starts a fresh shuffled recall session.
@@ -364,9 +382,12 @@ real external consumer exists.
 - `src/features/world-countries/learning/progressPresentation.ts`
 - `src/features/world-countries/learning/useWorldCountriesCountryColors.ts`
 - `src/features/world-countries/learning/subregionLearningStore.ts`
-- `src/features/world-countries/worldCountriesPopulation.tsx`
+- `src/features/world-countries/WorldCountriesPopulationContext.tsx`
 - `src/features/world-countries/learning/memoProgress.ts`
 - `src/features/world-countries/drill/WorldCountriesDrill.tsx`
+- `src/features/world-countries/drill/DrillSetupRails.tsx`
+- `src/features/world-countries/drill/DrillSessionRails.tsx`
+- `src/features/world-countries/drill/DrillResultsRails.tsx`
 - `src/features/world-countries/drill/drillSelection.ts`
 - `src/features/world-countries/drill/drillSessionState.ts`
 - `src/features/world-countries/drill/drillPreferences.ts`
@@ -376,7 +397,12 @@ real external consumer exists.
 - `src/features/world-countries/learning/CountryLearningMap.tsx`
 - `src/features/world-countries/mnemonics/geographyMnemonics.ts`
 - `src/features/world-countries/prepare/WorldCountriesPrepare.tsx`
+- `src/features/world-countries/prepare/WorldPrepareOverview.tsx`
+- `src/features/world-countries/prepare/ContinentPrepareOverview.tsx`
 - `src/features/world-countries/prepare/WorldCountriesPrepareRails.tsx`
+- `src/features/world-countries/ui/WorldCountriesPanel.tsx`
+- `src/features/world-countries/ui/GeographyBreadcrumbs.tsx`
+- `src/features/world-countries/ui/GeographyHierarchyRow.tsx`
 
 ## Historical rationale
 

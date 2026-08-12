@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useBlobUrl, useMnemonic } from '@/core/mnemonics'
 import type { Mnemonic } from '@/core/mnemonics'
 import { isSubregionMnemonicStale } from './geographyMnemonics'
+import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
 
 /** Workflow-neutral mnemonic presentation. It deliberately exposes no authoring controls. */
 export function GeographyMnemonicView({
@@ -27,7 +28,7 @@ export function GeographyMnemonicView({
   const hasContent = Boolean(mnemonic && (mnemonic.text.trim() || mnemonic.image))
 
   return (
-    <article className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+    <WorldCountriesPanel as="article">
       <h3 className="text-sm font-semibold text-zinc-200">{title}</h3>
       <p className="mt-1 text-xs text-zinc-500">{subtitle}</p>
       {loading ? (
@@ -41,6 +42,6 @@ export function GeographyMnemonicView({
         <p className="mt-3 text-xs text-zinc-600">No mnemonic has been prepared for this relationship yet.</p>
       )}
       {stale && <p className="mt-3 text-xs text-amber-400">This mnemonic was created for a different country order.</p>}
-    </article>
+    </WorldCountriesPanel>
   )
 }

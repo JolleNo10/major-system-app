@@ -2,7 +2,7 @@ import { useCallback, useId, useMemo, useState } from 'react'
 import type { Continent, Country, CountryId } from '@/features/world-countries/data/countries'
 import type { SubregionId } from '@/features/world-countries/data/subregions'
 import { getCountriesForContinent, getCountriesForSubregion } from '@/features/world-countries/geography/queries'
-import { useWorldCountriesPopulation } from '@/features/world-countries/worldCountriesPopulation'
+import { useWorldCountriesPopulation } from '@/features/world-countries/WorldCountriesPopulationContext'
 import {
   createContinentHoverGroups,
   createCountryColors,

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { AnswerMode } from '@/core/types'
-import { useWorldCountriesPopulation } from '@/features/world-countries/worldCountriesPopulation'
+import { useWorldCountriesPopulation } from '@/features/world-countries/WorldCountriesPopulationContext'
 import {
   loadWorldCountriesRecallProgress,
   type RecallProgress,

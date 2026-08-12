@@ -1,8 +1,8 @@
 import { useMemo } from 'react'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
-import { DrillResultStat } from './DrillResultStat'
-import { DrillResultsRails } from './DrillRails'
+import { DrillResultStats } from './DrillResultStats'
+import { DrillResultsRails } from './DrillResultsRails'
 import { getDrillModeDefinition, getDrillSkillLabel, getSkillsForDrillMode, type WorldCountriesDrillMode } from './drillModes'
 import type { DrillAnswerRecord } from './drillSessionState'
 import { summarizeDrillAnswers } from './drillResultSummary'
@@ -11,7 +11,8 @@ import { useWorldCountriesCountryColors } from '@/features/world-countries/learn
 import { DrillProgressLegend } from './DrillProgressLegend'
 import { getAllSubregionLearningStates } from '@/features/world-countries/learning/subregionLearningStore'
 import { createDrillProgressColors, createDrillProgressDescriptions } from './drillProgressPresentation'
-import { useWorldCountriesPopulation } from '@/features/world-countries/worldCountriesPopulation'
+import { useWorldCountriesPopulation } from '@/features/world-countries/WorldCountriesPopulationContext'
+import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
 
 export function DrillResults({
   mode,
@@ -78,14 +79,10 @@ export function DrillResults({
         />
         <DrillProgressLegend mode={mode} />
 
-        <section className="grid grid-cols-3 gap-2" aria-label="Drill summary">
-          <DrillResultStat label="Correct" value={`${summary.correct}/${answers.length}`} />
-          <DrillResultStat label="Accuracy" value={`${summary.accuracy}%`} />
-          <DrillResultStat label="Countries" value={String(summary.countryCount)} />
-        </section>
+        <DrillResultStats summary={summary} answerCount={answers.length} showCountryCount />
 
         {summary.bySkill.size > 1 && (
-          <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4" aria-label="Results by recall skill">
+          <WorldCountriesPanel aria-label="Results by recall skill">
             <h2 className="text-sm font-semibold text-zinc-200">Results by skill</h2>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               {[...summary.bySkill.entries()].map(([skill, result]) => (
@@ -96,7 +93,7 @@ export function DrillResults({
                 </div>
               ))}
             </div>
-          </section>
+          </WorldCountriesPanel>
         )}
       </div>
     </>

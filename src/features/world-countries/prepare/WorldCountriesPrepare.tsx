@@ -1,22 +1,18 @@
-import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import type { AnswerMode } from '@/core/types'
-import { Overlay } from '@/app/layout/Overlay'
-import type { Continent, Country } from '@/features/world-countries/data/countries'
-import type { SubregionDefinition, SubregionId } from '@/features/world-countries/data/subregions'
+import type { Continent } from '@/features/world-countries/data/countries'
+import type { SubregionId } from '@/features/world-countries/data/subregions'
 import { getAllSubregionLearningStates } from '@/features/world-countries/learning/subregionLearningStore'
 import {
   createWorldCountriesMemoReadinessByCountry,
   createWorldCountriesMemoReadinessColors,
 } from '@/features/world-countries/learning/memoReadiness'
-import { getContinentsInEffectiveOrder, getSubregionsForContinentInEffectiveOrder } from '@/features/world-countries/geography/queries'
-import { getContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
-import { useWorldCountriesPopulation } from '@/features/world-countries/worldCountriesPopulation'
+import { getContinentsInEffectiveOrder } from '@/features/world-countries/geography/queries'
+import { useWorldCountriesPopulation } from '@/features/world-countries/WorldCountriesPopulationContext'
 import { getWorldMetadata } from '@/features/world-countries/geography/worldMetadataStore'
-import { PrepareMap } from './PrepareMap'
-import { ContinentOrderEditor } from './continent/ContinentOrderEditor'
-import { WorldOrderEditor } from './world/WorldOrderEditor'
+import { ContinentPrepareOverview } from './ContinentPrepareOverview'
 import { SubregionPrepareScreen } from './subregion/SubregionPrepareScreen'
-import { ContinentOverviewRails, WorldOverviewRails } from './WorldCountriesPrepareRails'
+import { WorldPrepareOverview } from './WorldPrepareOverview'
 
 export function WorldCountriesPrepare({ answerMode: _answerMode }: { answerMode: AnswerMode }) {
   const activeCountries = useWorldCountriesPopulation()
@@ -107,200 +103,5 @@ export function WorldCountriesPrepare({ answerMode: _answerMode }: { answerMode:
       memoReadinessColorsById={memoReadinessColorsById}
       memoReadinessByCountryId={memoReadinessByCountryId}
     />
-  )
-}
-
-function WorldPrepareOverview({
-  continents,
-  activeCountries,
-  learningStates,
-  hoveredGroupId,
-  onLearningChanged,
-  onSelectContinent,
-  onHoverGroup,
-  memoReadinessColorsById,
-  memoReadinessByCountryId,
-}: {
-  continents: readonly Continent[]
-  activeCountries: readonly Country[]
-  learningStates: ReturnType<typeof getAllSubregionLearningStates>
-  hoveredGroupId: string | null
-  onLearningChanged: () => void
-  onSelectContinent: (continent: Continent) => void
-  onHoverGroup: (groupId: string | null) => void
-  memoReadinessColorsById: ReadonlyMap<string, string>
-  memoReadinessByCountryId: ReadonlyMap<string, import('@/features/world-countries/learning/memoReadiness').WorldCountriesMemoReadiness>
-}) {
-  const [editingOrder, setEditingOrder] = useState(false)
-  const [draftContinents, setDraftContinents] = useState<readonly Continent[] | null>(null)
-  const railContinents = draftContinents ?? continents
-
-  const openOrderEditor = useCallback(() => {
-    setDraftContinents(continents)
-    setEditingOrder(true)
-  }, [continents])
-  const closeOrderEditor = useCallback(() => {
-    setDraftContinents(null)
-    setEditingOrder(false)
-    onHoverGroup(null)
-  }, [onHoverGroup])
-  const handleOrderChanged = useCallback(() => {
-    setDraftContinents(null)
-    onHoverGroup(null)
-    onLearningChanged()
-  }, [onHoverGroup, onLearningChanged])
-
-  return (
-    <>
-      <PrepareOverviewShell
-        rails={
-          <WorldOverviewRails
-            continents={railContinents}
-            activeCountries={activeCountries}
-            learningStates={learningStates}
-            hoveredGroupId={hoveredGroupId}
-            onSelectContinent={onSelectContinent}
-            onHoverGroup={onHoverGroup}
-            onEditOrder={openOrderEditor}
-          />
-        }
-        map={
-          <PrepareMap
-            level="world"
-            memoReadinessColorsById={memoReadinessColorsById}
-            memoReadinessByCountryId={memoReadinessByCountryId}
-            hoveredGroupId={hoveredGroupId}
-            onHoverGroup={onHoverGroup}
-            onSelectContinent={onSelectContinent}
-          />
-        }
-      />
-
-      {editingOrder && (
-        <Overlay
-          onClose={closeOrderEditor}
-          ariaLabel="Edit learning order"
-          header={<h2 className="text-lg font-bold text-zinc-100">Edit learning order</h2>}
-          maxWidth="max-w-lg"
-          presentation="side-panel"
-        >
-          <WorldOrderEditor
-            entries={continents}
-            onHoverGroup={onHoverGroup}
-            onDraftChanged={setDraftContinents}
-            onChanged={handleOrderChanged}
-            onClose={closeOrderEditor}
-          />
-        </Overlay>
-      )}
-    </>
-  )
-}
-
-function ContinentPrepareOverview({
-  continent,
-  activeCountries,
-  learningStates,
-  hoveredGroupId,
-  learningVersion,
-  onWorld,
-  onSelectSubregion,
-  onHoverGroup,
-  onLearningChanged,
-  memoReadinessColorsById,
-  memoReadinessByCountryId,
-}: {
-  continent: Continent
-  activeCountries: readonly Country[]
-  learningStates: ReturnType<typeof getAllSubregionLearningStates>
-  hoveredGroupId: string | null
-  learningVersion: number
-  onWorld: () => void
-  onSelectSubregion: (subregion: SubregionId) => void
-  onHoverGroup: (groupId: string | null) => void
-  onLearningChanged: () => void
-  memoReadinessColorsById: ReadonlyMap<string, string>
-  memoReadinessByCountryId: ReadonlyMap<string, import('@/features/world-countries/learning/memoReadiness').WorldCountriesMemoReadiness>
-}) {
-  const [editingOrder, setEditingOrder] = useState(false)
-  const [draftSubregions, setDraftSubregions] = useState<readonly SubregionDefinition[] | null>(null)
-  const subregions = useMemo(
-    () => getSubregionsForContinentInEffectiveOrder(continent, activeCountries, getContinentMetadata(continent)),
-    [activeCountries, continent, learningVersion],
-  )
-  const railSubregions = draftSubregions ?? subregions
-
-  const openOrderEditor = useCallback(() => {
-    setDraftSubregions(subregions)
-    setEditingOrder(true)
-  }, [subregions])
-  const closeOrderEditor = useCallback(() => {
-    setDraftSubregions(null)
-    setEditingOrder(false)
-    onHoverGroup(null)
-  }, [onHoverGroup])
-  const handleOrderChanged = useCallback(() => {
-    setDraftSubregions(null)
-    onHoverGroup(null)
-    onLearningChanged()
-  }, [onHoverGroup, onLearningChanged])
-
-  return (
-    <>
-      <PrepareOverviewShell
-        rails={
-          <ContinentOverviewRails
-            continent={continent}
-            subregions={railSubregions}
-            activeCountries={activeCountries}
-            learningStates={learningStates}
-            hoveredGroupId={hoveredGroupId}
-            onWorld={onWorld}
-            onSelectSubregion={onSelectSubregion}
-            onHoverGroup={onHoverGroup}
-            onEditOrder={openOrderEditor}
-          />
-        }
-        map={
-          <PrepareMap
-            level="continent"
-            continent={continent}
-            memoReadinessColorsById={memoReadinessColorsById}
-            memoReadinessByCountryId={memoReadinessByCountryId}
-            hoveredGroupId={hoveredGroupId}
-            onHoverGroup={onHoverGroup}
-            onSelectSubregion={onSelectSubregion}
-          />
-        }
-      />
-
-      {editingOrder && (
-        <Overlay
-          onClose={closeOrderEditor}
-          ariaLabel="Edit learning order"
-          header={<h2 className="text-lg font-bold text-zinc-100">Edit learning order</h2>}
-          maxWidth="max-w-lg"
-          presentation="side-panel"
-        >
-          <ContinentOrderEditor
-            continent={continent}
-            entries={subregions}
-            onHoverGroup={onHoverGroup}
-            onDraftChanged={setDraftSubregions}
-            onChanged={handleOrderChanged}
-            onClose={closeOrderEditor}
-          />
-        </Overlay>
-      )}
-    </>
-  )
-}
-
-function PrepareOverviewShell({ rails, map }: { rails: ReactNode; map: ReactNode }) {
-  return (
-    <>
-      {rails}
-      <div className="w-full animate-fade-in">{map}</div>
-    </>
   )
 }

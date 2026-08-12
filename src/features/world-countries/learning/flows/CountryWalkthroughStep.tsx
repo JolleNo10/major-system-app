@@ -3,6 +3,7 @@ import type { Continent } from '@/features/world-countries/data/countries'
 import type { CountryLearningFlowState } from '@/features/world-countries/learning/countryLearningFlow'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import { LearningHeader } from './MemoryPreviewStep'
+import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
 
 export function CountryWalkthroughStep({
   continent,
@@ -28,11 +29,11 @@ export function CountryWalkthroughStep({
   return (
     <div className="space-y-4 animate-fade-in">
       <LearningHeader label="Phase 1 · country walkthrough" title={`${index + 1} / ${entries.length}`} onExit={onExit} />
-      <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-center">
+      <WorldCountriesPanel className="text-center">
         <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Study this location</p>
         <h2 className="mt-2 text-3xl font-black text-zinc-100">{country.country}</h2>
         <p className="mt-2 text-sm text-zinc-500">Shape · location · position in your learning sequence</p>
-      </section>
+      </WorldCountriesPanel>
       <CountryLearningMap
         continent={continent}
         scopeCountries={entries}

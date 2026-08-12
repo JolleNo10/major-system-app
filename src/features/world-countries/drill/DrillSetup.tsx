@@ -15,9 +15,8 @@ import {
 import { getSkillsForDrillMode, type WorldCountriesDrillMode } from './drillModes'
 import type { WorldCountriesDrillOrder } from './drillOrder'
 import { createDrillProgressColors, createDrillProgressDescriptions } from './drillProgressPresentation'
-import { DrillSetupRails } from './DrillRails'
+import { DrillSetupRails } from './DrillSetupRails'
 import { DrillProgressLegend } from './DrillProgressLegend'
-import type { GuidedLearningActionId } from './guidedLearning'
 
 export function DrillSetup({
   level,
@@ -33,7 +32,7 @@ export function DrillSetup({
   onPracticeStart = () => undefined,
   onWorld,
   onSelectContinent,
-  onGuidedAction = () => undefined,
+  onLearnCountries = () => undefined,
   entries = countries,
 }: {
   level: 'world' | 'continent'
@@ -49,7 +48,7 @@ export function DrillSetup({
   onPracticeStart?: (mode: WorldCountriesDrillMode) => void
   onWorld: () => void
   onSelectContinent: (continent: Continent) => void
-  onGuidedAction?: (action: GuidedLearningActionId) => void
+  onLearnCountries?: () => void
   entries?: readonly Country[]
 }) {
   const subregions = getDrillSubregions(selection.continent, entries)
@@ -103,7 +102,7 @@ export function DrillSetup({
         onOrderChange={onOrderChange}
         onStart={onStart}
         onPracticeStart={onPracticeStart}
-        onGuidedAction={onGuidedAction}
+        onLearnCountries={onLearnCountries}
         entries={entries}
       />
 

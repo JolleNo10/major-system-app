@@ -8,6 +8,7 @@ import {
 } from '@/core/mnemonics'
 import type { Mnemonic } from '@/core/mnemonics'
 import { isSubregionMnemonicStale } from '@/features/world-countries/mnemonics/geographyMnemonics'
+import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
 
 interface PrepareMnemonicEditorProps {
   targetId: string
@@ -87,7 +88,7 @@ export function PrepareMnemonicEditor({
     : false
 
   return (
-    <article className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+    <WorldCountriesPanel as="article">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold text-zinc-200">{title}</h3>
@@ -148,6 +149,6 @@ export function PrepareMnemonicEditor({
 
       {stale && <p className="mt-3 text-xs text-amber-400">This mnemonic was created for a different country order. Review and save it to update.</p>}
       {error && <p className="mt-3 text-xs text-red-300">{error}</p>}
-    </article>
+    </WorldCountriesPanel>
   )
 }

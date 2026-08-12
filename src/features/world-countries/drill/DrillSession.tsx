@@ -9,7 +9,7 @@ import { classifyRecallAnswer } from '@/features/world-countries/learning/recall
 import type { WorldCountriesRecallSkill } from '@/features/world-countries/learning/recallTargets'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import type { WorldCountriesDrillSelection } from './drillSelection'
-import { DrillSessionRails } from './DrillRails'
+import { DrillSessionRails } from './DrillSessionRails'
 import { getDrillSkillLabel } from './drillModes'
 import {
   getCurrentDrillStep,

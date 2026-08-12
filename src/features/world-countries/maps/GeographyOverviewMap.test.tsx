@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { PrepareMap } from '@/features/world-countries/prepare/PrepareMap'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import { countries } from '@/features/world-countries/data/countries'
-import { WorldCountriesPopulationProvider } from '@/features/world-countries/worldCountriesPopulation'
+import { WorldCountriesPopulationProvider } from '@/features/world-countries/WorldCountriesPopulationContext'
 import europeSvg from '@/features/world-countries/maps/assets/MapChart_Map_Europe_names.svg?raw'
 import { GeographyOverviewMap } from './GeographyOverviewMap'
 
