@@ -29,26 +29,17 @@ export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
   )
 
   useLayoutHeader(
-    <div className="w-full space-y-4 pb-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World Countries</p>
-          <h1 className="mt-1 text-xl font-bold text-zinc-100">Learn, practise and retain</h1>
-        </div>
-        <button
-          type="button"
-          onClick={() => setArea('maintenance')}
-          className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
-            area === 'maintenance'
-              ? 'border-cyan-500 bg-cyan-600 text-white'
-              : 'border-zinc-700 bg-zinc-800 text-zinc-300 hover:border-cyan-500 hover:text-zinc-100'
-          }`}
-        >
-          Due review
-        </button>
-      </div>
+    <nav
+      aria-label="World Countries navigation"
+      className="flex w-full min-w-0 flex-wrap items-center gap-x-4 gap-y-2 py-2"
+    >
+      <span className="shrink-0 text-sm font-semibold text-zinc-100">World Countries</span>
 
-      <div role="tablist" aria-label="World Countries activities" className="flex w-fit gap-1 rounded-lg bg-zinc-800 p-1">
+      <div
+        role="tablist"
+        aria-label="World Countries activities"
+        className="flex min-w-0 max-w-full flex-wrap gap-1 rounded-lg bg-zinc-800 p-1"
+      >
         {AREAS.map(candidate => (
           <button
             key={candidate.id}
@@ -56,7 +47,7 @@ export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
             role="tab"
             aria-selected={area === candidate.id}
             onClick={() => setArea(candidate.id)}
-            className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+            className={`shrink-0 rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
               area === candidate.id ? 'bg-cyan-600 text-white' : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
@@ -64,7 +55,19 @@ export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
           </button>
         ))}
       </div>
-    </div>,
+
+      <button
+        type="button"
+        onClick={() => setArea('maintenance')}
+        className={`ml-auto shrink-0 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+          area === 'maintenance'
+            ? 'border-cyan-500 bg-cyan-600 text-white'
+            : 'border-zinc-700 bg-zinc-800 text-zinc-300 hover:border-cyan-500 hover:text-zinc-100'
+        }`}
+      >
+        Due review
+      </button>
+    </nav>,
     [area],
   )
 
