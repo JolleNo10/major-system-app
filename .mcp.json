@@ -4,7 +4,6 @@
       "command": "repowise",
       "args": [
         "mcp",
-        "F:/repo/major-system-app",
         "--transport",
         "stdio"
       ],
