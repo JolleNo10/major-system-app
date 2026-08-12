@@ -783,7 +783,7 @@ Primary implementation/review anchors:
 * `src/features/world-countries/drill/DrillSessionRails.tsx`
 * `src/features/world-countries/drill/DrillResultsRails.tsx`
 * `src/features/world-countries/drill/DrillResults.tsx`
-* `src/features/world-countries/drill/DrillResultStat.tsx`
+* `src/features/world-countries/drill/DrillResultStats.tsx`
 * `src/features/world-countries/drill/DrillGuidedLearning.tsx`
 * `src/features/world-countries/drill/guidedLearning.ts`
 * `src/features/world-countries/learning/flows/CountryLearningComplete.tsx`
