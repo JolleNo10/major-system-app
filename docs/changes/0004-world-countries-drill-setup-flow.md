@@ -2,6 +2,7 @@
 
 - **Status:** Ready
 - **Date:** 2026-08-12
+- **Issue:** None.
 - **Current-state docs:** [System architecture](../architecture/SYSTEM.md), [World Countries](../architecture/features/WORLD_COUNTRIES.md)
 
 ## Goal
@@ -34,13 +35,14 @@ users may change mode or geography at any time during setup.
   - **Practice:** Capitals.
 - Replace the existing large descriptive mode cards with compact selectable
   rows. Each row displays its mode label. Display the selected mode's existing
-  description once beneath the choices instead of repeating descriptions in
-  every row.
+  description once beneath the complete set of choices instead of repeating
+  descriptions in every row.
 - Keep World geography selection and Continent Drill-scope selection beneath
   the Mode section. Preserve their existing behavior, content, hover coupling,
   and map interactions.
 - Keep the selected mode in the Current drill summary on the right as a
-  read-only confirmation.
+  read-only confirmation rendered without button, link, or other interactive
+  affordances.
 - Keep all existing drill-order, guided-learning, and Start actions on the
   right. Their behavior and availability rules remain unchanged.
 - Change responsive drawer labels and grouping so the left drawer is
@@ -56,9 +58,13 @@ users may change mode or geography at any time during setup.
 - A returning user continues to receive the last persisted mode.
 - Changing mode continues to update the map's progress colors, accessible map
   descriptions, progress legend, Current drill summary, and eventual session.
-- Mode choices use native keyboard-operable controls and expose their selected
-  state programmatically. The Mode section and its Drill and Practice groups
-  have accessible labels.
+- Mode choices form one native radio group so their mutually exclusive state
+  and keyboard behavior are explicit. The group contains two visually and
+  programmatically labelled subsections, Drill and Practice; all four radio
+  inputs share the same name even though they appear in those two subsections.
+- The selected mode description appears once after both subsections, at the
+  bottom of the Mode section. The radio group is programmatically described by
+  that text.
 
 ### Geography selection
 
@@ -151,23 +157,30 @@ users may change mode or geography at any time during setup.
       Mode section and places Geography/Drill scope beneath it.
 - [ ] Mode presents Countries, Countries + Capitals, and Countries from
       Capitals under Drill, and Capitals under Practice.
-- [ ] All four modes are compact selectable rows, exactly one row exposes the
-      selected state, and only the selected mode's description is displayed.
+- [ ] All four modes are compact native radio rows in one group, exactly one
+      row is checked, and only the selected mode's description is displayed
+      once below both Drill and Practice.
 - [ ] A fresh setup shows Countries selected while allowing zero selected
       Subregions; persisted users continue to receive their saved mode.
 - [ ] Changing modes updates the progress map/legend and the read-only mode
       value in Current drill without changing the geographic selection.
 - [ ] Navigating between World and Continent setup preserves the selected mode.
 - [ ] The right rail contains Current drill, drill order, applicable existing
-      guided-learning actions, and Start, with no mode-selection controls.
+      guided-learning actions, and Start, with no mode-selection controls or
+      interactive affordance on its read-only mode value.
 - [ ] Start remains disabled at World level and when no Subregions are selected;
       existing guided-action availability is unchanged.
 - [ ] Below the rail breakpoint, one Drill setup drawer contains mode before
       geography/scope and one Current drill drawer contains review/launch
       content.
-- [ ] Mode rows and groups are keyboard accessible, expose their selected state
-      and labels to assistive technology, and do not overflow the existing
-      rail/drawer width.
+- [ ] The Mode radio group and its Drill and Practice subsections expose their
+      labels to assistive technology; the group is programmatically associated
+      with the selected description; and its rows are keyboard accessible,
+      expose checked state, and do not overflow the existing rail/drawer width.
+- [ ] Rail and responsive-drawer tests assert the new **Drill setup**,
+      **Current drill**, and **Mode** labels and radio-group semantics instead
+      of the removed **Drill geography**, **Drill controls**, and **Recall
+      modes** labels.
 - [ ] Active Drill, results, persisted preference schema, scheduling, scoring,
       evidence recording, and map-progress semantics have no behavior changes.
 - [ ] World Countries feature tests, TypeScript compilation, and the production
