@@ -81,7 +81,7 @@ the ownership boundary here and in the affected feature document.
 | --- | --- | --- |
 | `major-system/` | Sound-key and 00–99 word training | `@/features/major-system` |
 | `pi/` | Memo, Recite, Anchors, and Maintain workflows for Pi | `@/features/pi` |
-| `cards/` | Major, themed, and PAO card systems | `@/features/cards` |
+| `cards/` | Themed and PAO card systems | `@/features/cards` |
 | `world-countries/` | Geography data, maps, mnemonics, learning, and workflows | `@/features/world-countries` |
 
 External consumers import a feature through its barrel. Internal code imports
@@ -91,7 +91,6 @@ demonstrated cross-feature or app consumer.
 ## Intentional cross-feature dependencies
 
 - `pi/` uses `useWords()` from the Major System public boundary.
-- `cards/card/` uses the Major System word provider for the Major Card deck.
 - `cards/pao/` can seed PAO Person values from `cards/themed/`; this is an
   internal edge inside the Cards feature.
 

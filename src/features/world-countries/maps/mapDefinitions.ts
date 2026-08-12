@@ -4,41 +4,8 @@ import asiaSvgUrl from '@/features/world-countries/maps/assets/MapChart_Map_Asia
 import europeSvgUrl from '@/features/world-countries/maps/assets/MapChart_Map_Europe_names.svg?url'
 import oceaniaSvgUrl from '@/features/world-countries/maps/assets/MapChart_Map_Oceania.svg?url'
 import worldSvgUrl from '@/features/world-countries/maps/assets/MapChart_Map_World.svg?url'
-import type { SvgMapHoverGroup, SvgMapZoomArea } from '@/features/world-countries/maps/SvgMapController'
 import { CONTINENT_MAP_IDS, type Continent } from '@/features/world-countries/data/countries'
 import { getContinents } from '@/features/world-countries/geography/queries'
-
-export interface MapDefinition {
-  id: string
-  label: string
-  svgUrl: string
-  demoCountryIds: readonly string[]
-  hoverGroups: readonly SvgMapHoverGroup[]
-  zoomAreas: readonly SvgMapZoomArea[]
-}
-
-export const MAP_DEFINITIONS: readonly MapDefinition[] = [
-  {
-    id: 'europe',
-    label: 'Europe',
-    svgUrl: europeSvgUrl,
-    demoCountryIds: ['Germany', 'Italy', 'England', 'Andorra'],
-    hoverGroups: [
-      {
-        id: 'scandinavia-demo',
-        countryIds: ['Norway', 'Sweden', 'Denmark'],
-      },
-    ],
-    zoomAreas: [
-      {
-        id: 'nordics',
-        label: 'Nordics',
-        countryIds: ['Denmark', 'Finland', 'Iceland', 'Norway', 'Sweden'],
-        padding: 50,
-      },
-    ],
-  },
-]
 
 export interface MemoMapDefinition {
   id: string

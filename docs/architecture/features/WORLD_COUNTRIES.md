@@ -39,7 +39,6 @@ Memo readiness remains the internal name for the durable coarse milestones.
   entry.
 - `drill/WorldCountriesDrill.tsx`, `recite/WorldCountriesRecite.tsx`, and
   `maintenance/WorldCountriesMaintenance.tsx` are their workflow entries.
-- `maps/workarea/MapWorkarea.tsx` is an experimental app-visible map surface.
 
 ## Ownership
 
@@ -65,7 +64,7 @@ Memo readiness remains the internal name for the durable coarse milestones.
   Capital → Country skills.
 - `maps/` — SVG controller/view, map definitions/assets, Country-to-SVG
   adapters, the reusable World/Continent `GeographyOverviewMap` presentation,
-  temporary display-label overrides, and experimental workarea. Overview-map
+  and temporary display-label overrides. Overview-map
   callbacks are workflow-neutral; callers interpret geographic clicks.
 - `mnemonics/` — feature target IDs, geography mnemonic semantics, feature
   backup envelope, adapters over shared mnemonic storage, and workflow-neutral
@@ -166,8 +165,7 @@ flowchart TD
 
 The feature also consumes `core/types`, `core/storage`, `core/mnemonics`, and
 narrow app integration contracts for settings, overlays, and page rails.
-`MapWorkarea`, Prepare's feature-owned rail composition, and guided learning
-publish rails through
+Prepare's feature-owned rail composition and guided learning publish rails through
 the current app layout integration seam.
 
 ## Persistence
@@ -219,8 +217,8 @@ change Pi, Major System, Cards, global settings, or shared database ownership.
 ## Public boundary
 
 Consumers outside this feature import from `@/features/world-countries`.
-`index.ts` exports `WorldCountries`, `MapWorkarea`, and the deliberately narrow
-country-set settings contracts used by app settings. Internal stores, queries,
+`index.ts` exports `WorldCountries` and the deliberately narrow country-set
+settings contracts used by app settings. Internal stores, queries,
 session mechanics, mnemonic adapters, and map adapters remain private until a
 real external consumer exists.
 

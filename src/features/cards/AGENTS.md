@@ -15,11 +15,10 @@ read `docs/architecture/features/CARDS.md`.
 ## Scope and starting points
 
 Normally remain inside `src/features/cards/` plus direct contracts. Start from
-`index.ts` and the owning flavor: `card/`, `themed/`, `pao/`, or genuinely
-shared mechanics in `shared/`.
+`index.ts` and the owning flavor: `themed/`, `pao/`, or genuinely shared
+mechanics in `shared/`.
 
-Do not inspect Pi or World Countries. Inspect Major System only when the Major
-Cards word-provider contract changes.
+Do not inspect Pi, World Countries, or Major System.
 
 ## Validation
 

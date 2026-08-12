@@ -9,11 +9,9 @@ export type Mode =
   | 'weak-spots'
   | 'repetition'
   | 'pi-digits'
-  | 'cards'
   | 'themed-cards'
   | 'pao-cards'
   | 'world-countries'
-  | 'world-countries-workarea'
 
 export type AnswerMode = 'multiple-choice' | 'typing'
 

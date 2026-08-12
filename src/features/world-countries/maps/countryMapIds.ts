@@ -1,4 +1,4 @@
-import { countries, type Country } from '@/features/world-countries/data/countries'
+import type { Country } from '@/features/world-countries/data/countries'
 
 const EXPLICIT_SVG_ALIASES: Readonly<Record<string, readonly string[]>> = {
   'Democratic Republic of the Congo': ['DR_Congo'],
@@ -29,8 +29,6 @@ function svgNameCandidates(value: string): string[] {
   return [...new Set([trimmed.replace(/\s+/g, '_'), normalized].filter(Boolean))]
 }
 
-const COUNTRY_BY_NAME = new Map(countries.map(country => [country.country, country]))
-
 /** Return possible path IDs for a domain country, without requiring a map asset. */
 export function countryToSvgIds(country: Country): string[] {
   const values = [
@@ -45,15 +43,3 @@ export function countryToSvgIds(country: Country): string[] {
 export function countriesToSvgIds(entries: readonly Country[]): string[] {
   return [...new Set(entries.flatMap(countryToSvgIds))]
 }
-
-/** Compatibility helper for Workarea's name-based controls. */
-export function countryNamesToSvgIds(countryNames: readonly string[]): string[] {
-  return [...new Set(countryNames.flatMap(countryName => {
-    const country = COUNTRY_BY_NAME.get(countryName)
-    if (!country) return [countryName]
-    return country.aliases?.length ? country.aliases : countryToSvgIds(country)
-  }))]
-}
-
-/** Backwards-compatible name for callers that used the Workarea helper. */
-export const mapCountryNamesToSvgIds = countryNamesToSvgIds

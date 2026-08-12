@@ -44,8 +44,6 @@ Without Node/npm, use the Compose commands in the root `AGENTS.md`.
 
 - Country IDs and SVG IDs are different; translation belongs in `maps/`.
 - User-authored Country order cannot change canonical membership.
-- `MapWorkarea` keeps live controller settings out of its SVG load effect so
-  toggles do not reload the asset and clear selection.
 - Asset tests exercise both synthetic markup and bundled SVG contents.
 - Temporary workflow state stays local unless durable domain state is required.
 - World Countries resets must never clear Pi or unrelated feature persistence.
