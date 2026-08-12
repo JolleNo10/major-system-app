@@ -5,7 +5,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Country } from '@/features/world-countries/data/countries'
 import { getContinentHoverGroupId } from '@/features/world-countries/maps/geographyMapAdapter'
-import { ContinentOverviewRails, WorldOverviewRails } from './WorldCountriesPrepareRails'
+import { ContinentSetupOverviewRails, WorldSetupOverviewRails } from './WorldCountriesSetupRails'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -24,7 +24,7 @@ afterEach(() => {
   useRailsMock.mockReset()
 })
 
-describe('World Countries Prepare hierarchy rails', () => {
+describe('World Countries Setup hierarchy rails', () => {
   it('synchronizes mouse and keyboard hover without using aria-current', async () => {
     const onHoverGroup = vi.fn()
     const mount = document.createElement('div')
@@ -32,7 +32,7 @@ describe('World Countries Prepare hierarchy rails', () => {
 
     await act(async () => {
       root = createRoot(mount)
-      root.render(createElement(WorldOverviewRails, {
+      root.render(createElement(WorldSetupOverviewRails, {
         continents: ['Europe'],
         learningStates: [],
         hoveredGroupId: null,
@@ -45,7 +45,7 @@ describe('World Countries Prepare hierarchy rails', () => {
     const railConfig = useRailsMock.mock.calls[0][0] as { left: ReactNode }
     await act(async () => root?.render(railConfig.left))
     expect(mount.querySelector('[aria-labelledby="world-countries-continents-rail-heading"]')?.className).toContain('rounded-xl')
-    expect(mount.textContent).not.toContain('World Prepare progress')
+    expect(mount.textContent).toContain('Learning Readiness')
     const button = [...mount.querySelectorAll('button')].find(candidate => candidate.textContent?.includes('Europe'))
     expect(button?.hasAttribute('aria-current')).toBe(false)
     await act(async () => button?.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
@@ -62,7 +62,7 @@ describe('World Countries Prepare hierarchy rails', () => {
 
     await act(async () => {
       root = createRoot(mount)
-      root.render(createElement(ContinentOverviewRails, {
+      root.render(createElement(ContinentSetupOverviewRails, {
         continent: 'Europe',
         subregions: [{ id: 'northern-europe', label: 'Northern Europe', continent: 'Europe' }],
         activeCountries: [entry],
@@ -78,11 +78,10 @@ describe('World Countries Prepare hierarchy rails', () => {
     const railConfig = useRailsMock.mock.calls[0][0] as { left: ReactNode }
     await act(async () => root?.render(railConfig.left))
     expect(mount.querySelector('[aria-labelledby="world-countries-subregions-rail-heading"]')?.className).toContain('rounded-xl')
-    expect(mount.textContent).not.toContain('Continent Prepare progress')
+    expect(mount.textContent).toContain('Geography scope')
     expect(mount.textContent).toContain('Edit order')
     expect(mount.textContent).toContain('Northern Europe')
-    expect(mount.textContent).not.toContain('Countries prepared')
-    expect(mount.textContent).not.toContain('Countries + Capitals prepared')
-    expect(mount.textContent).not.toContain('Not memoed')
+    expect(mount.textContent).not.toContain('Countries learned')
+    expect(mount.textContent).not.toContain('Not learned')
   })
 })

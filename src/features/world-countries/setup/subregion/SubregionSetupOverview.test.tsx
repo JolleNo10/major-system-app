@@ -4,7 +4,7 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Country } from '@/features/world-countries/data/countries'
-import { SubregionPrepareOverview } from './SubregionPrepareOverview'
+import { SubregionSetupOverview } from './SubregionSetupOverview'
 
 vi.mock('@/features/world-countries/learning/CountryLearningMap', () => ({
   CountryLearningMap: () => <div data-testid="country-learning-map" />,
@@ -22,13 +22,13 @@ afterEach(() => {
   document.body.replaceChildren()
 })
 
-describe('World Countries Prepare subregion overview', () => {
+describe('World Countries Setup subregion overview', () => {
   it('inspects preparation content without exposing learning or review actions', async () => {
     const mount = document.createElement('div')
     document.body.append(mount)
     await act(async () => {
       root = createRoot(mount)
-      root.render(<SubregionPrepareOverview
+      root.render(<SubregionSetupOverview
         continent="Europe"
         subregion="northern-europe"
         entries={entries}
@@ -38,7 +38,7 @@ describe('World Countries Prepare subregion overview', () => {
 
     expect(mount.textContent).toContain('Country–Capital mnemonics')
     const map = mount.querySelector('[data-testid="country-learning-map"]')!
-    const mnemonics = mount.querySelector('[aria-labelledby="prepare-country-capital-mnemonics-heading"]')!
+    const mnemonics = mount.querySelector('[aria-labelledby="setup-country-capital-mnemonics-heading"]')!
     expect(map.compareDocumentPosition(mnemonics) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(mount.querySelector('h2')?.textContent).not.toBe('Countries')
     expect(mount.querySelector('h2')?.textContent).not.toBe('Capitals')

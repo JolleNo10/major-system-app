@@ -2,7 +2,7 @@ import type { SubregionId } from '@/features/world-countries/data/subregions'
 import { getSubregionDefinition } from '@/features/world-countries/data/subregions'
 import { LearningComplete } from './LearningComplete'
 
-export function CapitalLearningComplete({ subregion, onDone, onRestart }: { subregion: SubregionId; onDone: () => void; onRestart: () => void }) {
+export function CapitalLearningComplete({ subregion, onDone, onRestart, doneLabel }: { subregion: SubregionId; onDone: () => void; onRestart: () => void; doneLabel?: string }) {
   return (
     <LearningComplete
       eyebrow="Capitals learned"
@@ -10,6 +10,7 @@ export function CapitalLearningComplete({ subregion, onDone, onRestart }: { subr
       summary={`You recalled the capital for every country in ${getSubregionDefinition(subregion).label} in one clean shuffled round. This initial-learning result is now recorded for the Subregion.`}
       onDone={onDone}
       onRestart={onRestart}
+      doneLabel={doneLabel}
     />
   )
 }

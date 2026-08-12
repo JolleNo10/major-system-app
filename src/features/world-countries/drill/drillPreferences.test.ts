@@ -42,7 +42,7 @@ describe('World Countries Drill preferences', () => {
     })
   })
 
-  it('filters stale or cross-Continent Subregions on read', () => {
+  it('falls back legacy persisted Capitals Drill values to the normal Drill default', () => {
     localStorage.setItem(DRILL_PREFERENCES_STORAGE_KEY, JSON.stringify({
       continent: 'Europe',
       subregionIds: ['northern-europe', 'south-asia'],
@@ -52,7 +52,7 @@ describe('World Countries Drill preferences', () => {
     expect(loadDrillPreferences()).toEqual({
       continent: 'Europe',
       subregionIds: ['northern-europe'],
-      mode: 'capitals',
+      mode: 'countries',
       order: 'random',
     })
   })

@@ -7,14 +7,13 @@ import { countryClassifications } from './data/countryClassification'
 import { resolveCountrySet } from './geography/countrySet'
 import { WorldCountriesDrill } from '@/features/world-countries/drill/WorldCountriesDrill'
 import { WorldCountriesMaintenance } from '@/features/world-countries/maintenance/WorldCountriesMaintenance'
-import { WorldCountriesPrepare } from '@/features/world-countries/prepare/WorldCountriesPrepare'
+import { WorldCountriesSetup, type WorldCountriesSetupContext } from '@/features/world-countries/setup/WorldCountriesSetup'
 import { WorldCountriesRecite } from '@/features/world-countries/recite/WorldCountriesRecite'
 import { WorldCountriesPopulationProvider } from './WorldCountriesPopulationContext'
 
-type WorldCountriesArea = 'prepare' | 'drill' | 'recite' | 'maintenance'
+type WorldCountriesArea = 'setup' | 'drill' | 'recite' | 'maintenance'
 
 const AREAS: readonly { id: WorldCountriesArea; label: string }[] = [
-  { id: 'prepare', label: 'Prepare' },
   { id: 'drill', label: 'Drill' },
   { id: 'recite', label: 'Recite' },
 ]
@@ -22,7 +21,8 @@ const AREAS: readonly { id: WorldCountriesArea; label: string }[] = [
 /** World Countries application shell; workflows own their behavior and state. */
 export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
   const { settings } = useSettings()
-  const [area, setArea] = useState<WorldCountriesArea>('prepare')
+  const [area, setArea] = useState<WorldCountriesArea>('drill')
+  const [setupContext, setSetupContext] = useState<WorldCountriesSetupContext>({ kind: 'world' })
   const activeCountries = useMemo(
     () => resolveCountrySet(countries, countryClassifications, settings.worldCountriesIncludedEntityGroups),
     [settings.worldCountriesIncludedEntityGroups],
@@ -41,7 +41,7 @@ export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
         <div
           role="tablist"
           aria-label="World Countries activities"
-          className="grid min-w-0 flex-1 grid-cols-3 gap-1 rounded-xl border border-zinc-800 bg-zinc-900/80 p-1"
+          className="grid min-w-0 flex-1 grid-cols-2 gap-1 rounded-xl border border-zinc-800 bg-zinc-900/80 p-1"
         >
           {AREAS.map(candidate => (
             <button
@@ -77,10 +77,23 @@ export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
     [area],
   )
 
+  const openSetup = (context: WorldCountriesSetupContext) => {
+    setSetupContext(context)
+    setArea('setup')
+  }
+
+  const backToDrill = () => setArea('drill')
+
   return (
     <WorldCountriesPopulationProvider countries={activeCountries}>
-      {area === 'prepare' && <WorldCountriesPrepare answerMode={answerMode} />}
-      {area === 'drill' && <WorldCountriesDrill answerMode={answerMode} />}
+      {area === 'setup' && (
+        <WorldCountriesSetup
+          answerMode={answerMode}
+          context={setupContext}
+          onBackToDrill={backToDrill}
+        />
+      )}
+      {area === 'drill' && <WorldCountriesDrill answerMode={answerMode} onOpenSetup={openSetup} />}
       {area === 'recite' && <WorldCountriesRecite answerMode={answerMode} />}
       {area === 'maintenance' && <WorldCountriesMaintenance answerMode={answerMode} />}
     </WorldCountriesPopulationProvider>

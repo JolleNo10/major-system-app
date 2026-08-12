@@ -4,13 +4,13 @@ import type { Continent, Country } from '@/features/world-countries/data/countri
 import type { SubregionDefinition, SubregionId } from '@/features/world-countries/data/subregions'
 import { getContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
 import { getSubregionsForContinentInEffectiveOrder } from '@/features/world-countries/geography/queries'
-import type { MemoLearningStates } from '@/features/world-countries/learning/memoProgress'
-import type { WorldCountriesMemoReadiness } from '@/features/world-countries/learning/memoReadiness'
-import { PrepareMap } from './PrepareMap'
+import type { LearningStates } from '@/features/world-countries/learning/learningProgress'
+import type { WorldCountriesLearningReadiness } from '@/features/world-countries/learning/learningReadiness'
+import { SetupMap } from './SetupMap'
 import { ContinentOrderEditor } from './continent/ContinentOrderEditor'
-import { ContinentOverviewRails } from './WorldCountriesPrepareRails'
+import { ContinentSetupOverviewRails } from './WorldCountriesSetupRails'
 
-export function ContinentPrepareOverview({
+export function ContinentSetupOverview({
   continent,
   activeCountries,
   learningStates,
@@ -20,20 +20,22 @@ export function ContinentPrepareOverview({
   onSelectSubregion,
   onHoverGroup,
   onLearningChanged,
-  memoReadinessColorsById,
-  memoReadinessByCountryId,
+  learningReadinessColorsById,
+  learningReadinessByCountryId,
+  onBackToDrill,
 }: {
   continent: Continent
   activeCountries: readonly Country[]
-  learningStates: MemoLearningStates
+  learningStates: LearningStates
   hoveredGroupId: string | null
   learningVersion: number
   onWorld: () => void
   onSelectSubregion: (subregion: SubregionId) => void
   onHoverGroup: (groupId: string | null) => void
   onLearningChanged: () => void
-  memoReadinessColorsById: ReadonlyMap<string, string>
-  memoReadinessByCountryId: ReadonlyMap<string, WorldCountriesMemoReadiness>
+  learningReadinessColorsById: ReadonlyMap<string, string>
+  learningReadinessByCountryId: ReadonlyMap<string, WorldCountriesLearningReadiness>
+  onBackToDrill?: () => void
 }) {
   const [editingOrder, setEditingOrder] = useState(false)
   const [draftSubregions, setDraftSubregions] = useState<readonly SubregionDefinition[] | null>(null)
@@ -60,7 +62,7 @@ export function ContinentPrepareOverview({
 
   return (
     <>
-      <ContinentOverviewRails
+      <ContinentSetupOverviewRails
         continent={continent}
         subregions={railSubregions}
         activeCountries={activeCountries}
@@ -70,13 +72,14 @@ export function ContinentPrepareOverview({
         onSelectSubregion={onSelectSubregion}
         onHoverGroup={onHoverGroup}
         onEditOrder={openOrderEditor}
+        onBackToDrill={onBackToDrill}
       />
       <div className="w-full animate-fade-in">
-        <PrepareMap
+        <SetupMap
           level="continent"
           continent={continent}
-          memoReadinessColorsById={memoReadinessColorsById}
-          memoReadinessByCountryId={memoReadinessByCountryId}
+          learningReadinessColorsById={learningReadinessColorsById}
+          learningReadinessByCountryId={learningReadinessByCountryId}
           hoveredGroupId={hoveredGroupId}
           onHoverGroup={onHoverGroup}
           onSelectSubregion={onSelectSubregion}

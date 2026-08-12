@@ -57,13 +57,13 @@ describe('World Countries Drill map precedence', () => {
     ])
     expect(colors.get('NO')).toBe('#71717a')
 
-    const capitalColors = createColors('capitals', progressFor('country-to-capital'), [
+    const capitalColors = createColors('countries-from-capitals', progressFor('capital-to-country'), [
       { subregionId: 'northern-europe', countriesLearnedAt: 1 },
     ])
     expect(capitalColors.get('NO')).toBe('#8a665b')
   })
 
-  it('keeps Countries + Capitals at Memo readiness until both core skills have evidence', () => {
+  it('keeps Countries + Capitals at Learning Readiness until both core skills have evidence', () => {
     const colors = createColors('countries-capitals', progressFor('location-to-country', 'recall', true), [
       { subregionId: 'northern-europe', countriesLearnedAt: 1 },
     ])
@@ -124,7 +124,7 @@ describe('World Countries Drill map precedence', () => {
     const readiness = createDescriptions('countries', new Map(), [
       { subregionId: 'northern-europe', countriesLearnedAt: 1 },
     ])
-    expect(readiness.get('NO')).toBe('Memo readiness: Countries memoed. Countries Memo is complete; Capital Memo is incomplete.')
+    expect(readiness.get('NO')).toBe('Learning Readiness: Countries learned. Countries learning is complete; Capital learning is incomplete.')
 
     const drill = createDescriptions('countries', progressFor('location-to-country'), [
       { subregionId: 'northern-europe', countriesLearnedAt: 1 },

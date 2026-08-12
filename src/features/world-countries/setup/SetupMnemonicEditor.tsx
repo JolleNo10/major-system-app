@@ -10,7 +10,7 @@ import type { Mnemonic } from '@/core/mnemonics'
 import { isSubregionMnemonicStale } from '@/features/world-countries/mnemonics/geographyMnemonics'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
 
-interface PrepareMnemonicEditorProps {
+interface SetupMnemonicEditorProps {
   targetId: string
   title: string
   subtitle: string
@@ -18,14 +18,14 @@ interface PrepareMnemonicEditorProps {
   refreshKey: unknown
   onChanged: () => void
 }
-export function PrepareMnemonicEditor({
+export function SetupMnemonicEditor({
   targetId,
   title,
   subtitle,
   countryIds,
   refreshKey,
   onChanged,
-}: PrepareMnemonicEditorProps) {
+}: SetupMnemonicEditorProps) {
   const { mnemonic, loading } = useMnemonic(targetId, refreshKey)
   const [editing, setEditing] = useState(false)
   const [draftText, setDraftText] = useState('')

@@ -23,7 +23,7 @@ export function createCapitalCompletionReporter(onCompleted: () => void): Capita
   }
 }
 
-/** Learning-layer completion boundary used by Memo orchestration. */
+/** Learning-layer completion boundary used by the Capital Learning flow. */
 export function createSubregionCapitalCompletionReporter(
   subregionId: SubregionId,
   entries?: readonly Country[],

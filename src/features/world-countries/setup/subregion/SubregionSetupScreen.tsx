@@ -2,17 +2,13 @@ import { useCallback, useMemo, useState } from 'react'
 import { Overlay } from '@/app/layout/Overlay'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
 import type { SubregionId } from '@/features/world-countries/data/subregions'
-import { getContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
-import { getCountriesForSubregionInEffectiveOrder, getSubregionsForContinentInEffectiveOrder } from '@/features/world-countries/geography/queries'
+import { getCountriesForSubregionInEffectiveOrder } from '@/features/world-countries/geography/queries'
 import { getSubregionMetadata } from '@/features/world-countries/geography/subregionMetadataStore'
-import { getAllSubregionLearningStates } from '@/features/world-countries/learning/subregionLearningStore'
-import { isSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningState'
-import { getNextSubregionToMemo } from '@/features/world-countries/learning/memoProgress'
-import { PrepareSubregionRails } from '../WorldCountriesPrepareRails'
-import { SubregionPrepareOverview } from './SubregionPrepareOverview'
+import { SetupSubregionRails } from '../WorldCountriesSetupRails'
+import { SubregionSetupOverview } from './SubregionSetupOverview'
 import { SubregionOrderEditor } from './SubregionOrderEditor'
 
-export function SubregionPrepareScreen({
+export function SubregionSetupScreen({
   continent,
   subregion,
   activeCountries,
@@ -21,6 +17,7 @@ export function SubregionPrepareScreen({
   onSelectSubregion,
   onExit,
   onWorld,
+  onBackToDrill,
 }: {
   continent: Continent
   subregion: SubregionId
@@ -30,24 +27,12 @@ export function SubregionPrepareScreen({
   onSelectSubregion: (subregion: SubregionId) => void
   onExit: () => void
   onWorld: () => void
+  onBackToDrill?: () => void
 }) {
   const entries = useMemo(
     () => getCountriesForSubregionInEffectiveOrder(subregion, activeCountries, getSubregionMetadata(subregion)),
     [activeCountries, learningVersion, subregion],
   )
-  const nextSubregion = useMemo(() => {
-    const learnedSubregionIds = new Set(
-      getAllSubregionLearningStates(activeCountries)
-        .filter(state => isSubregionCountriesLearned(state))
-        .map(state => state.subregionId),
-    )
-    return getNextSubregionToMemo(
-      getSubregionsForContinentInEffectiveOrder(continent, activeCountries, getContinentMetadata(continent))
-        .filter(candidate => candidate.id !== subregion),
-      candidateId => learnedSubregionIds.has(candidateId),
-    )
-  }, [activeCountries, continent, learningVersion, subregion])
-  const learningStates = getAllSubregionLearningStates(activeCountries)
   const [editingOrder, setEditingOrder] = useState(false)
   const [draftEntries, setDraftEntries] = useState<readonly Country[] | null>(null)
   const [hoveredCountryId, setHoveredCountryId] = useState<string | null>(null)
@@ -72,18 +57,17 @@ export function SubregionPrepareScreen({
 
   return (
     <div className="w-full">
-      <PrepareSubregionRails
+      <SetupSubregionRails
         continent={continent}
         subregion={subregion}
         entries={mapEntries}
-        nextSubregion={nextSubregion}
-        nextEmptyLabel="No other subregions to prepare"
         mnemonicVersion={mnemonicVersion}
         onWorld={onWorld}
         onContinent={onExit}
         onSelectSubregion={onSelectSubregion}
         onEditOrder={openOrderEditor}
         onMnemonicChanged={refreshMnemonic}
+        onBackToDrill={onBackToDrill}
       />
 
       {editingOrder && (
@@ -105,7 +89,7 @@ export function SubregionPrepareScreen({
         </Overlay>
       )}
 
-      <SubregionPrepareOverview
+      <SubregionSetupOverview
         continent={continent}
         subregion={subregion}
         entries={entries}

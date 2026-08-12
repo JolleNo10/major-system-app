@@ -7,9 +7,11 @@ import { shuffle } from '@/core/scoring/quiz'
 import type { Country } from '@/features/world-countries/data/countries'
 import { classifyRecallAnswer } from '@/features/world-countries/learning/recallAnswerMatching'
 import type { WorldCountriesRecallSkill } from '@/features/world-countries/learning/recallTargets'
+import type { LearningStates } from '@/features/world-countries/learning/learningProgress'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import type { WorldCountriesDrillSelection } from './drillSelection'
 import { DrillSessionRails } from './DrillSessionRails'
+import { PracticeSessionRails } from './PracticeSessionRails'
 import { getDrillSkillLabel } from './drillModes'
 import {
   getCurrentDrillStep,
@@ -44,6 +46,8 @@ export function DrillSession({
   onContinue,
   onExit,
   interaction = 'recall',
+  activity = 'drill',
+  learningStates = [],
 }: {
   answerMode: AnswerMode
   fuzzyMatching: boolean
@@ -54,6 +58,8 @@ export function DrillSession({
   onContinue: (correct: boolean) => void
   onExit: () => void
   interaction?: DrillSessionInteraction
+  activity?: 'drill' | 'practice'
+  learningStates?: LearningStates
 }) {
   const step = getCurrentDrillStep(state)
   const [feedback, setFeedback] = useState<StepFeedback | null>(null)
@@ -157,10 +163,14 @@ export function DrillSession({
 
   return (
     <>
-      <DrillSessionRails selection={selection} mode={state.mode} state={state} onExit={onExit} entries={entries} />
+      {activity === 'practice' ? (
+        <PracticeSessionRails selection={selection} state={state} onExit={onExit} entries={entries} learningStates={learningStates} />
+      ) : (
+        <DrillSessionRails selection={selection} mode={state.mode} state={state} onExit={onExit} entries={entries} />
+      )}
       <div className="space-y-4 animate-fade-in">
         <section className="rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-4 text-center">
-          <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">{getDrillSkillLabel(step.skill)}</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">{activity === 'practice' ? 'Practice · ' : ''}{getDrillSkillLabel(step.skill)}</p>
           {isLocationPractice ? (
             <>
               <h1 className="mt-1 text-2xl font-black text-zinc-100">Find {country.country}</h1>
@@ -191,7 +201,7 @@ export function DrillSession({
                 : 'Map showing the selected location for recall without the Country name revealed'
               : isCapitalQuestion && !feedback
                 ? 'Map of the selected geographic scope without the target Country revealed'
-                : `Map with ${country.country} highlighted for Drill recall`}
+              : `Map with ${country.country} highlighted for ${activity === 'practice' ? 'Practice' : 'Drill'} recall`}
           />
           {feedback && <RecallFeedback correct={feedback.correct} message={isLocationPractice ? practiceFeedbackText : feedbackText} />}
         </div>

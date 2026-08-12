@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
 import type { SubregionId } from '@/features/world-countries/data/subregions'
-import { getSubregionLearningState } from '@/features/world-countries/learning/subregionLearningStore'
-import { canEnterCapitalMemo } from '@/features/world-countries/learning/memoReadiness'
 import {
   createCapitalLearningFlow,
   applyCapitalLearningTransition,
@@ -26,18 +24,17 @@ interface CapitalLearningFlowProps {
   fuzzyMatching: boolean
   onPhaseChange: (phase: CapitalLearningPhase) => void
   onExit: () => void
+  onDone?: () => void
+  doneLabel?: string
   countriesLearned?: boolean
   startInRecall?: boolean
   onWalkthroughCountryChange?: (countryId: string | null) => void
   mnemonicVersion?: number
 }
 
-export function CapitalLearningFlow({ countriesLearned, ...props }: CapitalLearningFlowProps) {
-  const canEnter = countriesLearned ?? canEnterCapitalMemo(getSubregionLearningState(props.subregion, props.activeCountries ?? props.entries))
-  if (!canEnter) return <CapitalMemoLocked onExit={props.onExit} />
-  return <EnabledCapitalLearningFlow {...props} countriesLearned />
+export function CapitalLearningFlow({ countriesLearned = false, ...props }: CapitalLearningFlowProps) {
+  return <EnabledCapitalLearningFlow {...props} countriesLearned={countriesLearned} />
 }
-
 function EnabledCapitalLearningFlow({
   continent,
   subregion,
@@ -46,6 +43,8 @@ function EnabledCapitalLearningFlow({
   fuzzyMatching,
   onPhaseChange,
   onExit,
+  onDone,
+  doneLabel = 'Back to Learn & Practise',
   countriesLearned,
   startInRecall = false,
   onWalkthroughCountryChange,
@@ -117,7 +116,8 @@ function EnabledCapitalLearningFlow({
       content = (
         <CapitalLearningComplete
           subregion={subregion}
-          onDone={onExit}
+          onDone={onDone ?? onExit}
+          doneLabel={doneLabel}
           onRestart={() => {
             completionReporter.current.reset()
             transition(createCapitalLearningFlow({ countryIds, countriesLearned }))
@@ -127,19 +127,4 @@ function EnabledCapitalLearningFlow({
       break
   }
   return <>{rails}{content}</>
-}
-
-function CapitalMemoLocked({ onExit }: { onExit: () => void }) {
-  return (
-    <section className="space-y-4 animate-fade-in" aria-labelledby="capital-learning-locked-heading">
-      <header>
-        <p className="text-xs font-semibold uppercase tracking-wider text-amber-400">Capital learning locked</p>
-        <h1 id="capital-learning-locked-heading" className="mt-1 text-2xl font-bold text-zinc-100">Complete Countries first.</h1>
-      </header>
-      <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-5 text-sm leading-relaxed text-amber-200">
-        Capital learning, review, and practice unlock after Countries learning is complete. Any earlier Capital completion is preserved.
-      </p>
-      <button type="button" onClick={onExit} className="rounded-lg bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500">Back to Subregion</button>
-    </section>
-  )
 }

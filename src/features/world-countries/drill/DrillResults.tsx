@@ -34,7 +34,7 @@ export function DrillResults({
   const activeCountries = useWorldCountriesPopulation()
   const skills = getSkillsForDrillMode(mode)
   const perspective: WorldCountriesProgressPerspective = mode === 'countries-capitals' ? 'core' : skills[0]
-  const memoLearningStates = useMemo(() => getAllSubregionLearningStates(activeCountries), [activeCountries])
+  const learningStates = useMemo(() => getAllSubregionLearningStates(activeCountries), [activeCountries])
   const { recallProgress } = useWorldCountriesCountryColors({
     countries: scopeCountries,
     skills,
@@ -42,15 +42,15 @@ export function DrillResults({
   })
   const countryColorsById = useMemo(
     () => recallProgress
-      ? createDrillProgressColors({ mode, scopeCountries, recallProgress, learningStates: memoLearningStates })
+      ? createDrillProgressColors({ mode, scopeCountries, recallProgress, learningStates })
       : undefined,
-    [memoLearningStates, mode, recallProgress, scopeCountries],
+    [learningStates, mode, recallProgress, scopeCountries],
   )
   const countryAccessibleDescriptionsById = useMemo(
     () => recallProgress
-      ? createDrillProgressDescriptions({ mode, scopeCountries, recallProgress, learningStates: memoLearningStates })
+      ? createDrillProgressDescriptions({ mode, scopeCountries, recallProgress, learningStates })
       : undefined,
-    [memoLearningStates, mode, recallProgress, scopeCountries],
+    [learningStates, mode, recallProgress, scopeCountries],
   )
 
   return (

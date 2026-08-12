@@ -31,6 +31,8 @@ export function CountryLearningFlow({
   fuzzyMatching,
   onPhaseChange,
   onExit,
+  onDone,
+  doneLabel = 'Back to Learn & Practise',
   mnemonicVersion = 0,
 }: {
   continent: Continent
@@ -42,6 +44,8 @@ export function CountryLearningFlow({
   fuzzyMatching: boolean
   onPhaseChange: (phase: CountryLearningPhase) => void
   onExit: () => void
+  onDone?: () => void
+  doneLabel?: string
   mnemonicVersion?: number
 }) {
   const ids = useMemo(() => entries.map(country => country.id), [entries])
@@ -136,10 +140,11 @@ export function CountryLearningFlow({
         <CountryLearningComplete
           subregion={subregion}
           countryCount={entries.length}
-          onDone={onExit}
+          onDone={onDone ?? onExit}
+          doneLabel={doneLabel}
           onRestart={() => {
             completionReported.current = false
-            transition(createCountryLearningFlow({ countryIds: ids, minimumCleanTarget: locationCleanTargetMinimum }))
+            transition(createCountryLearningFlow({ countryIds: ids, minimumCleanTarget: locationCleanTargetMinimum, entryPoint }))
           }}
         />
       )

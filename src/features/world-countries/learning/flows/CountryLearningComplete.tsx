@@ -2,11 +2,12 @@ import type { SubregionId } from '@/features/world-countries/data/subregions'
 import { getSubregionDefinition } from '@/features/world-countries/data/subregions'
 import { LearningComplete } from './LearningComplete'
 
-export function CountryLearningComplete({ subregion, countryCount, onDone, onRestart }: {
+export function CountryLearningComplete({ subregion, countryCount, onDone, onRestart, doneLabel }: {
   subregion: SubregionId
   countryCount: number
   onDone: () => void
   onRestart: () => void
+  doneLabel?: string
 }) {
   return (
     <LearningComplete
@@ -15,6 +16,7 @@ export function CountryLearningComplete({ subregion, countryCount, onDone, onRes
       summary={`You completed one clean ordered recall from country #1 through country #${countryCount}. This durable learning result is now recorded for the Subregion.`}
       onDone={onDone}
       onRestart={onRestart}
+      doneLabel={doneLabel}
     />
   )
 }

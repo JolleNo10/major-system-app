@@ -8,8 +8,8 @@ import { PageLayoutProvider } from '@/app/layout/PageLayoutContext'
 import { SettingsProvider } from '@/app/settings/SettingsContext'
 import { WorldCountries } from './WorldCountries'
 
-vi.mock('./prepare/WorldCountriesPrepare', () => ({
-  WorldCountriesPrepare: () => createElement('div', { 'data-testid': 'prepare-workflow' }, 'Prepare workflow'),
+vi.mock('./setup/WorldCountriesSetup', () => ({
+  WorldCountriesSetup: () => createElement('div', { 'data-testid': 'setup-workflow' }, 'Setup workflow'),
 }))
 
 vi.mock('./drill/WorldCountriesDrill', () => ({
@@ -61,14 +61,13 @@ describe('World Countries compact activity header', () => {
     expect(header?.textContent).toContain('World Countries')
     expect(header?.textContent).not.toContain('Learn, practise and retain')
     expect(header?.className).toContain('py-2')
-    expect(tablist?.className).toContain('grid-cols-3')
+    expect(tablist?.className).toContain('grid-cols-2')
     expect([...tablist?.querySelectorAll('[role="tab"]') ?? []].map(tab => tab.textContent)).toEqual([
-      'Prepare',
       'Drill',
       'Recite',
     ])
     expect(tablist?.querySelector('[role="button"]')).toBeNull()
-    expect(mount.querySelector('[data-testid="prepare-workflow"]')).not.toBeNull()
+    expect(mount.querySelector('[data-testid="drill-workflow"]')).not.toBeNull()
   })
 
   it('keeps activity tabs separate from Due review and preserves active states', async () => {
@@ -88,7 +87,7 @@ describe('World Countries compact activity header', () => {
     await act(async () => tabs[1]?.click())
     expect(tabs[0]?.getAttribute('aria-selected')).toBe('false')
     expect(tabs[1]?.getAttribute('aria-selected')).toBe('true')
-    expect(mount.querySelector('[data-testid="drill-workflow"]')).not.toBeNull()
+    expect(mount.querySelector('[data-testid="recite-workflow"]')).not.toBeNull()
 
     await act(async () => dueReview?.click())
     expect(tabs.every(tab => tab.getAttribute('aria-selected') === 'false')).toBe(true)
@@ -98,6 +97,6 @@ describe('World Countries compact activity header', () => {
     await act(async () => tabs[0]?.click())
     expect(tabs[0]?.getAttribute('aria-selected')).toBe('true')
     expect(dueReview?.className).not.toContain('bg-cyan-600')
-    expect(mount.querySelector('[data-testid="prepare-workflow"]')).not.toBeNull()
+    expect(mount.querySelector('[data-testid="drill-workflow"]')).not.toBeNull()
   })
 })

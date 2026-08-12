@@ -1,23 +1,36 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { AnswerMode } from '@/core/types'
 import type { Continent } from '@/features/world-countries/data/countries'
 import type { SubregionId } from '@/features/world-countries/data/subregions'
 import { getAllSubregionLearningStates } from '@/features/world-countries/learning/subregionLearningStore'
 import {
-  createWorldCountriesMemoReadinessByCountry,
-  createWorldCountriesMemoReadinessColors,
-} from '@/features/world-countries/learning/memoReadiness'
+  createWorldCountriesLearningReadinessByCountry,
+  createWorldCountriesLearningReadinessColors,
+} from '@/features/world-countries/learning/learningReadiness'
 import { getContinentsInEffectiveOrder } from '@/features/world-countries/geography/queries'
 import { useWorldCountriesPopulation } from '@/features/world-countries/WorldCountriesPopulationContext'
 import { getWorldMetadata } from '@/features/world-countries/geography/worldMetadataStore'
-import { ContinentPrepareOverview } from './ContinentPrepareOverview'
-import { SubregionPrepareScreen } from './subregion/SubregionPrepareScreen'
-import { WorldPrepareOverview } from './WorldPrepareOverview'
+import { ContinentSetupOverview } from './ContinentSetupOverview'
+import { SubregionSetupScreen } from './subregion/SubregionSetupScreen'
+import { WorldSetupOverview } from './WorldSetupOverview'
 
-export function WorldCountriesPrepare({ answerMode: _answerMode }: { answerMode: AnswerMode }) {
+export type WorldCountriesSetupContext =
+  | { kind: 'world' }
+  | { kind: 'continent'; continent: Continent }
+  | { kind: 'subregion'; continent: Continent; subregion: SubregionId }
+
+export function WorldCountriesSetup({
+  answerMode: _answerMode,
+  context,
+  onBackToDrill,
+}: {
+  answerMode: AnswerMode
+  context?: WorldCountriesSetupContext
+  onBackToDrill?: () => void
+}) {
   const activeCountries = useWorldCountriesPopulation()
-  const [continent, setContinent] = useState<Continent | null>(null)
-  const [subregion, setSubregion] = useState<SubregionId | null>(null)
+  const [continent, setContinent] = useState<Continent | null>(() => context?.kind === 'world' || !context ? null : context.continent)
+  const [subregion, setSubregion] = useState<SubregionId | null>(() => context?.kind === 'subregion' ? context.subregion : null)
   const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null)
   const [learningVersion, setLearningVersion] = useState(0)
   const continents = useMemo(
@@ -25,14 +38,25 @@ export function WorldCountriesPrepare({ answerMode: _answerMode }: { answerMode:
     [activeCountries, learningVersion],
   )
   const learningStates = useMemo(() => getAllSubregionLearningStates(activeCountries), [activeCountries, learningVersion])
-  const memoReadinessColorsById = useMemo(
-    () => createWorldCountriesMemoReadinessColors(activeCountries, learningStates),
+  const learningReadinessColorsById = useMemo(
+    () => createWorldCountriesLearningReadinessColors(activeCountries, learningStates),
     [activeCountries, learningStates],
   )
-  const memoReadinessByCountryId = useMemo(
-    () => createWorldCountriesMemoReadinessByCountry(activeCountries, learningStates),
+  const learningReadinessByCountryId = useMemo(
+    () => createWorldCountriesLearningReadinessByCountry(activeCountries, learningStates),
     [activeCountries, learningStates],
   )
+
+  useEffect(() => {
+    if (!context || context.kind === 'world') {
+      setContinent(null)
+      setSubregion(null)
+    } else {
+      setContinent(context.continent)
+      setSubregion(context.kind === 'subregion' ? context.subregion : null)
+    }
+    setHoveredGroupId(null)
+  }, [context])
 
   const refreshLearning = useCallback(() => setLearningVersion(version => version + 1), [])
 
@@ -60,7 +84,7 @@ export function WorldCountriesPrepare({ answerMode: _answerMode }: { answerMode:
 
   if (continent && subregion) {
     return (
-      <SubregionPrepareScreen
+      <SubregionSetupScreen
         continent={continent}
         subregion={subregion}
         activeCountries={activeCountries}
@@ -69,13 +93,14 @@ export function WorldCountriesPrepare({ answerMode: _answerMode }: { answerMode:
         onSelectSubregion={selectSubregion}
         onExit={backToContinent}
         onWorld={backToWorld}
+        onBackToDrill={onBackToDrill}
       />
     )
   }
 
   if (continent) {
     return (
-      <ContinentPrepareOverview
+      <ContinentSetupOverview
         continent={continent}
         learningStates={learningStates}
         hoveredGroupId={hoveredGroupId}
@@ -84,15 +109,16 @@ export function WorldCountriesPrepare({ answerMode: _answerMode }: { answerMode:
         onSelectSubregion={selectSubregion}
         onHoverGroup={setHoveredGroupId}
         onLearningChanged={refreshLearning}
-        memoReadinessColorsById={memoReadinessColorsById}
-        memoReadinessByCountryId={memoReadinessByCountryId}
+        learningReadinessColorsById={learningReadinessColorsById}
+        learningReadinessByCountryId={learningReadinessByCountryId}
         activeCountries={activeCountries}
+        onBackToDrill={onBackToDrill}
       />
     )
   }
 
   return (
-    <WorldPrepareOverview
+    <WorldSetupOverview
       continents={continents}
       activeCountries={activeCountries}
       learningStates={learningStates}
@@ -100,8 +126,9 @@ export function WorldCountriesPrepare({ answerMode: _answerMode }: { answerMode:
       onLearningChanged={refreshLearning}
       onSelectContinent={selectContinent}
       onHoverGroup={setHoveredGroupId}
-      memoReadinessColorsById={memoReadinessColorsById}
-      memoReadinessByCountryId={memoReadinessByCountryId}
+      learningReadinessColorsById={learningReadinessColorsById}
+      learningReadinessByCountryId={learningReadinessByCountryId}
+      onBackToDrill={onBackToDrill}
     />
   )
 }

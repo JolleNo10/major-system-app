@@ -17,8 +17,8 @@ export function LearningComplete({
   summary,
   onDone,
   onRestart,
-  doneLabel = 'Back to Subregion',
-  restartLabel = 'Review again',
+  doneLabel = 'Back to Learn & Practise',
+  restartLabel = 'Learn again',
 }: LearningCompleteProps) {
   return (
     <div className="space-y-4 animate-fade-in">

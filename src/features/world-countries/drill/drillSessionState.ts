@@ -17,12 +17,15 @@ export interface DrillAnswerRecord {
 export interface DrillSessionConfig {
   mode: WorldCountriesDrillMode
   countryIds: readonly CountryId[]
+  /** Shared mechanics may run a narrower skill set for non-recording Practice. */
+  skills?: readonly WorldCountriesRecallSkill[]
   /** Optional pre-ranked order supplied by the Drill workflow. */
   countryOrder?: readonly CountryId[]
 }
 
 export interface DrillSessionState {
   mode: WorldCountriesDrillMode
+  skills?: readonly WorldCountriesRecallSkill[]
   countryIds: readonly CountryId[]
   countryOrder: readonly CountryId[]
   countryIndex: number
@@ -53,6 +56,7 @@ export function createDrillSession(config: DrillSessionConfig): DrillSessionStat
   ]
   return {
     mode: config.mode,
+    ...(config.skills ? { skills: [...config.skills] } : {}),
     countryIds,
     countryOrder,
     countryIndex: 0,
@@ -62,7 +66,7 @@ export function createDrillSession(config: DrillSessionConfig): DrillSessionStat
 }
 
 export function getDrillSessionSkills(state: DrillSessionState): readonly WorldCountriesRecallSkill[] {
-  return getSkillsForDrillMode(state.mode)
+  return state.skills ?? getSkillsForDrillMode(state.mode)
 }
 
 export function getCurrentDrillStep(state: DrillSessionState): DrillSessionStep | null {

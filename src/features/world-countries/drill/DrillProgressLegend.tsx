@@ -1,7 +1,7 @@
 import type { WorldCountriesDrillMode } from './drillModes'
 import { ProgressMapLegend } from '@/features/world-countries/learning/ProgressMapLegend'
 import {
-  DRILL_MEMO_READINESS_LEGEND_ENTRIES,
+  DRILL_LEARNING_READINESS_LEGEND_ENTRIES,
   getDrillProgressExplanation,
   getDrillProgressLegendEntries,
 } from './drillProgressPresentation'
@@ -16,8 +16,8 @@ export function DrillProgressLegend({ mode }: { mode: WorldCountriesDrillMode })
       groups={[
         {
           title: 'No Drill evidence',
-          entries: DRILL_MEMO_READINESS_LEGEND_ENTRIES,
-          explanation: 'Memo readiness is shown only until the selected Drill perspective has relevant evidence.',
+          entries: DRILL_LEARNING_READINESS_LEGEND_ENTRIES,
+          explanation: 'Learning Readiness is shown only until the selected Drill perspective has relevant evidence.',
         },
         {
           title: 'Drill proficiency',

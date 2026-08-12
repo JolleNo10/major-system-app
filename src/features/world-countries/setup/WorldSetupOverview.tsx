@@ -1,13 +1,13 @@
 import { useCallback, useState } from 'react'
 import { Overlay } from '@/app/layout/Overlay'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
-import type { MemoLearningStates } from '@/features/world-countries/learning/memoProgress'
-import type { WorldCountriesMemoReadiness } from '@/features/world-countries/learning/memoReadiness'
-import { PrepareMap } from './PrepareMap'
+import type { LearningStates } from '@/features/world-countries/learning/learningProgress'
+import type { WorldCountriesLearningReadiness } from '@/features/world-countries/learning/learningReadiness'
+import { SetupMap } from './SetupMap'
 import { WorldOrderEditor } from './world/WorldOrderEditor'
-import { WorldOverviewRails } from './WorldCountriesPrepareRails'
+import { WorldSetupOverviewRails } from './WorldCountriesSetupRails'
 
-export function WorldPrepareOverview({
+export function WorldSetupOverview({
   continents,
   activeCountries,
   learningStates,
@@ -15,18 +15,20 @@ export function WorldPrepareOverview({
   onLearningChanged,
   onSelectContinent,
   onHoverGroup,
-  memoReadinessColorsById,
-  memoReadinessByCountryId,
+  learningReadinessColorsById,
+  learningReadinessByCountryId,
+  onBackToDrill,
 }: {
   continents: readonly Continent[]
   activeCountries: readonly Country[]
-  learningStates: MemoLearningStates
+  learningStates: LearningStates
   hoveredGroupId: string | null
   onLearningChanged: () => void
   onSelectContinent: (continent: Continent) => void
   onHoverGroup: (groupId: string | null) => void
-  memoReadinessColorsById: ReadonlyMap<string, string>
-  memoReadinessByCountryId: ReadonlyMap<string, WorldCountriesMemoReadiness>
+  learningReadinessColorsById: ReadonlyMap<string, string>
+  learningReadinessByCountryId: ReadonlyMap<string, WorldCountriesLearningReadiness>
+  onBackToDrill?: () => void
 }) {
   const [editingOrder, setEditingOrder] = useState(false)
   const [draftContinents, setDraftContinents] = useState<readonly Continent[] | null>(null)
@@ -49,7 +51,7 @@ export function WorldPrepareOverview({
 
   return (
     <>
-      <WorldOverviewRails
+      <WorldSetupOverviewRails
         continents={railContinents}
         activeCountries={activeCountries}
         learningStates={learningStates}
@@ -57,12 +59,13 @@ export function WorldPrepareOverview({
         onSelectContinent={onSelectContinent}
         onHoverGroup={onHoverGroup}
         onEditOrder={openOrderEditor}
+        onBackToDrill={onBackToDrill}
       />
       <div className="w-full animate-fade-in">
-        <PrepareMap
+        <SetupMap
           level="world"
-          memoReadinessColorsById={memoReadinessColorsById}
-          memoReadinessByCountryId={memoReadinessByCountryId}
+          learningReadinessColorsById={learningReadinessColorsById}
+          learningReadinessByCountryId={learningReadinessByCountryId}
           hoveredGroupId={hoveredGroupId}
           onHoverGroup={onHoverGroup}
           onSelectContinent={onSelectContinent}

@@ -8,8 +8,8 @@ import {
 } from './capitalLearningFlow'
 
 describe('capital-learning workflow', () => {
-  it('rejects Capital Memo entry before Countries Memo is complete', () => {
-    expect(() => createCapitalLearningFlow({ countryIds: ['NO'], countriesLearned: false })).toThrow('Complete Countries first.')
+  it('allows Learn Capitals before Countries learning and leaves the recommendation to the UI', () => {
+    expect(createCapitalLearningFlow({ countryIds: ['NO'], countriesLearned: false }).phase).toBe('walkthrough')
   })
 
   it('walks every Country in the supplied effective order before recall', () => {
@@ -63,7 +63,7 @@ describe('capital-learning workflow', () => {
     expect(flow.phase).toBe('complete')
   })
 
-  it('reports only actual phase changes to Memo orchestration', () => {
+  it('reports only actual phase changes to Learning orchestration', () => {
     const flow = createCapitalLearningFlow({ countryIds: ['NO'], countriesLearned: true })
     const phases: string[] = []
     applyCapitalLearningTransition(flow, flow, phase => phases.push(phase))

@@ -3,7 +3,6 @@ import type { WorldCountriesRecallSkill } from '@/features/world-countries/learn
 export type WorldCountriesDrillMode =
   | 'countries'
   | 'countries-capitals'
-  | 'capitals'
   | 'countries-from-capitals'
 
 export interface DrillModeDefinition {
@@ -27,12 +26,6 @@ export const WORLD_COUNTRIES_DRILL_MODES: readonly DrillModeDefinition[] = [
     skills: ['location-to-country', 'country-to-capital'],
   },
   {
-    id: 'capitals',
-    label: 'Capitals',
-    description: 'Practise capitals before Countries + Capitals.',
-    skills: ['country-to-capital'],
-  },
-  {
     id: 'countries-from-capitals',
     label: 'Countries from Capitals',
     description: 'Given a Capital, recall its Country.',
@@ -54,10 +47,6 @@ export function getDrillModeDefinition(mode: WorldCountriesDrillMode): DrillMode
 
 export function getSkillsForDrillMode(mode: WorldCountriesDrillMode): readonly WorldCountriesRecallSkill[] {
   return getDrillModeDefinition(mode).skills
-}
-
-export function isDrillPracticeMode(mode: WorldCountriesDrillMode): boolean {
-  return mode === 'capitals'
 }
 
 export function getDrillSkillLabel(skill: WorldCountriesRecallSkill): string {

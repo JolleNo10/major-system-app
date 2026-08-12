@@ -4,19 +4,19 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Country } from '@/features/world-countries/data/countries'
-import { SubregionPrepareScreen } from './SubregionPrepareScreen'
+import { SubregionSetupScreen } from './SubregionSetupScreen'
 
 const railsMock = vi.hoisted(() => vi.fn())
 
-vi.mock('../WorldCountriesPrepareRails', () => ({
-  PrepareSubregionRails: (props: Record<string, unknown>) => {
+vi.mock('../WorldCountriesSetupRails', () => ({
+  SetupSubregionRails: (props: Record<string, unknown>) => {
     railsMock(props)
     return createElement('div', { 'data-testid': 'prepare-subregion-rails' })
   },
 }))
 
-vi.mock('./SubregionPrepareOverview', () => ({
-  SubregionPrepareOverview: () => <div data-testid="prepare-subregion-overview" />,
+vi.mock('./SubregionSetupOverview', () => ({
+  SubregionSetupOverview: () => <div data-testid="setup-subregion-overview" />,
 }))
 
 const norway: Country = {
@@ -38,14 +38,14 @@ afterEach(() => {
   localStorage.clear()
 })
 
-describe('SubregionPrepareScreen', () => {
-  it('does not recommend the currently open subregion as Prepare next', async () => {
+describe('SubregionSetupScreen', () => {
+  it('does not expose a stale next-subregion progression control', async () => {
     const mount = document.createElement('div')
     document.body.append(mount)
 
     await act(async () => {
       root = createRoot(mount)
-      root.render(<SubregionPrepareScreen
+      root.render(<SubregionSetupScreen
         continent="Europe"
         subregion="northern-europe"
         activeCountries={[norway]}
@@ -58,8 +58,8 @@ describe('SubregionPrepareScreen', () => {
       await Promise.resolve()
     })
 
-    const props = railsMock.mock.calls[0]?.[0] as { nextSubregion: unknown; nextEmptyLabel: string }
-    expect(props.nextSubregion).toBeNull()
-    expect(props.nextEmptyLabel).toBe('No other subregions to prepare')
+    const props = railsMock.mock.calls[0]?.[0] as Record<string, unknown>
+    expect(props.nextSubregion).toBeUndefined()
+    expect(props.nextEmptyLabel).toBeUndefined()
   })
 })

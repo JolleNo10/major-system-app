@@ -5,6 +5,7 @@ import { countryCapitalMnemonicId, subregionMnemonicId } from '@/features/world-
 import { GeographyMnemonicView } from '@/features/world-countries/mnemonics/GeographyMnemonicView'
 import type { CountryLearningPhase } from '@/features/world-countries/learning/countryLearningFlow'
 import type { CapitalLearningPhase } from '@/features/world-countries/learning/capitalLearningFlow'
+import { deriveWorldCountriesLearningReadiness, getWorldCountriesLearningReadinessLabel } from '@/features/world-countries/learning/learningReadiness'
 
 export function GuidedLearningRails({
   continent,
@@ -44,12 +45,12 @@ export function GuidedLearningRails({
             <span className="text-cyan-300">{getSubregionDefinition(subregion).label}</span>
           </nav>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Drill guided learning</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Learning</p>
             <h2 id="world-countries-guided-context-heading" className="mt-1 text-lg font-bold text-zinc-100">Learning context</h2>
           </div>
           <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
-            <p className="text-xs uppercase tracking-wider text-zinc-500">Learning status</p>
-            <p className="mt-1 text-sm font-semibold text-zinc-200">{track === 'countries' ? (learned ? 'Countries learned ✓' : 'Countries not learned') : (capitalsLearned ? 'Capitals learned ✓' : 'Capitals not learned')}</p>
+            <p className="text-xs uppercase tracking-wider text-zinc-500">Learning Readiness</p>
+            <p className="mt-1 text-sm font-semibold text-zinc-200">{getWorldCountriesLearningReadinessLabel(deriveWorldCountriesLearningReadiness({ subregionId: subregion, ...(track === 'countries' && learned ? { countriesLearnedAt: 1 } : {}), ...(track === 'capitals' && capitalsLearned ? { capitalsLearnedAt: 1 } : {}) }))}</p>
           </div>
           <section aria-labelledby="guided-learning-order-heading">
             <h3 id="guided-learning-order-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Learning order</h3>

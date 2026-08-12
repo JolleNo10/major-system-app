@@ -16,13 +16,13 @@ import {
 } from './drillModes'
 import type { ProgressMapLegendEntry } from '@/features/world-countries/learning/ProgressMapLegend'
 import {
-  getMemoReadinessBySubregion,
-  getWorldCountriesMemoReadinessDescription,
-  getWorldCountriesMemoReadinessLabel,
-  WORLD_COUNTRIES_MEMO_READINESS_LEGEND_ENTRIES,
-  WORLD_COUNTRIES_MEMO_READINESS_COLORS,
-} from '@/features/world-countries/learning/memoReadiness'
-import type { WorldCountriesMemoLearningStates, WorldCountriesMemoReadiness } from '@/features/world-countries/learning/memoReadiness'
+  getLearningReadinessBySubregion,
+  getWorldCountriesLearningReadinessDescription,
+  getWorldCountriesLearningReadinessLabel,
+  WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES,
+  WORLD_COUNTRIES_LEARNING_READINESS_COLORS,
+} from '@/features/world-countries/learning/learningReadiness'
+import type { WorldCountriesLearningStates, WorldCountriesLearningReadiness } from '@/features/world-countries/learning/learningReadiness'
 import type { WorldCountriesProgressState } from '@/features/world-countries/learning/progressPresentation'
 
 const DRILL_PROGRESS_LABELS: Readonly<Record<WorldCountriesProgressState, string>> = {
@@ -34,13 +34,13 @@ const DRILL_PROGRESS_LABELS: Readonly<Record<WorldCountriesProgressState, string
   complete: 'Complete',
 }
 
-export const DRILL_MEMO_READINESS_LEGEND_ENTRIES = WORLD_COUNTRIES_MEMO_READINESS_LEGEND_ENTRIES
+export const DRILL_LEARNING_READINESS_LEGEND_ENTRIES = WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES
 
 export interface DrillProgressPresentationInput {
   mode: WorldCountriesDrillMode
   scopeCountries: readonly Country[]
   recallProgress: RecallProgress
-  learningStates?: WorldCountriesMemoLearningStates
+  learningStates?: WorldCountriesLearningStates
 }
 
 export function getDrillProgressPerspective(
@@ -55,9 +55,9 @@ export function createDrillProgressColors(
 ): Map<CountryId, string> {
   const presentations = getDrillCountryPresentations(input)
   return new Map([...presentations].map(([countryId, presentation]) => {
-    if (presentation.kind === 'memo') {
+    if (presentation.kind === 'learning') {
       const readiness = presentation.readiness
-      return [countryId, WORLD_COUNTRIES_MEMO_READINESS_COLORS[readiness]] as const
+      return [countryId, WORLD_COUNTRIES_LEARNING_READINESS_COLORS[readiness]] as const
     }
     const state = presentation.state
     return [countryId, getCountryProgressColor(state)] as const
@@ -69,10 +69,10 @@ export function createDrillProgressDescriptions(
 ): Map<CountryId, string> {
   const presentations = getDrillCountryPresentations(input)
   return new Map([...presentations].map(([countryId, presentation]) => {
-    if (presentation.kind === 'memo') {
+    if (presentation.kind === 'learning') {
       return [
         countryId,
-        `Memo readiness: ${getWorldCountriesMemoReadinessLabel(presentation.readiness)}. ${getWorldCountriesMemoReadinessDescription(presentation.readiness)}`,
+        `Learning Readiness: ${getWorldCountriesLearningReadinessLabel(presentation.readiness)}. ${getWorldCountriesLearningReadinessDescription(presentation.readiness)}`,
       ] as const
     }
     return [countryId, `Drill proficiency: ${DRILL_PROGRESS_LABELS[presentation.state]}.`] as const
@@ -80,7 +80,7 @@ export function createDrillProgressDescriptions(
 }
 
 type DrillCountryPresentation =
-  | { kind: 'memo'; readiness: WorldCountriesMemoReadiness }
+  | { kind: 'learning'; readiness: WorldCountriesLearningReadiness }
   | { kind: 'drill'; state: WorldCountriesProgressState }
 
 function getDrillCountryPresentations({
@@ -90,7 +90,7 @@ function getDrillCountryPresentations({
   learningStates = [],
 }: DrillProgressPresentationInput): Map<CountryId, DrillCountryPresentation> {
   const skills = getSkillsForDrillMode(mode)
-  const readinessBySubregion = getMemoReadinessBySubregion(learningStates)
+  const readinessBySubregion = getLearningReadinessBySubregion(learningStates)
   return new Map(scopeCountries.map(country => [
     country.id,
     getDrillCountryPresentation(mode, country, skills, recallProgress, readinessBySubregion),
@@ -102,7 +102,7 @@ function getDrillCountryPresentation(
   country: Country,
   skills: ReturnType<typeof getSkillsForDrillMode>,
   recallProgress: RecallProgress,
-  readinessBySubregion: ReadonlyMap<Country['subregionId'], WorldCountriesMemoReadiness>,
+  readinessBySubregion: ReadonlyMap<Country['subregionId'], WorldCountriesLearningReadiness>,
 ): DrillCountryPresentation {
   const perspective = getDrillProgressPerspective(mode)
   const { progress, hasRelevantEvidence } = getDrillCountryEvidence(
@@ -112,7 +112,7 @@ function getDrillCountryPresentation(
     recallProgress,
   )
   if (!hasRelevantEvidence) {
-    return { kind: 'memo', readiness: readinessBySubregion.get(country.subregionId) ?? 'NOT_MEMOED' }
+    return { kind: 'learning', readiness: readinessBySubregion.get(country.subregionId) ?? 'NOT_LEARNED' }
   }
   return { kind: 'drill', state: getCountryProgressState(progress, perspective) }
 }

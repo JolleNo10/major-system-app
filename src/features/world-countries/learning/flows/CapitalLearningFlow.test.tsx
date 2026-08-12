@@ -90,9 +90,9 @@ describe('CapitalLearningFlow orchestration', () => {
     expect(phases).toEqual(['complete'])
   })
 
-  it('rejects direct workflow entry before Countries learning is complete', () => {
+  it('allows direct workflow entry before Countries learning is complete', () => {
     const container = renderFlow(vi.fn(), false, false)
-    expect(container.textContent).toContain('Complete Countries first.')
-    expect(container.querySelector('[data-testid="start-recall"]')).toBeNull()
+    expect(container.textContent).toContain('Start recall')
+    expect(container.querySelector('[data-testid="start-recall"]')).not.toBeNull()
   })
 })
