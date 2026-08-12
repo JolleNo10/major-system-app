@@ -211,9 +211,22 @@ describe('Drill setup PageLayout integration', () => {
     })
 
     const leftDrawerToggle = [...mount.querySelectorAll('button')]
-      .find(button => button.textContent?.includes('Drill geography'))
+      .find(button => button.textContent?.includes('Drill setup'))
     await act(async () => leftDrawerToggle?.click())
-    expect(mount.querySelector('[role="dialog"][aria-label="Drill geography"]')).not.toBeNull()
+    const leftDrawer = mount.querySelector('[role="dialog"][aria-label="Drill setup"]')
+    expect(leftDrawer).not.toBeNull()
+    expect(leftDrawer?.querySelector('legend')?.textContent).toBe('Mode')
+    expect(leftDrawer?.querySelector('h2')?.textContent).toBe('Drill setup')
+    const modeInputs = [...(leftDrawer?.querySelectorAll('input[type="radio"]') ?? [])] as HTMLInputElement[]
+    expect(modeInputs).toHaveLength(4)
+    expect(modeInputs.filter(input => input.checked)).toHaveLength(1)
+    expect(modeInputs.find(input => input.checked)?.value).toBe('countries')
+    expect(leftDrawer?.textContent?.indexOf('Mode')).toBeLessThan(leftDrawer?.textContent?.indexOf('Geography') ?? 0)
+    const renderedModeGroups = [...mount.querySelectorAll('fieldset')]
+      .filter(fieldset => fieldset.querySelector('input[type="radio"]'))
+    expect(renderedModeGroups).toHaveLength(2)
+    expect(new Set(renderedModeGroups.map(group => group.querySelector('input[type="radio"]')?.getAttribute('name'))).size).toBe(2)
+    expect(new Set(renderedModeGroups.map(group => group.getAttribute('aria-describedby'))).size).toBe(2)
     const closeButton = mount.querySelector('[role="dialog"] button[aria-label="Close"]')
     await act(async () => (closeButton as HTMLButtonElement | null)?.click())
 
@@ -239,30 +252,30 @@ describe('Drill setup PageLayout integration', () => {
     await act(async () => norway?.dispatchEvent(new Event('click', { bubbles: true })))
     expect(northernEurope?.getAttribute('aria-pressed')).toBe('false')
 
-    for (const label of ['Countries', 'Countries + Capitals', 'Capitals', 'Countries from Capitals']) {
-      const modeButton = [...mount.querySelectorAll('button')]
-        .find(button => button.querySelector('span')?.textContent === label)
-      await act(async () => modeButton?.click())
-      expect(modeButton?.getAttribute('aria-pressed')).toBe('true')
+    for (const value of ['countries', 'countries-capitals', 'capitals', 'countries-from-capitals']) {
+      const modeInput = [...mount.querySelectorAll('input[type="radio"]')]
+        .find(input => (input as HTMLInputElement).value === value) as HTMLInputElement | undefined
+      await act(async () => modeInput?.click())
+      expect(modeInput?.checked).toBe(true)
     }
 
-    const headings = [...mount.querySelectorAll('h3')]
-    const recallModesHeading = headings.find(heading => heading.textContent === 'Recall modes')
-    const practiceHeading = headings.find(heading => heading.textContent === 'Practice')
-    const buttonLabelsUnder = (heading: Element | undefined) => [...(heading?.parentElement?.querySelectorAll('button') ?? [])]
-      .map(button => button.querySelector('span')?.textContent)
-
-    expect(buttonLabelsUnder(recallModesHeading)).toEqual([
-      'Countries',
-      'Countries + Capitals',
-      'Countries from Capitals',
-    ])
-    expect(buttonLabelsUnder(practiceHeading)).toEqual(['Capitals'])
-    expect(practiceHeading?.parentElement?.textContent).toContain('Practise capitals before Countries + Capitals.')
+    const modeSection = mount.querySelector('fieldset')
+    expect(modeSection?.textContent).toContain('Drill')
+    expect(modeSection?.textContent).toContain('Practice')
+    const descriptionId = modeSection?.getAttribute('aria-describedby')
+    expect(descriptionId).toBeTruthy()
+    expect(modeSection?.querySelector(`[id="${descriptionId}"]`)?.textContent).toBe('Given a Capital, recall its Country.')
+    const capitalsInput = [...mount.querySelectorAll('input[type="radio"]')]
+      .find(input => (input as HTMLInputElement).value === 'capitals') as HTMLInputElement | undefined
+    await act(async () => capitalsInput?.click())
+    expect(modeSection?.querySelector(`[id="${descriptionId}"]`)?.textContent).toBe('Practise capitals before Countries + Capitals.')
+    expect(modeSection?.querySelectorAll(`[id="${descriptionId}"]`)).toHaveLength(1)
 
     const rightDrawerToggle = [...mount.querySelectorAll('button')]
-      .find(button => button.textContent?.includes('Drill controls'))
+      .find(button => button.textContent?.includes('Current drill'))
     await act(async () => rightDrawerToggle?.click())
-    expect(mount.querySelector('[role="dialog"][aria-label="Drill controls"]')).not.toBeNull()
+    const rightDrawer = mount.querySelector('[role="dialog"][aria-label="Current drill"]')
+    expect(rightDrawer).not.toBeNull()
+    expect(rightDrawer?.querySelector('input[type="radio"]')).toBeNull()
   })
 })

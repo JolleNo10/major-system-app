@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { useRails } from '@/app/layout/PageLayoutContext'
 import { countries, type Continent, type Country } from '@/features/world-countries/data/countries'
 import type { SubregionId } from '@/features/world-countries/data/subregions'
@@ -64,81 +65,87 @@ export function DrillSetupRails({
 
   useRails(
     {
-      left: level === 'world' ? (
-        <section className="space-y-4" aria-labelledby="world-countries-drill-geography-heading">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World</p>
-            <h2 id="world-countries-drill-geography-heading" className="mt-1 text-lg font-bold text-zinc-100">Drill geography</h2>
-          </div>
-          <p className="text-sm leading-relaxed text-zinc-400">Choose a Continent to enter its map-centered Drill setup.</p>
-          <nav aria-label="Continents">
-            <ul className="space-y-1.5">
-              {getContinentsInEffectiveOrder(entries, getWorldMetadata()).map(continent => (
-                <DrillHierarchyRailRow
-                  key={continent}
-                  label={continent}
-                  summary={formatContinentSummary(continent, entries)}
-                  groupId={getContinentHoverGroupId(continent)}
-                  hoveredGroupId={hoveredGroupId}
-                  onClick={() => onSelectContinent(continent)}
-                  onHoverGroup={onHoverGroup}
-                />
-              ))}
-            </ul>
-          </nav>
-        </section>
-      ) : (
-        <section className="space-y-4" aria-labelledby="world-countries-drill-scope-heading">
-          <nav aria-label="World Countries hierarchy" className="flex flex-wrap items-center gap-1.5 text-xs">
-            <button type="button" onClick={onWorld} className="text-zinc-500 hover:text-zinc-200">World</button>
-            <span className="text-zinc-700">/</span>
-            <span className="text-cyan-300">{selection.continent}</span>
-          </nav>
+      left: (
+        <section className="space-y-6" aria-labelledby="world-countries-drill-setup-heading">
+          <h2 id="world-countries-drill-setup-heading" className="text-lg font-bold text-zinc-100">Drill setup</h2>
+          <DrillModeRail mode={mode} onModeChange={onModeChange} />
+          {level === 'world' ? (
+            <section className="space-y-4" aria-labelledby="world-countries-drill-geography-heading">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World</p>
+                <h3 id="world-countries-drill-geography-heading" className="mt-1 text-lg font-bold text-zinc-100">Geography</h3>
+              </div>
+              <p className="text-sm leading-relaxed text-zinc-400">Choose a Continent to enter its map-centered Drill setup.</p>
+              <nav aria-label="Continents">
+                <ul className="space-y-1.5">
+                  {getContinentsInEffectiveOrder(entries, getWorldMetadata()).map(continent => (
+                    <DrillHierarchyRailRow
+                      key={continent}
+                      label={continent}
+                      summary={formatContinentSummary(continent, entries)}
+                      groupId={getContinentHoverGroupId(continent)}
+                      hoveredGroupId={hoveredGroupId}
+                      onClick={() => onSelectContinent(continent)}
+                      onHoverGroup={onHoverGroup}
+                    />
+                  ))}
+                </ul>
+              </nav>
+            </section>
+          ) : (
+            <section className="space-y-4" aria-labelledby="world-countries-drill-scope-heading">
+              <nav aria-label="World Countries hierarchy" className="flex flex-wrap items-center gap-1.5 text-xs">
+                <button type="button" onClick={onWorld} className="text-zinc-500 hover:text-zinc-200">World</button>
+                <span className="text-zinc-700">/</span>
+                <span className="text-cyan-300">{selection.continent}</span>
+              </nav>
 
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">{selection.continent}</p>
-            <h2 id="world-countries-drill-scope-heading" className="mt-1 text-lg font-bold text-zinc-100">Drill scope</h2>
-            <p className="mt-1 text-sm text-zinc-400">Select Subregions from the rail or map.</p>
-          </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">{selection.continent}</p>
+                <h3 id="world-countries-drill-scope-heading" className="mt-1 text-lg font-bold text-zinc-100">Drill scope</h3>
+                <p className="mt-1 text-sm text-zinc-400">Select Subregions from the rail or map.</p>
+              </div>
 
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="text-xs uppercase tracking-wider text-zinc-500">Current selection</span>
-              <span className="text-sm font-semibold tabular-nums text-cyan-300">{selectedCount}/{subregions.length}</span>
-            </div>
-            <button
-              type="button"
-              aria-pressed={entireContinent}
-              onClick={onSelectEntireContinent}
-              className={`mt-3 w-full rounded-lg border px-3 py-2.5 text-left text-sm transition-colors ${entireContinent
-                ? 'border-cyan-500 bg-cyan-500/15 text-cyan-100'
-                : 'border-zinc-700 bg-zinc-800 text-zinc-300 hover:border-cyan-600'}
-              `}
-            >
-              <span className="block font-semibold">Entire Continent</span>
-              <span className="mt-1 block text-xs text-zinc-500">All currently defined Subregions</span>
-            </button>
-          </div>
+              <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-xs uppercase tracking-wider text-zinc-500">Current selection</span>
+                  <span className="text-sm font-semibold tabular-nums text-cyan-300">{selectedCount}/{subregions.length}</span>
+                </div>
+                <button
+                  type="button"
+                  aria-pressed={entireContinent}
+                  onClick={onSelectEntireContinent}
+                  className={`mt-3 w-full rounded-lg border px-3 py-2.5 text-left text-sm transition-colors ${entireContinent
+                    ? 'border-cyan-500 bg-cyan-500/15 text-cyan-100'
+                    : 'border-zinc-700 bg-zinc-800 text-zinc-300 hover:border-cyan-600'}
+                  `}
+                >
+                  <span className="block font-semibold">Entire Continent</span>
+                  <span className="mt-1 block text-xs text-zinc-500">All currently defined Subregions</span>
+                </button>
+              </div>
 
-          <nav aria-label={`${selection.continent} Subregions`}>
-            <ul className="space-y-1.5">
-              {subregions.map(subregion => {
-                const selected = selection.subregionIds.includes(subregion.id)
-                return (
-                  <DrillHierarchyRailRow
-                    key={subregion.id}
-                    label={subregion.label}
-                    groupId={getSubregionHoverGroupId(subregion.label)}
-                    hoveredGroupId={hoveredGroupId}
-                    onClick={() => onToggleSubregion(subregion.id)}
-                    onHoverGroup={onHoverGroup}
-                    selected={selected}
-                  />
-                )
-              })}
-            </ul>
-          </nav>
-          {selectedCount === 0 && <p className="text-sm text-amber-300" role="alert">Select at least one Subregion to start.</p>}
+              <nav aria-label={`${selection.continent} Subregions`}>
+                <ul className="space-y-1.5">
+                  {subregions.map(subregion => {
+                    const selected = selection.subregionIds.includes(subregion.id)
+                    return (
+                      <DrillHierarchyRailRow
+                        key={subregion.id}
+                        label={subregion.label}
+                        groupId={getSubregionHoverGroupId(subregion.label)}
+                        hoveredGroupId={hoveredGroupId}
+                        onClick={() => onToggleSubregion(subregion.id)}
+                        onHoverGroup={onHoverGroup}
+                        selected={selected}
+                      />
+                    )
+                  })}
+                </ul>
+              </nav>
+              {selectedCount === 0 && <p className="text-sm text-amber-300" role="alert">Select at least one Subregion to start.</p>}
+            </section>
+          )}
         </section>
       ),
       right: (
@@ -147,15 +154,14 @@ export function DrillSetupRails({
           order={order}
           level={level}
           selection={selection}
-          onModeChange={onModeChange}
           onOrderChange={onOrderChange}
           onStart={onStart}
           guidedActions={guidedActions}
           onGuidedAction={onGuidedAction}
         />
       ),
-      leftLabel: level === 'world' ? 'Drill geography' : 'Drill scope',
-      rightLabel: 'Drill controls',
+      leftLabel: 'Drill setup',
+      rightLabel: 'Current drill',
     },
     [entries, level, mode, order, selection.continent, selection.subregionIds, hoveredGroupId, onHoverGroup, onWorld, onSelectContinent, onToggleSubregion, onSelectEntireContinent, onModeChange, onOrderChange, onStart, guidedActions, onGuidedAction],
   )
@@ -170,43 +176,53 @@ function DrillModeRail({
   mode: WorldCountriesDrillMode
   onModeChange: (mode: WorldCountriesDrillMode) => void
 }) {
+  const modeGroupId = useId()
+  const modeDescription = getDrillModeDefinition(mode).description
+  const modeGroupName = `world-countries-drill-mode-${modeGroupId}`
+  const drillHeadingId = `${modeGroupId}-drill-heading`
+  const practiceHeadingId = `${modeGroupId}-practice-heading`
+  const descriptionId = `${modeGroupId}-description`
+
   return (
-    <section className="space-y-4" aria-labelledby="world-countries-drill-controls-heading">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wider text-violet-400">Drill</p>
-        <h2 id="world-countries-drill-controls-heading" className="mt-1 text-lg font-bold text-zinc-100">Controls</h2>
-      </div>
-      <div>
-        <h3 className="text-sm font-semibold text-zinc-200">Recall modes</h3>
-        <div className="mt-3 space-y-2">
+    <fieldset
+      className="space-y-4"
+      aria-describedby={descriptionId}
+    >
+      <legend className="text-base font-semibold text-zinc-100">Mode</legend>
+      <div className="space-y-2" role="group" aria-labelledby={drillHeadingId}>
+        <h3 id={drillHeadingId} className="text-sm font-semibold text-zinc-200">Drill</h3>
+        <div className="space-y-2">
           {WORLD_COUNTRIES_DRILL_MODES
             .filter(candidate => candidate.id !== 'capitals')
             .map(candidate => (
-              <DrillModeButton
+              <DrillModeOption
                 key={candidate.id}
                 candidate={candidate}
                 selected={candidate.id === mode}
                 onSelect={onModeChange}
+                groupName={modeGroupName}
               />
             ))}
         </div>
       </div>
-      <div className="border-t border-zinc-800 pt-4">
-        <h3 className="text-sm font-semibold text-zinc-200">Practice</h3>
-        <div className="mt-3 space-y-2">
+      <div className="border-t border-zinc-800 pt-4" role="group" aria-labelledby={practiceHeadingId}>
+        <h3 id={practiceHeadingId} className="text-sm font-semibold text-zinc-200">Practice</h3>
+        <div className="mt-2">
           {WORLD_COUNTRIES_DRILL_MODES
             .filter(candidate => candidate.id === 'capitals')
             .map(candidate => (
-              <DrillModeButton
+              <DrillModeOption
                 key={candidate.id}
                 candidate={candidate}
                 selected={candidate.id === mode}
                 onSelect={onModeChange}
+                groupName={modeGroupName}
               />
             ))}
         </div>
       </div>
-    </section>
+      <p id={descriptionId} className="text-xs leading-relaxed text-zinc-500">{modeDescription}</p>
+    </fieldset>
   )
 }
 
@@ -215,7 +231,6 @@ function DrillSetupActionRail({
   selection,
   mode,
   order,
-  onModeChange,
   onOrderChange,
   onStart,
   guidedActions,
@@ -225,7 +240,6 @@ function DrillSetupActionRail({
   selection: WorldCountriesDrillSelection
   mode: WorldCountriesDrillMode
   order: WorldCountriesDrillOrder
-  onModeChange: (mode: WorldCountriesDrillMode) => void
   onOrderChange: (order: WorldCountriesDrillOrder) => void
   onStart: () => void
   guidedActions: GuidedLearningActions
@@ -258,9 +272,6 @@ function DrillSetupActionRail({
         </div>
       )}
 
-      <div className="border-t border-zinc-800 pt-4">
-        <DrillModeRail mode={mode} onModeChange={onModeChange} />
-      </div>
     </section>
   )
 }
@@ -379,28 +390,34 @@ function guidedActionLabel(action: GuidedLearningActionId): string {
   }
 }
 
-function DrillModeButton({
+function DrillModeOption({
   candidate,
   selected,
   onSelect,
+  groupName,
 }: {
   candidate: DrillModeDefinition
   selected: boolean
   onSelect: (mode: WorldCountriesDrillMode) => void
+  groupName: string
 }) {
   return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      onClick={() => onSelect(candidate.id)}
-      className={`w-full rounded-lg border px-3 py-2.5 text-left transition-colors ${selected
+    <label
+      className={`flex min-h-[40px] w-full cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors ${selected
         ? 'border-violet-500 bg-violet-500/15'
         : 'border-zinc-700 bg-zinc-800 hover:border-violet-600'}
       `}
     >
-      <span className={`block text-sm font-semibold ${selected ? 'text-violet-200' : 'text-zinc-200'}`}>{candidate.label}</span>
-      <span className="mt-1 block text-xs leading-relaxed text-zinc-500">{candidate.description}</span>
-    </button>
+      <input
+        type="radio"
+        name={groupName}
+        value={candidate.id}
+        checked={selected}
+        onChange={() => onSelect(candidate.id)}
+        className="h-4 w-4 shrink-0 accent-violet-500"
+      />
+      <span className={`min-w-0 font-semibold ${selected ? 'text-violet-200' : 'text-zinc-200'}`}>{candidate.label}</span>
+    </label>
   )
 }
 

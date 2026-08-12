@@ -1,6 +1,6 @@
 # Change Spec 0004 - Reorganize World Countries Drill setup
 
-- **Status:** Ready
+- **Status:** Implemented
 - **Date:** 2026-08-12
 - **Issue:** None.
 - **Current-state docs:** [System architecture](../architecture/SYSTEM.md), [World Countries](../architecture/features/WORLD_COUNTRIES.md)
@@ -208,5 +208,8 @@ change only if the implemented composition makes its wording inaccurate.
 
 Complete this section when setting the status to `Implemented`.
 
-- Implementation date: pending.
-- Evidence: pending.
+- Implemented and verified on 2026-08-12.
+- Evidence: `npm test` (90 test files, 404 tests), `npx tsc -b`, and
+  `npm run build` all pass. Focused rail tests cover the left Mode/geography
+  composition, native radio semantics, selected-description association,
+  responsive drawer labels, and the read-only Current drill summary.

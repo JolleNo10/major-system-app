@@ -193,8 +193,9 @@ describe('DrillSetup rail presentation', () => {
     expect(mount.querySelector('[aria-label="Durable progress legend"]')).not.toBeNull()
   })
 
-  it('publishes geographic scope on the left and drill controls on the right', async () => {
+  it('publishes mode and geographic setup on the left and current drill on the right', async () => {
     const onSelectionChange = vi.fn()
+    const onModeChange = vi.fn()
     const onOrderChange = vi.fn()
     const onStart = vi.fn()
     const mount = document.createElement('div')
@@ -208,7 +209,7 @@ describe('DrillSetup rail presentation', () => {
         mode: 'countries',
         order: 'ordered',
         onSelectionChange,
-        onModeChange: vi.fn(),
+        onModeChange,
         onOrderChange,
         onStart,
         onWorld: vi.fn(),
@@ -223,6 +224,32 @@ describe('DrillSetup rail presentation', () => {
     await act(async () => {
       root?.render(createElement('div', null, railConfig.left, railConfig.right))
     })
+
+    const modeSection = mount.querySelector('fieldset')
+    expect(modeSection?.querySelector('legend')?.textContent).toBe('Mode')
+    const descriptionId = modeSection?.getAttribute('aria-describedby')
+    expect(descriptionId).toBeTruthy()
+    expect(modeSection?.querySelector(`[id="${descriptionId}"]`)).not.toBeNull()
+    const groupLabels = [...(modeSection?.querySelectorAll('[role="group"]') ?? [])]
+      .map(group => group.getAttribute('aria-labelledby'))
+    expect(groupLabels).toHaveLength(2)
+    expect(groupLabels.every(id => id && modeSection?.querySelector(`[id="${id}"]`))).toBe(true)
+    const modeInputs = [...(modeSection?.querySelectorAll('input[type="radio"]') ?? [])] as HTMLInputElement[]
+    expect(modeInputs).toHaveLength(4)
+    expect(modeInputs.map(input => input.parentElement?.textContent?.trim())).toEqual([
+      'Countries',
+      'Countries + Capitals',
+      'Countries from Capitals',
+      'Capitals',
+    ])
+    expect(modeInputs.filter(input => input.checked)).toHaveLength(1)
+    expect(modeSection?.textContent).toContain('Drill')
+    expect(modeSection?.textContent).toContain('Practice')
+    expect(modeSection?.querySelector(`[id="${descriptionId}"]`)?.textContent).toBe('Identify the highlighted Country location on the map.')
+    expect(modeSection?.querySelectorAll(`[id="${descriptionId}"]`)).toHaveLength(1)
+    await act(async () => modeInputs.find(input => input.value === 'capitals')?.click())
+    expect(onModeChange).toHaveBeenCalledWith('capitals')
+    expect(mount.textContent?.indexOf('Mode')).toBeLessThan(mount.textContent?.indexOf('Drill scope') ?? 0)
 
     const currentDrill = mount.querySelector('[aria-labelledby="world-countries-current-drill-heading"]')
     expect(currentDrill).not.toBeNull()
@@ -242,6 +269,7 @@ describe('DrillSetup rail presentation', () => {
     expect(mount.textContent).toContain('Entire Continent')
     expect(mount.textContent).toContain('Northern Europe')
     expect(mount.textContent).toContain('Recall mode')
+    expect(currentDrill?.querySelector('input[type="radio"]')).toBeNull()
     const entireContinentButton = [...mount.querySelectorAll('button')]
       .find(button => button.textContent?.includes('Entire Continent'))
     await act(async () => entireContinentButton?.click())
