@@ -7,7 +7,7 @@ import type { WorldCountriesDrillSelection } from './drillSelection'
 import { getDrillSkillLabel } from './drillModes'
 import { getCurrentDrillStep, getDrillSessionSkills, getDrillSessionTotalSteps, type DrillSessionState } from './drillSessionState'
 import type { LearningStates } from '@/features/world-countries/learning/learningProgress'
-import { deriveWorldCountriesLearningReadiness, getWorldCountriesLearningReadinessLabel } from '@/features/world-countries/learning/learningReadiness'
+import { deriveWorldCountriesLearningReadiness, getWorldCountriesLearningReadinessLabel, getWorldCountriesLearningStateList } from '@/features/world-countries/learning/learningReadiness'
 
 export function PracticeSessionRails({ selection, state, onExit, entries, learningStates }: {
   selection: WorldCountriesDrillSelection
@@ -21,7 +21,7 @@ export function PracticeSessionRails({ selection, state, onExit, entries, learni
   const completedSteps = state.countryIndex * getDrillSessionSkills(state).length + state.stepIndex
   const progressPercent = totalSteps ? Math.round((completedSteps / totalSteps) * 100) : 0
   const subregions = getSubregionsForContinentInEffectiveOrder(selection.continent, entries, getContinentMetadata(selection.continent))
-  const stateList = Array.isArray(learningStates) ? learningStates : [...learningStates.values()]
+  const stateList = getWorldCountriesLearningStateList(learningStates)
   useRails({
     left: (
       <section className="space-y-4" aria-labelledby="world-countries-practice-context-heading">

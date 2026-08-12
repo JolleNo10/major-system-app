@@ -4,6 +4,7 @@ import { getSubregionIdsForContinent } from '@/features/world-countries/geograph
 import type { SubregionLearningState } from '@/features/world-countries/learning/subregionLearningState'
 import {
   deriveWorldCountriesLearningReadiness,
+  getWorldCountriesLearningStateList,
   type WorldCountriesLearningStates,
   type WorldCountriesLearningReadiness,
 } from '@/features/world-countries/learning/learningReadiness'
@@ -27,9 +28,7 @@ export interface SubregionLearningReadinessProgress extends LearningReadinessPro
 export type LearningStates = WorldCountriesLearningStates
 
 function asLearningStateMap(states: LearningStates): ReadonlyMap<SubregionId, SubregionLearningState> {
-  return Array.isArray(states)
-    ? new Map(states.map(state => [state.subregionId, state] as const))
-    : states as ReadonlyMap<SubregionId, SubregionLearningState>
+  return new Map(getWorldCountriesLearningStateList(states).map(state => [state.subregionId, state] as const))
 }
 
 function getLearningReadinessProgressForSubregions(
@@ -61,15 +60,6 @@ function getLearningReadinessProgressForSubregions(
     },
     readinessBySubregion,
   }
-}
-
-/** Aggregate the two cumulative Learning Readiness milestones over current Subregions. */
-export function getWorldLearningReadinessProgress(
-  states: LearningStates,
-  entries: readonly Country[] = countries,
-): LearningReadinessProgress {
-  const subregionIds = [...new Set(entries.map(country => country.subregionId))]
-  return getLearningReadinessProgressForSubregions(subregionIds, states)
 }
 
 /** Aggregate the two cumulative Learning Readiness milestones over a Continent's Subregions. */

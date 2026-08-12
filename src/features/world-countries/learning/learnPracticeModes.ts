@@ -39,11 +39,3 @@ export const WORLD_COUNTRIES_PRACTICE_MODES: readonly {
 export function isWorldCountriesLearningMode(value: string): value is WorldCountriesLearningMode {
   return value === 'learn-countries' || value === 'learn-capitals'
 }
-
-export function isWorldCountriesPracticeMode(value: string): value is WorldCountriesPracticeMode {
-  return value === 'locate-countries' || value === 'capitals'
-}
-
-export function isWorldCountriesLearnPracticeMode(value: string): value is WorldCountriesLearnPracticeMode {
-  return isWorldCountriesLearningMode(value) || isWorldCountriesPracticeMode(value)
-}

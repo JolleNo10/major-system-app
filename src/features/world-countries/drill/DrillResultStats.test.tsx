@@ -34,4 +34,18 @@ describe('DrillResultStats', () => {
     expect(mount.textContent).toContain('50%')
     expect(mount.textContent).toContain('2')
   })
+
+  it('allows Practice results to publish a Practice-specific summary label', () => {
+    const summary = summarizeDrillAnswers([])
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement(DrillResultStats, { summary, answerCount: 0, ariaLabel: 'Practice summary' }))
+    })
+
+    expect(mount.querySelector('[aria-label="Practice summary"]')).not.toBeNull()
+    expect(mount.querySelector('[aria-label="Drill summary"]')).toBeNull()
+  })
 })

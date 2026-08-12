@@ -5,7 +5,7 @@ import type { SubregionId } from '@/features/world-countries/data/subregions'
 import { getContinentsInEffectiveOrder, getCountriesForContinent, getSubregionsForContinentInEffectiveOrder } from '@/features/world-countries/geography/queries'
 import { getContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
 import { getWorldMetadata } from '@/features/world-countries/geography/worldMetadataStore'
-import { deriveWorldCountriesLearningReadiness } from '@/features/world-countries/learning/learningReadiness'
+import { deriveWorldCountriesLearningReadiness, getWorldCountriesLearningStateList } from '@/features/world-countries/learning/learningReadiness'
 import type { LearningStates } from '@/features/world-countries/learning/learningProgress'
 import type { SubregionLearningState } from '@/features/world-countries/learning/subregionLearningState'
 import { getContinentHoverGroupId, getSubregionHoverGroupId } from '@/features/world-countries/maps/geographyMapAdapter'
@@ -15,21 +15,12 @@ import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountrie
 import { WORLD_COUNTRIES_DRILL_MODES, type WorldCountriesDrillMode } from './drillModes'
 import { isEntireContinentSelection, type WorldCountriesDrillSelection } from './drillSelection'
 import type { WorldCountriesDrillOrder } from './drillOrder'
-import type { WorldCountriesLearnPracticeMode, WorldCountriesLearningMode, WorldCountriesPracticeMode } from '@/features/world-countries/learning/learnPracticeModes'
+import { isWorldCountriesLearningMode, WORLD_COUNTRIES_LEARNING_MODES, WORLD_COUNTRIES_PRACTICE_MODES, type WorldCountriesLearnPracticeMode } from '@/features/world-countries/learning/learnPracticeModes'
 
 const PURPOSES = [
   { id: 'drill' as const, label: 'Drill', description: 'Recording recall that contributes to Drill proficiency.' },
   { id: 'learn-practise' as const, label: 'Learn & Practise', description: 'Durable Learning milestones or non-recording Practice.' },
 ]
-const LEARNING_MODES: readonly ModeOption<WorldCountriesLearningMode>[] = [
-  { id: 'learn-countries', label: 'Learn Countries', description: 'Learn Country locations and record Countries learned.' },
-  { id: 'learn-capitals', label: 'Learn Capitals', description: 'Learn Country–Capital relationships and record Capitals learned.' },
-]
-const PRACTICE_MODES: readonly ModeOption<WorldCountriesPracticeMode>[] = [
-  { id: 'locate-countries', label: 'Locate Countries', description: 'Non-recording map practice for Country locations.' },
-  { id: 'capitals', label: 'Capitals', description: 'Non-recording capital practice.' },
-]
-
 export function DrillSetupRails({
   level, selection, mode, order, purpose, learnPracticeMode, learningStates, hoveredGroupId, onHoverGroup, onWorld, onSelectContinent, onToggleSubregion, onSelectEntireContinent, onModeChange, onOrderChange, onStart, onPurposeChange, onLearnPracticeModeChange, onLearnPracticeStart, onOpenSetup, entries = countries,
 }: {
@@ -60,7 +51,7 @@ export function DrillSetupRails({
   const selectedCount = selection.subregionIds.length
   const purposeGroupName = `world-countries-purpose-${useId()}`
   const modeGroupName = `world-countries-mode-${useId()}`
-  const stateList: readonly SubregionLearningState[] = Array.isArray(learningStates) ? learningStates : [...learningStates.values()]
+  const stateList = getWorldCountriesLearningStateList(learningStates)
   const selectedStates = selection.subregionIds.map(id => stateList.find(state => state.subregionId === id))
   const countriesIncomplete = selectedStates.some(state => deriveWorldCountriesLearningReadiness(state) === 'NOT_LEARNED')
 
@@ -89,10 +80,10 @@ function CurrentDrillPanel({ mode, order, groupName, onModeChange, onOrderChange
 }
 
 function LearnPracticePanel({ level, selectedCount, selectedStates, countriesIncomplete, mode, onModeChange, onStart }: { level: 'world' | 'continent'; selectedCount: number; selectedStates: readonly (SubregionLearningState | undefined)[]; countriesIncomplete: boolean; mode: WorldCountriesLearnPracticeMode; onModeChange: (mode: WorldCountriesLearnPracticeMode) => void; onStart: (mode: WorldCountriesLearnPracticeMode) => void }) {
-  const learning = mode === 'learn-countries' || mode === 'learn-capitals'
+  const learning = isWorldCountriesLearningMode(mode)
   const groupName = `world-countries-learn-practice-${useId()}`
   const canStart = level === 'continent' && selectedCount > 0
-  return <section className="space-y-3" aria-labelledby="world-countries-learn-practice-heading"><h2 id="world-countries-learn-practice-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Learn &amp; Practise</h2><div className="space-y-2"><p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Learning</p>{LEARNING_MODES.map(candidate => <ModeOption key={candidate.id} candidate={candidate} selected={candidate.id === mode} onSelect={onModeChange} groupName={groupName} />)}<p className="pt-2 text-xs font-semibold uppercase tracking-wider text-violet-400">Practice</p>{PRACTICE_MODES.map(candidate => <ModeOption key={candidate.id} candidate={candidate} selected={candidate.id === mode} onSelect={onModeChange} groupName={groupName} />)}</div>{mode === 'learn-capitals' && countriesIncomplete && <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs leading-relaxed text-amber-200" role="note">Recommendation: Learn Countries first for this selection. Learn Capitals is available now and will record Capitals learned, while Learning Readiness remains Not learned until Countries learning is complete.</p>}{learning && selectedCount > 1 && <p className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3 text-xs leading-relaxed text-zinc-400" role="note">Learning is recommended one Subregion at a time. Continue will work through the selected Subregions in effective geographic order.</p>}{!learning && <p className="text-xs leading-relaxed text-zinc-500">Practice is non-recording: it never changes Learning Readiness, evidence, Drill proficiency, or preferences.</p>}<button type="button" disabled={!canStart} onClick={() => onStart(mode)} className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40">{canStart ? `Start ${learning ? 'Learning' : 'Practice'}` : 'Choose a Continent first'}</button></section>
+  return <section className="space-y-3" aria-labelledby="world-countries-learn-practice-heading"><h2 id="world-countries-learn-practice-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Learn &amp; Practise</h2><div className="space-y-2"><p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Learning</p>{WORLD_COUNTRIES_LEARNING_MODES.map(candidate => <ModeOption key={candidate.id} candidate={candidate} selected={candidate.id === mode} onSelect={onModeChange} groupName={groupName} />)}<p className="pt-2 text-xs font-semibold uppercase tracking-wider text-violet-400">Practice</p>{WORLD_COUNTRIES_PRACTICE_MODES.map(candidate => <ModeOption key={candidate.id} candidate={candidate} selected={candidate.id === mode} onSelect={onModeChange} groupName={groupName} />)}</div>{mode === 'learn-capitals' && countriesIncomplete && <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs leading-relaxed text-amber-200" role="note">Recommendation: Learn Countries first for this selection. Learn Capitals is available now and will record Capitals learned, while Learning Readiness remains Not learned until Countries learning is complete.</p>}{learning && selectedCount > 1 && <p className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3 text-xs leading-relaxed text-zinc-400" role="note">Learning is recommended one Subregion at a time. Continue will work through the selected Subregions in effective geographic order.</p>}{!learning && <p className="text-xs leading-relaxed text-zinc-500">Practice is non-recording: it never changes Learning Readiness, evidence, Drill proficiency, or preferences.</p>}<button type="button" disabled={!canStart} onClick={() => onStart(mode)} className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40">{canStart ? `Start ${learning ? 'Learning' : 'Practice'}` : 'Choose a Continent first'}</button></section>
 }
 
 type ModeOption<T extends string> = { id: T; label: string; description: string }

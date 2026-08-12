@@ -13,6 +13,12 @@ export const WORLD_COUNTRIES_LEARNING_READINESS_STATES = [
 export type WorldCountriesLearningReadiness = typeof WORLD_COUNTRIES_LEARNING_READINESS_STATES[number]
 export type WorldCountriesLearningStates = readonly SubregionLearningState[] | ReadonlyMap<SubregionId, SubregionLearningState>
 
+export function getWorldCountriesLearningStateList(
+  states: WorldCountriesLearningStates,
+): readonly SubregionLearningState[] {
+  return Array.isArray(states) ? states : [...states.values()]
+}
+
 export const WORLD_COUNTRIES_LEARNING_READINESS_COLORS: Readonly<Record<WorldCountriesLearningReadiness, string>> = {
   NOT_LEARNED: '#52525b',
   COUNTRIES_LEARNED: '#71717a',
@@ -68,8 +74,7 @@ export function deriveWorldCountriesLearningReadinessFromTracks(
 export function getLearningReadinessBySubregion(
   states: WorldCountriesLearningStates,
 ): ReadonlyMap<SubregionId, WorldCountriesLearningReadiness> {
-  const values = Array.isArray(states) ? states : [...states.values()]
-  return new Map(values.map(state => [state.subregionId, deriveWorldCountriesLearningReadiness(state)]))
+  return new Map(getWorldCountriesLearningStateList(states).map(state => [state.subregionId, deriveWorldCountriesLearningReadiness(state)]))
 }
 
 export function getLearningReadinessForCountry(

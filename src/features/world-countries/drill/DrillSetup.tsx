@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { countries, type Continent, type Country } from '@/features/world-countries/data/countries'
 import { loadWorldCountriesRecallProgress, type RecallProgress } from '@/features/world-countries/learning/recallProgress'
-import { getAllSubregionLearningStates } from '@/features/world-countries/learning/subregionLearningStore'
-import { createWorldCountriesLearningReadinessByCountry, createWorldCountriesLearningReadinessColors, getWorldCountriesLearningReadinessDescription, getWorldCountriesLearningReadinessLabel, WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES, type WorldCountriesLearningReadiness } from '@/features/world-countries/learning/learningReadiness'
+import { createWorldCountriesLearningReadinessByCountry, createWorldCountriesLearningReadinessColors, getWorldCountriesLearningReadinessDescription, getWorldCountriesLearningReadinessLabel, getWorldCountriesLearningStateList, WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES, type WorldCountriesLearningReadiness } from '@/features/world-countries/learning/learningReadiness'
 import type { LearningStates } from '@/features/world-countries/learning/learningProgress'
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
 import { ProgressMapLegend } from '@/features/world-countries/learning/ProgressMapLegend'
@@ -42,7 +41,7 @@ export function DrillSetup({
   const subregions = getDrillSubregions(selection.continent, entries)
   const skills = getSkillsForDrillMode(mode)
   const [recallProgress, setRecallProgress] = useState<RecallProgress | null>(null)
-  const allLearningStates = useMemo(() => Array.isArray(learningStates) ? learningStates : getAllSubregionLearningStates(entries), [entries, learningStates])
+  const allLearningStates = useMemo(() => getWorldCountriesLearningStateList(learningStates), [learningStates])
   const readinessColors = useMemo(() => createWorldCountriesLearningReadinessColors(entries, allLearningStates), [allLearningStates, entries])
   const readinessByCountry = useMemo(() => createWorldCountriesLearningReadinessByCountry(entries, allLearningStates), [allLearningStates, entries])
   const isDrill = purpose === 'drill'

@@ -53,7 +53,7 @@ export function DrillResultsRails({
           </div>
           <p className="text-sm leading-relaxed text-zinc-400">Keep the geographic workspace open while you review this run or change the scope.</p>
           <button type="button" onClick={onAgain} className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">Run again</button>
-          <button type="button" onClick={onChangeSetup} className="w-full rounded-xl bg-zinc-800 px-4 py-3 text-sm font-semibold text-zinc-300 hover:bg-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">Change Drill</button>
+          <button type="button" onClick={onChangeSetup} className="w-full rounded-xl bg-zinc-800 px-4 py-3 text-sm font-semibold text-zinc-300 hover:bg-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">Change scope</button>
         </section>
       ),
       leftLabel: 'Results',

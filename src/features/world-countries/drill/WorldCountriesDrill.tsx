@@ -10,7 +10,7 @@ import { getCountriesForSubregionInEffectiveOrder, getSubregionsForContinentInEf
 import { getAllSubregionLearningStates } from '@/features/world-countries/learning/subregionLearningStore'
 import { CountryLearningFlow } from '@/features/world-countries/learning/flows/CountryLearningFlow'
 import { CapitalLearningFlow } from '@/features/world-countries/learning/flows/CapitalLearningFlow'
-import type { WorldCountriesLearnPracticeMode, WorldCountriesPracticeMode } from '@/features/world-countries/learning/learnPracticeModes'
+import { isWorldCountriesLearningMode, type WorldCountriesLearnPracticeMode, type WorldCountriesLearningMode, type WorldCountriesPracticeMode } from '@/features/world-countries/learning/learnPracticeModes'
 import { recordWorldCountriesAttempt } from '@/features/world-countries/learning/recallProgress'
 import { WorldCountriesSetup, type WorldCountriesSetupContext } from '@/features/world-countries/setup/WorldCountriesSetup'
 import { DrillResults } from './DrillResults'
@@ -31,7 +31,7 @@ import { loadDrillPreferences, saveDrillPreferences, type WorldCountriesDrillPre
 
 type DrillPhase = 'setup' | 'learning' | 'practice' | 'recall' | 'results'
 type ActivityPurpose = 'drill' | 'learn-practise'
-type LearningRun = { mode: 'learn-countries' | 'learn-capitals'; subregionIds: readonly SubregionId[]; index: number }
+type LearningRun = { mode: WorldCountriesLearningMode; subregionIds: readonly SubregionId[]; index: number }
 type StartSessionOptions = {
   persistPreferences?: boolean
   interaction?: DrillSessionInteraction
@@ -115,7 +115,7 @@ export function WorldCountriesDrill({ answerMode, onOpenSetup }: { answerMode: A
       .filter(id => selected.has(id))
   }, [activeCountries, effectivePreferences.continent, effectivePreferences.subregionIds])
 
-  const startLearning = useCallback((mode: 'learn-countries' | 'learn-capitals') => {
+  const startLearning = useCallback((mode: WorldCountriesLearningMode) => {
     if (orderedSelectedSubregions.length === 0) return
     setLearningRun({ mode, subregionIds: orderedSelectedSubregions, index: 0 })
     setPurpose('learn-practise')
@@ -209,7 +209,7 @@ export function WorldCountriesDrill({ answerMode, onOpenSetup }: { answerMode: A
     onPurposeChange={setPurpose}
     onLearnPracticeModeChange={setLearnPracticeMode}
     onStart={startDrill}
-    onLearnPracticeStart={mode => mode === 'learn-countries' || mode === 'learn-capitals' ? startLearning(mode) : startPractice(mode)}
+    onLearnPracticeStart={mode => isWorldCountriesLearningMode(mode) ? startLearning(mode) : startPractice(mode)}
     onWorld={goToWorld}
     onSelectContinent={selectContinent}
     onOpenSetup={openSetup}

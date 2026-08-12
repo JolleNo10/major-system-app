@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { getCountriesForSubregion, getSubregionsForContinent } from '@/features/world-countries/geography/queries'
-import { getContinentLearningReadinessProgress, getSubregionLearningReadinessProgress, getWorldLearningReadinessProgress } from './learningProgress'
-import { countries, type Country } from '@/features/world-countries/data/countries'
+import { getContinentLearningReadinessProgress, getSubregionLearningReadinessProgress } from './learningProgress'
+import type { Country } from '@/features/world-countries/data/countries'
 
 const sample: Country[] = [
   { id: 'NO', country: 'Norway', capital: 'Oslo', continent: 'Europe', subregionId: 'northern-europe', subregion: 'Northern Europe' },
@@ -17,11 +17,6 @@ describe('World Countries Learning geography', () => {
   it('exposes and aggregates Learning Readiness', () => {
     const states = [{ subregionId: 'northern-europe' as const, countriesLearnedAt: 1, capitalsLearnedAt: 2 }, { subregionId: 'east-asia' as const, countriesLearnedAt: 2 }]
     expect(getSubregionLearningReadinessProgress('northern-europe', states, sample).readiness).toBe('COUNTRIES_AND_CAPITALS_LEARNED')
-    expect(getWorldLearningReadinessProgress(states, sample)).toMatchObject({ countriesLearned: { count: 2, total: 2, ratio: 1 }, countriesAndCapitalsLearned: { count: 1, total: 2, ratio: 0.5 } })
     expect(getContinentLearningReadinessProgress('Europe', states, sample)).toMatchObject({ countriesLearned: { count: 1, total: 1, ratio: 1 }, countriesAndCapitalsLearned: { count: 1, total: 1, ratio: 1 } })
-  })
-  it('uses the bundled records as the default world source', () => {
-    expect(getWorldLearningReadinessProgress([]).countriesLearned.total).toBeGreaterThan(0)
-    expect(countries.length).toBeGreaterThan(0)
   })
 })

@@ -27,7 +27,7 @@ export function PracticeResults({ continent, scopeCountries, answers, onAgain, o
       </section>
       <CountryLearningMap continent={continent} scopeCountries={scopeCountries} showNames ariaLabel={`Results map for ${continent} Practice Countries`} />
       <ProgressMapLegend title="Learning Readiness" entries={WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES} explanation="Practice results are transient and do not change Learning Readiness." mapCues="Learning Readiness remains separate from this Practice result." ariaLabel="Learning Readiness legend" collapsibleDetails />
-      <DrillResultStats summary={summary} answerCount={answers.length} showCountryCount />
+      <DrillResultStats summary={summary} answerCount={answers.length} showCountryCount ariaLabel="Practice summary" />
       {summary.bySkill.size > 0 && <WorldCountriesPanel aria-label="Practice results by skill">
         <h2 className="text-sm font-semibold text-zinc-200">Results by skill</h2>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
