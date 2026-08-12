@@ -52,6 +52,15 @@ describe('DrillSetup activity boundary', () => {
     expect(onStart).toHaveBeenCalledWith('learn-capitals')
   })
 
+  it('explains that a Continent needs a Subregion before Drill can start', () => {
+    const mount = renderSetup({ selection: createDrillSelection('Europe', []) })
+    const config = useRailsMock.mock.calls[0][0] as { right: ReactNode }
+    act(() => root?.render(config.right))
+
+    expect(mount.textContent).toContain('Choose at least one Subregion')
+    expect(mount.textContent).not.toContain('Choose a Continent first')
+  })
+
   it('uses Learning Readiness instead of Drill status for Learn & Practise maps', () => {
     const mount = renderSetup({ purpose: 'learn-practise' })
     expect(mapMock.mock.calls[mapMock.mock.calls.length - 1]?.[0].countryColorsById).toBeInstanceOf(Map)

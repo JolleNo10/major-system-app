@@ -1,5 +1,7 @@
 import type { Country, CountryId } from '@/features/world-countries/data/countries'
 import type { SubregionId } from '@/features/world-countries/data/subregions'
+import { recallTargetIdFor } from './recallTargets'
+import type { RecallProgress } from './recallProgress'
 import type { SubregionLearningState } from './subregionLearningState'
 import { isSubregionCountriesLearned, isSubregionCapitalsLearned } from './subregionLearningState'
 import type { ProgressMapLegendEntry } from './ProgressMapLegend'
@@ -75,6 +77,46 @@ export function getLearningReadinessBySubregion(
   states: WorldCountriesLearningStates,
 ): ReadonlyMap<SubregionId, WorldCountriesLearningReadiness> {
   return new Map(getWorldCountriesLearningStateList(states).map(state => [state.subregionId, deriveWorldCountriesLearningReadiness(state)]))
+}
+
+/**
+ * Add the derived Drill signal used by Learn & Practise setup. A Subregion's
+ * Country learning is considered ready when every active Country has current
+ * Location → Country proficiency of Developing or better. This does not write
+ * or alter the durable Learning milestone.
+ */
+export function getLearningReadinessBySubregionWithDrillEvidence(
+  entries: readonly Pick<Country, 'id' | 'subregionId'>[],
+  states: WorldCountriesLearningStates,
+  recallProgress: RecallProgress,
+): ReadonlyMap<SubregionId, WorldCountriesLearningReadiness> {
+  const readinessBySubregion = new Map(getLearningReadinessBySubregion(states))
+  const entriesBySubregion = new Map<SubregionId, Array<Pick<Country, 'id' | 'subregionId'>>>()
+
+  for (const entry of entries) {
+    const current = entriesBySubregion.get(entry.subregionId) ?? []
+    current.push(entry)
+    entriesBySubregion.set(entry.subregionId, current)
+  }
+
+  for (const [subregionId, subregionEntries] of entriesBySubregion) {
+    if (!readinessBySubregion.has(subregionId)) readinessBySubregion.set(subregionId, 'NOT_LEARNED')
+    const drillCountriesLearned = subregionEntries.every(entry => {
+      const proficiency = recallProgress.get(recallTargetIdFor(entry.id, 'location-to-country'))?.proficiency
+      return proficiency === 'developing' || proficiency === 'strong' || proficiency === 'mastered'
+    })
+    if (!drillCountriesLearned) continue
+
+    const state = Array.isArray(states)
+      ? states.find(candidate => candidate.subregionId === subregionId)
+      : (states as ReadonlyMap<SubregionId, SubregionLearningState>).get(subregionId)
+    readinessBySubregion.set(
+      subregionId,
+      deriveWorldCountriesLearningReadinessFromTracks(true, isSubregionCapitalsLearned(state)),
+    )
+  }
+
+  return readinessBySubregion
 }
 
 export function getLearningReadinessForCountry(

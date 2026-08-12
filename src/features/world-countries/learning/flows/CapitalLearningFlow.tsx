@@ -84,6 +84,7 @@ function EnabledCapitalLearningFlow({
     learned={countriesLearned}
     capitalsLearned={false}
     mnemonicVersion={mnemonicVersion}
+    onExit={onExit}
     walkthroughCountryId={flow.phase === 'walkthrough' ? flow.countryIds[flow.walkthroughIndex] ?? null : null}
   />
   let content: ReactNode
