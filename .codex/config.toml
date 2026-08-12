@@ -1,0 +1,8 @@
+[mcp_servers.repowise]
+command = "repowise"
+args = ["mcp"]
+cwd = "F:\\repo\\major-system-app"
+startup_timeout_sec = 20
+
+[features]
+hooks = true

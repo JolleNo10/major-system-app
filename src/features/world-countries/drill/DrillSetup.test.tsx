@@ -48,10 +48,9 @@ afterEach(() => {
 })
 
 describe('DrillSetup rail presentation', () => {
-  it('shows the state-driven primary action above applicable guided reviews', async () => {
+  it('does not show guided learning action buttons in the Drill rail', async () => {
     const mount = document.createElement('div')
     document.body.append(mount)
-    const onGuidedAction = vi.fn()
 
     await act(async () => {
       root = createRoot(mount)
@@ -66,7 +65,6 @@ describe('DrillSetup rail presentation', () => {
         onStart: vi.fn(),
         onWorld: vi.fn(),
         onSelectContinent: vi.fn(),
-        onGuidedAction,
         hoveredGroupId: null,
         onHoverGroup: vi.fn(),
       }))
@@ -74,11 +72,13 @@ describe('DrillSetup rail presentation', () => {
 
     const railConfig = useRailsMock.mock.calls[0][0] as { right: ReactNode }
     await act(async () => root?.render(railConfig.right))
+    const currentDrill = mount.querySelector('[aria-labelledby="world-countries-current-drill-heading"]')
+    expect(currentDrill?.textContent).toContain('Drill')
+    expect(currentDrill?.textContent).not.toContain('Learn Countries')
+    expect(currentDrill?.textContent).not.toContain('Learn Capitals')
+    expect(currentDrill?.textContent).not.toContain('Drill Countries + Capitals')
+    expect(currentDrill?.textContent).not.toContain('Review Countries')
     expect(mount.textContent).toContain('Learn Countries')
-    expect(mount.textContent).toContain('Drill')
-    expect(mount.textContent).not.toContain('Review Countries')
-    await act(async () => [...mount.querySelectorAll('button')].find(button => button.textContent === 'Learn Countries')?.click())
-    expect(onGuidedAction).toHaveBeenCalledWith('learn-countries')
 
     act(() => root?.unmount())
     root = null
@@ -100,16 +100,20 @@ describe('DrillSetup rail presentation', () => {
         onStart: vi.fn(),
         onWorld: vi.fn(),
         onSelectContinent: vi.fn(),
-        onGuidedAction,
         hoveredGroupId: null,
         onHoverGroup: vi.fn(),
       }))
     })
     const completedRails = useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1][0] as { right: ReactNode }
     await act(async () => root?.render(completedRails.right))
-    expect(completedMount.textContent).toContain('Drill Countries + Capitals')
-    expect(completedMount.textContent).toContain('Review Countries')
-    expect(completedMount.textContent).toContain('Review Capitals')
+    const completedCurrentDrill = completedMount.querySelector('[aria-labelledby="world-countries-current-drill-heading"]')
+    expect(completedCurrentDrill?.textContent).not.toContain('Learn Countries')
+    expect(completedCurrentDrill?.textContent).not.toContain('Learn Capitals')
+    expect(completedCurrentDrill?.textContent).not.toContain('Drill Countries + Capitals')
+    expect(completedMount.textContent).not.toContain('Secondary')
+    expect(completedMount.textContent).not.toContain('Guided review')
+    expect(completedMount.textContent).not.toContain('Review Countries')
+    expect(completedMount.textContent).not.toContain('Review Capitals')
   })
 
   it('shows durable recall progress on the setup map', async () => {
@@ -193,7 +197,7 @@ describe('DrillSetup rail presentation', () => {
     expect(mount.querySelector('[aria-label="Durable progress legend"]')).not.toBeNull()
   })
 
-  it('publishes mode and geographic setup on the left and current drill on the right', async () => {
+  it('publishes geographic setup on the left and current drill plus practise on the right', async () => {
     const onSelectionChange = vi.fn()
     const onModeChange = vi.fn()
     const onOrderChange = vi.fn()
@@ -226,50 +230,69 @@ describe('DrillSetup rail presentation', () => {
     })
 
     const modeSection = mount.querySelector('fieldset')
-    expect(modeSection?.querySelector('legend')?.textContent).toBe('Mode')
-    const descriptionId = modeSection?.getAttribute('aria-describedby')
-    expect(descriptionId).toBeTruthy()
-    expect(modeSection?.querySelector(`[id="${descriptionId}"]`)).not.toBeNull()
+    expect(modeSection?.querySelector('legend')).toBeNull()
+    const practicePanel = [...mount.querySelectorAll('section')]
+      .find(section => section.querySelector('h2')?.textContent === 'Learn and Practise')
+    expect(practicePanel).not.toBeNull()
+    const scopePanel = mount.querySelector('[aria-labelledby="world-countries-drill-scope-heading"]')
+    expect(scopePanel?.textContent).toContain('Scope')
+    expect(scopePanel?.textContent).toContain('1 Subregion selected')
     const groupLabels = [...(modeSection?.querySelectorAll('[role="group"]') ?? [])]
       .map(group => group.getAttribute('aria-labelledby'))
-    expect(groupLabels).toHaveLength(2)
+    expect(groupLabels).toHaveLength(1)
     expect(groupLabels.every(id => id && modeSection?.querySelector(`[id="${id}"]`))).toBe(true)
-    const modeInputs = [...(modeSection?.querySelectorAll('input[type="radio"]') ?? [])] as HTMLInputElement[]
-    expect(modeInputs).toHaveLength(4)
-    expect(modeInputs.map(input => input.parentElement?.textContent?.trim())).toEqual([
+    const modeInputs = [...mount.querySelectorAll('input[type="radio"]')] as HTMLInputElement[]
+    expect(modeInputs).toHaveLength(6)
+    expect(modeInputs.map(input => input.parentElement?.querySelector('span.min-w-0')?.textContent?.trim())).toEqual([
       'Countries',
       'Countries + Capitals',
       'Countries from Capitals',
+      'Learn Countries',
+      'Locate Countries',
       'Capitals',
     ])
     expect(modeInputs.filter(input => input.checked)).toHaveLength(1)
     expect(modeSection?.textContent).toContain('Drill')
-    expect(modeSection?.textContent).toContain('Practice')
-    expect(modeSection?.querySelector(`[id="${descriptionId}"]`)?.textContent).toBe('Identify the highlighted Country location on the map.')
-    expect(modeSection?.querySelectorAll(`[id="${descriptionId}"]`)).toHaveLength(1)
-    await act(async () => modeInputs.find(input => input.value === 'capitals')?.click())
-    expect(onModeChange).toHaveBeenCalledWith('capitals')
-    expect(mount.textContent?.indexOf('Mode')).toBeLessThan(mount.textContent?.indexOf('Drill scope') ?? 0)
+    expect(practicePanel?.textContent).toContain('Learn and Practise')
+    const countriesDescriptionId = modeInputs.find(input => input.value === 'countries')?.getAttribute('aria-describedby')
+    expect(countriesDescriptionId).toBeTruthy()
+    expect(modeSection?.querySelector(`[id="${countriesDescriptionId}"][role="tooltip"]`)?.textContent).toBe('Identify the highlighted Country location on the map.')
+    const practiceInput = practicePanel?.querySelector('input[type="radio"]') as HTMLInputElement | null
+    expect(practiceInput?.name).toContain('practice-mode')
+    expect(practiceInput?.name).not.toBe(modeInputs.find(input => input.value === 'countries')?.name)
+    expect(practicePanel?.textContent).toContain('Locate Countries')
+    expect(mount.textContent).not.toContain('Recall mode')
+    const capitalsDescriptionId = modeInputs.find(input => input.value === 'capitals')?.getAttribute('aria-describedby')
+    expect(practicePanel?.querySelector(`[id="${capitalsDescriptionId}"][role="tooltip"]`)?.textContent).toBe('Practise capitals before Countries + Capitals.')
 
     const currentDrill = mount.querySelector('[aria-labelledby="world-countries-current-drill-heading"]')
     expect(currentDrill).not.toBeNull()
+    expect(currentDrill?.textContent).not.toContain('Scope')
     expect(currentDrill?.textContent).toContain('Start Drill')
-    expect(currentDrill?.textContent).toContain('Learn Countries')
+    expect(currentDrill?.textContent).not.toContain('Learn Countries')
+    expect(currentDrill?.textContent).not.toContain('Learn Capitals')
+    expect(currentDrill?.textContent).not.toContain('Drill Countries + Capitals')
     expect(currentDrill?.textContent).toContain('Drill order')
-    const orderToggle = currentDrill?.querySelector('button[role="radio"][aria-checked="true"]') as HTMLButtonElement | null
+    const orderPanel = currentDrill?.querySelector('[aria-labelledby="world-countries-drill-order-heading"]')
+    expect(orderPanel).not.toBeNull()
+    expect(orderPanel?.textContent).toContain('Drill order')
+    const orderToggle = orderPanel?.querySelector('button[role="radio"][aria-checked="true"]') as HTMLButtonElement | null
     expect(orderToggle?.textContent).toBe('In order')
-    const randomOrderButton = [...(currentDrill?.querySelectorAll('button[role="radio"]') ?? [])]
+    const randomOrderButton = [...(orderPanel?.querySelectorAll('button[role="radio"]') ?? [])]
       .find(button => button.textContent === 'Random') as HTMLButtonElement | undefined
     await act(async () => randomOrderButton?.click())
     expect(onOrderChange).toHaveBeenCalledWith('random')
     await act(async () => [...(currentDrill?.querySelectorAll('button') ?? [])].find(button => button.textContent === 'Start Drill')?.click())
     expect(onStart).toHaveBeenCalled()
-    await act(async () => [...(currentDrill?.querySelectorAll('button') ?? [])].find(button => button.textContent === 'Learn Countries')?.click())
     expect(useRailsMock.mock.calls[0]).toBeDefined()
     expect(mount.textContent).toContain('Entire Continent')
     expect(mount.textContent).toContain('Northern Europe')
-    expect(mount.textContent).toContain('Recall mode')
-    expect(currentDrill?.querySelector('input[type="radio"]')).toBeNull()
+    expect(mount.textContent).not.toContain('Recall mode')
+    expect(currentDrill?.querySelectorAll('input[type="radio"]')).toHaveLength(3)
+    const practiceStartButton = [...(practicePanel?.querySelectorAll('button') ?? [])]
+      .find(button => button.textContent === 'Start practise')
+    expect(practiceStartButton).not.toBeNull()
+    expect((practiceStartButton as HTMLButtonElement | null)?.disabled).toBe(true)
     const entireContinentButton = [...mount.querySelectorAll('button')]
       .find(button => button.textContent?.includes('Entire Continent'))
     await act(async () => entireContinentButton?.click())

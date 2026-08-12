@@ -1,4 +1,4 @@
-import { useId } from 'react'
+import { useId, useState } from 'react'
 import { useRails } from '@/app/layout/PageLayoutContext'
 import { countries, type Continent, type Country } from '@/features/world-countries/data/countries'
 import type { SubregionId } from '@/features/world-countries/data/subregions'
@@ -17,8 +17,18 @@ import {
 } from './drillModes'
 import { getCurrentDrillStep, getDrillSessionTotalSteps, type DrillAnswerRecord, type DrillSessionState } from './drillSessionState'
 import { summarizeDrillAnswers } from './drillResultSummary'
-import type { GuidedLearningActionId, GuidedLearningActions } from './guidedLearning'
+import type { GuidedLearningActionId } from './guidedLearning'
 import type { WorldCountriesDrillOrder } from './drillOrder'
+
+const RAIL_PANEL_CLS = 'rounded-xl border border-zinc-800 bg-zinc-900 p-4'
+type PracticeMode = 'learn-countries' | 'countries' | 'capitals'
+type DrillPracticeMode = Exclude<PracticeMode, 'learn-countries'>
+
+const PRACTICE_MODE_CANDIDATES: readonly ModeOptionCandidate<PracticeMode>[] = [
+  { id: 'learn-countries', label: 'Learn Countries', description: 'Build Country location memory with guided practice.' },
+  { id: 'countries', label: 'Locate Countries', description: 'Click the target Country on the map.' },
+  { id: 'capitals', label: 'Capitals', description: 'Practise capitals before Countries + Capitals.' },
+]
 
 export function DrillSetupRails({
   level,
@@ -32,10 +42,10 @@ export function DrillSetupRails({
   onToggleSubregion,
   onSelectEntireContinent,
   onModeChange,
+  onPracticeStart = () => undefined,
   onOrderChange,
   onStart,
-  guidedActions,
-  onGuidedAction,
+  onGuidedAction = () => undefined,
   entries = countries,
 }: {
   level: 'world' | 'continent'
@@ -49,10 +59,10 @@ export function DrillSetupRails({
   onToggleSubregion: (subregionId: SubregionId) => void
   onSelectEntireContinent: () => void
   onModeChange: (mode: WorldCountriesDrillMode) => void
+  onPracticeStart?: (mode: WorldCountriesDrillMode) => void
   onOrderChange: (order: WorldCountriesDrillOrder) => void
   onStart: () => void
-  guidedActions: GuidedLearningActions
-  onGuidedAction: (action: GuidedLearningActionId) => void
+  onGuidedAction?: (action: GuidedLearningActionId) => void
   entries?: readonly Country[]
 }) {
   const subregions = getSubregionsForContinentInEffectiveOrder(
@@ -62,15 +72,15 @@ export function DrillSetupRails({
   )
   const entireContinent = isEntireContinentSelection(selection, entries)
   const selectedCount = selection.subregionIds.length
+  const modeGroupName = `world-countries-drill-mode-${useId()}`
+  const [practiceMode, setPracticeMode] = useState<PracticeMode | null>(null)
 
   useRails(
     {
       left: (
-        <section className="space-y-6" aria-labelledby="world-countries-drill-setup-heading">
-          <h2 id="world-countries-drill-setup-heading" className="text-lg font-bold text-zinc-100">Drill setup</h2>
-          <DrillModeRail mode={mode} onModeChange={onModeChange} />
+        <section className="space-y-4">
           {level === 'world' ? (
-            <section className="space-y-4" aria-labelledby="world-countries-drill-geography-heading">
+            <section className={`${RAIL_PANEL_CLS} space-y-4`} aria-labelledby="world-countries-drill-geography-heading">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World</p>
                 <h3 id="world-countries-drill-geography-heading" className="mt-1 text-lg font-bold text-zinc-100">Geography</h3>
@@ -93,7 +103,7 @@ export function DrillSetupRails({
               </nav>
             </section>
           ) : (
-            <section className="space-y-4" aria-labelledby="world-countries-drill-scope-heading">
+            <section className={`${RAIL_PANEL_CLS} space-y-4`} aria-labelledby="world-countries-drill-scope-heading">
               <nav aria-label="World Countries hierarchy" className="flex flex-wrap items-center gap-1.5 text-xs">
                 <button type="button" onClick={onWorld} className="text-zinc-500 hover:text-zinc-200">World</button>
                 <span className="text-zinc-700">/</span>
@@ -107,9 +117,11 @@ export function DrillSetupRails({
               </div>
 
               <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-xs uppercase tracking-wider text-zinc-500">Current selection</span>
-                  <span className="text-sm font-semibold tabular-nums text-cyan-300">{selectedCount}/{subregions.length}</span>
+                <div className="flex items-baseline justify-between gap-3 text-sm">
+                  <span className="text-zinc-500">Scope</span>
+                  <span className="text-right font-semibold text-zinc-200">
+                    {selectedCount} {selectedCount === 1 ? 'Subregion' : 'Subregions'} selected
+                  </span>
                 </div>
                 <button
                   type="button"
@@ -151,19 +163,23 @@ export function DrillSetupRails({
       right: (
         <DrillSetupActionRail
           mode={mode}
+          groupName={modeGroupName}
+          onModeChange={onModeChange}
+          practiceMode={practiceMode}
+          onPracticeModeChange={setPracticeMode}
+          onPracticeStart={onPracticeStart}
           order={order}
+          onOrderChange={onOrderChange}
           level={level}
           selection={selection}
-          onOrderChange={onOrderChange}
           onStart={onStart}
-          guidedActions={guidedActions}
           onGuidedAction={onGuidedAction}
         />
       ),
-      leftLabel: 'Drill setup',
-      rightLabel: 'Current drill',
+      leftLabel: 'Drill scope',
+      rightLabel: 'Drill',
     },
-    [entries, level, mode, order, selection.continent, selection.subregionIds, hoveredGroupId, onHoverGroup, onWorld, onSelectContinent, onToggleSubregion, onSelectEntireContinent, onModeChange, onOrderChange, onStart, guidedActions, onGuidedAction],
+    [entries, level, mode, modeGroupName, onGuidedAction, onPracticeStart, order, practiceMode, selection.continent, selection.subregionIds, hoveredGroupId, onHoverGroup, onWorld, onSelectContinent, onToggleSubregion, onSelectEntireContinent, onModeChange, onOrderChange, onStart],
   )
 
   return null
@@ -172,25 +188,19 @@ export function DrillSetupRails({
 function DrillModeRail({
   mode,
   onModeChange,
+  groupName,
 }: {
   mode: WorldCountriesDrillMode
   onModeChange: (mode: WorldCountriesDrillMode) => void
+  groupName: string
 }) {
   const modeGroupId = useId()
-  const modeDescription = getDrillModeDefinition(mode).description
-  const modeGroupName = `world-countries-drill-mode-${modeGroupId}`
   const drillHeadingId = `${modeGroupId}-drill-heading`
-  const practiceHeadingId = `${modeGroupId}-practice-heading`
-  const descriptionId = `${modeGroupId}-description`
 
   return (
-    <fieldset
-      className="space-y-4"
-      aria-describedby={descriptionId}
-    >
-      <legend className="text-base font-semibold text-zinc-100">Mode</legend>
+    <fieldset className="space-y-3" aria-labelledby={drillHeadingId}>
       <div className="space-y-2" role="group" aria-labelledby={drillHeadingId}>
-        <h3 id={drillHeadingId} className="text-sm font-semibold text-zinc-200">Drill</h3>
+        <h3 id={drillHeadingId} className="sr-only">Drill</h3>
         <div className="space-y-2">
           {WORLD_COUNTRIES_DRILL_MODES
             .filter(candidate => candidate.id !== 'capitals')
@@ -200,29 +210,55 @@ function DrillModeRail({
                 candidate={candidate}
                 selected={candidate.id === mode}
                 onSelect={onModeChange}
-                groupName={modeGroupName}
+                groupName={groupName}
               />
             ))}
         </div>
       </div>
-      <div className="border-t border-zinc-800 pt-4" role="group" aria-labelledby={practiceHeadingId}>
-        <h3 id={practiceHeadingId} className="text-sm font-semibold text-zinc-200">Practice</h3>
-        <div className="mt-2">
-          {WORLD_COUNTRIES_DRILL_MODES
-            .filter(candidate => candidate.id === 'capitals')
-            .map(candidate => (
-              <DrillModeOption
-                key={candidate.id}
-                candidate={candidate}
-                selected={candidate.id === mode}
-                onSelect={onModeChange}
-                groupName={modeGroupName}
-              />
-            ))}
-        </div>
-      </div>
-      <p id={descriptionId} className="text-xs leading-relaxed text-zinc-500">{modeDescription}</p>
     </fieldset>
+  )
+}
+
+function DrillPracticePanel({
+  mode,
+  onModeChange,
+  canStart,
+  onStart,
+  onLearnCountries,
+}: {
+  mode: PracticeMode | null
+  onModeChange: (mode: PracticeMode) => void
+  canStart: boolean
+  onStart: (mode: DrillPracticeMode) => void
+  onLearnCountries: () => void
+}) {
+  const practiceHeadingId = useId()
+  const groupName = `world-countries-practice-mode-${useId()}`
+
+  return (
+    <section className={`${RAIL_PANEL_CLS} space-y-3`} aria-labelledby={practiceHeadingId}>
+      <h2 id={practiceHeadingId} className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Learn and Practise</h2>
+      {PRACTICE_MODE_CANDIDATES.map(candidate => (
+        <DrillModeOption
+          key={candidate.id}
+          candidate={candidate}
+          selected={candidate.id === mode}
+          onSelect={onModeChange}
+          groupName={groupName}
+        />
+      ))}
+      <button
+        type="button"
+        disabled={!canStart || mode === null}
+        onClick={() => {
+          if (mode === 'learn-countries') onLearnCountries()
+          else if (mode) onStart(mode)
+        }}
+        className="mt-3 w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        Start practise
+      </button>
+    </section>
   )
 }
 
@@ -230,20 +266,28 @@ function DrillSetupActionRail({
   level,
   selection,
   mode,
+  groupName,
+  onModeChange,
+  practiceMode,
+  onPracticeModeChange,
+  onPracticeStart,
+  onGuidedAction,
   order,
   onOrderChange,
   onStart,
-  guidedActions,
-  onGuidedAction,
 }: {
   level: 'world' | 'continent'
   selection: WorldCountriesDrillSelection
   mode: WorldCountriesDrillMode
+  groupName: string
+  onModeChange: (mode: WorldCountriesDrillMode) => void
+  practiceMode: PracticeMode | null
+  onPracticeModeChange: (mode: PracticeMode) => void
+  onPracticeStart: (mode: WorldCountriesDrillMode) => void
+  onGuidedAction: (action: GuidedLearningActionId) => void
   order: WorldCountriesDrillOrder
   onOrderChange: (order: WorldCountriesDrillOrder) => void
   onStart: () => void
-  guidedActions: GuidedLearningActions
-  onGuidedAction: (action: GuidedLearningActionId) => void
 }) {
   return (
     <section className="space-y-4">
@@ -251,26 +295,22 @@ function DrillSetupActionRail({
         level={level}
         selection={selection}
         mode={mode}
+        groupName={groupName}
+        onModeChange={onModeChange}
         order={order}
-        primaryAction={guidedActions.primary}
         onOrderChange={onOrderChange}
         onStart={onStart}
-        onGuidedAction={onGuidedAction}
       />
 
-      {guidedActions.secondary.length > 0 && (
-        <div className="space-y-2 border-t border-zinc-800 pt-4" aria-labelledby="world-countries-guided-secondary-heading">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-violet-400">Secondary</p>
-            <h2 id="world-countries-guided-secondary-heading" className="mt-1 text-lg font-bold text-zinc-100">Guided review</h2>
-          </div>
-          {guidedActions.secondary.map(action => (
-            <button key={action} type="button" onClick={() => onGuidedAction(action)} className="w-full rounded-lg border border-violet-500/40 bg-zinc-900 px-3 py-2.5 text-left text-sm font-semibold text-violet-200 hover:border-violet-400">
-              {guidedActionLabel(action)}
-            </button>
-          ))}
-        </div>
-      )}
+      <DrillPracticePanel
+        mode={practiceMode}
+        onModeChange={onPracticeModeChange}
+        canStart={level === 'continent'
+          && selection.subregionIds.length > 0
+          && (practiceMode !== 'learn-countries' || selection.subregionIds.length === 1)}
+        onStart={onPracticeStart}
+        onLearnCountries={() => onGuidedAction('learn-countries')}
+      />
 
     </section>
   )
@@ -280,52 +320,32 @@ function CurrentDrillPanel({
   level,
   selection,
   mode,
+  groupName,
+  onModeChange,
   order,
-  primaryAction,
   onOrderChange,
   onStart,
-  onGuidedAction,
 }: {
   level: 'world' | 'continent'
   selection: WorldCountriesDrillSelection
   mode: WorldCountriesDrillMode
+  groupName: string
+  onModeChange: (mode: WorldCountriesDrillMode) => void
   order: WorldCountriesDrillOrder
-  primaryAction: Exclude<GuidedLearningActionId, 'review-countries' | 'review-capitals'> | null
   onOrderChange: (order: WorldCountriesDrillOrder) => void
   onStart: () => void
-  onGuidedAction: (action: GuidedLearningActionId) => void
 }) {
   return (
     <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4" aria-labelledby="world-countries-current-drill-heading">
       <h2 id="world-countries-current-drill-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-        Current drill
+        Drill
       </h2>
-      <div className="mt-3 flex items-baseline justify-between gap-3 text-sm">
-        <span className="text-zinc-500">{level === 'world' ? 'Geography' : 'Scope'}</span>
-        <span className="text-right font-semibold text-zinc-200">
-          {level === 'world'
-            ? 'Choose a Continent'
-            : `${selection.subregionIds.length} ${selection.subregionIds.length === 1 ? 'Subregion' : 'Subregions'} selected`}
-        </span>
+      <div className="mt-4 border-t border-zinc-800 pt-4">
+        <DrillModeRail mode={mode} onModeChange={onModeChange} groupName={groupName} />
       </div>
-      <div className="mt-2 flex items-baseline justify-between gap-3 text-sm">
-        <span className="text-zinc-500">Recall mode</span>
-        <span className="text-right font-semibold text-violet-200">{getDrillModeDefinition(mode).label}</span>
+      <div className="mt-4">
+        <DrillOrderPanel order={order} onOrderChange={onOrderChange} />
       </div>
-      <div className="mt-2 flex items-center justify-between gap-3 text-sm">
-        <span id="world-countries-drill-order-label" className="text-zinc-500">Drill order</span>
-        <DrillOrderSelector order={order} onSelect={onOrderChange} />
-      </div>
-      {primaryAction && (
-        <button
-          type="button"
-          disabled={level !== 'continent' || selection.subregionIds.length === 0}
-          onClick={() => onGuidedAction(primaryAction)}
-          className="mt-4 w-full rounded-xl border border-cyan-400/50 bg-cyan-500/10 px-4 py-3 text-left text-sm font-semibold text-cyan-100 transition-colors hover:border-cyan-300 hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          {guidedActionLabel(primaryAction)}
-        </button>
-      )}
       <button
         type="button"
         disabled={level !== 'continent' || selection.subregionIds.length === 0}
@@ -338,6 +358,25 @@ function CurrentDrillPanel({
   )
 }
 
+function DrillOrderPanel({
+  order,
+  onOrderChange,
+}: {
+  order: WorldCountriesDrillOrder
+  onOrderChange: (order: WorldCountriesDrillOrder) => void
+}) {
+  return (
+    <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-3" aria-labelledby="world-countries-drill-order-heading">
+      <div className="flex items-center justify-between gap-3">
+        <h2 id="world-countries-drill-order-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+          Drill order
+        </h2>
+        <DrillOrderSelector order={order} onSelect={onOrderChange} />
+      </div>
+    </section>
+  )
+}
+
 function DrillOrderSelector({
   order,
   onSelect,
@@ -346,7 +385,7 @@ function DrillOrderSelector({
   onSelect: (order: WorldCountriesDrillOrder) => void
 }) {
   return (
-    <div className="inline-flex h-7 shrink-0 rounded-md border border-zinc-800 bg-zinc-950/60 p-0.5" role="radiogroup" aria-labelledby="world-countries-drill-order-label">
+    <div className="inline-flex h-7 shrink-0 rounded-md border border-zinc-800 bg-zinc-950/60 p-0.5" role="radiogroup" aria-labelledby="world-countries-drill-order-heading">
       <DrillOrderOption order="ordered" selected={order === 'ordered'} onSelect={onSelect}>In order</DrillOrderOption>
       <DrillOrderOption order="random" selected={order === 'random'} onSelect={onSelect}>Random</DrillOrderOption>
     </div>
@@ -380,32 +419,30 @@ function DrillOrderOption({
   )
 }
 
-function guidedActionLabel(action: GuidedLearningActionId): string {
-  switch (action) {
-    case 'learn-countries': return 'Learn Countries'
-    case 'learn-capitals': return 'Learn Capitals'
-    case 'drill-countries-capitals': return 'Drill Countries + Capitals'
-    case 'review-countries': return 'Review Countries'
-    case 'review-capitals': return 'Review Capitals'
-  }
+type ModeOptionCandidate<Mode extends string> = {
+  id: Mode
+  label: string
+  description: string
 }
 
-function DrillModeOption({
+function DrillModeOption<Mode extends string>({
   candidate,
   selected,
   onSelect,
   groupName,
 }: {
-  candidate: DrillModeDefinition
+  candidate: ModeOptionCandidate<Mode>
   selected: boolean
-  onSelect: (mode: WorldCountriesDrillMode) => void
+  onSelect: (mode: Mode) => void
   groupName: string
 }) {
+  const descriptionId = `${useId()}-description`
+
   return (
     <label
-      className={`flex min-h-[40px] w-full cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors ${selected
-        ? 'border-violet-500 bg-violet-500/15'
-        : 'border-zinc-700 bg-zinc-800 hover:border-violet-600'}
+      className={`flex min-h-[40px] w-full cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors focus-within:ring-2 focus-within:ring-cyan-400/70 ${selected
+        ? 'border-cyan-500/70 bg-cyan-500/10 text-cyan-100'
+        : 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-cyan-500 hover:text-zinc-100'}
       `}
     >
       <input
@@ -414,9 +451,29 @@ function DrillModeOption({
         value={candidate.id}
         checked={selected}
         onChange={() => onSelect(candidate.id)}
-        className="h-4 w-4 shrink-0 accent-violet-500"
+        aria-describedby={descriptionId}
+        className="sr-only"
       />
-      <span className={`min-w-0 font-semibold ${selected ? 'text-violet-200' : 'text-zinc-200'}`}>{candidate.label}</span>
+      {selected && <span aria-hidden="true" className="text-cyan-400">✓</span>}
+      <span className="min-w-0 flex-1 font-semibold">{candidate.label}</span>
+      <span className="group relative shrink-0">
+        <span
+          tabIndex={0}
+          aria-label={`Explain ${candidate.label} mode`}
+          aria-describedby={descriptionId}
+          title={candidate.description}
+          className="flex h-5 w-5 cursor-help items-center justify-center rounded-full text-sm text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-cyan-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+        >
+          <span aria-hidden="true">ⓘ</span>
+        </span>
+        <span
+          id={descriptionId}
+          role="tooltip"
+          className="pointer-events-none invisible absolute right-0 top-[calc(100%+0.5rem)] z-30 w-64 max-w-[calc(100vw-3rem)] rounded-lg border border-zinc-700 bg-zinc-900 p-3 text-left text-xs leading-relaxed text-zinc-300 opacity-0 shadow-xl transition-opacity group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100"
+        >
+          {candidate.description}
+        </span>
+      </span>
     </label>
   )
 }

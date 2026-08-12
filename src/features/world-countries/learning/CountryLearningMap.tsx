@@ -9,6 +9,7 @@ export interface CountryLearningMapProps {
   continent: Continent
   scopeCountries: readonly Country[]
   showNames?: boolean
+  showHoverNames?: boolean
   showOrderNumbers?: boolean
   namedCountryId?: string | null
   highlightedCountryId?: string | null
@@ -34,6 +35,7 @@ export function CountryLearningMap({
   continent,
   scopeCountries,
   showNames = false,
+  showHoverNames = false,
   showOrderNumbers = false,
   namedCountryId = null,
   highlightedCountryId = null,
@@ -92,7 +94,7 @@ export function CountryLearningMap({
         countryLabels={countryLabels}
         countryColors={countryColors}
         zoomIds={zoomIds}
-        settings={{ showHighlightedNames }}
+        settings={{ showHighlightedNames, hoverShowName: showHoverNames }}
         onCountriesLoaded={setDiscovered}
         onCountryClick={svgId => {
           const country = getCountryForSvgId(svgId, scopeCountries)

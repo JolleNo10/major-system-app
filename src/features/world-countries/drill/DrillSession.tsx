@@ -23,6 +23,8 @@ interface StepFeedback {
   match: 'none' | 'exact' | 'fuzzy'
 }
 
+export type DrillSessionInteraction = 'recall' | 'location-click'
+
 function answerValues(skill: WorldCountriesRecallSkill, entries: readonly Country[]): string[] {
   return entries.map(entry => skill === 'country-to-capital' ? entry.capital : entry.country)
 }
@@ -41,6 +43,7 @@ export function DrillSession({
   onAnswer,
   onContinue,
   onExit,
+  interaction = 'recall',
 }: {
   answerMode: AnswerMode
   fuzzyMatching: boolean
@@ -50,6 +53,7 @@ export function DrillSession({
   onAnswer: (record: DrillAnswerRecord) => void
   onContinue: (correct: boolean) => void
   onExit: () => void
+  interaction?: DrillSessionInteraction
 }) {
   const step = getCurrentDrillStep(state)
   const [feedback, setFeedback] = useState<StepFeedback | null>(null)
@@ -81,6 +85,7 @@ export function DrillSession({
   const expectedAnswer = step.skill === 'country-to-capital' ? country.capital : country.country
   const isLocationQuestion = step.skill === 'location-to-country'
   const isCapitalQuestion = step.skill === 'capital-to-country'
+  const isLocationPractice = interaction === 'location-click'
   const scopeCountries = state.countryIds
     .map(countryId => countryById.get(countryId))
     .filter((entry): entry is Country => entry !== undefined)
@@ -107,6 +112,24 @@ export function DrillSession({
     })
   }
 
+  const submitLocation = (countryId: string) => {
+    if (feedback) return
+    const selectedCountry = scopeCountries.find(entry => entry.id === countryId)
+    if (!selectedCountry) return
+    const correct = selectedCountry.id === country.id
+    const elapsed = Math.max(0, now() - startedAtRef.current)
+    setFeedback({ answer: selectedCountry.country, correct, match: 'exact' })
+    onAnswer({
+      countryId: country.id,
+      skill: 'location-to-country',
+      answer: selectedCountry.country,
+      correct,
+      at: Date.now(),
+      ms: elapsed,
+      evidenceKind: 'recognition',
+    })
+  }
+
   const prompt = isLocationQuestion
     ? 'Which country is this?'
     : isCapitalQuestion
@@ -119,10 +142,18 @@ export function DrillSession({
         : 'Correct.'
       : `The correct ${isCapitalQuestion || isLocationQuestion ? 'country' : 'capital'} is ${expectedAnswer}.`
     : null
-  const highlightedCountryId = isCapitalQuestion ? (feedback ? country.id : null) : country.id
+  const highlightedCountryId = isLocationPractice
+    ? feedback ? country.id : null
+    : isCapitalQuestion ? (feedback ? country.id : null) : country.id
   const namedCountryId = isLocationQuestion || isCapitalQuestion
     ? feedback ? country.id : null
     : country.id
+  const practiceNamedCountryId = isLocationPractice ? (feedback ? country.id : null) : namedCountryId
+  const practiceFeedbackText = feedback
+    ? feedback.correct
+      ? 'Correct location.'
+      : `That was ${feedback.answer} — ${country.country} is highlighted.`
+    : null
 
   return (
     <>
@@ -130,7 +161,12 @@ export function DrillSession({
       <div className="space-y-4 animate-fade-in">
         <section className="rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-4 text-center">
           <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">{getDrillSkillLabel(step.skill)}</p>
-          {isLocationQuestion ? (
+          {isLocationPractice ? (
+            <>
+              <h1 className="mt-1 text-2xl font-black text-zinc-100">Find {country.country}</h1>
+              <p className="mt-1 text-sm text-zinc-500">Click the country on the map.</p>
+            </>
+          ) : isLocationQuestion ? (
             <h1 className="mt-1 text-2xl font-black text-zinc-100">{prompt}</h1>
           ) : (
             <>
@@ -138,7 +174,7 @@ export function DrillSession({
               <p className="mt-1 text-sm text-zinc-500">{prompt}</p>
             </>
           )}
-          {isLocationQuestion && <p className="mt-1 text-xs text-zinc-500">The highlighted location remains the same Country used for any following Capital question.</p>}
+          {isLocationQuestion && !isLocationPractice && <p className="mt-1 text-xs text-zinc-500">The highlighted location remains the same Country used for any following Capital question.</p>}
         </section>
 
         <div className="relative">
@@ -146,38 +182,42 @@ export function DrillSession({
             continent={selection.continent}
             scopeCountries={scopeCountries}
             highlightedCountryId={highlightedCountryId}
-            namedCountryId={namedCountryId}
-            showHighlightedNames={Boolean(namedCountryId)}
+            namedCountryId={isLocationPractice ? practiceNamedCountryId : namedCountryId}
+            showHighlightedNames={isLocationPractice ? Boolean(practiceNamedCountryId) : Boolean(namedCountryId)}
+            onCountryClick={isLocationPractice ? submitLocation : undefined}
             ariaLabel={isLocationQuestion && !feedback
-              ? 'Map showing the selected location for recall without the Country name revealed'
+              ? isLocationPractice
+                ? 'Map for clicking the target Country'
+                : 'Map showing the selected location for recall without the Country name revealed'
               : isCapitalQuestion && !feedback
                 ? 'Map of the selected geographic scope without the target Country revealed'
                 : `Map with ${country.country} highlighted for Drill recall`}
           />
-          {feedback && <RecallFeedback correct={feedback.correct} message={feedbackText} />}
+          {feedback && <RecallFeedback correct={feedback.correct} message={isLocationPractice ? practiceFeedbackText : feedbackText} />}
         </div>
 
-        <section className="space-y-3">
-          {answerMode === 'multiple-choice' ? (
-            <MultipleChoice
-              key={`${step.countryId}-${step.skill}`}
-              options={answerOptions}
-              correctAnswer={expectedAnswer}
-              onAnswer={submit}
-              answered={feedback?.answer ?? null}
-            />
-          ) : (
-            <TypingInput
-              key={`${step.countryId}-${step.skill}`}
-              onAnswer={submit}
-              answeredCorrect={feedback?.correct ?? null}
-              correctAnswer={expectedAnswer}
-              showCorrectAnswer={false}
-              placeholder={isCapitalQuestion ? 'Type the country…' : isLocationQuestion ? 'Type the country…' : 'Type the capital…'}
-            />
-          )}
-
-        </section>
+        {!isLocationPractice && (
+          <section className="space-y-3">
+            {answerMode === 'multiple-choice' ? (
+              <MultipleChoice
+                key={`${step.countryId}-${step.skill}`}
+                options={answerOptions}
+                correctAnswer={expectedAnswer}
+                onAnswer={submit}
+                answered={feedback?.answer ?? null}
+              />
+            ) : (
+              <TypingInput
+                key={`${step.countryId}-${step.skill}`}
+                onAnswer={submit}
+                answeredCorrect={feedback?.correct ?? null}
+                correctAnswer={expectedAnswer}
+                showCorrectAnswer={false}
+                placeholder={isCapitalQuestion ? 'Type the country…' : isLocationQuestion ? 'Type the country…' : 'Type the capital…'}
+              />
+            )}
+          </section>
+        )}
       </div>
     </>
   )

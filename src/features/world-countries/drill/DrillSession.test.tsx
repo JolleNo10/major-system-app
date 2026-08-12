@@ -81,6 +81,47 @@ describe('DrillSession map presentation', () => {
     expect(mount.textContent).toContain('Which country is this?')
   })
 
+  it('uses map clicks for Locate Countries practice', async () => {
+    const onAnswer = vi.fn()
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(DrillSession, {
+        answerMode: 'multiple-choice',
+        fuzzyMatching: false,
+        interaction: 'location-click',
+        state: createDrillSession({ mode: 'countries', countryIds: ['NO', 'SE'] }),
+        selection: createDrillSelection('Europe', ['northern-europe']),
+        entries: [norway, sweden],
+        onAnswer,
+        onContinue: vi.fn(),
+        onExit: vi.fn(),
+      }))
+    })
+
+    const initialMapProps = learningMapMock.mock.calls[0][0] as Record<string, unknown>
+    expect(initialMapProps.onCountryClick).toBeTypeOf('function')
+    expect(initialMapProps.highlightedCountryId).toBeNull()
+    expect(initialMapProps.namedCountryId).toBeNull()
+    expect(mount.textContent).toContain('Find Norway')
+    expect(mount.textContent).toContain('Click the country on the map.')
+    expect(mount.querySelector('input')).toBeNull()
+
+    await act(async () => (initialMapProps.onCountryClick as (countryId: string) => void)('SE'))
+    expect(onAnswer).toHaveBeenCalledWith(expect.objectContaining({
+      countryId: 'NO',
+      answer: 'Sweden',
+      correct: false,
+      evidenceKind: 'recognition',
+    }))
+    const feedbackMapProps = learningMapMock.mock.calls[learningMapMock.mock.calls.length - 1][0] as Record<string, unknown>
+    expect(feedbackMapProps.highlightedCountryId).toBe('NO')
+    expect(feedbackMapProps.namedCountryId).toBe('NO')
+    expect(mount.textContent).toContain('That was Sweden')
+  })
+
   it('keeps the selected scope neutral for Capital → Country until feedback', async () => {
     const mount = document.createElement('div')
     document.body.append(mount)

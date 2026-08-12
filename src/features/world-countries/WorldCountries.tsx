@@ -31,42 +31,48 @@ export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
   useLayoutHeader(
     <nav
       aria-label="World Countries navigation"
-      className="flex w-full min-w-0 flex-wrap items-center gap-x-4 gap-y-2 py-2"
+      className="w-full min-w-0 py-2"
     >
-      <span className="shrink-0 text-sm font-semibold text-zinc-100">World Countries</span>
+      <span className="sr-only">World Countries</span>
 
       <div
-        role="tablist"
-        aria-label="World Countries activities"
-        className="flex min-w-0 max-w-full flex-wrap gap-1 rounded-lg bg-zinc-800 p-1"
+        className="flex min-w-0 items-center gap-2"
       >
-        {AREAS.map(candidate => (
-          <button
-            key={candidate.id}
-            type="button"
-            role="tab"
-            aria-selected={area === candidate.id}
-            onClick={() => setArea(candidate.id)}
-            className={`shrink-0 rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
-              area === candidate.id ? 'bg-cyan-600 text-white' : 'text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            {candidate.label}
-          </button>
-        ))}
-      </div>
+        <div
+          role="tablist"
+          aria-label="World Countries activities"
+          className="grid min-w-0 flex-1 grid-cols-3 gap-1 rounded-xl border border-zinc-800 bg-zinc-900/80 p-1"
+        >
+          {AREAS.map(candidate => (
+            <button
+              key={candidate.id}
+              type="button"
+              role="tab"
+              aria-selected={area === candidate.id}
+              onClick={() => setArea(candidate.id)}
+              className={`min-w-0 rounded-lg px-2 py-2 text-sm font-medium transition-colors ${
+                area === candidate.id
+                  ? 'bg-cyan-600 text-white shadow-sm'
+                  : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100'
+              }`}
+            >
+              {candidate.label}
+            </button>
+          ))}
+        </div>
 
-      <button
-        type="button"
-        onClick={() => setArea('maintenance')}
-        className={`ml-auto shrink-0 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
-          area === 'maintenance'
-            ? 'border-cyan-500 bg-cyan-600 text-white'
-            : 'border-zinc-700 bg-zinc-800 text-zinc-300 hover:border-cyan-500 hover:text-zinc-100'
-        }`}
-      >
-        Due review
-      </button>
+        <button
+          type="button"
+          onClick={() => setArea('maintenance')}
+          className={`shrink-0 whitespace-nowrap rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+            area === 'maintenance'
+              ? 'border-cyan-500 bg-cyan-600 text-white'
+              : 'border-zinc-700 bg-zinc-800 text-zinc-300 hover:border-cyan-500 hover:text-zinc-100'
+          }`}
+        >
+          Due review
+        </button>
+      </div>
     </nav>,
     [area],
   )

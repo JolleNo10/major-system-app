@@ -28,7 +28,7 @@ afterEach(() => {
 })
 
 describe('OrderedRecallStep', () => {
-  it('keeps the highlighted Country name hidden before the learner answers', async () => {
+  it('keeps the highlighted Country name hidden until answer or map hover', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({
       ok: true,
       text: async () => `
@@ -63,5 +63,10 @@ describe('OrderedRecallStep', () => {
     const label = mount.querySelector<SVGTextElement>('text#Iceland_label')
     expect(label).not.toBeNull()
     expect(label?.style.getPropertyValue('display')).toBe('none')
+
+    await act(async () => {
+      mount.querySelector<SVGPathElement>('path#Iceland')?.dispatchEvent(new Event('pointerenter', { bubbles: true }))
+    })
+    expect(label?.style.getPropertyValue('display')).toBe('inline')
   })
 })

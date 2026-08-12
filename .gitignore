@@ -4,3 +4,6 @@ dist/
 *.tsbuildinfo
 *.local
 .DS_Store
+
+# RepoWise local index
+.repowise/

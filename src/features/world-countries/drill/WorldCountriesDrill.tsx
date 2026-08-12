@@ -10,7 +10,7 @@ import { getAllSubregionMetadata } from '@/features/world-countries/geography/su
 import { getContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
 import { createDrillSelection, getCountriesForDrillSelectionInEffectiveOrder, normalizeDrillSelection, type WorldCountriesDrillSelection } from './drillSelection'
 import { DrillResults } from './DrillResults'
-import { DrillSession } from './DrillSession'
+import { DrillSession, type DrillSessionInteraction } from './DrillSession'
 import { DrillSetup } from './DrillSetup'
 import { isDrillPracticeMode, type WorldCountriesDrillMode } from './drillModes'
 import { createDrillCountryOrder, type WorldCountriesDrillOrder } from './drillOrder'
@@ -30,6 +30,7 @@ import { DrillGuidedLearning } from './DrillGuidedLearning'
 import type { GuidedLearningActionId } from './guidedLearning'
 
 type DrillPhase = 'setup' | 'guided' | 'recall' | 'results'
+type StartSessionOptions = { persistPreferences?: boolean; interaction?: DrillSessionInteraction }
 
 /** Thin coordinator for Drill setup, active recall, evidence, and results. */
 export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) {
@@ -72,7 +73,9 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
     saveDrillPreferences(next)
   }, [])
 
-  const startSession = useCallback((startPreferences: WorldCountriesDrillPreferences) => {
+  const [sessionInteraction, setSessionInteraction] = useState<DrillSessionInteraction>('recall')
+
+  const startSession = useCallback((startPreferences: WorldCountriesDrillPreferences, { persistPreferences = true, interaction = 'recall' }: StartSessionOptions = {}) => {
     const startEntries = getCountriesForDrillSelectionInEffectiveOrder(
       startPreferences,
       activeCountries,
@@ -80,8 +83,9 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
       getAllSubregionMetadata(),
     )
     if (startEntries.length === 0) return
-    saveDrillPreferences(startPreferences)
+    if (persistPreferences) saveDrillPreferences(startPreferences)
     setAnswers([])
+    setSessionInteraction(interaction)
     setSession(createDrillSession({
       mode: startPreferences.mode,
       countryIds: startEntries.map(entry => entry.id),
@@ -96,16 +100,34 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
 
   const start = useCallback(() => startSession(effectivePreferences), [effectivePreferences, startSession])
 
+  const startPractice = useCallback((practiceMode: WorldCountriesDrillMode) => {
+    startSession(
+      { ...effectivePreferences, mode: practiceMode },
+      { persistPreferences: false, interaction: practiceMode === 'countries' ? 'location-click' : 'recall' },
+    )
+  }, [effectivePreferences, startSession])
+
+  const restart = useCallback(() => {
+    if (session && (sessionInteraction === 'location-click' || isDrillPracticeMode(session.mode))) {
+      startSession(
+        { ...effectivePreferences, mode: session.mode },
+        { persistPreferences: false, interaction: sessionInteraction },
+      )
+      return
+    }
+    start()
+  }, [effectivePreferences, session, start, startSession])
+
   const answer = useCallback((record: DrillAnswerRecord) => {
     setAnswers(previous => [...previous, record])
-    if (isDrillPracticeMode(effectivePreferences.mode)) return
+    if (sessionInteraction === 'location-click' || isDrillPracticeMode(session?.mode ?? effectivePreferences.mode)) return
     void recordWorldCountriesAttempt(record.countryId, record.skill, {
       at: record.at,
       ok: record.correct,
       ms: record.ms,
       evidenceKind: record.evidenceKind,
     })
-  }, [effectivePreferences.mode])
+  }, [effectivePreferences.mode, session?.mode, sessionInteraction])
 
   const continueSession = useCallback((correct: boolean) => {
     if (!session) return
@@ -116,6 +138,7 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
 
   const exitToSetup = useCallback(() => {
     setSession(null)
+    setSessionInteraction('recall')
     setGuidedAction(null)
     setPhase('setup')
     setSetupContinent(null)
@@ -185,6 +208,7 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
         answerMode={answerMode}
         fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching}
         state={session}
+        interaction={sessionInteraction}
         selection={effectivePreferences}
         entries={entries}
         onAnswer={answer}
@@ -197,11 +221,11 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
   if (phase === 'results') {
     return (
       <DrillResults
-        mode={effectivePreferences.mode}
+        mode={session?.mode ?? effectivePreferences.mode}
         continent={effectivePreferences.continent}
         scopeCountries={entries}
         answers={answers}
-        onAgain={start}
+        onAgain={restart}
         onChangeSetup={exitToSetup}
       />
     )
@@ -219,6 +243,7 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
       onModeChange={handleModeChange}
       onOrderChange={handleOrderChange}
       onStart={start}
+      onPracticeStart={startPractice}
       onWorld={goToWorld}
       onSelectContinent={selectContinent}
       onGuidedAction={handleGuidedAction}

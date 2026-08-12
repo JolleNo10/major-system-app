@@ -15,9 +15,9 @@ import {
 } from '@/features/world-countries/learning/countryLearningFlow'
 import { markSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningStore'
 import { CountryLearningComplete } from './CountryLearningComplete'
+import { CountryMapPreviewStep } from './CountryMapPreviewStep'
 import { CountryWalkthroughStep } from './CountryWalkthroughStep'
 import { LocationPracticeStep } from './LocationPracticeStep'
-import { MemoryPreviewStep } from './MemoryPreviewStep'
 import { OrderedRecallStep } from './OrderedRecallStep'
 import { GuidedLearningRails } from './GuidedLearningRails'
 
@@ -85,7 +85,9 @@ export function CountryLearningFlow({
   switch (flow.phase) {
     case 'memory-preview':
       content = (
-        <MemoryPreviewStep
+        <CountryMapPreviewStep
+          continent={continent}
+          entries={entries}
           onStart={() => transition(startCountryWalkthrough(flow))}
           onExit={onExit}
         />
@@ -99,6 +101,7 @@ export function CountryLearningFlow({
           flow={flow}
           onMove={offset => transition(moveCountryWalkthrough(flow, offset))}
           onStartLocation={() => transition(startLocationPractice(flow, locationCleanTargetMinimum))}
+          onSkip={() => transition(startLocationPractice(flow, locationCleanTargetMinimum))}
           onExit={onExit}
         />
       )
@@ -111,6 +114,7 @@ export function CountryLearningFlow({
           flow={flow}
           onSelect={updateLocation}
           onContinue={() => transition(startOrderedRecall(flow, 2))}
+          onSkip={() => transition(startOrderedRecall(flow, 2))}
           onExit={onExit}
         />
       )

@@ -70,6 +70,7 @@ describe('Drill setup PageLayout integration', () => {
   it('registers setup rails without entering an update loop', async () => {
     const mount = document.createElement('div')
     document.body.append(mount)
+    const onPracticeStart = vi.fn()
 
     await act(async () => {
       root = createRoot(mount)
@@ -86,6 +87,7 @@ describe('Drill setup PageLayout integration', () => {
             onModeChange: () => undefined,
             onOrderChange: () => undefined,
             onStart: () => undefined,
+            onPracticeStart,
             onWorld: () => undefined,
             onSelectContinent: () => undefined,
           }),
@@ -95,9 +97,18 @@ describe('Drill setup PageLayout integration', () => {
     })
 
     expect(mount.textContent).toContain('Europe Drill')
-    expect(mount.textContent).toContain('Current drill')
+    expect(mount.textContent).toContain('Drill')
     expect(mount.textContent).toContain('1 Subregion selected')
     expect(mount.textContent).toContain('Start Drill')
+    const practiceInput = [...mount.querySelectorAll('input[type="radio"]')]
+      .find(input => (input as HTMLInputElement).value === 'capitals') as HTMLInputElement | undefined
+    await act(async () => practiceInput?.click())
+    const practiceStartButton = [...mount.querySelectorAll('button')]
+      .find(button => button.textContent === 'Start practise') as HTMLButtonElement | undefined
+    expect(practiceStartButton?.disabled).toBe(false)
+    await act(async () => practiceStartButton?.click())
+    expect(onPracticeStart).toHaveBeenCalledWith('capitals')
+    expect(mount.textContent).toContain('Learn Countries')
     const currentDrill = mount.querySelector('[aria-labelledby="world-countries-current-drill-heading"]')
     expect(currentDrill?.parentElement?.parentElement?.className).toContain('xl:block')
   })
@@ -120,7 +131,8 @@ describe('Drill setup PageLayout integration', () => {
       await Promise.resolve()
     })
 
-    expect(mount.textContent).toContain('Choose a Continent')
+    expect(mount.textContent).toContain('World Countries Drill')
+    expect(mount.querySelector('#world-countries-drill-heading')).toBeNull()
   })
 
   it('switches from Prepare to Drill without looping through rail cleanup', async () => {
@@ -144,7 +156,7 @@ describe('Drill setup PageLayout integration', () => {
     const drillTab = [...mount.querySelectorAll('button')]
       .find(button => button.textContent === 'Drill')
     await act(async () => drillTab?.click())
-    expect(mount.textContent).toContain('Choose a Continent')
+    expect(mount.querySelector('#world-countries-drill-heading')).toBeNull()
   })
 
   it('keeps the Continent Prepare rails stable while the layout publishes them', async () => {
@@ -211,22 +223,20 @@ describe('Drill setup PageLayout integration', () => {
     })
 
     const leftDrawerToggle = [...mount.querySelectorAll('button')]
-      .find(button => button.textContent?.includes('Drill setup'))
+      .find(button => button.textContent?.includes('Drill scope'))
     await act(async () => leftDrawerToggle?.click())
-    const leftDrawer = mount.querySelector('[role="dialog"][aria-label="Drill setup"]')
+    const leftDrawer = mount.querySelector('[role="dialog"][aria-label="Drill scope"]')
     expect(leftDrawer).not.toBeNull()
-    expect(leftDrawer?.querySelector('legend')?.textContent).toBe('Mode')
-    expect(leftDrawer?.querySelector('h2')?.textContent).toBe('Drill setup')
+    expect(leftDrawer?.querySelector('legend')).toBeNull()
+    expect(leftDrawer?.querySelector('h2')).toBeNull()
+    expect(leftDrawer?.textContent).toContain('Geography')
     const modeInputs = [...(leftDrawer?.querySelectorAll('input[type="radio"]') ?? [])] as HTMLInputElement[]
-    expect(modeInputs).toHaveLength(4)
-    expect(modeInputs.filter(input => input.checked)).toHaveLength(1)
-    expect(modeInputs.find(input => input.checked)?.value).toBe('countries')
-    expect(leftDrawer?.textContent?.indexOf('Mode')).toBeLessThan(leftDrawer?.textContent?.indexOf('Geography') ?? 0)
+    expect(modeInputs).toHaveLength(0)
     const renderedModeGroups = [...mount.querySelectorAll('fieldset')]
       .filter(fieldset => fieldset.querySelector('input[type="radio"]'))
-    expect(renderedModeGroups).toHaveLength(2)
-    expect(new Set(renderedModeGroups.map(group => group.querySelector('input[type="radio"]')?.getAttribute('name'))).size).toBe(2)
-    expect(new Set(renderedModeGroups.map(group => group.getAttribute('aria-describedby'))).size).toBe(2)
+    expect(renderedModeGroups).toHaveLength(1)
+    expect(new Set(renderedModeGroups.map(group => group.querySelector('input[type="radio"]')?.getAttribute('name'))).size).toBe(1)
+    expect(renderedModeGroups.every(group => [...group.querySelectorAll('input[type="radio"]')].every(input => input.getAttribute('aria-describedby')))).toBe(true)
     const closeButton = mount.querySelector('[role="dialog"] button[aria-label="Close"]')
     await act(async () => (closeButton as HTMLButtonElement | null)?.click())
 
@@ -251,9 +261,14 @@ describe('Drill setup PageLayout integration', () => {
     expect(northernEurope?.getAttribute('aria-pressed')).toBe('true')
     await act(async () => norway?.dispatchEvent(new Event('click', { bubbles: true })))
     expect(northernEurope?.getAttribute('aria-pressed')).toBe('false')
+    await act(async () => norway?.dispatchEvent(new Event('click', { bubbles: true })))
+    expect(northernEurope?.getAttribute('aria-pressed')).toBe('true')
+    const scopePanel = mount.querySelector('[aria-labelledby="world-countries-drill-scope-heading"]')
+    expect(scopePanel?.textContent).toContain('Scope')
+    expect(scopePanel?.textContent).toContain('1 Subregion selected')
 
-    for (const value of ['countries', 'countries-capitals', 'capitals', 'countries-from-capitals']) {
-      const modeInput = [...mount.querySelectorAll('input[type="radio"]')]
+    for (const value of ['countries', 'countries-capitals', 'countries-from-capitals']) {
+      const modeInput = [...(mount.querySelector('fieldset')?.querySelectorAll('input[type="radio"]') ?? [])]
         .find(input => (input as HTMLInputElement).value === value) as HTMLInputElement | undefined
       await act(async () => modeInput?.click())
       expect(modeInput?.checked).toBe(true)
@@ -261,21 +276,37 @@ describe('Drill setup PageLayout integration', () => {
 
     const modeSection = mount.querySelector('fieldset')
     expect(modeSection?.textContent).toContain('Drill')
-    expect(modeSection?.textContent).toContain('Practice')
-    const descriptionId = modeSection?.getAttribute('aria-describedby')
-    expect(descriptionId).toBeTruthy()
-    expect(modeSection?.querySelector(`[id="${descriptionId}"]`)?.textContent).toBe('Given a Capital, recall its Country.')
+    const currentDrill = mount.querySelector('[aria-labelledby="world-countries-current-drill-heading"]')
+    expect(currentDrill?.textContent).not.toContain('Scope')
+    const practicePanel = [...mount.querySelectorAll('section')]
+      .find(section => section.querySelector('h2')?.textContent === 'Learn and Practise')
+    expect(practicePanel?.textContent).toContain('Learn and Practise')
+    expect(practicePanel?.textContent).toContain('Learn Countries')
+    expect(practicePanel?.textContent).toContain('Locate Countries')
     const capitalsInput = [...mount.querySelectorAll('input[type="radio"]')]
       .find(input => (input as HTMLInputElement).value === 'capitals') as HTMLInputElement | undefined
+    const descriptionId = capitalsInput?.getAttribute('aria-describedby')
+    expect(descriptionId).toBeTruthy()
+    expect(practicePanel?.querySelector(`[id="${descriptionId}"][role="tooltip"]`)?.textContent).toBe('Practise capitals before Countries + Capitals.')
     await act(async () => capitalsInput?.click())
-    expect(modeSection?.querySelector(`[id="${descriptionId}"]`)?.textContent).toBe('Practise capitals before Countries + Capitals.')
-    expect(modeSection?.querySelectorAll(`[id="${descriptionId}"]`)).toHaveLength(1)
+    const currentDrillModeInput = [...(mount.querySelector('fieldset')?.querySelectorAll('input[type="radio"]') ?? [])]
+      .find(input => (input as HTMLInputElement).value === 'countries-from-capitals') as HTMLInputElement | undefined
+    expect(currentDrillModeInput?.checked).toBe(true)
+    const selectedPracticeInput = [...mount.querySelectorAll('input[type="radio"]')]
+      .find(input => (input as HTMLInputElement).value === 'capitals' && (input as HTMLInputElement).name.includes('practice-mode')) as HTMLInputElement | undefined
+    expect(selectedPracticeInput?.checked).toBe(true)
+    const practiceStartButton = [...mount.querySelectorAll('button')]
+      .find(button => button.textContent === 'Start practise') as HTMLButtonElement | undefined
+    expect(practiceStartButton?.disabled).toBe(false)
 
     const rightDrawerToggle = [...mount.querySelectorAll('button')]
-      .find(button => button.textContent?.includes('Current drill'))
+      .find(button => {
+        const label = button.textContent?.trim() ?? ''
+        return label.endsWith('Drill') && label !== 'Drill'
+      })
     await act(async () => rightDrawerToggle?.click())
-    const rightDrawer = mount.querySelector('[role="dialog"][aria-label="Current drill"]')
+    const rightDrawer = mount.querySelector('[role="dialog"][aria-label="Drill"]')
     expect(rightDrawer).not.toBeNull()
-    expect(rightDrawer?.querySelector('input[type="radio"]')).toBeNull()
+    expect(rightDrawer?.querySelectorAll('input[type="radio"]')).toHaveLength(6)
   })
 })

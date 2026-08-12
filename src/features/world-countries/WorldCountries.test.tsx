@@ -52,7 +52,7 @@ async function renderShell() {
 }
 
 describe('World Countries compact activity header', () => {
-  it('publishes a compact wrapping header without the persistent tagline', async () => {
+  it('publishes a compact segmented header without the persistent tagline', async () => {
     const mount = await renderShell()
     const header = mount.querySelector('nav[aria-label="World Countries navigation"]')
     const tablist = header?.querySelector('[role="tablist"]')
@@ -60,8 +60,8 @@ describe('World Countries compact activity header', () => {
     expect(header).not.toBeNull()
     expect(header?.textContent).toContain('World Countries')
     expect(header?.textContent).not.toContain('Learn, practise and retain')
-    expect(header?.className).toContain('flex-wrap')
-    expect(tablist?.className).toContain('flex-wrap')
+    expect(header?.className).toContain('py-2')
+    expect(tablist?.className).toContain('grid-cols-3')
     expect([...tablist?.querySelectorAll('[role="tab"]') ?? []].map(tab => tab.textContent)).toEqual([
       'Prepare',
       'Drill',

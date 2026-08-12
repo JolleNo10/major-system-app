@@ -44,6 +44,7 @@ describe('World Countries Prepare hierarchy rails', () => {
 
     const railConfig = useRailsMock.mock.calls[0][0] as { left: ReactNode }
     await act(async () => root?.render(railConfig.left))
+    expect(mount.querySelector('[aria-labelledby="world-countries-continents-rail-heading"]')?.className).toContain('rounded-xl')
     expect(mount.textContent).not.toContain('World Prepare progress')
     const button = [...mount.querySelectorAll('button')].find(candidate => candidate.textContent?.includes('Europe'))
     expect(button?.hasAttribute('aria-current')).toBe(false)
@@ -76,6 +77,7 @@ describe('World Countries Prepare hierarchy rails', () => {
 
     const railConfig = useRailsMock.mock.calls[0][0] as { left: ReactNode }
     await act(async () => root?.render(railConfig.left))
+    expect(mount.querySelector('[aria-labelledby="world-countries-subregions-rail-heading"]')?.className).toContain('rounded-xl')
     expect(mount.textContent).not.toContain('Continent Prepare progress')
     expect(mount.textContent).toContain('Edit order')
     expect(mount.textContent).toContain('Northern Europe')

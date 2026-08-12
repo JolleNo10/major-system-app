@@ -11,6 +11,7 @@ export function LocationPracticeStep({
   flow,
   onSelect,
   onContinue,
+  onSkip,
   onExit,
 }: {
   continent: Continent
@@ -18,6 +19,7 @@ export function LocationPracticeStep({
   flow: CountryLearningFlowState
   onSelect: (countryId: string) => void
   onContinue: () => void
+  onSkip: () => void
   onExit: () => void
 }) {
   const [feedback, setFeedback] = useState<{ correct: boolean; expectedId: string; selectedId: string } | null>(null)
@@ -44,7 +46,7 @@ export function LocationPracticeStep({
   if (location.completed) {
     return (
       <div className="space-y-4 animate-fade-in">
-        <LearningHeader label="Stage A complete" title="Locations learned ✓" onExit={onExit} />
+        <LearningHeader label="Phase 2 complete" title="Locations learned ✓" onExit={onExit} />
         <section className="rounded-xl border border-green-500/30 bg-green-500/10 p-5 text-center">
           <p className="text-sm text-green-300">You reached a clean streak of {location.target} location recalls.</p>
           <p className="mt-2 text-xs text-zinc-500">Now recall every country in your chosen learning order.</p>
@@ -56,7 +58,7 @@ export function LocationPracticeStep({
 
   return (
     <div className="space-y-4 animate-fade-in">
-      <LearningHeader label="Stage A · location recall" title={`Find ${expected?.country ?? 'the country'}`} onExit={onExit} />
+      <LearningHeader label="Phase 2 · locate countries" title={`Find ${expected?.country ?? 'the country'}`} onExit={onExit} />
       <div className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm">
         <span className="text-zinc-500">Clean streak</span>
         <span className="font-semibold tabular-nums text-cyan-300">{location.cleanStreak} / {location.target}</span>
@@ -76,6 +78,9 @@ export function LocationPracticeStep({
           />
         )}
       </div>
+      <button type="button" onClick={onSkip} className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-400 hover:border-cyan-500 hover:text-zinc-200">
+        Skip to ordered recall
+      </button>
     </div>
   )
 }

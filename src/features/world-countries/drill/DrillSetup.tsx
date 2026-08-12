@@ -5,9 +5,6 @@ import {
   type RecallProgress,
 } from '@/features/world-countries/learning/recallProgress'
 import { getAllSubregionLearningStates } from '@/features/world-countries/learning/subregionLearningStore'
-import { isSubregionCapitalsLearned, isSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningState'
-import { getCountriesForSubregionInEffectiveOrder } from '@/features/world-countries/geography/queries'
-import { getSubregionMetadata } from '@/features/world-countries/geography/subregionMetadataStore'
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
 import {
   getDrillSubregions,
@@ -20,7 +17,7 @@ import type { WorldCountriesDrillOrder } from './drillOrder'
 import { createDrillProgressColors, createDrillProgressDescriptions } from './drillProgressPresentation'
 import { DrillSetupRails } from './DrillRails'
 import { DrillProgressLegend } from './DrillProgressLegend'
-import { getGuidedLearningActions, type GuidedLearningActionId, type GuidedLearningActions } from './guidedLearning'
+import type { GuidedLearningActionId } from './guidedLearning'
 
 export function DrillSetup({
   level,
@@ -33,6 +30,7 @@ export function DrillSetup({
   onModeChange,
   onOrderChange,
   onStart,
+  onPracticeStart = () => undefined,
   onWorld,
   onSelectContinent,
   onGuidedAction = () => undefined,
@@ -48,6 +46,7 @@ export function DrillSetup({
   onModeChange: (mode: WorldCountriesDrillMode) => void
   onOrderChange: (order: WorldCountriesDrillOrder) => void
   onStart: () => void
+  onPracticeStart?: (mode: WorldCountriesDrillMode) => void
   onWorld: () => void
   onSelectContinent: (continent: Continent) => void
   onGuidedAction?: (action: GuidedLearningActionId) => void
@@ -56,19 +55,6 @@ export function DrillSetup({
   const subregions = getDrillSubregions(selection.continent, entries)
   const skills = getSkillsForDrillMode(mode)
   const memoLearningStates = useMemo(() => getAllSubregionLearningStates(entries), [entries])
-  const guidedActions = useMemo<GuidedLearningActions>(() => {
-    const selectedSubregion = selection.subregionIds.length === 1 ? selection.subregionIds[0] : null
-    const selectedEntries = selectedSubregion
-      ? getCountriesForSubregionInEffectiveOrder(selectedSubregion, entries, getSubregionMetadata(selectedSubregion))
-      : []
-    const state = selectedSubregion ? memoLearningStates.find(candidate => candidate.subregionId === selectedSubregion) : undefined
-    return getGuidedLearningActions({
-      subregionCount: selection.subregionIds.length,
-      countryCount: selectedEntries.length,
-      countriesLearned: isSubregionCountriesLearned(state),
-      capitalsLearned: isSubregionCapitalsLearned(state),
-    })
-  }, [entries, memoLearningStates, selection.subregionIds])
   const [recallProgress, setRecallProgress] = useState<RecallProgress | null>(null)
 
   useEffect(() => {
@@ -116,23 +102,27 @@ export function DrillSetup({
         onModeChange={onModeChange}
         onOrderChange={onOrderChange}
         onStart={onStart}
-        guidedActions={level === 'continent' ? guidedActions : { primary: null, secondary: [] }}
+        onPracticeStart={onPracticeStart}
         onGuidedAction={onGuidedAction}
         entries={entries}
       />
 
       <div className="space-y-3 animate-fade-in">
-        <section className="space-y-1">
+        {level === 'world' && (
           <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World Countries Drill</p>
-          <h1 id="world-countries-drill-heading" className="text-2xl font-bold text-zinc-100">
-            {level === 'world' ? 'Choose a Continent' : `${selection.continent} Drill`}
-          </h1>
-          <p className="text-sm leading-relaxed text-zinc-400">
-            {level === 'world'
-              ? 'Use the World map to stay oriented, then choose the geographic root for your practice.'
-              : 'Choose the Subregions and recall relationship while the map keeps the geographic context in view.'}
-          </p>
-        </section>
+        )}
+
+        {level === 'continent' && (
+          <section className="space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World Countries Drill</p>
+            <h1 id="world-countries-drill-heading" className="text-2xl font-bold text-zinc-100">
+              {selection.continent} Drill
+            </h1>
+            <p className="text-sm leading-relaxed text-zinc-400">
+              Choose the Subregions and recall relationship while the map keeps the geographic context in view.
+            </p>
+          </section>
+        )}
 
         <GeographyOverviewMap
           level={level}

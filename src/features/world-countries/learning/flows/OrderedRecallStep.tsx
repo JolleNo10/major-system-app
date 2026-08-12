@@ -64,10 +64,10 @@ export function OrderedRecallStep({
 
   return (
     <div className="space-y-4 animate-fade-in">
-      <LearningHeader label="Stage B · ordered blind recall" title={`${session.currentIndex + 1} / ${entries.length}`} onExit={onExit} />
+      <LearningHeader label="Phase 3 · ordered recall" title={`${session.currentIndex + 1} / ${entries.length}`} onExit={onExit} />
       <div className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm">
         <span className="text-zinc-500">{session.mode === 'repair' ? 'Repair traversal' : 'Clean pass'}</span>
-        <span className="font-semibold text-cyan-300">Recall the highlighted country</span>
+        <span className="font-semibold text-cyan-300">Recite the highlighted country name</span>
       </div>
       <div className="relative">
         <CountryLearningMap
@@ -76,6 +76,7 @@ export function OrderedRecallStep({
           highlightedCountryId={displayCountry.id}
           namedCountryId={feedback?.correct ? feedback.expectedId : null}
           showHighlightedNames={false}
+          showHoverNames
           ariaLabel="Highlighted country for ordered blind recall"
         />
         {feedback && (
@@ -91,7 +92,7 @@ export function OrderedRecallStep({
         )}
       </div>
       <form onSubmit={event => { event.preventDefault(); submit() }} className="space-y-3">
-        <label htmlFor="ordered-country-answer" className="block text-sm text-zinc-400">Which country is this?</label>
+        <label htmlFor="ordered-country-answer" className="block text-sm text-zinc-400">Recite the country name</label>
         <div className="flex gap-2">
           <input
             ref={inputRef}

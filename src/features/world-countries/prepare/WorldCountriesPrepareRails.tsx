@@ -13,6 +13,8 @@ import { getContinentHoverGroupId, getSubregionHoverGroupId } from '@/features/w
 import { subregionMnemonicId } from '@/features/world-countries/mnemonics/geographyMnemonicIds'
 import { PrepareMnemonicEditor } from './PrepareMnemonicEditor'
 
+const PREPARE_RAIL_PANEL_CLS = 'rounded-xl border border-zinc-800 bg-zinc-900 p-4'
+
 interface WorldOverviewRailsProps {
   continents: readonly Continent[]
   activeCountries?: readonly Country[]
@@ -35,7 +37,7 @@ export function WorldOverviewRails({
   useRails(
     {
       left: (
-        <section className="space-y-4" aria-labelledby="world-countries-continents-rail-heading">
+        <section className={`${PREPARE_RAIL_PANEL_CLS} space-y-4`} aria-labelledby="world-countries-continents-rail-heading">
           <div className="flex items-start justify-between gap-2">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World</p>
@@ -103,7 +105,7 @@ export function ContinentOverviewRails({
   useRails(
     {
       left: (
-        <section className="space-y-4" aria-labelledby="world-countries-subregions-rail-heading">
+        <section className={`${PREPARE_RAIL_PANEL_CLS} space-y-4`} aria-labelledby="world-countries-subregions-rail-heading">
           <nav aria-label="World Countries hierarchy" className="flex flex-wrap items-center gap-1.5 text-xs">
             <button type="button" onClick={onWorld} className="text-zinc-500 hover:text-zinc-200">World</button>
             <span className="text-zinc-700">/</span>
@@ -177,7 +179,7 @@ export function PrepareSubregionRails({
   useRails(
     {
       left: (
-        <section className="space-y-4" aria-labelledby="world-countries-prepare-context-heading">
+        <section className={`${PREPARE_RAIL_PANEL_CLS} space-y-4`} aria-labelledby="world-countries-prepare-context-heading">
           <nav aria-label="World Countries hierarchy" className="flex flex-wrap items-center gap-1.5 text-xs">
             <button type="button" onClick={onWorld} className="text-zinc-500 hover:text-zinc-200">World</button>
             <span className="text-zinc-700">/</span>
