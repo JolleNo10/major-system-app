@@ -2,8 +2,8 @@ import type { ComponentType } from 'react'
 import type { Mode, AnswerMode } from '@/core/types'
 import { DecodingDrill, EncodingDrill, RepetitionDrill, ReverseSoundKeyDrill, SequenceDrill, SoundKeyDrill, SpeedRound, WeakSpots } from '@/features/major-system'
 import { PiDrill } from '@/features/pi'
-import { MajorCardsDrill, ThemedCardsDrill, PaoCardsDrill } from '@/features/cards'
-import { MapWorkarea, WorldCountries } from '@/features/world-countries'
+import { ThemedCardsDrill, PaoCardsDrill } from '@/features/cards'
+import { WorldCountries } from '@/features/world-countries'
 
 // Single source of truth for every non-home mode: its header title, the drill
 // component, and the ModeSelector card. Because it is Record<DrillMode, …>,
@@ -15,7 +15,7 @@ export type DrillMode = Exclude<Mode, 'home'>
 export interface ModeDef {
   title: string                                        // header title
   component: ComponentType<{ answerMode: AnswerMode }> // drill rendered in <main>
-  group: 'major-system' | 'application'                // ModeSelector section
+  group: 'major-system' | 'application' | 'cards'      // ModeSelector section
   hideAnswerToggle?: boolean                           // header omits the MC/typing toggle
   // ModeSelector card
   emoji: string
@@ -109,19 +109,10 @@ export const MODES: Record<DrillMode, ModeDef> = {
     description: 'Memorise and recite the digits of π using major system words',
     accent: 'group-hover:border-cyan-500/60 group-hover:shadow-cyan-900/20',
   },
-  cards: {
-    title: 'Card Deck',
-    component: MajorCardsDrill,
-    group: 'application',
-    emoji: '🃏',
-    subtitle: 'Encode 52 cards',
-    description: 'Each card maps to a number — drill the word for every card in the deck',
-    accent: 'group-hover:border-rose-500/60 group-hover:shadow-rose-900/20',
-  },
   'themed-cards': {
     title: 'Themed Deck',
     component: ThemedCardsDrill,
-    group: 'application',
+    group: 'cards',
     emoji: '🎭',
     subtitle: 'A person per card',
     description: 'Each suit is its own cast — recall the person for every card',
@@ -130,7 +121,7 @@ export const MODES: Record<DrillMode, ModeDef> = {
   'pao-cards': {
     title: 'PAO Deck',
     component: PaoCardsDrill,
-    group: 'application',
+    group: 'cards',
     emoji: '🎬',
     subtitle: 'Person · Action · Object',
     description: 'Every card has a person, action and object — memorise the deck in 3-card images',
@@ -143,16 +134,6 @@ export const MODES: Record<DrillMode, ModeDef> = {
     emoji: '🌍',
     subtitle: 'Memo · Drill · Recite',
     description: 'Learn, practise and retain the world\'s countries and capitals',
-    accent: 'group-hover:border-cyan-500/60 group-hover:shadow-cyan-900/20',
-  },
-  'world-countries-workarea': {
-    title: 'World Countries Workarea',
-    component: MapWorkarea,
-    group: 'application',
-    hideAnswerToggle: true,
-    emoji: '🗺️',
-    subtitle: 'Map experiments',
-    description: 'Explore the experimental world map work area',
     accent: 'group-hover:border-cyan-500/60 group-hover:shadow-cyan-900/20',
   },
 }

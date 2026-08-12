@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import type { Mode } from '@/core/types'
 import { MODE_ENTRIES, type DrillMode, type ModeDef } from '@/app/modes'
 import { getStats, getDueCount } from '@/core/scoring/useStats'
@@ -7,11 +8,14 @@ const ALL_NUMS = Object.keys(WORDS)
 
 const MAJOR_SYSTEM_MODES = MODE_ENTRIES.filter(([, def]) => def.group === 'major-system')
 const APPLICATION_MODES = MODE_ENTRIES.filter(([, def]) => def.group === 'application')
+const CARD_MODES = MODE_ENTRIES.filter(([, def]) => def.group === 'cards')
+
+export type HomeSection = 'major-system' | 'cards' | null
 
 interface Props {
   onSelectMode: (mode: Mode) => void
-  section: 'major-system' | null
-  onSectionChange: (section: 'major-system' | null) => void
+  section: HomeSection
+  onSectionChange: (section: HomeSection) => void
 }
 
 function ModeButton({
@@ -88,6 +92,59 @@ function MajorSystemDrills({ onSelectMode, dueCount, total, correct, onBack }: {
   )
 }
 
+function CardDeckDrills({ onSelectMode, onBack }: {
+  onSelectMode: (mode: Mode) => void
+  onBack: () => void
+}) {
+  return (
+    <div className="space-y-4">
+      <button
+        onClick={onBack}
+        className="flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+      >
+        ← Applications
+      </button>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {CARD_MODES.map(([id, def]) => (
+          <ModeButton
+            key={id}
+            id={id}
+            def={def}
+            subtitleColor="text-cyan-400"
+            onSelect={onSelectMode}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function CardDeckButton({ onSelect }: { onSelect: () => void }) {
+  return (
+    <button
+      onClick={onSelect}
+      className="group relative text-left p-5 rounded-xl border border-zinc-800 bg-zinc-900 hover:bg-zinc-800/80 transition-all duration-200 shadow-lg hover:shadow-xl group-hover:border-purple-500/60 hover:border-purple-500/60 hover:shadow-purple-900/20"
+    >
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="text-3xl mb-3">🃏</div>
+          <div className="font-bold text-zinc-100 text-base">Deck of Cards</div>
+          <div className="text-xs text-cyan-400 font-semibold mb-1.5 uppercase tracking-wide">
+            Themed · PAO
+          </div>
+          <div className="text-sm text-zinc-500">
+            Choose a card mnemonic system and practise memorising a full deck
+          </div>
+        </div>
+        <span className="text-zinc-600 text-lg mt-1">›</span>
+      </div>
+      <div className="mt-3 text-xs text-zinc-600">
+        {CARD_MODES.length} decks
+      </div>
+    </button>
+  )
+}
+
 export function ModeSelector({ onSelectMode, section, onSectionChange }: Props) {
   const stats = getStats()
   const entries = Object.values(stats)
@@ -102,6 +159,15 @@ export function ModeSelector({ onSelectMode, section, onSectionChange }: Props) 
         dueCount={dueCount}
         total={total}
         correct={correct}
+        onBack={() => onSectionChange(null)}
+      />
+    )
+  }
+
+  if (section === 'cards') {
+    return (
+      <CardDeckDrills
+        onSelectMode={onSelectMode}
         onBack={() => onSectionChange(null)}
       />
     )
@@ -143,7 +209,12 @@ export function ModeSelector({ onSelectMode, section, onSectionChange }: Props) 
         <p className="text-xs text-zinc-500 uppercase tracking-widest font-semibold">Applications</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {APPLICATION_MODES.map(([id, def]) => (
-            <ModeButton key={id} id={id} def={def} subtitleColor="text-cyan-400" onSelect={onSelectMode} />
+            <Fragment key={id}>
+              {id === 'world-countries' && (
+                <CardDeckButton onSelect={() => onSectionChange('cards')} />
+              )}
+              <ModeButton id={id} def={def} subtitleColor="text-cyan-400" onSelect={onSelectMode} />
+            </Fragment>
           ))}
         </div>
       </div>

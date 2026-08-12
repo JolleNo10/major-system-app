@@ -5,6 +5,7 @@ import { useAnswerMode } from '@/core/ui/useAnswerMode'
 import { useSettings } from '@/app/settings/SettingsContext'
 import { usePwaUpdate } from '@/app/settings/usePwaUpdate'
 import { ModeSelector } from '@/app/ModeSelector'
+import type { HomeSection } from '@/app/ModeSelector'
 import { PageLayout } from '@/app/layout/PageLayout'
 import { AnswerModeToggle } from '@/core/ui/AnswerModeToggle'
 import { ReferenceOverlay } from '@/app/overlays/ReferenceOverlay'
@@ -13,7 +14,7 @@ import { StatsOverlay } from '@/app/overlays/StatsOverlay'
 
 export default function App() {
   const [mode, setMode] = useState<Mode>('home')
-  const [homeSection, setHomeSection] = useState<'major-system' | null>(null)
+  const [homeSection, setHomeSection] = useState<HomeSection>(null)
   const [showReference, setShowReference] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showStats, setShowStats] = useState(false)
