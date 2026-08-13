@@ -21,6 +21,7 @@ export function LearningMapSurface({
   presentation,
   presentationKey,
   context,
+  mapMeta,
   dockPlacement = 'overlay',
   children,
 }: {
@@ -29,6 +30,7 @@ export function LearningMapSurface({
   presentation: LearningMapOverride
   presentationKey: string
   context: ReactNode
+  mapMeta?: ReactNode
   dockPlacement?: MapSurfaceDockPlacement
   children: ReactNode
 }) {
@@ -40,7 +42,7 @@ export function LearningMapSurface({
 
   return (
     <LearningMapSurfaceContext.Provider value={contextValue}>
-      <MapSurface context={context} map={map} dock={children} dockPlacement={dockPlacement} />
+      <MapSurface context={context} map={map} mapMeta={mapMeta} dock={children} dockPlacement={dockPlacement} />
     </LearningMapSurfaceContext.Provider>
   )
 }

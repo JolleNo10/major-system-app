@@ -6,10 +6,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Country } from '@/features/world-countries/data/countries'
 import { StagedCountryWalkthroughStep } from './StagedCountryWalkthroughStep'
 
-vi.mock('@/features/world-countries/learning/CountryLearningMap', () => ({
-  CountryLearningMap: () => createElement('div', { 'data-testid': 'country-learning-map' }),
-}))
-
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 const entries: Country[] = [
@@ -32,8 +28,7 @@ describe('Learning Review keyboard behavior', () => {
     act(() => {
       root = createRoot(mount)
       root.render(createElement(StagedCountryWalkthroughStep, {
-        continent: 'Europe', entries, index: 0, setNumber: 1, onMove,
-        onContinue: vi.fn(), onExit: vi.fn(),
+        entries, index: 0, onMove, onContinue: vi.fn(),
       }))
     })
 
@@ -44,8 +39,7 @@ describe('Learning Review keyboard behavior', () => {
 
     onMove.mockClear()
     act(() => root?.render(createElement(StagedCountryWalkthroughStep, {
-      continent: 'Europe', entries, index: 1, setNumber: 1, onMove,
-      onContinue: vi.fn(), onExit: vi.fn(),
+      entries, index: 1, onMove, onContinue: vi.fn(),
     })))
     act(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })))
     expect(onMove).not.toHaveBeenCalled()
@@ -58,8 +52,7 @@ describe('Learning Review keyboard behavior', () => {
     act(() => {
       root = createRoot(mount)
       root.render(createElement(StagedCountryWalkthroughStep, {
-        continent: 'Europe', entries, index: 0, setNumber: 1, onMove,
-        onContinue: vi.fn(), onExit: vi.fn(),
+        entries, index: 0, onMove, onContinue: vi.fn(),
       }))
     })
     const input = document.createElement('input')

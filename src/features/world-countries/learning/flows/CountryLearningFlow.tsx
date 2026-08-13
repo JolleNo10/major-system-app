@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
-import type { SubregionId } from '@/features/world-countries/data/subregions'
+import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
 import type { LearningSetMaximum } from '@/features/world-countries/learning/stagedLearningPlan'
 import { buildLearningPlan } from '@/features/world-countries/learning/stagedLearningPlan'
 import {
@@ -149,10 +149,16 @@ export function CountryLearningFlow({
     ariaLabel: flow.phase === 'final-recall' ? 'Highlighted Country for final recall' : 'World Countries Learning map',
   } as const
   const presentationKey = `${flow.phase}:${[...mapEntries].map(entry => entry.id).sort().join(',')}`
+  const mapMeta = (
+    <div>
+      <span className="block font-semibold">{getSubregionDefinition(subregion).label}</span>
+      <span className="block text-zinc-500">{mapEntries.length} {mapEntries.length === 1 ? 'country' : 'countries'} in scope</span>
+    </div>
+  )
 
   const context = (() => {
     switch (flow.phase) {
-      case 'walkthrough': return <div><LearningHeader label={`Set ${currentStagedCountrySetNumber(flow)} · Review`} title={walkthroughCountry?.country ?? 'Review'} onExit={onExit} /><p className="mt-1 text-sm text-zinc-500">{flow.walkthroughIndex + 1} / {stageEntries.length}</p></div>
+      case 'walkthrough': return <LearningHeader label={`Set ${currentStagedCountrySetNumber(flow)} · Review`} title={walkthroughCountry?.country ?? 'Review'} meta={`${flow.walkthroughIndex + 1} / ${stageEntries.length}`} onExit={onExit} />
       case 'location-practice': return <LearningHeader label={`Set ${currentStagedCountrySetNumber(flow)} · Step 2 - Locate`} title={`Find ${flow.location ? stageEntries.find(entry => entry.id === flow.location?.currentKey)?.country ?? 'the Country' : 'the Country'}`} onExit={onExit} />
       case 'location-ready': return <LearningHeader label="Ready" title="Location Ready" onExit={onExit} />
       case 'practice': return <LearningHeader label={`Set ${currentStagedCountrySetNumber(flow)} · Step 3 - Practice`} title="Name the country" onExit={onExit} />
@@ -161,7 +167,7 @@ export function CountryLearningFlow({
       case 'combined-ready': return <LearningHeader label="Ready" title="Combined practice ready" onExit={onExit} />
       case 'final-gate': return <LearningHeader label="Final recall" title={flow.finalScopeReady ? 'Ready for Final recall' : 'Final recall'} onExit={onExit} />
       case 'final-recall': return <LearningHeader label="Final recall" title={`${(flow.ordered?.currentIndex ?? 0) + 1} / ${flow.ordered?.order.length ?? entries.length}`} onExit={onExit} />
-      case 'complete': return <LearningHeader label="Learning complete" title="Subregion complete" onExit={onExit} />
+      case 'complete': return <LearningHeader label="Learning complete" title={getSubregionDefinition(subregion).label} onExit={onExit} />
     }
   })()
 
@@ -190,7 +196,7 @@ export function CountryLearningFlow({
   let content: ReactNode
   switch (flow.phase) {
     case 'walkthrough':
-      content = <StagedCountryWalkthroughStep continent={continent} entries={stageEntries} index={flow.walkthroughIndex} setNumber={currentStagedCountrySetNumber(flow)} hoveredCountryId={hoveredCountryId} onMove={offset => run(state => moveStagedCountryWalkthrough(state, offset))} onContinue={() => run(startStagedCountryLocation)} onExit={onExit} surface />
+      content = <StagedCountryWalkthroughStep entries={stageEntries} index={flow.walkthroughIndex} onMove={offset => run(state => moveStagedCountryWalkthrough(state, offset))} onContinue={() => run(startStagedCountryLocation)} />
       break
     case 'location-practice':
       content = flow.location ? <SchedulerLocationPracticeStep continent={continent} entries={stageEntries} session={flow.location} label={`Set ${currentStagedCountrySetNumber(flow)}`} onSelect={updateLocation} onBack={() => run(backStagedCountry)} onExit={onExit} surface /> : null
@@ -219,5 +225,5 @@ export function CountryLearningFlow({
       break
   }
   const dockPlacement = ['location-practice', 'practice', 'combined-practice', 'final-recall'].includes(flow.phase) ? 'attached' : 'overlay'
-  return <>{rails}<LearningMapSurface continent={continent} scopeCountries={mapEntries} presentation={mapPresentation} presentationKey={presentationKey} context={context} dockPlacement={dockPlacement}>{content}</LearningMapSurface></>
+  return <>{rails}<LearningMapSurface continent={continent} scopeCountries={mapEntries} presentation={mapPresentation} presentationKey={presentationKey} context={context} mapMeta={mapMeta} dockPlacement={dockPlacement}>{content}</LearningMapSurface></>
 }

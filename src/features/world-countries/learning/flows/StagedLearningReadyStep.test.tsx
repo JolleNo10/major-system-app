@@ -29,7 +29,7 @@ describe('Learning Ready task dock behavior', () => {
     })
 
     expect(mount.querySelector('[role="status"]')?.textContent).toContain('Every Country is ready.')
-    expect(document.activeElement?.textContent).toBe('Continue to Set 2')
+    expect(document.activeElement?.textContent).toContain('Continue to Set 2')
 
     act(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })))
     expect(onNext).toHaveBeenCalledTimes(1)
@@ -45,7 +45,7 @@ describe('Learning Ready task dock behavior', () => {
       }))
     })
 
-    expect(document.activeElement?.textContent).toBe('Final recall')
+    expect(document.activeElement?.textContent).toContain('Final recall')
     expect(mount.querySelector('[role="status"]')?.textContent).toContain('Final recall')
   })
 })
