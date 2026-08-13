@@ -40,4 +40,17 @@ describe('schedulerLearningSession', () => {
     expect(resumed.currentKey).toBe('A')
     expect(resumed.ready).toBe(false)
   })
+
+  it('does not immediately repeat a country in a small learning scope', () => {
+    let session = createSchedulerLearningSession(['A', 'B', 'C'], settings, () => 0)
+    const first = session.currentKey
+    const result = submitSchedulerLearningAnswer(
+      session,
+      { correct: false, latencyMs: 10 },
+      settings,
+      () => 0.1,
+    )
+
+    expect(result.session.currentKey).not.toBe(first)
+  })
 })

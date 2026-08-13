@@ -135,7 +135,7 @@ export function selectNext(
   const weightFor = (k: string, gap: number): number => {
     const q = getQ(state, k)
     const distance = state.seq - q.lastSeenSequence
-    if (distance < gap) return 0 // hard anti-repeat window
+    if (distance <= gap) return 0 // hard anti-repeat window; gap counts intervening prompts
     const need = q.timesSeen === 0 ? cfg.needUnseen : cfg.needByLevel[q.masteryLevel]
     const spacing = q.timesSeen === 0
       ? 1
@@ -150,8 +150,9 @@ export function selectNext(
     if (sum > 0) {
       let r = rng() * sum
       for (let i = 0; i < keys.length; i++) {
+        if (weights[i] <= 0) continue
+        if (r < weights[i]) return keys[i]
         r -= weights[i]
-        if (r <= 0) return keys[i]
       }
       return keys[keys.length - 1]
     }

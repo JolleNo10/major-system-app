@@ -112,6 +112,26 @@ describe('selectNext', () => {
     }
   })
 
+  it('does not immediately repeat a just-answered item in a small batch', () => {
+    const keys = ['A', 'B', 'C']
+    const cfg = makeRoundConfig(keys.length, SETTINGS)
+    let s = initRoundState()
+    const first = selectNext(s, keys, cfg, () => 0)
+    s = recordAnswer(s, first, { correct: false, recallMs: FAST, hinted: false }, cfg)
+
+    expect(selectNext(s, keys, cfg, () => 0.1)).not.toBe(first)
+  })
+
+  it('does not select a zero-weight item when random sampling starts at zero', () => {
+    const keys = ['A', 'B', 'C']
+    const cfg = makeRoundConfig(keys.length, SETTINGS)
+    let s = initRoundState()
+    const first = selectNext(s, keys, cfg, () => 0)
+    s = recordAnswer(s, first, { correct: false, recallMs: FAST, hinted: false }, cfg)
+
+    expect(selectNext(s, keys, cfg, () => 0)).not.toBe(first)
+  })
+
   it('introduces all unseen questions quickly (avg coverage well under 2× batch)', () => {
     const keys = Array.from({ length: 10 }, (_, i) => `Q${i}`)
     const cfg = makeRoundConfig(10, SETTINGS)
