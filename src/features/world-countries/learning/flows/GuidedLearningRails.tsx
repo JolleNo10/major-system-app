@@ -9,6 +9,7 @@ import { GeographyMnemonicEditor } from '@/features/world-countries/mnemonics/Ge
 import { GeographyMnemonicView } from '@/features/world-countries/mnemonics/GeographyMnemonicView'
 import { deriveWorldCountriesLearningReadiness, getWorldCountriesLearningReadinessLabel } from '@/features/world-countries/learning/learningReadiness'
 import { InlineOrderEditor } from '@/features/world-countries/ui/InlineOrderEditor'
+import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
 import type { CountryLearningPhase } from '@/features/world-countries/learning/countryLearningFlow'
 import type { CapitalLearningPhase } from '@/features/world-countries/learning/capitalLearningFlow'
 
@@ -24,6 +25,7 @@ export function GuidedLearningRails({
   mnemonicVersion,
   walkthroughCountryId,
   onGeographyChanged,
+  onCountryHover = () => undefined,
   onMnemonicChanged,
   onOrderDraftChanged,
   onOrderSaved,
@@ -42,6 +44,7 @@ export function GuidedLearningRails({
   mnemonicVersion: number
   walkthroughCountryId?: string | null
   onGeographyChanged: () => void
+  onCountryHover?: (countryId: string | null) => void
   onMnemonicChanged: () => void
   onOrderDraftChanged: (draft: readonly Country[] | null) => void
   onOrderSaved?: (draft: readonly Country[]) => void
@@ -60,9 +63,10 @@ export function GuidedLearningRails({
   useEffect(() => {
     if (!quietPhase) return
     onOrderDraftChanged(null)
+    onCountryHover(null)
     setEditingOrder(false)
     setEditingMnemonic(false)
-  }, [onOrderDraftChanged, quietPhase])
+  }, [onCountryHover, onOrderDraftChanged, quietPhase])
 
   const saveOrder = (draft: readonly Country[]) => {
     saveSubregionCountryOrder(subregion, draft.map(entry => entry.id), activeCountries)
@@ -79,7 +83,7 @@ export function GuidedLearningRails({
   useRails(
     {
       left: quietPhase ? undefined : (
-        <section className="space-y-4" aria-labelledby="world-countries-guided-context-heading">
+        <WorldCountriesPanel className="space-y-4" aria-labelledby="world-countries-guided-context-heading">
           <nav aria-label="World Countries hierarchy" className="flex flex-wrap items-center gap-1.5 text-xs">
             <span className="text-zinc-500">World</span><span className="text-zinc-700">/</span><span className="text-zinc-500">{continent}</span><span className="text-zinc-700">/</span><span className="text-cyan-300">{getSubregionDefinition(subregion).label}</span>
           </nav>
@@ -101,6 +105,8 @@ export function GuidedLearningRails({
                 entries={entries}
                 getId={entry => entry.id}
                 getLabel={entry => entry.country}
+                onItemHover={entry => onCountryHover(entry.id)}
+                onItemLeave={() => onCountryHover(null)}
                 onDraftChanged={onOrderDraftChanged}
                 onSave={saveOrder}
                 onCancel={cancelOrder}
@@ -118,7 +124,7 @@ export function GuidedLearningRails({
             )}
           </section>
           {showSubregionMnemonic && <button type="button" onClick={() => setEditingMnemonic(value => !value)} className="text-left text-xs font-semibold text-cyan-300 hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70">{editingMnemonic ? 'Close mnemonic editor' : 'Edit mnemonics'}</button>}
-        </section>
+        </WorldCountriesPanel>
       ),
       right: showMemoryAid || onExit || onSkip ? (
         <div className="space-y-4">
@@ -130,7 +136,7 @@ export function GuidedLearningRails({
       leftLabel: 'Learning context',
       rightLabel: showMemoryAid && (onExit || onSkip) ? 'Learning tools' : showMemoryAid ? 'Memory aid' : onExit || onSkip ? 'Learning actions' : undefined,
     },
-    [activeCountries, continent, editingMnemonic, editingOrder, entries, learned, capitalsLearned, mnemonicVersion, onExit, onGeographyChanged, onMnemonicChanged, onOrderDraftChanged, onOrderSaved, onSkip, phase, showCapitalMnemonic, showMemoryAid, showSubregionMnemonic, skipLabel, subregion, track, walkthroughCountry, quietPhase],
+    [activeCountries, continent, editingMnemonic, editingOrder, entries, learned, capitalsLearned, mnemonicVersion, onCountryHover, onExit, onGeographyChanged, onMnemonicChanged, onOrderDraftChanged, onOrderSaved, onSkip, phase, showCapitalMnemonic, showMemoryAid, showSubregionMnemonic, skipLabel, subregion, track, walkthroughCountry, quietPhase],
   )
 
   return null

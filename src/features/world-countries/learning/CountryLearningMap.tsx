@@ -13,6 +13,7 @@ export interface CountryLearningMapProps {
   showOrderNumbers?: boolean
   namedCountryId?: string | null
   highlightedCountryId?: string | null
+  hoveredCountryId?: string | null
   showHighlightedNames?: boolean
   /** Optional caller-owned result/overview progress colors. */
   countryColorsById?: ReadonlyMap<string, string>
@@ -39,6 +40,7 @@ export function CountryLearningMap({
   showOrderNumbers = false,
   namedCountryId = null,
   highlightedCountryId = null,
+  hoveredCountryId = null,
   showHighlightedNames = true,
   countryColorsById,
   countryAccessibleDescriptionsById,
@@ -57,6 +59,11 @@ export function CountryLearningMap({
     const country = scopeCountries.find(entry => entry.id === highlightedCountryId)
     return country ? countriesToSvgIds([country]).filter(id => discoveredIds.includes(id)) : []
   }, [discoveredIds, highlightedCountryId, scopeCountries])
+  const hoveredSvgId = useMemo(() => {
+    if (!hoveredCountryId) return null
+    const country = scopeCountries.find(entry => entry.id === hoveredCountryId)
+    return country ? resolveCountriesToSvgIds([country], discoveredIds)[0] ?? null : null
+  }, [discoveredIds, hoveredCountryId, scopeCountries])
   const namedSvgIds = useMemo(() => {
     if (showNames || showOrderNumbers) return scopeSvgIds
     if (!namedCountryId) return []
@@ -89,12 +96,13 @@ export function CountryLearningMap({
         ariaLabel={ariaLabel}
         ariaDescribedBy={countryDescriptions.length ? descriptionId : undefined}
         highlightedIds={highlightedSvgIds}
+        hoveredId={hoveredSvgId}
         mutedIds={discoveredIds.filter(id => !scopeSvgIds.includes(id))}
         namedIds={namedSvgIds}
         countryLabels={countryLabels}
         countryColors={countryColors}
         zoomIds={zoomIds}
-        settings={{ showHighlightedNames, hoverShowName: showHoverNames }}
+        settings={{ showHighlightedNames, hoverHighlight: hoveredCountryId !== null, hoverShowName: showHoverNames, hoverFill: '#0f766e', hoverStroke: '#d4d4d8', hoverStrokeWidth: '2px' }}
         onCountriesLoaded={setDiscovered}
         onCountryClick={svgId => {
           const country = getCountryForSvgId(svgId, scopeCountries)

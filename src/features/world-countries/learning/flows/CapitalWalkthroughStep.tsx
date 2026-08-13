@@ -7,6 +7,7 @@ export function CapitalWalkthroughStep({
   continent,
   entries,
   flow,
+  hoveredCountryId = null,
   onMove,
   onStartRecall,
   onExit,
@@ -14,6 +15,7 @@ export function CapitalWalkthroughStep({
   continent: Continent
   entries: readonly Country[]
   flow: CapitalLearningFlowState
+  hoveredCountryId?: string | null
   onMove: (offset: -1 | 1) => void
   onStartRecall: () => void
   onExit: () => void
@@ -39,6 +41,7 @@ export function CapitalWalkthroughStep({
         scopeCountries={entries}
         namedCountryId={country.id}
         highlightedCountryId={country.id}
+        hoveredCountryId={hoveredCountryId}
         showOrderNumbers
         ariaLabel={`${country.country} highlighted on the map`}
       />

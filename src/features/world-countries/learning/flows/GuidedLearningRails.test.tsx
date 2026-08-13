@@ -55,6 +55,7 @@ describe('GuidedLearningRails contextual authoring visibility', () => {
     act(() => root?.render(createElement('div', null, config.left)))
     expect(mount.textContent).toContain('Edit order')
     expect(mount.textContent).toContain('Edit mnemonics')
+    expect(mount.querySelector('.rounded-xl.border.border-zinc-800.bg-zinc-900')).not.toBeNull()
   })
 
   it('hides authoring and discards any draft during active location recall', () => {

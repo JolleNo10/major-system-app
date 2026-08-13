@@ -61,6 +61,7 @@ function EnabledCapitalLearningFlow({
   })
   const completionReporter = useRef(createSubregionCapitalCompletionReporter(subregion, activeCountries))
   const [orderDraft, setOrderDraft] = useState<readonly Country[] | null>(null)
+  const [hoveredCountryId, setHoveredCountryId] = useState<string | null>(null)
   const presentationEntries = orderDraft ?? entries
   const onOrderSaved = (draft: readonly Country[]) => {
     const ids = draft.map(country => country.id)
@@ -100,6 +101,7 @@ function EnabledCapitalLearningFlow({
     capitalsLearned={false}
     mnemonicVersion={mnemonicVersion}
     onGeographyChanged={onGeographyChanged}
+    onCountryHover={setHoveredCountryId}
     onMnemonicChanged={onMnemonicChanged}
     onOrderDraftChanged={setOrderDraft}
     onOrderSaved={onOrderSaved}
@@ -114,6 +116,7 @@ function EnabledCapitalLearningFlow({
           continent={continent}
           entries={presentationEntries}
           flow={flow}
+          hoveredCountryId={hoveredCountryId}
           onMove={offset => transition(moveCapitalWalkthrough(flow, offset))}
           onStartRecall={() => transition(startCapitalRecall(flow))}
           onExit={onExit}

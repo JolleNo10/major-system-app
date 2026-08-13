@@ -38,4 +38,10 @@ describe('GeographyOverviewMap', () => {
     const map = mount.querySelector('[role="img"]'); const descriptionId = map?.getAttribute('aria-describedby')
     expect(descriptionId).toBeTruthy(); expect(mount.querySelector(`#${descriptionId}`)?.textContent).toContain('Norway: Learning Readiness: Countries learned.')
   })
+  it('applies a caller-owned Country hover to the mapped SVG path', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g></svg>' })))
+    const mount = document.createElement('div'); document.body.append(mount)
+    await act(async () => { root = createRoot(mount); root.render(createElement(CountryLearningMap, { continent: 'Europe', scopeCountries: [{ id: 'NO', country: 'Norway', capital: 'Oslo', continent: 'Europe', subregionId: 'northern-europe', subregion: 'Northern Europe' }], hoveredCountryId: 'NO', ariaLabel: 'Learning map' })); await Promise.resolve(); await Promise.resolve() })
+    expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toBe('#0f766e')
+  })
 })

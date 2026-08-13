@@ -5,11 +5,13 @@ import { LearningHeader } from './MemoryPreviewStep'
 export function CountryMapPreviewStep({
   continent,
   entries,
+  hoveredCountryId = null,
   onStart,
   onExit,
 }: {
   continent: Continent
   entries: readonly Country[]
+  hoveredCountryId?: string | null
   onStart: () => void
   onExit: () => void
 }) {
@@ -25,6 +27,7 @@ export function CountryMapPreviewStep({
         showNames
         showHoverNames
         showOrderNumbers
+        hoveredCountryId={hoveredCountryId}
         ariaLabel="Map with Country names"
       />
       <button type="button" onClick={onStart} className="w-full rounded-lg bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500">

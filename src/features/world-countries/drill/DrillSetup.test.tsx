@@ -70,4 +70,12 @@ describe('DrillSetup activity boundary', () => {
     expect(mount.textContent).toContain('Practice')
   })
 
+  it('shows the Country count on each Subregion button', () => {
+    const mount = renderSetup({ selection: createDrillSelection('Europe', []) })
+    const config = useRailsMock.mock.calls[0][0] as { left: ReactNode }
+    act(() => root?.render(config.left))
+    expect(mount.textContent).toContain('Northern Europe')
+    expect(mount.textContent).toMatch(/Northern Europe[\s\S]*\d+ Countries/)
+  })
+
 })

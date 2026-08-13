@@ -63,6 +63,18 @@ describe('InlineOrderEditor', () => {
     expect(props.onSave).toHaveBeenCalledWith(['Denmark', 'Norway', 'Sweden'])
   })
 
+  it('reports hover for the whole reorder row', () => {
+    const onItemHover = vi.fn()
+    const onItemLeave = vi.fn()
+    const { mount } = renderEditor({ onItemHover, onItemLeave })
+    const row = mount.querySelector('.world-order-row')!
+
+    act(() => row.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
+    expect(onItemHover).toHaveBeenCalledOnce()
+    act(() => row.dispatchEvent(new MouseEvent('mouseout', { bubbles: true })))
+    expect(onItemLeave).toHaveBeenCalledOnce()
+  })
+
   it('preserves the draft when persistence fails and exposes recovery', () => {
     const onSave = vi.fn(() => { throw new Error('quota') })
     const { mount } = renderEditor({ onSave })

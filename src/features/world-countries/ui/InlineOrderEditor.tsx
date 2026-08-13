@@ -175,6 +175,8 @@ function SortableOrderRow({
   return (
     <li
       ref={ref}
+      onMouseEnter={onHover}
+      onMouseLeave={onLeave}
       className={`world-order-row animate-shake flex items-center gap-2 rounded-lg border bg-zinc-950/40 px-3 py-2 transition-colors ${
         isDragging ? 'border-cyan-400/70 opacity-50' : isDropTarget ? 'border-cyan-500/70' : 'border-zinc-800'
       }`}
@@ -183,8 +185,6 @@ function SortableOrderRow({
       <button
         ref={handleRef}
         type="button"
-        onMouseEnter={onHover}
-        onMouseLeave={onLeave}
         onFocus={onHover}
         onBlur={onLeave}
         className="touch-none cursor-grab rounded border border-transparent px-1.5 py-1 text-lg leading-none text-zinc-500 hover:border-zinc-700 hover:text-cyan-300 active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70"

@@ -60,6 +60,7 @@ export function CountryLearningFlow({
   }))
   const completionReported = useRef(false)
   const [orderDraft, setOrderDraft] = useState<readonly Country[] | null>(null)
+  const [hoveredCountryId, setHoveredCountryId] = useState<string | null>(null)
   const presentationEntries = orderDraft ?? entries
   const onOrderSaved = (draft: readonly Country[]) => {
     const ids = draft.map(country => country.id)
@@ -100,6 +101,7 @@ export function CountryLearningFlow({
     capitalsLearned={false}
     mnemonicVersion={mnemonicVersion}
     onGeographyChanged={onGeographyChanged}
+    onCountryHover={setHoveredCountryId}
     onMnemonicChanged={onMnemonicChanged}
     onOrderDraftChanged={setOrderDraft}
     onOrderSaved={onOrderSaved}
@@ -118,6 +120,7 @@ export function CountryLearningFlow({
         <CountryMapPreviewStep
           continent={continent}
           entries={presentationEntries}
+          hoveredCountryId={hoveredCountryId}
           onStart={() => transition(startCountryWalkthrough(flow))}
           onExit={onExit}
         />
@@ -129,6 +132,7 @@ export function CountryLearningFlow({
           continent={continent}
           entries={presentationEntries}
           flow={flow}
+          hoveredCountryId={hoveredCountryId}
           onMove={offset => transition(moveCountryWalkthrough(flow, offset))}
           onStartLocation={() => transition(startLocationPractice(flow, locationCleanTargetMinimum))}
           onExit={onExit}
