@@ -8,10 +8,6 @@ import { PageLayoutProvider } from '@/app/layout/PageLayoutContext'
 import { SettingsProvider } from '@/app/settings/SettingsContext'
 import { WorldCountries } from './WorldCountries'
 
-vi.mock('./setup/WorldCountriesSetup', () => ({
-  WorldCountriesSetup: () => createElement('div', { 'data-testid': 'setup-workflow' }, 'Setup workflow'),
-}))
-
 vi.mock('./drill/WorldCountriesDrill', () => ({
   WorldCountriesDrill: () => createElement('div', { 'data-testid': 'drill-workflow' }, 'Drill workflow'),
 }))

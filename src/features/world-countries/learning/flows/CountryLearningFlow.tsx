@@ -34,6 +34,8 @@ export function CountryLearningFlow({
   onDone,
   doneLabel = 'Back to Learn & Practise',
   mnemonicVersion = 0,
+  onGeographyChanged = () => undefined,
+  onMnemonicChanged = () => undefined,
 }: {
   continent: Continent
   subregion: SubregionId
@@ -47,6 +49,8 @@ export function CountryLearningFlow({
   onDone?: () => void
   doneLabel?: string
   mnemonicVersion?: number
+  onGeographyChanged?: () => void
+  onMnemonicChanged?: () => void
 }) {
   const ids = useMemo(() => entries.map(country => country.id), [entries])
   const [flow, setFlow] = useState<CountryLearningFlowState>(() => createCountryLearningFlow({
@@ -55,6 +59,16 @@ export function CountryLearningFlow({
     entryPoint,
   }))
   const completionReported = useRef(false)
+  const [orderDraft, setOrderDraft] = useState<readonly Country[] | null>(null)
+  const presentationEntries = orderDraft ?? entries
+  const onOrderSaved = (draft: readonly Country[]) => {
+    const ids = draft.map(country => country.id)
+    setFlow(previous => {
+      const currentId = previous.countryIds[previous.walkthroughIndex]
+      const nextIndex = currentId ? Math.max(0, ids.indexOf(currentId)) : 0
+      return { ...previous, countryIds: ids, walkthroughIndex: previous.phase === 'walkthrough' ? nextIndex : previous.walkthroughIndex }
+    })
+  }
 
   const transition = (next: CountryLearningFlowState) => {
     if (next.phase !== flow.phase) onPhaseChange(next.phase)
@@ -78,12 +92,17 @@ export function CountryLearningFlow({
   const rails = <GuidedLearningRails
     continent={continent}
     subregion={subregion}
-    entries={entries}
+    entries={presentationEntries}
+    activeCountries={activeCountries ?? entries}
     phase={flow.phase}
     track="countries"
     learned={false}
     capitalsLearned={false}
     mnemonicVersion={mnemonicVersion}
+    onGeographyChanged={onGeographyChanged}
+    onMnemonicChanged={onMnemonicChanged}
+    onOrderDraftChanged={setOrderDraft}
+    onOrderSaved={onOrderSaved}
     onExit={onExit}
     onSkip={flow.phase === 'walkthrough'
       ? () => transition(startLocationPractice(flow, locationCleanTargetMinimum))
@@ -98,7 +117,7 @@ export function CountryLearningFlow({
       content = (
         <CountryMapPreviewStep
           continent={continent}
-          entries={entries}
+          entries={presentationEntries}
           onStart={() => transition(startCountryWalkthrough(flow))}
           onExit={onExit}
         />
@@ -108,7 +127,7 @@ export function CountryLearningFlow({
       content = (
         <CountryWalkthroughStep
           continent={continent}
-          entries={entries}
+          entries={presentationEntries}
           flow={flow}
           onMove={offset => transition(moveCountryWalkthrough(flow, offset))}
           onStartLocation={() => transition(startLocationPractice(flow, locationCleanTargetMinimum))}
@@ -120,7 +139,7 @@ export function CountryLearningFlow({
       content = (
         <LocationPracticeStep
           continent={continent}
-          entries={entries}
+          entries={presentationEntries}
           flow={flow}
           onSelect={updateLocation}
           onContinue={() => transition(startOrderedRecall(flow, 2))}
@@ -132,7 +151,7 @@ export function CountryLearningFlow({
       content = (
         <OrderedRecallStep
           continent={continent}
-          entries={entries}
+          entries={presentationEntries}
           flow={flow}
           fuzzyMatching={fuzzyMatching}
           onSubmit={updateOrder}
@@ -144,7 +163,7 @@ export function CountryLearningFlow({
       content = (
         <CountryLearningComplete
           subregion={subregion}
-          countryCount={entries.length}
+          countryCount={presentationEntries.length}
           onDone={onDone ?? onExit}
           doneLabel={doneLabel}
           onRestart={() => {

@@ -42,6 +42,19 @@ afterEach(() => {
 })
 
 describe('SvgMapController loading and discovery', () => {
+  it('removes the visible MapChart credit while preserving the map content', async () => {
+    const { mount, controller } = makeController()
+    const markup = TEST_MAP.replace(
+      '</svg>',
+      '<text id="credit-text-svg"><tspan>Created with mapchart.net</tspan></text></svg>',
+    )
+
+    await controller.load({ markup })
+
+    expect(mount.querySelector('#credit-text-svg')).toBeNull()
+    expect(mount.querySelector('#Alpha')).not.toBeNull()
+  })
+
   it('loads markup and structurally pairs labels with sibling paths', async () => {
     const { mount, controller } = makeController()
     const countries = await controller.load({ markup: TEST_MAP })

@@ -24,6 +24,7 @@ export function CountryMapPreviewStep({
         scopeCountries={entries}
         showNames
         showHoverNames
+        showOrderNumbers
         ariaLabel="Map with Country names"
       />
       <button type="button" onClick={onStart} className="w-full rounded-lg bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500">

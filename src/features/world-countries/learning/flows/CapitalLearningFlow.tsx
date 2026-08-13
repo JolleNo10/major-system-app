@@ -30,6 +30,8 @@ interface CapitalLearningFlowProps {
   startInRecall?: boolean
   onWalkthroughCountryChange?: (countryId: string | null) => void
   mnemonicVersion?: number
+  onGeographyChanged?: () => void
+  onMnemonicChanged?: () => void
 }
 
 export function CapitalLearningFlow({ countriesLearned = false, ...props }: CapitalLearningFlowProps) {
@@ -49,6 +51,8 @@ function EnabledCapitalLearningFlow({
   startInRecall = false,
   onWalkthroughCountryChange,
   mnemonicVersion = 0,
+  onGeographyChanged = () => undefined,
+  onMnemonicChanged = () => undefined,
 }: Omit<CapitalLearningFlowProps, 'countriesLearned'> & { countriesLearned: boolean }) {
   const countryIds = useMemo(() => entries.map(country => country.id), [entries])
   const [flow, setFlow] = useState<CapitalLearningFlowState>(() => {
@@ -56,6 +60,16 @@ function EnabledCapitalLearningFlow({
     return startInRecall ? startCapitalRecall(initialFlow) : initialFlow
   })
   const completionReporter = useRef(createSubregionCapitalCompletionReporter(subregion, activeCountries))
+  const [orderDraft, setOrderDraft] = useState<readonly Country[] | null>(null)
+  const presentationEntries = orderDraft ?? entries
+  const onOrderSaved = (draft: readonly Country[]) => {
+    const ids = draft.map(country => country.id)
+    setFlow(previous => {
+      const currentId = previous.countryIds[previous.walkthroughIndex]
+      const nextIndex = currentId ? Math.max(0, ids.indexOf(currentId)) : 0
+      return { ...previous, countryIds: ids, walkthroughIndex: previous.phase === 'walkthrough' ? nextIndex : previous.walkthroughIndex }
+    })
+  }
 
   useEffect(() => {
     onWalkthroughCountryChange?.(
@@ -78,12 +92,17 @@ function EnabledCapitalLearningFlow({
   const rails = <GuidedLearningRails
     continent={continent}
     subregion={subregion}
-    entries={entries}
+    entries={presentationEntries}
+    activeCountries={activeCountries ?? entries}
     phase={flow.phase}
     track="capitals"
     learned={countriesLearned}
     capitalsLearned={false}
     mnemonicVersion={mnemonicVersion}
+    onGeographyChanged={onGeographyChanged}
+    onMnemonicChanged={onMnemonicChanged}
+    onOrderDraftChanged={setOrderDraft}
+    onOrderSaved={onOrderSaved}
     onExit={onExit}
     walkthroughCountryId={flow.phase === 'walkthrough' ? flow.countryIds[flow.walkthroughIndex] ?? null : null}
   />
@@ -93,7 +112,7 @@ function EnabledCapitalLearningFlow({
       content = (
         <CapitalWalkthroughStep
           continent={continent}
-          entries={entries}
+          entries={presentationEntries}
           flow={flow}
           onMove={offset => transition(moveCapitalWalkthrough(flow, offset))}
           onStartRecall={() => transition(startCapitalRecall(flow))}
@@ -105,7 +124,7 @@ function EnabledCapitalLearningFlow({
       content = (
         <CapitalRecallStep
           continent={continent}
-          entries={entries}
+          entries={presentationEntries}
           flow={flow}
           fuzzyMatching={fuzzyMatching}
           onSubmit={updateRecall}

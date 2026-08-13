@@ -4,7 +4,6 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
-import { SetupMap } from '@/features/world-countries/setup/SetupMap'
 import europeSvg from '@/features/world-countries/maps/assets/MapChart_Map_Europe_names.svg?raw'
 import { GeographyOverviewMap } from './GeographyOverviewMap'
 
@@ -26,7 +25,7 @@ describe('GeographyOverviewMap', () => {
   it('keeps readiness color separate from geographic selection', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => europeSvg })))
     const mount = document.createElement('div'); document.body.append(mount)
-    await act(async () => { root = createRoot(mount); root.render(createElement(SetupMap, { level: 'continent', continent: 'Europe', learningReadinessColorsById: new Map([['NO', '#71717a']]), learningReadinessByCountryId: new Map([['NO', 'COUNTRIES_LEARNED' as const]]) })); await Promise.resolve(); await Promise.resolve() })
+    await act(async () => { root = createRoot(mount); root.render(createElement(GeographyOverviewMap, { level: 'continent', continent: 'Europe', countryColorsById: new Map([['NO', '#71717a']]), countryAccessibleDescriptionsById: new Map([['NO', 'Learning Readiness: Countries learned.']]), ariaLabel: 'Europe map' })); await Promise.resolve(); await Promise.resolve() })
     expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toBe('#71717a')
     expect(mount.textContent).toContain('Learning Readiness')
     expect(mount.textContent).toContain('Countries learned')

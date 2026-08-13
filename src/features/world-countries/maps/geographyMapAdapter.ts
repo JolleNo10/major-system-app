@@ -31,8 +31,37 @@ export function createCountryOrderLabels(
 ): Readonly<Record<string, string>> {
   return Object.fromEntries(entries.flatMap((entry, index) => (
     resolveCountryToSvgIds(entry, discoveredSvgIds)
-      .map(svgId => [svgId, `${index + 1} ${entry.country}`] as const)
+      .map(svgId => [svgId, `${index + 1}. ${entry.country}`] as const)
   )))
+}
+
+export interface GeographyOrderLabelGroup {
+  label: string
+  countryIds: readonly CountryId[]
+}
+
+/**
+ * Map one sequence annotation to each visible hierarchy group. The first
+ * mapped Country is used as the maps-owned label anchor, so grouped numbers
+ * never repeat across every Country polygon.
+ */
+export function createGeographyOrderLabels(
+  groups: readonly GeographyOrderLabelGroup[],
+  entries: readonly Country[],
+  discoveredSvgIds: ReadonlySet<string> | readonly string[],
+): Readonly<Record<string, string>> {
+  const entriesById = new Map(entries.map(entry => [entry.id, entry]))
+  const labels: Record<string, string> = {}
+  groups.forEach((group, index) => {
+    for (const countryId of group.countryIds) {
+      const country = entriesById.get(countryId)
+      const svgId = country && resolveCountryToSvgIds(country, discoveredSvgIds)[0]
+      if (!svgId) continue
+      labels[svgId] = `${index + 1}. ${group.label}`
+      break
+    }
+  })
+  return labels
 }
 
 export interface UnresolvedCountry {

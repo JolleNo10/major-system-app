@@ -24,15 +24,15 @@ function renderSetup(overrides: Record<string, unknown> = {}) {
 }
 
 describe('DrillSetup activity boundary', () => {
-  it('exposes exactly three Drill modes and keeps Setup as a separate action', () => {
-    const mount = renderSetup({ onOpenSetup: vi.fn() })
+  it('exposes exactly three Drill modes and keeps geography authoring in the rail', () => {
+    const mount = renderSetup()
     const config = useRailsMock.mock.calls[0][0] as { left: ReactNode; right: ReactNode }
     act(() => root?.render(createElement('div', null, config.left, config.right)))
     expect(mount.textContent).toContain('Countries + Capitals')
     expect(mount.textContent).toContain('Countries from Capitals')
     expect(mount.textContent).not.toContain('Learn Countries')
     expect(mount.querySelectorAll('input[type="radio"]')).toHaveLength(5)
-    expect(mount.textContent).toContain('Open Setup')
+    expect(mount.textContent).toContain('Edit order')
     expect(mount.textContent).toContain('Start Drill')
   })
 
@@ -68,5 +68,11 @@ describe('DrillSetup activity boundary', () => {
     const config = useRailsMock.mock.calls[0][0] as { right: ReactNode }
     act(() => root?.render(config.right))
     expect(mount.textContent).toContain('Practice')
+  })
+
+  it('passes the current effective hierarchy order to the map annotations', () => {
+    renderSetup()
+    const groups = mapMock.mock.calls[mapMock.mock.calls.length - 1]?.[0].orderGroups as readonly { label: string }[]
+    expect(groups?.[0]?.label).toBe('Balkans')
   })
 })

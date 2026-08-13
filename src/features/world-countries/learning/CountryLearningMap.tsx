@@ -58,7 +58,7 @@ export function CountryLearningMap({
     return country ? countriesToSvgIds([country]).filter(id => discoveredIds.includes(id)) : []
   }, [discoveredIds, highlightedCountryId, scopeCountries])
   const namedSvgIds = useMemo(() => {
-    if (showNames) return scopeSvgIds
+    if (showNames || showOrderNumbers) return scopeSvgIds
     if (!namedCountryId) return []
     const country = scopeCountries.find(entry => entry.id === namedCountryId)
     return country ? countriesToSvgIds([country]).filter(id => discoveredIds.includes(id)) : []

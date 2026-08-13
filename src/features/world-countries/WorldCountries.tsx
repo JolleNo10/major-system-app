@@ -7,11 +7,10 @@ import { countryClassifications } from './data/countryClassification'
 import { resolveCountrySet } from './geography/countrySet'
 import { WorldCountriesDrill } from '@/features/world-countries/drill/WorldCountriesDrill'
 import { WorldCountriesMaintenance } from '@/features/world-countries/maintenance/WorldCountriesMaintenance'
-import { WorldCountriesSetup, type WorldCountriesSetupContext } from '@/features/world-countries/setup/WorldCountriesSetup'
 import { WorldCountriesRecite } from '@/features/world-countries/recite/WorldCountriesRecite'
 import { WorldCountriesPopulationProvider } from './WorldCountriesPopulationContext'
 
-type WorldCountriesArea = 'setup' | 'drill' | 'recite' | 'maintenance'
+type WorldCountriesArea = 'drill' | 'recite' | 'maintenance'
 
 const AREAS: readonly { id: WorldCountriesArea; label: string }[] = [
   { id: 'drill', label: 'Drill' },
@@ -22,7 +21,6 @@ const AREAS: readonly { id: WorldCountriesArea; label: string }[] = [
 export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
   const { settings } = useSettings()
   const [area, setArea] = useState<WorldCountriesArea>('drill')
-  const [setupContext, setSetupContext] = useState<WorldCountriesSetupContext>({ kind: 'world' })
   const activeCountries = useMemo(
     () => resolveCountrySet(countries, countryClassifications, settings.worldCountriesIncludedEntityGroups),
     [settings.worldCountriesIncludedEntityGroups],
@@ -77,23 +75,9 @@ export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
     [area],
   )
 
-  const openSetup = (context: WorldCountriesSetupContext) => {
-    setSetupContext(context)
-    setArea('setup')
-  }
-
-  const backToDrill = () => setArea('drill')
-
   return (
     <WorldCountriesPopulationProvider countries={activeCountries}>
-      {area === 'setup' && (
-        <WorldCountriesSetup
-          answerMode={answerMode}
-          context={setupContext}
-          onBackToDrill={backToDrill}
-        />
-      )}
-      {area === 'drill' && <WorldCountriesDrill answerMode={answerMode} onOpenSetup={openSetup} />}
+      {area === 'drill' && <WorldCountriesDrill answerMode={answerMode} />}
       {area === 'recite' && <WorldCountriesRecite answerMode={answerMode} />}
       {area === 'maintenance' && <WorldCountriesMaintenance answerMode={answerMode} />}
     </WorldCountriesPopulationProvider>

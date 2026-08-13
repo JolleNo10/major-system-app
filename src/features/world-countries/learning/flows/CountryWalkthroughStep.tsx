@@ -37,6 +37,7 @@ export function CountryWalkthroughStep({
         scopeCountries={entries}
         namedCountryId={country.id}
         highlightedCountryId={country.id}
+        showOrderNumbers
         ariaLabel={`${country.country} highlighted on the map`}
       />
       <div className="flex flex-wrap gap-2">

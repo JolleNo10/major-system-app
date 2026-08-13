@@ -8,6 +8,7 @@ import {
   createCountryColors,
   createCountryColorsById,
   createSubregionHoverGroups,
+  createGeographyOrderLabels,
   getCountryForSvgId,
   resolveCountriesToSvgIds,
 } from './geographyMapAdapter'
@@ -36,6 +37,8 @@ export interface GeographyOverviewMapProps {
   hoveredGroupId?: string | null
   onHoverGroup?: (groupId: string | null) => void
   onCountryClick?: (country: Country) => void
+  /** Effective or draft groups represented by the map, in display order. */
+  orderGroups?: readonly { label: string; countryIds: readonly CountryId[] }[]
   ariaLabel?: string
 }
 
@@ -58,6 +61,7 @@ export function GeographyOverviewMap({
   hoveredGroupId = null,
   onHoverGroup,
   onCountryClick,
+  orderGroups,
   ariaLabel,
 }: GeographyOverviewMapProps) {
   const activeCountries = useWorldCountriesPopulation()
@@ -173,13 +177,23 @@ export function GeographyOverviewMap({
       : [],
     [countryAccessibleDescriptionsById, visibleCountries],
   )
+  const orderLabels = useMemo(
+    () => orderGroups ? createGeographyOrderLabels(orderGroups, visibleCountries, mapCountryIds) : {},
+    [mapCountryIds, orderGroups, visibleCountries],
+  )
+  const orderLabelIds = useMemo(() => Object.keys(orderLabels), [orderLabels])
+  const orderDescriptions = useMemo(
+    () => orderGroups?.map((group, index) => `${index + 1}. ${group.label}`) ?? [],
+    [orderGroups],
+  )
+  const descriptions = [...countryDescriptions, ...orderDescriptions]
 
   return (
     <div className="space-y-2">
       <SvgMapView
         svgUrl={definition.svgUrl}
         ariaLabel={ariaLabel ?? `Geography map of ${title}`}
-        ariaDescribedBy={countryDescriptions.length ? descriptionId : undefined}
+        ariaDescribedBy={descriptions.length ? descriptionId : undefined}
         settings={{
           countryFill: '#52525b',
           hoverHighlight: true,
@@ -194,6 +208,8 @@ export function GeographyOverviewMap({
         hoveredId={hoveredCountryId}
         mutedIds={mutedSvgIds}
         countryColors={countryColors}
+        namedIds={orderLabelIds}
+        countryLabels={orderLabels}
         zoomIds={zoomIds}
         zoomPadding={definition.zoomPadding}
         onCountriesLoaded={setMapCountries}
@@ -204,9 +220,9 @@ export function GeographyOverviewMap({
         }}
         onCountryClick={handleCountryClick}
       />
-      {countryDescriptions.length > 0 && (
+      {descriptions.length > 0 && (
         <ul id={descriptionId} className="sr-only" aria-label={`${title} Country map descriptions`}>
-          {countryDescriptions.map(description => <li key={description}>{description}</li>)}
+          {descriptions.map(description => <li key={description}>{description}</li>)}
         </ul>
       )}
     </div>
