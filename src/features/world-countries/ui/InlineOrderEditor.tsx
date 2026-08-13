@@ -1,7 +1,7 @@
 import { PointerActivationConstraints } from '@dnd-kit/dom'
 import { DragDropProvider, PointerSensor } from '@dnd-kit/react'
 import { isSortable, useSortable } from '@dnd-kit/react/sortable'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { reorderDraft } from './reorderDraft'
 
 export interface AutoOrderAction<T> {
@@ -40,8 +40,19 @@ export function InlineOrderEditor<T>({
   const [autoOrdering, setAutoOrdering] = useState(false)
   const [autoOrderError, setAutoOrderError] = useState(false)
   const [saveError, setSaveError] = useState(false)
+  const autoOrderRunRef = useRef(0)
+
+  useEffect(() => () => {
+    autoOrderRunRef.current += 1
+  }, [])
+
+  const invalidateAutoOrder = () => {
+    autoOrderRunRef.current += 1
+    setAutoOrdering(false)
+  }
 
   const updateDraft = (nextDraft: readonly T[]) => {
+    invalidateAutoOrder()
     setDraft([...nextDraft])
     onDraftChanged(nextDraft)
   }
@@ -50,24 +61,37 @@ export function InlineOrderEditor<T>({
 
   const runAutoOrder = async () => {
     if (!autoOrder) return
+    const runId = autoOrderRunRef.current + 1
+    autoOrderRunRef.current = runId
     setAutoOrdering(true)
     setAutoOrderError(false)
     try {
-      updateDraft(await autoOrder.run(draft))
+      const nextDraft = [...await autoOrder.run(draft)]
+      if (autoOrderRunRef.current !== runId) return
+      setDraft(nextDraft)
+      onDraftChanged(nextDraft)
     } catch {
+      if (autoOrderRunRef.current !== runId) return
       setAutoOrderError(true)
     } finally {
-      setAutoOrdering(false)
+      if (autoOrderRunRef.current === runId) setAutoOrdering(false)
     }
   }
 
   const save = () => {
+    if (autoOrdering) return
+    invalidateAutoOrder()
     try {
       onSave(draft)
       setSaveError(false)
     } catch {
       setSaveError(true)
     }
+  }
+
+  const cancel = () => {
+    invalidateAutoOrder()
+    onCancel()
   }
 
   return (
@@ -125,8 +149,8 @@ export function InlineOrderEditor<T>({
       </DragDropProvider>
       {saveError && <p role="alert" className="mt-2 text-xs text-red-300">Could not save this order. Your draft is still available.</p>}
       <div className="mt-3 flex flex-wrap gap-2">
-        <button type="button" onClick={save} className="rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500">Save</button>
-        <button type="button" onClick={onCancel} className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-xs text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Cancel</button>
+        <button type="button" onClick={save} disabled={autoOrdering} className="rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 disabled:cursor-wait disabled:opacity-50">Save</button>
+        <button type="button" onClick={cancel} className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-xs text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Cancel</button>
         <button type="button" onClick={reset} className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-xs text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Reset canonical order</button>
       </div>
     </>

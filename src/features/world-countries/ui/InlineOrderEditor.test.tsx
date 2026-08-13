@@ -5,6 +5,8 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { InlineOrderEditor } from './InlineOrderEditor'
 
+const dragEndMock = vi.hoisted(() => vi.fn())
+
 vi.mock('@dnd-kit/dom', () => ({
   PointerActivationConstraints: {
     Delay: class { constructor(public value: unknown) {} },
@@ -12,11 +14,14 @@ vi.mock('@dnd-kit/dom', () => ({
   },
 }))
 vi.mock('@dnd-kit/react', () => ({
-  DragDropProvider: ({ children }: { children: unknown }) => children,
+  DragDropProvider: ({ children, onDragEnd }: { children: unknown; onDragEnd: (event: unknown) => void }) => {
+    dragEndMock.mockImplementation(onDragEnd)
+    return children
+  },
   PointerSensor: { configure: () => ({}) },
 }))
 vi.mock('@dnd-kit/react/sortable', () => ({
-  isSortable: () => false,
+  isSortable: () => true,
   useSortable: () => ({ ref: undefined, handleRef: undefined, isDragging: false, isDropTarget: false }),
 }))
 
@@ -26,6 +31,7 @@ let root: Root | null = null
 afterEach(() => {
   act(() => root?.unmount())
   root = null
+  dragEndMock.mockReset()
   document.body.replaceChildren()
 })
 
@@ -62,6 +68,84 @@ describe('InlineOrderEditor', () => {
     const { mount } = renderEditor({ onSave })
     act(() => [...mount.querySelectorAll('button')].find(button => button.textContent === 'Save')?.click())
     expect(mount.querySelector('[role="alert"]')?.textContent).toContain('still available')
+  })
+
+  it('applies a completed drag to the draft without saving it', () => {
+    const onDraftChanged = vi.fn()
+    const onSave = vi.fn()
+    renderEditor({ onDraftChanged, onSave })
+
+    act(() => dragEndMock({
+      canceled: false,
+      operation: { source: { initialIndex: 0, index: 2 } },
+    }))
+
+    expect(onDraftChanged).toHaveBeenLastCalledWith(['Norway', 'Sweden', 'Denmark'])
+    expect(onSave).not.toHaveBeenCalled()
+  })
+
+  it('ignores an auto-order result after cancellation', async () => {
+    let resolveAutoOrder: ((draft: readonly string[]) => void) | undefined
+    const run = vi.fn(() => new Promise<readonly string[]>(resolve => {
+      resolveAutoOrder = resolve
+    }))
+    const onDraftChanged = vi.fn()
+    const onCancel = vi.fn()
+    const { mount } = renderEditor({
+      onDraftChanged,
+      onCancel,
+      autoOrder: {
+        label: 'Auto-order',
+        pendingLabel: 'Ordering...',
+        hint: 'Use the canonical order.',
+        errorMessage: 'Could not order this list.',
+        run,
+      },
+    })
+
+    act(() => mount.querySelector('button')?.click())
+    expect(run).toHaveBeenCalledWith(['Denmark', 'Norway', 'Sweden'])
+    expect(mount.querySelector('button')?.textContent).toBe('Ordering...')
+    expect([...mount.querySelectorAll('button')].find(button => button.textContent === 'Save')?.disabled).toBe(true)
+
+    act(() => [...mount.querySelectorAll('button')].find(button => button.textContent === 'Cancel')?.click())
+    expect(onCancel).toHaveBeenCalledOnce()
+
+    await act(async () => {
+      resolveAutoOrder?.(['Sweden', 'Norway', 'Denmark'])
+      await Promise.resolve()
+    })
+
+    expect(onDraftChanged).not.toHaveBeenCalledWith(['Sweden', 'Norway', 'Denmark'])
+  })
+
+  it('ignores an auto-order result after unmounting', async () => {
+    let resolveAutoOrder: ((draft: readonly string[]) => void) | undefined
+    const run = vi.fn(() => new Promise<readonly string[]>(resolve => {
+      resolveAutoOrder = resolve
+    }))
+    const onDraftChanged = vi.fn()
+    const { mount } = renderEditor({
+      onDraftChanged,
+      autoOrder: {
+        label: 'Auto-order',
+        pendingLabel: 'Ordering...',
+        hint: 'Use the canonical order.',
+        errorMessage: 'Could not order this list.',
+        run,
+      },
+    })
+
+    act(() => mount.querySelector('button')?.click())
+    act(() => root?.unmount())
+    root = null
+
+    await act(async () => {
+      resolveAutoOrder?.(['Sweden', 'Norway', 'Denmark'])
+      await Promise.resolve()
+    })
+
+    expect(onDraftChanged).not.toHaveBeenCalledWith(['Sweden', 'Norway', 'Denmark'])
   })
 
   it('returns the canonical order to the draft without saving it', () => {

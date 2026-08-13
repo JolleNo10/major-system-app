@@ -118,7 +118,6 @@ interface HoverListeners {
 
 const FORBIDDEN_ELEMENTS = 'script, foreignObject, iframe, object, embed, image, style'
 const XLINK_NS = 'http://www.w3.org/1999/xlink'
-const MAPCHART_CREDIT_SELECTOR = '[id="credit-text-svg"]'
 
 function captureStyle(element: SVGElement, property: string): OriginalStyle {
   return {
@@ -226,7 +225,6 @@ export class SvgMapController {
       throw new Error('SVG map source does not contain a valid SVG root')
     }
     this.validateSvg(root)
-    this.removeVisibleMapChartCredit(root)
 
     this.resetMap()
     const imported = this.mount.ownerDocument.importNode(root, true) as unknown as SVGSVGElement
@@ -620,10 +618,6 @@ export class SvgMapController {
         throw new Error('SVG map contains an external reference')
       }
     }
-  }
-
-  private removeVisibleMapChartCredit(root: Element): void {
-    root.querySelectorAll(MAPCHART_CREDIT_SELECTOR).forEach(element => element.remove())
   }
 
   private bindDiscoveredCountries(svg: SVGSVGElement, markup: string): void {

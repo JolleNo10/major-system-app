@@ -70,8 +70,9 @@ describe('DrillSetup activity boundary', () => {
     expect(mount.textContent).toContain('Practice')
   })
 
-  it('passes the current effective hierarchy order to the map annotations', () => {
+  it('passes the current effective hierarchy order to the map annotations', async () => {
     renderSetup()
+    await act(async () => { await Promise.resolve() })
     const groups = mapMock.mock.calls[mapMock.mock.calls.length - 1]?.[0].orderGroups as readonly { label: string }[]
     expect(groups?.[0]?.label).toBe('Balkans')
   })
