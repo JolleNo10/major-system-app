@@ -68,4 +68,5 @@ describe('Learning Review keyboard behavior', () => {
     act(() => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })))
     expect(onMove).not.toHaveBeenCalled()
   })
+
 })

@@ -1,7 +1,7 @@
 import { createContext, useContext, useLayoutEffect, useMemo, useState, type DependencyList, type ReactNode } from 'react'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
 import { CountryLearningMap, type CountryLearningMapProps } from '@/features/world-countries/learning/CountryLearningMap'
-import { MapSurface } from '@/features/world-countries/ui/MapSurface'
+import { MapSurface, type MapSurfaceDockPlacement } from '@/features/world-countries/ui/MapSurface'
 
 export type LearningMapOverride = Partial<Pick<CountryLearningMapProps,
   'showNames' | 'showHoverNames' | 'showOrderNumbers' | 'namedCountryId' |
@@ -21,6 +21,7 @@ export function LearningMapSurface({
   presentation,
   presentationKey,
   context,
+  dockPlacement = 'overlay',
   children,
 }: {
   continent: Continent
@@ -28,6 +29,7 @@ export function LearningMapSurface({
   presentation: LearningMapOverride
   presentationKey: string
   context: ReactNode
+  dockPlacement?: MapSurfaceDockPlacement
   children: ReactNode
 }) {
   const [override, setOverride] = useState<LearningMapOverride>({})
@@ -38,7 +40,7 @@ export function LearningMapSurface({
 
   return (
     <LearningMapSurfaceContext.Provider value={contextValue}>
-      <MapSurface context={context} map={map} dock={children} />
+      <MapSurface context={context} map={map} dock={children} dockPlacement={dockPlacement} />
     </LearningMapSurfaceContext.Provider>
   )
 }

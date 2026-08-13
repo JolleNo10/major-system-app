@@ -34,11 +34,18 @@ export function StagedCapitalWalkthroughStep({
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [entries.length, index, onMove])
   if (!country) return null
+  const status = (
+    <>
+      <span className="block text-xs font-semibold uppercase tracking-wider text-cyan-400">Study this relationship</span>
+      <span className="mt-1 block text-2xl font-black text-zinc-100">{country.country} <span aria-hidden="true" className="text-sm text-zinc-600">↔</span> <span className="text-lg text-green-300">{country.capital}</span></span>
+      <span className="mt-1 block text-xs text-zinc-500">Country · location context · capital</span>
+    </>
+  )
   const controls = (
-    <TaskDock status={<><span className="block text-xs font-semibold uppercase tracking-wider text-cyan-400">Study this relationship</span><span className="mt-1 block text-2xl font-black text-zinc-100">{country.country} <span aria-hidden="true" className="text-sm text-zinc-600">↔</span> <span className="text-lg text-green-300">{country.capital}</span></span><span className="mt-1 block text-xs text-zinc-500">Country · location context · capital</span></>} enableEnterPrimary>
-      <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={() => onMove(-1)} disabled={index === 0} className="flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-sm text-zinc-300 hover:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-30">Previous</button>
-        {index < entries.length - 1 ? <button type="button" data-primary-action onClick={() => onMove(1)} className="flex-1 rounded-lg bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500">Next</button> : <button type="button" data-primary-action onClick={onContinue} className="flex-1 rounded-lg bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500">Continue to Practice</button>}
+    <TaskDock variant="navigation" status={surface ? undefined : status} enableEnterPrimary>
+      <div className="flex items-center justify-between gap-2">
+        <button type="button" onClick={() => onMove(-1)} disabled={index === 0} className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-800/80 px-3 py-2 text-sm text-zinc-300 hover:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-30">← Previous</button>
+        {index < entries.length - 1 ? <button type="button" data-primary-action onClick={() => onMove(1)} className="min-w-0 flex-1 rounded-lg bg-cyan-600 px-3 py-2 text-sm font-semibold text-white hover:bg-cyan-500">Next →</button> : <button type="button" data-primary-action onClick={onContinue} className="min-w-0 flex-1 rounded-lg bg-cyan-600 px-3 py-2 text-sm font-semibold text-white hover:bg-cyan-500">Continue to Practice</button>}
       </div>
     </TaskDock>
   )

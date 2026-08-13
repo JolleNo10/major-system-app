@@ -210,9 +210,11 @@ export function DrillSession({
           {feedback && <RecallFeedback correct={feedback.correct} message={isLocationPractice ? practiceFeedbackText : feedbackText} />}
           </div>
         )}
-        dock={(
-          <TaskDock status={isLocationPractice ? 'Click the country on the map.' : undefined}>
-            {!isLocationPractice && (
+        dockPlacement="attached"
+        dock={isLocationPractice ? (
+          <p className="text-center text-sm text-zinc-400">Click the country on the map.</p>
+        ) : (
+          <TaskDock variant="form">
             <section className="space-y-3">
             {answerMode === 'multiple-choice' ? (
               <MultipleChoice
@@ -233,7 +235,6 @@ export function DrillSession({
               />
             )}
             </section>
-            )}
           </TaskDock>
         )}
       />

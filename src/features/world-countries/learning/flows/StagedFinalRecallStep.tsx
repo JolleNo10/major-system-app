@@ -66,7 +66,7 @@ export function StagedFinalRecallStep({
     if (feedback || !answer.trim()) return
     setFeedback({ evaluation: evaluateAnswer(answer, current), expectedId: current.id })
   }
-  const feedbackNode = feedback && <RecallFeedback correct={feedback.evaluation.correct} message={formatFeedback(feedback.evaluation, display)} detail={!feedback.evaluation.correct ? 'The ordered repair traversal rewinds before the next clean pass.' : undefined} />
+  const feedbackNode = feedback && <RecallFeedback variant="inline" correct={feedback.evaluation.correct} message={formatFeedback(feedback.evaluation, display)} detail={!feedback.evaluation.correct ? 'The ordered repair traversal rewinds before the next clean pass.' : undefined} />
   const form = (
     <form onSubmit={event => { event.preventDefault(); submit() }} className="space-y-3">
       <label htmlFor="staged-final-answer" className="block text-sm text-zinc-400">{answerLabel}</label>
@@ -77,7 +77,7 @@ export function StagedFinalRecallStep({
     </form>
   )
   const dock = (
-    <TaskDock status={<><span className="block text-xs font-semibold uppercase tracking-wider text-cyan-400">{ordered.mode === 'repair' ? 'Repair traversal' : 'Effective Country order'}</span><span className="mt-1 block text-2xl font-black text-zinc-100">{ordered.currentIndex + 1} / {ordered.order.length}</span><span className="mt-1 block text-sm text-cyan-300">{answerLabel}</span></>}>
+    <TaskDock variant="form" status={<span className="text-sm text-zinc-400">{ordered.mode === 'repair' ? 'Repair traversal' : 'Effective Country order'} · {ordered.currentIndex + 1} / {ordered.order.length}</span>}>
       {feedbackNode}
       {form}
       {!surface && <button type="button" onClick={onBack} className="mt-3 w-full rounded-lg border border-zinc-800 px-4 py-3 text-sm text-zinc-500 hover:text-zinc-200">Back to Final recall</button>}

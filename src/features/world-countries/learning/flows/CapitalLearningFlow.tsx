@@ -150,7 +150,7 @@ export function CapitalLearningFlow({
 
   const context = (() => {
     switch (flow.phase) {
-      case 'walkthrough': return <LearningHeader label={`Set ${stageSetNumber} · Step 1 - Review`} title={`${flow.walkthroughIndex + 1} / ${stageEntries.length}`} onExit={onExit} />
+      case 'walkthrough': return <div><LearningHeader label={`Set ${stageSetNumber} · Review`} title={walkthroughCountry ? `${walkthroughCountry.country} ↔ ${walkthroughCountry.capital}` : 'Review'} onExit={onExit} /><p className="mt-1 text-sm text-zinc-500">{flow.walkthroughIndex + 1} / {stageEntries.length}</p></div>
       case 'practice': return <LearningHeader label={`Set ${stageSetNumber} · Step 2 - Practice`} title="Name the capital" onExit={onExit} />
       case 'set-ready': return <LearningHeader label="Ready" title={`Set ${stageSetNumber} Ready`} onExit={onExit} />
       case 'combined-practice': return <LearningHeader label="Combined practice" title="Name the capital" onExit={onExit} />
@@ -209,5 +209,6 @@ export function CapitalLearningFlow({
       content = <CapitalLearningComplete subregion={subregion} onDone={onDone ?? onExit} doneLabel={doneLabel} onRestart={() => { completionReporter.current.reset(); transition(createStagedCapitalLearningFlow({ countryIds: ids, maximum: newItemsPerSet, schedulerSettings })) }} surface />
       break
   }
-  return <>{rails}<LearningMapSurface continent={continent} scopeCountries={mapEntries} presentation={mapPresentation} presentationKey={presentationKey} context={context}>{content}</LearningMapSurface></>
+  const dockPlacement = ['practice', 'combined-practice', 'final-recall'].includes(flow.phase) ? 'attached' : 'overlay'
+  return <>{rails}<LearningMapSurface continent={continent} scopeCountries={mapEntries} presentation={mapPresentation} presentationKey={presentationKey} context={context} dockPlacement={dockPlacement}>{content}</LearningMapSurface></>
 }

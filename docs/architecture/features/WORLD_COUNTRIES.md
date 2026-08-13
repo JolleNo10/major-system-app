@@ -142,6 +142,12 @@ not require, Countries first.
   `ui/` map surface/dock presentation. The host owns the mounted map while
   flow stages change; phase-specific content owns task status, controls, and
   dynamic map presentation through that host.
+- `MapSurface` keeps lightweight context above a relative map container and
+  supports explicit overlay, attached, and stacked dock placement. `TaskDock`
+  provides compact navigation, checkpoint, form, hint, and completion
+  variants; Learning flows choose placement by task rather than treating every
+  dock as a generic card. Overlay docks attach at desktop widths and fall back
+  to normal flow below `xl`.
 - For the same map source, Continent, effective scope membership, and
   intentional zoom behavior, Learning updates map highlights, names, hover,
   and sequence annotations declaratively. Workflow phase alone must not

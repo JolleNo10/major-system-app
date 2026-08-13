@@ -3,7 +3,6 @@ import { RecallFeedback } from '@/core/ui/RecallFeedback'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
 import type { SchedulerLearningSession } from '@/features/world-countries/learning/schedulerLearningSession'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
-import { TaskDock } from '@/features/world-countries/ui/MapSurface'
 import { useLearningMapPresentation } from './LearningMapSurface'
 import { LearningHeader } from './MemoryPreviewStep'
 
@@ -46,11 +45,11 @@ export function SchedulerLocationPracticeStep({ continent, entries, session, lab
   if (!expected) return null
 
   const dock = (
-    <TaskDock status={<><span className="block text-xs font-semibold uppercase tracking-wider text-cyan-400">Select the map location</span><span className="mt-1 block text-2xl font-black text-zinc-100">Find {expected.country}</span></>}>
-      {feedback && <RecallFeedback correct={feedback.correct} message={feedback.correct ? 'Correct location.' : `That was ${entries.find(entry => entry.id === feedback.selectedId)?.country ?? 'not the target'} - ${expected.country} is highlighted.`} />}
+    <div className="text-center">
+      {feedback && <RecallFeedback variant="inline" correct={feedback.correct} message={feedback.correct ? 'Correct location.' : `That was ${entries.find(entry => entry.id === feedback.selectedId)?.country ?? 'not the target'} - ${expected.country} is highlighted.`} />}
       {!feedback && <p className="text-sm text-zinc-400">Click the Country on the map to answer.</p>}
-      {!surface && <button type="button" onClick={onBack} className="mt-3 w-full rounded-lg border border-zinc-800 px-4 py-3 text-sm text-zinc-500 hover:text-zinc-200">Back to Review</button>}
-    </TaskDock>
+      {!surface && <button type="button" onClick={onBack} className="mt-3 rounded-lg border border-zinc-800 px-4 py-2 text-sm text-zinc-500 hover:text-zinc-200">Back to Review</button>}
+    </div>
   )
   if (surface) return dock
 
