@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act } from 'react'
+import { act, createElement, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import type { Country } from '@/features/world-countries/data/countries'
 import { getSubregionLearningState } from '@/features/world-countries/learning/subregionLearningStore'
 import { CapitalLearningFlow } from './CapitalLearningFlow'
 
 vi.mock('@/app/layout/PageLayoutContext', () => ({ useRails: vi.fn() }))
+vi.mock('./LearningMapSurface', () => ({ LearningMapSurface: ({ context, children }: { context: ReactNode; children: ReactNode }) => createElement('div', null, context, children) }))
 vi.mock('./StagedCapitalWalkthroughStep', () => ({
   StagedCapitalWalkthroughStep: ({ onContinue }: { onContinue: () => void }) => <button type="button" data-testid="start-practice" onClick={onContinue}>Start practice</button>,
 }))

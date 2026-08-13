@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Country } from '@/features/world-countries/data/countries'
 import { createSchedulerLearningSession } from '@/features/world-countries/learning/schedulerLearningSession'
 import { SchedulerPracticeStep } from './SchedulerPracticeStep'
+import { LearningMapSurface } from './LearningMapSurface'
 
 vi.mock('@/features/world-countries/learning/CountryLearningMap', () => ({
   CountryLearningMap: () => createElement('div', { 'data-testid': 'country-learning-map' }),
@@ -43,5 +44,28 @@ describe('SchedulerPracticeStep', () => {
 
     expect(mount.textContent).toContain('Name the country')
     expect(mount.querySelector('[data-testid="country-learning-map"]')).toBeNull()
+  })
+
+  it('keeps the scoped map mounted for Combined practice when hosted by the map surface', () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+    const session = createSchedulerLearningSession([country.id], settings)
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement(LearningMapSurface, {
+        continent: 'Europe', scopeCountries: [country], presentation: { ariaLabel: 'Test map' }, presentationKey: 'combined',
+        context: createElement('h1', null, 'Combined practice'),
+        children: createElement(SchedulerPracticeStep, {
+          continent: 'Europe', entries: [country], session,
+          stepLabel: 'Combined practice', questionLabel: 'Country name',
+          questionTitle: 'Name the country', answerLabel: 'Type the country name',
+          placeholder: 'Type the country…', showCountryName: false, showMap: false, surface: true,
+          promptText: 'Name the country', evaluateAnswer: () => ({ correct: true, fuzzyMatch: false, canonicalAnswer: country.country }),
+          formatFeedback: () => 'Correct.', onSubmit: vi.fn(), onBack: vi.fn(), onExit: vi.fn(),
+        }),
+      }))
+    })
+
+    expect(mount.querySelector('[data-testid="country-learning-map"]')).not.toBeNull()
   })
 })

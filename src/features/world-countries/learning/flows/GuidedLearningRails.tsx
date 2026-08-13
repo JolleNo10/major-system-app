@@ -30,6 +30,8 @@ export function GuidedLearningRails({
   onOrderDraftChanged,
   onOrderSaved,
   onExit,
+  onBack,
+  backLabel = 'Back',
   onSkip,
   skipLabel,
 }: {
@@ -49,6 +51,8 @@ export function GuidedLearningRails({
   onOrderDraftChanged: (draft: readonly Country[] | null) => void
   onOrderSaved?: (draft: readonly Country[]) => void
   onExit?: () => void
+  onBack?: () => void
+  backLabel?: string
   onSkip?: () => void
   skipLabel?: string
 }) {
@@ -126,17 +130,17 @@ export function GuidedLearningRails({
           {showSubregionMnemonic && <button type="button" onClick={() => setEditingMnemonic(value => !value)} className="text-left text-xs font-semibold text-cyan-300 hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70">{editingMnemonic ? 'Close mnemonic editor' : 'Edit mnemonics'}</button>}
         </WorldCountriesPanel>
       ),
-      right: showMemoryAid || onExit || onSkip ? (
+      right: showMemoryAid || onBack || onExit || onSkip ? (
         <div className="space-y-4">
-          {(onExit || onSkip) && <section aria-labelledby="guided-learning-actions-heading" className="space-y-2"><h3 id="guided-learning-actions-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Learning actions</h3>{onExit && <button type="button" onClick={onExit} className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2.5 text-sm text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Exit</button>}{onSkip && <button type="button" onClick={onSkip} className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-400 hover:border-cyan-500 hover:text-zinc-200">{skipLabel ?? 'Skip'}</button>}</section>}
+          {(onBack || onExit || onSkip) && <section aria-labelledby="guided-learning-actions-heading" className="space-y-2"><h3 id="guided-learning-actions-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Learning actions</h3>{onBack && <button type="button" onClick={onBack} className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">{backLabel}</button>}{onSkip && <button type="button" onClick={onSkip} className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-400 hover:border-cyan-500 hover:text-zinc-200">{skipLabel ?? 'Skip'}</button>}{onExit && <button type="button" onClick={onExit} className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2.5 text-sm text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Exit</button>}</section>}
           {showSubregionMnemonic && (editingMnemonic ? <GeographyMnemonicEditor targetId={subregionMnemonicId(subregion)} title="Subregion memory aid" subtitle={`Optional story or picture for this ordered ${entries.length}-country group`} countryIds={entries.map(entry => entry.id)} refreshKey={mnemonicVersion} onChanged={onMnemonicChanged} /> : <GeographyMnemonicView targetId={subregionMnemonicId(subregion)} title="Subregion memory aid" subtitle={`Optional story or picture for this ordered ${entries.length}-country group`} countryIds={entries.map(entry => entry.id)} refreshKey={mnemonicVersion} />)}
           {showCapitalMnemonic && walkthroughCountry && <GeographyMnemonicView targetId={countryCapitalMnemonicId(walkthroughCountry)} title={`${walkthroughCountry.country} ↔ ${walkthroughCountry.capital}`} subtitle="Optional memory aid for this Country–Capital relationship" refreshKey={`${walkthroughCountry.id}-${mnemonicVersion}`} />}
         </div>
       ) : undefined,
       leftLabel: 'Learning context',
-      rightLabel: showMemoryAid && (onExit || onSkip) ? 'Learning tools' : showMemoryAid ? 'Memory aid' : onExit || onSkip ? 'Learning actions' : undefined,
+      rightLabel: showMemoryAid && (onBack || onExit || onSkip) ? 'Learning tools' : showMemoryAid ? 'Memory aid' : onBack || onExit || onSkip ? 'Learning actions' : undefined,
     },
-    [activeCountries, continent, editingMnemonic, editingOrder, entries, learned, capitalsLearned, mnemonicVersion, onCountryHover, onExit, onGeographyChanged, onMnemonicChanged, onOrderDraftChanged, onOrderSaved, onSkip, phase, showCapitalMnemonic, showMemoryAid, showSubregionMnemonic, skipLabel, subregion, track, walkthroughCountry, quietPhase],
+    [activeCountries, backLabel, continent, editingMnemonic, editingOrder, entries, learned, capitalsLearned, mnemonicVersion, onBack, onCountryHover, onExit, onGeographyChanged, onMnemonicChanged, onOrderDraftChanged, onOrderSaved, onSkip, phase, showCapitalMnemonic, showMemoryAid, showSubregionMnemonic, skipLabel, subregion, track, walkthroughCountry, quietPhase],
   )
 
   return null

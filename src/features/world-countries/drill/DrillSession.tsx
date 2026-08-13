@@ -9,6 +9,7 @@ import { classifyRecallAnswer } from '@/features/world-countries/learning/recall
 import type { WorldCountriesRecallSkill } from '@/features/world-countries/learning/recallTargets'
 import type { LearningStates } from '@/features/world-countries/learning/learningProgress'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
+import { TaskDock } from '@/features/world-countries/ui/MapSurface'
 import type { WorldCountriesDrillSelection } from './drillSelection'
 import { DrillSessionRails } from './DrillSessionRails'
 import { PracticeSessionRails } from './PracticeSessionRails'
@@ -168,7 +169,7 @@ export function DrillSession({
       ) : (
         <DrillSessionRails selection={selection} mode={state.mode} state={state} onExit={onExit} entries={entries} />
       )}
-      <div className="space-y-4 animate-fade-in">
+      <div data-map-surface className="space-y-4 animate-fade-in">
         <section className="rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-4 text-center">
           <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">{activity === 'practice' ? 'Practice · ' : ''}{getDrillSkillLabel(step.skill)}</p>
           {isLocationPractice ? (
@@ -207,7 +208,8 @@ export function DrillSession({
         </div>
 
         {!isLocationPractice && (
-          <section className="space-y-3">
+          <TaskDock>
+            <section className="space-y-3">
             {answerMode === 'multiple-choice' ? (
               <MultipleChoice
                 key={`${step.countryId}-${step.skill}`}
@@ -226,7 +228,8 @@ export function DrillSession({
                 placeholder={isCapitalQuestion ? 'Type the country…' : isLocationQuestion ? 'Type the country…' : 'Type the capital…'}
               />
             )}
-          </section>
+            </section>
+          </TaskDock>
         )}
       </div>
     </>

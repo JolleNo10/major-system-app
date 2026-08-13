@@ -46,7 +46,7 @@ function renderRails(phase: 'walkthrough' | 'location-practice') {
       onOrderDraftChanged,
     }))
   })
-  return { mount, onOrderDraftChanged, config: useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1]?.[0] as { left?: ReactNode } }
+  return { mount, onOrderDraftChanged, config: useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1]?.[0] as { left?: ReactNode; right?: ReactNode } }
 }
 
 describe('GuidedLearningRails contextual authoring visibility', () => {
@@ -62,5 +62,29 @@ describe('GuidedLearningRails contextual authoring visibility', () => {
     const { config, onOrderDraftChanged } = renderRails('location-practice')
     expect(config.left).toBeUndefined()
     expect(onOrderDraftChanged).toHaveBeenCalledWith(null)
+  })
+
+  it('keeps quiet-phase workflow actions in the right rail in Back, Skip, Exit order', () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+    const onOrderDraftChanged = vi.fn()
+    const onBack = vi.fn()
+    const onSkip = vi.fn()
+    const onExit = vi.fn()
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement(GuidedLearningRails, {
+        continent: 'Europe', subregion: 'northern-europe', entries, activeCountries: entries,
+        phase: 'location-practice', track: 'countries', learned: false, capitalsLearned: false,
+        mnemonicVersion: 0, onGeographyChanged: vi.fn(), onMnemonicChanged: vi.fn(),
+        onOrderDraftChanged, onBack, backLabel: 'Back to Review', onSkip, skipLabel: 'Next: Practice', onExit,
+      }))
+    })
+
+    const latestConfig = useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1]?.[0]
+    act(() => root?.render(createElement('div', null, latestConfig?.right)))
+    expect([...mount.querySelectorAll('button')].map(button => button.textContent)).toEqual([
+      'Back to Review', 'Next: Practice', 'Exit',
+    ])
   })
 })
