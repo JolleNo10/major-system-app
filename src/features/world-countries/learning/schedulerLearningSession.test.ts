@@ -53,4 +53,12 @@ describe('schedulerLearningSession', () => {
 
     expect(result.session.currentKey).not.toBe(first)
   })
+
+  it('does not select a zero-weight country at the random lower boundary', () => {
+    let session = createSchedulerLearningSession(['A', 'B', 'C'], settings, () => 0)
+    const first = session.currentKey
+    session = submitSchedulerLearningAnswer(session, { correct: false, latencyMs: 10 }, settings, () => 0).session
+
+    expect(session.currentKey).not.toBe(first)
+  })
 })
