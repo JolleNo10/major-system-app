@@ -23,7 +23,7 @@ Learning:
 
 - Review keeps the Set map visible. Previous/Next live with the map. `Left Arrow` / `Right Arrow` traverse Review items.
 - Location Practice keeps the map as the interaction surface.
-- Typed Practice keeps geographic context where it does not reveal an answer; input remains primary and auto-focused.
+- Typed Practice keeps geographic context where it does not reveal an answer; its input remains primary, auto-focused, and in a form dock below the map at every viewport width.
 - Location Ready, Set Ready, Combined Ready, and Final recall gate no longer replace the map with standalone screens; show existing status/actions in the dock.
 - Set Ready preserves the existing next-plan action plus `Keep practising`; e.g. `Practise all 6` when that is the current plan action.
 - Final recall mechanics, repair/rewind, answer matching, and milestone writes are unchanged.
@@ -68,7 +68,11 @@ The dock is contextual, not permanent. Do not place settings, authoring, Exit, o
 
 Do not expose two controls both labelled `Next` when one means Review-item navigation and another means Skip/plan progression. Labels must make the difference clear.
 
-Below `xl`, the dock may stack/attach below the map if overlaying would make the map unusable; the primary action stays in the center surface, not only inside a rail drawer.
+Typed Practice, Final recall, and typed Drill inputs always use a form dock
+below the map at every viewport width; they never overlay map content. Other
+contextual docks may stack or attach below the map below `xl` if overlaying
+would make the map unusable. The primary action stays in the center surface,
+not only inside a rail drawer.
 
 The shared map-surface/dock interaction applies to active Country and Capital
 Learning states (Review, Location Practice, typed Practice, Ready/gates, Final
@@ -155,6 +159,7 @@ No ADR: this is presentation/interaction within existing ownership boundaries.
 - [ ] Learning completion retains geographic context and existing completion semantics.
 - [ ] Learning Back is available from the right rail rather than center-step buttons; Exit remains deliberate and rail-owned.
 - [ ] Typed Learning/Drill inputs retain Enter submit/autofocus and never double-submit through feature shortcuts.
+- [ ] Typed Practice, Final recall, and typed Drill inputs use a form dock below the map at every viewport width; multiple-choice and location-click interactions retain their attached presentation.
 - [ ] Same-scope adjacent map states do not visibly reload the SVG or show a loading placeholder solely due to stage change.
 - [ ] Active Drill/Practice adopt the same map-centered hierarchy without semantic/evidence changes.
 - [ ] Existing map-status palette semantics remain unchanged; Ready/success uses green and primary action remains cyan.
