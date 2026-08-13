@@ -21,6 +21,8 @@ export function SchedulerPracticeStep({
   answerLabel,
   placeholder,
   showCountryName,
+  showMap = true,
+  promptText = 'Identify the highlighted location',
   evaluateAnswer,
   formatFeedback,
   onSubmit,
@@ -36,6 +38,8 @@ export function SchedulerPracticeStep({
   answerLabel: string
   placeholder: string
   showCountryName: boolean
+  showMap?: boolean
+  promptText?: string
   evaluateAnswer: (answer: string, country: Country) => SchedulerAnswerEvaluation
   formatFeedback: (evaluation: SchedulerAnswerEvaluation, country: Country) => string
   onSubmit: (correct: boolean, latencyMs: number) => void
@@ -73,8 +77,9 @@ export function SchedulerPracticeStep({
     <div className="space-y-4 animate-fade-in">
       <LearningHeader label={stepLabel} title={questionTitle} onExit={onExit} />
       <div className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm"><span className="text-zinc-500">Spaced practice</span><span className="font-semibold text-cyan-300">{questionLabel}</span></div>
-      <section className="rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-4 text-center"><p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">{questionLabel}</p><h2 className="mt-2 text-3xl font-black text-zinc-100">{showCountryName ? current.country : 'Identify the highlighted location'}</h2></section>
-      <div className="relative"><CountryLearningMap continent={continent} scopeCountries={entries} highlightedCountryId={expected.id} namedCountryId={showCountryName ? expected.id : null} showHighlightedNames={showCountryName} ariaLabel={`${expected.country} for practice`} />{feedback && <RecallFeedback correct={feedback.evaluation.correct} message={formatFeedback(feedback.evaluation, expected)} />}</div>
+      <section className="rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-4 text-center"><p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">{questionLabel}</p><h2 className="mt-2 text-3xl font-black text-zinc-100">{showCountryName ? current.country : promptText}</h2></section>
+      {showMap && <div className="relative"><CountryLearningMap continent={continent} scopeCountries={entries} highlightedCountryId={expected.id} namedCountryId={showCountryName ? expected.id : null} showHighlightedNames={showCountryName} ariaLabel={`${expected.country} for practice`} />{feedback && <RecallFeedback correct={feedback.evaluation.correct} message={formatFeedback(feedback.evaluation, expected)} />}</div>}
+      {!showMap && feedback && <RecallFeedback correct={feedback.evaluation.correct} message={formatFeedback(feedback.evaluation, expected)} />}
       <form onSubmit={event => { event.preventDefault(); submit() }} className="space-y-3"><label htmlFor="staged-learning-answer" className="block text-sm text-zinc-400">{answerLabel}</label><div className="flex gap-2"><input ref={inputRef} id="staged-learning-answer" autoComplete="off" value={answer} onChange={event => setAnswer(event.target.value)} disabled={feedback !== null} autoFocus placeholder={placeholder} className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-zinc-100 outline-none focus:border-cyan-500 disabled:opacity-60" />{!feedback && <button type="submit" className="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-500">Check</button>}</div></form>
       <button type="button" onClick={onBack} className="w-full rounded-lg border border-zinc-800 px-4 py-3 text-sm text-zinc-500 hover:text-zinc-200">Back</button>
     </div>
