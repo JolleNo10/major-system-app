@@ -20,7 +20,7 @@ export function MapSurface({ context, map, mapMeta, dock, dockPlacement = 'overl
     ? 'xl:pointer-events-none xl:absolute xl:inset-x-[14px] xl:bottom-[14px] xl:z-20'
     : dockPlacement === 'attached'
       ? 'relative z-10 mx-3 xl:-mt-4'
-      : 'relative z-10'
+      : 'relative z-10 mt-2'
 
   return (
     <div data-map-surface className={`space-y-2 animate-fade-in ${className}`}>

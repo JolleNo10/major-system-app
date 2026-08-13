@@ -146,8 +146,9 @@ not require, Countries first.
   supports optional map metadata plus explicit overlay, attached, and stacked
   dock placement. `TaskDock` provides compact navigation, checkpoint, form,
   hint, and completion variants; checkpoint and completion docks compose their
-  status copy and action group as one unit at desktop widths. Typed Practice
-  and Final Recall use the form dock as an in-map overlay; review navigation
+  status copy and action group as one unit at desktop widths. Final Recall uses
+  the form dock as an in-map overlay, while typed Practice stacks that dock
+  below the map so answer entry does not obscure map labels; review navigation
   remains a compact map overlay, while multiple-choice and location-click
   interactions may remain attached below the map. Learning flows choose
   placement by task rather than treating every dock as a generic card. Overlay
