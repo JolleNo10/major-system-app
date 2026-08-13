@@ -40,7 +40,7 @@ that lets contextual authoring affect subsequent Learning presentation.
   Learning modes own their milestone writes; the guided UI is not Drill
   implementation detail.
 - `maps/` owns SVG loading, Country-to-SVG translation, overview and learning
-  map presentation, map-owned sequence annotations, and workflow-neutral
+  map presentation, existing Country sequence annotations, and workflow-neutral
   geographic callbacks.
 - `mnemonics/` owns World Countries mnemonic target IDs, geography mnemonic
   adapters, backup behavior, read presentation, and the reusable contextual
@@ -100,9 +100,10 @@ not require, Countries first.
 - Draft changes are local to the mounted context. Save writes through
   `geography/orderAuthoring.ts`; Cancel or unmount discards the draft. Reset
   canonical and map auto-order are draft-only actions requiring explicit Save.
-- Maps render effective or draft sequence annotations but never persist order.
-  World maps annotate Continents once each; Continent maps annotate Subregions
-  once each; Subregion learning maps annotate Countries.
+- Subregion learning maps may render Country sequence annotations. World and
+  Continent overview maps do not render custom Continent or Subregion names;
+  their left rails remain the visible hierarchy-order surface. Maps never
+  persist order.
 - A failed order write keeps the editor open with its draft and a recoverable
   error. Existing best-effort storage helpers may silently swallow browser
   storage failures, so reliable detection of every failure is not required.

@@ -8,7 +8,6 @@ import {
   createCountryColors,
   createCountryColorsById,
   createSubregionHoverGroups,
-  createGeographyOrderLabels,
   getCountryForSvgId,
   resolveCountriesToSvgIds,
 } from './geographyMapAdapter'
@@ -37,8 +36,6 @@ export interface GeographyOverviewMapProps {
   hoveredGroupId?: string | null
   onHoverGroup?: (groupId: string | null) => void
   onCountryClick?: (country: Country) => void
-  /** Effective or draft groups represented by the map, in display order. */
-  orderGroups?: readonly { label: string; countryIds: readonly CountryId[] }[]
   ariaLabel?: string
 }
 
@@ -61,7 +58,6 @@ export function GeographyOverviewMap({
   hoveredGroupId = null,
   onHoverGroup,
   onCountryClick,
-  orderGroups,
   ariaLabel,
 }: GeographyOverviewMapProps) {
   const activeCountries = useWorldCountriesPopulation()
@@ -177,16 +173,7 @@ export function GeographyOverviewMap({
       : [],
     [countryAccessibleDescriptionsById, visibleCountries],
   )
-  const orderLabels = useMemo(
-    () => orderGroups ? createGeographyOrderLabels(orderGroups, visibleCountries, mapCountryIds) : {},
-    [mapCountryIds, orderGroups, visibleCountries],
-  )
-  const orderLabelIds = useMemo(() => Object.keys(orderLabels), [orderLabels])
-  const orderDescriptions = useMemo(
-    () => orderGroups?.map((group, index) => `${index + 1}. ${group.label}`) ?? [],
-    [orderGroups],
-  )
-  const descriptions = [...countryDescriptions, ...orderDescriptions]
+  const descriptions = countryDescriptions
 
   return (
     <div className="space-y-2">
@@ -208,8 +195,6 @@ export function GeographyOverviewMap({
         hoveredId={hoveredCountryId}
         mutedIds={mutedSvgIds}
         countryColors={countryColors}
-        namedIds={orderLabelIds}
-        countryLabels={orderLabels}
         zoomIds={zoomIds}
         zoomPadding={definition.zoomPadding}
         onCountriesLoaded={setMapCountries}

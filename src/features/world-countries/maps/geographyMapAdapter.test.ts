@@ -3,7 +3,6 @@ import { countries, type Country } from '@/features/world-countries/data/countri
 import {
   createContinentHoverGroups,
   createCountryOrderLabels,
-  createGeographyOrderLabels,
   createCountryColors,
   createSubregionHoverGroups,
   findUnresolvedCountries,
@@ -52,16 +51,6 @@ describe('World Countries geography map adapter', () => {
     expect(createCountryOrderLabels([sweden, norway], ['Norway', 'Sweden'])).toEqual({
       Sweden: '1. Sweden',
       Norway: '2. Norway',
-    })
-  })
-
-  it('anchors one sequence annotation per grouped hierarchy member', () => {
-    expect(createGeographyOrderLabels([
-      { label: 'Northern Europe', countryIds: ['NO', 'SE'] },
-      { label: 'Western Europe', countryIds: ['GB'] },
-    ], [norway, sweden, unitedKingdom], ['Norway', 'Sweden', 'England'])).toEqual({
-      Norway: '1. Northern Europe',
-      England: '2. Western Europe',
     })
   })
 

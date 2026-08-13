@@ -51,17 +51,7 @@ Subregion view
 
 The left rail shows the sequence number beside each visible hierarchy member.
 
-Normal map presentation also shows the effective sequence number for the hierarchy represented by the current map:
-
-```text
-World map      -> Continent sequence numbers
-Continent map  -> Subregion sequence numbers
-Subregion map  -> Country sequence numbers
-```
-
-Map numbering is presentation only. It derives from effective order and must not become a second order source of truth.
-
-For grouped World/Continent maps, show one sequence annotation per current hierarchy member rather than repeating the same group number on every Country polygon. Exact label placement is maps-owned, but labels must remain legible and must not interfere with map click/hover behavior.
+Subregion learning maps may continue to show Country sequence numbers. World and Continent overview maps do not render custom Continent or Subregion names because the available map assets cannot place those labels reliably. The left rail remains the canonical visible sequence for those hierarchy levels.
 
 ### Edit order stays in the left rail
 
@@ -123,7 +113,6 @@ Requirements:
 - visible drag handles appear;
 - keyboard reordering remains supported;
 - sequence numbers update immediately while reordering;
-- map sequence annotations reflect the draft order while edit mode is active;
 - `Save` persists the draft through the existing geography-order persistence capability;
 - `Cancel` restores the persisted effective order;
 - leaving/unmounting the context without saving must not persist the draft.
@@ -180,7 +169,7 @@ The no-panel requirement in this Change Spec applies specifically to **Edit orde
 
 - Remove the user-facing Setup workflow and shell navigation seam.
 - Make hierarchy order visible in normal left-rail Geography presentation.
-- Add effective hierarchy sequence annotations to normal map presentation.
+- Retain existing Country sequence annotations on Subregion learning maps where they are already supported.
 - Add contextual `Edit order` actions to World, Continent, and Subregion ordered rail lists.
 - Implement in-place left-rail drag/drop editing with Save/Cancel, draft numbering, keyboard support, and a brief motion cue.
 - Surface Country-order editing in existing Learning Subregion views.
@@ -223,7 +212,6 @@ During editing:
 
 - drag/drop and keyboard operations update only the draft;
 - visible rail numbers update immediately;
-- map order annotations update from the same draft;
 - membership is fixed: ordering may reorder existing members but cannot add/remove Countries, Subregions, or Continents.
 
 Retain existing Reset canonical order and map auto-order actions as draft
@@ -284,7 +272,7 @@ Follow [ADR 0025](../adr/0025-contextual-world-countries-geography-authoring.md)
 Change-specific constraints:
 
 - `geography/` remains the source of truth for effective hierarchy order and order persistence.
-- `maps/` may render draft/persisted annotations but must not own order persistence.
+- `maps/` may render existing Country annotations on Subregion learning maps but must not add custom Continent/Subregion names to overview maps or own order persistence.
 - `mnemonics/` remains the owner of mnemonic identity/storage and reusable authoring capability.
 - `drill/` may surface World/Continent order authoring in its existing Geography rails, but must not gain a Subregion detail view or become the owner of Country-order authoring.
 - `learning/flows/` must not import Drill internals.
@@ -298,14 +286,14 @@ Change-specific constraints:
 
 - `src/features/world-countries/ui/GeographyHierarchyRow.tsx`
   - already supports `sequenceNumber`; use/extend the workflow-neutral row presentation instead of creating parallel numbered row components.
-- `src/features/world-countries/setup/LearningOrderEditor.tsx`
+- `src/features/world-countries/ui/InlineOrderEditor.tsx`
   - contains existing drag/drop, keyboard, draft, save/reset mechanics worth extracting; do not reuse its panel composition as the new UX.
-- `src/features/world-countries/setup/subregion/SubregionSetupScreen.tsx`
-  - demonstrates effective Country-order lookup and draft map updates; reuse the semantic mechanics, not the Setup screen.
+- `src/features/world-countries/learning/flows/GuidedLearningRails.tsx`
+  - demonstrates effective Country-order lookup and contextual draft updates in the existing Learning rail.
 - `src/features/world-countries/learning/CountryLearningMap.tsx`
   - already supports Country order labels for a scoped Country map.
 - `src/features/world-countries/maps/geographyMapAdapter.ts`
-  - already contains Country order-label generation; extend map-owned annotation capability for Continent/Subregion group numbering as needed rather than duplicating translation logic in workflows.
+  - already contains Country order-label generation for Subregion learning maps; overview maps should not add custom Continent/Subregion names that the map assets cannot place reliably.
 - `src/features/world-countries/geography/queries.ts` and existing metadata stores
   - continue to resolve persisted effective hierarchy order.
 - `src/features/world-countries/learning/flows/GuidedLearningRails.tsx`
@@ -319,8 +307,7 @@ Change-specific constraints:
 - If persisted order metadata is partial/stale relative to the active country population, initialize the draft from the existing effective-order query result; do not expose stale IDs as draggable rows.
 - Country-set changes continue to affect membership through existing population resolution. Reordering cannot restore excluded Countries.
 - When the persistence capability reports a failed write, keep the user in edit mode with the draft intact and show a recoverable error; do not present the draft as saved. Reliable detection of silently swallowed browser-storage failures is not required.
-- Map labels must tolerate small/fragmented geographic shapes without changing geographic identity or click targets.
-- Draft map annotations and rail numbering must always derive from the same draft order while editing.
+- Existing Country map labels must not change geographic identity or click targets.
 - Switching Drill purpose between Drill and Learn & Practise must not implicitly save or reset geography order.
 - Random Drill order remains a session scheduling choice. It does not change the authored geographic Country order shown in Geography.
 
@@ -352,15 +339,12 @@ Change-specific constraints:
 - [x] Pointer drag/drop reorders the draft.
 - [x] Keyboard interaction can reorder the draft without pointer drag/drop.
 - [x] Rail sequence numbers update immediately with the draft.
-- [x] Normal map sequence annotations update immediately with the same draft.
 - [x] Save persists through the existing geography-order capability and exits edit mode.
 - [x] Cancel/navigation without Save does not persist the draft.
 - [x] Reset canonical order and map auto-order actions update only the draft and require explicit Save.
 - [x] When persistence reports a failed save, the draft is preserved and a recoverable error is exposed.
-- [x] Normal World map presentation shows one effective sequence annotation per Continent.
-- [x] Normal Continent map presentation shows one effective sequence annotation per Subregion.
 - [x] Normal Subregion map presentation shows effective Country sequence annotations.
-- [x] Map order annotations do not change map hover/click geography semantics.
+- [x] World and Continent overview maps do not add custom Continent or Subregion names.
 - [x] Contextual `Edit mnemonics` is available from the stable Learning Subregion left rail for the existing Subregion mnemonic target whenever that rail is visible, and is hidden during ordered recall, active recall, and completion.
 - [x] Drill/Learning consume saved order through `geography/`; neither becomes an independent order source of truth.
 - [x] Random versus In-order Drill scheduling remains independent from authored geographic order.
@@ -386,9 +370,9 @@ Change-specific constraints:
 - `src/features/world-countries/drill/WorldCountriesDrill.tsx`
 - `src/features/world-countries/drill/DrillSetup.tsx`
 - `src/features/world-countries/drill/DrillSetupRails.tsx`
-- `src/features/world-countries/setup/LearningOrderEditor.tsx`
-- `src/features/world-countries/setup/subregion/SubregionSetupScreen.tsx`
-- `src/features/world-countries/setup/SetupMnemonicEditor.tsx`
+- `src/features/world-countries/ui/InlineOrderEditor.tsx`
+- `src/features/world-countries/learning/flows/GuidedLearningRails.tsx`
+- `src/features/world-countries/mnemonics/GeographyMnemonicEditor.tsx`
 
 ## Documentation impact
 
@@ -405,4 +389,4 @@ On implementation:
 - Implemented and verified on 2026-08-13.
 - Evidence: `npx vitest run src/features/world-countries` (59 files, 201
   tests), `npx tsc -b`, `npm run build` (`tsc -b && vite build`), plus focused
-  inline-editor, draft, map-annotation, and Drill setup regression tests.
+  inline-editor, draft, map-adapter, and Drill setup regression tests.

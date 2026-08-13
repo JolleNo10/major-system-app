@@ -22,7 +22,7 @@ Ownership remains semantic:
 
 - `geography/` owns effective World → Continent → Subregion → Country order, user-authored order metadata, order queries, and persistence contracts.
 - `mnemonics/` owns mnemonic target identity, storage/adapters, reusable read presentation, and reusable authoring capability.
-- `maps/` owns workflow-neutral map presentation and map annotations.
+- `maps/` owns workflow-neutral map presentation and existing Country sequence annotations.
 - `learning/flows/` continues to own reusable Country/Capital guided Learning UI and orchestration.
 - `drill/` may surface World/Continent order authoring in its existing Geography rails, but does not add a Subregion detail view, expose Country-order authoring, or become the source of truth for order or mnemonic data.
 - `ui/` may own workflow-neutral hierarchy/reordering presentation where that presentation contains no persistence or workflow policy.
@@ -73,7 +73,9 @@ This decision does not change canonical geography membership, persisted geograph
 - The separate `setup/` workflow and shell-owned Setup navigation seam become obsolete and should be removed once no longer referenced.
 - Existing Setup order-editor mechanics may be reused, but reusable drag/drop and authoring behavior must move to a semantic owner before Setup is removed.
 - World, Continent, and Subregion left rails can share one consistent in-place ordering interaction while retaining their own workflow context.
-- Normal map presentation can show effective sequence numbers without making map code own order persistence.
+- Existing Country sequence annotations remain available on Subregion learning
+  maps; World and Continent overview maps do not render custom hierarchy names
+  because the available map assets cannot place them reliably.
 - Learning consumes saved Country order through `geography/`, and Drill
   consumes it when constructing new sessions; neither uses Setup state and
   Drill does not expose Country-order authoring.
