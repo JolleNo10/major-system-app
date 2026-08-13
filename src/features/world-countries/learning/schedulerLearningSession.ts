@@ -32,25 +32,7 @@ export interface SchedulerLearningResult {
 const NON_LIMITING_FAST_MS = Number.POSITIVE_INFINITY
 
 function createSchedulerConfig(keys: readonly string[], settings: WorldCountriesSchedulerSettings) {
-  const config = makeRoundConfig(keys.length, settings, { fastMs: NON_LIMITING_FAST_MS })
-  // Keep the shared scheduler's algorithm and defaults unchanged while avoiding
-  // an immediate repeat in the small scopes used by staged Learning. For these
-  // scopes makeRoundConfig derives minimumGap=1, but selectNext measures the
-  // immediate next prompt as distance=1; minimumGap=2 is therefore the smallest
-  // local override that guarantees one different prompt in between.
-  return keys.length > 1 && config.minimumGap < 2
-    ? { ...config, minimumGap: 2 }
-    : config
-}
-
-function createSchedulerRandom(random: () => number): () => number {
-  // The shared sampler expects a value in [0, 1). Avoid its zero-boundary
-  // behaviour locally without changing the shared implementation for other
-  // consumers.
-  return () => {
-    const value = random()
-    return value === 0 ? Number.EPSILON : value
-  }
+  return makeRoundConfig(keys.length, settings, { fastMs: NON_LIMITING_FAST_MS })
 }
 
 export function createSchedulerLearningSession(
@@ -63,7 +45,7 @@ export function createSchedulerLearningSession(
   const config = createSchedulerConfig(uniqueKeys, settings)
   return {
     keys: uniqueKeys,
-    currentKey: uniqueKeys.length > 0 ? selectNext(round, uniqueKeys, config, createSchedulerRandom(random)) : null,
+    currentKey: uniqueKeys.length > 0 ? selectNext(round, uniqueKeys, config, random) : null,
     round,
     ready: false,
   }
@@ -85,7 +67,7 @@ export function submitSchedulerLearningAnswer(
     hinted: answer.hinted ?? false,
   }, config)
   const ready = roundProgress(round, [...session.keys], config).all
-  const currentKey = ready ? null : selectNext(round, [...session.keys], config, createSchedulerRandom(random))
+  const currentKey = ready ? null : selectNext(round, [...session.keys], config, random)
   return {
     session: { ...session, round, currentKey, ready },
     key: session.currentKey,
@@ -102,7 +84,7 @@ export function resumeSchedulerLearningSession(
   const config = createSchedulerConfig(session.keys, settings)
   return {
     ...session,
-    currentKey: selectNext(session.round, [...session.keys], config, createSchedulerRandom(random)),
+    currentKey: selectNext(session.round, [...session.keys], config, random),
     ready: false,
   }
 }
