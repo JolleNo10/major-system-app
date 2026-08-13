@@ -26,6 +26,8 @@ export interface GeographyOverviewMapProps {
   focusedSubregionId?: SubregionId | null
   /** When supplied, the map presents these Subregions as the current selection. */
   selectedSubregionIds?: readonly SubregionId[]
+  /** When supplied, the map presents these Countries as the current scope. */
+  selectedCountryIds?: readonly CountryId[]
   /** Generic Country emphasis owned by the caller (for example learned Countries). */
   coloredCountryIds?: ReadonlySet<CountryId> | readonly CountryId[]
   countryColor?: string
@@ -51,6 +53,7 @@ export function GeographyOverviewMap({
   continent,
   focusedSubregionId = null,
   selectedSubregionIds,
+  selectedCountryIds,
   coloredCountryIds = [],
   countryColor = '#16a34a',
   countryColorsById,
@@ -78,10 +81,14 @@ export function GeographyOverviewMap({
     [continent, focusedSubregionId, visibleCountries],
   )
   const selectedCountries = useMemo(() => {
+    if (level === 'continent' && selectedCountryIds !== undefined && continent) {
+      const selected = new Set(selectedCountryIds)
+      return visibleCountries.filter(country => selected.has(country.id))
+    }
     if (level !== 'continent' || selectedSubregionIds === undefined || !continent) return []
     const selected = new Set(selectedSubregionIds)
     return visibleCountries.filter(country => selected.has(country.subregionId))
-  }, [continent, level, selectedSubregionIds, visibleCountries])
+  }, [continent, level, selectedCountryIds, selectedSubregionIds, visibleCountries])
   const [mapCountries, setMapCountries] = useState<readonly SvgMapCountry[]>([])
 
   const mapCountryIds = useMemo(() => mapCountries.map(country => country.id), [mapCountries])
@@ -111,10 +118,13 @@ export function GeographyOverviewMap({
     [activeHoveredGroupId, hoverGroups],
   )
   const hasContinentScope = level === 'continent'
+  const hasSelectedCountries = selectedCountryIds !== undefined
   const hasSelectedSubregions = selectedSubregionIds !== undefined && selectedSubregionIds.length > 0
   const hasHoveredSubregionScope = level === 'continent' && Boolean(activeHoveredGroupId)
   const scopedSvgIds = focusedSubregionId
     ? focusSvgIds
+    : hasSelectedCountries
+      ? selectedSvgIds
     : hasSelectedSubregions
       ? selectedSvgIds
       : hasHoveredSubregionScope
@@ -123,7 +133,7 @@ export function GeographyOverviewMap({
           ? visibleSvgIds
           : []
   const hasScopedCountries = Boolean(
-    focusedSubregionId || selectedSubregionIds !== undefined || hasHoveredSubregionScope || hasContinentScope,
+    focusedSubregionId || selectedCountryIds !== undefined || selectedSubregionIds !== undefined || hasHoveredSubregionScope || hasContinentScope,
   )
   const hoverableSvgIds = hasScopedCountries ? scopedSvgIds : visibleSvgIds
   const restrictCountryClicks = Boolean(

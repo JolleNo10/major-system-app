@@ -45,6 +45,7 @@ function formatCapitalFeedback(evaluation: SchedulerAnswerEvaluation): string {
 export function CapitalLearningFlow({
   continent,
   subregion,
+  scopeLabel,
   entries,
   activeCountries,
   newItemsPerSet,
@@ -59,9 +60,11 @@ export function CapitalLearningFlow({
   mnemonicVersion = 0,
   onGeographyChanged = () => undefined,
   onMnemonicChanged = () => undefined,
+  recordCompletion = true,
 }: {
   continent: Continent
-  subregion: SubregionId
+  subregion?: SubregionId
+  scopeLabel?: string
   entries: readonly Country[]
   activeCountries?: readonly Country[]
   newItemsPerSet: LearningSetMaximum
@@ -76,10 +79,12 @@ export function CapitalLearningFlow({
   mnemonicVersion?: number
   onGeographyChanged?: () => void
   onMnemonicChanged?: () => void
+  recordCompletion?: boolean
 }) {
+  const learningScopeLabel = scopeLabel ?? (subregion ? getSubregionDefinition(subregion).label : 'Learning scope')
   const ids = useMemo(() => entries.map(country => country.id), [entries])
   const [flow, setFlow] = useState<StagedCapitalLearningFlowState>(() => createStagedCapitalLearningFlow({ countryIds: ids, maximum: newItemsPerSet, schedulerSettings }))
-  const completionReporter = useRef(createSubregionCapitalCompletionReporter(subregion, activeCountries))
+  const completionReporter = useRef(subregion && recordCompletion ? createSubregionCapitalCompletionReporter(subregion, activeCountries) : null)
   const [orderDraft, setOrderDraft] = useState<readonly Country[] | null>(null)
   const [hoveredCountryId, setHoveredCountryId] = useState<string | null>(null)
   const allPresentationEntries = orderDraft ?? entries
@@ -102,7 +107,7 @@ export function CapitalLearningFlow({
   const updateFinal = (correct: boolean) => {
     const result = submitStagedCapitalFinalAnswer(flow, correct)
     transition(result.state)
-    completionReporter.current.report(result.result.completedNow)
+    completionReporter.current?.report(result.result.completedNow)
   }
   const onOrderSaved = (draft: readonly Country[]) => {
     setOrderDraft(draft)
@@ -150,7 +155,7 @@ export function CapitalLearningFlow({
   const presentationKey = `${flow.phase}:${[...mapEntries].map(entry => entry.id).sort().join(',')}`
   const mapMeta = (
     <div>
-      <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-400">{getSubregionDefinition(subregion).label}</div>
+      <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-400">{learningScopeLabel}</div>
       <div className="mt-1 text-sm font-semibold text-zinc-100">{mapEntries.length} {mapEntries.length === 1 ? 'country' : 'countries'} in scope</div>
     </div>
   )
@@ -164,13 +169,14 @@ export function CapitalLearningFlow({
       case 'combined-ready': return <LearningHeader label="Ready" title="Combined practice ready" onExit={onExit} />
       case 'final-gate': return <LearningHeader label="Final recall" title={flow.finalScopeReady ? 'Ready for Final recall' : 'Final recall'} onExit={onExit} />
       case 'final-recall': return <LearningHeader label="Final recall" title={`${(flow.ordered?.currentIndex ?? 0) + 1} / ${flow.ordered?.order.length ?? entries.length}`} onExit={onExit} />
-      case 'complete': return <LearningHeader label="Learning complete" title={getSubregionDefinition(subregion).label} onExit={onExit} />
+      case 'complete': return <LearningHeader label="Learning complete" title={learningScopeLabel} onExit={onExit} />
     }
   })()
 
   const rails = <GuidedLearningRails
     continent={continent}
     subregion={subregion}
+    scopeLabel={learningScopeLabel}
     entries={allPresentationEntries}
     activeCountries={activeCountries ?? entries}
     phase={flow.phase}
@@ -213,7 +219,7 @@ export function CapitalLearningFlow({
       content = flow.ordered ? <StagedFinalRecallStep continent={continent} entries={entries} ordered={flow.ordered} stepLabel="Final recall" answerLabel="Country → Capital" placeholder="Type the capital…" showCountryName evaluateAnswer={(answer, country) => evaluateCapitalAnswer(answer, country, fuzzyMatching, entries.map(entry => entry.capital))} formatFeedback={formatCapitalFeedback} onSubmit={updateFinal} onBack={() => run(backStagedCapital)} onExit={onExit} surface /> : null
       break
     case 'complete':
-      content = <CapitalLearningComplete subregion={subregion} onDone={onDone ?? onExit} doneLabel={doneLabel} onRestart={() => { completionReporter.current.reset(); transition(createStagedCapitalLearningFlow({ countryIds: ids, maximum: newItemsPerSet, schedulerSettings })) }} surface />
+      content = <CapitalLearningComplete subregion={subregion} scopeLabel={learningScopeLabel} onDone={onDone ?? onExit} doneLabel={doneLabel} onRestart={() => { completionReporter.current?.reset(); transition(createStagedCapitalLearningFlow({ countryIds: ids, maximum: newItemsPerSet, schedulerSettings })) }} surface />
       break
   }
   const dockPlacement = ['practice', 'combined-practice', 'final-recall'].includes(flow.phase) ? 'stacked' : 'attached'

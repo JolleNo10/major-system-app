@@ -48,8 +48,9 @@ that lets contextual authoring affect subsequent Learning presentation.
 - `drill/` owns Drill selection, preferences, exactly three Drill modes,
   Learn & Practise purpose selection, shared session mechanics, Drill and
   Practice presentation, results, and World/Continent order authoring in the
-  existing Geography rails. It does not expose a Drill Subregion detail or
-  Country-order editor.
+  existing Geography rails. It also owns the feature-local, mutually exclusive
+  Geography/proficiency setup scope. It does not expose a Drill Subregion
+  detail or Country-order editor.
 - `ui/` owns feature-local panels, breadcrumbs, hierarchy rows, inline reorder
   presentation, map-surface/dock presentation, task-dock status/action styling,
   and draft movement without persistence policy.
@@ -76,6 +77,16 @@ Learn & Practise uses the derived Drill selection. Selected Subregions run
 sequentially in effective geographic order, and each uses its effective
 Country order from `geography/`. An already completed Subregion remains
 eligible for intentional repetition.
+
+At Continent setup, Geography and proficiency are alternative scope sources.
+Weak/Developing proficiency scope derives from the current Drill perspective,
+or from the skill exercised by the selected non-recording Practice activity.
+The resolved Country membership is ordered through `geography/` and snapshotted
+into the active Drill/Practice session when it starts. Learn Countries and Learn
+Capitals may also snapshot a non-empty proficiency Country scope for a temporary
+Learning run. That run never writes a Subregion milestone or reinterprets its
+Country set as a Subregion; durable Learning milestones still require complete
+Subregion scope.
 
 World Countries Learning introduces items in bounded Sets. The persisted
 `New items per set` setting is snapshotted when a multi-Subregion Learning run
@@ -201,6 +212,9 @@ flowchart TD
 - `world-countries-drill-preferences` remains the owner of the last Continent,
   selected Subregion IDs, actual Drill mode, and Drill order. Purpose state and
   Learn & Practise mode are not added to this schema.
+- Proficiency filter selection and any resolved Country membership remain
+  transient Drill setup/session state; no resolved Country list or new
+  persistence key is stored.
 - `major-settings` owns the persisted World Countries `New items per set`
   preference (`3`, `4`, `5`, or `all`), defaulting to `3`. No intermediate
   Learning plan, scheduler, or resume record is persisted.
@@ -221,9 +235,18 @@ flowchart TD
   Practice progress, Drill preferences, or mnemonic data when saving order.
 - Drill setup and active recall are separate phases. Practice is separate in
   presentation and durable effects even when it shares session mechanics.
-- Learning completion is per Subregion and per owned milestone. Successful
-  Learn Capitals completion never clears or fabricates Countries learning.
+- Geographic Learning completion is per Subregion and per owned milestone.
+  Proficiency Learning completion is temporary and does not create a partial
+  Subregion milestone. Successful Learn Capitals completion never clears or
+  fabricates Countries learning.
 - Active Drill recall suppresses map progress treatments until feedback.
+- Geography and proficiency scope sources are never combined. Selecting
+  proficiency clears Subregions; selecting a Subregion, Entire Continent, or
+  a map Country clears proficiency filters.
+- Proficiency-derived Drill/Practice sessions retain their concrete Country
+  membership for the session lifetime, even if later evidence changes.
+- Proficiency-derived Learning runs retain their concrete Country membership for
+  the run lifetime and do not write Learning milestones.
 - Country-set changes do not delete attempts or change atomic target IDs.
 - Temporary Set and Combined scheduler progress is session-only and never
   writes Drill evidence or Learning milestones.
@@ -238,6 +261,8 @@ flowchart TD
 - `src/features/world-countries/drill/WorldCountriesDrill.tsx`
 - `src/features/world-countries/drill/DrillSetup.tsx`
 - `src/features/world-countries/drill/DrillSetupRails.tsx`
+- `src/features/world-countries/drill/drillProficiencyScope.ts`
+- `src/features/world-countries/drill/drillProgressPresentation.ts`
 - `src/features/world-countries/drill/DrillSession.tsx`
 - `src/features/world-countries/learning/flows/CountryLearningFlow.tsx`
 - `src/features/world-countries/learning/flows/CapitalLearningFlow.tsx`

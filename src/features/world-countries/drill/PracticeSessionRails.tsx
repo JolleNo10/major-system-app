@@ -8,9 +8,11 @@ import { getDrillSkillLabel } from './drillModes'
 import { getCurrentDrillStep, getDrillSessionSkills, getDrillSessionTotalSteps, type DrillSessionState } from './drillSessionState'
 import type { LearningStates } from '@/features/world-countries/learning/learningProgress'
 import { deriveWorldCountriesLearningReadiness, getWorldCountriesLearningReadinessLabel, getWorldCountriesLearningStateList } from '@/features/world-countries/learning/learningReadiness'
+import type { WorldCountriesProficiencySelection } from './drillProficiencyScope'
 
-export function PracticeSessionRails({ selection, state, onExit, entries, learningStates }: {
+export function PracticeSessionRails({ selection, proficiencySelection = [], state, onExit, entries, learningStates }: {
   selection: WorldCountriesDrillSelection
+  proficiencySelection?: WorldCountriesProficiencySelection
   state: DrillSessionState
   onExit: () => void
   entries: readonly Country[]
@@ -31,10 +33,7 @@ export function PracticeSessionRails({ selection, state, onExit, entries, learni
           <h2 id="world-countries-practice-context-heading" className="mt-1 text-lg font-bold text-zinc-100">Practice context</h2>
         </div>
         <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
-          <p className="text-xs uppercase tracking-wider text-zinc-500">Subregions</p>
-          <ul className="mt-2 space-y-1 text-sm text-zinc-300">
-            {subregions.filter(subregion => selection.subregionIds.includes(subregion.id)).map(subregion => <li key={subregion.id}>{subregion.label} · {getWorldCountriesLearningReadinessLabel(deriveWorldCountriesLearningReadiness(stateList.find(state => state.subregionId === subregion.id)))}</li>)}
-          </ul>
+          {proficiencySelection.length > 0 ? <><p className="text-xs uppercase tracking-wider text-zinc-500">Proficiency scope</p><ul className="mt-2 space-y-1 text-sm text-zinc-300">{proficiencySelection.map(filter => <li key={filter}>{filter === 'weak' ? 'Weak' : 'Developing'}</li>)}</ul><p className="mt-2 text-xs text-zinc-500">{state.countryIds.length} Countries in this session</p></> : <><p className="text-xs uppercase tracking-wider text-zinc-500">Subregions</p><ul className="mt-2 space-y-1 text-sm text-zinc-300">{subregions.filter(subregion => selection.subregionIds.includes(subregion.id)).map(subregion => <li key={subregion.id}>{subregion.label} · {getWorldCountriesLearningReadinessLabel(deriveWorldCountriesLearningReadiness(stateList.find(state => state.subregionId === subregion.id)))}</li>)}</ul></>}
         </div>
       </section>
     ),
@@ -55,6 +54,6 @@ export function PracticeSessionRails({ selection, state, onExit, entries, learni
     ),
     leftLabel: 'Practice context',
     rightLabel: 'Session',
-  }, [entries, learningStates, onExit, progressPercent, selection.continent, selection.subregionIds, state.countryIndex, state.countryOrder.length, state.stepIndex, step?.skill, totalSteps])
+  }, [entries, learningStates, onExit, proficiencySelection, progressPercent, selection.continent, selection.subregionIds, state.countryIds.length, state.countryIndex, state.countryOrder.length, state.stepIndex, step?.skill, totalSteps])
   return null
 }

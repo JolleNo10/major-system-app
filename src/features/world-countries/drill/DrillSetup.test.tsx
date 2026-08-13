@@ -10,12 +10,14 @@ import { DrillSetup } from './DrillSetup'
 const useRailsMock = vi.hoisted(() => vi.fn())
 const mapMock = vi.hoisted(() => vi.fn())
 const loadRecallProgressMock = vi.hoisted(() => vi.fn(async () => new Map()))
+const proficiencyScopeMock = vi.hoisted(() => vi.fn(() => ({ counts: { weak: 0, developing: 0 }, countryIds: [], countries: [] })))
 vi.mock('@/app/layout/PageLayoutContext', () => ({ useRails: useRailsMock }))
 vi.mock('@/features/world-countries/maps/GeographyOverviewMap', () => ({ GeographyOverviewMap: (props: Record<string, unknown>) => { mapMock(props); return createElement('div', { 'data-testid': 'map' }) } }))
 vi.mock('@/features/world-countries/learning/recallProgress', async importOriginal => ({ ...await importOriginal<typeof import('@/features/world-countries/learning/recallProgress')>(), loadWorldCountriesRecallProgress: loadRecallProgressMock }))
+vi.mock('./drillProficiencyScope', async importOriginal => ({ ...await importOriginal<typeof import('./drillProficiencyScope')>(), resolveDrillProficiencyScope: proficiencyScopeMock }))
 
 let root: Root | null = null
-afterEach(() => { act(() => root?.unmount()); root = null; document.body.replaceChildren(); useRailsMock.mockReset(); mapMock.mockReset(); loadRecallProgressMock.mockClear(); localStorage.clear() })
+afterEach(() => { act(() => root?.unmount()); root = null; document.body.replaceChildren(); useRailsMock.mockReset(); mapMock.mockReset(); loadRecallProgressMock.mockClear(); proficiencyScopeMock.mockReset(); proficiencyScopeMock.mockImplementation(() => ({ counts: { weak: 0, developing: 0 }, countryIds: [], countries: [] })); localStorage.clear() })
 
 function renderSetup(overrides: Record<string, unknown> = {}) {
   const mount = document.createElement('div'); document.body.append(mount)
@@ -53,6 +55,21 @@ describe('DrillSetup activity boundary', () => {
     expect(onStart).toHaveBeenCalledWith('learn-capitals')
   })
 
+  it('keeps Learning start enabled for a matching proficiency scope', async () => {
+    proficiencyScopeMock.mockReturnValue({ counts: { weak: 1, developing: 0 }, countryIds: ['albania'], countries: [{}] } as never)
+    const onStart = vi.fn()
+    const mount = renderSetup({ purpose: 'learn-practise', proficiencySelection: ['weak'], onLearnPracticeStart: onStart })
+    await act(async () => { await Promise.resolve() })
+    const config = useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1][0] as { right: ReactNode }
+    act(() => root?.render(config.right))
+
+    const start = [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Start Learning')
+    expect(start?.disabled).toBe(false)
+    expect(mount.textContent).toContain('does not mark a Subregion learned')
+    act(() => start?.click())
+    expect(onStart).toHaveBeenCalledWith('learn-countries')
+  })
+
   it('explains that a Continent needs a Subregion before Drill can start', () => {
     const mount = renderSetup({ selection: createDrillSelection('Europe', []) })
     const config = useRailsMock.mock.calls[0][0] as { right: ReactNode }
@@ -77,6 +94,37 @@ describe('DrillSetup activity boundary', () => {
     act(() => root?.render(config.left))
     expect(mount.textContent).toContain('Northern Europe')
     expect(mount.textContent).toMatch(/Northern Europe[\s\S]*\d+ Countries/)
+  })
+
+  it('keeps proficiency filters independent and clears them when Geography is selected', () => {
+    const onSelectionChange = vi.fn()
+    const onProficiencySelectionChange = vi.fn()
+    const mount = renderSetup({
+      selection: createDrillSelection('Europe', []),
+      proficiencySelection: ['weak'],
+      onSelectionChange,
+      onProficiencySelectionChange,
+    })
+    const config = useRailsMock.mock.calls[0][0] as { left: ReactNode }
+    act(() => root?.render(config.left))
+
+    const checkboxes = [...mount.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')]
+    expect(checkboxes).toHaveLength(2)
+    expect(checkboxes[0].checked).toBe(true)
+    act(() => checkboxes[1].click())
+    expect(onProficiencySelectionChange).toHaveBeenLastCalledWith(['weak', 'developing'])
+
+    const subregion = [...mount.querySelectorAll('button')].find(button => button.textContent?.includes('Northern Europe'))
+    act(() => subregion?.click())
+    expect(onProficiencySelectionChange).toHaveBeenLastCalledWith([])
+    expect(onSelectionChange).toHaveBeenLastCalledWith(expect.objectContaining({ subregionIds: ['northern-europe'] }))
+  })
+
+  it('keeps the proficiency panel at Continent setup only', () => {
+    const mount = renderSetup({ level: 'world' })
+    const config = useRailsMock.mock.calls[0][0] as { left: ReactNode }
+    act(() => root?.render(config.left))
+    expect(mount.textContent).not.toContain('Proficiency')
   })
 
 })

@@ -14,6 +14,7 @@ import type { WorldCountriesDrillSelection } from './drillSelection'
 import { DrillSessionRails } from './DrillSessionRails'
 import { PracticeSessionRails } from './PracticeSessionRails'
 import { getDrillSkillLabel } from './drillModes'
+import type { WorldCountriesProficiencySelection } from './drillProficiencyScope'
 import {
   getCurrentDrillStep,
   type DrillAnswerRecord,
@@ -49,6 +50,7 @@ export function DrillSession({
   interaction = 'recall',
   activity = 'drill',
   learningStates = [],
+  proficiencySelection = [],
 }: {
   answerMode: AnswerMode
   fuzzyMatching: boolean
@@ -61,6 +63,7 @@ export function DrillSession({
   interaction?: DrillSessionInteraction
   activity?: 'drill' | 'practice'
   learningStates?: LearningStates
+  proficiencySelection?: WorldCountriesProficiencySelection
 }) {
   const step = getCurrentDrillStep(state)
   const [feedback, setFeedback] = useState<StepFeedback | null>(null)
@@ -184,9 +187,9 @@ export function DrillSession({
   return (
     <>
       {activity === 'practice' ? (
-        <PracticeSessionRails selection={selection} state={state} onExit={onExit} entries={entries} learningStates={learningStates} />
+        <PracticeSessionRails selection={selection} proficiencySelection={proficiencySelection} state={state} onExit={onExit} entries={entries} learningStates={learningStates} />
       ) : (
-        <DrillSessionRails selection={selection} mode={state.mode} state={state} onExit={onExit} entries={entries} />
+        <DrillSessionRails selection={selection} proficiencySelection={proficiencySelection} mode={state.mode} state={state} onExit={onExit} entries={entries} />
       )}
       <MapSurface
         context={context}

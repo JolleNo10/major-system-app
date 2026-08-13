@@ -49,6 +49,7 @@ function formatCountryFeedback(evaluation: SchedulerAnswerEvaluation): string {
 export function CountryLearningFlow({
   continent,
   subregion,
+  scopeLabel,
   entries,
   activeCountries,
   newItemsPerSet,
@@ -61,9 +62,11 @@ export function CountryLearningFlow({
   mnemonicVersion = 0,
   onGeographyChanged = () => undefined,
   onMnemonicChanged = () => undefined,
+  recordCompletion = true,
 }: {
   continent: Continent
-  subregion: SubregionId
+  subregion?: SubregionId
+  scopeLabel?: string
   entries: readonly Country[]
   activeCountries?: readonly Country[]
   newItemsPerSet: LearningSetMaximum
@@ -76,7 +79,9 @@ export function CountryLearningFlow({
   mnemonicVersion?: number
   onGeographyChanged?: () => void
   onMnemonicChanged?: () => void
+  recordCompletion?: boolean
 }) {
+  const learningScopeLabel = scopeLabel ?? (subregion ? getSubregionDefinition(subregion).label : 'Learning scope')
   const ids = useMemo(() => entries.map(country => country.id), [entries])
   const [flow, setFlow] = useState<StagedCountryLearningFlowState>(() => createStagedCountryLearningFlow({ countryIds: ids, maximum: newItemsPerSet, schedulerSettings }))
   const completionReported = useRef(false)
@@ -103,7 +108,7 @@ export function CountryLearningFlow({
     transition(result.state)
     if (result.result.completedNow && !completionReported.current) {
       completionReported.current = true
-      markSubregionCountriesLearned(subregion, Date.now(), activeCountries)
+      if (recordCompletion && subregion) markSubregionCountriesLearned(subregion, Date.now(), activeCountries)
     }
   }
   const onOrderSaved = (draft: readonly Country[]) => {
@@ -152,7 +157,7 @@ export function CountryLearningFlow({
   const presentationKey = `${flow.phase}:${[...mapEntries].map(entry => entry.id).sort().join(',')}`
   const mapMeta = (
     <div>
-      <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-400">{getSubregionDefinition(subregion).label}</div>
+      <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-400">{learningScopeLabel}</div>
       <div className="mt-1 text-sm font-semibold text-zinc-100">{mapEntries.length} {mapEntries.length === 1 ? 'country' : 'countries'} in scope</div>
     </div>
   )
@@ -168,13 +173,14 @@ export function CountryLearningFlow({
       case 'combined-ready': return <LearningHeader label="Ready" title="Combined practice ready" onExit={onExit} />
       case 'final-gate': return <LearningHeader label="Final recall" title={flow.finalScopeReady ? 'Ready for Final recall' : 'Final recall'} onExit={onExit} />
       case 'final-recall': return <LearningHeader label="Final recall" title={`${(flow.ordered?.currentIndex ?? 0) + 1} / ${flow.ordered?.order.length ?? entries.length}`} onExit={onExit} />
-      case 'complete': return <LearningHeader label="Learning complete" title={getSubregionDefinition(subregion).label} onExit={onExit} />
+      case 'complete': return <LearningHeader label="Learning complete" title={learningScopeLabel} onExit={onExit} />
     }
   })()
 
   const rails = <GuidedLearningRails
     continent={continent}
     subregion={subregion}
+    scopeLabel={learningScopeLabel}
     entries={allPresentationEntries}
     activeCountries={activeCountries ?? entries}
     phase={flow.phase}
@@ -222,7 +228,7 @@ export function CountryLearningFlow({
       content = flow.ordered ? <StagedFinalRecallStep continent={continent} entries={entries} ordered={flow.ordered} stepLabel="Final recall" answerLabel="Country name" placeholder="Type the country…" showCountryName={false} evaluateAnswer={(answer, country) => evaluateCountryAnswer(answer, country, fuzzyMatching, entries.map(entry => entry.country))} formatFeedback={formatCountryFeedback} onSubmit={updateFinal} onBack={() => run(backStagedCountry)} onExit={onExit} surface /> : null
       break
     case 'complete':
-      content = <CountryLearningComplete subregion={subregion} countryCount={entries.length} onDone={onDone ?? onExit} doneLabel={doneLabel} onRestart={() => { completionReported.current = false; transition(createStagedCountryLearningFlow({ countryIds: ids, maximum: newItemsPerSet, schedulerSettings })) }} surface />
+      content = <CountryLearningComplete subregion={subregion} scopeLabel={learningScopeLabel} countryCount={entries.length} onDone={onDone ?? onExit} doneLabel={doneLabel} onRestart={() => { completionReported.current = false; transition(createStagedCountryLearningFlow({ countryIds: ids, maximum: newItemsPerSet, schedulerSettings })) }} surface />
       break
   }
   const dockPlacement = ['practice', 'combined-practice', 'final-recall'].includes(flow.phase) ? 'stacked' : 'attached'

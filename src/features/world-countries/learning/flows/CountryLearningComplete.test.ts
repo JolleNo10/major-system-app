@@ -33,4 +33,21 @@ describe('CountryLearningComplete', () => {
     expect(mount.textContent).toContain('country #5')
     expect(mount.textContent).not.toContain('country #N')
   })
+
+  it('explains that a proficiency scope does not create a Subregion milestone', async () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(CountryLearningComplete, {
+        scopeLabel: 'Proficiency scope',
+        countryCount: 2,
+        onDone: () => undefined,
+        onRestart: () => undefined,
+      }))
+    })
+
+    expect(mount.textContent).toContain('does not count as a learned Subregion')
+  })
 })

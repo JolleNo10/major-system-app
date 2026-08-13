@@ -14,6 +14,7 @@ import {
   getSkillsForDrillMode,
   type WorldCountriesDrillMode,
 } from './drillModes'
+import type { WorldCountriesRecallSkill } from '@/features/world-countries/learning/recallTargets'
 import type { ProgressMapLegendEntry } from '@/features/world-countries/learning/ProgressMapLegend'
 import {
   getLearningReadinessBySubregion,
@@ -48,6 +49,31 @@ export function getDrillProgressPerspective(
 ): WorldCountriesProgressPerspective {
   const skills = getSkillsForDrillMode(mode)
   return mode === 'countries-capitals' ? 'core' : skills[0]
+}
+
+/** Return the current Drill proficiency state for one Country, or null when
+ * the relevant perspective has no evidence yet. */
+export function getDrillCountryProficiencyState(
+  countryId: CountryId,
+  mode: WorldCountriesDrillMode,
+  recallProgress: RecallProgress,
+): WorldCountriesProgressState | null {
+  const skills = getSkillsForDrillMode(mode)
+  return getDrillCountryProficiencyStateForPerspective(
+    countryId,
+    getDrillProgressPerspective(mode),
+    recallProgress,
+    skills,
+  )
+}
+
+/** Return the current proficiency for the single skill exercised by Practice. */
+export function getDrillCountrySkillProficiencyState(
+  countryId: CountryId,
+  skill: WorldCountriesRecallSkill,
+  recallProgress: RecallProgress,
+): WorldCountriesProgressState | null {
+  return getDrillCountryProficiencyStateForPerspective(countryId, skill, recallProgress, [skill])
 }
 
 export function createDrillProgressColors(
@@ -95,6 +121,21 @@ function getDrillCountryPresentations({
     country.id,
     getDrillCountryPresentation(mode, country, skills, recallProgress, readinessBySubregion),
   ] as const))
+}
+
+function getDrillCountryProficiencyStateForPerspective(
+  countryId: CountryId,
+  perspective: WorldCountriesProgressPerspective,
+  recallProgress: RecallProgress,
+  skills: readonly WorldCountriesRecallSkill[],
+): WorldCountriesProgressState | null {
+  const { progress, hasRelevantEvidence } = getDrillCountryEvidence(
+    countryId,
+    perspective,
+    skills,
+    recallProgress,
+  )
+  return hasRelevantEvidence ? getCountryProgressState(progress, perspective) : null
 }
 
 function getDrillCountryPresentation(
