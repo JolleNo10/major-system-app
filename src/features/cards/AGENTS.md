@@ -22,13 +22,22 @@ Do not inspect Pi, World Countries, or Major System.
 
 ## Validation
 
+Follow the progressive verification policy in the root `AGENTS.md`.
+
+- Feature root: `src/features/cards/`.
+- During implementation, prefer the owning capability/subdirectory:
+  `themed/`, `pao/`, `shared/`, or the relevant `card/` mechanics.
+- Near feature completion for substantial work, run:
+
 ```text
 npx vitest run src/features/cards
-npx tsc -b
-npx vite build
+npm run typecheck
 ```
 
-Use the Docker fallback from the root `AGENTS.md` when Node/npm are unavailable.
+Do not repeatedly run global typecheck or a production `vite build` for normal
+feature changes. Use the equivalent scoped Docker command from the root policy
+when Node/npm are unavailable; widen to the full repository only at an
+integration boundary.
 
 ## Known traps
 

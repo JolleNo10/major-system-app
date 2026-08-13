@@ -30,15 +30,22 @@ generic `common/`, or compatibility wrappers for obsolete internal paths.
 
 ## Validation
 
-With host Node/npm:
+Follow the progressive verification policy in the root `AGENTS.md`.
+
+- Feature root: `src/features/world-countries/`.
+- During implementation, prefer the nearest capability/subdirectory, such as
+  `drill/`, `learning/`, `maps/`, `geography/`, `maintenance/`, or `setup/`.
+- Near feature completion for substantial work, run:
 
 ```text
 npx vitest run src/features/world-countries
-npx tsc -b
-npx vite build
+npm run typecheck
 ```
 
-Without Node/npm, use the Compose commands in the root `AGENTS.md`.
+Do not repeatedly run global typecheck or a production `vite build` for normal
+feature changes. Use the equivalent scoped Docker command from the root policy
+when Node/npm are unavailable; widen to the full repository only at an
+integration boundary.
 
 ## Known traps
 
