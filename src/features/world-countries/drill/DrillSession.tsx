@@ -210,7 +210,7 @@ export function DrillSession({
           {feedback && <RecallFeedback correct={feedback.correct} message={isLocationPractice ? practiceFeedbackText : feedbackText} />}
           </div>
         )}
-        dockPlacement={answerMode === 'typing' ? 'overlay' : 'attached'}
+        dockPlacement={answerMode === 'typing' && !isLocationPractice ? 'stacked' : 'attached'}
         dock={isLocationPractice ? (
           <p className="text-center text-sm text-zinc-400">Click the country on the map.</p>
         ) : (

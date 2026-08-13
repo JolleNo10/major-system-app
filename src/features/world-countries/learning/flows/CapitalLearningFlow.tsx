@@ -216,8 +216,6 @@ export function CapitalLearningFlow({
       content = <CapitalLearningComplete subregion={subregion} onDone={onDone ?? onExit} doneLabel={doneLabel} onRestart={() => { completionReporter.current.reset(); transition(createStagedCapitalLearningFlow({ countryIds: ids, maximum: newItemsPerSet, schedulerSettings })) }} surface />
       break
   }
-  const dockPlacement = ['practice', 'combined-practice'].includes(flow.phase)
-    ? 'stacked'
-    : flow.phase === 'final-recall' ? 'overlay' : 'attached'
+  const dockPlacement = ['practice', 'combined-practice', 'final-recall'].includes(flow.phase) ? 'stacked' : 'attached'
   return <>{rails}<LearningMapSurface continent={continent} scopeCountries={mapEntries} presentation={mapPresentation} presentationKey={presentationKey} context={context} mapMeta={mapMeta} dockPlacement={dockPlacement}>{content}</LearningMapSurface></>
 }
