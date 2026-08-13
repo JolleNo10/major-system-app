@@ -9,6 +9,7 @@ import { classifyRecallAnswer } from '@/features/world-countries/learning/recall
 import type { WorldCountriesRecallSkill } from '@/features/world-countries/learning/recallTargets'
 import type { LearningStates } from '@/features/world-countries/learning/learningProgress'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
+import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
 import type { WorldCountriesDrillSelection } from './drillSelection'
 import { DrillSessionRails } from './DrillSessionRails'
 import { PracticeSessionRails } from './PracticeSessionRails'
@@ -161,6 +162,25 @@ export function DrillSession({
       : `That was ${feedback.answer} — ${country.country} is highlighted.`
     : null
 
+  const context = (
+    <div className="px-1 text-center">
+      <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">{activity === 'practice' ? 'Practice · ' : ''}{getDrillSkillLabel(step.skill)}</p>
+      {isLocationPractice ? (
+        <h1 className="mt-1 text-2xl font-black text-zinc-100">Find {country.country}</h1>
+      ) : isLocationQuestion ? (
+        <>
+          <h1 className="mt-1 text-2xl font-black text-zinc-100">{prompt}</h1>
+          <p className="mt-1 text-sm text-zinc-500">The highlighted location remains the same Country used for any following Capital question.</p>
+        </>
+      ) : (
+        <>
+          <h1 className="mt-1 text-3xl font-black text-zinc-100">{isCapitalQuestion ? country.capital : country.country}</h1>
+          <p className="mt-1 text-sm text-zinc-500">{prompt}</p>
+        </>
+      )}
+    </div>
+  )
+
   return (
     <>
       {activity === 'practice' ? (
@@ -168,26 +188,10 @@ export function DrillSession({
       ) : (
         <DrillSessionRails selection={selection} mode={state.mode} state={state} onExit={onExit} entries={entries} />
       )}
-      <div className="space-y-4 animate-fade-in">
-        <section className="rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-4 text-center">
-          <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">{activity === 'practice' ? 'Practice · ' : ''}{getDrillSkillLabel(step.skill)}</p>
-          {isLocationPractice ? (
-            <>
-              <h1 className="mt-1 text-2xl font-black text-zinc-100">Find {country.country}</h1>
-              <p className="mt-1 text-sm text-zinc-500">Click the country on the map.</p>
-            </>
-          ) : isLocationQuestion ? (
-            <h1 className="mt-1 text-2xl font-black text-zinc-100">{prompt}</h1>
-          ) : (
-            <>
-              <h1 className="mt-1 text-3xl font-black text-zinc-100">{isCapitalQuestion ? country.capital : country.country}</h1>
-              <p className="mt-1 text-sm text-zinc-500">{prompt}</p>
-            </>
-          )}
-          {isLocationQuestion && !isLocationPractice && <p className="mt-1 text-xs text-zinc-500">The highlighted location remains the same Country used for any following Capital question.</p>}
-        </section>
-
-        <div className="relative">
+      <MapSurface
+        context={context}
+        map={(
+          <div className="relative">
           <CountryLearningMap
             continent={selection.continent}
             scopeCountries={scopeCountries}
@@ -204,10 +208,12 @@ export function DrillSession({
               : `Map with ${country.country} highlighted for ${activity === 'practice' ? 'Practice' : 'Drill'} recall`}
           />
           {feedback && <RecallFeedback correct={feedback.correct} message={isLocationPractice ? practiceFeedbackText : feedbackText} />}
-        </div>
-
-        {!isLocationPractice && (
-          <section className="space-y-3">
+          </div>
+        )}
+        dock={(
+          <TaskDock status={isLocationPractice ? 'Click the country on the map.' : undefined}>
+            {!isLocationPractice && (
+            <section className="space-y-3">
             {answerMode === 'multiple-choice' ? (
               <MultipleChoice
                 key={`${step.countryId}-${step.skill}`}
@@ -226,9 +232,11 @@ export function DrillSession({
                 placeholder={isCapitalQuestion ? 'Type the country…' : isLocationQuestion ? 'Type the country…' : 'Type the capital…'}
               />
             )}
-          </section>
+            </section>
+            )}
+          </TaskDock>
         )}
-      </div>
+      />
     </>
   )
 }

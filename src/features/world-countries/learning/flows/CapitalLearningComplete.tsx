@@ -2,7 +2,7 @@ import type { SubregionId } from '@/features/world-countries/data/subregions'
 import { getSubregionDefinition } from '@/features/world-countries/data/subregions'
 import { LearningComplete } from './LearningComplete'
 
-export function CapitalLearningComplete({ subregion, onDone, onRestart, doneLabel }: { subregion: SubregionId; onDone: () => void; onRestart: () => void; doneLabel?: string }) {
+export function CapitalLearningComplete({ subregion, onDone, onRestart, doneLabel, surface }: { subregion: SubregionId; onDone: () => void; onRestart: () => void; doneLabel?: string; surface?: boolean }) {
   return (
     <LearningComplete
       eyebrow="Capitals learned"
@@ -11,6 +11,7 @@ export function CapitalLearningComplete({ subregion, onDone, onRestart, doneLabe
       onDone={onDone}
       onRestart={onRestart}
       doneLabel={doneLabel}
+      surface={surface}
     />
   )
 }

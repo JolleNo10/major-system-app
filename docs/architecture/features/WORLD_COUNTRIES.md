@@ -51,7 +51,8 @@ that lets contextual authoring affect subsequent Learning presentation.
   existing Geography rails. It does not expose a Drill Subregion detail or
   Country-order editor.
 - `ui/` owns feature-local panels, breadcrumbs, hierarchy rows, inline reorder
-  presentation, and draft movement without persistence policy.
+  presentation, map-surface/dock presentation, task-dock status/action styling,
+  and draft movement without persistence policy.
 - `recite/` and `maintenance/` are sibling workflow owners. They may consume
   shared World Countries evidence without importing Drill internals.
 
@@ -137,6 +138,20 @@ not require, Countries first.
 - `GeographyOverviewMap` and `CountryLearningMap` report clicks and hover
   neutrally; callers decide selection, navigation, and learning behavior.
 - `learning/flows/` may use geography and maps but never Drill internals.
+- Active Learning map-backed phases use a flow-local map host with the feature
+  `ui/` map surface/dock presentation. The host owns the mounted map while
+  flow stages change; phase-specific content owns task status, controls, and
+  dynamic map presentation through that host.
+- For the same map source, Continent, effective scope membership, and
+  intentional zoom behavior, Learning updates map highlights, names, hover,
+  and sequence annotations declaratively. Workflow phase alone must not
+  remount the SVG or show its loading placeholder again.
+- Learning Review arrows are traversal-only and stop at item boundaries.
+  Safe `Enter` targets the single visible primary action in non-editing states;
+  native controls retain their key behavior, and feature shortcuts are
+  suppressed for modifiers, repeats, editable controls, absent/disabled
+  actions, and timer-owned feedback. Ready/gate status uses polite accessible
+  status semantics and focuses its primary action after transition.
 - Active Drill question queues are constructed at session start and are not
   mutated by later order edits. Random versus In-order Drill scheduling is
   independent from authored geographic order.
