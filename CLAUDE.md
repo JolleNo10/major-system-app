@@ -16,6 +16,7 @@ Load only the architecture relevant to the task:
 - ownership, public boundary, or cross-feature task →
   `docs/architecture/SYSTEM.md` plus affected feature documents;
 - invariant change → `docs/architecture/INVARIANTS.md`.
+- Log mistakes in MISTAKES.md (what happened, root cause, prevention).
 
 Do not load ADRs unless historical rationale is required. Do not scan sibling
 features unless the task crosses feature boundaries. Start discovery from the
