@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { createDrillCountryOrder } from './drillOrder'
+import { createDrillCountryOrder, getWorldCountriesSessionOrder } from './drillOrder'
 
 describe('World Countries Drill order', () => {
+  it('keeps Practice random regardless of the Drill order preference', () => {
+    expect(getWorldCountriesSessionOrder('drill', 'ordered')).toBe('ordered')
+    expect(getWorldCountriesSessionOrder('drill', 'random')).toBe('random')
+    expect(getWorldCountriesSessionOrder('practice', 'ordered')).toBe('random')
+    expect(getWorldCountriesSessionOrder('practice', 'random')).toBe('random')
+  })
+
   it('keeps the selected Countries in scope order', () => {
     expect(createDrillCountryOrder(['NO', 'SE', 'FI'], 'ordered')).toEqual(['NO', 'SE', 'FI'])
   })

@@ -17,7 +17,7 @@ import { PracticeResults } from './PracticeResults'
 import { DrillSession, type DrillSessionInteraction } from './DrillSession'
 import { DrillSetup } from './DrillSetup'
 import type { WorldCountriesDrillMode } from './drillModes'
-import { createDrillCountryOrder, type WorldCountriesDrillOrder } from './drillOrder'
+import { createDrillCountryOrder, getWorldCountriesSessionOrder, type WorldCountriesDrillOrder } from './drillOrder'
 import { createDrillSelection, getCountriesForDrillSelectionInEffectiveOrder, normalizeDrillSelection, type WorldCountriesDrillSelection } from './drillSelection'
 import {
   createDrillSession,
@@ -96,7 +96,7 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
       mode: startPreferences.mode,
       ...(skills ? { skills } : {}),
       countryIds: startEntries.map(entry => entry.id),
-      countryOrder: createDrillCountryOrder(startEntries.map(entry => entry.id), startPreferences.order),
+      countryOrder: createDrillCountryOrder(startEntries.map(entry => entry.id), getWorldCountriesSessionOrder(activity, startPreferences.order)),
     }))
     setLearningRun(null)
     setPhase(activity === 'practice' ? 'practice' : 'recall')

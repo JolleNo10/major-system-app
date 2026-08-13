@@ -6,6 +6,14 @@ export function isWorldCountriesDrillOrder(value: string): value is WorldCountri
   return value === 'ordered' || value === 'random'
 }
 
+/** Practice always uses a random Country sequence; only Drill honors the toggle. */
+export function getWorldCountriesSessionOrder(
+  activity: 'drill' | 'practice',
+  drillOrder: WorldCountriesDrillOrder,
+): WorldCountriesDrillOrder {
+  return activity === 'practice' ? 'random' : drillOrder
+}
+
 /** Build the Country sequence for one Drill run without changing its scope. */
 export function createDrillCountryOrder(
   countryIds: readonly CountryId[],

@@ -46,6 +46,7 @@ describe('DrillSetup activity boundary', () => {
     expect(mount.textContent).toContain('Locate Countries')
     expect(mount.textContent).toContain('Capitals')
     expect(mount.textContent).toContain('non-recording')
+    expect(mount.textContent).not.toContain('Drill order')
     expect(mount.textContent).toContain('Recommendation: Learn Countries first')
     const start = [...mount.querySelectorAll('button')].find(button => button.textContent === 'Start Learning')
     act(() => start?.click())
