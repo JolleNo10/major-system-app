@@ -13,7 +13,7 @@ export function CountryLearningComplete({ subregion, countryCount, onDone, onRes
     <LearningComplete
       eyebrow="Countries learned"
       title={`${getSubregionDefinition(subregion).label} complete ✓`}
-      summary={`You completed one clean ordered recall from country #1 through country #${countryCount}. This durable learning result is now recorded for the Subregion.`}
+      summary={`You completed Final recall from country #1 through country #${countryCount}. This Learning result is now recorded for the Subregion.`}
       onDone={onDone}
       onRestart={onRestart}
       doneLabel={doneLabel}

@@ -4,6 +4,7 @@ import { readJSON, readString, safeSet } from '@/core/storage'
 import {
   normalizeWorldCountriesIncludedEntityGroups,
   type WorldCountriesEntityGroupId,
+  type LearningSetMaximum,
 } from '@/features/world-countries'
 
 export interface Settings {
@@ -30,8 +31,8 @@ export interface Settings {
   // When enabled, World Countries typed answers may accept an unambiguous
   // small spelling error after basic normalization has failed.
   worldCountriesFuzzyAnswerMatching: boolean
-  // Minimum consecutive correct map selections in World Countries Memo Stage A.
-  worldCountriesLocationCleanTargetMinimum: number
+  // Maximum number of new items introduced in each World Countries Learning Set.
+  worldCountriesNewItemsPerSet: LearningSetMaximum
   // Optional canonical geopolitical groups added to the default UN Member State set.
   worldCountriesIncludedEntityGroups: WorldCountriesEntityGroupId[]
 }
@@ -47,7 +48,7 @@ export const DEFAULT_SETTINGS: Settings = {
   piMaintainBatchSegs: 5, // 5 segments = 100 digits per maintenance batch
   sessionUnmasteredShare: 0.5, // even split between unmastered and mastered pools
   worldCountriesFuzzyAnswerMatching: true,
-  worldCountriesLocationCleanTargetMinimum: 10,
+  worldCountriesNewItemsPerSet: 3,
   worldCountriesIncludedEntityGroups: [],
 }
 
@@ -66,15 +67,21 @@ export const MASTERY_FACTOR_STEP = 0.1
 export const MAX_PI_DIGITS_MIN  = 20
 export const MAX_PI_DIGITS_STEP = 20
 
-export const WORLD_COUNTRIES_LOCATION_CLEAN_TARGET_MIN = 1
-export const WORLD_COUNTRIES_LOCATION_CLEAN_TARGET_MAX = 50
-export const WORLD_COUNTRIES_LOCATION_CLEAN_TARGET_STEP = 1
+export const WORLD_COUNTRIES_NEW_ITEMS_PER_SET_OPTIONS: LearningSetMaximum[] = [3, 4, 5, 'all']
+
+function normalizeWorldCountriesNewItemsPerSet(value: unknown): LearningSetMaximum {
+  return WORLD_COUNTRIES_NEW_ITEMS_PER_SET_OPTIONS.includes(value as LearningSetMaximum)
+    ? value as LearningSetMaximum
+    : DEFAULT_SETTINGS.worldCountriesNewItemsPerSet
+}
 
 export function loadSettings(): Settings {
-  const stored = readJSON<Partial<Settings>>(KEY, {})
+  const storedWithLegacy = readJSON<Partial<Settings> & { worldCountriesLocationCleanTargetMinimum?: unknown }>(KEY, {})
+  const { worldCountriesLocationCleanTargetMinimum: _ignoredLegacyLocationTarget, ...stored } = storedWithLegacy
   const merged: Settings = {
     ...DEFAULT_SETTINGS,
     ...stored,
+    worldCountriesNewItemsPerSet: normalizeWorldCountriesNewItemsPerSet(stored.worldCountriesNewItemsPerSet),
     worldCountriesIncludedEntityGroups: normalizeWorldCountriesIncludedEntityGroups(
       stored.worldCountriesIncludedEntityGroups,
     ),
@@ -88,7 +95,14 @@ export function loadSettings(): Settings {
 
 export function saveSettings(s: Settings): void {
   safeSet(KEY, JSON.stringify({
-    ...s,
+    masteryLatencyFactor: s.masteryLatencyFactor,
+    maxPiDigits: s.maxPiDigits,
+    offlineMode: s.offlineMode,
+    piPairsPerAnswer: s.piPairsPerAnswer,
+    piMaintainBatchSegs: s.piMaintainBatchSegs,
+    sessionUnmasteredShare: s.sessionUnmasteredShare,
+    worldCountriesFuzzyAnswerMatching: s.worldCountriesFuzzyAnswerMatching,
+    worldCountriesNewItemsPerSet: normalizeWorldCountriesNewItemsPerSet(s.worldCountriesNewItemsPerSet),
     worldCountriesIncludedEntityGroups: normalizeWorldCountriesIncludedEntityGroups(
       s.worldCountriesIncludedEntityGroups,
     ),

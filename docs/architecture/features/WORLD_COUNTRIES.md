@@ -76,6 +76,24 @@ sequentially in effective geographic order, and each uses its effective
 Country order from `geography/`. An already completed Subregion remains
 eligible for intentional repetition.
 
+World Countries Learning introduces items in bounded Sets. The persisted
+`New items per set` setting is snapshotted when a multi-Subregion Learning run
+starts and applied independently to each Subregion. The feature-local plan
+partitions each effective Country order without exceeding the selected maximum
+or creating a one-item tail. Country Learning uses Review, map Location, and
+typed Country-name Practice for each Set; Capital Learning uses Review and
+typed Country-to-Capital Practice. After the second and later Sets, cumulative
+Combined practice is inserted before the next Set, with a required full-scope
+Combined practice before Final recall. A one-Set scope has no duplicate
+Combined stage.
+
+All temporary Learning Practice scopes use the shared
+`core/scoring/roundScheduler.ts` through a feature-local adapter with a
+non-limiting speed threshold and actual answer latency. Location, Country-name,
+Capital, and Combined scopes each start fresh scheduler state. Only the
+whole-Subregion ordered Final recall writes the owning Learning milestone;
+journey and scheduler state are not persisted.
+
 ## Learning Readiness
 
 Durable Learning Readiness is derived from `countriesLearnedAt` and
@@ -157,6 +175,9 @@ flowchart TD
 - `world-countries-drill-preferences` remains the owner of the last Continent,
   selected Subregion IDs, actual Drill mode, and Drill order. Purpose state and
   Learn & Practise mode are not added to this schema.
+- `major-settings` owns the persisted World Countries `New items per set`
+  preference (`3`, `4`, `5`, or `all`), defaulting to `3`. No intermediate
+  Learning plan, scheduler, or resume record is persisted.
 - Atomic Drill evidence continues to use the existing attempts store and
   `world-countries:<skill>:<CountryId>` IDs. Practice never writes it.
 - A persisted legacy Drill `mode: "capitals"` remains invalid under the
@@ -178,6 +199,10 @@ flowchart TD
   Learn Capitals completion never clears or fabricates Countries learning.
 - Active Drill recall suppresses map progress treatments until feedback.
 - Country-set changes do not delete attempts or change atomic target IDs.
+- Temporary Set and Combined scheduler progress is session-only and never
+  writes Drill evidence or Learning milestones.
+- Final recall is mandatory for Learning completion; skipped temporary scopes
+  cannot fabricate Ready state or completion evidence.
 - Workflow folders do not depend on sibling workflow internals.
 - World Countries persistence does not modify unrelated feature state.
 
@@ -190,6 +215,10 @@ flowchart TD
 - `src/features/world-countries/drill/DrillSession.tsx`
 - `src/features/world-countries/learning/flows/CountryLearningFlow.tsx`
 - `src/features/world-countries/learning/flows/CapitalLearningFlow.tsx`
+- `src/features/world-countries/learning/stagedLearningPlan.ts`
+- `src/features/world-countries/learning/schedulerLearningSession.ts`
+- `src/features/world-countries/learning/stagedCountryLearningFlow.ts`
+- `src/features/world-countries/learning/stagedCapitalLearningFlow.ts`
 - `src/features/world-countries/learning/flows/GuidedLearningRails.tsx`
 - `src/features/world-countries/geography/queries.ts`
 - `src/features/world-countries/geography/orderAuthoring.ts`

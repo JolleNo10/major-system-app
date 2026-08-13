@@ -4,9 +4,7 @@ import {
   MAX_PI_DIGITS_MIN, MAX_PI_DIGITS_STEP,
   MAINTAIN_BATCH_MIN, MAINTAIN_BATCH_MAX, MAINTAIN_BATCH_STEP,
   UNMASTERED_SHARE_MIN, UNMASTERED_SHARE_MAX, UNMASTERED_SHARE_STEP,
-  WORLD_COUNTRIES_LOCATION_CLEAN_TARGET_MIN,
-  WORLD_COUNTRIES_LOCATION_CLEAN_TARGET_MAX,
-  WORLD_COUNTRIES_LOCATION_CLEAN_TARGET_STEP,
+  WORLD_COUNTRIES_NEW_ITEMS_PER_SET_OPTIONS,
 } from '@/app/settings/settings'
 import { masteryFastMs, RECALL_SLOW_MS } from '@/core/scoring/scoring'
 import { Overlay } from '@/app/layout/Overlay'
@@ -278,26 +276,23 @@ export function SettingsOverlay({ onClose, pwa }: Props) {
           </section>
 
           <section>
-            <div className="flex items-baseline justify-between mb-1">
-              <h3 className="font-semibold text-zinc-100">Country location clean recalls</h3>
-              <span className="text-sm font-mono tabular-nums text-cyan-300">{settings.worldCountriesLocationCleanTargetMinimum}</span>
-            </div>
+            <h3 className="font-semibold text-zinc-100">New items per set</h3>
             <p className="text-sm text-zinc-500 mb-4">
-              Minimum consecutive correct map selections before a Subregion advances from location learning.
-              Larger Subregions still require at least one full pass through their countries.
+              Maximum number of new items introduced together during Learn Countries or Learn Capitals.
+              The value is captured when a multi-Subregion Learning run starts.
             </p>
-            <input
-              type="range"
-              min={WORLD_COUNTRIES_LOCATION_CLEAN_TARGET_MIN}
-              max={WORLD_COUNTRIES_LOCATION_CLEAN_TARGET_MAX}
-              step={WORLD_COUNTRIES_LOCATION_CLEAN_TARGET_STEP}
-              value={settings.worldCountriesLocationCleanTargetMinimum}
-              onChange={event => update({ worldCountriesLocationCleanTargetMinimum: +event.target.value })}
-              className="w-full h-2 accent-cyan-600 cursor-pointer"
-            />
-            <div className="flex justify-between text-xs text-zinc-600 mt-1">
-              <span>{WORLD_COUNTRIES_LOCATION_CLEAN_TARGET_MIN}</span>
-              <span>{WORLD_COUNTRIES_LOCATION_CLEAN_TARGET_MAX}</span>
+            <div className="grid grid-cols-4 gap-2" role="group" aria-label="New items per set">
+              {WORLD_COUNTRIES_NEW_ITEMS_PER_SET_OPTIONS.map(option => (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={settings.worldCountriesNewItemsPerSet === option}
+                  onClick={() => update({ worldCountriesNewItemsPerSet: option })}
+                  className={`rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${settings.worldCountriesNewItemsPerSet === option ? 'border-cyan-500 bg-cyan-500/15 text-cyan-200' : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-cyan-700 hover:text-zinc-200'}`}
+                >
+                  {option === 'all' ? 'All' : option}
+                </button>
+              ))}
             </div>
           </section>
           </SettingsGroup>

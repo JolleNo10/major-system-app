@@ -60,7 +60,7 @@ Architecturally significant groups are:
 | Owner | Keys/state |
 | --- | --- |
 | `core/scoring` | `major-item-data`, `major-attempts-migrated`, typing-speed state; schemas support Major/Pi scoring consumers. |
-| `core/ui` and `app/settings` | global answer/UI preferences and `major-settings`, including the World Countries `worldCountriesIncludedEntityGroups` group-ID selection. Settings are app-owned even when features consume them. |
+| `core/ui` and `app/settings` | global answer/UI preferences and `major-settings`, including the World Countries `worldCountriesIncludedEntityGroups` group-ID selection and `worldCountriesNewItemsPerSet` (`3`, `4`, `5`, or `all`). Settings are app-owned even when features consume them. |
 | Major System | `major-word-*`, `major-soundkey-*`, sequence/speed preferences. Layered word and sound-key records use `createWordStore`. |
 | Cards | `major-cardword-*`, `major-pao-*`, deck-memo histories, drill/suit/range preferences. Themed and PAO stores are independent even when PAO seeds Person values from Themed. |
 | Pi | `major-pi-*` session, selection, memoed/flawless, anchor, story-era, and maintenance state. Exact keys are defined beside their owners. |

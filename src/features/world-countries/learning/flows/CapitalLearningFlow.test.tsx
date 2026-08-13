@@ -7,26 +7,22 @@ import type { Country } from '@/features/world-countries/data/countries'
 import { getSubregionLearningState } from '@/features/world-countries/learning/subregionLearningStore'
 import { CapitalLearningFlow } from './CapitalLearningFlow'
 
-vi.mock('@/app/layout/PageLayoutContext', () => ({
-  useRails: vi.fn(),
+vi.mock('@/app/layout/PageLayoutContext', () => ({ useRails: vi.fn() }))
+vi.mock('./StagedCapitalWalkthroughStep', () => ({
+  StagedCapitalWalkthroughStep: ({ onContinue }: { onContinue: () => void }) => <button type="button" data-testid="start-practice" onClick={onContinue}>Start practice</button>,
 }))
-
-vi.mock('./CapitalWalkthroughStep', () => ({
-  CapitalWalkthroughStep: ({ onStartRecall }: { onStartRecall: () => void }) => (
-    <button type="button" data-testid="start-recall" onClick={onStartRecall}>Start recall</button>
-  ),
+vi.mock('./SchedulerPracticeStep', () => ({
+  SchedulerPracticeStep: ({ onSubmit }: { onSubmit: (correct: boolean, latencyMs: number) => void }) => <button type="button" data-testid="submit-correct" onClick={() => onSubmit(true, 100)}>Correct</button>,
 }))
-
-vi.mock('./CapitalRecallStep', () => ({
-  CapitalRecallStep: ({ onSubmit }: { onSubmit: (correct: boolean) => void }) => (
-    <button type="button" data-testid="submit-correct" onClick={() => onSubmit(true)}>Correct</button>
-  ),
+vi.mock('./StagedLearningReadyStep', () => ({
+  StagedLearningReadyStep: ({ onNext }: { onNext: () => void }) => <button type="button" data-testid="ready-next" onClick={onNext}>Next</button>,
+  FinalRecallGate: ({ onStart }: { onStart: () => void }) => <button type="button" data-testid="final-start" onClick={onStart}>Final recall</button>,
 }))
-
+vi.mock('./StagedFinalRecallStep', () => ({
+  StagedFinalRecallStep: ({ onSubmit }: { onSubmit: (correct: boolean) => void }) => <button type="button" data-testid="final-submit" onClick={() => onSubmit(true)}>Correct final</button>,
+}))
 vi.mock('./CapitalLearningComplete', () => ({
-  CapitalLearningComplete: ({ onRestart }: { onRestart: () => void }) => (
-    <button type="button" data-testid="restart" onClick={onRestart}>Review again</button>
-  ),
+  CapitalLearningComplete: ({ onRestart }: { onRestart: () => void }) => <button type="button" data-testid="restart" onClick={onRestart}>Review again</button>,
 }))
 
 const entries: Country[] = [
@@ -41,7 +37,7 @@ afterEach(() => {
   localStorage.clear()
 })
 
-function renderFlow(onPhaseChange: (phase: 'walkthrough' | 'recall' | 'complete') => void, startInRecall = false, countriesLearned = true): HTMLDivElement {
+function renderFlow(onPhaseChange: (phase: string) => void): HTMLDivElement {
   const container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
@@ -51,11 +47,12 @@ function renderFlow(onPhaseChange: (phase: 'walkthrough' | 'recall' | 'complete'
         continent="Europe"
         subregion="northern-europe"
         entries={entries}
-        countriesLearned={countriesLearned}
+        newItemsPerSet={3}
+        schedulerSettings={{ masteryLatencyFactor: 1.4, sessionUnmasteredShare: 0.5 }}
+        countriesLearned={false}
         fuzzyMatching={false}
         onPhaseChange={onPhaseChange}
         onExit={() => undefined}
-        startInRecall={startInRecall}
       />,
     )
   })
@@ -63,36 +60,25 @@ function renderFlow(onPhaseChange: (phase: 'walkthrough' | 'recall' | 'complete'
 }
 
 describe('CapitalLearningFlow orchestration', () => {
-  it('reports phases, persists completion, and resets the reporter on review', () => {
-    const phases: Array<'walkthrough' | 'recall' | 'complete'> = []
+  it('reports staged phases and persists completion only after Final recall', () => {
+    const phases: string[] = []
     const container = renderFlow(phase => phases.push(phase))
 
-    act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-recall"]')!.click())
-    act(() => container.querySelector<HTMLButtonElement>('[data-testid="submit-correct"]')!.click())
-    expect(phases).toEqual(['recall', 'complete'])
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-practice"]')!.click())
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      act(() => container.querySelector<HTMLButtonElement>('[data-testid="submit-correct"]')!.click())
+    }
+    expect(container.querySelector('[data-testid="ready-next"]')).not.toBeNull()
+    expect(getSubregionLearningState('northern-europe')).toBeNull()
+
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-start"]')!.click())
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-submit"]')!.click())
+
+    expect(phases).toEqual(['practice', 'set-ready', 'final-gate', 'final-recall', 'complete'])
     expect(getSubregionLearningState('northern-europe')).toMatchObject({ capitalsLearnedAt: expect.any(Number) })
 
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="restart"]')!.click())
-    expect(phases).toEqual(['recall', 'complete', 'walkthrough'])
-    act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-recall"]')!.click())
-    act(() => container.querySelector<HTMLButtonElement>('[data-testid="submit-correct"]')!.click())
-    expect(phases).toEqual(['recall', 'complete', 'walkthrough', 'recall', 'complete'])
-  })
-
-  it('can enter directly into capital recall for practice', () => {
-    const phases: Array<'walkthrough' | 'recall' | 'complete'> = []
-    const container = renderFlow(phase => phases.push(phase), true)
-
-    expect(container.querySelector('[data-testid="submit-correct"]')).not.toBeNull()
-    expect(container.querySelector('[data-testid="start-recall"]')).toBeNull()
-
-    act(() => container.querySelector<HTMLButtonElement>('[data-testid="submit-correct"]')!.click())
-    expect(phases).toEqual(['complete'])
-  })
-
-  it('allows direct workflow entry before Countries learning is complete', () => {
-    const container = renderFlow(vi.fn(), false, false)
-    expect(container.textContent).toContain('Start recall')
-    expect(container.querySelector('[data-testid="start-recall"]')).not.toBeNull()
+    expect(phases).toEqual(['practice', 'set-ready', 'final-gate', 'final-recall', 'complete', 'walkthrough'])
   })
 })

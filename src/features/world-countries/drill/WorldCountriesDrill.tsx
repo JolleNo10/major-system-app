@@ -27,10 +27,11 @@ import {
   type DrillSessionState,
 } from './drillSessionState'
 import { loadDrillPreferences, saveDrillPreferences, type WorldCountriesDrillPreferences } from './drillPreferences'
+import type { LearningSetMaximum } from '@/features/world-countries/learning/stagedLearningPlan'
 
 type DrillPhase = 'setup' | 'learning' | 'practice' | 'recall' | 'results'
 type ActivityPurpose = 'drill' | 'learn-practise'
-type LearningRun = { mode: WorldCountriesLearningMode; subregionIds: readonly SubregionId[]; index: number }
+type LearningRun = { mode: WorldCountriesLearningMode; subregionIds: readonly SubregionId[]; index: number; newItemsPerSet: LearningSetMaximum }
 type StartSessionOptions = {
   persistPreferences?: boolean
   interaction?: DrillSessionInteraction
@@ -118,10 +119,10 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
 
   const startLearning = useCallback((mode: WorldCountriesLearningMode) => {
     if (orderedSelectedSubregions.length === 0) return
-    setLearningRun({ mode, subregionIds: orderedSelectedSubregions, index: 0 })
+    setLearningRun({ mode, subregionIds: orderedSelectedSubregions, index: 0, newItemsPerSet: settings.worldCountriesNewItemsPerSet })
     setPurpose('learn-practise')
     setPhase('learning')
-  }, [orderedSelectedSubregions])
+  }, [orderedSelectedSubregions, settings.worldCountriesNewItemsPerSet])
 
   const completeLearningSubregion = useCallback(() => {
     if (!learningRun) return
@@ -181,9 +182,9 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
     const doneLabel = learningRun.index === learningRun.subregionIds.length - 1 ? 'Back to Learn & Practise' : 'Continue to next Subregion'
     const onDone = completeLearningSubregion
     if (learningRun.mode === 'learn-countries') {
-      return <CountryLearningFlow key={learningSubregion} continent={effectivePreferences.continent} subregion={learningSubregion} entries={learningEntries} activeCountries={activeCountries} locationCleanTargetMinimum={settings.worldCountriesLocationCleanTargetMinimum} fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching} onPhaseChange={() => undefined} onExit={exitToSetup} onDone={onDone} doneLabel={doneLabel} mnemonicVersion={mnemonicVersion} onGeographyChanged={geographyChanged} onMnemonicChanged={mnemonicChanged} />
+      return <CountryLearningFlow key={learningSubregion} continent={effectivePreferences.continent} subregion={learningSubregion} entries={learningEntries} activeCountries={activeCountries} newItemsPerSet={learningRun.newItemsPerSet} schedulerSettings={{ masteryLatencyFactor: settings.masteryLatencyFactor, sessionUnmasteredShare: settings.sessionUnmasteredShare }} fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching} onPhaseChange={() => undefined} onExit={exitToSetup} onDone={onDone} doneLabel={doneLabel} mnemonicVersion={mnemonicVersion} onGeographyChanged={geographyChanged} onMnemonicChanged={mnemonicChanged} />
     }
-    return <CapitalLearningFlow key={learningSubregion} continent={effectivePreferences.continent} subregion={learningSubregion} entries={learningEntries} activeCountries={activeCountries} countriesLearned={Boolean(learningState?.countriesLearnedAt)} fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching} onPhaseChange={() => undefined} onExit={exitToSetup} onDone={onDone} doneLabel={doneLabel} mnemonicVersion={mnemonicVersion} onGeographyChanged={geographyChanged} onMnemonicChanged={mnemonicChanged} />
+    return <CapitalLearningFlow key={learningSubregion} continent={effectivePreferences.continent} subregion={learningSubregion} entries={learningEntries} activeCountries={activeCountries} newItemsPerSet={learningRun.newItemsPerSet} schedulerSettings={{ masteryLatencyFactor: settings.masteryLatencyFactor, sessionUnmasteredShare: settings.sessionUnmasteredShare }} fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching} onPhaseChange={() => undefined} onExit={exitToSetup} onDone={onDone} doneLabel={doneLabel} mnemonicVersion={mnemonicVersion} onGeographyChanged={geographyChanged} onMnemonicChanged={mnemonicChanged} />
   }
 
   if ((phase === 'recall' || phase === 'practice') && session && sessionMatchesActivePopulation) {

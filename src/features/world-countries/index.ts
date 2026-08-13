@@ -8,3 +8,4 @@ export {
 } from './geography/countrySet'
 export { UN_MEMBER_COUNTRY_IDS } from './data/countryClassification'
 export type { WorldCountriesEntityGroupId } from './geography/countrySet'
+export type { LearningSetMaximum } from './learning/stagedLearningPlan'

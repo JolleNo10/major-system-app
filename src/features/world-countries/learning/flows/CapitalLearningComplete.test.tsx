@@ -31,7 +31,7 @@ describe('CapitalLearningComplete', () => {
 
     expect(mount.textContent).toContain('Capitals learned')
     expect(mount.textContent).toContain('capitals complete')
-    expect(mount.textContent).toContain('clean shuffled round')
+    expect(mount.textContent).toContain('Final recall')
     expect(mount.textContent).toContain('Back to Learn & Practise')
     expect(mount.textContent).toContain('Learn again')
   })

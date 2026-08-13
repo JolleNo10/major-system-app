@@ -10,8 +10,8 @@ import { GeographyMnemonicView } from '@/features/world-countries/mnemonics/Geog
 import { deriveWorldCountriesLearningReadiness, getWorldCountriesLearningReadinessLabel } from '@/features/world-countries/learning/learningReadiness'
 import { InlineOrderEditor } from '@/features/world-countries/ui/InlineOrderEditor'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
-import type { CountryLearningPhase } from '@/features/world-countries/learning/countryLearningFlow'
-import type { CapitalLearningPhase } from '@/features/world-countries/learning/capitalLearningFlow'
+import type { StagedCountryLearningPhase } from '@/features/world-countries/learning/stagedCountryLearningFlow'
+import type { StagedCapitalLearningPhase } from '@/features/world-countries/learning/stagedCapitalLearningFlow'
 
 export function GuidedLearningRails({
   continent,
@@ -37,7 +37,7 @@ export function GuidedLearningRails({
   subregion: SubregionId
   entries: readonly Country[]
   activeCountries: readonly Country[]
-  phase: CountryLearningPhase | CapitalLearningPhase
+  phase: StagedCountryLearningPhase | StagedCapitalLearningPhase
   track: 'countries' | 'capitals'
   learned: boolean
   capitalsLearned: boolean
@@ -52,7 +52,7 @@ export function GuidedLearningRails({
   onSkip?: () => void
   skipLabel?: string
 }) {
-  const quietPhase = phase === 'location-practice' || phase === 'ordered-recall' || phase === 'recall' || phase === 'complete'
+  const quietPhase = phase === 'location-practice' || phase === 'location-ready' || phase === 'practice' || phase === 'set-ready' || phase === 'combined-practice' || phase === 'combined-ready' || phase === 'final-gate' || phase === 'final-recall' || phase === 'complete'
   const walkthroughCountry = walkthroughCountryId ? entries.find(entry => entry.id === walkthroughCountryId) ?? null : null
   const showSubregionMnemonic = !quietPhase
   const showCapitalMnemonic = !quietPhase && track === 'capitals' && phase === 'walkthrough' && walkthroughCountry !== null

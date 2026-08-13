@@ -7,7 +7,7 @@ export function CapitalLearningComplete({ subregion, onDone, onRestart, doneLabe
     <LearningComplete
       eyebrow="Capitals learned"
       title={`${getSubregionDefinition(subregion).label} capitals complete ✓`}
-      summary={`You recalled the capital for every country in ${getSubregionDefinition(subregion).label} in one clean shuffled round. This initial-learning result is now recorded for the Subregion.`}
+      summary={`You completed Final recall for every Country-to-Capital relationship in ${getSubregionDefinition(subregion).label}. This Learning result is now recorded for the Subregion.`}
       onDone={onDone}
       onRestart={onRestart}
       doneLabel={doneLabel}
