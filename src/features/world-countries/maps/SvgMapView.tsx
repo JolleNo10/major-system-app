@@ -148,7 +148,7 @@ export function SvgMapView({
         ref={mountRef}
         onPointerLeave={clearMapHover}
         onPointerCancel={clearMapHover}
-        className={`world-map-svg overflow-hidden rounded-xl border border-zinc-800 bg-[#252525] shadow-lg ${loading || error ? 'hidden' : ''} ${className}`}
+        className={`world-map-svg overflow-hidden rounded-2xl border border-[#25252a] bg-[#252525] shadow-lg ${loading || error ? 'hidden' : ''} ${className}`}
         role="img"
         aria-label={ariaLabel}
         aria-describedby={ariaDescribedBy}

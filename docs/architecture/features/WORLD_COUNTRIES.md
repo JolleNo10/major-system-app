@@ -146,10 +146,12 @@ not require, Countries first.
   supports optional map metadata plus explicit overlay, attached, and stacked
   dock placement. `TaskDock` provides compact navigation, checkpoint, form,
   hint, and completion variants; checkpoint and completion docks compose their
-  status copy and action group as one unit at desktop widths. Learning flows
-  choose placement by task rather than treating every dock as a generic card.
-  Overlay docks attach at desktop widths and fall back to normal flow below
-  `xl`.
+  status copy and action group as one unit at desktop widths. Typed Practice
+  and Final Recall use the form dock as an in-map overlay; review navigation
+  remains a compact map overlay, while multiple-choice and location-click
+  interactions may remain attached below the map. Learning flows choose
+  placement by task rather than treating every dock as a generic card. Overlay
+  docks attach at desktop widths and fall back to normal flow below `xl`.
 - For the same map source, Continent, effective scope membership, and
   intentional zoom behavior, Learning updates map highlights, names, hover,
   and sequence annotations declaratively. Workflow phase alone must not

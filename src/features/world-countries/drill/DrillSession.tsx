@@ -210,11 +210,11 @@ export function DrillSession({
           {feedback && <RecallFeedback correct={feedback.correct} message={isLocationPractice ? practiceFeedbackText : feedbackText} />}
           </div>
         )}
-        dockPlacement="attached"
+        dockPlacement={answerMode === 'typing' ? 'overlay' : 'attached'}
         dock={isLocationPractice ? (
           <p className="text-center text-sm text-zinc-400">Click the country on the map.</p>
         ) : (
-          <TaskDock variant="form">
+          <TaskDock variant={answerMode === 'typing' ? 'form' : 'navigation'} status={answerMode === 'typing' ? <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-cyan-400">{activity === 'practice' ? 'Practice' : 'Drill'} · {getDrillSkillLabel(step.skill)}</div> : undefined}>
             <section className="space-y-3">
             {answerMode === 'multiple-choice' ? (
               <MultipleChoice
@@ -231,6 +231,7 @@ export function DrillSession({
                 answeredCorrect={feedback?.correct ?? null}
                 correctAnswer={expectedAnswer}
                 showCorrectAnswer={false}
+                compact
                 placeholder={isCapitalQuestion ? 'Type the country…' : isLocationQuestion ? 'Type the country…' : 'Type the capital…'}
               />
             )}

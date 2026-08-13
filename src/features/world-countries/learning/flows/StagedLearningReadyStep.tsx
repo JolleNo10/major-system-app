@@ -1,6 +1,10 @@
 import { LearningHeader } from './MemoryPreviewStep'
 import { TaskDock } from '@/features/world-countries/ui/MapSurface'
 
+function EnterKey() {
+  return <span aria-label="Enter" className="ml-2 inline-flex min-w-[22px] items-center justify-center rounded-[5px] border border-white/25 border-b-2 px-1.5 py-px text-[11px]">↵</span>
+}
+
 export function StagedLearningReadyStep({
   title,
   summary,
@@ -21,21 +25,21 @@ export function StagedLearningReadyStep({
   surface?: boolean
 }) {
   const status = (
-    <>
-      <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-green-300">
-        <span aria-hidden="true">●</span>
+    <div className="min-w-0">
+      <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.08em] text-green-400">
+        <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-green-500 shadow-[0_0_16px_rgba(34,197,94,0.8)]" />
         {title}
-      </span>
-      <span className="mt-1 block text-sm text-zinc-200">{summary}</span>
-      <span className="mt-1 block text-xs text-zinc-500">Keep practising remains available if you want another pass.</span>
-    </>
+      </div>
+      <div className="mt-1 text-lg font-bold text-zinc-100">{summary}</div>
+      <div className="mt-0.5 max-w-[360px] text-xs text-zinc-400">The map stays as the memory peg. Extra practice remains optional.</div>
+    </div>
   )
   const dock = (
     <TaskDock variant="checkpoint" status={status} tone="ready" focusPrimary enableEnterPrimary>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-        <button type="button" onClick={onKeepPractising} className="w-full rounded-lg border border-zinc-700 bg-zinc-900/80 px-3 py-2 text-sm text-zinc-300 hover:border-cyan-500 sm:w-auto">Keep practising</button>
-        <button type="button" data-primary-action onClick={onNext} className="w-full rounded-lg bg-cyan-600 px-3 py-2 text-sm font-semibold text-white hover:bg-cyan-500 sm:w-auto">{nextLabel} ↵</button>
-        {!surface && <button type="button" onClick={onBack} className="w-full rounded-lg border border-zinc-800 px-4 py-3 text-sm text-zinc-500 hover:text-zinc-200 sm:w-auto">Back</button>}
+      <div className="flex w-full gap-2 xl:w-auto">
+        <button type="button" onClick={onKeepPractising} className="flex-1 whitespace-nowrap rounded-[9px] border border-zinc-600 bg-zinc-800 px-3.5 py-2.5 text-sm text-zinc-200 hover:border-cyan-400 xl:flex-none">Keep practising</button>
+        <button type="button" data-primary-action onClick={onNext} className="flex-1 whitespace-nowrap rounded-[9px] border border-cyan-600 bg-cyan-600 px-3.5 py-2.5 text-sm font-bold text-white hover:bg-cyan-500 xl:flex-none">{nextLabel}<EnterKey /></button>
+        {!surface && <button type="button" onClick={onBack} className="flex-1 whitespace-nowrap rounded-[9px] border border-zinc-700 bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-400 hover:text-zinc-200 xl:flex-none">Back</button>}
       </div>
     </TaskDock>
   )
@@ -58,25 +62,22 @@ export function FinalRecallGate({
   surface?: boolean
 }) {
   const description = 'Recall the complete effective Country order to finish Learning for this Subregion.'
-  const status = ready ? (
-    <>
-      <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-green-300"><span aria-hidden="true">●</span>Ready for final recall</span>
-      <span className="mt-1 block text-sm text-zinc-200">{description}</span>
-      <span className="mt-1 block text-xs text-zinc-500">This is the completion gate for the current Learning flow.</span>
-    </>
-  ) : (
-    <>
-      <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-300"><span aria-hidden="true">○</span>Final recall</span>
-      <span className="mt-1 block text-sm text-zinc-200">{description}</span>
-      <span className="mt-1 block text-xs text-zinc-500">Complete the remaining practice before starting the gate.</span>
-    </>
+  const status = (
+    <div className="min-w-0">
+      <div className={`flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.08em] ${ready ? 'text-green-400' : 'text-zinc-400'}`}>
+        <span aria-hidden="true" className={ready ? 'h-2 w-2 shrink-0 rounded-full bg-green-500 shadow-[0_0_16px_rgba(34,197,94,0.8)]' : 'h-2 w-2 shrink-0 rounded-full border border-zinc-500'} />
+        {ready ? 'Ready for final recall' : 'Final recall'}
+      </div>
+      <div className="mt-1 text-lg font-bold text-zinc-100">{description}</div>
+      <div className="mt-0.5 max-w-[360px] text-xs text-zinc-400">{ready ? 'This is the completion gate for the current Learning flow.' : 'Complete the remaining practice before starting the gate.'}</div>
+    </div>
   )
   const dock = (
     <TaskDock variant="checkpoint" status={status} tone={ready ? 'ready' : 'neutral'} focusPrimary enableEnterPrimary>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-        {ready && <button type="button" onClick={onKeepPractising} className="w-full rounded-lg border border-zinc-700 bg-zinc-900/80 px-3 py-2 text-sm text-zinc-300 hover:border-cyan-500 sm:w-auto">Keep practising</button>}
-        <button type="button" data-primary-action onClick={onStart} className={ready ? 'w-full rounded-lg bg-cyan-600 px-3 py-2 text-sm font-semibold text-white hover:bg-cyan-500 sm:w-auto' : 'w-full rounded-lg bg-cyan-600 px-3 py-2 text-sm font-semibold text-white hover:bg-cyan-500'}>Final recall ↵</button>
-        {!surface && <button type="button" onClick={onBack} className="w-full rounded-lg border border-zinc-800 px-4 py-3 text-sm text-zinc-500 hover:text-zinc-200 sm:w-auto">Back</button>}
+      <div className="flex w-full gap-2 xl:w-auto">
+        {ready && <button type="button" onClick={onKeepPractising} className="flex-1 whitespace-nowrap rounded-[9px] border border-zinc-600 bg-zinc-800 px-3.5 py-2.5 text-sm text-zinc-200 hover:border-cyan-400 xl:flex-none">Keep practising</button>}
+        <button type="button" data-primary-action onClick={onStart} className="flex-1 whitespace-nowrap rounded-[9px] border border-cyan-600 bg-cyan-600 px-3.5 py-2.5 text-sm font-bold text-white hover:bg-cyan-500 xl:flex-none">Final recall<EnterKey /></button>
+        {!surface && <button type="button" onClick={onBack} className="flex-1 whitespace-nowrap rounded-[9px] border border-zinc-700 bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-400 hover:text-zinc-200 xl:flex-none">Back</button>}
       </div>
     </TaskDock>
   )

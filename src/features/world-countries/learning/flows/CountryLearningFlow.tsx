@@ -146,13 +146,14 @@ export function CountryLearningFlow({
     hoveredCountryId,
     showHighlightedNames: flow.phase === 'walkthrough',
     showHoverNames: flow.phase === 'final-recall',
+    mapClassName: ['practice', 'combined-practice'].includes(flow.phase) ? '[&>svg]:max-h-[510px]' : undefined,
     ariaLabel: flow.phase === 'final-recall' ? 'Highlighted Country for final recall' : 'World Countries Learning map',
   } as const
   const presentationKey = `${flow.phase}:${[...mapEntries].map(entry => entry.id).sort().join(',')}`
   const mapMeta = (
     <div>
-      <span className="block font-semibold">{getSubregionDefinition(subregion).label}</span>
-      <span className="block text-zinc-500">{mapEntries.length} {mapEntries.length === 1 ? 'country' : 'countries'} in scope</span>
+      <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-400">{getSubregionDefinition(subregion).label}</div>
+      <div className="mt-1 text-sm font-semibold text-zinc-100">{mapEntries.length} {mapEntries.length === 1 ? 'country' : 'countries'} in scope</div>
     </div>
   )
 
@@ -224,6 +225,6 @@ export function CountryLearningFlow({
       content = <CountryLearningComplete subregion={subregion} countryCount={entries.length} onDone={onDone ?? onExit} doneLabel={doneLabel} onRestart={() => { completionReported.current = false; transition(createStagedCountryLearningFlow({ countryIds: ids, maximum: newItemsPerSet, schedulerSettings })) }} surface />
       break
   }
-  const dockPlacement = ['location-practice', 'practice', 'combined-practice', 'final-recall'].includes(flow.phase) ? 'attached' : 'overlay'
+  const dockPlacement = ['practice', 'combined-practice', 'final-recall'].includes(flow.phase) ? 'overlay' : 'attached'
   return <>{rails}<LearningMapSurface continent={continent} scopeCountries={mapEntries} presentation={mapPresentation} presentationKey={presentationKey} context={context} mapMeta={mapMeta} dockPlacement={dockPlacement}>{content}</LearningMapSurface></>
 }

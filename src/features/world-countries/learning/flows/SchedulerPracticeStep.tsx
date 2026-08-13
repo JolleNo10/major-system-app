@@ -13,6 +13,10 @@ export interface SchedulerAnswerEvaluation {
   canonicalAnswer: string
 }
 
+function EnterKey() {
+  return <span aria-label="Enter" className="ml-2 inline-flex min-w-[22px] items-center justify-center rounded-[5px] border border-white/25 border-b-2 px-1.5 py-px text-[11px]">↵</span>
+}
+
 export function SchedulerPracticeStep({
   continent,
   entries,
@@ -89,18 +93,18 @@ export function SchedulerPracticeStep({
   const feedbackNode = feedback && <RecallFeedback variant="inline" correct={feedback.evaluation.correct} message={formatFeedback(feedback.evaluation, expected)} />
   const form = (
     <form onSubmit={event => { event.preventDefault(); submit() }} className="space-y-3">
-      <label htmlFor="staged-learning-answer" className="block text-sm text-zinc-400">{answerLabel}</label>
-      <div className="flex gap-2">
-        <input ref={inputRef} id="staged-learning-answer" autoComplete="off" value={answer} onChange={event => setAnswer(event.target.value)} disabled={feedback !== null} autoFocus placeholder={placeholder} className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-zinc-100 outline-none focus:border-cyan-500 disabled:opacity-60" />
-        {!feedback && <button type="submit" data-primary-action className="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-500">Check</button>}
+      <label htmlFor="staged-learning-answer" className="sr-only">{answerLabel}</label>
+      <div className="flex items-center gap-2">
+        <input ref={inputRef} id="staged-learning-answer" autoComplete="off" value={answer} onChange={event => setAnswer(event.target.value)} disabled={feedback !== null} autoFocus placeholder={placeholder} className="min-w-0 flex-1 rounded-[9px] border border-zinc-600 bg-zinc-800/95 px-4 py-3 text-zinc-100 placeholder:text-zinc-500 outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/40 disabled:opacity-60" />
+        {!feedback && <button type="submit" data-primary-action className="shrink-0 whitespace-nowrap rounded-[9px] border border-cyan-600 bg-cyan-600 px-3.5 py-3 text-sm font-bold text-white hover:bg-cyan-500">Check<EnterKey /></button>}
       </div>
     </form>
   )
   const dock = (
-    <TaskDock variant="form" status={<span className="text-sm text-zinc-400">{questionLabel} · {showCountryName ? current.country : promptText}</span>}>
+    <TaskDock variant="form" status={<div className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-cyan-400">{questionLabel} · {showCountryName ? current.country : promptText}</div>}>
       {feedbackNode}
       {form}
-      {!surface && <button type="button" onClick={onBack} className="mt-3 w-full rounded-lg border border-zinc-800 px-4 py-3 text-sm text-zinc-500 hover:text-zinc-200">Back</button>}
+      {!surface && <button type="button" onClick={onBack} className="mt-3 w-full rounded-[9px] border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-400 hover:text-zinc-200">Back</button>}
     </TaskDock>
   )
   if (surface) return dock

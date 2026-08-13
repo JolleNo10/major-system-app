@@ -15,6 +15,7 @@ export interface CountryLearningMapProps {
   highlightedCountryId?: string | null
   hoveredCountryId?: string | null
   showHighlightedNames?: boolean
+  mapClassName?: string
   /** Optional caller-owned result/overview progress colors. */
   countryColorsById?: ReadonlyMap<string, string>
   /** Optional non-color descriptions for mapped Countries. */
@@ -42,6 +43,7 @@ export function CountryLearningMap({
   highlightedCountryId = null,
   hoveredCountryId = null,
   showHighlightedNames = true,
+  mapClassName,
   countryColorsById,
   countryAccessibleDescriptionsById,
   onCountryClick,
@@ -102,6 +104,7 @@ export function CountryLearningMap({
         countryLabels={countryLabels}
         countryColors={countryColors}
         zoomIds={zoomIds}
+        className={mapClassName}
         settings={{ showHighlightedNames, hoverHighlight: hoveredCountryId !== null, hoverShowName: showHoverNames, hoverFill: '#0f766e', hoverStroke: '#d4d4d8', hoverStrokeWidth: '2px' }}
         onCountriesLoaded={setDiscovered}
         onCountryClick={svgId => {

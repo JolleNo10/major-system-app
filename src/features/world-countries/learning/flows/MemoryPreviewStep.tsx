@@ -26,10 +26,12 @@ export function LearningHeader({ label, title, onExit, meta }: { label: string; 
   return (
     <header className="flex items-start justify-between gap-3">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">{label}</p>
+        <div className="flex items-baseline justify-between gap-4">
+          <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-cyan-400">{label}</p>
+          {meta && <span className="text-sm tabular-nums text-zinc-500">{meta}</span>}
+        </div>
         <h1 className="mt-1 text-2xl font-bold text-zinc-100">{title}</h1>
       </div>
-      {meta && <span className="pt-1 text-sm text-zinc-500">{meta}</span>}
     </header>
   )
 }

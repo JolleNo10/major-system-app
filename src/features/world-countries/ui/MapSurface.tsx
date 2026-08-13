@@ -17,7 +17,7 @@ export function MapSurface({ context, map, mapMeta, dock, dockPlacement = 'overl
   className?: string
 }) {
   const dockClass = dockPlacement === 'overlay'
-    ? 'xl:pointer-events-none xl:absolute xl:inset-x-3 xl:bottom-3 xl:z-10'
+    ? 'xl:pointer-events-none xl:absolute xl:inset-x-[14px] xl:bottom-[14px] xl:z-20'
     : dockPlacement === 'attached'
       ? 'relative z-10 mx-3 xl:-mt-4'
       : 'relative z-10'
@@ -26,8 +26,9 @@ export function MapSurface({ context, map, mapMeta, dock, dockPlacement = 'overl
     <div data-map-surface className={`space-y-2 animate-fade-in ${className}`}>
       <div>{context}</div>
       <div className="relative">
-        {mapMeta && <div className="pointer-events-none absolute left-3 top-3 z-10 text-left text-xs text-zinc-300 drop-shadow-md">{mapMeta}</div>}
+        {mapMeta && <div className="pointer-events-none absolute left-[18px] top-4 z-10 text-left text-xs text-zinc-300 drop-shadow-md">{mapMeta}</div>}
         <div>{map}</div>
+        {dockPlacement === 'overlay' && <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-32 rounded-b-2xl bg-gradient-to-t from-zinc-950/35 to-transparent" />}
         {dock && <div className={dockClass}>{dock}</div>}
       </div>
     </div>
@@ -51,13 +52,13 @@ export function TaskDock({
 }) {
   const dockRef = useRef<HTMLDivElement>(null)
   const variantClass = {
-    navigation: 'rounded-lg border border-zinc-700/70 bg-zinc-950/80 px-3 py-2 shadow-lg backdrop-blur-md',
+    navigation: 'rounded-[12px] border border-zinc-700/70 bg-zinc-950/80 p-2 shadow-[0_14px_40px_rgba(0,0,0,0.35)] backdrop-blur-xl',
     checkpoint: tone === 'ready'
-      ? 'rounded-xl border border-green-500/40 bg-gradient-to-r from-green-950/50 via-zinc-950/95 to-zinc-950/95 px-3 py-3 shadow-xl backdrop-blur-md'
-      : 'rounded-xl border border-zinc-700/70 bg-zinc-950/90 px-3 py-3 shadow-xl backdrop-blur-md',
-    form: 'px-0 py-0',
+      ? 'rounded-[14px] border border-green-500/40 bg-[linear-gradient(90deg,rgba(5,46,22,0.92),rgba(9,9,11,0.94))] px-4 py-3.5 shadow-[0_18px_55px_rgba(0,0,0,0.45)] backdrop-blur-[14px]'
+      : 'rounded-[14px] border border-zinc-700/80 bg-zinc-950/90 px-4 py-3.5 shadow-[0_18px_55px_rgba(0,0,0,0.42)] backdrop-blur-[14px]',
+    form: 'rounded-[14px] border border-zinc-700/80 bg-zinc-950/90 px-4 py-3.5 shadow-[0_18px_55px_rgba(0,0,0,0.42)] backdrop-blur-[14px]',
     hint: 'rounded-lg border border-zinc-700/50 bg-zinc-950/75 px-3 py-2 shadow-lg backdrop-blur-md',
-    completion: 'rounded-xl border border-green-500/30 bg-zinc-950/90 px-3 py-3 shadow-xl backdrop-blur-md',
+    completion: 'rounded-[14px] border border-green-500/30 bg-zinc-950/90 px-4 py-3.5 shadow-[0_18px_55px_rgba(0,0,0,0.45)] backdrop-blur-[14px]',
   }[variant]
   const toneClass = tone === 'ready' ? 'border-green-500/50' : ''
   const statusClass = tone === 'ready' ? 'text-green-300' : 'text-zinc-300'
@@ -90,9 +91,9 @@ export function TaskDock({
       className={`${shellClass} ${variantClass} ${toneClass}`}
     >
       {horizontal ? (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          {status && <div role="status" aria-live="polite" className={`min-w-0 text-sm ${statusClass}`}>{status}</div>}
-          {children && <div className="shrink-0">{children}</div>}
+        <div className="flex flex-col items-stretch gap-3 xl:flex-row xl:items-center xl:justify-between">
+          {status && <div role="status" aria-live="polite" className={`min-w-0 flex-1 text-sm ${statusClass}`}>{status}</div>}
+          {children && <div className="w-full shrink-0 xl:w-auto">{children}</div>}
         </div>
       ) : (
         <>

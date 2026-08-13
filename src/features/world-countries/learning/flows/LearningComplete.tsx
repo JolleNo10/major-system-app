@@ -24,19 +24,19 @@ export function LearningComplete({
   surface = false,
 }: LearningCompleteProps) {
   const status = (
-    <>
-      <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-green-300"><span aria-hidden="true">●</span>{eyebrow}</span>
+    <div className="min-w-0">
+      <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.08em] text-green-400"><span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-green-500 shadow-[0_0_16px_rgba(34,197,94,0.8)]" />{eyebrow}</div>
       {!surface && <h1 className="mt-1 text-lg font-bold text-zinc-100">{title}</h1>}
-      <span className="mt-1 block text-sm text-zinc-200">{summary}</span>
-      <span className="mt-1 block text-xs text-zinc-500">The map remains available for context while you choose what to do next.</span>
-    </>
+      <div className="mt-1 text-sm text-zinc-200">{summary}</div>
+      <div className="mt-0.5 max-w-[360px] text-xs text-zinc-400">The map remains available for context while you choose what to do next.</div>
+    </div>
   )
   const dock = (
     <TaskDock variant="completion" status={status} tone="ready" enableEnterPrimary>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-        <button type="button" data-primary-action onClick={onDone} className="w-full rounded-lg bg-cyan-600 px-3 py-2 text-sm font-semibold text-white hover:bg-cyan-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 sm:w-auto">{doneLabel} ↵</button>
-        <button type="button" onClick={onRestart} className="w-full rounded-lg border border-zinc-700 bg-zinc-800/80 px-3 py-2 text-sm text-zinc-300 hover:border-cyan-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 sm:w-auto">{restartLabel}</button>
-        </div>
+      <div className="flex w-full gap-2 xl:w-auto">
+        <button type="button" data-primary-action onClick={onDone} className="flex-1 whitespace-nowrap rounded-[9px] border border-cyan-600 bg-cyan-600 px-3.5 py-2.5 text-sm font-bold text-white hover:bg-cyan-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 xl:flex-none">{doneLabel}<span aria-label="Enter" className="ml-2 inline-flex min-w-[22px] items-center justify-center rounded-[5px] border border-white/25 border-b-2 px-1.5 py-px text-[11px]">↵</span></button>
+        <button type="button" onClick={onRestart} className="flex-1 whitespace-nowrap rounded-[9px] border border-zinc-600 bg-zinc-800 px-3.5 py-2.5 text-sm text-zinc-200 hover:border-cyan-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 xl:flex-none">{restartLabel}</button>
+      </div>
     </TaskDock>
   )
   return surface ? dock : <div className="space-y-4 animate-fade-in">{dock}</div>
