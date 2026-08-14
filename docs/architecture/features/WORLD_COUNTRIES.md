@@ -69,7 +69,7 @@ Drill has a non-persisted Purpose selector:
   Capitals`. These are the only `WorldCountriesDrillMode` values and may
   write atomic Drill evidence according to their defined semantics.
 - **Learn & Practise**: Learning (`Learn Countries`, `Learn Capitals`) and
-  non-recording Practice (`Locate Countries`, `Capitals`). Learning writes
+  non-recording Practice (`Locate Countries`, `Locate Capitals`, `Capitals`). Learning writes
   only the durable milestone owned by its active mode. Practice retains only
   transient answers, accuracy, progress, and results.
 

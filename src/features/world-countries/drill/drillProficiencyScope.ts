@@ -29,7 +29,9 @@ export interface WorldCountriesProficiencyScope {
 const PROFICIENCY_FILTERS: readonly WorldCountriesProficiencyFilter[] = ['weak', 'developing']
 
 export function getPracticeSkill(mode: WorldCountriesPracticeMode): WorldCountriesRecallSkill {
-  return mode === 'locate-countries' ? 'location-to-country' : 'country-to-capital'
+  if (mode === 'locate-countries') return 'location-to-country'
+  if (mode === 'locate-capitals') return 'capital-to-country'
+  return 'country-to-capital'
 }
 
 /** Derive current matching Countries without creating geography metadata or IDs. */

@@ -122,6 +122,51 @@ describe('DrillSession map presentation', () => {
     expect(mount.textContent).toContain('That was Sweden')
   })
 
+  it('uses the capital as the target for Locate Capitals practice', async () => {
+    const onAnswer = vi.fn()
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(DrillSession, {
+        answerMode: 'multiple-choice',
+        fuzzyMatching: false,
+        interaction: 'location-click',
+        activity: 'practice',
+        state: createDrillSession({ mode: 'countries-from-capitals', countryIds: ['NO', 'SE'] }),
+        selection: createDrillSelection('Europe', ['northern-europe']),
+        entries: [norway, sweden],
+        onAnswer,
+        onContinue: vi.fn(),
+        onExit: vi.fn(),
+      }))
+    })
+
+    const initialMapProps = learningMapMock.mock.calls[0][0] as Record<string, unknown>
+    expect(initialMapProps.onCountryClick).toBeTypeOf('function')
+    expect(initialMapProps.highlightedCountryId).toBeNull()
+    expect(initialMapProps.namedCountryId).toBeNull()
+    expect(initialMapProps.ariaLabel).toBe('Map for clicking the Country whose Capital is shown')
+    expect(mount.textContent).toContain('Oslo')
+    expect(mount.textContent).toContain('Which country has this capital?')
+    expect(mount.textContent).toContain('Click the country on the map.')
+    expect(mount.querySelector('input')).toBeNull()
+
+    await act(async () => (initialMapProps.onCountryClick as (countryId: string) => void)('SE'))
+    expect(onAnswer).toHaveBeenCalledWith(expect.objectContaining({
+      countryId: 'NO',
+      skill: 'capital-to-country',
+      answer: 'Sweden',
+      correct: false,
+      evidenceKind: 'recognition',
+    }))
+    const feedbackMapProps = learningMapMock.mock.calls[learningMapMock.mock.calls.length - 1][0] as Record<string, unknown>
+    expect(feedbackMapProps.highlightedCountryId).toBe('NO')
+    expect(feedbackMapProps.namedCountryId).toBe('NO')
+    expect(mount.textContent).toContain('That was Sweden')
+  })
+
   it('keeps the selected scope neutral for Capital → Country until feedback', async () => {
     const mount = document.createElement('div')
     document.body.append(mount)

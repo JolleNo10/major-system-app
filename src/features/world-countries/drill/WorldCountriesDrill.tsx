@@ -46,6 +46,7 @@ type StartSessionOptions = {
   interaction?: DrillSessionInteraction
   activity?: 'drill' | 'practice'
   skills?: DrillAnswerRecord['skill'][]
+  practiceMode?: WorldCountriesPracticeMode
 }
 
 /** Coordinator for setup, the three Drill modes, durable Learning, and non-recording Practice. */
@@ -105,7 +106,7 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
     saveDrillPreferences(next)
   }, [])
 
-  const startSession = useCallback(async (startPreferences: WorldCountriesDrillPreferences, { persistPreferences = true, interaction = 'recall', activity = 'drill', skills }: StartSessionOptions = {}) => {
+  const startSession = useCallback(async (startPreferences: WorldCountriesDrillPreferences, { persistPreferences = true, interaction = 'recall', activity = 'drill', skills, practiceMode }: StartSessionOptions = {}) => {
     let startEntries = getCountriesForDrillSelectionInEffectiveOrder(startPreferences, activeCountries, getContinentMetadata(startPreferences.continent), getAllSubregionMetadata())
     if (proficiencySelection.length > 0) {
       const proficiencySkills = skills ?? [...getSkillsForDrillMode(startPreferences.mode)]
@@ -115,7 +116,7 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
         proficiencySelection,
         progress,
         activity === 'practice'
-          ? { kind: 'practice', mode: interaction === 'location-click' ? 'locate-countries' : 'capitals' }
+          ? { kind: 'practice', mode: practiceMode ?? (interaction === 'location-click' ? 'locate-countries' : 'capitals') }
           : { kind: 'drill', mode: startPreferences.mode },
         activeCountries,
         getAllSubregionMetadata(),
@@ -140,8 +141,18 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
   const startDrill = useCallback(() => startSession(effectivePreferences), [effectivePreferences, startSession])
 
   const startPractice = useCallback((practiceMode: WorldCountriesPracticeMode) => {
-    const skill = practiceMode === 'locate-countries' ? 'location-to-country' : 'country-to-capital'
-    startSession(effectivePreferences, { persistPreferences: false, activity: 'practice', skills: [skill], interaction: practiceMode === 'locate-countries' ? 'location-click' : 'recall' })
+    const skill = practiceMode === 'locate-countries'
+      ? 'location-to-country'
+      : practiceMode === 'locate-capitals'
+        ? 'capital-to-country'
+        : 'country-to-capital'
+    startSession(effectivePreferences, {
+      persistPreferences: false,
+      activity: 'practice',
+      practiceMode,
+      skills: [skill],
+      interaction: practiceMode === 'capitals' ? 'recall' : 'location-click',
+    })
   }, [effectivePreferences, startSession])
 
   const orderedSelectedSubregions = useMemo(() => {
@@ -192,7 +203,9 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
   const restart = useCallback(() => {
     if (!session) return
     if (sessionActivity === 'practice') {
-      const mode: WorldCountriesPracticeMode = sessionInteraction === 'location-click' ? 'locate-countries' : 'capitals'
+      const mode: WorldCountriesPracticeMode = sessionInteraction === 'location-click'
+        ? session.skills?.[0] === 'capital-to-country' ? 'locate-capitals' : 'locate-countries'
+        : 'capitals'
       startPractice(mode)
     } else startDrill()
   }, [session, sessionActivity, sessionInteraction, startDrill, startPractice])

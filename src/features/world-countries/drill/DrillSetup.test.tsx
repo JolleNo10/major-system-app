@@ -46,6 +46,7 @@ describe('DrillSetup activity boundary', () => {
     expect(mount.textContent).toContain('Learn Countries')
     expect(mount.textContent).toContain('Learn Capitals')
     expect(mount.textContent).toContain('Locate Countries')
+    expect(mount.textContent).toContain('Locate Capitals')
     expect(mount.textContent).toContain('Capitals')
     expect(mount.textContent).toContain('non-recording')
     expect(mount.textContent).not.toContain('Drill order')

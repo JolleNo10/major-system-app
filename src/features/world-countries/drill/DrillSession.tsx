@@ -95,7 +95,9 @@ export function DrillSession({
   const expectedAnswer = step.skill === 'country-to-capital' ? country.capital : country.country
   const isLocationQuestion = step.skill === 'location-to-country'
   const isCapitalQuestion = step.skill === 'capital-to-country'
-  const isLocationPractice = interaction === 'location-click'
+  const isLocationPractice = interaction === 'location-click' && isLocationQuestion
+  const isCapitalLocationPractice = interaction === 'location-click' && isCapitalQuestion
+  const isMapClickPractice = isLocationPractice || isCapitalLocationPractice
   const scopeCountries = state.countryIds
     .map(countryId => countryById.get(countryId))
     .filter((entry): entry is Country => entry !== undefined)
@@ -131,7 +133,7 @@ export function DrillSession({
     setFeedback({ answer: selectedCountry.country, correct, match: 'exact' })
     onAnswer({
       countryId: country.id,
-      skill: 'location-to-country',
+      skill: isCapitalLocationPractice ? 'capital-to-country' : 'location-to-country',
       answer: selectedCountry.country,
       correct,
       at: Date.now(),
@@ -152,13 +154,13 @@ export function DrillSession({
         : 'Correct.'
       : `The correct ${isCapitalQuestion || isLocationQuestion ? 'country' : 'capital'} is ${expectedAnswer}.`
     : null
-  const highlightedCountryId = isLocationPractice
+  const highlightedCountryId = isMapClickPractice
     ? feedback ? country.id : null
     : isCapitalQuestion ? (feedback ? country.id : null) : country.id
   const namedCountryId = isLocationQuestion || isCapitalQuestion
     ? feedback ? country.id : null
     : country.id
-  const practiceNamedCountryId = isLocationPractice ? (feedback ? country.id : null) : namedCountryId
+  const practiceNamedCountryId = isMapClickPractice ? (feedback ? country.id : null) : namedCountryId
   const practiceFeedbackText = feedback
     ? feedback.correct
       ? 'Correct location.'
@@ -170,6 +172,11 @@ export function DrillSession({
       <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">{activity === 'practice' ? 'Practice · ' : ''}{getDrillSkillLabel(step.skill)}</p>
       {isLocationPractice ? (
         <h1 className="mt-1 text-2xl font-black text-zinc-100">Find {country.country}</h1>
+      ) : isCapitalLocationPractice ? (
+        <>
+          <h1 className="mt-1 text-3xl font-black text-zinc-100">{country.capital}</h1>
+          <p className="mt-1 text-sm text-zinc-500">{prompt}</p>
+        </>
       ) : isLocationQuestion ? (
         <>
           <h1 className="mt-1 text-2xl font-black text-zinc-100">{prompt}</h1>
@@ -199,22 +206,24 @@ export function DrillSession({
             continent={selection.continent}
             scopeCountries={scopeCountries}
             highlightedCountryId={highlightedCountryId}
-            namedCountryId={isLocationPractice ? practiceNamedCountryId : namedCountryId}
-            showHighlightedNames={isLocationPractice ? Boolean(practiceNamedCountryId) : Boolean(namedCountryId)}
-            onCountryClick={isLocationPractice ? submitLocation : undefined}
-            ariaLabel={isLocationQuestion && !feedback
-              ? isLocationPractice
-                ? 'Map for clicking the target Country'
-                : 'Map showing the selected location for recall without the Country name revealed'
+            namedCountryId={isMapClickPractice ? practiceNamedCountryId : namedCountryId}
+            showHighlightedNames={isMapClickPractice ? Boolean(practiceNamedCountryId) : Boolean(namedCountryId)}
+            onCountryClick={isMapClickPractice ? submitLocation : undefined}
+            ariaLabel={isMapClickPractice && !feedback
+              ? isCapitalLocationPractice
+                ? 'Map for clicking the Country whose Capital is shown'
+                : 'Map for clicking the target Country'
+              : isLocationQuestion && !feedback
+                ? 'Map showing the selected location for recall without the Country name revealed'
               : isCapitalQuestion && !feedback
                 ? 'Map of the selected geographic scope without the target Country revealed'
               : `Map with ${country.country} highlighted for ${activity === 'practice' ? 'Practice' : 'Drill'} recall`}
           />
-          {feedback && <RecallFeedback correct={feedback.correct} message={isLocationPractice ? practiceFeedbackText : feedbackText} />}
+          {feedback && <RecallFeedback correct={feedback.correct} message={isMapClickPractice ? practiceFeedbackText : feedbackText} />}
           </div>
         )}
-        dockPlacement={answerMode === 'typing' && !isLocationPractice ? 'stacked' : 'attached'}
-        dock={isLocationPractice ? (
+        dockPlacement={answerMode === 'typing' && !isMapClickPractice ? 'stacked' : 'attached'}
+        dock={isMapClickPractice ? (
           <p className="text-center text-sm text-zinc-400">Click the country on the map.</p>
         ) : (
           <TaskDock variant={answerMode === 'typing' ? 'form' : 'navigation'} status={answerMode === 'typing' ? <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-cyan-400">{activity === 'practice' ? 'Practice' : 'Drill'} · {getDrillSkillLabel(step.skill)}</div> : undefined}>

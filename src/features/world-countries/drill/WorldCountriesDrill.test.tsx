@@ -8,6 +8,7 @@ import { markSubregionCountriesLearned } from '@/features/world-countries/learni
 import { WorldCountriesDrill } from './WorldCountriesDrill'
 
 const capitalFlowProps = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }))
+const drillSessionProps = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }))
 const loadRecallProgressMock = vi.hoisted(() => vi.fn(async () => new Map()))
 const resolveProficiencyScopeMock = vi.hoisted(() => vi.fn(() => ({ counts: { weak: 0, developing: 0 }, countryIds: [], countries: [] })))
 
@@ -17,7 +18,15 @@ vi.mock('./DrillSetup', () => ({
     null,
     createElement('button', { type: 'button', 'data-testid': 'select-proficiency', onClick: () => onProficiencySelectionChange(['weak']) }, 'Select weak'),
     createElement('button', { type: 'button', 'data-testid': 'start-capital-learning', onClick: () => onLearnPracticeStart('learn-capitals') }, 'Start capital learning'),
+    createElement('button', { type: 'button', 'data-testid': 'start-locate-capitals', onClick: () => onLearnPracticeStart('locate-capitals') }, 'Start Locate Capitals'),
   ),
+}))
+
+vi.mock('./DrillSession', () => ({
+  DrillSession: (props: Record<string, unknown>) => {
+    drillSessionProps.current = props
+    return createElement('div', { 'data-testid': 'practice-session' })
+  },
 }))
 
 vi.mock('@/features/world-countries/learning/recallProgress', async importOriginal => ({ ...await importOriginal<typeof import('@/features/world-countries/learning/recallProgress')>(), loadWorldCountriesRecallProgress: loadRecallProgressMock }))
@@ -36,6 +45,7 @@ afterEach(() => {
   act(() => root?.unmount())
   root = null
   capitalFlowProps.current = null
+  drillSessionProps.current = null
   document.body.replaceChildren()
   loadRecallProgressMock.mockClear()
   resolveProficiencyScopeMock.mockReset()
@@ -44,6 +54,28 @@ afterEach(() => {
 })
 
 describe('WorldCountriesDrill learning integration', () => {
+  it('starts Locate Capitals as non-recording capital-to-country map practice', () => {
+    localStorage.setItem('world-countries-drill-preferences', JSON.stringify({
+      continent: 'Europe', subregionIds: ['northern-europe'], mode: 'countries', order: 'ordered',
+    }))
+
+    const mount = document.createElement('div')
+    document.body.append(mount)
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement(SettingsProvider, null,
+        createElement(WorldCountriesDrill, { answerMode: 'multiple-choice' }),
+      ))
+    })
+
+    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="start-locate-capitals"]')!.click())
+
+    expect(mount.querySelector('[data-testid="practice-session"]')).not.toBeNull()
+    expect(drillSessionProps.current?.activity).toBe('practice')
+    expect(drillSessionProps.current?.interaction).toBe('location-click')
+    expect((drillSessionProps.current?.state as { skills?: readonly string[] }).skills).toEqual(['capital-to-country'])
+  })
+
   it('passes durable Country readiness into Capital Learning', () => {
     localStorage.setItem('world-countries-drill-preferences', JSON.stringify({
       continent: 'Europe', subregionIds: ['northern-europe'], mode: 'countries', order: 'ordered',

@@ -1,5 +1,5 @@
 export type WorldCountriesLearningMode = 'learn-countries' | 'learn-capitals'
-export type WorldCountriesPracticeMode = 'locate-countries' | 'capitals'
+export type WorldCountriesPracticeMode = 'locate-countries' | 'locate-capitals' | 'capitals'
 export type WorldCountriesLearnPracticeMode = WorldCountriesLearningMode | WorldCountriesPracticeMode
 
 export const WORLD_COUNTRIES_LEARNING_MODES: readonly {
@@ -28,6 +28,11 @@ export const WORLD_COUNTRIES_PRACTICE_MODES: readonly {
     id: 'locate-countries',
     label: 'Locate Countries',
     description: 'Practise clicking each target Country on the map.',
+  },
+  {
+    id: 'locate-capitals',
+    label: 'Locate Capitals',
+    description: 'Practise clicking the Country whose Capital is shown.',
   },
   {
     id: 'capitals',

@@ -15,7 +15,7 @@ const sweden: Country = {
 
 function progressFor(
   countryId: Country['id'],
-  skill: 'location-to-country' | 'country-to-capital',
+  skill: 'location-to-country' | 'country-to-capital' | 'capital-to-country',
   ok: boolean,
 ) {
   return {
@@ -72,6 +72,28 @@ describe('World Countries Drill proficiency scope', () => {
 
     expect(scope.countryIds).toEqual(['SE'])
     expect(scope.counts).toEqual({ weak: 1, developing: 1 })
+  })
+
+  it('uses Capital to Country proficiency for Locate Capitals Practice', () => {
+    const progress = deriveWorldCountriesRecallProgress({
+      countryIds: ['NO', 'SE'],
+      skills: ['location-to-country', 'capital-to-country'],
+    }, [
+      progressFor('NO', 'location-to-country', false),
+      progressFor('SE', 'location-to-country', false),
+      progressFor('NO', 'capital-to-country', true),
+      progressFor('SE', 'capital-to-country', false),
+    ])
+
+    const scope = resolveDrillProficiencyScope(
+      'Europe',
+      ['weak'],
+      progress,
+      { kind: 'practice', mode: 'locate-capitals' },
+      [norway, sweden],
+    )
+
+    expect(scope.countryIds).toEqual(['SE'])
   })
 
   it('does not classify Countries without relevant evidence', () => {
