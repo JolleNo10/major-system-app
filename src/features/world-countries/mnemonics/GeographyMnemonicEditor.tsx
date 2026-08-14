@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 import { deleteMnemonic, processImage, putMnemonic, useBlobUrl, useMnemonic } from '@/core/mnemonics'
 import type { Mnemonic } from '@/core/mnemonics'
 import { isSubregionMnemonicStale } from './geographyMnemonics'
@@ -12,6 +12,7 @@ export function GeographyMnemonicEditor({
   countryIds,
   refreshKey,
   onChanged,
+  headerAction,
 }: {
   targetId: string
   title: string
@@ -19,6 +20,7 @@ export function GeographyMnemonicEditor({
   countryIds?: readonly string[]
   refreshKey: unknown
   onChanged: () => void
+  headerAction?: ReactNode
 }) {
   const { mnemonic, loading } = useMnemonic(targetId, refreshKey)
   const [editing, setEditing] = useState(false)
@@ -77,6 +79,7 @@ export function GeographyMnemonicEditor({
           <h3 className="text-sm font-semibold text-zinc-200">{title}</h3>
           <p className="mt-1 text-xs text-zinc-500">{subtitle}</p>
         </div>
+        {headerAction}
         {!loading && !editing && <button type="button" onClick={() => setEditing(true)} className="shrink-0 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:border-cyan-500 hover:text-zinc-100">{hasContent ? 'Edit' : '+ Add'}</button>}
       </div>
       {loading ? <p className="mt-3 text-xs text-zinc-500">Loading mnemonic…</p> : editing ? (

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { useBlobUrl, useMnemonic } from '@/core/mnemonics'
 import type { Mnemonic } from '@/core/mnemonics'
 import { isSubregionMnemonicStale } from './geographyMnemonics'
@@ -11,12 +11,14 @@ export function GeographyMnemonicView({
   subtitle,
   countryIds,
   refreshKey,
+  headerAction,
 }: {
   targetId: string
   title: string
   subtitle: string
   countryIds?: readonly string[]
   refreshKey: unknown
+  headerAction?: ReactNode
 }) {
   const { mnemonic, loading } = useMnemonic(targetId, refreshKey)
   const imageUrl = useBlobUrl(mnemonic?.image ?? null)
@@ -29,8 +31,13 @@ export function GeographyMnemonicView({
 
   return (
     <WorldCountriesPanel as="article">
-      <h3 className="text-sm font-semibold text-zinc-200">{title}</h3>
-      <p className="mt-1 text-xs text-zinc-500">{subtitle}</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold text-zinc-200">{title}</h3>
+          <p className="mt-1 text-xs text-zinc-500">{subtitle}</p>
+        </div>
+        {headerAction}
+      </div>
       {loading ? (
         <p className="mt-3 text-xs text-zinc-500">Loading mnemonic…</p>
       ) : hasContent ? (
