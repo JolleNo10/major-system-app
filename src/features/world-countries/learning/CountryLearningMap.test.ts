@@ -61,6 +61,7 @@ describe('CountryLearningMap', () => {
         overviewCountries: [norway, sweden],
         highlightedCountryId: 'NO',
         hoveredCountryId: 'SE',
+        showOrderNumbers: true,
         ariaLabel: 'Learning map',
       }))
     })
@@ -71,6 +72,7 @@ describe('CountryLearningMap', () => {
       highlightedIds: [],
       hoveredId: 'Sweden',
       namedIds: ['Norway', 'Sweden'],
+      countryLabels: { Norway: '1. Norway', Sweden: '2. Sweden' },
       mutedIds: [],
     })
 
@@ -79,6 +81,7 @@ describe('CountryLearningMap', () => {
         continent: 'Europe',
         scopeCountries: [norway],
         highlightedCountryId: 'NO',
+        showOrderNumbers: true,
         ariaLabel: 'Learning map',
       }))
     })
@@ -88,7 +91,8 @@ describe('CountryLearningMap', () => {
       zoomIds: ['Norway'],
       highlightedIds: ['Norway'],
       hoveredId: null,
-      namedIds: [],
+      namedIds: ['Norway'],
+      countryLabels: { Norway: '1. Norway' },
       mutedIds: ['Sweden'],
     })
   })

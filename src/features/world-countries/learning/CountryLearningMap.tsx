@@ -82,8 +82,8 @@ export function CountryLearningMap({
     return country ? countriesToSvgIds([country]).filter(id => discoveredIds.includes(id)) : []
   }, [discoveredIds, namedCountryId, overviewCountries, scopeCountries, scopeSvgIds, showNames, showOrderNumbers, zoomScopeSvgIds])
   const countryLabels = useMemo(
-    () => showOrderNumbers ? createCountryOrderLabels(scopeCountries, discoveredIds) : {},
-    [discoveredIds, scopeCountries, showOrderNumbers],
+    () => showOrderNumbers ? createCountryOrderLabels(overviewCountries ?? scopeCountries, discoveredIds) : {},
+    [discoveredIds, overviewCountries, scopeCountries, showOrderNumbers],
   )
   const zoomIds = getCountryLearningMapZoomIds(continent, zoomScopeSvgIds)
   const countryColors = useMemo(

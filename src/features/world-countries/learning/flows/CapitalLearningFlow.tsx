@@ -150,7 +150,7 @@ export function CapitalLearningFlow({
     hoveredCountryId,
     showHighlightedNames: flow.phase === 'walkthrough',
     showHoverNames: flow.phase === 'final-recall',
-    overviewCountries: editingOrder ? entries : undefined,
+    overviewCountries: editingOrder ? allPresentationEntries : undefined,
     mapClassName: ['practice', 'combined-practice'].includes(flow.phase) ? '[&>svg]:max-h-[510px]' : undefined,
     ariaLabel: flow.phase === 'final-recall' ? 'Highlighted Country for final recall' : 'World Countries Learning map',
   } as const
