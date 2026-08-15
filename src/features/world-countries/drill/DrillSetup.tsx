@@ -103,7 +103,6 @@ export function DrillSetup({
   }
 
   useEffect(() => {
-    if (level === 'world') { setRecallProgress(null); return }
     let active = true
     setRecallProgress(null)
     const progressSkills = isDrill

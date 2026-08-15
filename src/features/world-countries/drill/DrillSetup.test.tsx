@@ -3,6 +3,8 @@
 import { act, createElement, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { deriveWorldCountriesRecallProgress } from '@/features/world-countries/learning/recallProgress'
+import { recallTargetIdFor } from '@/features/world-countries/learning/recallTargets'
 import { createDrillSelection } from './drillSelection'
 import { DrillSetup } from './DrillSetup'
 
@@ -26,6 +28,25 @@ function renderSetup(overrides: Record<string, unknown> = {}) {
 }
 
 describe('DrillSetup activity boundary', () => {
+  it('loads Countries + Capitals Drill status for the initial world map', async () => {
+    const norway = {
+      id: 'NO', country: 'Norway', capital: 'Oslo', continent: 'Europe' as const,
+      subregionId: 'northern-europe' as const, subregion: 'Northern Europe',
+    }
+    loadRecallProgressMock.mockResolvedValue(deriveWorldCountriesRecallProgress({
+      countryIds: ['NO'], skills: ['location-to-country', 'country-to-capital'],
+    }, [
+      { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 1, ok: true, ms: 500, evidenceKind: 'recall' },
+      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 2, ok: false, ms: 500, evidenceKind: 'recall' },
+    ]))
+    renderSetup({ level: 'world', mode: 'countries-capitals', entries: [norway] })
+    await act(async () => { await Promise.resolve(); await Promise.resolve() })
+
+    expect(loadRecallProgressMock).toHaveBeenCalledWith({ countryIds: ['NO'], skills: ['location-to-country', 'country-to-capital'] })
+    const latestMapProps = mapMock.mock.calls[mapMock.mock.calls.length - 1]?.[0] as { countryAccessibleDescriptionsById: Map<string, string> }
+    expect(latestMapProps.countryAccessibleDescriptionsById.get('NO')).toBe('Drill proficiency: Weak.')
+  })
+
   it('exposes exactly three Drill modes and keeps geography authoring in the rail', () => {
     const mount = renderSetup()
     const config = useRailsMock.mock.calls[0][0] as { left: ReactNode; right: ReactNode }

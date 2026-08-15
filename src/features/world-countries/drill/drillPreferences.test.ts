@@ -10,7 +10,7 @@ describe('World Countries Drill preferences', () => {
   it('defaults to no selected Subregions', () => {
     expect(loadDrillPreferences()).toMatchObject({
       subregionIds: [],
-      mode: 'countries',
+      mode: 'countries-capitals',
       order: 'ordered',
     })
   })
@@ -52,7 +52,7 @@ describe('World Countries Drill preferences', () => {
     expect(loadDrillPreferences()).toEqual({
       continent: 'Europe',
       subregionIds: ['northern-europe'],
-      mode: 'countries',
+      mode: 'countries-capitals',
       order: 'random',
     })
   })

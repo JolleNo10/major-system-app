@@ -27,7 +27,7 @@ export interface WorldCountriesDrillPreferences extends WorldCountriesDrillSelec
 
 function defaultPreferences(): WorldCountriesDrillPreferences {
   const continent = getContinentsInEffectiveOrder(undefined, getWorldMetadata())[0] ?? 'Africa'
-  return { ...createDrillSelection(continent), mode: 'countries', order: 'ordered' }
+  return { ...createDrillSelection(continent), mode: 'countries-capitals', order: 'ordered' }
 }
 
 export function loadDrillPreferences(): WorldCountriesDrillPreferences {

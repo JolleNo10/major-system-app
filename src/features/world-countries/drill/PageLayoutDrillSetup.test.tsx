@@ -38,7 +38,7 @@ describe('World Countries activity boundary', () => {
     expect(mount.textContent).toContain('World Countries')
     expect(mount.textContent).toContain('Geography')
     expect(mount.textContent).toContain('Purpose')
-    expect((mount.querySelector('input[value="drill"]') as HTMLInputElement | null)?.checked).toBe(false)
+    expect((mount.querySelector('input[value="drill"]') as HTMLInputElement | null)?.checked).toBe(true)
     expect((mount.querySelector('input[value="learn-practise"]') as HTMLInputElement | null)?.checked).toBe(false)
     expect(mount.textContent).not.toContain('Start Drill')
   })

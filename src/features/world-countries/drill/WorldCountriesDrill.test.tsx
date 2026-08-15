@@ -9,17 +9,22 @@ import { WorldCountriesDrill } from './WorldCountriesDrill'
 
 const capitalFlowProps = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }))
 const drillSessionProps = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }))
+const drillSetupProps = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }))
 const loadRecallProgressMock = vi.hoisted(() => vi.fn(async () => new Map()))
 const resolveProficiencyScopeMock = vi.hoisted(() => vi.fn(() => ({ counts: { weak: 0, developing: 0 }, countryIds: [], countries: [] })))
 
 vi.mock('./DrillSetup', () => ({
-  DrillSetup: ({ onLearnPracticeStart, onProficiencySelectionChange }: { onLearnPracticeStart: (mode: string) => void; onProficiencySelectionChange: (selection: readonly string[]) => void }) => createElement(
-    'div',
-    null,
-    createElement('button', { type: 'button', 'data-testid': 'select-proficiency', onClick: () => onProficiencySelectionChange(['weak']) }, 'Select weak'),
-    createElement('button', { type: 'button', 'data-testid': 'start-capital-learning', onClick: () => onLearnPracticeStart('learn-capitals') }, 'Start capital learning'),
-    createElement('button', { type: 'button', 'data-testid': 'start-locate-capitals', onClick: () => onLearnPracticeStart('locate-capitals') }, 'Start Locate Capitals'),
-  ),
+  DrillSetup: (props: Record<string, unknown>) => {
+    drillSetupProps.current = props
+    const { onLearnPracticeStart, onProficiencySelectionChange } = props as { onLearnPracticeStart: (mode: string) => void; onProficiencySelectionChange: (selection: readonly string[]) => void }
+    return createElement(
+      'div',
+      null,
+      createElement('button', { type: 'button', 'data-testid': 'select-proficiency', onClick: () => onProficiencySelectionChange(['weak']) }, 'Select weak'),
+      createElement('button', { type: 'button', 'data-testid': 'start-capital-learning', onClick: () => onLearnPracticeStart('learn-capitals') }, 'Start capital learning'),
+      createElement('button', { type: 'button', 'data-testid': 'start-locate-capitals', onClick: () => onLearnPracticeStart('locate-capitals') }, 'Start Locate Capitals'),
+    )
+  },
 }))
 
 vi.mock('./DrillSession', () => ({
@@ -46,6 +51,7 @@ afterEach(() => {
   root = null
   capitalFlowProps.current = null
   drillSessionProps.current = null
+  drillSetupProps.current = null
   document.body.replaceChildren()
   loadRecallProgressMock.mockClear()
   resolveProficiencyScopeMock.mockReset()
@@ -54,6 +60,20 @@ afterEach(() => {
 })
 
 describe('WorldCountriesDrill learning integration', () => {
+  it('opens the first setup view in Drill with the Countries + Capitals perspective', () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement(SettingsProvider, null,
+        createElement(WorldCountriesDrill, { answerMode: 'multiple-choice' }),
+      ))
+    })
+
+    expect(drillSetupProps.current?.purpose).toBe('drill')
+    expect(drillSetupProps.current?.mode).toBe('countries-capitals')
+  })
+
   it('starts Locate Capitals as non-recording capital-to-country map practice', () => {
     localStorage.setItem('world-countries-drill-preferences', JSON.stringify({
       continent: 'Europe', subregionIds: ['northern-europe'], mode: 'countries', order: 'ordered',
