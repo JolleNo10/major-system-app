@@ -9,3 +9,9 @@ export {
 export { UN_MEMBER_COUNTRY_IDS } from './data/countryClassification'
 export type { WorldCountriesEntityGroupId } from './geography/countrySet'
 export type { LearningSetMaximum } from './learning/stagedLearningPlan'
+export {
+  exportWorldCountriesOrder,
+  parseWorldCountriesOrder,
+  restoreWorldCountriesOrder,
+} from './geography/orderBackup'
+export type { WorldCountriesOrderBackup } from './geography/orderBackup'

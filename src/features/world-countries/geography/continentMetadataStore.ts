@@ -9,6 +9,7 @@ import {
   normalizeContinentMetadata,
   type ContinentMetadata,
 } from '@/features/world-countries/geography/continentMetadata'
+import { notifyWorldCountriesGeographyChanged } from './geographyRefresh'
 
 export const CONTINENT_METADATA_STORAGE_KEY = 'world-countries-continent-metadata'
 
@@ -34,6 +35,13 @@ function writeMetadata(rows: readonly ContinentMetadata[]): void {
   safeSet(CONTINENT_METADATA_STORAGE_KEY, JSON.stringify(rows))
 }
 
+function writeMetadataAndVerify(rows: readonly ContinentMetadata[]): void {
+  writeMetadata(rows)
+  if (JSON.stringify(readStoredMetadata()) !== JSON.stringify(rows)) {
+    throw new Error('Continent geography order could not be saved')
+  }
+}
+
 export function getAllContinentMetadata(): ContinentMetadata[] {
   return readStoredMetadata().map(row => ({ ...row, subregionOrder: [...row.subregionOrder] }))
 }
@@ -50,6 +58,7 @@ export function setContinentMetadata(metadata: ContinentMetadata): void {
   const rows = readStoredMetadata().filter(row => row.continentId !== normalized.continentId)
   rows.push(normalized)
   writeMetadata(rows)
+  notifyWorldCountriesGeographyChanged()
 }
 
 export function setContinentSubregionOrder(
@@ -69,6 +78,7 @@ export function resetContinentSubregionOrder(continent: Continent | string): voi
   const continentId = continentIdFor(continent)
   if (!continentId) throw new Error(`Unknown Continent: ${continent}`)
   writeMetadata(readStoredMetadata().filter(row => row.continentId !== continentId))
+  notifyWorldCountriesGeographyChanged()
 }
 
 /** Apply already-validated import rows deterministically, with last row winning. */
@@ -76,5 +86,17 @@ export function importContinentMetadata(rows: readonly ContinentMetadata[]): num
   const existing = new Map(readStoredMetadata().map(row => [row.continentId, row]))
   for (const row of rows) existing.set(row.continentId, normalizeContinentMetadata(row))
   writeMetadata([...existing.values()])
+  notifyWorldCountriesGeographyChanged()
   return rows.length
+}
+
+/** Replace the complete saved Continent metadata collection without merging. */
+export function replaceAllContinentMetadata(rows: readonly ContinentMetadata[]): void {
+  const normalizedRows = rows.map(normalizeContinentMetadata)
+  const seen = new Set<ContinentId>()
+  for (const row of normalizedRows) {
+    if (seen.has(row.continentId)) throw new Error('Duplicate Continent metadata')
+    seen.add(row.continentId)
+  }
+  writeMetadataAndVerify(normalizedRows)
 }

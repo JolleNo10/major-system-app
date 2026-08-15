@@ -8,6 +8,7 @@ import { PageLayoutProvider } from '@/app/layout/PageLayoutContext'
 import { SettingsProvider } from '@/app/settings/SettingsContext'
 import { countries } from '@/features/world-countries/data/countries'
 import { WorldCountriesPopulationProvider } from '@/features/world-countries/WorldCountriesPopulationContext'
+import { CONTINENT_METADATA_STORAGE_KEY, setContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
 import { RECITE_PROGRESS_STORAGE_KEY } from './reciteProgress'
 import { WorldCountriesRecite } from './WorldCountriesRecite'
 
@@ -171,5 +172,27 @@ describe('World Countries Recite workflow', () => {
     await act(async () => buttonContaining(mount, 'Reveal / Skip').click())
     expect(mount.textContent).toContain('Answer: Norway')
     expect(activeMap()?.hiddenCountryIds).toEqual([])
+  })
+
+  it('keeps the active Recite geography rail on its start-time order snapshot', async () => {
+    const entries = countries.filter(country => country.id === 'NO' || country.id === 'FR')
+    localStorage.setItem(CONTINENT_METADATA_STORAGE_KEY, JSON.stringify([{ continentId: 'europe', subregionOrder: ['northern-europe', 'western-europe'], updatedAt: 9 }]))
+    const mount = await renderRecite(entries)
+    await act(async () => buttonContaining(mount, 'Europe').click())
+    await act(async () => buttonContaining(mount, 'Northern Europe').click())
+    await act(async () => buttonContaining(mount, 'Western Europe').click())
+    await act(async () => buttonContaining(mount, 'Start Recite').click())
+
+    const rail = () => mount.querySelector('[aria-labelledby="world-countries-recite-session-geography-heading"]') as HTMLElement
+    const initial = rail().textContent ?? ''
+    expect(initial.indexOf('Northern Europe')).toBeLessThan(initial.indexOf('Western Europe'))
+
+    await act(async () => {
+      setContinentMetadata({ continentId: 'europe', subregionOrder: ['western-europe', 'northern-europe'], updatedAt: 10 })
+      await Promise.resolve()
+    })
+
+    const afterImport = rail().textContent ?? ''
+    expect(afterImport.indexOf('Northern Europe')).toBeLessThan(afterImport.indexOf('Western Europe'))
   })
 })

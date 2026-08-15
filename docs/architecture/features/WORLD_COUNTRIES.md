@@ -31,8 +31,9 @@ that lets contextual authoring affect subsequent Learning presentation.
   geopolitical classification, and bundled reference data. `Country.capital`
   is the canonical Capital answer.
 - `geography/` owns active-population queries, effective World -> Continent ->
-  Subregion -> Country ordering, order metadata, and the semantic order-saving
-  seam used by contextual editors.
+  Subregion -> Country ordering, order metadata, the semantic order-saving
+  seam used by contextual editors, and the feature-owned refresh signal used
+  by mounted setup views after successful order writes.
 - `learning/` owns recall skills, answer matching, evidence adapters,
   proficiency, pure session mechanics, durable Subregion learning facts,
   Learning Readiness, and reusable guided Learning flows.
@@ -229,6 +230,11 @@ flowchart TD
 
 - Existing World, Continent, and Subregion metadata keys and schemas remain
   unchanged.
+- The feature exposes an order-only Settings backup seam using the existing
+  version-3 Geography JSON family. It exports raw saved World, Continent, and
+  Subregion metadata without materializing canonical rows; restore replaces
+  all three saved metadata collections, including clearing destination-only
+  rows, and does not write Geography mnemonics or learning/activity state.
 - `world-countries-subregion-learning` retains independent milestone fields
   and active membership fingerprint behavior.
 - Geography mnemonics remain in the shared IndexedDB `mnemonics` store with
@@ -305,6 +311,8 @@ flowchart TD
 - `src/features/world-countries/learning/stagedCapitalLearningFlow.ts`
 - `src/features/world-countries/learning/flows/GuidedLearningRails.tsx`
 - `src/features/world-countries/geography/queries.ts`
+- `src/features/world-countries/geography/orderBackup.ts`
+- `src/features/world-countries/geography/geographyRefresh.ts`
 - `src/features/world-countries/geography/orderAuthoring.ts`
 - `src/features/world-countries/maps/GeographyOverviewMap.tsx`
 - `src/features/world-countries/maps/geographyMapAdapter.ts`

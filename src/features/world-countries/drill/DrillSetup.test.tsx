@@ -7,6 +7,7 @@ import { deriveWorldCountriesRecallProgress } from '@/features/world-countries/l
 import { recallTargetIdFor } from '@/features/world-countries/learning/recallTargets'
 import { createDrillSelection } from './drillSelection'
 import { DrillSetup } from './DrillSetup'
+import { WORLD_METADATA_STORAGE_KEY, setWorldMetadata } from '@/features/world-countries/geography/worldMetadataStore'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 const useRailsMock = vi.hoisted(() => vi.fn())
@@ -116,6 +117,29 @@ describe('DrillSetup activity boundary', () => {
     act(() => root?.render(config.left))
     expect(mount.textContent).toContain('Northern Europe')
     expect(mount.textContent).toMatch(/Northern Europe[\s\S]*\d+ Countries/)
+  })
+
+  it('refreshes the mounted setup order after an external geography restore', async () => {
+    localStorage.setItem(WORLD_METADATA_STORAGE_KEY, JSON.stringify({ continentOrder: ['europe', 'asia'], updatedAt: 9 }))
+    const mount = renderSetup({ level: 'world' })
+    const display = document.createElement('div')
+    document.body.append(display)
+    const displayRoot = createRoot(display)
+    const initialConfig = useRailsMock.mock.calls[0][0] as { left: ReactNode }
+    act(() => displayRoot.render(createElement('div', null, initialConfig.left)))
+    const initialEurope = display.textContent?.indexOf('Europe') ?? -1
+    const initialAsia = display.textContent?.indexOf('Asia') ?? -1
+
+    await act(async () => {
+      setWorldMetadata({ continentOrder: ['asia', 'europe'], updatedAt: 10 })
+      await Promise.resolve()
+    })
+    const latestConfig = useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1][0] as { left: ReactNode }
+    act(() => displayRoot.render(createElement('div', null, latestConfig.left)))
+
+    expect(display.textContent?.indexOf('Asia')).toBeLessThan(display.textContent?.indexOf('Europe'))
+    expect(initialEurope).toBeLessThan(initialAsia)
+    act(() => displayRoot.unmount())
   })
 
   it('keeps proficiency filters independent and clears them when Geography is selected', () => {

@@ -12,6 +12,7 @@ import type { LearningStates } from '@/features/world-countries/learning/learnin
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
 import { ProgressMapLegend } from '@/features/world-countries/learning/ProgressMapLegend'
 import { getDrillSubregions, toggleEntireContinentSelection, toggleDrillSubregion, type WorldCountriesDrillSelection } from './drillSelection'
+import { useWorldCountriesGeographyRevision } from '@/features/world-countries/geography/geographyRefresh'
 import { getSkillsForDrillMode, type WorldCountriesDrillMode } from './drillModes'
 import type { WorldCountriesDrillOrder } from './drillOrder'
 import { createDrillProgressColors, createDrillProgressDescriptions } from './drillProgressPresentation'
@@ -46,6 +47,7 @@ export function DrillSetup({
   onGeographyChanged: () => void
   entries?: readonly Country[]
 }) {
+  const geographyRevision = useWorldCountriesGeographyRevision()
   const subregions = getDrillSubregions(selection.continent, entries)
   const skills = getSkillsForDrillMode(mode)
   const [recallProgress, setRecallProgress] = useState<RecallProgress | null>(null)
@@ -71,11 +73,11 @@ export function DrillSetup({
   const [draftSubregionOrder, setDraftSubregionOrder] = useState<readonly SubregionDefinition[] | null>(null)
   const worldOrder = useMemo(
     () => draftWorldOrder ?? getContinentsInEffectiveOrder(entries, getWorldMetadata()),
-    [draftWorldOrder, entries, orderVersion],
+    [draftWorldOrder, entries, geographyRevision, orderVersion],
   )
   const subregionOrder = useMemo(
     () => draftSubregionOrder ?? getSubregionsForContinentInEffectiveOrder(selection.continent, entries, getContinentMetadata(selection.continent)),
-    [draftSubregionOrder, entries, orderVersion, selection.continent],
+    [draftSubregionOrder, entries, geographyRevision, orderVersion, selection.continent],
   )
 
   const beginOrderEdit = (target: 'world' | 'continent') => {

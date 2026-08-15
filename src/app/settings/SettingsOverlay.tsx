@@ -1,3 +1,4 @@
+import { useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 import { useSettings } from '@/app/settings/SettingsContext'
 import {
   MASTERY_FACTOR_MIN, MASTERY_FACTOR_MAX, MASTERY_FACTOR_STEP, DEFAULT_SETTINGS,
@@ -11,11 +12,14 @@ import { Overlay } from '@/app/layout/Overlay'
 import { PI_PAIRS } from '@/features/pi'
 import { Switch } from '@/core/ui/Switch'
 import {
+  exportWorldCountriesOrder,
+  parseWorldCountriesOrder,
+  restoreWorldCountriesOrder,
   WORLD_COUNTRIES_ENTITY_GROUP_DEFINITIONS,
   UN_MEMBER_COUNTRY_IDS,
 } from '@/features/world-countries'
+import type { WorldCountriesOrderBackup } from '@/features/world-countries'
 import type { PwaUpdate } from '@/app/settings/usePwaUpdate'
-import type { ReactNode } from 'react'
 
 interface Props {
   onClose: () => void
@@ -24,6 +28,8 @@ interface Props {
 
 export function SettingsOverlay({ onClose, pwa }: Props) {
   const { settings, update } = useSettings()
+  const [orderState, setOrderState] = useState<GeographyOrderState>({ kind: 'idle' })
+  const orderFileInputRef = useRef<HTMLInputElement>(null)
 
   const factor = settings.masteryLatencyFactor
   const share = settings.sessionUnmasteredShare
@@ -40,6 +46,46 @@ export function SettingsOverlay({ onClose, pwa }: Props) {
     : pwa.needRefresh
       ? 'Update ready'
       : 'Up to date'
+
+  const exportOrder = () => {
+    try {
+      downloadBlob(exportWorldCountriesOrder(), `world-countries-order-${formatLocalDate(new Date())}.json`)
+      setOrderState({ kind: 'success', message: 'Geography order exported' })
+    } catch {
+      setOrderState({ kind: 'error', message: 'Geography order could not be exported.' })
+    }
+  }
+
+  const selectOrderFile = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0]
+    event.currentTarget.value = ''
+    if (!file) return
+    setOrderState({ kind: 'reading' })
+    void readFileAsText(file).then(text => {
+      try {
+        setOrderState({ kind: 'confirm', payload: parseWorldCountriesOrder(text) })
+      } catch (error) {
+        setOrderState({ kind: 'error', message: getOrderParseErrorMessage(error) })
+      }
+    }).catch(() => {
+      setOrderState({ kind: 'error', message: 'The selected file could not be read.' })
+    })
+  }
+
+  const confirmOrderImport = () => {
+    if (orderState.kind !== 'confirm') return
+    setOrderState({ kind: 'importing' })
+    try {
+      restoreWorldCountriesOrder(orderState.payload)
+      setOrderState({ kind: 'success', message: 'Geography order imported' })
+    } catch {
+      setOrderState({ kind: 'error', message: 'Geography order could not be saved. Please verify the current order.' })
+    }
+  }
+
+  const orderImportDisabled = orderState.kind === 'reading'
+    || orderState.kind === 'confirm'
+    || orderState.kind === 'importing'
 
   return (
     <Overlay
@@ -295,6 +341,68 @@ export function SettingsOverlay({ onClose, pwa }: Props) {
               ))}
             </div>
           </section>
+
+          <section>
+            <h3 className="font-semibold text-zinc-100">Geography order</h3>
+            <p className="mt-1 text-sm text-zinc-500">
+              Back up or restore your custom Continent, Subregion and Country order.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={exportOrder}
+                className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2.5 text-sm font-semibold text-zinc-300 transition-colors hover:border-cyan-600 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Export order
+              </button>
+              <button
+                type="button"
+                onClick={() => orderFileInputRef.current?.click()}
+                disabled={orderImportDisabled}
+                className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2.5 text-sm font-semibold text-zinc-300 transition-colors hover:border-cyan-600 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Import order
+              </button>
+              <input
+                ref={orderFileInputRef}
+                type="file"
+                accept=".json,application/json"
+                onChange={selectOrderFile}
+                className="sr-only"
+                aria-label="Import World Countries order backup"
+              />
+            </div>
+
+            {orderState.kind === 'confirm' && (
+              <div className="mt-4 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4" role="group" aria-labelledby="geography-order-confirm-heading">
+                <h4 id="geography-order-confirm-heading" className="font-semibold text-amber-100">Import geography order?</h4>
+                <p className="mt-2 text-sm leading-relaxed text-amber-100/80">
+                  This replaces your current Continent, Subregion and Country ordering.
+                  Learning progress, Drill progress, Recite results and mnemonics are not changed.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setOrderState({ kind: 'idle' })}
+                    className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm font-semibold text-zinc-300 hover:border-zinc-500 hover:text-zinc-100"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmOrderImport}
+                    className="rounded-lg bg-cyan-600 px-3 py-2 text-sm font-semibold text-white hover:bg-cyan-500"
+                  >
+                    Import order
+                  </button>
+                </div>
+              </div>
+            )}
+            {orderState.kind === 'reading' && <p className="mt-3 text-sm text-zinc-400" role="status">Reading backup…</p>}
+            {orderState.kind === 'importing' && <p className="mt-3 text-sm text-zinc-400" role="status">Importing order…</p>}
+            {orderState.kind === 'success' && <p className="mt-3 text-sm text-green-300" role="status">{orderState.message}</p>}
+            {orderState.kind === 'error' && <p className="mt-3 text-sm text-red-300" role="alert">{orderState.message}</p>}
+          </section>
           </SettingsGroup>
 
           <SettingsGroup label="App">
@@ -347,6 +455,44 @@ export function SettingsOverlay({ onClose, pwa }: Props) {
           </SettingsGroup>
     </Overlay>
   )
+}
+
+type GeographyOrderState =
+  | { kind: 'idle' }
+  | { kind: 'reading' }
+  | { kind: 'confirm'; payload: WorldCountriesOrderBackup }
+  | { kind: 'importing' }
+  | { kind: 'success'; message: string }
+  | { kind: 'error'; message: string }
+
+function readFileAsText(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result ?? ''))
+    reader.onerror = () => reject(reader.error)
+    reader.readAsText(file)
+  })
+}
+
+function getOrderParseErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.includes('JSON')) return 'Could not read the selected file as JSON.'
+  return 'The selected file is not a supported World Countries order backup.'
+}
+
+function formatLocalDate(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
+function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.append(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
 }
 
 function SettingsGroup({ label, children }: { label: string; children: ReactNode }) {

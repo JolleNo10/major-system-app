@@ -1,7 +1,6 @@
 import { useRails } from '@/app/layout/PageLayoutContext'
 import type { Country } from '@/features/world-countries/data/countries'
-import { getContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
-import { getSubregionsForContinentInEffectiveOrder } from '@/features/world-countries/geography/queries'
+import { getSubregionDefinition } from '@/features/world-countries/data/subregions'
 import { GeographyBreadcrumbs } from '@/features/world-countries/ui/GeographyBreadcrumbs'
 import type { WorldCountriesDrillSelection } from './drillSelection'
 import { getDrillSkillLabel } from './drillModes'
@@ -22,7 +21,7 @@ export function PracticeSessionRails({ selection, proficiencySelection = [], sta
   const totalSteps = getDrillSessionTotalSteps(state)
   const completedSteps = state.countryIndex * getDrillSessionSkills(state).length + state.stepIndex
   const progressPercent = totalSteps ? Math.round((completedSteps / totalSteps) * 100) : 0
-  const subregions = getSubregionsForContinentInEffectiveOrder(selection.continent, entries, getContinentMetadata(selection.continent))
+  const subregions = selection.subregionIds.map(getSubregionDefinition)
   const stateList = getWorldCountriesLearningStateList(learningStates)
   useRails({
     left: (

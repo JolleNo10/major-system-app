@@ -8,6 +8,7 @@ import {
   normalizeSubregionMetadata,
   type SubregionMetadata,
 } from '@/features/world-countries/geography/subregionMetadata'
+import { notifyWorldCountriesGeographyChanged } from './geographyRefresh'
 
 export const SUBREGION_METADATA_STORAGE_KEY = 'world-countries-subregion-metadata'
 
@@ -33,6 +34,13 @@ function writeMetadata(rows: readonly SubregionMetadata[]): void {
   safeSet(SUBREGION_METADATA_STORAGE_KEY, JSON.stringify(rows))
 }
 
+function writeMetadataAndVerify(rows: readonly SubregionMetadata[]): void {
+  writeMetadata(rows)
+  if (JSON.stringify(readStoredMetadata()) !== JSON.stringify(rows)) {
+    throw new Error('Subregion geography order could not be saved')
+  }
+}
+
 export function getAllSubregionMetadata(): SubregionMetadata[] {
   return readStoredMetadata().map(row => ({ ...row, countryOrder: [...row.countryOrder] }))
 }
@@ -47,6 +55,7 @@ export function setSubregionMetadata(metadata: SubregionMetadata): void {
   const rows = readStoredMetadata().filter(row => row.subregionId !== normalized.subregionId)
   rows.push(normalized)
   writeMetadata(rows)
+  notifyWorldCountriesGeographyChanged()
 }
 
 export function setSubregionCountryOrder(
@@ -103,6 +112,7 @@ function mergeVisibleCountryOrder(
 export function resetSubregionCountryOrder(subregionId: SubregionId): void {
   if (!isSubregionId(subregionId)) throw new Error(`Unknown Subregion ID: ${subregionId}`)
   writeMetadata(readStoredMetadata().filter(row => row.subregionId !== subregionId))
+  notifyWorldCountriesGeographyChanged()
 }
 
 /** Apply already-validated import rows deterministically, with last row winning. */
@@ -110,5 +120,17 @@ export function importSubregionMetadata(rows: readonly SubregionMetadata[]): num
   const existing = new Map(readStoredMetadata().map(row => [row.subregionId, row]))
   for (const row of rows) existing.set(row.subregionId, normalizeSubregionMetadata(row))
   writeMetadata([...existing.values()])
+  notifyWorldCountriesGeographyChanged()
   return rows.length
+}
+
+/** Replace the complete saved Subregion metadata collection without merging. */
+export function replaceAllSubregionMetadata(rows: readonly SubregionMetadata[]): void {
+  const normalizedRows = rows.map(normalizeSubregionMetadata)
+  const seen = new Set<SubregionId>()
+  for (const row of normalizedRows) {
+    if (seen.has(row.subregionId)) throw new Error('Duplicate Subregion metadata')
+    seen.add(row.subregionId)
+  }
+  writeMetadataAndVerify(normalizedRows)
 }

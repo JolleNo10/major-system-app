@@ -4,7 +4,9 @@ import { useRails } from '@/app/layout/PageLayoutContext'
 import { useSettings } from '@/app/settings/SettingsContext'
 import type { Continent, Country, CountryId } from '@/features/world-countries/data/countries'
 import type { SubregionId } from '@/features/world-countries/data/subregions'
+import { getSubregionDefinition } from '@/features/world-countries/data/subregions'
 import { useWorldCountriesPopulation } from '@/features/world-countries/WorldCountriesPopulationContext'
+import { useWorldCountriesGeographyRevision } from '@/features/world-countries/geography/geographyRefresh'
 import { getContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
 import { getAllSubregionMetadata } from '@/features/world-countries/geography/subregionMetadataStore'
 import { getContinentsInEffectiveOrder, getCountriesForSubregion } from '@/features/world-countries/geography/queries'
@@ -87,6 +89,7 @@ const RECITE_ASSISTANCE_DEFINITIONS: readonly {
 export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: AnswerMode }) {
   const { settings } = useSettings()
   const activeCountries = useWorldCountriesPopulation()
+  const geographyRevision = useWorldCountriesGeographyRevision()
   const [phase, setPhase] = useState<RecitePhase>('setup')
   const [selectedContinent, setSelectedContinent] = useState<Continent | null>(null)
   const [selectedSubregionsByContinent, setSelectedSubregionsByContinent] = useState<Partial<Record<Continent, readonly SubregionId[]>>>({})
@@ -100,7 +103,7 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
 
   const worldOrder = useMemo(
     () => getContinentsInEffectiveOrder(activeCountries, getWorldMetadata()),
-    [activeCountries],
+    [activeCountries, geographyRevision],
   )
   const selectedSubregionIds = selectedContinent
     ? selectedSubregionsByContinent[selectedContinent] ?? []
@@ -108,7 +111,7 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
   const continentMetadata = selectedContinent ? getContinentMetadata(selectedContinent) : null
   const subregionMetadata = useMemo(
     () => getAllSubregionMetadata(),
-    [activeCountries, selectedContinent],
+    [activeCountries, geographyRevision, selectedContinent],
   )
   const subregions = selectedContinent
     ? getReciteSubregionsInEffectiveOrder(selectedContinent, activeCountries, continentMetadata)
@@ -179,9 +182,12 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
       country: country.country,
       capital: country.capital,
     }))
+    const orderedSubregionIds = subregions
+      .map(subregion => subregion.id)
+      .filter(subregionId => selectedSubregionIds.includes(subregionId))
     setRun({
       continent: selectedContinent,
-      subregionIds: [...selectedSubregionIds],
+      subregionIds: orderedSubregionIds,
       mode,
       assistance,
       population: [...activeCountries],
@@ -489,7 +495,7 @@ function ReciteStatusLegend({ mode, progress }: { mode: ReciteMode; progress: Wo
 }
 
 function ReciteSessionGeographyRail({ run, onExit }: { run: ActiveReciteRun; onExit: () => void }) {
-  const subregions = getReciteSubregionsInEffectiveOrder(run.continent, run.scopeCountries, getContinentMetadata(run.continent))
+  const subregions = run.subregionIds.map(getSubregionDefinition)
   return <WorldCountriesPanel className="space-y-4" aria-labelledby="world-countries-recite-session-geography-heading"><GeographyBreadcrumbs items={[{ label: 'World' }, { label: run.continent, current: true }]} /><div><p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Selected geography</p><h2 id="world-countries-recite-session-geography-heading" className="mt-1 text-lg font-bold text-zinc-100">Recite context</h2></div><div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3"><p className="text-xs uppercase tracking-wider text-zinc-500">Subregions</p><ul className="mt-2 space-y-1 text-sm text-zinc-300">{subregions.filter(subregion => run.subregionIds.includes(subregion.id)).map(subregion => <li key={subregion.id}>{subregion.label}</li>)}</ul><p className="mt-2 text-xs text-zinc-500">{run.session.countries.length} Countries in this ordered snapshot</p></div><p className="text-xs leading-relaxed text-zinc-500">The map is a geographic scaffold. Answer through the Recite prompt.</p><button type="button" onClick={onExit} className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2.5 text-sm font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100">Back to setup</button></WorldCountriesPanel>
 }
 

@@ -145,7 +145,11 @@ follows the defining module and feature namespace.
 - World Countries owns a version-3 feature envelope containing Geography
   mnemonics plus World, Continent, and Subregion ordering metadata, and accepts
   the earlier version-2 (mnemonics plus Subregion metadata) and mnemonic-only
-  formats. The complete payload is parsed before writes begin.
+  formats. The complete payload is parsed before writes begin. Settings also
+  exposes an order-only export/import in the same version-3 JSON family;
+  order restore replaces the complete saved World/Continent/Subregion
+  metadata collections and never writes mnemonics, progress, attempts, or
+  app settings.
 - Dictionary CSV import/export remains owned by each layered store/parser;
   browser exports never rewrite bundled repository CSV files.
 
