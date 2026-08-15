@@ -38,6 +38,32 @@ describe('GeographyOverviewMap', () => {
     const map = mount.querySelector('[role="img"]'); const descriptionId = map?.getAttribute('aria-describedby')
     expect(descriptionId).toBeTruthy(); expect(mount.querySelector(`#${descriptionId}`)?.textContent).toContain('Norway: Learning Readiness: Countries learned.')
   })
+
+  it('hides caller-selected Countries and omits their accessible descriptions', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g></svg>' })))
+    const mount = document.createElement('div'); document.body.append(mount)
+    await act(async () => { root = createRoot(mount); root.render(createElement(GeographyOverviewMap, { level: 'world', hiddenCountryIds: ['NO'], countryAccessibleDescriptionsById: new Map([['NO', 'Hidden answer']]), ariaLabel: 'World map' })); await Promise.resolve(); await Promise.resolve() })
+    expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.visibility).toBe('hidden')
+    expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.pointerEvents).toBe('none')
+    expect(mount.textContent).not.toContain('Norway: Hidden answer')
+  })
+
+  it('can keep the map mounted as a non-interactive geographic scaffold', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g></svg>' })))
+    const onHoverGroup = vi.fn(); const onCountryClick = vi.fn(); const mount = document.createElement('div'); document.body.append(mount)
+    await act(async () => { root = createRoot(mount); root.render(createElement(GeographyOverviewMap, { level: 'world', interactive: false, onHoverGroup, onCountryClick, ariaLabel: 'Active Recite map' })); await Promise.resolve(); await Promise.resolve() })
+    const path = mount.querySelector('path#Norway')
+    await act(async () => { path?.dispatchEvent(new Event('pointerenter', { bubbles: true })); path?.dispatchEvent(new Event('click', { bubbles: true })) })
+    expect(onHoverGroup).not.toHaveBeenCalled()
+    expect(onCountryClick).not.toHaveBeenCalled()
+  })
+
+  it('reports map readiness transitions to the caller', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g></svg>' })))
+    const states: string[] = []; const mount = document.createElement('div'); document.body.append(mount)
+    await act(async () => { root = createRoot(mount); root.render(createElement(GeographyOverviewMap, { level: 'world', onMapStateChange: state => states.push(state), ariaLabel: 'World map' })); await Promise.resolve(); await Promise.resolve() })
+    expect(states).toEqual(['loading', 'ready'])
+  })
   it('applies a caller-owned Country hover to the mapped SVG path', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g></svg>' })))
     const mount = document.createElement('div'); document.body.append(mount)

@@ -64,7 +64,7 @@ Architecturally significant groups are:
 | Major System | `major-word-*`, `major-soundkey-*`, sequence/speed preferences. Layered word and sound-key records use `createWordStore`. |
 | Cards | `major-cardword-*`, `major-pao-*`, deck-memo histories, drill/suit/range preferences. Themed and PAO stores are independent even when PAO seeds Person values from Themed. |
 | Pi | `major-pi-*` session, selection, memoed/flawless, anchor, story-era, and maintenance state. Exact keys are defined beside their owners. |
-| World Countries | `world-countries-world-metadata`, `world-countries-continent-metadata`, `world-countries-subregion-metadata`, `world-countries-subregion-learning`, and `world-countries-subregion-learning-membership`. |
+| World Countries | `world-countries-world-metadata`, `world-countries-continent-metadata`, `world-countries-subregion-metadata`, `world-countries-subregion-learning`, `world-countries-subregion-learning-membership`, and `world-countries-recite-progress`. |
 
 Small view preferences need not be catalogued here. Their ownership still
 follows the defining module and feature namespace.
@@ -96,6 +96,12 @@ follows the defining module and feature namespace.
   change durable progress. New recorded attempts preserve whether the
   interaction was recall or recognition and the local calendar date at answer
   time.
+- World Countries Recite progress uses the localStorage key
+  `world-countries-recite-progress`. Its versioned record stores the latest
+  completed outcome and timestamp independently for each `(ReciteMode,
+  CountryId)` pair. Setup preferences, prompt history, incomplete sessions,
+  and flattened authored/session Country sequences remain transient; Recite
+  does not write the shared Drill-attempt namespace.
 
 ## Migration and isolation rules
 
@@ -113,6 +119,10 @@ follows the defining module and feature namespace.
   back can restore their applicability; both completion dimensions still
   describe the current Country set. User-authored Country order is not part of
   that fingerprint and therefore does not invalidate completion.
+- Recite progress is mode-specific and latest-completed-run based. A completed
+  Recite run may replace a prior outcome for the same mode and Country; backing
+  out of an incomplete run cannot replace it. Recite progress is not imported
+  into Drill proficiency or Learning Readiness.
 - User-authored Country order stores stable IDs for the canonical Subregion;
   reads project that order over the active population, and saving an active
   projection preserves hidden IDs for later re-enablement.
@@ -153,6 +163,7 @@ follows the defining module and feature namespace.
 - `src/features/world-countries/learning/subregionLearningStore.ts`
 - `src/features/world-countries/learning/recallProgress.ts`
 - `src/features/world-countries/drill/drillPreferences.ts`
+- `src/features/world-countries/recite/reciteProgress.ts`
 
 ## Historical rationale
 

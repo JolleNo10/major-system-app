@@ -54,8 +54,12 @@ that lets contextual authoring affect subsequent Learning presentation.
 - `ui/` owns feature-local panels, breadcrumbs, hierarchy rows, inline reorder
   presentation, map-surface/dock presentation, task-dock status/action styling,
   and draft movement without persistence policy.
-- `recite/` and `maintenance/` are sibling workflow owners. They may consume
-  shared World Countries evidence without importing Drill internals.
+- `recite/` owns the ordered World Countries Recite setup, its three typed-recall
+  modes, transient setup/session state, current-run outcomes, completion flow,
+  and mode-specific latest-outcome status. It consumes geography, answer
+  matching, map, and UI seams without importing Drill internals.
+- `maintenance/` is a separate sibling workflow owner. It may consume shared
+  World Countries evidence without importing Drill internals.
 
 There is no broad feature `domain/`, `persistence/`, or `common/` layer and no
 compatibility wrapper for the removed authoring workflow.
@@ -118,6 +122,22 @@ writes a Learning milestone or changes Drill evidence.
 Learn Capitals is runnable before Countries learning and recommends, but does
 not require, Countries first.
 
+Recite is a sibling activity with exactly three ordered modes: Countries,
+Countries + Capitals, and Countries from Capitals. It resolves selected
+Subregions and Countries through `geography/`, snapshots that effective order
+when a run starts, and keeps retries, reveals, and completion outcomes inside
+`recite/`. Recite uses typed free recall and never writes Drill evidence,
+Learning milestones, Learning Readiness, or Maintenance evidence. Its setup
+retains only transient per-Continent Subregion selections, mode, and map
+assistance; incomplete sessions are discarded without persistence.
+
+Recite setup colors Countries by the latest completed outcome for the selected
+Recite mode. Active sessions suppress historical status and use only current-run
+outcomes. `GeographyOverviewMap` and the underlying SVG controller accept
+caller-selected hidden Country IDs; hidden geometry, labels, hover, clicks, and
+accessible descriptions are suppressed generically, without map-layer Recite
+semantics. Active Recite maps are non-interactive geographic scaffolds.
+
 ## Contextual authoring rules
 
 - The effective hierarchy order comes from `geography/` for World, Continent,
@@ -177,6 +197,10 @@ not require, Countries first.
 - Active Drill question queues are constructed at session start and are not
   mutated by later order edits. Random versus In-order Drill scheduling is
   independent from authored geographic order.
+- Recite question queues are constructed at session start from effective
+  Subregion/Country order and are not mutated by later population or order
+  changes. Recite mode and map assistance are fixed for the run; only the
+  typed prompt/task controls advance it.
 - PageLayout geometry, `useRails`, `useLayoutHeader`, drawer behavior, and rail
   widths remain unchanged.
 
@@ -218,6 +242,11 @@ flowchart TD
 - `major-settings` owns the persisted World Countries `New items per set`
   preference (`3`, `4`, `5`, or `all`), defaulting to `3`. No intermediate
   Learning plan, scheduler, or resume record is persisted.
+- `world-countries-recite-progress` owns versioned latest-completed Recite
+  outcomes keyed by `(ReciteMode, CountryId)`, including completion timestamps.
+  It stores no flattened session sequence, setup preference, incomplete run, or
+  prompt history. Recite outcomes are independent from Drill attempts and
+  Learning milestones.
 - Atomic Drill evidence continues to use the existing attempts store and
   `world-countries:<skill>:<CountryId>` IDs. Practice never writes it.
 - A persisted legacy Drill `mode: "capitals"` remains invalid under the
@@ -263,6 +292,10 @@ flowchart TD
 - `src/features/world-countries/drill/DrillSetupRails.tsx`
 - `src/features/world-countries/drill/drillProficiencyScope.ts`
 - `src/features/world-countries/drill/drillProgressPresentation.ts`
+- `src/features/world-countries/recite/WorldCountriesRecite.tsx`
+- `src/features/world-countries/recite/reciteSession.ts`
+- `src/features/world-countries/recite/reciteProgress.ts`
+- `src/features/world-countries/recite/recitePresentation.ts`
 - `src/features/world-countries/drill/DrillSession.tsx`
 - `src/features/world-countries/learning/flows/CountryLearningFlow.tsx`
 - `src/features/world-countries/learning/flows/CapitalLearningFlow.tsx`

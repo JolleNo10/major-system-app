@@ -13,7 +13,7 @@ import {
 } from './geographyMapAdapter'
 import { getMemoMapDefinition, MEMO_MAP_DEFINITIONS } from './mapDefinitions'
 import type { SvgMapGroupOutline } from './SvgMapController'
-import { SvgMapView, type SvgMapCountry } from './SvgMapView'
+import { SvgMapView, type SvgMapCountry, type SvgMapLoadState } from './SvgMapView'
 
 const GEOGRAPHY_OVERVIEW_HOVER_FILL = '#0f766e'
 const GEOGRAPHY_OVERVIEW_HOVER_STROKE = '#d4d4d8'
@@ -35,9 +35,16 @@ export interface GeographyOverviewMapProps {
   countryColorsById?: ReadonlyMap<CountryId, string>
   /** Optional non-color descriptions for the mapped Countries. */
   countryAccessibleDescriptionsById?: ReadonlyMap<CountryId, string>
+  /** Optional caller-owned population snapshot; defaults to the active context population. */
+  countryPopulation?: readonly Country[]
+  /** Caller-controlled Country IDs whose geometry and interaction are hidden. */
+  hiddenCountryIds?: readonly CountryId[]
+  /** Disable caller-facing Country hover/click interaction while keeping the map mounted. */
+  interactive?: boolean
   hoveredGroupId?: string | null
   onHoverGroup?: (groupId: string | null) => void
   onCountryClick?: (country: Country) => void
+  onMapStateChange?: (state: SvgMapLoadState) => void
   ariaLabel?: string
 }
 
@@ -58,12 +65,17 @@ export function GeographyOverviewMap({
   countryColor = '#16a34a',
   countryColorsById,
   countryAccessibleDescriptionsById,
+  countryPopulation,
+  hiddenCountryIds = [],
+  interactive = true,
   hoveredGroupId = null,
   onHoverGroup,
   onCountryClick,
+  onMapStateChange,
   ariaLabel,
 }: GeographyOverviewMapProps) {
-  const activeCountries = useWorldCountriesPopulation()
+  const contextCountries = useWorldCountriesPopulation()
+  const activeCountries = countryPopulation ?? contextCountries
   const definition = useMemo(
     () => level === 'world' || !continent
       ? MEMO_MAP_DEFINITIONS.find(candidate => candidate.id === 'world') ?? MEMO_MAP_DEFINITIONS[0]
@@ -111,8 +123,16 @@ export function GeographyOverviewMap({
     () => resolveCountriesToSvgIds(selectedCountries, mapCountryIds),
     [mapCountryIds, selectedCountries],
   )
+  const hiddenCountryIdSet = useMemo(() => new Set(hiddenCountryIds), [hiddenCountryIds])
+  const hiddenSvgIds = useMemo(
+    () => resolveCountriesToSvgIds(
+      visibleCountries.filter(country => hiddenCountryIdSet.has(country.id)),
+      mapCountryIds,
+    ),
+    [hiddenCountryIdSet, mapCountryIds, visibleCountries],
+  )
   const [mapHoveredGroupId, setMapHoveredGroupId] = useState<string | null>(null)
-  const activeHoveredGroupId = hoveredGroupId ?? mapHoveredGroupId
+  const activeHoveredGroupId = interactive ? hoveredGroupId ?? mapHoveredGroupId : null
   const hoveredGroupSvgIds = useMemo(
     () => hoverGroups.find(group => group.id === activeHoveredGroupId)?.countryIds ?? [],
     [activeHoveredGroupId, hoverGroups],
@@ -135,16 +155,19 @@ export function GeographyOverviewMap({
   const hasScopedCountries = Boolean(
     focusedSubregionId || selectedCountryIds !== undefined || selectedSubregionIds !== undefined || hasHoveredSubregionScope || hasContinentScope,
   )
-  const hoverableSvgIds = hasScopedCountries ? scopedSvgIds : visibleSvgIds
+  const hoverableSvgIds = interactive
+    ? hasScopedCountries ? scopedSvgIds : visibleSvgIds
+    : []
   const restrictCountryClicks = Boolean(
     focusedSubregionId || (selectedSubregionIds === undefined && hasHoveredSubregionScope),
   )
   const handleCountryClick = useCallback((svgId: string) => {
+    if (!interactive) return
     if (restrictCountryClicks && !scopedSvgIds.includes(svgId)) return
     const entry = getCountryForSvgId(svgId, visibleCountries)
     if (!entry) return
     onCountryClick?.(entry)
-  }, [onCountryClick, restrictCountryClicks, scopedSvgIds, visibleCountries])
+  }, [interactive, onCountryClick, restrictCountryClicks, scopedSvgIds, visibleCountries])
   const mutedSvgIds = useMemo(() => {
     if (!hasScopedCountries) return []
     const activeIds = new Set(scopedSvgIds)
@@ -179,9 +202,11 @@ export function GeographyOverviewMap({
   const descriptionId = `geography-map-descriptions-${useId().replace(/:/g, '')}`
   const countryDescriptions = useMemo(
     () => countryAccessibleDescriptionsById
-      ? visibleCountries.map(country => `${country.country}: ${countryAccessibleDescriptionsById.get(country.id) ?? 'No mapped status description.'}`)
+      ? visibleCountries
+        .filter(country => !hiddenCountryIdSet.has(country.id))
+        .map(country => `${country.country}: ${countryAccessibleDescriptionsById.get(country.id) ?? 'No mapped status description.'}`)
       : [],
-    [countryAccessibleDescriptionsById, visibleCountries],
+    [countryAccessibleDescriptionsById, hiddenCountryIdSet, visibleCountries],
   )
   const descriptions = countryDescriptions
 
@@ -201,6 +226,7 @@ export function GeographyOverviewMap({
         }}
         hoverGroups={hoverGroups}
         groupOutlines={groupOutlines}
+        hiddenIds={hiddenSvgIds}
         hoverableIds={hoverableSvgIds}
         hoveredId={hoveredCountryId}
         mutedIds={mutedSvgIds}
@@ -208,6 +234,7 @@ export function GeographyOverviewMap({
         zoomIds={zoomIds}
         zoomPadding={definition.zoomPadding}
         onCountriesLoaded={setMapCountries}
+        onLoadStateChange={onMapStateChange}
         onCountryHover={svgId => {
           const group = hoverGroups.find(candidate => candidate.countryIds.includes(svgId ?? ''))
           setMapHoveredGroupId(group?.id ?? null)
