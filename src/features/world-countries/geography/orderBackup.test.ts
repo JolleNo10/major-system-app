@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   exportWorldCountriesOrder,
   parseWorldCountriesOrder,
+  resetWorldCountriesOrder,
   restoreWorldCountriesOrder,
 } from './orderBackup'
 import { getAllContinentMetadata, setContinentMetadata } from './continentMetadataStore'
@@ -110,6 +111,22 @@ describe('World Countries order backup', () => {
     unsubscribe()
     expect(getWorldMetadata()).toMatchObject({ continentOrder: ['europe'], updatedAt: 1 })
     expect(listener).not.toHaveBeenCalled()
+  })
+
+  it('resets every saved geography-order collection and emits one refresh notification', () => {
+    setWorldMetadata({ continentOrder: ['europe'], updatedAt: 1 })
+    setContinentMetadata({ continentId: 'europe', subregionOrder: ['northern-europe'], updatedAt: 2 })
+    setSubregionMetadata({ subregionId: 'northern-europe', countryOrder: ['NO'], updatedAt: 3 })
+    const listener = vi.fn()
+    const unsubscribe = subscribeToWorldCountriesGeography(listener)
+
+    resetWorldCountriesOrder()
+
+    unsubscribe()
+    expect(getWorldMetadata()).toBeNull()
+    expect(getAllContinentMetadata()).toEqual([])
+    expect(getAllSubregionMetadata()).toEqual([])
+    expect(listener).toHaveBeenCalledOnce()
   })
 })
 

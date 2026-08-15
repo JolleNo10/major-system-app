@@ -12,6 +12,7 @@ export type { LearningSetMaximum } from './learning/stagedLearningPlan'
 export {
   exportWorldCountriesOrder,
   parseWorldCountriesOrder,
+  resetWorldCountriesOrder,
   restoreWorldCountriesOrder,
 } from './geography/orderBackup'
 export type { WorldCountriesOrderBackup } from './geography/orderBackup'

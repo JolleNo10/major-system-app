@@ -88,6 +88,30 @@ describe('Settings World Countries geography order', () => {
     expect(mount.querySelector('[role="status"]')?.textContent).toContain('Geography order imported')
   })
 
+  it('resets all custom geography order after confirmation', async () => {
+    renderSettings()
+    await chooseFile(JSON.stringify({
+      version: 3,
+      feature: 'world-countries',
+      mnemonics: [],
+      subregions: [{ subregionId: 'northern-europe', countryOrder: ['NO'], updatedAt: 1 }],
+      continents: [{ continentId: 'europe', subregionOrder: ['northern-europe'], updatedAt: 2 }],
+      world: { continentOrder: ['europe'], updatedAt: 3 },
+    }))
+    act(() => getButtons('Import order')[getButtons('Import order').length - 1]?.click())
+
+    expect((await readExportedOrder()).world).toMatchObject({ continentOrder: ['europe'] })
+
+    act(() => getButton('Reset Geography order').click())
+    expect(mount.textContent).toContain('This removes all custom World, Continent, Subregion and Country ordering')
+    expect((await readExportedOrder()).world).toMatchObject({ continentOrder: ['europe'] })
+
+    act(() => getButtons('Reset Geography order')[getButtons('Reset Geography order').length - 1]?.click())
+
+    await expect(readExportedOrder()).resolves.toMatchObject({ world: null, continents: [], subregions: [] })
+    expect(mount.querySelector('[role="status"]')?.textContent).toContain('Geography order reset')
+  })
+
   it('keeps Settings open with recoverable storage failure feedback', async () => {
     renderSettings()
     await chooseFile(JSON.stringify({

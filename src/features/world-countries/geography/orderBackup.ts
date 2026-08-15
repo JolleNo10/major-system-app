@@ -81,6 +81,11 @@ export function restoreWorldCountriesOrder(payload: WorldCountriesOrderBackup): 
   notifyWorldCountriesGeographyChanged()
 }
 
+/** Remove every saved geography-order override and restore canonical defaults. */
+export function resetWorldCountriesOrder(): void {
+  restoreWorldCountriesOrder({ subregions: [], continents: [], world: null })
+}
+
 function normalizeOrderPayload(payload: WorldCountriesOrderBackup): WorldCountriesOrderBackup {
   if (!isRecord(payload)
     || !Array.isArray(payload.subregions)

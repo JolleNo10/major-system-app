@@ -230,11 +230,11 @@ flowchart TD
 
 - Existing World, Continent, and Subregion metadata keys and schemas remain
   unchanged.
-- The feature exposes an order-only Settings backup seam using the existing
-  version-3 Geography JSON family. It exports raw saved World, Continent, and
-  Subregion metadata without materializing canonical rows; restore replaces
-  all three saved metadata collections, including clearing destination-only
-  rows, and does not write Geography mnemonics or learning/activity state.
+- The feature exposes order-only Settings export/import/reset through the
+  existing version-3 Geography JSON family. Export returns raw saved World,
+  Continent, and Subregion metadata without materializing canonical rows;
+  restore replaces all three saved metadata collections, reset clears them,
+  and neither action writes Geography mnemonics or learning/activity state.
 - `world-countries-subregion-learning` retains independent milestone fields
   and active membership fingerprint behavior.
 - Geography mnemonics remain in the shared IndexedDB `mnemonics` store with

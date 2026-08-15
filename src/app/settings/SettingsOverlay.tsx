@@ -14,6 +14,7 @@ import { Switch } from '@/core/ui/Switch'
 import {
   exportWorldCountriesOrder,
   parseWorldCountriesOrder,
+  resetWorldCountriesOrder,
   restoreWorldCountriesOrder,
   WORLD_COUNTRIES_ENTITY_GROUP_DEFINITIONS,
   UN_MEMBER_COUNTRY_IDS,
@@ -83,9 +84,21 @@ export function SettingsOverlay({ onClose, pwa }: Props) {
     }
   }
 
-  const orderImportDisabled = orderState.kind === 'reading'
+  const confirmOrderReset = () => {
+    if (orderState.kind !== 'reset-confirm') return
+    setOrderState({ kind: 'importing' })
+    try {
+      resetWorldCountriesOrder()
+      setOrderState({ kind: 'success', message: 'Geography order reset' })
+    } catch {
+      setOrderState({ kind: 'error', message: 'Geography order could not be reset. Please verify the current order.' })
+    }
+  }
+
+  const orderActionsDisabled = orderState.kind === 'reading'
     || orderState.kind === 'confirm'
     || orderState.kind === 'importing'
+    || orderState.kind === 'reset-confirm'
 
   return (
     <Overlay
@@ -358,10 +371,18 @@ export function SettingsOverlay({ onClose, pwa }: Props) {
               <button
                 type="button"
                 onClick={() => orderFileInputRef.current?.click()}
-                disabled={orderImportDisabled}
+                disabled={orderActionsDisabled}
                 className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2.5 text-sm font-semibold text-zinc-300 transition-colors hover:border-cyan-600 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Import order
+              </button>
+              <button
+                type="button"
+                onClick={() => setOrderState({ kind: 'reset-confirm' })}
+                disabled={orderActionsDisabled}
+                className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2.5 text-sm font-semibold text-zinc-300 transition-colors hover:border-amber-600 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Reset Geography order
               </button>
               <input
                 ref={orderFileInputRef}
@@ -378,7 +399,7 @@ export function SettingsOverlay({ onClose, pwa }: Props) {
                 <h4 id="geography-order-confirm-heading" className="font-semibold text-amber-100">Import geography order?</h4>
                 <p className="mt-2 text-sm leading-relaxed text-amber-100/80">
                   This replaces your current Continent, Subregion and Country ordering.
-                  Learning progress, Drill progress, Recite results and mnemonics are not changed.
+                  Learning progress, Drill progress, Recite results, mnemonics, settings and Country-set selection are not changed.
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button
@@ -394,6 +415,31 @@ export function SettingsOverlay({ onClose, pwa }: Props) {
                     className="rounded-lg bg-cyan-600 px-3 py-2 text-sm font-semibold text-white hover:bg-cyan-500"
                   >
                     Import order
+                  </button>
+                </div>
+              </div>
+            )}
+            {orderState.kind === 'reset-confirm' && (
+              <div className="mt-4 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4" role="group" aria-labelledby="geography-order-reset-heading">
+                <h4 id="geography-order-reset-heading" className="font-semibold text-amber-100">Reset Geography order?</h4>
+                <p className="mt-2 text-sm leading-relaxed text-amber-100/80">
+                  This removes all custom World, Continent, Subregion and Country ordering and restores the canonical defaults.
+                  Learning progress, Drill progress, Recite results and mnemonics are not changed.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setOrderState({ kind: 'idle' })}
+                    className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm font-semibold text-zinc-300 hover:border-zinc-500 hover:text-zinc-100"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmOrderReset}
+                    className="rounded-lg bg-amber-600 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-500"
+                  >
+                    Reset Geography order
                   </button>
                 </div>
               </div>
@@ -461,6 +507,7 @@ type GeographyOrderState =
   | { kind: 'idle' }
   | { kind: 'reading' }
   | { kind: 'confirm'; payload: WorldCountriesOrderBackup }
+  | { kind: 'reset-confirm' }
   | { kind: 'importing' }
   | { kind: 'success'; message: string }
   | { kind: 'error'; message: string }

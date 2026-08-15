@@ -35,7 +35,7 @@ Geography order
 
 Back up or restore your custom Continent, Subregion and Country order.
 
-[ Export order ]  [ Import order ]
+[ Export order ]  [ Import order ]  [ Reset Geography order ]
 ```
 
 ### Export order
@@ -91,6 +91,17 @@ Learning progress, Drill progress, Recite results and mnemonics are not changed.
 ```
 
 Cancel performs no writes.
+
+### Reset Geography order
+
+Selecting **Reset Geography order** asks for confirmation before removing every
+saved World, Continent, and Subregion ordering override. On confirmation, all
+three ordering stores are cleared so World Countries uses canonical/default
+order again.
+
+Reset reports success or a recoverable storage error in Settings. It does not
+change learning progress, Drill progress, Recite results, mnemonics, settings,
+or Country-set selection.
 
 ### Restore semantics: replace, do not merge
 
@@ -197,6 +208,7 @@ indices as import identity.
 - Add the World Countries **Geography order** Settings section.
 - Add order-only JSON download.
 - Add JSON file selection for restore.
+- Add a confirmed reset action that clears all saved geography ordering.
 - Reuse the existing World Countries Geography v3 envelope.
 - Export raw saved ordering metadata for World, Continents, and Subregions.
 - Preserve currently hidden Country IDs contained in saved Subregion metadata.
@@ -290,6 +302,12 @@ After confirmation and successful writes:
   setup ordering after Settings closes.
 
 Do not require `window.location.reload()` as the normal success path.
+
+### Reset state
+
+Reset requires explicit confirmation before writing. After confirmation, an
+empty order state is restored and the mounted World Countries presentation is
+refreshed through the same feature-owned signal as import.
 
 ### Storage failure
 
@@ -453,6 +471,8 @@ Do not move World Countries order data into `major-settings`.
   older saved metadata.
 - Importing the same valid file repeatedly is idempotent with respect to
   effective saved order.
+- Resetting Geography order clears World, Continent, and Subregion metadata and
+  restores canonical/default effective order.
 - Cancelling the confirmation after a valid file is parsed performs no writes.
 - A malformed row anywhere prevents all order writes.
 - The underlying active Drill/Recite session snapshot, if one is already
@@ -506,6 +526,8 @@ Do not move World Countries order data into `major-settings`.
 - [x] Confirmed import replaces the entire saved World order state.
 - [x] Confirmed import replaces the entire saved Continent metadata collection rather than merging destination-only rows.
 - [x] Confirmed import replaces the entire saved Subregion metadata collection rather than merging destination-only rows.
+- [x] Settings provides a confirmed Reset Geography order action.
+- [x] Reset Geography order clears all saved World/Continent/Subregion ordering metadata.
 - [x] `world: null` clears destination World custom order.
 - [x] Missing Continent/Subregion rows in the imported complete state clear corresponding destination-only custom order.
 - [x] Importing an empty-order envelope resets all World Countries geography ordering to canonical/default behavior.
@@ -594,4 +616,5 @@ tests but returned a Vitest cache-file `EPERM` after the run because the host
 `node_modules/.vite/vitest/results.json` path is read-only.
 
 Settings interaction tests cover export, invalid import, confirmation cancel,
-successful import, and storage error feedback. TypeScript typecheck passed.
+successful import, reset confirmation, and storage error feedback. TypeScript
+typecheck passed.
