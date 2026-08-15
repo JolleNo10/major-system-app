@@ -8,6 +8,8 @@ import { getMemoMapDefinition } from '@/features/world-countries/maps/mapDefinit
 export interface CountryLearningMapProps {
   continent: Continent
   scopeCountries: readonly Country[]
+  /** Optional wider Country collection used only to determine the map viewport. */
+  zoomCountries?: readonly Country[]
   showNames?: boolean
   showHoverNames?: boolean
   showOrderNumbers?: boolean
@@ -36,6 +38,7 @@ export function getCountryLearningMapZoomIds(
 export function CountryLearningMap({
   continent,
   scopeCountries,
+  zoomCountries,
   showNames = false,
   showHoverNames = false,
   showOrderNumbers = false,
@@ -55,6 +58,10 @@ export function CountryLearningMap({
   const scopeSvgIds = useMemo(
     () => resolveCountriesToSvgIds(scopeCountries, discoveredIds),
     [discoveredIds, scopeCountries],
+  )
+  const zoomScopeSvgIds = useMemo(
+    () => resolveCountriesToSvgIds(zoomCountries ?? scopeCountries, discoveredIds),
+    [discoveredIds, scopeCountries, zoomCountries],
   )
   const highlightedSvgIds = useMemo(() => {
     if (!highlightedCountryId) return []
@@ -76,7 +83,7 @@ export function CountryLearningMap({
     () => showOrderNumbers ? createCountryOrderLabels(scopeCountries, discoveredIds) : {},
     [discoveredIds, scopeCountries, showOrderNumbers],
   )
-  const zoomIds = getCountryLearningMapZoomIds(continent, scopeSvgIds)
+  const zoomIds = getCountryLearningMapZoomIds(continent, zoomScopeSvgIds)
   const countryColors = useMemo(
     () => countryColorsById
       ? createCountryColorsById(scopeCountries, countryColorsById, discoveredIds)

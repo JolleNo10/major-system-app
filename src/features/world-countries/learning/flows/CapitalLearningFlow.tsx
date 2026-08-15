@@ -86,6 +86,7 @@ export function CapitalLearningFlow({
   const [flow, setFlow] = useState<StagedCapitalLearningFlowState>(() => createStagedCapitalLearningFlow({ countryIds: ids, maximum: newItemsPerSet, schedulerSettings }))
   const completionReporter = useRef(subregion && recordCompletion ? createSubregionCapitalCompletionReporter(subregion, activeCountries) : null)
   const [orderDraft, setOrderDraft] = useState<readonly Country[] | null>(null)
+  const [editingOrder, setEditingOrder] = useState(false)
   const [hoveredCountryId, setHoveredCountryId] = useState<string | null>(null)
   const allPresentationEntries = orderDraft ?? entries
   const stageIds = currentStagedCapitalIds(flow)
@@ -149,6 +150,7 @@ export function CapitalLearningFlow({
     hoveredCountryId,
     showHighlightedNames: flow.phase === 'walkthrough',
     showHoverNames: flow.phase === 'final-recall',
+    zoomCountries: editingOrder ? entries : undefined,
     mapClassName: ['practice', 'combined-practice'].includes(flow.phase) ? '[&>svg]:max-h-[510px]' : undefined,
     ariaLabel: flow.phase === 'final-recall' ? 'Highlighted Country for final recall' : 'World Countries Learning map',
   } as const
@@ -188,6 +190,7 @@ export function CapitalLearningFlow({
     onCountryHover={setHoveredCountryId}
     onMnemonicChanged={onMnemonicChanged}
     onOrderDraftChanged={setOrderDraft}
+    onOrderEditingChange={setEditingOrder}
     onOrderSaved={onOrderSaved}
     onBack={backAvailable ? () => run(backStagedCapital) : undefined}
     backLabel={backLabel}

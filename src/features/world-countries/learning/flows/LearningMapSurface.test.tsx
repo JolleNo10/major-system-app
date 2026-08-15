@@ -25,6 +25,10 @@ const norway: Country = {
   id: 'NO', country: 'Norway', capital: 'Oslo', continent: 'Europe',
   subregionId: 'northern-europe', subregion: 'Northern Europe',
 }
+const sweden: Country = {
+  id: 'SE', country: 'Sweden', capital: 'Stockholm', continent: 'Europe',
+  subregionId: 'northern-europe', subregion: 'Northern Europe',
+}
 let root: Root | null = null
 
 afterEach(() => {
@@ -52,5 +56,27 @@ describe('LearningMapSurface continuity', () => {
 
     expect(mapMounts).toHaveBeenCalledTimes(1)
     expect(mapRenders.mock.calls[mapRenders.mock.calls.length - 1]?.[0]).toMatchObject({ highlightedCountryId: null })
+  })
+
+  it('passes a wider viewport scope without changing the Countries presented by the map', () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement(LearningMapSurface, {
+        continent: 'Europe',
+        scopeCountries: [norway],
+        presentation: { ariaLabel: 'Learning map', zoomCountries: [norway, sweden] },
+        presentationKey: 'walkthrough',
+        context: createElement('h1', null, 'Learning'),
+        children: createElement('p', null, 'Task'),
+      }))
+    })
+
+    expect(mapRenders.mock.calls[mapRenders.mock.calls.length - 1]?.[0]).toMatchObject({
+      scopeCountries: [norway],
+      zoomCountries: [norway, sweden],
+    })
   })
 })

@@ -86,6 +86,7 @@ export function CountryLearningFlow({
   const [flow, setFlow] = useState<StagedCountryLearningFlowState>(() => createStagedCountryLearningFlow({ countryIds: ids, maximum: newItemsPerSet, schedulerSettings }))
   const completionReported = useRef(false)
   const [orderDraft, setOrderDraft] = useState<readonly Country[] | null>(null)
+  const [editingOrder, setEditingOrder] = useState(false)
   const [hoveredCountryId, setHoveredCountryId] = useState<string | null>(null)
   const allPresentationEntries = orderDraft ?? entries
   const stageIds = currentStagedCountryIds(flow)
@@ -151,6 +152,7 @@ export function CountryLearningFlow({
     hoveredCountryId,
     showHighlightedNames: flow.phase === 'walkthrough',
     showHoverNames: flow.phase === 'final-recall',
+    zoomCountries: editingOrder ? entries : undefined,
     mapClassName: ['practice', 'combined-practice'].includes(flow.phase) ? '[&>svg]:max-h-[510px]' : undefined,
     ariaLabel: flow.phase === 'final-recall' ? 'Highlighted Country for final recall' : 'World Countries Learning map',
   } as const
@@ -192,6 +194,7 @@ export function CountryLearningFlow({
     onCountryHover={setHoveredCountryId}
     onMnemonicChanged={onMnemonicChanged}
     onOrderDraftChanged={setOrderDraft}
+    onOrderEditingChange={setEditingOrder}
     onOrderSaved={onOrderSaved}
     onBack={backAvailable ? () => run(backStagedCountry) : undefined}
     backLabel={backLabel}
