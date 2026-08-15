@@ -4,7 +4,7 @@ import { CountryLearningMap, type CountryLearningMapProps } from '@/features/wor
 import { MapSurface, type MapSurfaceDockPlacement } from '@/features/world-countries/ui/MapSurface'
 
 export type LearningMapOverride = Partial<Pick<CountryLearningMapProps,
-  'zoomCountries' | 'showNames' | 'showHoverNames' | 'showOrderNumbers' | 'namedCountryId' |
+  'overviewCountries' | 'showNames' | 'showHoverNames' | 'showOrderNumbers' | 'namedCountryId' |
   'highlightedCountryId' | 'hoveredCountryId' | 'showHighlightedNames' |
   'mapClassName' |
   'onCountryClick' | 'ariaLabel'

@@ -67,7 +67,7 @@ describe('LearningMapSurface continuity', () => {
       root.render(createElement(LearningMapSurface, {
         continent: 'Europe',
         scopeCountries: [norway],
-        presentation: { ariaLabel: 'Learning map', zoomCountries: [norway, sweden] },
+        presentation: { ariaLabel: 'Learning map', overviewCountries: [norway, sweden] },
         presentationKey: 'walkthrough',
         context: createElement('h1', null, 'Learning'),
         children: createElement('p', null, 'Task'),
@@ -76,7 +76,7 @@ describe('LearningMapSurface continuity', () => {
 
     expect(mapRenders.mock.calls[mapRenders.mock.calls.length - 1]?.[0]).toMatchObject({
       scopeCountries: [norway],
-      zoomCountries: [norway, sweden],
+      overviewCountries: [norway, sweden],
     })
   })
 })

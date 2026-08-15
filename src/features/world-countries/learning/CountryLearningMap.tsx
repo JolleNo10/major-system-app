@@ -8,8 +8,8 @@ import { getMemoMapDefinition } from '@/features/world-countries/maps/mapDefinit
 export interface CountryLearningMapProps {
   continent: Continent
   scopeCountries: readonly Country[]
-  /** Optional wider Country collection used only to determine the map viewport. */
-  zoomCountries?: readonly Country[]
+  /** Optional wider Country collection used for the temporary order-edit overview. */
+  overviewCountries?: readonly Country[]
   showNames?: boolean
   showHoverNames?: boolean
   showOrderNumbers?: boolean
@@ -38,7 +38,7 @@ export function getCountryLearningMapZoomIds(
 export function CountryLearningMap({
   continent,
   scopeCountries,
-  zoomCountries,
+  overviewCountries,
   showNames = false,
   showHoverNames = false,
   showOrderNumbers = false,
@@ -60,8 +60,8 @@ export function CountryLearningMap({
     [discoveredIds, scopeCountries],
   )
   const zoomScopeSvgIds = useMemo(
-    () => resolveCountriesToSvgIds(zoomCountries ?? scopeCountries, discoveredIds),
-    [discoveredIds, scopeCountries, zoomCountries],
+    () => resolveCountriesToSvgIds(overviewCountries ?? scopeCountries, discoveredIds),
+    [discoveredIds, overviewCountries, scopeCountries],
   )
   const highlightedSvgIds = useMemo(() => {
     if (!highlightedCountryId) return []
@@ -74,11 +74,12 @@ export function CountryLearningMap({
     return country ? resolveCountriesToSvgIds([country], discoveredIds)[0] ?? null : null
   }, [discoveredIds, hoveredCountryId, scopeCountries])
   const namedSvgIds = useMemo(() => {
+    if (overviewCountries) return zoomScopeSvgIds
     if (showNames || showOrderNumbers) return scopeSvgIds
     if (!namedCountryId) return []
     const country = scopeCountries.find(entry => entry.id === namedCountryId)
     return country ? countriesToSvgIds([country]).filter(id => discoveredIds.includes(id)) : []
-  }, [discoveredIds, namedCountryId, scopeCountries, scopeSvgIds, showNames])
+  }, [discoveredIds, namedCountryId, overviewCountries, scopeCountries, scopeSvgIds, showNames, showOrderNumbers, zoomScopeSvgIds])
   const countryLabels = useMemo(
     () => showOrderNumbers ? createCountryOrderLabels(scopeCountries, discoveredIds) : {},
     [discoveredIds, scopeCountries, showOrderNumbers],
@@ -97,6 +98,7 @@ export function CountryLearningMap({
       : [],
     [countryAccessibleDescriptionsById, scopeCountries],
   )
+  const unmutedSvgIds = overviewCountries ? zoomScopeSvgIds : scopeSvgIds
 
   return (
     <div className="space-y-2">
@@ -106,7 +108,7 @@ export function CountryLearningMap({
         ariaDescribedBy={countryDescriptions.length ? descriptionId : undefined}
         highlightedIds={highlightedSvgIds}
         hoveredId={hoveredSvgId}
-        mutedIds={discoveredIds.filter(id => !scopeSvgIds.includes(id))}
+        mutedIds={discoveredIds.filter(id => !unmutedSvgIds.includes(id))}
         namedIds={namedSvgIds}
         countryLabels={countryLabels}
         countryColors={countryColors}

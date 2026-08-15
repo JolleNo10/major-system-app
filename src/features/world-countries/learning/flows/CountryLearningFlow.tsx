@@ -152,7 +152,7 @@ export function CountryLearningFlow({
     hoveredCountryId,
     showHighlightedNames: flow.phase === 'walkthrough',
     showHoverNames: flow.phase === 'final-recall',
-    zoomCountries: editingOrder ? entries : undefined,
+    overviewCountries: editingOrder ? entries : undefined,
     mapClassName: ['practice', 'combined-practice'].includes(flow.phase) ? '[&>svg]:max-h-[510px]' : undefined,
     ariaLabel: flow.phase === 'final-recall' ? 'Highlighted Country for final recall' : 'World Countries Learning map',
   } as const

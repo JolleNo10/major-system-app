@@ -39,7 +39,7 @@ afterEach(() => {
   mapProps.mockReset()
 })
 
-describe('getCountryLearningMapZoomIds', () => {
+describe('CountryLearningMap', () => {
   it('does not zoom Oceania to scattered microstates', () => {
     expect(getCountryLearningMapZoomIds('Oceania', ['Australia', 'Fiji'])).toEqual([])
   })
@@ -49,7 +49,7 @@ describe('getCountryLearningMapZoomIds', () => {
     expect(getCountryLearningMapZoomIds('Europe', scopeIds)).toBe(scopeIds)
   })
 
-  it('uses wider Countries for the viewport while keeping the rendered scope narrow', () => {
+  it('shows the full order-edit overview without deactivating its Countries, then restores the scope', () => {
     const mount = document.createElement('div')
     document.body.append(mount)
 
@@ -58,7 +58,7 @@ describe('getCountryLearningMapZoomIds', () => {
       root.render(createElement(CountryLearningMap, {
         continent: 'Europe',
         scopeCountries: [norway],
-        zoomCountries: [norway, sweden],
+        overviewCountries: [norway, sweden],
         ariaLabel: 'Learning map',
       }))
     })
@@ -66,6 +66,22 @@ describe('getCountryLearningMapZoomIds', () => {
     const latestProps = mapProps.mock.calls[mapProps.mock.calls.length - 1]?.[0]
     expect(latestProps).toMatchObject({
       zoomIds: ['Norway', 'Sweden'],
+      namedIds: ['Norway', 'Sweden'],
+      mutedIds: [],
+    })
+
+    act(() => {
+      root?.render(createElement(CountryLearningMap, {
+        continent: 'Europe',
+        scopeCountries: [norway],
+        ariaLabel: 'Learning map',
+      }))
+    })
+
+    const restoredProps = mapProps.mock.calls[mapProps.mock.calls.length - 1]?.[0]
+    expect(restoredProps).toMatchObject({
+      zoomIds: ['Norway'],
+      namedIds: [],
       mutedIds: ['Sweden'],
     })
   })
