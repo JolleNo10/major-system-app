@@ -99,6 +99,8 @@ interface InternalCountry extends SvgMapCountry {
   originalStrokeWidth: OriginalStyle
   originalFilter: OriginalStyle
   originalTransition: OriginalStyle
+  originalVisibility: OriginalStyle
+  originalPointerEvents: OriginalStyle
   originalLabelDisplay: OriginalStyle
   originalLabelPointerEvents: OriginalStyle
   originalLabelTextNodes: Array<{ node: Text; value: string }>
@@ -174,6 +176,7 @@ export class SvgMapController {
   private highlighted = new Set<string>()
   private countryColors = new Map<string, string>()
   private mutedCountries = new Set<string>()
+  private hiddenCountries = new Set<string>()
   private hoverableCountries: Set<string> | null = null
   private named = new Set<string>()
   private countryLabelOverrides = new Map<string, string>()
@@ -371,6 +374,32 @@ export class SvgMapController {
   clearMutedCountries(): SvgMapMutationResult {
     this.assertUsable()
     this.mutedCountries.clear()
+    this.render()
+    return { activeIds: [], unknownIds: [] }
+  }
+
+  /** Hide caller-selected Country geometry and suppress its interaction. */
+  setHiddenCountries(ids: Iterable<string>): SvgMapMutationResult {
+    this.assertUsable()
+    const { knownIds, unknownIds } = this.resolveKnown(ids)
+    this.hiddenCountries = new Set(knownIds)
+    if (this.hoveredCountryId !== null && !this.isInteractive(this.hoveredCountryId)) {
+      this.hoveredCountryId = null
+      this.hoveredNameOverride = null
+    }
+    this.refreshHoveredIds()
+    this.render()
+    return { activeIds: this.getHiddenCountryIds(), unknownIds }
+  }
+
+  getHiddenCountryIds(): readonly string[] {
+    return [...this.hiddenCountries]
+  }
+
+  clearHiddenCountries(): SvgMapMutationResult {
+    this.assertUsable()
+    this.hiddenCountries.clear()
+    this.refreshHoveredIds()
     this.render()
     return { activeIds: [], unknownIds: [] }
   }
@@ -650,6 +679,8 @@ export class SvgMapController {
         originalStrokeWidth: captureStyle(path, 'stroke-width'),
         originalFilter: captureStyle(path, 'filter'),
         originalTransition: captureStyle(path, 'transition'),
+        originalVisibility: captureStyle(path, 'visibility'),
+        originalPointerEvents: captureStyle(path, 'pointer-events'),
         originalLabelDisplay: captureStyle(label, 'display'),
         originalLabelPointerEvents: captureStyle(label, 'pointer-events'),
         originalLabelTextNodes,
@@ -694,7 +725,7 @@ export class SvgMapController {
   private attachHoverListeners(): void {
     for (const country of this.countries.values()) {
       const enter: EventListener = () => {
-        if (!this.isHoverable(country.id)) {
+        if (!this.isInteractive(country.id)) {
           const hadHover = this.hoveredCountryId !== null || this.hoveredIds.size > 0
           this.setHoveredCountry(null)
           if (hadHover) this.countryHoverHandler?.(null)
@@ -708,7 +739,9 @@ export class SvgMapController {
         this.setHoveredCountry(null)
         this.countryHoverHandler?.(null)
       }
-      const click: EventListener = () => this.countryClickHandler?.(country.id)
+      const click: EventListener = () => {
+        if (this.isInteractive(country.id)) this.countryClickHandler?.(country.id)
+      }
       country.path.addEventListener('pointerenter', enter)
       country.path.addEventListener('pointerleave', leave)
       country.path.addEventListener('click', click)
@@ -727,7 +760,7 @@ export class SvgMapController {
 
   private setHoveredCountry(id: string | null, showName?: boolean): void {
     this.hoveredNameOverride = id === null || showName === undefined ? null : showName
-    if (id !== null && !this.isHoverable(id)) {
+    if (id !== null && !this.isInteractive(id)) {
       this.hoveredCountryId = null
       this.hoveredNameOverride = null
       this.hoveredIds.clear()
@@ -748,7 +781,7 @@ export class SvgMapController {
   private refreshHoveredIds(): void {
     this.hoveredIds.clear()
     const id = this.hoveredCountryId
-    if (!id || !this.isHoverable(id)
+    if (!id || !this.isInteractive(id)
       || (!this.settings.hoverHighlight && !this.settings.hoverShowName && this.hoveredNameOverride !== true)) return
 
     if (this.settings.hoverScope === 'single') {
@@ -759,7 +792,7 @@ export class SvgMapController {
     for (const group of this.hoverGroups) {
       if (!group.countryIds.includes(id)) continue
       for (const countryId of group.countryIds) {
-        if (this.isHoverable(countryId)) this.hoveredIds.add(countryId)
+        if (this.isInteractive(countryId)) this.hoveredIds.add(countryId)
       }
     }
     if (this.hoveredIds.size === 0) this.hoveredIds.add(id)
@@ -777,6 +810,10 @@ export class SvgMapController {
 
   private isHoverable(id: string): boolean {
     return this.hoverableCountries === null || this.hoverableCountries.has(id)
+  }
+
+  private isInteractive(id: string): boolean {
+    return !this.hiddenCountries.has(id) && this.isHoverable(id)
   }
 
   private resolveOutlineIds(ids: Iterable<string>): { knownIds: string[]; unknownIds: string[] } {
@@ -841,13 +878,16 @@ export class SvgMapController {
       setOverride(country.path, 'stroke-width', strokeWidth, country.originalStrokeWidth)
       country.path.style.setProperty('transition', transition)
       restoreStyle(country.path, 'filter', country.originalFilter)
+      const hidden = this.hiddenCountries.has(country.id)
+      setOverride(country.path, 'visibility', hidden ? 'hidden' : null, country.originalVisibility)
+      setOverride(country.path, 'pointer-events', hidden ? 'none' : null, country.originalPointerEvents)
 
       this.renderCountryLabel(country, this.countryLabelOverrides.get(country.id) ?? null)
       const showHoverName = this.hoveredNameOverride ?? this.settings.hoverShowName
-      const showLabel = this.settings.showAllNames
+      const showLabel = !hidden && (this.settings.showAllNames
         || this.named.has(country.id)
         || (this.settings.showHighlightedNames && this.highlighted.has(country.id))
-        || (showHoverName && hovered)
+        || (showHoverName && hovered))
       country.label.style.setProperty('display', showLabel ? 'inline' : 'none', 'important')
       country.label.style.setProperty('pointer-events', 'none', 'important')
       for (const paint of country.labelPaint) {
@@ -977,6 +1017,7 @@ export class SvgMapController {
     this.highlighted.clear()
     this.countryColors.clear()
     this.mutedCountries.clear()
+    this.hiddenCountries.clear()
     this.hoverableCountries = null
     this.named.clear()
     this.countryLabelOverrides.clear()

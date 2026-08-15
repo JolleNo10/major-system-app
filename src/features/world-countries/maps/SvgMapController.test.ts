@@ -255,6 +255,37 @@ describe('SvgMapController persistent state', () => {
 })
 
 describe('SvgMapController hover behavior', () => {
+  it('hides Countries and suppresses their hover and click interaction', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    controller.updateSettings({ hoverHighlight: true, hoverShowName: true })
+    const clicked: string[] = []
+    const hovered: Array<string | null> = []
+    controller.setCountryClickHandler(id => clicked.push(id))
+    controller.setCountryHoverHandler(id => hovered.push(id))
+
+    expect(controller.setHiddenCountries(['Alpha', 'Missing'])).toEqual({
+      activeIds: ['Alpha'],
+      unknownIds: ['Missing'],
+    })
+    expect(controller.getHiddenCountryIds()).toEqual(['Alpha'])
+    expect(path(mount, 'Alpha').style.getPropertyValue('visibility')).toBe('hidden')
+    expect(path(mount, 'Alpha').style.getPropertyValue('pointer-events')).toBe('none')
+    expect(label(mount, 'Alpha_label').style.getPropertyValue('display')).toBe('none')
+
+    path(mount, 'Alpha').dispatchEvent(new Event('pointerenter'))
+    path(mount, 'Alpha').dispatchEvent(new MouseEvent('click'))
+    controller.hoverCountry('Alpha', true)
+    expect(clicked).toEqual([])
+    expect(hovered).toEqual([])
+    expect(label(mount, 'Alpha_label').style.getPropertyValue('display')).toBe('none')
+
+    controller.clearHiddenCountries()
+    expect(path(mount, 'Alpha').style.getPropertyValue('visibility')).toBe('')
+    path(mount, 'Alpha').dispatchEvent(new MouseEvent('click'))
+    expect(clicked).toEqual(['Alpha'])
+  })
+
   it('dispatches generic country clicks and supports removing the handler', async () => {
     const { mount, controller } = makeController()
     await controller.load({ markup: TEST_MAP })
