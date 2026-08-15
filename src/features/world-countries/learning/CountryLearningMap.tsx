@@ -64,15 +64,16 @@ export function CountryLearningMap({
     [discoveredIds, overviewCountries, scopeCountries],
   )
   const highlightedSvgIds = useMemo(() => {
+    if (overviewCountries) return []
     if (!highlightedCountryId) return []
     const country = scopeCountries.find(entry => entry.id === highlightedCountryId)
     return country ? countriesToSvgIds([country]).filter(id => discoveredIds.includes(id)) : []
-  }, [discoveredIds, highlightedCountryId, scopeCountries])
+  }, [discoveredIds, highlightedCountryId, overviewCountries, scopeCountries])
   const hoveredSvgId = useMemo(() => {
     if (!hoveredCountryId) return null
-    const country = scopeCountries.find(entry => entry.id === hoveredCountryId)
+    const country = (overviewCountries ?? scopeCountries).find(entry => entry.id === hoveredCountryId)
     return country ? resolveCountriesToSvgIds([country], discoveredIds)[0] ?? null : null
-  }, [discoveredIds, hoveredCountryId, scopeCountries])
+  }, [discoveredIds, hoveredCountryId, overviewCountries, scopeCountries])
   const namedSvgIds = useMemo(() => {
     if (overviewCountries) return zoomScopeSvgIds
     if (showNames || showOrderNumbers) return scopeSvgIds

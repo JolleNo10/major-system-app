@@ -89,11 +89,13 @@ export function GuidedLearningRails({
     onOrderDraftChanged([...draft])
     onOrderSaved?.(draft)
     onGeographyChanged()
+    onCountryHover(null)
     setEditingOrder(false)
     onOrderEditingChange?.(false)
   }
   const cancelOrder = () => {
     onOrderDraftChanged(null)
+    onCountryHover(null)
     setEditingOrder(false)
     onOrderEditingChange?.(false)
   }

@@ -59,6 +59,8 @@ describe('CountryLearningMap', () => {
         continent: 'Europe',
         scopeCountries: [norway],
         overviewCountries: [norway, sweden],
+        highlightedCountryId: 'NO',
+        hoveredCountryId: 'SE',
         ariaLabel: 'Learning map',
       }))
     })
@@ -66,6 +68,8 @@ describe('CountryLearningMap', () => {
     const latestProps = mapProps.mock.calls[mapProps.mock.calls.length - 1]?.[0]
     expect(latestProps).toMatchObject({
       zoomIds: ['Norway', 'Sweden'],
+      highlightedIds: [],
+      hoveredId: 'Sweden',
       namedIds: ['Norway', 'Sweden'],
       mutedIds: [],
     })
@@ -74,6 +78,7 @@ describe('CountryLearningMap', () => {
       root?.render(createElement(CountryLearningMap, {
         continent: 'Europe',
         scopeCountries: [norway],
+        highlightedCountryId: 'NO',
         ariaLabel: 'Learning map',
       }))
     })
@@ -81,6 +86,8 @@ describe('CountryLearningMap', () => {
     const restoredProps = mapProps.mock.calls[mapProps.mock.calls.length - 1]?.[0]
     expect(restoredProps).toMatchObject({
       zoomIds: ['Norway'],
+      highlightedIds: ['Norway'],
+      hoveredId: null,
       namedIds: [],
       mutedIds: ['Sweden'],
     })
