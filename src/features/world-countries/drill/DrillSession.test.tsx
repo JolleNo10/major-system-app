@@ -332,6 +332,8 @@ describe('DrillSession map presentation', () => {
 
     const miniPractice = document.querySelector<HTMLElement>('[role="dialog"]')!
     expect(miniPractice.textContent).not.toContain('Stockholm')
+    await act(async () => miniPractice.querySelector<HTMLButtonElement>('[aria-controls="mini-spelling-answer"]')?.click())
+    expect(miniPractice.querySelector('#mini-spelling-answer')?.textContent).toBe('Stockholm')
 
     const checkSpelling = async (value: string) => {
       const spellingInput = miniPractice.querySelector<HTMLInputElement>('input')!

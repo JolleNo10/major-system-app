@@ -21,6 +21,7 @@ export function MiniSpellingPractice({ answer, answerKind, onClose, onComplete }
   const [value, setValue] = useState('')
   const [correctCount, setCorrectCount] = useState(0)
   const [feedback, setFeedback] = useState<string | null>(null)
+  const [showAnswer, setShowAnswer] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -59,6 +60,22 @@ export function MiniSpellingPractice({ answer, answerKind, onClose, onComplete }
           <p className="text-sm font-semibold uppercase tracking-wider text-cyan-400">Spell the {answerKind}</p>
           <h2 className="text-2xl font-black text-zinc-100">From memory</h2>
           <p className="text-sm text-zinc-400">Get it right twice in a row.</p>
+          <div id="mini-spelling-answer">
+            {showAnswer ? (
+              <p className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-lg font-bold text-amber-200">
+                {answer}
+              </p>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowAnswer(true)}
+                aria-controls="mini-spelling-answer"
+                className="text-sm font-medium text-amber-300 underline-offset-4 hover:text-amber-200 hover:underline"
+              >
+                Reveal spelling
+              </button>
+            )}
+          </div>
         </div>
 
         <form
