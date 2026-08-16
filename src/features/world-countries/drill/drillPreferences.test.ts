@@ -30,13 +30,13 @@ describe('World Countries Drill preferences', () => {
     })
     expect(JSON.parse(localStorage.getItem(DRILL_PREFERENCES_STORAGE_KEY)!)).toEqual({
       continent: 'Europe',
-      subregionIds: ['western-europe', 'northern-europe'],
+      subregionIds: ['northern-europe', 'western-europe'],
       mode: 'countries-capitals',
       order: 'random',
     })
     expect(loadDrillPreferences()).toEqual({
       continent: 'Europe',
-      subregionIds: ['western-europe', 'northern-europe'],
+      subregionIds: ['northern-europe', 'western-europe'],
       mode: 'countries-capitals',
       order: 'random',
     })

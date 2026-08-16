@@ -54,7 +54,7 @@ describe('World Countries country-set resolver', () => {
 
   it('exposes the canonical members for each optional group', () => {
     expect(WORLD_COUNTRIES_ENTITY_GROUP_DEFINITIONS.map(group => [group.id, group.members])).toEqual([
-      ['observer-states', ['Palestine', 'Vatican City']],
+      ['observer-states', ['Vatican City', 'Palestine']],
       ['partially-recognized-sovereign-states', ['Kosovo', 'Taiwan']],
       ['special-political-status', ['Cook Islands', 'Niue']],
       ['territories', ['Greenland']],

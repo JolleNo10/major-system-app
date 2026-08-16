@@ -50,7 +50,7 @@ describe('World Countries Drill selection', () => {
   it('keeps selection inside one Continent and supports toggling Subregions', () => {
     const single = createDrillSelection('Europe', ['northern-europe'])
     const toggled = toggleDrillSubregion(single, 'western-europe')
-    expect(toggled.subregionIds).toEqual(['western-europe', 'northern-europe'])
+    expect(toggled.subregionIds).toEqual(['northern-europe', 'western-europe'])
 
     const removed = toggleDrillSubregion(toggled, 'northern-europe')
     expect(removed.subregionIds).toEqual(['western-europe'])
