@@ -289,6 +289,7 @@ describe('DrillSession map presentation', () => {
 
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-fuzzy-spelling-action="practice"]')?.click())
     const miniPractice = document.querySelector<HTMLElement>('[role="dialog"]')!
+    expect(miniPractice.parentElement).toBe(document.body)
     await act(async () => miniPractice.querySelector<HTMLButtonElement>('[data-mini-spelling-action="return"]')?.click())
 
     expect(document.querySelector('[role="dialog"]')).toBeNull()

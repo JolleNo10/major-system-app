@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Overlay } from '@/app/layout/Overlay'
 
 interface Props {
@@ -54,7 +55,7 @@ export function MiniSpellingPractice({ answer, answerKind, onClose, onComplete }
     setValue('')
   }
 
-  return (
+  return createPortal(
     <Overlay
       onClose={onClose}
       ariaLabel="Mini spelling practice"
@@ -124,7 +125,8 @@ export function MiniSpellingPractice({ answer, answerKind, onClose, onComplete }
           Return to drill
         </button>
       </div>
-    </Overlay>
+    </Overlay>,
+    document.body,
   )
 }
 
