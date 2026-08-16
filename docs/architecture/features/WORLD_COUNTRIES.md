@@ -78,6 +78,19 @@ Drill has a non-persisted Purpose selector:
   only the durable milestone owned by its active mode. Practice retains only
   transient answers, accuracy, progress, and results.
 
+### World mastery overview
+
+World-level Drill setup exposes a compact, derived World core-mastery summary
+above the World map. It aggregates the existing Country core recall state over
+the active Country population, so the population is both the denominator and
+the source of every displayed state count. A Country is complete only when the
+existing Location → Country and Country → Capital core skills are Mastered;
+Capital → Country remains an additional skill.
+
+The summary is non-persisted presentation state. It is independent of Drill
+purpose and mode, while activity-specific map progress, Learning Readiness, and
+Recite outcomes remain separate concepts.
+
 Learn & Practise uses the derived Drill selection. Selected Subregions run
 sequentially in effective geographic order, and each uses its effective
 Country order from `geography/`. An already completed Subregion remains
@@ -295,6 +308,7 @@ flowchart TD
 - `src/features/world-countries/WorldCountries.tsx`
 - `src/features/world-countries/drill/WorldCountriesDrill.tsx`
 - `src/features/world-countries/drill/DrillSetup.tsx`
+- `src/features/world-countries/drill/WorldMasterySummary.tsx`
 - `src/features/world-countries/drill/DrillSetupRails.tsx`
 - `src/features/world-countries/drill/drillProficiencyScope.ts`
 - `src/features/world-countries/drill/drillProgressPresentation.ts`

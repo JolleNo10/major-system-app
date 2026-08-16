@@ -4,7 +4,7 @@ import { act, createElement, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { deriveWorldCountriesRecallProgress } from '@/features/world-countries/learning/recallProgress'
-import { recallTargetIdFor } from '@/features/world-countries/learning/recallTargets'
+import { recallTargetIdFor, WORLD_COUNTRIES_RECALL_SKILLS } from '@/features/world-countries/learning/recallTargets'
 import { createDrillSelection } from './drillSelection'
 import { DrillSetup } from './DrillSetup'
 import { WORLD_METADATA_STORAGE_KEY, setWorldMetadata } from '@/features/world-countries/geography/worldMetadataStore'
@@ -20,11 +20,15 @@ vi.mock('@/features/world-countries/learning/recallProgress', async importOrigin
 vi.mock('./drillProficiencyScope', async importOriginal => ({ ...await importOriginal<typeof import('./drillProficiencyScope')>(), resolveDrillProficiencyScope: proficiencyScopeMock }))
 
 let root: Root | null = null
-afterEach(() => { act(() => root?.unmount()); root = null; document.body.replaceChildren(); useRailsMock.mockReset(); mapMock.mockReset(); loadRecallProgressMock.mockClear(); proficiencyScopeMock.mockReset(); proficiencyScopeMock.mockImplementation(() => ({ counts: { weak: 0, developing: 0 }, countryIds: [], countries: [] })); localStorage.clear() })
+afterEach(() => { act(() => root?.unmount()); root = null; document.body.replaceChildren(); useRailsMock.mockReset(); mapMock.mockReset(); loadRecallProgressMock.mockClear(); loadRecallProgressMock.mockImplementation(async () => new Map()); proficiencyScopeMock.mockReset(); proficiencyScopeMock.mockImplementation(() => ({ counts: { weak: 0, developing: 0 }, countryIds: [], countries: [] })); localStorage.clear() })
+
+function createSetupProps(overrides: Record<string, unknown> = {}) {
+  return { level: 'continent', selection: createDrillSelection('Europe', ['northern-europe']), mode: 'countries', order: 'ordered', purpose: 'drill', learnPracticeMode: 'learn-countries', learningStates: [], onSelectionChange: vi.fn(), onModeChange: vi.fn(), onOrderChange: vi.fn(), onPurposeChange: vi.fn(), onLearnPracticeModeChange: vi.fn(), onStart: vi.fn(), onLearnPracticeStart: vi.fn(), onWorld: vi.fn(), onSelectContinent: vi.fn(), hoveredGroupId: null, onHoverGroup: vi.fn(), ...overrides } as never
+}
 
 function renderSetup(overrides: Record<string, unknown> = {}) {
   const mount = document.createElement('div'); document.body.append(mount)
-  act(() => { root = createRoot(mount); root.render(createElement(DrillSetup, { level: 'continent', selection: createDrillSelection('Europe', ['northern-europe']), mode: 'countries', order: 'ordered', purpose: 'drill', learnPracticeMode: 'learn-countries', learningStates: [], onSelectionChange: vi.fn(), onModeChange: vi.fn(), onOrderChange: vi.fn(), onPurposeChange: vi.fn(), onLearnPracticeModeChange: vi.fn(), onStart: vi.fn(), onLearnPracticeStart: vi.fn(), onWorld: vi.fn(), onSelectContinent: vi.fn(), hoveredGroupId: null, onHoverGroup: vi.fn(), ...overrides } as never)) })
+  act(() => { root = createRoot(mount); root.render(createElement(DrillSetup, createSetupProps(overrides))) })
   return mount
 }
 
@@ -43,9 +47,124 @@ describe('DrillSetup activity boundary', () => {
     renderSetup({ level: 'world', mode: 'countries-capitals', entries: [norway] })
     await act(async () => { await Promise.resolve(); await Promise.resolve() })
 
-    expect(loadRecallProgressMock).toHaveBeenCalledWith({ countryIds: ['NO'], skills: ['location-to-country', 'country-to-capital'] })
+    expect(loadRecallProgressMock).toHaveBeenCalledWith({ countryIds: ['NO'], skills: [...WORLD_COUNTRIES_RECALL_SKILLS] })
     const latestMapProps = mapMock.mock.calls[mapMock.mock.calls.length - 1]?.[0] as { countryAccessibleDescriptionsById: Map<string, string> }
     expect(latestMapProps.countryAccessibleDescriptionsById.get('NO')).toBe('Drill proficiency: Weak.')
+  })
+
+  it('shows active World core mastery above the World map', async () => {
+    const entries = [
+      { id: 'NO', country: 'Norway', capital: 'Oslo', continent: 'Europe' as const, subregionId: 'northern-europe' as const, subregion: 'Northern Europe' },
+      { id: 'SE', country: 'Sweden', capital: 'Stockholm', continent: 'Europe' as const, subregionId: 'northern-europe' as const, subregion: 'Northern Europe' },
+      { id: 'DK', country: 'Denmark', capital: 'Copenhagen', continent: 'Europe' as const, subregionId: 'northern-europe' as const, subregion: 'Northern Europe' },
+      { id: 'FI', country: 'Finland', capital: 'Helsinki', continent: 'Europe' as const, subregionId: 'northern-europe' as const, subregion: 'Northern Europe' },
+    ]
+    loadRecallProgressMock.mockResolvedValue(deriveWorldCountriesRecallProgress({
+      countryIds: entries.map(entry => entry.id),
+      skills: [...WORLD_COUNTRIES_RECALL_SKILLS],
+    }, [
+      { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 1, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10' },
+      { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 2, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-11' },
+      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 3, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10' },
+      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 4, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-11' },
+      { itemId: recallTargetIdFor('SE', 'location-to-country'), at: 5, ok: false, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10' },
+      { itemId: recallTargetIdFor('DK', 'location-to-country'), at: 6, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10' },
+      { itemId: recallTargetIdFor('DK', 'country-to-capital'), at: 7, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10' },
+    ]))
+
+    const mount = renderSetup({ level: 'world', entries })
+    await act(async () => { await Promise.resolve(); await Promise.resolve() })
+
+    expect(mount.querySelector('[aria-labelledby="world-mastery-heading"]')).not.toBeNull()
+    expect(mount.textContent).toContain('World mastery')
+    expect(mount.textContent).toContain('1 / 4 complete')
+    expect(mount.textContent).toContain('25%')
+    expect(mount.textContent).toContain('Unpractised 1')
+    expect(mount.textContent).toContain('Weak 1')
+    expect(mount.textContent).toContain('Developing 1')
+    expect(mount.textContent).toContain('Strong 0')
+    expect(mount.textContent).toContain('Complete 1')
+    expect(mount.textContent).toContain('Complete requires both Location → Country and Country → Capital to be Mastered.')
+  })
+
+  it('keeps World mastery neutral while evidence is loading', async () => {
+    let resolveLoad: ((progress: Map<string, never>) => void) | undefined
+    loadRecallProgressMock.mockImplementation(() => new Promise<Map<string, never>>(resolve => { resolveLoad = resolve }))
+
+    const mount = renderSetup({ level: 'world' })
+
+    expect(mount.textContent).toContain('World mastery')
+    expect(mount.textContent).toContain('Loading mastery…')
+    expect(mount.textContent).not.toContain('0 / 195 complete')
+    await act(async () => {
+      resolveLoad?.(new Map<string, never>())
+      await Promise.resolve()
+    })
+  })
+
+  it('shows active Countries with no evidence as Unpractised', async () => {
+    const entries = [
+      { id: 'NO', country: 'Norway', capital: 'Oslo', continent: 'Europe' as const, subregionId: 'northern-europe' as const, subregion: 'Northern Europe' },
+      { id: 'SE', country: 'Sweden', capital: 'Stockholm', continent: 'Europe' as const, subregionId: 'northern-europe' as const, subregion: 'Northern Europe' },
+    ]
+    const mount = renderSetup({ level: 'world', entries })
+    await act(async () => { await Promise.resolve(); await Promise.resolve() })
+
+    expect(mount.textContent).toContain('0 / 2 complete')
+    expect(mount.textContent).toContain('0%')
+    expect(mount.textContent).toContain('Unpractised 2')
+    expect(mount.textContent).toContain('Complete 0')
+  })
+
+  it('keeps the World summary stable across purpose, mode, and Country order changes', async () => {
+    const entries = [
+      { id: 'NO', country: 'Norway', capital: 'Oslo', continent: 'Europe' as const, subregionId: 'northern-europe' as const, subregion: 'Northern Europe' },
+      { id: 'SE', country: 'Sweden', capital: 'Stockholm', continent: 'Europe' as const, subregionId: 'northern-europe' as const, subregion: 'Northern Europe' },
+    ]
+    loadRecallProgressMock.mockResolvedValue(deriveWorldCountriesRecallProgress({
+      countryIds: entries.map(entry => entry.id),
+      skills: [...WORLD_COUNTRIES_RECALL_SKILLS],
+    }, [
+      { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 1, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10' },
+      { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 2, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-11' },
+      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 3, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10' },
+      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 4, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-11' },
+    ]))
+    const mount = renderSetup({ level: 'world', entries, mode: 'countries' })
+    await act(async () => { await Promise.resolve(); await Promise.resolve() })
+    const initialSummary = mount.querySelector('[data-testid="world-mastery-summary"]')?.textContent
+    const initialLoadCount = loadRecallProgressMock.mock.calls.length
+
+    act(() => {
+      root?.render(createElement(DrillSetup, createSetupProps({
+        level: 'world',
+        entries: [...entries].reverse(),
+        mode: 'countries-from-capitals',
+        purpose: 'learn-practise',
+        learnPracticeMode: 'capitals',
+      })))
+    })
+
+    expect(mount.querySelector('[data-testid="world-mastery-summary"]')?.textContent).toBe(initialSummary)
+    expect(loadRecallProgressMock).toHaveBeenCalledTimes(initialLoadCount)
+  })
+
+  it('shows an explicit empty-population state without reporting completion', async () => {
+    const mount = renderSetup({ level: 'world', entries: [] })
+    await act(async () => { await Promise.resolve(); await Promise.resolve() })
+
+    expect(mount.textContent).toContain('0 Countries active')
+    expect(mount.textContent).toContain('0 / 0 complete')
+    expect(mount.textContent).toContain('0%')
+    expect(mount.textContent).toContain('Complete 0')
+  })
+
+  it('does not show World mastery in Continent setup', async () => {
+    const mount = renderSetup({ level: 'continent' })
+    await act(async () => { await Promise.resolve(); await Promise.resolve() })
+
+    expect(mount.querySelector('[aria-labelledby="world-mastery-heading"]')).toBeNull()
+    expect(mount.textContent).not.toContain('World mastery')
   })
 
   it('exposes exactly three Drill modes and keeps geography authoring in the rail', () => {

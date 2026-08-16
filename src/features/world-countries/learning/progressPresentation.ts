@@ -6,6 +6,17 @@ export type WorldCountriesProgressPerspective = 'core' | WorldCountriesRecallSki
 export type WorldCountriesProgressState = WorldCountriesCountryCoreState | WorldCountriesProficiency
 export type WorldCountriesProgressLegendKind = 'core' | 'skill'
 
+export const WORLD_COUNTRIES_PROGRESS_LABELS: Readonly<Record<WorldCountriesProgressState, string>> = {
+  unpractised: 'Unpractised',
+  weak: 'Weak',
+  developing: 'Developing',
+  strong: 'Strong',
+  mastered: 'Mastered',
+  complete: 'Complete',
+}
+
+export const WORLD_COUNTRIES_CORE_FINISH_LINE_EXPLANATION = 'Complete requires both Location → Country and Country → Capital to be Mastered.'
+
 export const WORLD_COUNTRIES_PROGRESS_COLORS: Readonly<Record<WorldCountriesProgressState, string>> = {
   unpractised: '#52525b',
   weak: '#8a665b',

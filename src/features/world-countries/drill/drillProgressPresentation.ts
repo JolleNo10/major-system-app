@@ -7,6 +7,8 @@ import {
 import {
   getCountryProgressColor,
   getCountryProgressState,
+  WORLD_COUNTRIES_CORE_FINISH_LINE_EXPLANATION,
+  WORLD_COUNTRIES_PROGRESS_LABELS,
   type WorldCountriesProgressPerspective,
 } from '@/features/world-countries/learning/progressPresentation'
 import {
@@ -25,15 +27,6 @@ import {
 } from '@/features/world-countries/learning/learningReadiness'
 import type { WorldCountriesLearningStates, WorldCountriesLearningReadiness } from '@/features/world-countries/learning/learningReadiness'
 import type { WorldCountriesProgressState } from '@/features/world-countries/learning/progressPresentation'
-
-const DRILL_PROGRESS_LABELS: Readonly<Record<WorldCountriesProgressState, string>> = {
-  unpractised: 'Unpractised',
-  weak: 'Weak',
-  developing: 'Developing',
-  strong: 'Strong',
-  mastered: 'Mastered',
-  complete: 'Complete',
-}
 
 export const DRILL_LEARNING_READINESS_LEGEND_ENTRIES = WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES
 
@@ -101,7 +94,7 @@ export function createDrillProgressDescriptions(
         `Learning Readiness: ${getWorldCountriesLearningReadinessLabel(presentation.readiness)}. ${getWorldCountriesLearningReadinessDescription(presentation.readiness)}`,
       ] as const
     }
-    return [countryId, `Drill proficiency: ${DRILL_PROGRESS_LABELS[presentation.state]}.`] as const
+    return [countryId, `Drill proficiency: ${WORLD_COUNTRIES_PROGRESS_LABELS[presentation.state]}.`] as const
   }))
 }
 
@@ -191,13 +184,13 @@ export function getDrillProgressLegendEntries(
   const completedState = getDrillProgressPerspective(mode) === 'core' ? 'complete' : 'mastered'
   return ['weak', 'developing', 'strong', completedState].map(state => ({
     state,
-    label: DRILL_PROGRESS_LABELS[state as WorldCountriesProgressState],
+    label: WORLD_COUNTRIES_PROGRESS_LABELS[state as WorldCountriesProgressState],
     color: getCountryProgressColor(state as WorldCountriesProgressState),
   }))
 }
 
 export function getDrillProgressExplanation(mode: WorldCountriesDrillMode): string {
   return getDrillProgressPerspective(mode) === 'core'
-    ? 'Complete requires both Location → Country and Country → Capital to be Mastered.'
+    ? WORLD_COUNTRIES_CORE_FINISH_LINE_EXPLANATION
     : 'Weak means the latest attempt was incorrect; Strong means repeated success; Mastered requires successful free recall on two different dates.'
 }

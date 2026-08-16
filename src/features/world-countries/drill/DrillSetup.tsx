@@ -7,6 +7,8 @@ import { getAllSubregionMetadata } from '@/features/world-countries/geography/su
 import { saveContinentSubregionOrder, saveWorldContinentOrder } from '@/features/world-countries/geography/orderAuthoring'
 import { getWorldMetadata } from '@/features/world-countries/geography/worldMetadataStore'
 import { loadWorldCountriesRecallProgress, type RecallProgress } from '@/features/world-countries/learning/recallProgress'
+import { deriveWorldCountriesWorldProgress } from '@/features/world-countries/learning/scopeProgress'
+import { WORLD_COUNTRIES_RECALL_SKILLS } from '@/features/world-countries/learning/recallTargets'
 import { createWorldCountriesLearningReadinessByCountry, createWorldCountriesLearningReadinessColors, getLearningReadinessBySubregionWithDrillEvidence, getWorldCountriesLearningReadinessDescription, getWorldCountriesLearningReadinessLabel, getWorldCountriesLearningStateList, WORLD_COUNTRIES_LEARNING_READINESS_COLORS, WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES, type WorldCountriesLearningReadiness } from '@/features/world-countries/learning/learningReadiness'
 import type { LearningStates } from '@/features/world-countries/learning/learningProgress'
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
@@ -18,8 +20,9 @@ import type { WorldCountriesDrillOrder } from './drillOrder'
 import { createDrillProgressColors, createDrillProgressDescriptions } from './drillProgressPresentation'
 import { DrillProgressLegend } from './DrillProgressLegend'
 import { DrillSetupRails } from './DrillSetupRails'
+import { WorldMasterySummary } from './WorldMasterySummary'
 import type { WorldCountriesLearnPracticeMode } from '@/features/world-countries/learning/learnPracticeModes'
-import { getPracticeSkill, resolveDrillProficiencyScope, type WorldCountriesProficiencyActivity, type WorldCountriesProficiencyScope, type WorldCountriesProficiencySelection } from './drillProficiencyScope'
+import { resolveDrillProficiencyScope, type WorldCountriesProficiencyActivity, type WorldCountriesProficiencyScope, type WorldCountriesProficiencySelection } from './drillProficiencyScope'
 
 export function DrillSetup({
   level, selection, mode, order, purpose, learnPracticeMode, proficiencySelection = [], learningStates, hoveredGroupId, onHoverGroup, onSelectionChange, onProficiencySelectionChange = () => undefined, onModeChange, onOrderChange, onPurposeChange, onLearnPracticeModeChange, onStart, onLearnPracticeStart, onWorld, onSelectContinent, onGeographyChanged, entries = countries,
@@ -49,8 +52,11 @@ export function DrillSetup({
 }) {
   const geographyRevision = useWorldCountriesGeographyRevision()
   const subregions = getDrillSubregions(selection.continent, entries)
-  const skills = getSkillsForDrillMode(mode)
   const [recallProgress, setRecallProgress] = useState<RecallProgress | null>(null)
+  const activeCountryIds = [...new Set(entries.map(country => country.id))].sort()
+  const activeCountryKey = activeCountryIds.join('|')
+  const [loadedCountryKey, setLoadedCountryKey] = useState<string | null>(null)
+  const currentRecallProgress = loadedCountryKey === activeCountryKey ? recallProgress : null
   const allLearningStates = useMemo(() => getWorldCountriesLearningStateList(learningStates), [learningStates])
   const readinessColors = useMemo(() => createWorldCountriesLearningReadinessColors(entries, allLearningStates), [allLearningStates, entries])
   const readinessByCountry = useMemo(() => createWorldCountriesLearningReadinessByCountry(entries, allLearningStates), [allLearningStates, entries])
@@ -61,11 +67,11 @@ export function DrillSetup({
   const proficiencyScope = useMemo<WorldCountriesProficiencyScope>(() => resolveDrillProficiencyScope(
     selection.continent,
     proficiencySelection,
-    recallProgress ?? new Map(),
+    currentRecallProgress ?? new Map(),
     proficiencyActivity,
     entries,
     getAllSubregionMetadata(),
-  ), [entries, proficiencyActivity, proficiencySelection, recallProgress, selection.continent])
+  ), [currentRecallProgress, entries, proficiencyActivity, proficiencySelection, selection.continent])
   const hasProficiencyScope = proficiencySelection.length > 0
   const [orderVersion, setOrderVersion] = useState(0)
   const [editingOrder, setEditingOrder] = useState<'world' | 'continent' | null>(null)
@@ -107,37 +113,41 @@ export function DrillSetup({
   useEffect(() => {
     let active = true
     setRecallProgress(null)
-    const progressSkills = isDrill
-      ? skills
-      : purpose === 'learn-practise' && learnPracticeMode !== 'learn-countries' && learnPracticeMode !== 'learn-capitals'
-        ? [...new Set(['location-to-country' as const, getPracticeSkill(learnPracticeMode)])]
-        : purpose === 'learn-practise'
-          ? [...new Set(['location-to-country' as const, ...skills])]
-          : skills
-    void loadWorldCountriesRecallProgress({ countryIds: entries.map(country => country.id), skills: progressSkills }).then(progress => { if (active) setRecallProgress(progress) })
+    setLoadedCountryKey(null)
+    void loadWorldCountriesRecallProgress({ countryIds: activeCountryIds, skills: [...WORLD_COUNTRIES_RECALL_SKILLS] }).then(progress => {
+      if (!active) return
+      setRecallProgress(progress)
+      setLoadedCountryKey(activeCountryKey)
+    })
     return () => { active = false }
-  }, [entries, isDrill, learnPracticeMode, level, purpose, skills])
+  }, [activeCountryKey])
 
   const readinessBySubregion = useMemo(
-    () => purpose === 'learn-practise' && recallProgress
-      ? getLearningReadinessBySubregionWithDrillEvidence(entries, allLearningStates, recallProgress)
+    () => purpose === 'learn-practise' && currentRecallProgress
+      ? getLearningReadinessBySubregionWithDrillEvidence(entries, allLearningStates, currentRecallProgress)
       : undefined,
-    [allLearningStates, entries, purpose, recallProgress],
+    [allLearningStates, currentRecallProgress, entries, purpose],
   )
   const effectiveReadinessByCountry = useMemo(() => new Map(entries.map(country => [
     country.id,
     readinessBySubregion?.get(country.subregionId) ?? readinessByCountry.get(country.id) ?? 'NOT_LEARNED',
   ] as const)), [entries, readinessByCountry, readinessBySubregion])
 
-  const countryColorsById = useMemo(() => isDrill && recallProgress
-    ? createDrillProgressColors({ mode, scopeCountries: entries, recallProgress, learningStates: allLearningStates })
+  const countryColorsById = useMemo(() => isDrill && currentRecallProgress
+    ? createDrillProgressColors({ mode, scopeCountries: entries, recallProgress: currentRecallProgress, learningStates: allLearningStates })
     : readinessBySubregion
       ? new Map(entries.map(country => [country.id, WORLD_COUNTRIES_LEARNING_READINESS_COLORS[effectiveReadinessByCountry.get(country.id) ?? 'NOT_LEARNED']] as const))
-      : readinessColors, [allLearningStates, effectiveReadinessByCountry, entries, isDrill, mode, readinessBySubregion, readinessColors, recallProgress])
+      : readinessColors, [allLearningStates, currentRecallProgress, effectiveReadinessByCountry, entries, isDrill, mode, readinessBySubregion, readinessColors])
   const countryAccessibleDescriptionsById = useMemo(() => {
-    if (isDrill && recallProgress) return createDrillProgressDescriptions({ mode, scopeCountries: entries, recallProgress, learningStates: allLearningStates })
+    if (isDrill && currentRecallProgress) return createDrillProgressDescriptions({ mode, scopeCountries: entries, recallProgress: currentRecallProgress, learningStates: allLearningStates })
     return new Map([...effectiveReadinessByCountry.entries()].map(([countryId, readiness]) => [countryId, `${getWorldCountriesLearningReadinessLabel(readiness)}. ${getWorldCountriesLearningReadinessDescription(readiness)}`] as const))
-  }, [allLearningStates, effectiveReadinessByCountry, entries, isDrill, mode, recallProgress])
+  }, [allLearningStates, currentRecallProgress, effectiveReadinessByCountry, entries, isDrill, mode])
+  const worldProgress = useMemo(
+    () => level === 'world' && currentRecallProgress
+      ? deriveWorldCountriesWorldProgress(currentRecallProgress, entries)
+      : null,
+    [currentRecallProgress, entries, level],
+  )
   const selectGeography = (nextSelection: WorldCountriesDrillSelection) => {
     onProficiencySelectionChange([])
     onSelectionChange(nextSelection)
@@ -149,9 +159,10 @@ export function DrillSetup({
     onProficiencySelectionChange(nextSelection)
   }
   return <>
-    <DrillSetupRails level={level} selection={selection} mode={mode} order={order} purpose={purpose} learnPracticeMode={learnPracticeMode} proficiencySelection={proficiencySelection} proficiencyScope={proficiencyScope} proficiencyLoading={recallProgress === null} learningStates={allLearningStates} learningReadinessBySubregion={readinessBySubregion} hoveredGroupId={hoveredGroupId} onHoverGroup={onHoverGroup} onWorld={onWorld} onSelectContinent={onSelectContinent} onToggleSubregion={toggleSubregion} onSelectEntireContinent={toggleEntireContinent} onProficiencySelectionChange={selectProficiency} onModeChange={onModeChange} onOrderChange={onOrderChange} onStart={onStart} onPurposeChange={onPurposeChange} onLearnPracticeModeChange={onLearnPracticeModeChange} onLearnPracticeStart={onLearnPracticeStart} entries={entries} worldOrder={worldOrder} subregionOrder={subregionOrder} editingOrder={editingOrder} onBeginOrderEdit={beginOrderEdit} onCancelOrderEdit={cancelOrderEdit} onDraftWorldOrder={setDraftWorldOrder} onDraftSubregionOrder={setDraftSubregionOrder} onSaveWorldOrder={saveWorldOrder} onSaveSubregionOrder={saveSubregionOrder} />
+    <DrillSetupRails level={level} selection={selection} mode={mode} order={order} purpose={purpose} learnPracticeMode={learnPracticeMode} proficiencySelection={proficiencySelection} proficiencyScope={proficiencyScope} proficiencyLoading={currentRecallProgress === null} learningStates={allLearningStates} learningReadinessBySubregion={readinessBySubregion} hoveredGroupId={hoveredGroupId} onHoverGroup={onHoverGroup} onWorld={onWorld} onSelectContinent={onSelectContinent} onToggleSubregion={toggleSubregion} onSelectEntireContinent={toggleEntireContinent} onProficiencySelectionChange={selectProficiency} onModeChange={onModeChange} onOrderChange={onOrderChange} onStart={onStart} onPurposeChange={onPurposeChange} onLearnPracticeModeChange={onLearnPracticeModeChange} onLearnPracticeStart={onLearnPracticeStart} entries={entries} worldOrder={worldOrder} subregionOrder={subregionOrder} editingOrder={editingOrder} onBeginOrderEdit={beginOrderEdit} onCancelOrderEdit={cancelOrderEdit} onDraftWorldOrder={setDraftWorldOrder} onDraftSubregionOrder={setDraftSubregionOrder} onSaveWorldOrder={saveWorldOrder} onSaveSubregionOrder={saveSubregionOrder} />
     <div className="space-y-3 animate-fade-in">
       {level === 'world' ? <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World Countries</p> : <section className="space-y-1"><p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World Countries</p><h1 id="world-countries-drill-heading" className="text-2xl font-bold text-zinc-100">{selection.continent}</h1><p className="text-sm leading-relaxed text-zinc-400">Choose an activity purpose and keep geographic context in view.</p></section>}
+      {level === 'world' && <WorldMasterySummary progress={worldProgress} />}
       <GeographyOverviewMap level={level} continent={level === 'continent' ? selection.continent : undefined} selectedSubregionIds={level === 'continent' ? selection.subregionIds : undefined} selectedCountryIds={level === 'continent' && hasProficiencyScope ? proficiencyScope.countryIds : undefined} countryColorsById={countryColorsById} countryAccessibleDescriptionsById={countryAccessibleDescriptionsById} hoveredGroupId={hoveredGroupId} onHoverGroup={onHoverGroup} onCountryClick={country => { if (editingOrder) return; if (level === 'world') onSelectContinent(country.continent); else toggleSubregion(country.subregionId) }} ariaLabel={level === 'world' ? 'World map for choosing a Continent' : `${selection.continent} map for choosing Subregions`} />
       <p className="px-1 text-xs text-zinc-500">{level === 'world' ? 'Select a Continent from the rail or map.' : hasProficiencyScope ? `${proficiencyScope.countryIds.length} Countries selected by proficiency. Click a Country to switch to Geography.` : `Selected ${selection.subregionIds.length} of ${subregions.length} Subregions. Click a Country to toggle its Subregion.`}</p>
       <p className="px-1 text-xs text-zinc-500">Country order can be edited from Learn Countries when a Subregion Country list is visible.</p>

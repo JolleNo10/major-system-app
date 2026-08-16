@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { countries } from '@/features/world-countries/data/countries'
 import {
   deriveWorldCountriesCountryProgress,
   deriveWorldCountriesRecallProgress,
@@ -6,6 +7,7 @@ import {
 import {
   deriveWorldCountriesScopeProgress,
   deriveWorldCountriesSubregionProgress,
+  deriveWorldCountriesWorldProgress,
 } from './scopeProgress'
 import { recallTargetIdFor, WORLD_COUNTRIES_RECALL_SKILLS } from './recallTargets'
 
@@ -91,6 +93,22 @@ describe('World Countries scope progress', () => {
     expect(progress.additionalMasteredSkills).toBe(0)
   })
 
+  it('does not let mastered Capital → Country evidence complete a Country', () => {
+    const itemProgress = deriveWorldCountriesRecallProgress({
+      countryIds: ['NO'],
+      skills: [...WORLD_COUNTRIES_RECALL_SKILLS],
+    }, [
+      attempt('NO', 'capital-to-country', 1, true, '2026-08-10'),
+      attempt('NO', 'capital-to-country', 2, true, '2026-08-11'),
+    ])
+
+    const progress = deriveWorldCountriesWorldProgress(itemProgress, countries.filter(country => country.id === 'NO'))
+
+    expect(progress.completeCountries).toBe(0)
+    expect(progress.countryStateCounts.unpractised).toBe(1)
+    expect(progress.countryStateCounts.complete).toBe(0)
+  })
+
   it('uses canonical Subregion membership for the scope denominator', () => {
     const progress = deriveWorldCountriesSubregionProgress('northern-europe', new Map())
 
@@ -98,5 +116,42 @@ describe('World Countries scope progress', () => {
     expect(progress.totalCountries).toBeGreaterThan(0)
     expect(progress.completeCountries).toBe(0)
     expect(progress.countryStateCounts.unpractised).toBe(progress.totalCountries)
+  })
+
+  it('uses the active World population for every mastery count', () => {
+    const attempts = [
+      attempt('NO', 'location-to-country', 1, true, '2026-08-10'),
+      attempt('NO', 'location-to-country', 2, true, '2026-08-11'),
+      attempt('NO', 'country-to-capital', 3, true, '2026-08-10'),
+      attempt('NO', 'country-to-capital', 4, true, '2026-08-11'),
+      attempt('SE', 'location-to-country', 5, false, '2026-08-10'),
+      attempt('DK', 'location-to-country', 6, true, '2026-08-10'),
+      attempt('DK', 'location-to-country', 7, true, '2026-08-11'),
+      attempt('DK', 'country-to-capital', 8, true, '2026-08-10'),
+      attempt('DK', 'country-to-capital', 9, true, '2026-08-11'),
+    ]
+    const itemProgress = deriveWorldCountriesRecallProgress({
+      countryIds: ['NO', 'SE', 'DK'],
+      skills: [...WORLD_COUNTRIES_RECALL_SKILLS],
+    }, attempts)
+    const activeEntries = countries.filter(country => country.id === 'NO' || country.id === 'SE')
+
+    const progress = deriveWorldCountriesWorldProgress(itemProgress, activeEntries)
+
+    expect(progress).toMatchObject({
+      scopeId: 'world',
+      totalCountries: 2,
+      completeCountries: 1,
+      completionRatio: 0.5,
+      complete: false,
+      countryStateCounts: {
+        unpractised: 0,
+        weak: 1,
+        developing: 0,
+        strong: 0,
+        complete: 1,
+      },
+    })
+    expect(Object.values(progress.countryStateCounts).reduce((sum, count) => sum + count, 0)).toBe(2)
   })
 })
