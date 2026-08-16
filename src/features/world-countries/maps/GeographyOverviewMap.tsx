@@ -33,6 +33,8 @@ export interface GeographyOverviewMapProps {
   countryColor?: string
   /** Caller-resolved semantic progress colors; this map does not interpret them. */
   countryColorsById?: ReadonlyMap<CountryId, string>
+  /** Caller-owned Country IDs to emphasize with the map's highlight treatment. */
+  highlightedCountryIds?: readonly CountryId[]
   /** Optional non-color descriptions for the mapped Countries. */
   countryAccessibleDescriptionsById?: ReadonlyMap<CountryId, string>
   /** Optional caller-owned population snapshot; defaults to the active context population. */
@@ -64,6 +66,7 @@ export function GeographyOverviewMap({
   coloredCountryIds = [],
   countryColor = '#16a34a',
   countryColorsById,
+  highlightedCountryIds = [],
   countryAccessibleDescriptionsById,
   countryPopulation,
   hiddenCountryIds = [],
@@ -123,6 +126,14 @@ export function GeographyOverviewMap({
     () => resolveCountriesToSvgIds(selectedCountries, mapCountryIds),
     [mapCountryIds, selectedCountries],
   )
+  const highlightedCountryIdSet = useMemo(() => new Set(highlightedCountryIds), [highlightedCountryIds])
+  const highlightedSvgIds = useMemo(
+    () => resolveCountriesToSvgIds(
+      visibleCountries.filter(country => highlightedCountryIdSet.has(country.id)),
+      mapCountryIds,
+    ),
+    [highlightedCountryIdSet, mapCountryIds, visibleCountries],
+  )
   const hiddenCountryIdSet = useMemo(() => new Set(hiddenCountryIds), [hiddenCountryIds])
   const hiddenSvgIds = useMemo(
     () => resolveCountriesToSvgIds(
@@ -177,10 +188,13 @@ export function GeographyOverviewMap({
   }, [hasScopedCountries, mapCountryIds, scopedSvgIds])
   const countryColors = useMemo(() => {
     const colors: Array<readonly [string, string]> = []
-    if (countryColorsById) colors.push(...createCountryColorsById(visibleCountries, countryColorsById, mapCountryIds))
-    if (!countryColorsById) colors.push(...createCountryColors(visibleCountries, coloredCountryIds, mapCountryIds, countryColor))
+    const colorableCountries = highlightedCountryIdSet.size
+      ? visibleCountries.filter(country => !highlightedCountryIdSet.has(country.id))
+      : visibleCountries
+    if (countryColorsById) colors.push(...createCountryColorsById(colorableCountries, countryColorsById, mapCountryIds))
+    if (!countryColorsById) colors.push(...createCountryColors(colorableCountries, coloredCountryIds, mapCountryIds, countryColor))
     return colors
-  }, [coloredCountryIds, countryColor, countryColorsById, mapCountryIds, selectedCountries, selectedSubregionIds, visibleCountries])
+  }, [coloredCountryIds, countryColor, countryColorsById, highlightedCountryIdSet, mapCountryIds, visibleCountries])
 
   const hoveredCountryId = useMemo(
     () => hoveredGroupSvgIds[0] ?? null,
@@ -228,6 +242,7 @@ export function GeographyOverviewMap({
         }}
         hoverGroups={hoverGroups}
         groupOutlines={groupOutlines}
+        highlightedIds={highlightedSvgIds}
         hiddenIds={hiddenSvgIds}
         hoverableIds={hoverableSvgIds}
         hoveredId={hoveredCountryId}

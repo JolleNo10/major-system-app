@@ -259,6 +259,11 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
       .filter(country => !getReciteResolvedCountryIds(run.session).includes(country.id))
       .map(country => country.id)
     : []
+  const currentPrompt = run && phase === 'session' ? getCurrentRecitePrompt(run.session) : null
+  const currentCountry = currentPrompt ? run?.scopeCountries.find(country => country.id === currentPrompt.countryId) : undefined
+  const highlightedCountryIds = run && run.assistance === 'visible' && currentPrompt
+    ? [currentPrompt.countryId]
+    : []
 
   const map = phase === 'setup' ? (
     <GeographyOverviewMap
@@ -280,6 +285,7 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
       selectedSubregionIds={run.subregionIds}
       countryColorsById={activeCountryColors}
       countryPopulation={run.population}
+      highlightedCountryIds={highlightedCountryIds}
       hiddenCountryIds={hiddenCountryIds}
       interactive={false}
       ariaLabel={`${run.continent} map for active Recite session`}
@@ -383,8 +389,6 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
     )
   }
 
-  const currentPrompt = getCurrentRecitePrompt(run.session)
-  const currentCountry = currentPrompt ? run.scopeCountries.find(country => country.id === currentPrompt.countryId) : undefined
   if (!currentPrompt || !currentCountry) return null
   return (
     <section className="space-y-3 animate-fade-in" aria-labelledby="world-countries-recite-session-heading">

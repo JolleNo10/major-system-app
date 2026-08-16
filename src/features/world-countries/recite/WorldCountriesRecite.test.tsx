@@ -104,6 +104,14 @@ describe('World Countries Recite workflow', () => {
     await act(async () => buttonContaining(mount, 'Northern Europe').click())
     await act(async () => buttonContaining(mount, 'Start Recite').click())
 
+    const activeMap = () => {
+      const activeMaps = mapRender.mock.calls
+        .map(([props]) => props as Record<string, unknown>)
+        .filter(props => props.interactive === false)
+      return activeMaps[activeMaps.length - 1]
+    }
+    expect(activeMap()?.highlightedCountryIds).toEqual(['NO'])
+
     const input = mount.querySelector<HTMLInputElement>('input[placeholder="Type the country…"]')
     expect(input).not.toBeNull()
     await act(async () => {
@@ -168,6 +176,7 @@ describe('World Countries Recite workflow', () => {
       return activeMaps[activeMaps.length - 1]
     }
     expect(activeMap()?.hiddenCountryIds).toEqual(['NO'])
+    expect(activeMap()?.highlightedCountryIds).toEqual([])
 
     await act(async () => buttonContaining(mount, 'Reveal / Skip').click())
     expect(mount.textContent).toContain('Answer: Norway')
