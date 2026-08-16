@@ -22,6 +22,16 @@ describe('GeographyOverviewMap', () => {
     expect(onCountryClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'NO', continent: 'Europe' }))
   })
 
+  it('replaces the embedded MapChart label with a source link', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g><text id="credit-text-svg">Created with mapchart.net</text></svg>' })))
+    const mount = document.createElement('div'); document.body.append(mount)
+
+    await act(async () => { root = createRoot(mount); root.render(createElement(GeographyOverviewMap, { level: 'world', ariaLabel: 'World map' })); await Promise.resolve(); await Promise.resolve() })
+
+    expect((mount.querySelector('#credit-text-svg') as SVGTextElement | null)?.style.display).toBe('none')
+    expect(mount.querySelector<HTMLAnchorElement>('a[href="https://www.mapchart.net/"]')?.textContent).toBe('MapChart')
+  })
+
   it('keeps unselected Subregions clickable while showing the current selection', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g><g><path id="France"/><text id="France_label">France</text></g></svg>' })))
     const onCountryClick = vi.fn(); const mount = document.createElement('div'); document.body.append(mount)
