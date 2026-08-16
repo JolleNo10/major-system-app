@@ -4,12 +4,12 @@ import type { Continent, Country } from '@/features/world-countries/data/countri
 import type { SchedulerLearningSession } from '@/features/world-countries/learning/schedulerLearningSession'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import { TaskDock } from '@/features/world-countries/ui/MapSurface'
+import { FuzzySpellingPracticeControls } from '@/features/world-countries/ui/MiniSpellingPractice'
 import { useLearningMapPresentation } from './LearningMapSurface'
 import { LearningHeader } from './MemoryPreviewStep'
 
 const SUCCESS_FEEDBACK_DURATION_MS = 500
 const CORRECTION_FEEDBACK_DURATION_MS = 1800
-const FUZZY_FEEDBACK_LINGER_MS = 1300
 
 export interface SchedulerAnswerEvaluation {
   correct: boolean
@@ -60,27 +60,20 @@ export function SchedulerPracticeStep({
 }) {
   const [answer, setAnswer] = useState('')
   const [feedback, setFeedback] = useState<{ evaluation: SchedulerAnswerEvaluation; expectedId: string; latencyMs: number } | null>(null)
-  const [recentFeedback, setRecentFeedback] = useState<{ evaluation: SchedulerAnswerEvaluation; expectedId: string; latencyMs: number } | null>(null)
   const startedAt = useRef(Date.now())
   const inputRef = useRef<HTMLInputElement>(null)
   const currentId = session.currentKey
   useEffect(() => { startedAt.current = Date.now() }, [currentId])
   useEffect(() => {
-    if (!feedback) return
+    if (!feedback || feedback.evaluation.fuzzyMatch) return
     const timer = window.setTimeout(() => {
       const answerResult = feedback
       setFeedback(null)
       setAnswer('')
-      if (answerResult.evaluation.fuzzyMatch) setRecentFeedback(answerResult)
       onSubmit(answerResult.evaluation.correct, answerResult.latencyMs)
     }, feedback.evaluation.correct ? SUCCESS_FEEDBACK_DURATION_MS : CORRECTION_FEEDBACK_DURATION_MS)
     return () => window.clearTimeout(timer)
   }, [feedback, onSubmit])
-  useEffect(() => {
-    if (!recentFeedback) return
-    const timer = window.setTimeout(() => setRecentFeedback(null), FUZZY_FEEDBACK_LINGER_MS)
-    return () => window.clearTimeout(timer)
-  }, [recentFeedback])
   useEffect(() => { if (!feedback) inputRef.current?.focus() }, [currentId, feedback])
 
   const current = entries.find(entry => entry.id === currentId)
@@ -89,7 +82,6 @@ export function SchedulerPracticeStep({
   const submit = () => {
     if (feedback || !answer.trim()) return
     const evaluation = evaluateAnswer(answer, current)
-    setRecentFeedback(null)
     setFeedback({ evaluation, expectedId: current.id, latencyMs: Date.now() - startedAt.current })
   }
   const ariaLabel = showCountryName
@@ -102,9 +94,22 @@ export function SchedulerPracticeStep({
     ariaLabel,
   }, [expected.id, showCountryName, ariaLabel])
 
-  const displayedFeedback = feedback ?? recentFeedback
-  const feedbackCountry = entries.find(entry => entry.id === displayedFeedback?.expectedId) ?? current
-  const feedbackNode = displayedFeedback && <RecallFeedback variant="inline" correct={displayedFeedback.evaluation.correct} message={formatFeedback(displayedFeedback.evaluation, feedbackCountry)} />
+  const feedbackCountry = entries.find(entry => entry.id === feedback?.expectedId) ?? current
+  const feedbackNode = feedback && <RecallFeedback variant="inline" correct={feedback.evaluation.correct} message={formatFeedback(feedback.evaluation, feedbackCountry)} />
+  const continueAfterFuzzyFeedback = () => {
+    if (!feedback?.evaluation.fuzzyMatch) return
+    const answerResult = feedback
+    setFeedback(null)
+    setAnswer('')
+    onSubmit(answerResult.evaluation.correct, answerResult.latencyMs)
+  }
+  const fuzzyControls = feedback?.evaluation.fuzzyMatch && (
+    <FuzzySpellingPracticeControls
+      answer={feedback.evaluation.canonicalAnswer}
+      answerKind={showCountryName ? 'capital' : 'country'}
+      onContinue={continueAfterFuzzyFeedback}
+    />
+  )
   const form = (
     <form onSubmit={event => { event.preventDefault(); submit() }} className="space-y-3">
       <label htmlFor="staged-learning-answer" className="sr-only">{answerLabel}</label>
@@ -118,6 +123,7 @@ export function SchedulerPracticeStep({
     <TaskDock variant="form" status={<div className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-cyan-400">{questionLabel} · {showCountryName ? current.country : promptText}</div>}>
       {feedbackNode}
       {form}
+      {fuzzyControls}
       {!surface && <button type="button" onClick={onBack} className="mt-3 w-full rounded-[9px] border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-400 hover:text-zinc-200">Back</button>}
     </TaskDock>
   )
@@ -131,6 +137,7 @@ export function SchedulerPracticeStep({
       {showMap && <div className="relative"><CountryLearningMap continent={continent} scopeCountries={entries} highlightedCountryId={expected.id} namedCountryId={showCountryName ? expected.id : null} showHighlightedNames={showCountryName} ariaLabel={ariaLabel} />{feedbackNode}</div>}
       {!showMap && feedbackNode}
       {form}
+      {fuzzyControls}
       <button type="button" onClick={onBack} className="w-full rounded-lg border border-zinc-800 px-4 py-3 text-sm text-zinc-500 hover:text-zinc-200">Back</button>
     </div>
   )

@@ -4,13 +4,13 @@ import type { Continent, Country } from '@/features/world-countries/data/countri
 import type { OrderedRecallState } from '@/features/world-countries/learning/orderedRecallSession'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import { TaskDock } from '@/features/world-countries/ui/MapSurface'
+import { FuzzySpellingPracticeControls } from '@/features/world-countries/ui/MiniSpellingPractice'
 import { useLearningMapPresentation } from './LearningMapSurface'
 import { LearningHeader } from './MemoryPreviewStep'
 import type { SchedulerAnswerEvaluation } from './SchedulerPracticeStep'
 
 const SUCCESS_FEEDBACK_DURATION_MS = 500
 const CORRECTION_FEEDBACK_DURATION_MS = 1800
-const FUZZY_FEEDBACK_LINGER_MS = 1300
 
 function EnterKey() {
   return <span aria-label="Enter" className="ml-2 inline-flex min-w-[22px] items-center justify-center rounded-[5px] border border-white/25 border-b-2 px-1.5 py-px text-[11px]">↵</span>
@@ -47,25 +47,18 @@ export function StagedFinalRecallStep({
 }) {
   const [answer, setAnswer] = useState('')
   const [feedback, setFeedback] = useState<{ evaluation: SchedulerAnswerEvaluation; expectedId: string } | null>(null)
-  const [recentFeedback, setRecentFeedback] = useState<{ evaluation: SchedulerAnswerEvaluation; expectedId: string } | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const current = entries.find(entry => entry.id === ordered.order[ordered.currentIndex])
   useEffect(() => {
-    if (!feedback) return
+    if (!feedback || feedback.evaluation.fuzzyMatch) return
     const timer = window.setTimeout(() => {
       const answerResult = feedback
       setFeedback(null)
       setAnswer('')
-      if (answerResult.evaluation.fuzzyMatch) setRecentFeedback(answerResult)
       onSubmit(answerResult.evaluation.correct)
     }, feedback.evaluation.correct ? SUCCESS_FEEDBACK_DURATION_MS : CORRECTION_FEEDBACK_DURATION_MS)
     return () => window.clearTimeout(timer)
   }, [feedback, onSubmit])
-  useEffect(() => {
-    if (!recentFeedback) return
-    const timer = window.setTimeout(() => setRecentFeedback(null), FUZZY_FEEDBACK_LINGER_MS)
-    return () => window.clearTimeout(timer)
-  }, [recentFeedback])
   useEffect(() => { if (!feedback) inputRef.current?.focus() }, [feedback, ordered.currentIndex])
   const display = entries.find(entry => entry.id === feedback?.expectedId) ?? current
   useLearningMapPresentation({
@@ -79,12 +72,24 @@ export function StagedFinalRecallStep({
 
   const submit = () => {
     if (feedback || !answer.trim()) return
-    setRecentFeedback(null)
     setFeedback({ evaluation: evaluateAnswer(answer, current), expectedId: current.id })
   }
-  const displayedFeedback = feedback ?? recentFeedback
-  const feedbackCountry = entries.find(entry => entry.id === displayedFeedback?.expectedId) ?? current
-  const feedbackNode = displayedFeedback && <RecallFeedback variant="inline" correct={displayedFeedback.evaluation.correct} message={formatFeedback(displayedFeedback.evaluation, feedbackCountry)} detail={!displayedFeedback.evaluation.correct ? 'The ordered repair traversal rewinds before the next clean pass.' : undefined} />
+  const feedbackCountry = entries.find(entry => entry.id === feedback?.expectedId) ?? current
+  const feedbackNode = feedback && <RecallFeedback variant="inline" correct={feedback.evaluation.correct} message={formatFeedback(feedback.evaluation, feedbackCountry)} detail={!feedback.evaluation.correct ? 'The ordered repair traversal rewinds before the next clean pass.' : undefined} />
+  const continueAfterFuzzyFeedback = () => {
+    if (!feedback?.evaluation.fuzzyMatch) return
+    const answerResult = feedback
+    setFeedback(null)
+    setAnswer('')
+    onSubmit(answerResult.evaluation.correct)
+  }
+  const fuzzyControls = feedback?.evaluation.fuzzyMatch && (
+    <FuzzySpellingPracticeControls
+      answer={feedback.evaluation.canonicalAnswer}
+      answerKind={showCountryName ? 'capital' : 'country'}
+      onContinue={continueAfterFuzzyFeedback}
+    />
+  )
   const form = (
     <form onSubmit={event => { event.preventDefault(); submit() }} className="space-y-3">
       <label htmlFor="staged-final-answer" className="sr-only">{answerLabel}</label>
@@ -98,6 +103,7 @@ export function StagedFinalRecallStep({
     <TaskDock variant="form" status={<div className="mb-2 flex items-center justify-between gap-3 text-[11px] font-bold uppercase tracking-[0.08em] text-cyan-400"><span>{ordered.mode === 'repair' ? 'Repair traversal' : 'Final recall'}</span><span className="text-xs font-normal tabular-nums text-zinc-400">{ordered.currentIndex + 1} / {ordered.order.length}</span></div>}>
       {feedbackNode}
       {form}
+      {fuzzyControls}
       {!surface && <button type="button" onClick={onBack} className="mt-3 w-full rounded-[9px] border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-400 hover:text-zinc-200">Back to Final recall</button>}
     </TaskDock>
   )
@@ -109,6 +115,7 @@ export function StagedFinalRecallStep({
       <div className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm"><span className="text-zinc-500">{ordered.mode === 'repair' ? 'Repair traversal' : 'Effective Country order'}</span><span className="font-semibold text-cyan-300">{answerLabel}</span></div>
       <div className="relative"><CountryLearningMap continent={continent} scopeCountries={entries} highlightedCountryId={display.id} namedCountryId={showCountryName || Boolean(feedback?.evaluation.correct) ? display.id : null} showHighlightedNames={showCountryName} showHoverNames ariaLabel="Highlighted Country for final recall" />{feedbackNode}</div>
       {form}
+      {fuzzyControls}
       <button type="button" onClick={onBack} className="w-full rounded-lg border border-zinc-800 px-4 py-3 text-sm text-zinc-500 hover:text-zinc-200">Back to Final recall</button>
     </div>
   )

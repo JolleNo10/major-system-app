@@ -33,7 +33,7 @@ afterEach(() => {
 })
 
 describe('StagedFinalRecallStep', () => {
-  it('keeps fuzzy spelling feedback visible while allowing the next answer', () => {
+  it('waits for explicit continuation after a fuzzy spelling answer', () => {
     vi.useFakeTimers()
     const mount = document.createElement('div')
     const onSubmit = vi.fn()
@@ -59,17 +59,18 @@ describe('StagedFinalRecallStep', () => {
     expect(input.disabled).toBe(true)
     expect(mount.textContent).toContain('The canonical answer is Oslo.')
 
-    act(() => vi.advanceTimersByTime(500))
+    act(() => vi.advanceTimersByTime(1800))
 
+    expect(onSubmit).not.toHaveBeenCalled()
+    expect(input.disabled).toBe(true)
+
+    act(() => mount.querySelector<HTMLButtonElement>('[data-fuzzy-spelling-action="practice"]')?.click())
+    const miniPractice = document.querySelector<HTMLElement>('[role="dialog"]')!
+    expect(miniPractice).not.toBeNull()
+    act(() => miniPractice.querySelector<HTMLButtonElement>('[data-mini-spelling-action="return"]')?.click())
+
+    expect(onSubmit).not.toHaveBeenCalled()
+    act(() => mount.querySelector<HTMLButtonElement>('[data-fuzzy-spelling-action="continue"]')?.click())
     expect(onSubmit).toHaveBeenCalledWith(true)
-    expect(input.disabled).toBe(false)
-    expect(mount.textContent).toContain('The canonical answer is Oslo.')
-    act(() => typeInto(input, 'Stockholm'))
-    expect(input.value).toBe('Stockholm')
-
-    act(() => vi.advanceTimersByTime(1299))
-    expect(mount.textContent).toContain('The canonical answer is Oslo.')
-    act(() => vi.advanceTimersByTime(1))
-    expect(mount.textContent).not.toContain('The canonical answer is Oslo.')
   })
 })

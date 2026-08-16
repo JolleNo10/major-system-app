@@ -287,18 +287,15 @@ describe('DrillSession map presentation', () => {
     expect(onContinue).not.toHaveBeenCalled()
     expect(input.disabled).toBe(true)
 
-    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')]
-      .find(button => button.textContent?.includes('Mini practise spelling'))?.click())
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-fuzzy-spelling-action="practice"]')?.click())
     const miniPractice = document.querySelector<HTMLElement>('[role="dialog"]')!
-    await act(async () => [...miniPractice.querySelectorAll<HTMLButtonElement>('button')]
-      .find(button => button.textContent?.includes('Return to drill'))?.click())
+    await act(async () => miniPractice.querySelector<HTMLButtonElement>('[data-mini-spelling-action="return"]')?.click())
 
     expect(document.querySelector('[role="dialog"]')).toBeNull()
     expect(onContinue).not.toHaveBeenCalled()
     expect(input.disabled).toBe(true)
 
-    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')]
-      .find(button => button.textContent?.includes('Continue'))?.click())
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-fuzzy-spelling-action="continue"]')?.click())
 
     expect(onContinue).toHaveBeenCalledWith(true)
   })
@@ -327,8 +324,7 @@ describe('DrillSession map presentation', () => {
     act(() => typeInto(drillInput, 'Stockholmm'))
     await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')]
       .find(button => button.textContent?.includes('Check'))?.click())
-    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')]
-      .find(button => button.textContent?.includes('Mini practise spelling'))?.click())
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-fuzzy-spelling-action="practice"]')?.click())
 
     const miniPractice = document.querySelector<HTMLElement>('[role="dialog"]')!
     expect(miniPractice.textContent).not.toContain('Stockholm')
@@ -338,8 +334,7 @@ describe('DrillSession map presentation', () => {
     const checkSpelling = async (value: string) => {
       const spellingInput = miniPractice.querySelector<HTMLInputElement>('input')!
       act(() => typeInto(spellingInput, value))
-      await act(async () => [...miniPractice.querySelectorAll<HTMLButtonElement>('button')]
-        .find(button => button.textContent?.includes('Check spelling'))?.click())
+      await act(async () => miniPractice.querySelector<HTMLButtonElement>('[data-mini-spelling-action="check"]')?.click())
     }
 
     await checkSpelling('Stockholm!')

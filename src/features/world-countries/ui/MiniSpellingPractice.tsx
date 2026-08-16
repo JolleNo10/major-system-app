@@ -8,6 +8,12 @@ interface Props {
   onComplete: () => void
 }
 
+interface FuzzySpellingPracticeControlsProps {
+  answer: string
+  answerKind: 'country' | 'capital'
+  onContinue: () => void
+}
+
 function normalizeSpelling(value: string): string {
   return value
     .trim()
@@ -97,6 +103,7 @@ export function MiniSpellingPractice({ answer, answerKind, onClose, onComplete }
           />
           <button
             type="submit"
+            data-mini-spelling-action="check"
             disabled={!value.trim()}
             className="w-full rounded-lg bg-cyan-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40"
           >
@@ -111,11 +118,48 @@ export function MiniSpellingPractice({ answer, answerKind, onClose, onComplete }
         <button
           type="button"
           onClick={onClose}
+          data-mini-spelling-action="return"
           className="text-sm font-medium text-zinc-400 underline-offset-4 hover:text-zinc-100 hover:underline"
         >
           Return to drill
         </button>
       </div>
     </Overlay>
+  )
+}
+
+/** Actions and temporary popup state shared by fuzzy-accepted country and capital recall. */
+export function FuzzySpellingPracticeControls({ answer, answerKind, onContinue }: FuzzySpellingPracticeControlsProps) {
+  const [showMiniPractice, setShowMiniPractice] = useState(false)
+
+  return (
+    <>
+      <div className="flex flex-wrap justify-center gap-3">
+        <button
+          type="button"
+          onClick={() => setShowMiniPractice(true)}
+          data-fuzzy-spelling-action="practice"
+          className="rounded-lg border border-cyan-500/60 px-4 py-2 text-sm font-semibold text-cyan-300 transition-colors hover:bg-cyan-500/10"
+        >
+          Mini practise spelling
+        </button>
+        <button
+          type="button"
+          onClick={onContinue}
+          data-fuzzy-spelling-action="continue"
+          className="rounded-lg bg-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-100 transition-colors hover:bg-zinc-600"
+        >
+          Continue
+        </button>
+      </div>
+      {showMiniPractice && (
+        <MiniSpellingPractice
+          answer={answer}
+          answerKind={answerKind}
+          onClose={() => setShowMiniPractice(false)}
+          onComplete={() => setShowMiniPractice(false)}
+        />
+      )}
+    </>
   )
 }
