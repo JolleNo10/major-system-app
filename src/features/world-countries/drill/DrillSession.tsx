@@ -21,10 +21,16 @@ import {
   type DrillSessionState,
 } from './drillSessionState'
 
+const SUCCESS_FEEDBACK_DURATION_MS = 500
+const CORRECTION_FEEDBACK_DURATION_MS = 1800
+const FUZZY_FEEDBACK_LINGER_MS = 1300
+
 interface StepFeedback {
   answer: string
   correct: boolean
   match: 'none' | 'exact' | 'fuzzy'
+  expectedAnswer: string
+  answerKind: 'country' | 'capital'
 }
 
 export type DrillSessionInteraction = 'recall' | 'location-click'
@@ -67,6 +73,7 @@ export function DrillSession({
 }) {
   const step = getCurrentDrillStep(state)
   const [feedback, setFeedback] = useState<StepFeedback | null>(null)
+  const [recentFeedback, setRecentFeedback] = useState<StepFeedback | null>(null)
   const startedAtRef = useRef(typeof performance === 'undefined' ? Date.now() : performance.now())
 
   useEffect(() => {
@@ -77,10 +84,17 @@ export function DrillSession({
   useEffect(() => {
     if (!feedback) return
     const timer = window.setTimeout(() => {
+      if (feedback.match === 'fuzzy') setRecentFeedback(feedback)
+      setFeedback(null)
       onContinue(feedback.correct)
-    }, feedback.correct ? 500 : 1800)
+    }, feedback.correct ? SUCCESS_FEEDBACK_DURATION_MS : CORRECTION_FEEDBACK_DURATION_MS)
     return () => window.clearTimeout(timer)
   }, [feedback, onContinue, step?.countryId, step?.skill])
+  useEffect(() => {
+    if (!recentFeedback) return
+    const timer = window.setTimeout(() => setRecentFeedback(null), FUZZY_FEEDBACK_LINGER_MS)
+    return () => window.clearTimeout(timer)
+  }, [recentFeedback])
 
   const country = step ? entries.find(entry => entry.id === step.countryId) : undefined
   const countryById = useMemo(() => new Map(entries.map(entry => [entry.id, entry])), [entries])
@@ -112,7 +126,8 @@ export function DrillSession({
     })
     const correct = match !== 'none'
     const elapsed = Math.max(0, now() - startedAtRef.current)
-    setFeedback({ answer, correct, match })
+    setRecentFeedback(null)
+    setFeedback({ answer, correct, match, expectedAnswer, answerKind: step.skill === 'country-to-capital' ? 'capital' : 'country' })
     onAnswer({
       countryId: step.countryId,
       skill: step.skill,
@@ -130,7 +145,8 @@ export function DrillSession({
     if (!selectedCountry) return
     const correct = selectedCountry.id === country.id
     const elapsed = Math.max(0, now() - startedAtRef.current)
-    setFeedback({ answer: selectedCountry.country, correct, match: 'exact' })
+    setRecentFeedback(null)
+    setFeedback({ answer: selectedCountry.country, correct, match: 'exact', expectedAnswer: country.country, answerKind: 'country' })
     onAnswer({
       countryId: country.id,
       skill: isCapitalLocationPractice ? 'capital-to-country' : 'location-to-country',
@@ -147,12 +163,13 @@ export function DrillSession({
     : isCapitalQuestion
       ? 'Which country has this capital?'
       : 'What is the capital?'
-  const feedbackText = feedback
-    ? feedback.correct
-      ? feedback.match === 'fuzzy'
-        ? `Correct. The canonical answer is ${expectedAnswer}.`
+  const displayedFeedback = feedback ?? recentFeedback
+  const feedbackText = displayedFeedback
+    ? displayedFeedback.correct
+      ? displayedFeedback.match === 'fuzzy'
+        ? `Correct. The canonical answer is ${displayedFeedback.expectedAnswer}.`
         : 'Correct.'
-      : `The correct ${isCapitalQuestion || isLocationQuestion ? 'country' : 'capital'} is ${expectedAnswer}.`
+      : `The correct ${displayedFeedback.answerKind} is ${displayedFeedback.expectedAnswer}.`
     : null
   const highlightedCountryId = isMapClickPractice
     ? feedback ? country.id : null
@@ -161,10 +178,10 @@ export function DrillSession({
     ? feedback ? country.id : null
     : country.id
   const practiceNamedCountryId = isMapClickPractice ? (feedback ? country.id : null) : namedCountryId
-  const practiceFeedbackText = feedback
-    ? feedback.correct
+  const practiceFeedbackText = displayedFeedback
+    ? displayedFeedback.correct
       ? 'Correct location.'
-      : `That was ${feedback.answer} — ${country.country} is highlighted.`
+      : `That was ${displayedFeedback.answer} — ${country.country} is highlighted.`
     : null
 
   const context = (
@@ -219,7 +236,7 @@ export function DrillSession({
                 ? 'Map of the selected geographic scope without the target Country revealed'
               : `Map with ${country.country} highlighted for ${activity === 'practice' ? 'Practice' : 'Drill'} recall`}
           />
-          {feedback && <RecallFeedback correct={feedback.correct} message={isMapClickPractice ? practiceFeedbackText : feedbackText} />}
+          {displayedFeedback && <RecallFeedback correct={displayedFeedback.correct} message={isMapClickPractice ? practiceFeedbackText : feedbackText} />}
           </div>
         )}
         dockPlacement={answerMode === 'typing' && !isMapClickPractice ? 'stacked' : 'attached'}

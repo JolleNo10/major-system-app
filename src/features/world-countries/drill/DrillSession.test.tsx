@@ -43,6 +43,12 @@ const sweden: Country = {
   subregion: 'Northern Europe',
 }
 
+function typeInto(input: HTMLInputElement, value: string): void {
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+  setter?.call(input, value)
+  input.dispatchEvent(new Event('input', { bubbles: true }))
+}
+
 let root: Root | null = null
 
 afterEach(() => {
@@ -246,6 +252,48 @@ describe('DrillSession map presentation', () => {
     expect(onContinue).not.toHaveBeenCalled()
     await act(async () => vi.advanceTimersByTime(1))
     expect(onContinue).toHaveBeenCalledWith(true)
+  })
+
+  it('keeps fuzzy spelling feedback visible while allowing the next typed answer', async () => {
+    vi.useFakeTimers()
+    const onContinue = vi.fn()
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(DrillSession, {
+        answerMode: 'typing',
+        fuzzyMatching: true,
+        state: createDrillSession({ mode: 'countries', skills: ['country-to-capital'], countryIds: ['SE'] }),
+        selection: createDrillSelection('Europe', ['northern-europe']),
+        entries: [sweden],
+        onAnswer: vi.fn(),
+        onContinue,
+        onExit: vi.fn(),
+        activity: 'practice',
+      }))
+    })
+
+    const input = mount.querySelector<HTMLInputElement>('input')!
+    act(() => typeInto(input, 'Stockholmm'))
+    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent?.includes('Check'))?.click())
+
+    expect(input.disabled).toBe(true)
+    expect(mount.textContent).toContain('The canonical answer is Stockholm.')
+
+    await act(async () => vi.advanceTimersByTime(500))
+
+    expect(onContinue).toHaveBeenCalledWith(true)
+    expect(input.disabled).toBe(false)
+    expect(mount.textContent).toContain('The canonical answer is Stockholm.')
+    act(() => typeInto(input, 'Stockholm'))
+    expect(input.value).toBe('Stockholm')
+
+    await act(async () => vi.advanceTimersByTime(1299))
+    expect(mount.textContent).toContain('The canonical answer is Stockholm.')
+    await act(async () => vi.advanceTimersByTime(1))
+    expect(mount.textContent).not.toContain('The canonical answer is Stockholm.')
   })
 
   it('keeps incorrect feedback visible for the correction interval', async () => {

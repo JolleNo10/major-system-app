@@ -7,6 +7,10 @@ import { TaskDock } from '@/features/world-countries/ui/MapSurface'
 import { useLearningMapPresentation } from './LearningMapSurface'
 import { LearningHeader } from './MemoryPreviewStep'
 
+const SUCCESS_FEEDBACK_DURATION_MS = 500
+const CORRECTION_FEEDBACK_DURATION_MS = 1800
+const FUZZY_FEEDBACK_LINGER_MS = 1300
+
 export interface SchedulerAnswerEvaluation {
   correct: boolean
   fuzzyMatch: boolean
@@ -56,6 +60,7 @@ export function SchedulerPracticeStep({
 }) {
   const [answer, setAnswer] = useState('')
   const [feedback, setFeedback] = useState<{ evaluation: SchedulerAnswerEvaluation; expectedId: string; latencyMs: number } | null>(null)
+  const [recentFeedback, setRecentFeedback] = useState<{ evaluation: SchedulerAnswerEvaluation; expectedId: string; latencyMs: number } | null>(null)
   const startedAt = useRef(Date.now())
   const inputRef = useRef<HTMLInputElement>(null)
   const currentId = session.currentKey
@@ -66,10 +71,16 @@ export function SchedulerPracticeStep({
       const answerResult = feedback
       setFeedback(null)
       setAnswer('')
+      if (answerResult.evaluation.fuzzyMatch) setRecentFeedback(answerResult)
       onSubmit(answerResult.evaluation.correct, answerResult.latencyMs)
-    }, feedback.evaluation.correct ? 500 : 1800)
+    }, feedback.evaluation.correct ? SUCCESS_FEEDBACK_DURATION_MS : CORRECTION_FEEDBACK_DURATION_MS)
     return () => window.clearTimeout(timer)
   }, [feedback, onSubmit])
+  useEffect(() => {
+    if (!recentFeedback) return
+    const timer = window.setTimeout(() => setRecentFeedback(null), FUZZY_FEEDBACK_LINGER_MS)
+    return () => window.clearTimeout(timer)
+  }, [recentFeedback])
   useEffect(() => { if (!feedback) inputRef.current?.focus() }, [currentId, feedback])
 
   const current = entries.find(entry => entry.id === currentId)
@@ -78,6 +89,7 @@ export function SchedulerPracticeStep({
   const submit = () => {
     if (feedback || !answer.trim()) return
     const evaluation = evaluateAnswer(answer, current)
+    setRecentFeedback(null)
     setFeedback({ evaluation, expectedId: current.id, latencyMs: Date.now() - startedAt.current })
   }
   const ariaLabel = showCountryName
@@ -90,7 +102,9 @@ export function SchedulerPracticeStep({
     ariaLabel,
   }, [expected.id, showCountryName, ariaLabel])
 
-  const feedbackNode = feedback && <RecallFeedback variant="inline" correct={feedback.evaluation.correct} message={formatFeedback(feedback.evaluation, expected)} />
+  const displayedFeedback = feedback ?? recentFeedback
+  const feedbackCountry = entries.find(entry => entry.id === displayedFeedback?.expectedId) ?? current
+  const feedbackNode = displayedFeedback && <RecallFeedback variant="inline" correct={displayedFeedback.evaluation.correct} message={formatFeedback(displayedFeedback.evaluation, feedbackCountry)} />
   const form = (
     <form onSubmit={event => { event.preventDefault(); submit() }} className="space-y-3">
       <label htmlFor="staged-learning-answer" className="sr-only">{answerLabel}</label>

@@ -19,6 +19,14 @@ const country: Country = {
 const settings = { masteryLatencyFactor: 1.4, sessionUnmasteredShare: 0.5 }
 let root: Root | null = null
 
+;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+function typeInto(input: HTMLInputElement, value: string): void {
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+  setter?.call(input, value)
+  input.dispatchEvent(new Event('input', { bubbles: true }))
+}
+
 afterEach(() => {
   act(() => root?.unmount())
   root = null
@@ -26,6 +34,47 @@ afterEach(() => {
 })
 
 describe('SchedulerPracticeStep', () => {
+  it('keeps fuzzy spelling feedback visible while allowing the next answer', () => {
+    vi.useFakeTimers()
+    const mount = document.createElement('div')
+    const onSubmit = vi.fn()
+    document.body.append(mount)
+    const session = { ...createSchedulerLearningSession([country.id], settings), currentKey: country.id }
+
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement(SchedulerPracticeStep, {
+        continent: 'Europe', entries: [country], session,
+        stepLabel: 'Practice', questionLabel: 'Country name',
+        questionTitle: 'Name the country', answerLabel: 'Type the country name',
+        placeholder: 'Type the country…', showCountryName: false, showMap: false,
+        evaluateAnswer: () => ({ correct: true, fuzzyMatch: true, canonicalAnswer: country.country }),
+        formatFeedback: evaluation => `Correct. The canonical answer is ${evaluation.canonicalAnswer}.`,
+        onSubmit, onBack: vi.fn(), onExit: vi.fn(), surface: true,
+      }))
+    })
+
+    const input = mount.querySelector<HTMLInputElement>('input')!
+    act(() => typeInto(input, 'Noreway'))
+    act(() => mount.querySelector('form')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
+
+    expect(input.disabled).toBe(true)
+    expect(mount.textContent).toContain('The canonical answer is Norway.')
+
+    act(() => vi.advanceTimersByTime(500))
+
+    expect(onSubmit).toHaveBeenCalledWith(true, expect.any(Number))
+    expect(input.disabled).toBe(false)
+    expect(mount.textContent).toContain('The canonical answer is Norway.')
+    act(() => typeInto(input, 'Sweden'))
+    expect(input.value).toBe('Sweden')
+
+    act(() => vi.advanceTimersByTime(1299))
+    expect(mount.textContent).toContain('The canonical answer is Norway.')
+    act(() => vi.advanceTimersByTime(1))
+    expect(mount.textContent).not.toContain('The canonical answer is Norway.')
+  })
+
   it('can render typed Combined practice without a map-location prompt', () => {
     const mount = document.createElement('div')
     document.body.append(mount)

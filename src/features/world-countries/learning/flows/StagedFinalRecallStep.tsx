@@ -8,6 +8,10 @@ import { useLearningMapPresentation } from './LearningMapSurface'
 import { LearningHeader } from './MemoryPreviewStep'
 import type { SchedulerAnswerEvaluation } from './SchedulerPracticeStep'
 
+const SUCCESS_FEEDBACK_DURATION_MS = 500
+const CORRECTION_FEEDBACK_DURATION_MS = 1800
+const FUZZY_FEEDBACK_LINGER_MS = 1300
+
 function EnterKey() {
   return <span aria-label="Enter" className="ml-2 inline-flex min-w-[22px] items-center justify-center rounded-[5px] border border-white/25 border-b-2 px-1.5 py-px text-[11px]">↵</span>
 }
@@ -43,6 +47,7 @@ export function StagedFinalRecallStep({
 }) {
   const [answer, setAnswer] = useState('')
   const [feedback, setFeedback] = useState<{ evaluation: SchedulerAnswerEvaluation; expectedId: string } | null>(null)
+  const [recentFeedback, setRecentFeedback] = useState<{ evaluation: SchedulerAnswerEvaluation; expectedId: string } | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const current = entries.find(entry => entry.id === ordered.order[ordered.currentIndex])
   useEffect(() => {
@@ -51,10 +56,16 @@ export function StagedFinalRecallStep({
       const answerResult = feedback
       setFeedback(null)
       setAnswer('')
+      if (answerResult.evaluation.fuzzyMatch) setRecentFeedback(answerResult)
       onSubmit(answerResult.evaluation.correct)
-    }, feedback.evaluation.correct ? 500 : 1800)
+    }, feedback.evaluation.correct ? SUCCESS_FEEDBACK_DURATION_MS : CORRECTION_FEEDBACK_DURATION_MS)
     return () => window.clearTimeout(timer)
   }, [feedback, onSubmit])
+  useEffect(() => {
+    if (!recentFeedback) return
+    const timer = window.setTimeout(() => setRecentFeedback(null), FUZZY_FEEDBACK_LINGER_MS)
+    return () => window.clearTimeout(timer)
+  }, [recentFeedback])
   useEffect(() => { if (!feedback) inputRef.current?.focus() }, [feedback, ordered.currentIndex])
   const display = entries.find(entry => entry.id === feedback?.expectedId) ?? current
   useLearningMapPresentation({
@@ -68,9 +79,12 @@ export function StagedFinalRecallStep({
 
   const submit = () => {
     if (feedback || !answer.trim()) return
+    setRecentFeedback(null)
     setFeedback({ evaluation: evaluateAnswer(answer, current), expectedId: current.id })
   }
-  const feedbackNode = feedback && <RecallFeedback variant="inline" correct={feedback.evaluation.correct} message={formatFeedback(feedback.evaluation, display)} detail={!feedback.evaluation.correct ? 'The ordered repair traversal rewinds before the next clean pass.' : undefined} />
+  const displayedFeedback = feedback ?? recentFeedback
+  const feedbackCountry = entries.find(entry => entry.id === displayedFeedback?.expectedId) ?? current
+  const feedbackNode = displayedFeedback && <RecallFeedback variant="inline" correct={displayedFeedback.evaluation.correct} message={formatFeedback(displayedFeedback.evaluation, feedbackCountry)} detail={!displayedFeedback.evaluation.correct ? 'The ordered repair traversal rewinds before the next clean pass.' : undefined} />
   const form = (
     <form onSubmit={event => { event.preventDefault(); submit() }} className="space-y-3">
       <label htmlFor="staged-final-answer" className="sr-only">{answerLabel}</label>
