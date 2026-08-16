@@ -286,6 +286,7 @@ describe('DrillSession map presentation', () => {
 
     expect(onContinue).not.toHaveBeenCalled()
     expect(input.disabled).toBe(true)
+    expect(document.activeElement).toBe(mount.querySelector('[data-fuzzy-spelling-action="continue"]'))
 
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-fuzzy-spelling-action="practice"]')?.click())
     const miniPractice = document.querySelector<HTMLElement>('[role="dialog"]')!

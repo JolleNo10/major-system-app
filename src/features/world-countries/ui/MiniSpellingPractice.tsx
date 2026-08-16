@@ -149,6 +149,7 @@ export function FuzzySpellingPracticeControls({ answer, answerKind, onContinue }
           type="button"
           onClick={onContinue}
           data-fuzzy-spelling-action="continue"
+          autoFocus
           className="rounded-lg bg-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-100 transition-colors hover:bg-zinc-600"
         >
           Continue
