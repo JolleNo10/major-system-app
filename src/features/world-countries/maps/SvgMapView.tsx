@@ -13,7 +13,6 @@ export type { SvgMapCountry } from './SvgMapController'
 export type SvgMapLoadState = 'loading' | 'ready' | 'error'
 
 const EMPTY_COUNTRY_LABELS: Readonly<Record<string, string>> = {}
-const MAPCHART_SOURCE_URL = 'https://www.mapchart.net/'
 const EMBEDDED_MAPCHART_CREDIT_ID = 'credit-text-svg'
 
 export interface SvgMapViewProps {
@@ -181,11 +180,6 @@ export function SvgMapView({
           Loading map…
         </div>
       ) : null}
-      {!loading && !error && (
-        <p className="px-1 text-right text-[10px] text-zinc-500">
-          Map source: <a href={MAPCHART_SOURCE_URL} target="_blank" rel="noreferrer" className="underline decoration-zinc-600 underline-offset-2 hover:text-zinc-300">MapChart</a>
-        </p>
-      )}
     </div>
   )
 }
