@@ -254,7 +254,7 @@ describe('DrillSession map presentation', () => {
     expect(onContinue).toHaveBeenCalledWith(true)
   })
 
-  it('keeps fuzzy spelling feedback visible while allowing the next typed answer', async () => {
+  it('waits for explicit continuation after a fuzzy spelling answer', async () => {
     vi.useFakeTimers()
     const onContinue = vi.fn()
     const mount = document.createElement('div')
@@ -282,18 +282,76 @@ describe('DrillSession map presentation', () => {
     expect(input.disabled).toBe(true)
     expect(mount.textContent).toContain('The canonical answer is Stockholm.')
 
-    await act(async () => vi.advanceTimersByTime(500))
+    await act(async () => vi.advanceTimersByTime(1800))
+
+    expect(onContinue).not.toHaveBeenCalled()
+    expect(input.disabled).toBe(true)
+
+    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')]
+      .find(button => button.textContent?.includes('Mini practise spelling'))?.click())
+    const miniPractice = document.querySelector<HTMLElement>('[role="dialog"]')!
+    await act(async () => [...miniPractice.querySelectorAll<HTMLButtonElement>('button')]
+      .find(button => button.textContent?.includes('Return to drill'))?.click())
+
+    expect(document.querySelector('[role="dialog"]')).toBeNull()
+    expect(onContinue).not.toHaveBeenCalled()
+    expect(input.disabled).toBe(true)
+
+    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')]
+      .find(button => button.textContent?.includes('Continue'))?.click())
 
     expect(onContinue).toHaveBeenCalledWith(true)
-    expect(input.disabled).toBe(false)
-    expect(mount.textContent).toContain('The canonical answer is Stockholm.')
-    act(() => typeInto(input, 'Stockholm'))
-    expect(input.value).toBe('Stockholm')
+  })
 
-    await act(async () => vi.advanceTimersByTime(1299))
+  it('requires two consecutive exact spellings in mini practise without advancing', async () => {
+    const onContinue = vi.fn()
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(DrillSession, {
+        answerMode: 'typing',
+        fuzzyMatching: true,
+        state: createDrillSession({ mode: 'countries', skills: ['country-to-capital'], countryIds: ['SE'] }),
+        selection: createDrillSelection('Europe', ['northern-europe']),
+        entries: [sweden],
+        onAnswer: vi.fn(),
+        onContinue,
+        onExit: vi.fn(),
+        activity: 'practice',
+      }))
+    })
+
+    const drillInput = mount.querySelector<HTMLInputElement>('input')!
+    act(() => typeInto(drillInput, 'Stockholmm'))
+    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')]
+      .find(button => button.textContent?.includes('Check'))?.click())
+    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')]
+      .find(button => button.textContent?.includes('Mini practise spelling'))?.click())
+
+    const miniPractice = document.querySelector<HTMLElement>('[role="dialog"]')!
+    expect(miniPractice.textContent).not.toContain('Stockholm')
+
+    const checkSpelling = async (value: string) => {
+      const spellingInput = miniPractice.querySelector<HTMLInputElement>('input')!
+      act(() => typeInto(spellingInput, value))
+      await act(async () => [...miniPractice.querySelectorAll<HTMLButtonElement>('button')]
+        .find(button => button.textContent?.includes('Check spelling'))?.click())
+    }
+
+    await checkSpelling('Stockholm!')
+    expect(miniPractice.textContent).toContain('Not quite. Try again from memory.')
+    expect(miniPractice.textContent).toContain('0 / 2 correct')
+
+    await checkSpelling('  STOCKHOLM  ')
+    expect(miniPractice.textContent).toContain('Correct. Spell it once more.')
+    expect(miniPractice.textContent).toContain('1 / 2 correct')
+
+    await checkSpelling('Stockholm')
+    expect(document.querySelector('[role="dialog"]')).toBeNull()
+    expect(onContinue).not.toHaveBeenCalled()
     expect(mount.textContent).toContain('The canonical answer is Stockholm.')
-    await act(async () => vi.advanceTimersByTime(1))
-    expect(mount.textContent).not.toContain('The canonical answer is Stockholm.')
   })
 
   it('keeps incorrect feedback visible for the correction interval', async () => {

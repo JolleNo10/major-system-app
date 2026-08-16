@@ -13,6 +13,7 @@ import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
 import type { WorldCountriesDrillSelection } from './drillSelection'
 import { DrillSessionRails } from './DrillSessionRails'
 import { PracticeSessionRails } from './PracticeSessionRails'
+import { MiniSpellingPractice } from './MiniSpellingPractice'
 import { getDrillSkillLabel } from './drillModes'
 import type { WorldCountriesProficiencySelection } from './drillProficiencyScope'
 import {
@@ -23,7 +24,6 @@ import {
 
 const SUCCESS_FEEDBACK_DURATION_MS = 500
 const CORRECTION_FEEDBACK_DURATION_MS = 1800
-const FUZZY_FEEDBACK_LINGER_MS = 1300
 
 interface StepFeedback {
   answer: string
@@ -34,6 +34,11 @@ interface StepFeedback {
 }
 
 export type DrillSessionInteraction = 'recall' | 'location-click'
+
+interface MiniPracticeTarget {
+  answer: string
+  answerKind: 'country' | 'capital'
+}
 
 function answerValues(skill: WorldCountriesRecallSkill, entries: readonly Country[]): string[] {
   return entries.map(entry => skill === 'country-to-capital' ? entry.capital : entry.country)
@@ -73,28 +78,23 @@ export function DrillSession({
 }) {
   const step = getCurrentDrillStep(state)
   const [feedback, setFeedback] = useState<StepFeedback | null>(null)
-  const [recentFeedback, setRecentFeedback] = useState<StepFeedback | null>(null)
+  const [miniPracticeTarget, setMiniPracticeTarget] = useState<MiniPracticeTarget | null>(null)
   const startedAtRef = useRef(typeof performance === 'undefined' ? Date.now() : performance.now())
 
   useEffect(() => {
     setFeedback(null)
+    setMiniPracticeTarget(null)
     startedAtRef.current = typeof performance === 'undefined' ? Date.now() : performance.now()
   }, [step?.countryId, step?.skill])
 
   useEffect(() => {
-    if (!feedback) return
+    if (!feedback || feedback.match === 'fuzzy') return
     const timer = window.setTimeout(() => {
-      if (feedback.match === 'fuzzy') setRecentFeedback(feedback)
       setFeedback(null)
       onContinue(feedback.correct)
     }, feedback.correct ? SUCCESS_FEEDBACK_DURATION_MS : CORRECTION_FEEDBACK_DURATION_MS)
     return () => window.clearTimeout(timer)
   }, [feedback, onContinue, step?.countryId, step?.skill])
-  useEffect(() => {
-    if (!recentFeedback) return
-    const timer = window.setTimeout(() => setRecentFeedback(null), FUZZY_FEEDBACK_LINGER_MS)
-    return () => window.clearTimeout(timer)
-  }, [recentFeedback])
 
   const country = step ? entries.find(entry => entry.id === step.countryId) : undefined
   const countryById = useMemo(() => new Map(entries.map(entry => [entry.id, entry])), [entries])
@@ -126,7 +126,6 @@ export function DrillSession({
     })
     const correct = match !== 'none'
     const elapsed = Math.max(0, now() - startedAtRef.current)
-    setRecentFeedback(null)
     setFeedback({ answer, correct, match, expectedAnswer, answerKind: step.skill === 'country-to-capital' ? 'capital' : 'country' })
     onAnswer({
       countryId: step.countryId,
@@ -145,7 +144,6 @@ export function DrillSession({
     if (!selectedCountry) return
     const correct = selectedCountry.id === country.id
     const elapsed = Math.max(0, now() - startedAtRef.current)
-    setRecentFeedback(null)
     setFeedback({ answer: selectedCountry.country, correct, match: 'exact', expectedAnswer: country.country, answerKind: 'country' })
     onAnswer({
       countryId: country.id,
@@ -163,14 +161,14 @@ export function DrillSession({
     : isCapitalQuestion
       ? 'Which country has this capital?'
       : 'What is the capital?'
-  const displayedFeedback = feedback ?? recentFeedback
-  const feedbackText = displayedFeedback
-    ? displayedFeedback.correct
-      ? displayedFeedback.match === 'fuzzy'
-        ? `Correct. The canonical answer is ${displayedFeedback.expectedAnswer}.`
+  const feedbackText = feedback
+    ? feedback.correct
+      ? feedback.match === 'fuzzy'
+        ? `Correct. The canonical answer is ${feedback.expectedAnswer}.`
         : 'Correct.'
-      : `The correct ${displayedFeedback.answerKind} is ${displayedFeedback.expectedAnswer}.`
+      : `The correct ${feedback.answerKind} is ${feedback.expectedAnswer}.`
     : null
+  const displayedFeedback = feedback
   const highlightedCountryId = isMapClickPractice
     ? feedback ? country.id : null
     : isCapitalQuestion ? (feedback ? country.id : null) : country.id
@@ -183,6 +181,17 @@ export function DrillSession({
       ? 'Correct location.'
       : `That was ${displayedFeedback.answer} — ${country.country} is highlighted.`
     : null
+
+  const beginMiniPractice = () => {
+    if (feedback?.match !== 'fuzzy') return
+    setMiniPracticeTarget({ answer: feedback.expectedAnswer, answerKind: feedback.answerKind })
+  }
+
+  const continueAfterFuzzyFeedback = () => {
+    if (feedback?.match !== 'fuzzy') return
+    setFeedback(null)
+    onContinue(true)
+  }
 
   const context = (
     <div className="px-1 text-center">
@@ -264,10 +273,36 @@ export function DrillSession({
                 placeholder={isCapitalQuestion ? 'Type the country…' : isLocationQuestion ? 'Type the country…' : 'Type the capital…'}
               />
             )}
+            {feedback?.match === 'fuzzy' && (
+              <div className="flex flex-wrap justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={beginMiniPractice}
+                  className="rounded-lg border border-cyan-500/60 px-4 py-2 text-sm font-semibold text-cyan-300 transition-colors hover:bg-cyan-500/10"
+                >
+                  Mini practise spelling
+                </button>
+                <button
+                  type="button"
+                  onClick={continueAfterFuzzyFeedback}
+                  className="rounded-lg bg-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-100 transition-colors hover:bg-zinc-600"
+                >
+                  Continue
+                </button>
+              </div>
+            )}
             </section>
           </TaskDock>
         )}
       />
+      {miniPracticeTarget && (
+        <MiniSpellingPractice
+          answer={miniPracticeTarget.answer}
+          answerKind={miniPracticeTarget.answerKind}
+          onClose={() => setMiniPracticeTarget(null)}
+          onComplete={() => setMiniPracticeTarget(null)}
+        />
+      )}
     </>
   )
 }
