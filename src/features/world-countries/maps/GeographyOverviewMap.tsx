@@ -155,8 +155,10 @@ export function GeographyOverviewMap({
   const hasScopedCountries = Boolean(
     focusedSubregionId || selectedCountryIds !== undefined || selectedSubregionIds !== undefined || hasHoveredSubregionScope || hasContinentScope,
   )
+  // Selection controls presentation, not which Countries can be chosen next.
+  // A focused Subregion is the sole intentional interaction restriction.
   const hoverableSvgIds = interactive
-    ? hasScopedCountries ? scopedSvgIds : visibleSvgIds
+    ? focusedSubregionId ? focusSvgIds : visibleSvgIds
     : []
   const restrictCountryClicks = Boolean(
     focusedSubregionId || (selectedSubregionIds === undefined && hasHoveredSubregionScope),

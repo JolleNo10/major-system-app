@@ -22,6 +22,26 @@ describe('GeographyOverviewMap', () => {
     expect(onCountryClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'NO', continent: 'Europe' }))
   })
 
+  it('keeps unselected Subregions clickable while showing the current selection', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g><g><path id="France"/><text id="France_label">France</text></g></svg>' })))
+    const onCountryClick = vi.fn(); const mount = document.createElement('div'); document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(GeographyOverviewMap, {
+        level: 'continent',
+        continent: 'Europe',
+        selectedSubregionIds: ['northern-europe'],
+        onCountryClick,
+        ariaLabel: 'Europe map',
+      }))
+      await Promise.resolve(); await Promise.resolve()
+    })
+
+    await act(async () => { mount.querySelector('path#France')?.dispatchEvent(new Event('click', { bubbles: true })) })
+    expect(onCountryClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'FR', subregionId: 'western-europe' }))
+  })
+
   it('keeps readiness color separate from geographic selection', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => europeSvg })))
     const mount = document.createElement('div'); document.body.append(mount)
