@@ -103,7 +103,7 @@ describe('DrillSession map presentation', () => {
       })
 
       renderRightRail(railMount)
-      expect(railMount.textContent).toContain('Edit mnemonics')
+      expect(railMount.textContent).toContain('Show mnemonics')
       expect(railMount.textContent).not.toContain('Norway')
       expect(railMount.textContent).not.toContain('Oslo')
     }
@@ -134,7 +134,7 @@ describe('DrillSession map presentation', () => {
 
     renderRightRail(railMount)
     await act(async () => [...railMount.querySelectorAll<HTMLButtonElement>('button')]
-      .find(button => button.textContent === 'Edit mnemonics')?.click())
+      .find(button => button.textContent === 'Show mnemonics')?.click())
     renderRightRail(railMount)
     expect(railMount.textContent).toContain('Norway ↔ Oslo')
     expect(countryCapitalPanelMock).toHaveBeenCalledWith(expect.objectContaining({ country: norway }))
@@ -148,7 +148,7 @@ describe('DrillSession map presentation', () => {
 
     renderRightRail(railMount)
     await act(async () => [...railMount.querySelectorAll<HTMLButtonElement>('button')]
-      .find(button => button.textContent === 'Close mnemonic')?.click())
+      .find(button => button.textContent === 'Hide mnemonics')?.click())
     await act(async () => vi.advanceTimersByTime(500))
     expect(onContinue).toHaveBeenCalledWith(true)
 
@@ -171,7 +171,7 @@ describe('DrillSession map presentation', () => {
 
     renderRightRail(railMount)
     await act(async () => [...railMount.querySelectorAll<HTMLButtonElement>('button')]
-      .find(button => button.textContent === 'Edit mnemonics')?.click())
+      .find(button => button.textContent === 'Show mnemonics')?.click())
     renderRightRail(railMount)
     expect(countryCapitalPanelMock).toHaveBeenLastCalledWith(expect.objectContaining({ country: sweden }))
   })

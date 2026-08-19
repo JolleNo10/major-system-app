@@ -32,7 +32,7 @@ export function GeographyMnemonicView({
   return (
     <WorldCountriesPanel as="article">
       <div className="flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0 flex-1">
           <h3 className="text-sm font-semibold text-zinc-200">{title}</h3>
           <p className="mt-1 text-xs text-zinc-500">{subtitle}</p>
         </div>

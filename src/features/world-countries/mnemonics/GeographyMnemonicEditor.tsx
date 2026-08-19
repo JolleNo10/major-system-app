@@ -13,6 +13,7 @@ export function GeographyMnemonicEditor({
   refreshKey,
   onChanged,
   headerAction,
+  initiallyEditing = false,
 }: {
   targetId: string
   title: string
@@ -21,9 +22,10 @@ export function GeographyMnemonicEditor({
   refreshKey: unknown
   onChanged: () => void
   headerAction?: ReactNode
+  initiallyEditing?: boolean
 }) {
   const { mnemonic, loading } = useMnemonic(targetId, refreshKey)
-  const [editing, setEditing] = useState(false)
+  const [editing, setEditing] = useState(initiallyEditing)
   const [draftText, setDraftText] = useState('')
   const [draftImage, setDraftImage] = useState<Blob | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -32,9 +34,9 @@ export function GeographyMnemonicEditor({
   const draftUrl = useBlobUrl(draftImage)
 
   useEffect(() => {
-    setEditing(false)
+    setEditing(initiallyEditing)
     setError(null)
-  }, [targetId])
+  }, [initiallyEditing, targetId])
 
   useEffect(() => {
     if (!editing) return
@@ -75,7 +77,7 @@ export function GeographyMnemonicEditor({
   return (
     <WorldCountriesPanel as="article">
       <div className="flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0 flex-1">
           <h3 className="text-sm font-semibold text-zinc-200">{title}</h3>
           <p className="mt-1 text-xs text-zinc-500">{subtitle}</p>
         </div>

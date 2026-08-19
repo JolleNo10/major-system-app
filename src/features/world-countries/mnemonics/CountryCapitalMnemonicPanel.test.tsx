@@ -63,6 +63,7 @@ describe('CountryCapitalMnemonicPanel', () => {
 
     act(() => mount.querySelector<HTMLButtonElement>('button')?.click())
     expect(editorProps.current?.targetId).toBe(countryCapitalMnemonicId(norway))
+    expect(editorProps.current?.initiallyEditing).toBe(true)
     expect(mount.textContent).toContain('Close mnemonic editor')
   })
 

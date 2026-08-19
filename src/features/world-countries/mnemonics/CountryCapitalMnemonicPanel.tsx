@@ -41,6 +41,7 @@ export function CountryCapitalMnemonicPanel({
       refreshKey={`${country.id}-${String(refreshKey)}`}
       onChanged={onChanged}
       headerAction={action}
+      initiallyEditing
     />
   ) : (
     <GeographyMnemonicView

@@ -73,7 +73,7 @@ export function DrillSessionRails({
           {step && country && (
             <>
               <button type="button" onClick={mnemonicOpen ? onCloseMnemonic : onOpenMnemonic} className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm font-medium text-cyan-300 hover:border-cyan-500 hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">
-                {mnemonicOpen ? 'Close mnemonic' : 'Edit mnemonics'}
+                {mnemonicOpen ? 'Hide mnemonics' : 'Show mnemonics'}
               </button>
               {mnemonicOpen && <CountryCapitalMnemonicPanel country={country} refreshKey={mnemonicVersion} onChanged={onMnemonicChanged} />}
             </>
