@@ -76,13 +76,15 @@ export function GeographyMnemonicEditor({
 
   return (
     <WorldCountriesPanel as="article">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
+      <div className="space-y-2">
+        <div>
           <h3 className="text-sm font-semibold text-zinc-200">{title}</h3>
           <p className="mt-1 text-xs text-zinc-500">{subtitle}</p>
         </div>
-        {headerAction}
-        {!loading && !editing && <button type="button" onClick={() => setEditing(true)} className="shrink-0 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:border-cyan-500 hover:text-zinc-100">{hasContent ? 'Edit' : '+ Add'}</button>}
+        {(headerAction || (!loading && !editing)) && <div className="flex flex-wrap items-center justify-end gap-2">
+          {headerAction}
+          {!loading && !editing && <button type="button" onClick={() => setEditing(true)} className="shrink-0 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:border-cyan-500 hover:text-zinc-100">{hasContent ? 'Edit' : '+ Add'}</button>}
+        </div>}
       </div>
       {loading ? <p className="mt-3 text-xs text-zinc-500">Loading mnemonic…</p> : editing ? (
         <div className="mt-3 space-y-2">
