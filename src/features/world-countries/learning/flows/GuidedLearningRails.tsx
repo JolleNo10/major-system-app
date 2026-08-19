@@ -4,9 +4,10 @@ import type { Continent, Country } from '@/features/world-countries/data/countri
 import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
 import { saveSubregionCountryOrder } from '@/features/world-countries/geography/orderAuthoring'
 import { sortCountriesByMemoMapPosition } from '@/features/world-countries/maps/memoMapOrdering'
-import { subregionMnemonicId, countryCapitalMnemonicId } from '@/features/world-countries/mnemonics/geographyMnemonicIds'
+import { subregionMnemonicId } from '@/features/world-countries/mnemonics/geographyMnemonicIds'
 import { GeographyMnemonicEditor } from '@/features/world-countries/mnemonics/GeographyMnemonicEditor'
 import { GeographyMnemonicView } from '@/features/world-countries/mnemonics/GeographyMnemonicView'
+import { CountryCapitalMnemonicPanel } from '@/features/world-countries/mnemonics/CountryCapitalMnemonicPanel'
 import { deriveWorldCountriesLearningReadiness, getWorldCountriesLearningReadinessLabel } from '@/features/world-countries/learning/learningReadiness'
 import { InlineOrderEditor } from '@/features/world-countries/ui/InlineOrderEditor'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
@@ -99,7 +100,7 @@ export function GuidedLearningRails({
     setEditingOrder(false)
     onOrderEditingChange?.(false)
   }
-  const mnemonicAction = (target: 'subregion' | 'country-capital') => (
+  const mnemonicAction = (target: 'subregion') => (
     <button type="button" onClick={() => setEditingMnemonic(current => current === target ? null : target)} className="shrink-0 text-left text-xs font-semibold text-cyan-300 hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70">
       {editingMnemonic === target ? 'Close mnemonic editor' : 'Edit mnemonics'}
     </button>
@@ -154,7 +155,7 @@ export function GuidedLearningRails({
         <div className="space-y-4">
           {(onBack || onExit || onSkip) && <section aria-labelledby="guided-learning-actions-heading" className="space-y-2"><h3 id="guided-learning-actions-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Learning actions</h3>{onBack && <button type="button" onClick={onBack} className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">{backLabel}</button>}{onSkip && <button type="button" onClick={onSkip} className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-400 hover:border-cyan-500 hover:text-zinc-200">{skipLabel ?? 'Skip'}</button>}{onExit && <button type="button" onClick={onExit} className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2.5 text-sm text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Exit</button>}</section>}
           {showSubregionMnemonic && subregion && (editingMnemonic === 'subregion' ? <GeographyMnemonicEditor targetId={subregionMnemonicId(subregion)} title="Subregion memory aid" subtitle={`Optional story or picture for this ordered ${entries.length}-country group`} countryIds={entries.map(entry => entry.id)} refreshKey={mnemonicVersion} onChanged={onMnemonicChanged} headerAction={mnemonicAction('subregion')} /> : <GeographyMnemonicView targetId={subregionMnemonicId(subregion)} title="Subregion memory aid" subtitle={`Optional story or picture for this ordered ${entries.length}-country group`} countryIds={entries.map(entry => entry.id)} refreshKey={mnemonicVersion} headerAction={mnemonicAction('subregion')} />)}
-          {showCapitalMnemonic && walkthroughCountry && (editingMnemonic === 'country-capital' ? <GeographyMnemonicEditor targetId={countryCapitalMnemonicId(walkthroughCountry)} title={`${walkthroughCountry.country} ↔ ${walkthroughCountry.capital}`} subtitle="Optional memory aid for this Country–Capital relationship" refreshKey={`${walkthroughCountry.id}-${mnemonicVersion}`} onChanged={onMnemonicChanged} headerAction={mnemonicAction('country-capital')} /> : <GeographyMnemonicView targetId={countryCapitalMnemonicId(walkthroughCountry)} title={`${walkthroughCountry.country} ↔ ${walkthroughCountry.capital}`} subtitle="Optional memory aid for this Country–Capital relationship" refreshKey={`${walkthroughCountry.id}-${mnemonicVersion}`} headerAction={mnemonicAction('country-capital')} />)}
+          {showCapitalMnemonic && walkthroughCountry && <CountryCapitalMnemonicPanel country={walkthroughCountry} refreshKey={mnemonicVersion} onChanged={onMnemonicChanged} />}
         </div>
       ) : undefined,
       leftLabel: 'Learning context',

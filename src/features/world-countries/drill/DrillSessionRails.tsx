@@ -2,6 +2,7 @@ import { useRails } from '@/app/layout/PageLayoutContext'
 import type { Country } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition } from '@/features/world-countries/data/subregions'
 import { GeographyBreadcrumbs } from '@/features/world-countries/ui/GeographyBreadcrumbs'
+import { CountryCapitalMnemonicPanel } from '@/features/world-countries/mnemonics/CountryCapitalMnemonicPanel'
 import type { WorldCountriesDrillSelection } from './drillSelection'
 import { getDrillSkillLabel, getDrillModeDefinition, type WorldCountriesDrillMode } from './drillModes'
 import { getCurrentDrillStep, getDrillSessionTotalSteps, type DrillSessionState } from './drillSessionState'
@@ -14,6 +15,11 @@ export function DrillSessionRails({
   state,
   onExit,
   entries,
+  mnemonicOpen,
+  onOpenMnemonic,
+  onCloseMnemonic,
+  mnemonicVersion,
+  onMnemonicChanged,
 }: {
   selection: WorldCountriesDrillSelection
   proficiencySelection?: WorldCountriesProficiencySelection
@@ -21,8 +27,14 @@ export function DrillSessionRails({
   state: DrillSessionState
   onExit: () => void
   entries: readonly Country[]
+  mnemonicOpen: boolean
+  onOpenMnemonic: () => void
+  onCloseMnemonic: () => void
+  mnemonicVersion: number
+  onMnemonicChanged: () => void
 }) {
   const step = getCurrentDrillStep(state)
+  const country = step ? entries.find(entry => entry.id === step.countryId) : undefined
   const totalSteps = getDrillSessionTotalSteps(state)
   const completedSteps = state.countryIndex * getDrillModeDefinition(mode).skills.length + state.stepIndex
   const progressPercent = totalSteps ? Math.round((completedSteps / totalSteps) * 100) : 0
@@ -58,12 +70,20 @@ export function DrillSessionRails({
             <p className="mt-2 text-xs tabular-nums text-zinc-500">Country {Math.min(state.countryIndex + 1, state.countryOrder.length)} / {state.countryOrder.length}</p>
           </div>
           <button type="button" onClick={onExit} className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2.5 text-sm font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">Exit Drill</button>
+          {step && country && (
+            <>
+              <button type="button" onClick={mnemonicOpen ? onCloseMnemonic : onOpenMnemonic} className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm font-medium text-cyan-300 hover:border-cyan-500 hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">
+                {mnemonicOpen ? 'Close mnemonic' : 'Edit mnemonics'}
+              </button>
+              {mnemonicOpen && <CountryCapitalMnemonicPanel country={country} refreshKey={mnemonicVersion} onChanged={onMnemonicChanged} />}
+            </>
+          )}
         </section>
       ),
       leftLabel: 'Drill context',
       rightLabel: 'Session',
     },
-    [entries, mode, onExit, proficiencySelection, selection.continent, selection.subregionIds, state.countryIds.length, state.countryIndex, state.countryOrder.length, state.stepIndex, step?.skill, totalSteps, progressPercent],
+    [country, entries, mnemonicOpen, mnemonicVersion, mode, onCloseMnemonic, onExit, onMnemonicChanged, onOpenMnemonic, proficiencySelection, selection.continent, selection.subregionIds, state.countryIds.length, state.countryIndex, state.countryOrder.length, state.stepIndex, step?.skill, totalSteps, progressPercent],
   )
 
   return null

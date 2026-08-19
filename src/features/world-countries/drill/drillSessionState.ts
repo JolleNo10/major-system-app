@@ -12,6 +12,8 @@ export interface DrillAnswerRecord {
   ms: number
   /** Populated by the active UI; absent only for legacy/session fixtures. */
   evidenceKind?: AttemptEvidenceKind
+  /** The answer followed deliberate mnemonic assistance and is non-recording. */
+  assisted?: boolean
 }
 
 export interface DrillSessionConfig {

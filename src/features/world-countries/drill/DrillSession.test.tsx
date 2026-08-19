@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, createElement } from 'react'
+import { act, createElement, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Country } from '@/features/world-countries/data/countries'
@@ -11,6 +11,7 @@ import { createDrillSession } from './drillSessionState'
 
 const useRailsMock = vi.hoisted(() => vi.fn())
 const learningMapMock = vi.hoisted(() => vi.fn())
+const countryCapitalPanelMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@/app/layout/PageLayoutContext', () => ({
   useRails: useRailsMock,
@@ -20,6 +21,14 @@ vi.mock('@/features/world-countries/learning/CountryLearningMap', () => ({
   CountryLearningMap: (props: Record<string, unknown>) => {
     learningMapMock(props)
     return createElement('div', { 'data-testid': 'country-learning-map' })
+  },
+}))
+
+vi.mock('@/features/world-countries/mnemonics/CountryCapitalMnemonicPanel', () => ({
+  CountryCapitalMnemonicPanel: (props: Record<string, unknown>) => {
+    countryCapitalPanelMock(props)
+    const country = props.country as Country
+    return createElement('article', { 'data-testid': 'country-capital-mnemonic' }, `${country.country} ↔ ${country.capital}`)
   },
 }))
 
@@ -50,17 +59,123 @@ function typeInto(input: HTMLInputElement, value: string): void {
 }
 
 let root: Root | null = null
+let railRoot: Root | null = null
+
+function renderRightRail(mount: HTMLElement): void {
+  const config = useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1]?.[0] as { right?: ReactNode } | undefined
+  act(() => {
+    if (!railRoot) railRoot = createRoot(mount)
+    railRoot.render(createElement('div', null, config?.right))
+  })
+}
 
 afterEach(() => {
   vi.useRealTimers()
   act(() => root?.unmount())
+  act(() => railRoot?.unmount())
   root = null
+  railRoot = null
   document.body.replaceChildren()
   useRailsMock.mockReset()
   learningMapMock.mockReset()
+  countryCapitalPanelMock.mockReset()
 })
 
 describe('DrillSession map presentation', () => {
+  it('offers mnemonic editing for each single-Country Drill skill without leaking the answer', async () => {
+    const mount = document.createElement('div')
+    const railMount = document.createElement('div')
+    document.body.append(mount, railMount)
+
+    for (const mode of ['countries', 'countries-capitals', 'countries-from-capitals'] as const) {
+      await act(async () => {
+        root = root ?? createRoot(mount)
+        root.render(createElement(DrillSession, {
+          answerMode: 'multiple-choice',
+          fuzzyMatching: false,
+          state: createDrillSession({ mode, countryIds: ['NO'] }),
+          selection: createDrillSelection('Europe', ['northern-europe']),
+          entries: [norway],
+          onAnswer: vi.fn(),
+          onContinue: vi.fn(),
+          onExit: vi.fn(),
+        }))
+      })
+
+      renderRightRail(railMount)
+      expect(railMount.textContent).toContain('Edit mnemonics')
+      expect(railMount.textContent).not.toContain('Norway')
+      expect(railMount.textContent).not.toContain('Oslo')
+    }
+  })
+
+  it('marks only the assisted question, changes mnemonic Country with the question, and pauses auto-advance until close', async () => {
+    vi.useFakeTimers()
+    const onAnswer = vi.fn()
+    const onContinue = vi.fn()
+    const mount = document.createElement('div')
+    const railMount = document.createElement('div')
+    document.body.append(mount, railMount)
+    const firstState = createDrillSession({ mode: 'countries', countryIds: ['NO', 'SE'] })
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(DrillSession, {
+        answerMode: 'multiple-choice',
+        fuzzyMatching: false,
+        state: firstState,
+        selection: createDrillSelection('Europe', ['northern-europe']),
+        entries: [norway, sweden],
+        onAnswer,
+        onContinue,
+        onExit: vi.fn(),
+      }))
+    })
+
+    renderRightRail(railMount)
+    await act(async () => [...railMount.querySelectorAll<HTMLButtonElement>('button')]
+      .find(button => button.textContent === 'Edit mnemonics')?.click())
+    renderRightRail(railMount)
+    expect(railMount.textContent).toContain('Norway ↔ Oslo')
+    expect(countryCapitalPanelMock).toHaveBeenCalledWith(expect.objectContaining({ country: norway }))
+
+    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')]
+      .find(button => button.textContent?.includes('Norway'))?.click())
+    expect(onAnswer).toHaveBeenCalledWith(expect.objectContaining({ countryId: 'NO', assisted: true, correct: true }))
+
+    await act(async () => vi.advanceTimersByTime(500))
+    expect(onContinue).not.toHaveBeenCalled()
+
+    renderRightRail(railMount)
+    await act(async () => [...railMount.querySelectorAll<HTMLButtonElement>('button')]
+      .find(button => button.textContent === 'Close mnemonic')?.click())
+    await act(async () => vi.advanceTimersByTime(500))
+    expect(onContinue).toHaveBeenCalledWith(true)
+
+    const nextState = createDrillSession({ mode: 'countries', countryIds: ['SE'] })
+    await act(async () => root?.render(createElement(DrillSession, {
+      answerMode: 'multiple-choice',
+      fuzzyMatching: false,
+      state: nextState,
+      selection: createDrillSelection('Europe', ['northern-europe']),
+      entries: [norway, sweden],
+      onAnswer,
+      onContinue,
+      onExit: vi.fn(),
+    })))
+
+    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')]
+      .find(button => button.textContent?.includes('Sweden'))?.click())
+    expect(onAnswer).toHaveBeenLastCalledWith(expect.objectContaining({ countryId: 'SE', correct: true }))
+    expect(onAnswer.mock.calls[onAnswer.mock.calls.length - 1]?.[0]).not.toHaveProperty('assisted')
+
+    renderRightRail(railMount)
+    await act(async () => [...railMount.querySelectorAll<HTMLButtonElement>('button')]
+      .find(button => button.textContent === 'Edit mnemonics')?.click())
+    renderRightRail(railMount)
+    expect(countryCapitalPanelMock).toHaveBeenLastCalledWith(expect.objectContaining({ country: sweden }))
+  })
+
   it('keeps a Location → Country target visible without naming it', async () => {
     const mount = document.createElement('div')
     document.body.append(mount)

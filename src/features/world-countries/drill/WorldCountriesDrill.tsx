@@ -225,7 +225,7 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
 
   const answer = useCallback((record: DrillAnswerRecord) => {
     setAnswers(previous => [...previous, record])
-    if (sessionActivity === 'practice') return
+    if (sessionActivity === 'practice' || record.assisted) return
     void recordWorldCountriesAttempt(record.countryId, record.skill, { at: record.at, ok: record.correct, ms: record.ms, evidenceKind: record.evidenceKind })
   }, [sessionActivity])
 
@@ -270,7 +270,7 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
   }
 
   if ((phase === 'recall' || phase === 'practice') && session && sessionMatchesActivePopulation) {
-    return <DrillSession answerMode={answerMode} fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching} state={session} interaction={sessionInteraction} activity={sessionActivity} learningStates={learningStates} proficiencySelection={proficiencySelection} selection={sessionSelection ?? effectivePreferences} entries={sessionEntries} onAnswer={answer} onContinue={continueSession} onExit={exitToSetup} />
+    return <DrillSession answerMode={answerMode} fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching} state={session} interaction={sessionInteraction} activity={sessionActivity} learningStates={learningStates} proficiencySelection={proficiencySelection} selection={sessionSelection ?? effectivePreferences} entries={sessionEntries} onAnswer={answer} onContinue={continueSession} onExit={exitToSetup} mnemonicVersion={mnemonicVersion} onMnemonicChanged={mnemonicChanged} />
   }
 
   if (phase === 'results') {

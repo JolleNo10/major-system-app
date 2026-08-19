@@ -57,6 +57,8 @@ export function DrillSession({
   activity = 'drill',
   learningStates = [],
   proficiencySelection = [],
+  mnemonicVersion = 0,
+  onMnemonicChanged = () => undefined,
 }: {
   answerMode: AnswerMode
   fuzzyMatching: boolean
@@ -70,24 +72,33 @@ export function DrillSession({
   activity?: 'drill' | 'practice'
   learningStates?: LearningStates
   proficiencySelection?: WorldCountriesProficiencySelection
+  mnemonicVersion?: number
+  onMnemonicChanged?: () => void
 }) {
   const step = getCurrentDrillStep(state)
   const [feedback, setFeedback] = useState<StepFeedback | null>(null)
+  const [mnemonicOpenFor, setMnemonicOpenFor] = useState<string | null>(null)
+  const [assistedFor, setAssistedFor] = useState<string | null>(null)
   const startedAtRef = useRef(typeof performance === 'undefined' ? Date.now() : performance.now())
+  const stepKey = step ? `${step.countryId}-${step.skill}` : null
+  const mnemonicOpen = stepKey !== null && mnemonicOpenFor === stepKey
+  const assisted = stepKey !== null && assistedFor === stepKey
 
   useEffect(() => {
     setFeedback(null)
+    setMnemonicOpenFor(null)
+    setAssistedFor(null)
     startedAtRef.current = typeof performance === 'undefined' ? Date.now() : performance.now()
-  }, [step?.countryId, step?.skill])
+  }, [stepKey])
 
   useEffect(() => {
-    if (!feedback || feedback.match === 'fuzzy') return
+    if (!feedback || feedback.match === 'fuzzy' || mnemonicOpen) return
     const timer = window.setTimeout(() => {
       setFeedback(null)
       onContinue(feedback.correct)
     }, feedback.correct ? SUCCESS_FEEDBACK_DURATION_MS : CORRECTION_FEEDBACK_DURATION_MS)
     return () => window.clearTimeout(timer)
-  }, [feedback, onContinue, step?.countryId, step?.skill])
+  }, [feedback, mnemonicOpen, onContinue, step?.countryId, step?.skill])
 
   const country = step ? entries.find(entry => entry.id === step.countryId) : undefined
   const countryById = useMemo(() => new Map(entries.map(entry => [entry.id, entry])), [entries])
@@ -128,6 +139,7 @@ export function DrillSession({
       at: Date.now(),
       ms: elapsed,
       evidenceKind: answerMode === 'typing' ? 'recall' : 'recognition',
+      ...(assisted ? { assisted: true } : {}),
     })
   }
 
@@ -146,6 +158,7 @@ export function DrillSession({
       at: Date.now(),
       ms: elapsed,
       evidenceKind: 'recognition',
+      ...(assisted ? { assisted: true } : {}),
     })
   }
 
@@ -210,7 +223,23 @@ export function DrillSession({
       {activity === 'practice' ? (
         <PracticeSessionRails selection={selection} proficiencySelection={proficiencySelection} state={state} onExit={onExit} entries={entries} learningStates={learningStates} />
       ) : (
-        <DrillSessionRails selection={selection} proficiencySelection={proficiencySelection} mode={state.mode} state={state} onExit={onExit} entries={entries} />
+        <DrillSessionRails
+          selection={selection}
+          proficiencySelection={proficiencySelection}
+          mode={state.mode}
+          state={state}
+          onExit={onExit}
+          entries={entries}
+          mnemonicOpen={mnemonicOpen}
+          onOpenMnemonic={() => {
+            if (!stepKey) return
+            setMnemonicOpenFor(stepKey)
+            setAssistedFor(stepKey)
+          }}
+          onCloseMnemonic={() => setMnemonicOpenFor(null)}
+          mnemonicVersion={mnemonicVersion}
+          onMnemonicChanged={onMnemonicChanged}
+        />
       )}
       <MapSurface
         context={context}
