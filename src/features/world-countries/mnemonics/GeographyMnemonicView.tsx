@@ -36,7 +36,7 @@ export function GeographyMnemonicView({
           <h3 className="text-sm font-semibold text-zinc-200">{title}</h3>
           <p className="mt-1 text-xs text-zinc-500">{subtitle}</p>
         </div>
-        {headerAction && <div className="flex flex-wrap items-center justify-end gap-2">{headerAction}</div>}
+        {headerAction && <div className="flex flex-wrap items-center justify-start gap-2">{headerAction}</div>}
       </div>
       {loading ? (
         <p className="mt-3 text-xs text-zinc-500">Loading mnemonic…</p>
