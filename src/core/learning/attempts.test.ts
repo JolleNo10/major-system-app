@@ -15,6 +15,7 @@ const getStoredAttemptsMock = vi.hoisted(() => vi.fn(async () => ([
 vi.mock('@/core/scoring/attemptStore', () => ({
   addAttemptRaw: addAttemptRawMock,
   getAllAttempts: getStoredAttemptsMock,
+  getAllAttemptsOrThrow: getStoredAttemptsMock,
   getAttemptsForKey: vi.fn(() => Promise.resolve([])),
 }))
 

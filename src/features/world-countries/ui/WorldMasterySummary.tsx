@@ -1,6 +1,7 @@
 import { getCountryProgressColor, WORLD_COUNTRIES_CORE_FINISH_LINE_EXPLANATION, WORLD_COUNTRIES_PROGRESS_LABELS } from '@/features/world-countries/learning/progressPresentation'
 import { WORLD_COUNTRIES_COUNTRY_CORE_STATES, type WorldCountriesScopeProgress } from '@/features/world-countries/learning/scopeProgress'
 
+/** Workflow-neutral World core mastery summary shared by Today and Drill. */
 export function WorldMasterySummary({ progress }: { progress: WorldCountriesScopeProgress | null }) {
   return (
     <section

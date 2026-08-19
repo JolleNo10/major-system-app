@@ -10,9 +10,10 @@ persisted state, identifiers, migrations, reset, or backup; and load
 
 ## Purpose and entry points
 
-World Countries has two user-directed activities: **Drill** and **Recite**.
-**Due review** is a separate system-directed Maintenance action. Structural
-authoring is contextual rather than a separate workflow:
+World Countries has three user-directed activities: **Today**, **Drill**, and
+**Recite**. Today is the default map-centered plan for due core review and the
+next guided Learning flow. Structural authoring is contextual rather than a
+separate workflow:
 
 - Drill's existing World Geography rail authors Continent order.
 - Drill's existing Continent Geography rail authors Subregion order.
@@ -20,7 +21,7 @@ authoring is contextual rather than a separate workflow:
   Subregion mnemonic.
 
 `WorldCountries.tsx` resolves the Settings country-set policy once, provides
-the active population, and composes Drill, Recite, and Maintenance.
+the active population, and composes Today, Drill, and Recite.
 `WorldCountriesDrill.tsx` owns the Drill setup coordinator, Drill and Learn &
 Practise purpose selection, active sessions, results, and the refresh boundary
 that lets contextual authoring affect subsequent Learning presentation.
@@ -35,8 +36,13 @@ that lets contextual authoring affect subsequent Learning presentation.
   seam used by contextual editors, and the feature-owned refresh signal used
   by mounted setup views after successful order writes.
 - `learning/` owns recall skills, answer matching, evidence adapters,
+  raw per-target history, Today introduction and review scheduling,
   proficiency, pure session mechanics, durable Subregion learning facts,
   Learning Readiness, and reusable guided Learning flows.
+- `today/` owns the derived Today plan, bounded due-review queue and retry
+  state, Today setup/checkpoint states, and delegation into existing Learning
+  flows. It consumes learning, geography, maps, and feature-local UI but not
+  Drill or Recite internals.
 - `learning/flows/` owns Country and Capital Learning UI and orchestration.
   Learning modes own their milestone writes; the guided UI is not Drill
   implementation detail.
@@ -59,16 +65,19 @@ that lets contextual authoring affect subsequent Learning presentation.
   modes, transient setup/session state, current-run outcomes, completion flow,
   and mode-specific latest-outcome status. It consumes geography, answer
   matching, map, and UI seams without importing Drill internals.
-- `maintenance/` is a separate sibling workflow owner. It may consume shared
-  World Countries evidence without importing Drill internals.
 
 There is no broad feature `domain/`, `persistence/`, or `common/` layer and no
 compatibility wrapper for the removed authoring workflow.
 
 ## Activity model
 
-The shell exposes `[ Drill ] [ Recite ]` and a separate `Due review` action.
-Drill has a non-persisted Purpose selector:
+Today derives its plan from raw core evidence and applicable Learning
+milestones. It reviews only `location-to-country` and `country-to-capital`,
+prioritizes due review before recommending new whole-Subregion Learning, and
+keeps its queue, retry state, and checkpoints transient.
+
+The shell exposes `[ Today ] [ Drill ] [ Recite ]`, with Today selected by
+default. Drill has a non-persisted Purpose selector:
 
 - **Drill**: `Countries`, `Countries + Capitals`, and `Countries from
   Capitals`. These are the only `WorldCountriesDrillMode` values and may
@@ -239,9 +248,13 @@ flowchart TD
   Drill --> Learning
   Drill --> Maps
   Drill --> UI["ui/"]
-  Shell["WorldCountries.tsx"] --> Drill
+  Today["today/"] --> Learning
+  Today --> LearningFlows
+  Today --> Maps
+  Today --> UI
+  Shell["WorldCountries.tsx"] --> Today
+  Shell --> Drill
   Shell --> Recite["recite/"]
-  Shell --> Maintenance["maintenance/"]
 ```
 
 ## Persistence
@@ -271,8 +284,11 @@ flowchart TD
   It stores no flattened session sequence, setup preference, incomplete run, or
   prompt history. Recite outcomes are independent from Drill attempts and
   Learning milestones.
-- Atomic Drill evidence continues to use the existing attempts store and
-  `world-countries:<skill>:<CountryId>` IDs. Practice never writes it.
+- Atomic Drill and Today review evidence continue to use the existing attempts
+  store and `world-countries:<skill>:<CountryId>` IDs. Practice never writes it.
+- Today reads raw core evidence through `learning/recallHistory.ts` and writes
+  ordinary `recall` evidence through the existing feature adapter. It owns no
+  schedule, plan, queue, retry, or checkpoint persistence.
 - A persisted legacy Drill `mode: "capitals"` remains invalid under the
   current three-mode union and falls back to the normal `countries` default.
   No migration is performed.
@@ -313,7 +329,14 @@ flowchart TD
 - `src/features/world-countries/WorldCountries.tsx`
 - `src/features/world-countries/drill/WorldCountriesDrill.tsx`
 - `src/features/world-countries/drill/DrillSetup.tsx`
-- `src/features/world-countries/drill/WorldMasterySummary.tsx`
+- `src/features/world-countries/ui/WorldMasterySummary.tsx`
+- `src/features/world-countries/geography/effectiveOrder.ts`
+- `src/features/world-countries/today/WorldCountriesToday.tsx`
+- `src/features/world-countries/today/TodayReviewSession.tsx`
+- `src/features/world-countries/today/todayPlan.ts`
+- `src/features/world-countries/learning/recallHistory.ts`
+- `src/features/world-countries/learning/todayIntroduction.ts`
+- `src/features/world-countries/learning/reviewSchedule.ts`
 - `src/features/world-countries/drill/DrillSetupRails.tsx`
 - `src/features/world-countries/drill/drillProficiencyScope.ts`
 - `src/features/world-countries/drill/drillProgressPresentation.ts`

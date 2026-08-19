@@ -32,10 +32,15 @@ async function renderShell() {
 }
 
 describe('World Countries activity boundary', () => {
-  it('defaults to Drill and keeps Recite separate from Due review', async () => {
+  it('defaults to Today and keeps Drill and Recite available', async () => {
     const mount = await renderShell()
-    expect([...mount.querySelectorAll('[role="tab"]')].map(tab => tab.textContent)).toEqual(['Drill', 'Recite'])
+    expect([...mount.querySelectorAll('[role="tab"]')].map(tab => tab.textContent)).toEqual(['Today', 'Drill', 'Recite'])
     expect(mount.textContent).toContain('World Countries')
+    expect(mount.textContent).toContain('Today')
+    expect(mount.textContent).not.toContain('Due review')
+
+    const drillTab = [...mount.querySelectorAll('[role="tab"]')].find(tab => tab.textContent === 'Drill') as HTMLButtonElement | undefined
+    await act(async () => drillTab?.click())
     expect(mount.textContent).toContain('Geography')
     expect(mount.textContent).toContain('Purpose')
     expect((mount.querySelector('input[value="drill"]') as HTMLInputElement | null)?.checked).toBe(true)
@@ -43,8 +48,10 @@ describe('World Countries activity boundary', () => {
     expect(mount.textContent).not.toContain('Start Drill')
   })
 
-  it('allows the Drill setup to switch between four Learn & Practise modes', async () => {
+  it('allows Drill setup to switch between four Learn & Practise modes', async () => {
     const mount = await renderShell()
+    const drillTab = [...mount.querySelectorAll('[role="tab"]')].find(tab => tab.textContent === 'Drill') as HTMLButtonElement | undefined
+    await act(async () => drillTab?.click())
     const europe = [...mount.querySelectorAll('button')].find(button => button.textContent?.includes('Europe'))
     await act(async () => europe?.click())
     const learnPractice = [...mount.querySelectorAll('input[type="radio"]')].find(input => (input as HTMLInputElement).value === 'learn-practise') as HTMLInputElement | undefined

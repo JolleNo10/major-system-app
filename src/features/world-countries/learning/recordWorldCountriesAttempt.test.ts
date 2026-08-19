@@ -4,6 +4,7 @@ const recordAttemptMock = vi.hoisted(() => vi.fn(() => Promise.resolve()))
 
 vi.mock('@/core/learning', () => ({
   getAllAttempts: vi.fn(() => Promise.resolve([])),
+  getAllAttemptsOrThrow: vi.fn(() => Promise.resolve([])),
   recordAttempt: recordAttemptMock,
 }))
 

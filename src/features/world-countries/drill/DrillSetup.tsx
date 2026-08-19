@@ -20,7 +20,7 @@ import type { WorldCountriesDrillOrder } from './drillOrder'
 import { createDrillProgressColors, createDrillProgressDescriptions } from './drillProgressPresentation'
 import { DrillProgressLegend } from './DrillProgressLegend'
 import { DrillSetupRails } from './DrillSetupRails'
-import { WorldMasterySummary } from './WorldMasterySummary'
+import { WorldMasterySummary } from '@/features/world-countries/ui/WorldMasterySummary'
 import type { WorldCountriesLearnPracticeMode } from '@/features/world-countries/learning/learnPracticeModes'
 import { resolveDrillProficiencyScope, type WorldCountriesProficiencyActivity, type WorldCountriesProficiencyScope, type WorldCountriesProficiencySelection } from './drillProficiencyScope'
 

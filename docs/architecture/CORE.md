@@ -55,6 +55,10 @@ PAO-specific concepts must not leak into `core/`.
   or `MnemonicTargetId`; core treats those strings as opaque.
 - Atomic learning evidence may be shared. Feature milestones, workflow phases,
   and instructional policy stay feature-local.
+- `core/learning` exposes both best-effort `getAllAttempts` and throwing
+  `getAllAttemptsOrThrow`; consumers that must distinguish storage failure from
+  an empty evidence set use the latter while the attempt store remains the
+  persistence owner.
 - Feature-specific mastery may derive directly from retained raw attempts when
   aggregate `ItemProgress` cannot express the feature policy. The generic
   mastery policy remains available and unchanged for existing consumers.
@@ -98,7 +102,7 @@ owner.
   feature concepts such as Country, Capital, or feature-specific mastery.
 - Shared mnemonic records have generic fields; feature-specific metadata may
   pass through but is interpreted only by feature adapters.
-- Existing shared APIs are not expanded for hypothetical reuse.
+- Existing shared APIs are expanded only for a concrete cross-feature need.
 
 ## Source anchors
 

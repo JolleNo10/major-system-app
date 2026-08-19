@@ -86,8 +86,8 @@ follows the defining module and feature namespace.
   Continent, selected Subregion IDs, a Drill mode, and a Country order
   (`ordered` or `random`). They never contain a flattened Country membership
   list.
-- World Countries atomic Drill evidence uses the existing shared `attempts`
-  store through `core/learning`. The feature constructs opaque IDs in the
+- World Countries atomic Drill and Today review evidence uses the existing
+  shared `attempts` store through `core/learning`. The feature constructs opaque IDs in the
   `world-countries:<skill>:<CountryId>` namespace, where the skill is one of
   `location-to-country`, `country-to-capital`, or `capital-to-country`.
   Countries + Capitals writes two atomic records when both steps are answered;
@@ -96,6 +96,11 @@ follows the defining module and feature namespace.
   change durable progress. New recorded attempts preserve whether the
   interaction was recall or recognition and the local calendar date at answer
   time.
+- World Countries Today reads retained raw attempts for active core targets
+  through `learning/recallHistory.ts`. Its temporal schedule, due queue,
+  delayed retry state, and checkpoints are derived/transient; no Today key,
+  schedule record, or IndexedDB version change exists. Learning milestones
+  remain owned and written by the existing whole-Subregion Learning flows.
 - World Countries Recite progress uses the localStorage key
   `world-countries-recite-progress`. Its versioned record stores the latest
   completed outcome and timestamp independently for each `(ReciteMode,
@@ -165,7 +170,9 @@ follows the defining module and feature namespace.
 - `src/features/world-countries/geography/countrySet.ts`
 - `src/features/world-countries/geography/worldMetadataStore.ts`
 - `src/features/world-countries/learning/subregionLearningStore.ts`
+- `src/features/world-countries/learning/recallHistory.ts`
 - `src/features/world-countries/learning/recallProgress.ts`
+- `src/features/world-countries/today/todayPlan.ts`
 - `src/features/world-countries/drill/drillPreferences.ts`
 - `src/features/world-countries/recite/reciteProgress.ts`
 

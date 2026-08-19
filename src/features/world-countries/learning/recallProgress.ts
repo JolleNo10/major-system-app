@@ -2,7 +2,7 @@ import type {
   Attempt,
   AttemptEvidenceKind,
 } from '@/core/learning'
-import { getAllAttempts, recordAttempt } from '@/core/learning'
+import { recordAttempt } from '@/core/learning'
 import type { CountryId } from '@/features/world-countries/data/countries'
 import {
   WORLD_COUNTRIES_ADDITIONAL_RECALL_SKILLS,
@@ -13,6 +13,10 @@ import {
   type WorldCountriesCoreRecallSkill,
   type WorldCountriesRecallSkill,
 } from './recallTargets'
+import {
+  flattenWorldCountriesRecallHistory,
+  loadWorldCountriesRecallHistory,
+} from './recallHistory'
 import {
   deriveWorldCountriesAtomicProgress,
   type WorldCountriesAtomicProgress,
@@ -54,15 +58,8 @@ export function deriveWorldCountriesRecallProgress(
 export async function loadWorldCountriesRecallProgress(
   config: RecallProgressConfig,
 ): Promise<Map<string, WorldCountriesAtomicProgress>> {
-  const itemIds = new Set(
-    [...new Set(config.countryIds)].flatMap(countryId => (
-      [...new Set(config.skills)].map(skill => recallTargetIdFor(countryId, skill))
-    )),
-  )
-  const attempts = await getAllAttempts()
-  return deriveWorldCountriesRecallProgress(config, attempts
-    .filter(attempt => itemIds.has(attempt.itemId))
-    .map(attempt => ({ ...attempt, itemId: attempt.itemId })))
+  const history = await loadWorldCountriesRecallHistory(config)
+  return deriveWorldCountriesRecallProgress(config, flattenWorldCountriesRecallHistory(history))
 }
 
 function localDateForTimestamp(at: number): string {

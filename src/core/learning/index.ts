@@ -23,6 +23,7 @@ export { deriveScopeProgress, type ScopeProgress } from './scopeProgress'
 export {
   addAttempt,
   getAllAttempts,
+  getAllAttemptsOrThrow,
   getAttempts,
   getAttemptsForItem,
   recordAttempt,

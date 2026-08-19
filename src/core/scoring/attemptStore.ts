@@ -188,13 +188,17 @@ export function getAttempts(dir: Direction, num: string): Promise<Attempt[]> {
   return getAttemptsForKey(itemKey(dir, num))
 }
 
-export async function getAllAttempts(): Promise<Array<{ key: string } & Attempt>> {
+export async function getAllAttemptsOrThrow(): Promise<Array<{ key: string } & Attempt>> {
   if (!hasIdb) return []
+  const db = await getDb()
+  const os = db.transaction(STORE, 'readonly').objectStore(STORE)
+  const recs = await reqToPromise(os.getAll())
+  return recs.map(({ id: _id, ...attempt }) => attempt)
+}
+
+export async function getAllAttempts(): Promise<Array<{ key: string } & Attempt>> {
   try {
-    const db = await getDb()
-    const os = db.transaction(STORE, 'readonly').objectStore(STORE)
-    const recs = await reqToPromise(os.getAll())
-    return recs.map(({ id: _id, ...attempt }) => attempt)
+    return await getAllAttemptsOrThrow()
   } catch {
     return []
   }

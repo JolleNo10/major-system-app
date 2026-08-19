@@ -22,7 +22,7 @@ Normally remain inside `src/features/world-countries/` plus direct dependencies.
 Do not scan sibling features for examples.
 
 Start with `index.ts`, `WorldCountries.tsx`, and the owner directory named in
-the feature architecture. Persistence tasks start from the defining store;
+the feature architecture (`today/` for Today orchestration). Persistence tasks start from the defining store;
 map tasks start from `maps/SvgMapController.ts` or the relevant adapter.
 
 Do not recreate removed `quiz/`, broad `domain/` or `persistence/` layers,
@@ -34,7 +34,7 @@ Follow the progressive verification policy in the root `AGENTS.md`.
 
 - Feature root: `src/features/world-countries/`.
 - During implementation, prefer the nearest capability/subdirectory, such as
-  `drill/`, `learning/`, `maps/`, `geography/`, `maintenance/`, or `setup/`.
+  `today/`, `drill/`, `learning/`, `maps/`, `geography/`, or `setup/`.
 - Near feature completion for substantial work, run:
 
 ```text

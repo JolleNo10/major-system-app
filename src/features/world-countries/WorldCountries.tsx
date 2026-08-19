@@ -6,13 +6,14 @@ import { countries } from './data/countries'
 import { countryClassifications } from './data/countryClassification'
 import { resolveCountrySet } from './geography/countrySet'
 import { WorldCountriesDrill } from '@/features/world-countries/drill/WorldCountriesDrill'
-import { WorldCountriesMaintenance } from '@/features/world-countries/maintenance/WorldCountriesMaintenance'
 import { WorldCountriesRecite } from '@/features/world-countries/recite/WorldCountriesRecite'
+import { WorldCountriesToday } from '@/features/world-countries/today/WorldCountriesToday'
 import { WorldCountriesPopulationProvider } from './WorldCountriesPopulationContext'
 
-type WorldCountriesArea = 'drill' | 'recite' | 'maintenance'
+type WorldCountriesArea = 'today' | 'drill' | 'recite'
 
 const AREAS: readonly { id: WorldCountriesArea; label: string }[] = [
+  { id: 'today', label: 'Today' },
   { id: 'drill', label: 'Drill' },
   { id: 'recite', label: 'Recite' },
 ]
@@ -20,7 +21,7 @@ const AREAS: readonly { id: WorldCountriesArea; label: string }[] = [
 /** World Countries application shell; workflows own their behavior and state. */
 export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
   const { settings } = useSettings()
-  const [area, setArea] = useState<WorldCountriesArea>('drill')
+  const [area, setArea] = useState<WorldCountriesArea>('today')
   const activeCountries = useMemo(
     () => resolveCountrySet(countries, countryClassifications, settings.worldCountriesIncludedEntityGroups),
     [settings.worldCountriesIncludedEntityGroups],
@@ -39,7 +40,7 @@ export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
         <div
           role="tablist"
           aria-label="World Countries activities"
-          className="grid min-w-0 flex-1 grid-cols-2 gap-1 rounded-xl border border-zinc-800 bg-zinc-900/80 p-1"
+          className="grid min-w-0 flex-1 grid-cols-3 gap-1 rounded-xl border border-zinc-800 bg-zinc-900/80 p-1"
         >
           {AREAS.map(candidate => (
             <button
@@ -58,18 +59,6 @@ export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
             </button>
           ))}
         </div>
-
-        <button
-          type="button"
-          onClick={() => setArea('maintenance')}
-          className={`shrink-0 whitespace-nowrap rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
-            area === 'maintenance'
-              ? 'border-cyan-500 bg-cyan-600 text-white'
-              : 'border-zinc-700 bg-zinc-800 text-zinc-300 hover:border-cyan-500 hover:text-zinc-100'
-          }`}
-        >
-          Due review
-        </button>
       </div>
     </nav>,
     [area],
@@ -77,9 +66,9 @@ export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
 
   return (
     <WorldCountriesPopulationProvider countries={activeCountries}>
+      {area === 'today' && <WorldCountriesToday answerMode={answerMode} onNavigate={setArea} />}
       {area === 'drill' && <WorldCountriesDrill answerMode={answerMode} />}
       {area === 'recite' && <WorldCountriesRecite answerMode={answerMode} />}
-      {area === 'maintenance' && <WorldCountriesMaintenance answerMode={answerMode} />}
     </WorldCountriesPopulationProvider>
   )
 }

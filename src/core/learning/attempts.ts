@@ -1,6 +1,7 @@
 import {
   addAttemptRaw,
   getAllAttempts as getStoredAttempts,
+  getAllAttemptsOrThrow as getStoredAttemptsOrThrow,
   getAttemptsForKey,
   type AttemptWriteOptions,
 } from '@/core/scoring/attemptStore'
@@ -27,5 +28,10 @@ export const getAttemptsForItem = getAttempts
 
 export async function getAllAttempts(): Promise<Array<{ itemId: RecallItemId } & Attempt>> {
   const attempts = await getStoredAttempts()
+  return attempts.map(({ key, ...attempt }) => ({ itemId: key, ...attempt }))
+}
+
+export async function getAllAttemptsOrThrow(): Promise<Array<{ itemId: RecallItemId } & Attempt>> {
+  const attempts = await getStoredAttemptsOrThrow()
   return attempts.map(({ key, ...attempt }) => ({ itemId: key, ...attempt }))
 }
