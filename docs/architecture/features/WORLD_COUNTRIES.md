@@ -124,6 +124,11 @@ Capital, and Combined scopes each start fresh scheduler state. Only the
 whole-Subregion ordered Final recall writes the owning Learning milestone;
 journey and scheduler state are not persisted.
 
+During active scheduler-driven Learning Practice, the flows expose temporary
+scheduler progress through the feature-local progress seam in the right rail.
+The progress section is session-scoped and phase-specific; the map and task
+surface remain unchanged.
+
 ## Learning Readiness
 
 Durable Learning Readiness is derived from `countriesLearnedAt` and

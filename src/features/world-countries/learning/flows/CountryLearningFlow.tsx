@@ -3,6 +3,7 @@ import type { Continent, Country } from '@/features/world-countries/data/countri
 import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
 import type { LearningSetMaximum } from '@/features/world-countries/learning/stagedLearningPlan'
 import { buildLearningPlan } from '@/features/world-countries/learning/stagedLearningPlan'
+import { deriveLearningPracticeProgress } from '@/features/world-countries/learning/learningPracticeProgress'
 import {
   backStagedCountry,
   createStagedCountryLearningFlow,
@@ -179,6 +180,11 @@ export function CountryLearningFlow({
     }
   })()
 
+  const activeSchedulerSession = flow.phase === 'location-practice' ? flow.location
+    : flow.phase === 'practice' || flow.phase === 'combined-practice' ? flow.practice
+      : null
+  const practiceProgress = activeSchedulerSession ? deriveLearningPracticeProgress(activeSchedulerSession, schedulerSettings) : null
+
   const rails = <GuidedLearningRails
     continent={continent}
     subregion={subregion}
@@ -201,6 +207,7 @@ export function CountryLearningFlow({
     onExit={onExit}
     onSkip={['walkthrough', 'location-practice', 'location-ready', 'practice', 'set-ready', 'combined-practice', 'combined-ready'].includes(flow.phase) ? skip : undefined}
     skipLabel={flow.phase === 'walkthrough' ? 'Skip to Locate' : flow.phase === 'location-practice' || flow.phase === 'location-ready' ? 'Next: Practice' : 'Next'}
+    practiceProgress={practiceProgress}
   />
 
   let content: ReactNode

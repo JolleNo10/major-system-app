@@ -9,10 +9,12 @@ import { GeographyMnemonicEditor } from '@/features/world-countries/mnemonics/Ge
 import { GeographyMnemonicView } from '@/features/world-countries/mnemonics/GeographyMnemonicView'
 import { CountryCapitalMnemonicPanel } from '@/features/world-countries/mnemonics/CountryCapitalMnemonicPanel'
 import { deriveWorldCountriesLearningReadiness, getWorldCountriesLearningReadinessLabel } from '@/features/world-countries/learning/learningReadiness'
+import type { LearningPracticeProgress } from '@/features/world-countries/learning/learningPracticeProgress'
 import { InlineOrderEditor } from '@/features/world-countries/ui/InlineOrderEditor'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
 import type { StagedCountryLearningPhase } from '@/features/world-countries/learning/stagedCountryLearningFlow'
 import type { StagedCapitalLearningPhase } from '@/features/world-countries/learning/stagedCapitalLearningFlow'
+import { SchedulerPracticeProgress } from './SchedulerPracticeProgress'
 
 export function GuidedLearningRails({
   continent,
@@ -37,6 +39,7 @@ export function GuidedLearningRails({
   backLabel = 'Back',
   onSkip,
   skipLabel,
+  practiceProgress,
 }: {
   continent: Continent
   subregion?: SubregionId
@@ -60,6 +63,7 @@ export function GuidedLearningRails({
   backLabel?: string
   onSkip?: () => void
   skipLabel?: string
+  practiceProgress?: LearningPracticeProgress | null
 }) {
   const quietPhase = phase === 'location-practice' || phase === 'location-ready' || phase === 'practice' || phase === 'set-ready' || phase === 'combined-practice' || phase === 'combined-ready' || phase === 'final-gate' || phase === 'final-recall' || phase === 'complete'
   const walkthroughCountry = walkthroughCountryId ? entries.find(entry => entry.id === walkthroughCountryId) ?? null : null
@@ -151,17 +155,18 @@ export function GuidedLearningRails({
           </section>
         </WorldCountriesPanel>
       ),
-      right: showMemoryAid || onBack || onExit || onSkip ? (
+      right: showMemoryAid || onBack || onExit || onSkip || practiceProgress ? (
         <div className="space-y-4">
+          {practiceProgress && <SchedulerPracticeProgress progress={practiceProgress} />}
           {(onBack || onExit || onSkip) && <section aria-labelledby="guided-learning-actions-heading" className="space-y-2"><h3 id="guided-learning-actions-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Learning actions</h3>{onBack && <button type="button" onClick={onBack} className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">{backLabel}</button>}{onSkip && <button type="button" onClick={onSkip} className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-400 hover:border-cyan-500 hover:text-zinc-200">{skipLabel ?? 'Skip'}</button>}{onExit && <button type="button" onClick={onExit} className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2.5 text-sm text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Exit</button>}</section>}
           {showSubregionMnemonic && subregion && (editingMnemonic === 'subregion' ? <GeographyMnemonicEditor targetId={subregionMnemonicId(subregion)} title="Subregion memory aid" subtitle={`Optional story or picture for this ordered ${entries.length}-country group`} countryIds={entries.map(entry => entry.id)} refreshKey={mnemonicVersion} onChanged={onMnemonicChanged} headerAction={mnemonicAction('subregion')} /> : <GeographyMnemonicView targetId={subregionMnemonicId(subregion)} title="Subregion memory aid" subtitle={`Optional story or picture for this ordered ${entries.length}-country group`} countryIds={entries.map(entry => entry.id)} refreshKey={mnemonicVersion} headerAction={mnemonicAction('subregion')} />)}
           {showCapitalMnemonic && walkthroughCountry && <CountryCapitalMnemonicPanel country={walkthroughCountry} refreshKey={mnemonicVersion} onChanged={onMnemonicChanged} />}
         </div>
       ) : undefined,
       leftLabel: 'Learning context',
-      rightLabel: showMemoryAid && (onBack || onExit || onSkip) ? 'Learning tools' : showMemoryAid ? 'Memory aid' : onBack || onExit || onSkip ? 'Learning actions' : undefined,
+      rightLabel: practiceProgress ? 'Practice progress' : showMemoryAid && (onBack || onExit || onSkip) ? 'Learning tools' : showMemoryAid ? 'Memory aid' : onBack || onExit || onSkip ? 'Learning actions' : undefined,
     },
-    [activeCountries, backLabel, continent, editingMnemonic, editingOrder, entries, learned, learningScopeLabel, capitalsLearned, mnemonicVersion, onBack, onCountryHover, onExit, onGeographyChanged, onMnemonicChanged, onOrderDraftChanged, onOrderEditingChange, onOrderSaved, onSkip, phase, scopeLabel, showCapitalMnemonic, showMemoryAid, showSubregionMnemonic, skipLabel, subregion, track, walkthroughCountry, quietPhase],
+    [activeCountries, backLabel, continent, editingMnemonic, editingOrder, entries, learned, learningScopeLabel, capitalsLearned, mnemonicVersion, onBack, onCountryHover, onExit, onGeographyChanged, onMnemonicChanged, onOrderDraftChanged, onOrderEditingChange, onOrderSaved, onSkip, phase, practiceProgress, scopeLabel, showCapitalMnemonic, showMemoryAid, showSubregionMnemonic, skipLabel, subregion, track, walkthroughCountry, quietPhase],
   )
 
   return null

@@ -4,6 +4,7 @@ import { act, createElement, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Country } from '@/features/world-countries/data/countries'
+import type { LearningPracticeProgress } from '@/features/world-countries/learning/learningPracticeProgress'
 import { GuidedLearningRails } from './GuidedLearningRails'
 
 const useRailsMock = vi.hoisted(() => vi.fn())
@@ -29,7 +30,7 @@ afterEach(() => {
   useRailsMock.mockReset()
 })
 
-function renderRails(phase: 'walkthrough' | 'location-practice', track: 'countries' | 'capitals' = 'countries', walkthroughCountryId?: string) {
+function renderRails(phase: 'walkthrough' | 'location-practice', track: 'countries' | 'capitals' = 'countries', walkthroughCountryId?: string, practiceProgress?: LearningPracticeProgress, onBack?: () => void) {
   const mount = document.createElement('div')
   document.body.append(mount)
   const onOrderDraftChanged = vi.fn()
@@ -49,6 +50,8 @@ function renderRails(phase: 'walkthrough' | 'location-practice', track: 'countri
       onMnemonicChanged: vi.fn(),
       onOrderDraftChanged,
       walkthroughCountryId,
+      practiceProgress,
+      onBack,
     }))
   })
   return { mount, onOrderDraftChanged, config: useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1]?.[0] as { left?: ReactNode; right?: ReactNode } }
@@ -103,5 +106,19 @@ describe('GuidedLearningRails contextual authoring visibility', () => {
     expect([...mount.querySelectorAll('button')].map(button => button.textContent)).toEqual([
       'Back to Review', 'Next: Practice', 'Exit',
     ])
+  })
+
+  it('places Practice progress before existing Learning actions', () => {
+    const onBack = vi.fn()
+    const { mount, config } = renderRails('location-practice', 'countries', undefined, { pct: 2 / 3, atTarget: 4, total: 6 }, onBack)
+
+    act(() => root?.render(createElement('div', null, config.right)))
+
+    const progressHeading = mount.querySelector('#scheduler-practice-progress-heading')
+    const actionsHeading = mount.querySelector('#guided-learning-actions-heading')
+
+    expect(progressHeading).not.toBeNull()
+    expect(actionsHeading).not.toBeNull()
+    expect(progressHeading!.compareDocumentPosition(actionsHeading!) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0)
   })
 })
