@@ -10,6 +10,8 @@ interface MiniSpellingPracticeProps {
 interface FuzzySpellingPracticeControlsProps {
   answer: string
   answerKind: 'country' | 'capital'
+  practiceOpen: boolean
+  onPracticeOpenChange: (open: boolean) => void
   onContinue: () => void
 }
 
@@ -26,7 +28,6 @@ export function MiniSpellingPractice({ answer, answerKind, onClose, onComplete }
   const [value, setValue] = useState('')
   const [correctCount, setCorrectCount] = useState(0)
   const [feedback, setFeedback] = useState<string | null>(null)
-  const [showAnswer, setShowAnswer] = useState(false)
   const [complete, setComplete] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -97,19 +98,7 @@ export function MiniSpellingPractice({ answer, answerKind, onClose, onComplete }
           <p aria-live="polite" className="mt-2 min-h-5 text-xs text-amber-100/90">
             {feedback ? `${feedback} ${correctCount} / 2 correct` : `${correctCount} / 2 correct`}
           </p>
-          <div className="mt-2 flex items-center justify-between gap-3">
-            {showAnswer ? (
-              <p className="rounded-lg border border-amber-300/25 bg-amber-400/[0.08] px-3 py-2 text-center text-base font-bold text-amber-100">{answer}</p>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setShowAnswer(true)}
-                aria-controls="world-countries-mini-spelling-practice"
-                className="text-xs font-medium text-amber-200 underline-offset-4 hover:text-amber-100 hover:underline"
-              >
-                Reveal spelling
-              </button>
-            )}
+          <div className="mt-2 flex justify-end">
             <button
               type="button"
               onClick={onClose}
@@ -126,15 +115,14 @@ export function MiniSpellingPractice({ answer, answerKind, onClose, onComplete }
 }
 
 /** Actions and temporary inline practice state shared by fuzzy-accepted recall. */
-export function FuzzySpellingPracticeControls({ answer, answerKind, onContinue }: FuzzySpellingPracticeControlsProps) {
-  const [showMiniPractice, setShowMiniPractice] = useState(false)
+export function FuzzySpellingPracticeControls({ answer, answerKind, practiceOpen, onPracticeOpenChange, onContinue }: FuzzySpellingPracticeControlsProps) {
   const [practiceComplete, setPracticeComplete] = useState(false)
   const practiceButtonRef = useRef<HTMLButtonElement>(null)
   const continueButtonRef = useRef<HTMLButtonElement>(null)
 
   useLayoutEffect(() => {
-    if (!showMiniPractice && !practiceComplete) practiceButtonRef.current?.focus()
-  }, [showMiniPractice, practiceComplete])
+    if (!practiceOpen && !practiceComplete) practiceButtonRef.current?.focus()
+  }, [practiceOpen, practiceComplete])
 
   useLayoutEffect(() => {
     if (practiceComplete) continueButtonRef.current?.focus()
@@ -148,10 +136,10 @@ export function FuzzySpellingPracticeControls({ answer, answerKind, onContinue }
           type="button"
           data-fuzzy-spelling-action="practice"
           aria-controls="world-countries-mini-spelling-practice"
-          aria-expanded={showMiniPractice}
+          aria-expanded={practiceOpen}
           onClick={() => {
             setPracticeComplete(false)
-            setShowMiniPractice(true)
+            onPracticeOpenChange(true)
           }}
           className="rounded-[11px] border border-amber-300/30 bg-amber-400/15 px-3 py-2.5 text-sm font-semibold text-amber-50 transition-colors hover:bg-amber-400/20 focus:outline-none focus:ring-2 focus:ring-amber-300/50 focus:ring-offset-2 focus:ring-offset-transparent"
         >
@@ -167,12 +155,12 @@ export function FuzzySpellingPracticeControls({ answer, answerKind, onContinue }
           Continue
         </button>
       </div>
-      {showMiniPractice && (
+      {practiceOpen && (
         <MiniSpellingPractice
           answer={answer}
           answerKind={answerKind}
           onClose={() => {
-            setShowMiniPractice(false)
+            onPracticeOpenChange(false)
             setPracticeComplete(false)
           }}
           onComplete={() => setPracticeComplete(true)}

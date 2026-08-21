@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { WorldCountriesTypedAnswerResult } from './WorldCountriesTypedAnswer'
 import { FuzzySpellingPracticeControls } from './MiniSpellingPractice'
 
@@ -64,6 +65,8 @@ export function WorldCountriesAnswerFeedback({ result, onContinue }: {
   onContinue: () => void
 }) {
   const { outcome } = result
+  const [practiceOpen, setPracticeOpen] = useState(false)
+  const [practiceAnswerRevealed, setPracticeAnswerRevealed] = useState(false)
   const interactive = outcome === 'fuzzy'
   const title = outcome === 'exact' || outcome === 'fuzzy'
     ? 'Correct'
@@ -98,16 +101,41 @@ export function WorldCountriesAnswerFeedback({ result, onContinue }: {
 
       {outcome === 'fuzzy' && (
         <>
-          <div className={`mt-0.5 text-[13px] ${secondaryClass[outcome]}`}>
-            Spelling: <strong>{result.canonicalAnswer}</strong>
-          </div>
-          <div className="mt-1.5 text-xs text-zinc-300">
-            <span className="text-zinc-500">You typed:</span>{' '}
-            {result.submittedAnswer}
-          </div>
+          {practiceOpen ? (
+            practiceAnswerRevealed ? (
+              <div data-fuzzy-answer-revealed className={`mt-0.5 text-[13px] ${secondaryClass[outcome]}`}>
+                <strong>{result.canonicalAnswer}</strong>
+              </div>
+            ) : (
+              <button
+                type="button"
+                data-mini-spelling-action="reveal"
+                onClick={() => setPracticeAnswerRevealed(true)}
+                aria-controls="world-countries-mini-spelling-practice"
+                className="mt-0.5 text-[13px] font-medium text-amber-200 underline-offset-4 hover:text-amber-100 hover:underline"
+              >
+                Reveal spelling
+              </button>
+            )
+          ) : (
+            <div data-fuzzy-answer-comparison>
+              <div className={`mt-0.5 text-[13px] ${secondaryClass[outcome]}`}>
+                Spelling: <strong>{result.canonicalAnswer}</strong>
+              </div>
+              <div className="mt-1.5 text-xs text-zinc-300">
+                <span className="text-zinc-500">You typed:</span>{' '}
+                {result.submittedAnswer}
+              </div>
+            </div>
+          )}
           <FuzzySpellingPracticeControls
             answer={result.canonicalAnswer}
             answerKind={result.answerKind}
+            practiceOpen={practiceOpen}
+            onPracticeOpenChange={open => {
+              setPracticeOpen(open)
+              if (!open) setPracticeAnswerRevealed(false)
+            }}
             onContinue={onContinue}
           />
         </>

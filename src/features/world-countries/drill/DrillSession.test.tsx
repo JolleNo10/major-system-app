@@ -441,9 +441,13 @@ describe('DrillSession map presentation', () => {
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-fuzzy-spelling-action="practice"]')?.click())
 
     const miniPractice = mount.querySelector<HTMLElement>('[data-mini-spelling-practice]')!
-    expect(miniPractice.textContent).not.toContain('Stockholm')
-    await act(async () => miniPractice.querySelector<HTMLButtonElement>('button:not([data-mini-spelling-action])')?.click())
-    expect(miniPractice.textContent).toContain('Stockholm')
+    expect(mount.querySelector('[data-fuzzy-answer-comparison]')).toBeNull()
+    expect(miniPractice.textContent).not.toContain('Reveal spelling')
+    const revealButton = mount.querySelector<HTMLButtonElement>('[data-mini-spelling-action="reveal"]')
+    expect(revealButton).not.toBeNull()
+    await act(async () => revealButton!.click())
+    expect(mount.querySelector('[data-mini-spelling-action="reveal"]')).toBeNull()
+    expect(mount.querySelector('[data-fuzzy-answer-revealed]')?.textContent).toBe('Stockholm')
 
     const checkSpelling = async (value: string) => {
       const spellingInput = miniPractice.querySelector<HTMLInputElement>('input')!
