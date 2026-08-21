@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { AnswerMode } from '@/core/types'
 import { useSettings } from '@/app/settings/SettingsContext'
 import type { Country } from '@/features/world-countries/data/countries'
-import type { SubregionId } from '@/features/world-countries/data/subregions'
 import { useWorldCountriesPopulation } from '@/features/world-countries/WorldCountriesPopulationContext'
 import { getWorldCountriesInEffectiveOrder } from '@/features/world-countries/geography/effectiveOrder'
 import { getAllSubregionLearningStates } from '@/features/world-countries/learning/subregionLearningStore'
@@ -15,9 +14,10 @@ import { CountryLearningFlow } from '@/features/world-countries/learning/flows/C
 import { CapitalLearningFlow } from '@/features/world-countries/learning/flows/CapitalLearningFlow'
 import type { LearningSetMaximum } from '@/features/world-countries/learning/stagedLearningPlan'
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
-import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
+import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
 import { WorldMasterySummary } from '@/features/world-countries/ui/WorldMasterySummary'
 import { TodayReviewSession, type WorldCountriesTodayReviewCheckpoint } from './TodayReviewSession'
+import { TodayHomeRails } from './TodayRails'
 import { buildWorldCountriesTodayPlan, type WorldCountriesTodayLearningRecommendation, type WorldCountriesTodayPlan } from './todayPlan'
 
 type TodayArea = 'drill' | 'recite'
@@ -29,10 +29,6 @@ type EvidenceState =
 interface LearningRun {
   recommendation: WorldCountriesTodayLearningRecommendation
   countryEntries: readonly Country[]
-}
-
-function trackLabel(track: WorldCountriesTodayLearningRecommendation['track']): string {
-  return track === 'learn-countries' ? 'Countries' : 'Capitals'
 }
 
 /** Map-centered Today orchestration for derived World Countries review. */
@@ -210,70 +206,48 @@ export function WorldCountriesToday({
 
   return (
     <section className="space-y-4 animate-fade-in" aria-labelledby="world-countries-today-heading">
+      <TodayHomeRails
+        activeCountryCount={activeCountries.length}
+        evidenceStatus={evidence.status}
+        dueCount={plan?.dueCount ?? 0}
+        dueCountryCount={plan?.dueCountryCount ?? 0}
+        nextLearning={nextLearning ? { track: nextLearning.track, subregionLabel: nextLearning.subregionLabel } : null}
+        checkpoint={checkpoint}
+        refreshing={refreshing}
+        caughtUp={caughtUp}
+        onNavigate={onNavigate}
+      />
+
       <div className="space-y-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World Countries</p>
-          <h1 id="world-countries-today-heading" className="mt-1 text-2xl font-bold text-zinc-100">Today</h1>
-          <p className="mt-2 text-sm leading-relaxed text-zinc-400">A map-centered plan for due core review and the next guided Learning flow.</p>
-        </div>
         <WorldMasterySummary progress={progress} />
-        <GeographyOverviewMap
-          level="world"
-          countryPopulation={activeCountries}
-          countryColorsById={countryColorsById}
-          countryAccessibleDescriptionsById={mapDescriptions}
-          interactive={false}
-          ariaLabel="World Countries mastery map"
+        <MapSurface
+          context={(
+            <div className="px-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World Countries · Today</p>
+              <h1 id="world-countries-today-heading" className="mt-1 text-2xl font-black text-zinc-100">Today</h1>
+            </div>
+          )}
+          map={(
+            <GeographyOverviewMap
+              level="world"
+              countryPopulation={activeCountries}
+              countryColorsById={countryColorsById}
+              countryAccessibleDescriptionsById={mapDescriptions}
+              interactive={false}
+              ariaLabel="World Countries mastery map"
+            />
+          )}
+          dock={canContinue ? (
+            <TaskDock variant="navigation">
+              <button type="button" data-primary-action disabled={refreshing} onClick={startPrimary} className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40">
+                {hasDue ? 'Continue review' : 'Continue learning'}
+              </button>
+            </TaskDock>
+          ) : undefined}
+          dockPlacement="attached"
+          className="animate-fade-in"
         />
       </div>
-
-      <WorldCountriesPanel className="space-y-4" aria-labelledby="world-countries-today-status-heading">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Today</p>
-          <h2 id="world-countries-today-status-heading" className="mt-1 text-lg font-bold text-zinc-100">
-            {activeCountries.length === 0 ? '0 Countries active' : evidence.status === 'error' ? 'Review status unavailable' : evidence.status === 'loading' ? 'Today status loading' : hasDue ? `${plan?.dueCount ?? 0} core reviews due · ${plan?.dueCountryCount ?? 0} ${plan?.dueCountryCount === 1 ? 'Country' : 'Countries'}` : caughtUp ? 'All caught up' : 'All reviews caught up'}
-          </h2>
-          <p role="status" aria-live="polite" className="mt-2 text-sm text-zinc-400">
-            {activeCountries.length === 0
-              ? 'No active Countries are available for Today.'
-              : evidence.status === 'loading'
-                ? 'Review status is loading…'
-                : evidence.status === 'error'
-                  ? 'Today could not load retained review evidence. Drill and Recite remain available.'
-                  : hasDue
-                    ? nextLearning ? `Next after review: Learn ${trackLabel(nextLearning.track)} · ${nextLearning.subregionLabel}` : 'Complete the due review before introducing more core material.'
-                    : nextLearning
-                      ? `Next: Learn ${trackLabel(nextLearning.track)} · ${nextLearning.subregionLabel}`
-                      : 'No core review is due and no new guided Learning remains.'}
-          </p>
-        </div>
-
-        {checkpoint && (
-          <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3 text-sm text-zinc-300" aria-live="polite">
-            <p className="font-semibold text-zinc-100">{checkpoint.reviewed} reviewed</p>
-            <p className="mt-1 text-xs text-zinc-400">{checkpoint.correctFirstTry} correct first try · {checkpoint.recoveredOnRetry} recovered on retry · {checkpoint.stillNeedsWork} still needs work</p>
-            {!refreshing && plan && plan.dueCount > 0 && <p className="mt-2 text-xs font-semibold text-cyan-300">{plan.dueCount} core reviews still due</p>}
-            {refreshing && <p className="mt-2 text-xs text-zinc-500">Refreshing Today…</p>}
-          </div>
-        )}
-
-        {canContinue && (
-          <button type="button" data-primary-action disabled={!canContinue || refreshing} onClick={startPrimary} className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40">
-            {hasDue ? checkpoint ? 'Continue review' : 'Continue review' : nextLearning ? 'Continue learning' : 'Continue learning'}
-          </button>
-        )}
-
-        {evidence.status === 'error' && activeCountries.length > 0 && (
-          <button type="button" disabled className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white opacity-40">Continue review</button>
-        )}
-
-        {(caughtUp || evidence.status === 'error' || activeCountries.length === 0) && (
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => onNavigate('drill')} className="rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Drill</button>
-            <button type="button" onClick={() => onNavigate('recite')} className="rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Recite</button>
-          </div>
-        )}
-      </WorldCountriesPanel>
     </section>
   )
 }

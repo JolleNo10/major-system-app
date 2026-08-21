@@ -1,15 +1,19 @@
 // @vitest-environment jsdom
 
-import { act, createElement } from 'react'
+import { act, createElement, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { countries } from '@/features/world-countries/data/countries'
 import { deriveWorldCountriesReviewSchedule } from '@/features/world-countries/learning/reviewSchedule'
 
 const recordAttemptMock = vi.hoisted(() => vi.fn(() => Promise.resolve()))
+const useRailsMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@/features/world-countries/learning/recallProgress', () => ({
   recordWorldCountriesAttempt: recordAttemptMock,
+}))
+vi.mock('@/app/layout/PageLayoutContext', () => ({
+  useRails: useRailsMock,
 }))
 vi.mock('@/features/world-countries/learning/CountryLearningMap', () => ({
   CountryLearningMap: () => createElement('div', { 'data-testid': 'today-map' }),
@@ -18,12 +22,24 @@ vi.mock('@/features/world-countries/learning/CountryLearningMap', () => ({
 import { TodayReviewSession } from './TodayReviewSession'
 
 let root: Root | null = null
+let railRoot: Root | null = null
+
+function renderRails(mount: HTMLElement): void {
+  const config = useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1]?.[0] as { left?: ReactNode; right?: ReactNode } | undefined
+  act(() => {
+    railRoot = createRoot(mount)
+    railRoot.render(createElement('div', null, config?.left, config?.right))
+  })
+}
 
 afterEach(() => {
   act(() => root?.unmount())
+  act(() => railRoot?.unmount())
   root = null
+  railRoot = null
   document.body.replaceChildren()
   recordAttemptMock.mockClear()
+  useRailsMock.mockReset()
   vi.useRealTimers()
 })
 
@@ -66,5 +82,32 @@ describe('Today review session', () => {
     expect(recordAttemptMock).toHaveBeenCalledWith('NO', 'location-to-country', expect.objectContaining({ ok: false, evidenceKind: 'recall' }))
     expect(mount.textContent).toContain('The correct answer is Norway.')
     expect(mount.textContent).not.toContain('Skip for now')
+  })
+
+  it('keeps review workflow state in the rails without revealing a hidden Country', async () => {
+    const mount = document.createElement('div')
+    const railMount = document.createElement('div')
+    document.body.append(mount, railMount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(TodayReviewSession, {
+        candidates: [candidate('NO'), candidate('SE'), candidate('FI')],
+        activeCountries: countries.filter(country => ['NO', 'SE', 'FI'].includes(country.id)),
+        fuzzyMatching: false,
+        onDone: vi.fn(),
+        onExit: vi.fn(),
+      }))
+    })
+
+    renderRails(railMount)
+    expect(railMount.textContent).toContain('World')
+    expect(railMount.textContent).toContain('Europe')
+    expect(railMount.textContent).toContain('Northern Europe')
+    expect(railMount.textContent).toContain('Review progress')
+    expect(railMount.textContent).toContain('Exit Review')
+    expect(mount.textContent).not.toContain('Exit Review')
+    expect(mount.textContent).not.toContain('Northern Europe')
+    expect(mount.textContent).not.toContain('Norway')
   })
 })

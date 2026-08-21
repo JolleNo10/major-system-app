@@ -37,7 +37,7 @@ describe('World Countries activity boundary', () => {
     expect([...mount.querySelectorAll('[role="tab"]')].map(tab => tab.textContent)).toEqual(['Today', 'Drill', 'Recite'])
     expect(mount.textContent).toContain('World Countries')
     expect(mount.textContent).toContain('Today')
-    expect(mount.textContent).not.toContain('Due review')
+    expect(mount.textContent).toContain('Due reviews')
 
     const drillTab = [...mount.querySelectorAll('[role="tab"]')].find(tab => tab.textContent === 'Drill') as HTMLButtonElement | undefined
     await act(async () => drillTab?.click())

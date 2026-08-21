@@ -251,6 +251,11 @@ advances automatically after the correction dwell.
   typed prompt/task controls advance it.
 - PageLayout geometry, `useRails`, `useLayoutHeader`, drawer behavior, and rail
   widths remain unchanged.
+- Today follows the World Countries map-centered spatial grammar: the map and
+  immediate primary task stay in the center, geographic context stays in the
+  left rail, and Today workflow/session status and controls stay in the right
+  rail. Today owns this presentation and remains independent from Drill
+  workflow internals.
 
 ```mermaid
 flowchart TD
