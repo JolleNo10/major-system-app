@@ -49,9 +49,8 @@ function renderAnswer(
       onTransition,
       ...props,
       children: (state: WorldCountriesTypedAnswerRenderState): ReactNode => createElement('div', null,
-      state.feedback,
+      state.feedbackOverlay,
       state.input,
-      state.fuzzyControls,
       state.isAnswerable && createElement('button', { type: 'button', onClick: state.reveal, 'data-testid': 'reveal' }, 'Reveal'),
       ),
     })))
@@ -109,13 +108,22 @@ describe('WorldCountriesTypedAnswer', () => {
 
     typeInto(input, 'fuzzy')
     act(() => input.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
-    act(() => vi.advanceTimersByTime(1800))
     expect(onTransition).not.toHaveBeenCalled()
-    expect(mount.querySelector('[data-fuzzy-spelling-action="continue"]')).not.toBeNull()
+    const practiceButton = mount.querySelector<HTMLButtonElement>('[data-fuzzy-spelling-action="practice"]')!
+    expect(document.activeElement).toBe(practiceButton)
     act(() => {
-      mount.querySelector<HTMLButtonElement>('[data-fuzzy-spelling-action="continue"]')?.click()
-      mount.querySelector<HTMLButtonElement>('[data-fuzzy-spelling-action="continue"]')?.click()
+      practiceButton.click()
     })
+    const spellingInput = mount.querySelector<HTMLInputElement>('[aria-label="Spell the country"]')!
+    expect(document.activeElement).toBe(spellingInput)
+    typeInto(spellingInput, 'Norway')
+    act(() => spellingInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
+    expect(document.activeElement).toBe(spellingInput)
+    typeInto(spellingInput, 'Norway')
+    act(() => spellingInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
+    const continueButton = mount.querySelector<HTMLButtonElement>('[data-fuzzy-spelling-action="continue"]')!
+    expect(document.activeElement).toBe(continueButton)
+    act(() => continueButton.click())
     expect(onTransition).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'fuzzy' }))
     expect(onTransition).toHaveBeenCalledTimes(1)
   })
@@ -166,7 +174,8 @@ describe('WorldCountriesTypedAnswer', () => {
     })
 
     act(() => mount.querySelector<HTMLButtonElement>('[data-testid="reveal"]')?.click())
-    expect(mount.textContent).toContain('Answer: Norway')
+    expect(mount.textContent).toContain('Answer revealed')
+    expect(mount.textContent).toContain('Norway')
     act(() => vi.advanceTimersByTime(1799))
     expect(onTransition).not.toHaveBeenCalled()
     act(() => vi.advanceTimersByTime(1))

@@ -395,20 +395,17 @@ describe('DrillSession map presentation', () => {
     await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent?.includes('Check'))?.click())
 
     expect(input.disabled).toBe(true)
-    expect(mount.textContent).toContain('The canonical answer is Stockholm.')
-
-    await act(async () => vi.advanceTimersByTime(1800))
+    expect(mount.textContent).toContain('Spelling: Stockholm')
 
     expect(onContinue).not.toHaveBeenCalled()
     expect(input.disabled).toBe(true)
-    expect(document.activeElement).toBe(mount.querySelector('[data-fuzzy-spelling-action="continue"]'))
+    expect(document.activeElement).toBe(mount.querySelector('[data-fuzzy-spelling-action="practice"]'))
 
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-fuzzy-spelling-action="practice"]')?.click())
-    const miniPractice = document.querySelector<HTMLElement>('[role="dialog"]')!
-    expect(miniPractice.parentElement).toBe(document.body)
+    const miniPractice = mount.querySelector<HTMLElement>('[data-mini-spelling-practice]')!
     await act(async () => miniPractice.querySelector<HTMLButtonElement>('[data-mini-spelling-action="return"]')?.click())
 
-    expect(document.querySelector('[role="dialog"]')).toBeNull()
+    expect(mount.querySelector('[data-mini-spelling-practice]')).toBeNull()
     expect(onContinue).not.toHaveBeenCalled()
     expect(input.disabled).toBe(true)
 
@@ -443,10 +440,10 @@ describe('DrillSession map presentation', () => {
       .find(button => button.textContent?.includes('Check'))?.click())
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-fuzzy-spelling-action="practice"]')?.click())
 
-    const miniPractice = document.querySelector<HTMLElement>('[role="dialog"]')!
+    const miniPractice = mount.querySelector<HTMLElement>('[data-mini-spelling-practice]')!
     expect(miniPractice.textContent).not.toContain('Stockholm')
-    await act(async () => miniPractice.querySelector<HTMLButtonElement>('[aria-controls="mini-spelling-answer"]')?.click())
-    expect(miniPractice.querySelector('#mini-spelling-answer')?.textContent).toBe('Stockholm')
+    await act(async () => miniPractice.querySelector<HTMLButtonElement>('button:not([data-mini-spelling-action])')?.click())
+    expect(miniPractice.textContent).toContain('Stockholm')
 
     const checkSpelling = async (value: string) => {
       const spellingInput = miniPractice.querySelector<HTMLInputElement>('input')!
@@ -463,9 +460,11 @@ describe('DrillSession map presentation', () => {
     expect(miniPractice.textContent).toContain('1 / 2 correct')
 
     await checkSpelling('Stockholm')
-    expect(document.querySelector('[role="dialog"]')).toBeNull()
+    expect(mount.textContent).toContain('Spelling practice complete.')
     expect(onContinue).not.toHaveBeenCalled()
-    expect(mount.textContent).toContain('The canonical answer is Stockholm.')
+    expect(document.activeElement).toBe(mount.querySelector('[data-fuzzy-spelling-action="continue"]'))
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-fuzzy-spelling-action="continue"]')?.click())
+    expect(onContinue).toHaveBeenCalledWith(true)
   })
 
   it('keeps incorrect feedback visible for the correction interval', async () => {

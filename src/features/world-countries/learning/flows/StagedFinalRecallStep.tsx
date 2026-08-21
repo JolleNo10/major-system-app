@@ -1,7 +1,7 @@
 import type { Continent, Country } from '@/features/world-countries/data/countries'
 import type { OrderedRecallState } from '@/features/world-countries/learning/orderedRecallSession'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
-import { TaskDock } from '@/features/world-countries/ui/MapSurface'
+import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
 import {
   WorldCountriesTypedAnswer,
   type WorldCountriesTypedAnswerEvaluation,
@@ -72,9 +72,7 @@ export function StagedFinalRecallStep({
       {typed => {
         const dock = (
           <TaskDock variant="form" status={<div className="mb-2 flex items-center justify-between gap-3 text-[11px] font-bold uppercase tracking-[0.08em] text-cyan-400"><span>{ordered.mode === 'repair' ? 'Repair traversal' : 'Final recall'}</span><span className="text-xs font-normal tabular-nums text-zinc-400">{ordered.currentIndex + 1} / {ordered.order.length}</span></div>}>
-            {typed.feedback}
             {typed.input}
-            {typed.fuzzyControls}
             {!surface && <button type="button" onClick={onBack} className="mt-3 w-full rounded-[9px] border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-400 hover:text-zinc-200">Back to Final recall</button>}
           </TaskDock>
         )
@@ -84,10 +82,13 @@ export function StagedFinalRecallStep({
           <div className="space-y-4 animate-fade-in">
             <LearningHeader label={stepLabel} title={`${ordered.currentIndex + 1} / ${ordered.order.length}`} onExit={onExit} />
             <div className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm"><span className="text-zinc-500">{ordered.mode === 'repair' ? 'Repair traversal' : 'Effective Country order'}</span><span className="font-semibold text-cyan-300">{answerLabel}</span></div>
-            <div className="relative"><CountryLearningMap continent={continent} scopeCountries={entries} highlightedCountryId={current.id} namedCountryId={showCountryName ? current.id : null} showHighlightedNames={showCountryName} showHoverNames ariaLabel="Highlighted Country for final recall" />{typed.feedback}</div>
-            {typed.input}
-            {typed.fuzzyControls}
-            <button type="button" onClick={onBack} className="w-full rounded-lg border border-zinc-800 px-4 py-3 text-sm text-zinc-500 hover:text-zinc-200">Back to Final recall</button>
+            <MapSurface
+              context={null}
+              map={<CountryLearningMap continent={continent} scopeCountries={entries} highlightedCountryId={current.id} namedCountryId={showCountryName ? current.id : null} showHighlightedNames={showCountryName} showHoverNames ariaLabel="Highlighted Country for final recall" />}
+              feedbackOverlay={typed.feedbackOverlay}
+              dockPlacement="stacked"
+              dock={dock}
+            />
           </div>
         )
       }}

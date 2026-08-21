@@ -292,13 +292,12 @@ export function DrillSession({
                       : `Map with ${country.country} highlighted for ${activity === 'practice' ? 'Practice' : 'Drill'} recall`}
                 />
               )}
+              feedbackOverlay={typed.feedbackOverlay}
               dockPlacement="stacked"
               dock={(
                 <TaskDock variant="form" status={<div className="text-[11px] font-bold uppercase tracking-[0.08em] text-cyan-400">{activity === 'practice' ? 'Practice' : 'Drill'} · {getDrillSkillLabel(step.skill)}</div>}>
                   <section className="space-y-3">
-                    {typed.feedback}
                     {typed.input}
-                    {typed.fuzzyControls}
                   </section>
                 </TaskDock>
               )}

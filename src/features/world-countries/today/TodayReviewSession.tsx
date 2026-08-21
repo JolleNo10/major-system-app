@@ -154,9 +154,7 @@ export function TodayReviewSession({
           )
           const dock = (
             <TaskDock variant="form">
-              {typed.feedback}
               {typed.input}
-              {typed.fuzzyControls}
               {typed.isAnswerable && prompt.kind === 'retry' && <button type="button" disabled={advancing} onClick={() => { void finishOrAdvance('skip') }} className="rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-300 hover:border-cyan-500 hover:text-zinc-100 disabled:opacity-40">Skip for now</button>}
             </TaskDock>
           )
@@ -170,6 +168,7 @@ export function TodayReviewSession({
                 </div>
               )}
               map={map}
+              feedbackOverlay={typed.feedbackOverlay}
               dock={dock}
               dockPlacement="stacked"
               className="animate-fade-in"

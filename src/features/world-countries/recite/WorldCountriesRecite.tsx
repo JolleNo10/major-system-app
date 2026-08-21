@@ -541,9 +541,7 @@ function RecitePromptDock({ prompt, country, scopeCountries, fuzzyMatching, onSu
       {typed => (
         <TaskDock variant="form" status={<div className="text-[11px] font-bold uppercase tracking-[0.08em] text-cyan-400">{prompt.kind === 'capital' ? `Capital of ${country.country}` : 'Next country'}</div>}>
           <div className="space-y-3">
-            {typed.feedback}
             {typed.input}
-            {typed.fuzzyControls}
             {typed.isAnswerable && <button type="button" onClick={() => { if (typed.reveal()) onReveal() }} className="rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-300 hover:border-orange-500 hover:text-zinc-100">Reveal / Skip</button>}
           </div>
         </TaskDock>

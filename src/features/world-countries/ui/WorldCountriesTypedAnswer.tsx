@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { RecallFeedback } from '@/core/ui/RecallFeedback'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { TypingInput } from '@/core/ui/TypingInput'
-import { FuzzySpellingPracticeControls } from './MiniSpellingPractice'
+import { useMapSurfaceFeedbackOverlay } from './MapSurface'
+import { WorldCountriesAnswerFeedback } from './WorldCountriesAnswerFeedback'
 
 const SUCCESS_FEEDBACK_DURATION_MS = 500
 const CORRECTION_FEEDBACK_DURATION_MS = 1800
@@ -30,14 +30,14 @@ export interface WorldCountriesTypedAnswerResult {
   answerKind: WorldCountriesTypedAnswerKind
   message: ReactNode
   detail?: ReactNode
+  submittedAnswer?: string
   promptKey: string
   latencyMs: number
 }
 
 export interface WorldCountriesTypedAnswerRenderState {
   input: ReactNode
-  feedback: ReactNode | null
-  fuzzyControls: ReactNode | null
+  feedbackOverlay: ReactNode | null
   isAnswerable: boolean
   feedbackActive: boolean
   outcome: WorldCountriesTypedAnswerOutcome | null
@@ -82,6 +82,21 @@ export function WorldCountriesTypedAnswer({
   }, [promptKey])
 
   const activeResult = result?.promptKey === promptKey ? result : null
+
+  const completeTransition = useCallback((completedResult: WorldCountriesTypedAnswerResult) => {
+    if (transitionStartedRef.current === completedResult) return
+    transitionStartedRef.current = completedResult
+    const transition = transitionRef.current(completedResult)
+    if (!transition || typeof (transition as Promise<void>).then !== 'function') {
+      setResult(null)
+      return
+    }
+    void Promise.resolve(transition).then(
+      () => setResult(current => current === completedResult ? null : current),
+      () => setResult(current => current === completedResult ? null : current),
+    )
+  }, [])
+
   useEffect(() => {
     if (!activeResult || activeResult.outcome === 'fuzzy') return
 
@@ -98,14 +113,14 @@ export function WorldCountriesTypedAnswer({
       completeTransition(completedResult)
     }, duration)
     return () => window.clearTimeout(timer)
-  }, [activeResult, retryOnIncorrect])
+  }, [activeResult, completeTransition, retryOnIncorrect])
 
   const submit = (answer: string) => {
     if (activeResult || answeredRef.current) return
     answeredRef.current = true
     const latencyMs = Math.max(0, now() - startedAtRef.current)
     const evaluation = evaluate(answer, latencyMs)
-    const nextResult: WorldCountriesTypedAnswerResult = { ...evaluation, promptKey, latencyMs }
+    const nextResult: WorldCountriesTypedAnswerResult = { ...evaluation, promptKey, latencyMs, submittedAnswer: answer }
     setResult(nextResult)
     onAnswer(answer, evaluation, latencyMs)
   }
@@ -115,20 +130,6 @@ export function WorldCountriesTypedAnswer({
     answeredRef.current = true
     setResult({ ...reveal, outcome: 'revealed', promptKey, latencyMs: 0 })
     return true
-  }
-
-  const completeTransition = (completedResult: WorldCountriesTypedAnswerResult) => {
-    if (transitionStartedRef.current === completedResult) return
-    transitionStartedRef.current = completedResult
-    const transition = transitionRef.current(completedResult)
-    if (!transition || typeof (transition as Promise<void>).then !== 'function') {
-      setResult(null)
-      return
-    }
-    void Promise.resolve(transition).then(
-      () => setResult(current => current === completedResult ? null : current),
-      () => setResult(current => current === completedResult ? null : current),
-    )
   }
 
   const isPositive = activeResult?.outcome === 'exact' || activeResult?.outcome === 'fuzzy'
@@ -144,29 +145,18 @@ export function WorldCountriesTypedAnswer({
       compact
     />
   )
-  const feedback = activeResult && (
-    <RecallFeedback
-      variant="inline"
-      correct={Boolean(isPositive)}
-      message={activeResult.message}
-      detail={activeResult.detail}
+  const feedbackOverlay = useMemo(() => activeResult && (
+    <WorldCountriesAnswerFeedback
+      result={activeResult}
+      onContinue={() => completeTransition(activeResult)}
     />
-  )
-  const fuzzyControls = activeResult?.outcome === 'fuzzy' && (
-    <FuzzySpellingPracticeControls
-      answer={activeResult.canonicalAnswer}
-      answerKind={activeResult.answerKind}
-      onContinue={() => {
-        const completedResult = activeResult
-        completeTransition(completedResult)
-      }}
-    />
-  )
+  ), [activeResult, completeTransition])
+
+  useMapSurfaceFeedbackOverlay(feedbackOverlay)
 
   return children({
     input,
-    feedback,
-    fuzzyControls,
+    feedbackOverlay,
     isAnswerable: activeResult === null,
     feedbackActive: activeResult !== null,
     outcome: activeResult?.outcome ?? null,

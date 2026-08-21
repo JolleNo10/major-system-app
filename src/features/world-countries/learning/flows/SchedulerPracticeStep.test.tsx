@@ -43,14 +43,18 @@ describe('SchedulerPracticeStep', () => {
 
     act(() => {
       root = createRoot(mount)
-      root.render(createElement(SchedulerPracticeStep, {
+      root.render(createElement(LearningMapSurface, {
+        continent: 'Europe', scopeCountries: [country], presentation: { ariaLabel: 'Practice map' }, presentationKey: 'practice',
+        context: createElement('h1', null, 'Practice'),
+        children: createElement(SchedulerPracticeStep, {
         continent: 'Europe', entries: [country], session,
         stepLabel: 'Practice', questionLabel: 'Country name',
         questionTitle: 'Name the country', answerLabel: 'Type the country name',
         placeholder: 'Type the country…', showCountryName: false, showMap: false,
         evaluateAnswer: () => ({ correct: true, fuzzyMatch: true, canonicalAnswer: country.country }),
         formatFeedback: evaluation => `Correct. The canonical answer is ${evaluation.canonicalAnswer}.`,
-        onSubmit, onBack: vi.fn(), onExit: vi.fn(), surface: true,
+          onSubmit, onBack: vi.fn(), onExit: vi.fn(), surface: true,
+        }),
       }))
     })
 
@@ -59,7 +63,7 @@ describe('SchedulerPracticeStep', () => {
     act(() => mount.querySelector('form')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
 
     expect(input.disabled).toBe(true)
-    expect(mount.textContent).toContain('The canonical answer is Norway.')
+    expect(mount.textContent).toContain('Spelling: Norway')
 
     act(() => vi.advanceTimersByTime(1800))
 
@@ -67,10 +71,11 @@ describe('SchedulerPracticeStep', () => {
     expect(input.disabled).toBe(true)
 
     act(() => mount.querySelector<HTMLButtonElement>('[data-fuzzy-spelling-action="practice"]')?.click())
-    const miniPractice = document.querySelector<HTMLElement>('[role="dialog"]')!
+    const miniPractice = mount.querySelector<HTMLElement>('[data-mini-spelling-practice]')!
     expect(miniPractice).not.toBeNull()
     act(() => miniPractice.querySelector<HTMLButtonElement>('[data-mini-spelling-action="return"]')?.click())
 
+    expect(mount.querySelector('[data-mini-spelling-practice]')).toBeNull()
     expect(onSubmit).not.toHaveBeenCalled()
     act(() => mount.querySelector<HTMLButtonElement>('[data-fuzzy-spelling-action="continue"]')?.click())
     expect(onSubmit).toHaveBeenCalledWith(true, expect.any(Number))

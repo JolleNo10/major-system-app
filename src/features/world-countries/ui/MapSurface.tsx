@@ -1,21 +1,50 @@
-import { useLayoutEffect, useRef, type ReactNode } from 'react'
+import { createContext, useContext, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
 export type MapSurfaceDockPlacement = 'overlay' | 'attached' | 'stacked'
 export type TaskDockVariant = 'navigation' | 'checkpoint' | 'form' | 'hint' | 'completion'
+
+interface MapSurfaceFeedbackContextValue {
+  setFeedbackOverlay: (feedbackOverlay: ReactNode | null) => void
+}
+
+const MapSurfaceFeedbackContext = createContext<MapSurfaceFeedbackContextValue | null>(null)
+
+export function useMapSurfaceFeedbackOverlay(feedbackOverlay: ReactNode | null): void {
+  const surface = useContext(MapSurfaceFeedbackContext)
+
+  useLayoutEffect(() => {
+    if (!surface) return
+    surface.setFeedbackOverlay(feedbackOverlay)
+    return () => surface.setFeedbackOverlay(null)
+  }, [feedbackOverlay, surface])
+}
+
+export function MapFeedbackOverlay({ children }: { children: ReactNode }) {
+  if (!children) return null
+  return (
+    <div data-map-feedback-overlay-host className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center p-5">
+      {children}
+    </div>
+  )
+}
 
 function isNativeInteractiveTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
   return Boolean(target.closest('button, a, input, textarea, select, [contenteditable="true"], [role="button"]'))
 }
 
-export function MapSurface({ context, map, mapMeta, dock, dockPlacement = 'overlay', className = '' }: {
+export function MapSurface({ context, map, mapMeta, feedbackOverlay, dock, dockPlacement = 'overlay', className = '' }: {
   context: ReactNode
   map: ReactNode
   mapMeta?: ReactNode
+  feedbackOverlay?: ReactNode
   dock?: ReactNode
   dockPlacement?: MapSurfaceDockPlacement
   className?: string
 }) {
+  const [registeredFeedbackOverlay, setRegisteredFeedbackOverlay] = useState<ReactNode | null>(null)
+  const surfaceContext = useMemo(() => ({ setFeedbackOverlay: setRegisteredFeedbackOverlay }), [])
+  const visibleFeedbackOverlay = feedbackOverlay !== undefined ? feedbackOverlay : registeredFeedbackOverlay
   const dockClass = dockPlacement === 'overlay'
     ? 'xl:pointer-events-none xl:absolute xl:inset-x-[14px] xl:bottom-[14px] xl:z-20'
     : dockPlacement === 'attached'
@@ -23,15 +52,18 @@ export function MapSurface({ context, map, mapMeta, dock, dockPlacement = 'overl
       : 'relative z-10 mt-2'
 
   return (
-    <div data-map-surface className={`space-y-2 animate-fade-in ${className}`}>
-      <div>{context}</div>
-      <div className="relative">
-        {mapMeta && <div className="pointer-events-none absolute left-[18px] top-4 z-10 text-left text-xs text-zinc-300 drop-shadow-md">{mapMeta}</div>}
-        <div>{map}</div>
-        {dockPlacement === 'overlay' && <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-32 rounded-b-2xl bg-gradient-to-t from-zinc-950/35 to-transparent" />}
-        {dock && <div className={dockClass}>{dock}</div>}
+    <MapSurfaceFeedbackContext.Provider value={surfaceContext}>
+      <div data-map-surface className={`space-y-2 animate-fade-in ${className}`}>
+        <div>{context}</div>
+        <div className="relative">
+          {mapMeta && <div className="pointer-events-none absolute left-[18px] top-4 z-10 text-left text-xs text-zinc-300 drop-shadow-md">{mapMeta}</div>}
+          <div>{map}</div>
+          {visibleFeedbackOverlay && <MapFeedbackOverlay>{visibleFeedbackOverlay}</MapFeedbackOverlay>}
+          {dockPlacement === 'overlay' && <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-32 rounded-b-2xl bg-gradient-to-t from-zinc-950/35 to-transparent" />}
+          {dock && <div className={dockClass}>{dock}</div>}
+        </div>
       </div>
-    </div>
+    </MapSurfaceFeedbackContext.Provider>
   )
 }
 
@@ -56,7 +88,7 @@ export function TaskDock({
     checkpoint: tone === 'ready'
       ? 'rounded-[14px] border border-green-500/40 bg-[linear-gradient(90deg,rgba(5,46,22,0.92),rgba(9,9,11,0.94))] px-4 py-3.5 shadow-[0_18px_55px_rgba(0,0,0,0.45)] backdrop-blur-[14px]'
       : 'rounded-[14px] border border-zinc-700/80 bg-zinc-950/90 px-4 py-3.5 shadow-[0_18px_55px_rgba(0,0,0,0.42)] backdrop-blur-[14px]',
-    form: 'rounded-[14px] border border-zinc-700/80 bg-zinc-950/90 px-4 py-3.5 shadow-[0_18px_55px_rgba(0,0,0,0.42)] backdrop-blur-[14px]',
+    form: 'rounded-[18px] border border-white/[0.11] bg-[linear-gradient(180deg,rgba(20,22,28,0.54),rgba(11,12,16,0.72))] px-4 py-3.5 shadow-[0_20px_60px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-[18px] backdrop-saturate-125',
     hint: 'rounded-lg border border-zinc-700/50 bg-zinc-950/75 px-3 py-2 shadow-lg backdrop-blur-md',
     completion: 'rounded-[14px] border border-green-500/30 bg-zinc-950/90 px-4 py-3.5 shadow-[0_18px_55px_rgba(0,0,0,0.45)] backdrop-blur-[14px]',
   }[variant]
@@ -97,7 +129,7 @@ export function TaskDock({
         </div>
       ) : (
         <>
-          {status && <div role="status" aria-live="polite" className={`mb-2 text-sm ${statusClass}`}>{status}</div>}
+          {status && <div className={`mb-2 text-sm ${statusClass}`}>{status}</div>}
           {children}
         </>
       )}

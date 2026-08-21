@@ -135,7 +135,8 @@ describe('World Countries Recite workflow', () => {
       typeInto(retryInput, 'Norway')
       mount.querySelector('form')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
     })
-    expect(mount.textContent).toContain('Correct. Norway')
+    expect(mount.textContent).toContain('Correct')
+    expect(mount.textContent).toContain('Norway')
     expect(mount.textContent).not.toContain('Recite complete')
 
     await act(async () => {
@@ -164,7 +165,8 @@ describe('World Countries Recite workflow', () => {
       typeInto(countryInput!, 'Norway')
       countryInput?.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
     })
-    expect(mount.textContent).toContain('Correct. Norway')
+    expect(mount.textContent).toContain('Correct')
+    expect(mount.textContent).toContain('Norway')
     await act(async () => {
       vi.advanceTimersByTime(500)
       await Promise.resolve()
@@ -176,7 +178,8 @@ describe('World Countries Recite workflow', () => {
       typeInto(capitalInput!, 'Oslo')
       capitalInput?.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
     })
-    expect(mount.textContent).toContain('Correct. Oslo')
+    expect(mount.textContent).toContain('Correct')
+    expect(mount.textContent).toContain('Oslo')
     await act(async () => {
       vi.advanceTimersByTime(500)
       await Promise.resolve()
@@ -201,7 +204,8 @@ describe('World Countries Recite workflow', () => {
     expect(activeMap()?.highlightedCountryIds).toEqual([])
 
     await act(async () => buttonContaining(mount, 'Reveal / Skip').click())
-    expect(mount.textContent).toContain('Answer: Norway')
+    expect(mount.textContent).toContain('Answer revealed')
+    expect(mount.textContent).toContain('Norway')
     expect(activeMap()?.hiddenCountryIds).toEqual([])
   })
 

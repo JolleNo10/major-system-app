@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Country } from '@/features/world-countries/data/countries'
 import { createOrderedRecallSession } from '@/features/world-countries/learning/orderedRecallSession'
 import { StagedFinalRecallStep } from './StagedFinalRecallStep'
+import { LearningMapSurface } from './LearningMapSurface'
 
 vi.mock('@/features/world-countries/learning/CountryLearningMap', () => ({
   CountryLearningMap: () => createElement('div', { 'data-testid': 'country-learning-map' }),
@@ -41,14 +42,18 @@ describe('StagedFinalRecallStep', () => {
 
     act(() => {
       root = createRoot(mount)
-      root.render(createElement(StagedFinalRecallStep, {
+      root.render(createElement(LearningMapSurface, {
+        continent: 'Europe', scopeCountries: [country], presentation: { ariaLabel: 'Final recall map' }, presentationKey: 'final',
+        context: createElement('h1', null, 'Final recall'),
+        children: createElement(StagedFinalRecallStep, {
         continent: 'Europe', entries: [country],
         ordered: createOrderedRecallSession({ order: [country.id], rewindOnError: 1 }),
         stepLabel: 'Final recall', answerLabel: 'Country → Capital',
         placeholder: 'Type the capital…', showCountryName: true,
         evaluateAnswer: () => ({ correct: true, fuzzyMatch: true, canonicalAnswer: country.capital }),
         formatFeedback: evaluation => `Correct. The canonical answer is ${evaluation.canonicalAnswer}.`,
-        onSubmit, onBack: vi.fn(), onExit: vi.fn(), surface: true,
+          onSubmit, onBack: vi.fn(), onExit: vi.fn(), surface: true,
+        }),
       }))
     })
 
@@ -57,7 +62,7 @@ describe('StagedFinalRecallStep', () => {
     act(() => mount.querySelector('form')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
 
     expect(input.disabled).toBe(true)
-    expect(mount.textContent).toContain('The canonical answer is Oslo.')
+    expect(mount.textContent).toContain('Spelling: Oslo')
 
     act(() => vi.advanceTimersByTime(1800))
 
@@ -65,7 +70,7 @@ describe('StagedFinalRecallStep', () => {
     expect(input.disabled).toBe(true)
 
     act(() => mount.querySelector<HTMLButtonElement>('[data-fuzzy-spelling-action="practice"]')?.click())
-    const miniPractice = document.querySelector<HTMLElement>('[role="dialog"]')!
+    const miniPractice = mount.querySelector<HTMLElement>('[data-mini-spelling-practice]')!
     expect(miniPractice).not.toBeNull()
     act(() => miniPractice.querySelector<HTMLButtonElement>('[data-mini-spelling-action="return"]')?.click())
 

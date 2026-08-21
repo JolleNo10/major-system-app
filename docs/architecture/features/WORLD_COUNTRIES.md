@@ -62,9 +62,13 @@ that lets contextual authoring affect subsequent Learning presentation.
   presentation, map-surface/dock presentation, task-dock status/action styling,
   the shared typed-answer lifecycle for primary World Countries recall, and
   draft movement without persistence policy. The typed-answer seam owns native
-  submit handling, blank prevention, feedback state, focus/reset, and the
-  shared 500 ms / 1800 ms lifecycle; workflow owners provide classification,
-  disclosure copy, evidence, and transitions.
+  submit handling, blank prevention, map-relative answer-feedback overlay,
+  feedback state, focus/reset, and the shared 500 ms / 1800 ms lifecycle;
+  workflow owners provide classification, disclosure copy, evidence, and
+  transitions. The form dock owns answer entry and does not repeat result copy.
+  Fuzzy is the interactive feedback exception: its overlay owns Continue and
+  transient mini spelling practice, initially focuses Mini practise spelling,
+  and creates no evidence.
 - `recite/` owns the ordered World Countries Recite setup, its three typed-recall
   modes, transient setup/session state, current-run outcomes, completion flow,
   and mode-specific latest-outcome status. It consumes geography, answer
@@ -213,8 +217,9 @@ advances automatically after the correction dwell.
   flow stages change; phase-specific content owns task status, controls, and
   dynamic map presentation through that host.
 - `MapSurface` keeps lightweight context above a relative map container and
-  supports optional map metadata plus explicit overlay, attached, and stacked
-  dock placement. `TaskDock` provides compact navigation, checkpoint, form,
+  supports optional map metadata, a centered map-relative feedback overlay,
+  plus explicit overlay, attached, and stacked dock placement. `TaskDock`
+  provides compact navigation, checkpoint, form,
   hint, and completion variants; checkpoint and completion docks compose their
   status copy and action group as one unit at desktop widths. Typed Practice,
   Final Recall, and typed Drill use the form dock below the map so answer entry
@@ -227,11 +232,15 @@ advances automatically after the correction dwell.
   Its owner-provided prompt key clears stale value and feedback, and its
   explicit accessible answer label is separate from visual placeholder copy.
   Enter, the Check button, and native form submission share one deduplicated
-  path. Exact feedback lasts 500 ms; incorrect and revealed feedback lasts
-  1800 ms. There is no generic post-answer Continue or Next action. Fuzzy
-  remediation is the accepted-answer exception requiring an explicit spelling
-  continuation; Today delayed-retry Skip and Recite Reveal / Skip remain
-  answerable-state actions owned by those workflows.
+  path. Exact, fuzzy, incorrect, and revealed feedback is presented in the
+  centered map-relative overlay; the dock contains only answer entry and
+  answerable-state actions. Exact feedback lasts 500 ms; incorrect and
+  revealed feedback lasts 1800 ms. There is no generic post-answer Continue
+  or Next action. Fuzzy remediation is the accepted-answer exception: its
+  inline overlay practice requires two consecutive exact spellings, focuses
+  the spelling input while open, then focuses Continue on completion. Today
+  delayed-retry Skip and Recite Reveal / Skip remain answerable-state actions
+  owned by those workflows.
 - For the same map source, Continent, effective scope membership, and
   intentional zoom behavior, Learning updates map highlights, names, hover,
   and sequence annotations declaratively. Workflow phase alone must not
@@ -375,6 +384,8 @@ flowchart TD
 - `src/features/world-countries/recite/reciteProgress.ts`
 - `src/features/world-countries/recite/recitePresentation.ts`
 - `src/features/world-countries/drill/DrillSession.tsx`
+- `src/features/world-countries/ui/WorldCountriesAnswerFeedback.tsx`
+- `src/features/world-countries/ui/MiniSpellingPractice.tsx`
 - `src/features/world-countries/learning/flows/CountryLearningFlow.tsx`
 - `src/features/world-countries/learning/flows/CapitalLearningFlow.tsx`
 - `src/features/world-countries/learning/stagedLearningPlan.ts`
