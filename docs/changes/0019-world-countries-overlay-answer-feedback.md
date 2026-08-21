@@ -196,6 +196,16 @@ If the learner backs out of mini practice before completion, return to the base 
 
 The existing explicit fuzzy continuation remains authoritative: completing mini practice does not silently advance the underlying recall prompt unless implementation deliberately maps the final focused Continue activation to the existing `onContinue` action.
 
+### Incorrect answers in Drill Learn & Practise
+
+When the typed-answer surface was launched from Drill's **Learn & Practise** purpose, an incorrect answer may offer the same mini spelling game:
+
+- the incorrect overlay remains open instead of auto-transitioning after the correction dwell;
+- `Mini practise spelling` and `Continue` are offered as explicit choices;
+- selecting mini practice uses the existing two-consecutive-correct spelling semantics and creates no additional evidence;
+- `Continue` preserves the original incorrect result and performs the owning workflow transition;
+- ordinary Drill, Today, and Recite incorrect answers retain their existing correction/retry lifecycle.
+
 ### Incorrect
 
 An ordinary incorrect answer:
@@ -1014,6 +1024,14 @@ Drill must not be visually changed by a future consumer merely because Today, Le
 - [x] `Reveal spelling` occupies that comparison area and reveals the canonical spelling there.
 - [x] The practice body has no `Back to choices` action; the visible Mini practise spelling action toggles back to the fuzzy choices.
 
+### Drill Learn & Practise incorrect answers
+
+- [x] Drill-launched non-recording Practice offers Mini practise spelling after an incorrect typed answer.
+- [x] Drill-launched Learning Practice and Final Recall can offer the same transient mini spelling game.
+- [x] Eligible incorrect feedback stays open for an explicit Mini practise spelling or Continue choice.
+- [x] Continue preserves the incorrect result and advances exactly once.
+- [x] Ordinary Drill, Today, and Recite incorrect-answer behavior remains unchanged.
+
 ### Incorrect and Recite
 
 - [x] Ordinary incorrect feedback uses the rose/red glass treatment and shows the canonical correction where disclosure is permitted.
@@ -1099,9 +1117,9 @@ npm run typecheck
 
 Automated verification completed:
 
-- `npx vitest run --no-cache --no-file-parallelism src/features/world-countries`: 78 files, 321 tests passed;
-- focused typed-answer, Drill, and Scheduler Practice tests: 21 tests passed;
-- `npm test -- --no-cache --no-file-parallelism`: 111 files, 519 tests passed;
+- `npx vitest run --no-cache --no-file-parallelism src/features/world-countries`: 78 files, 323 tests passed;
+- focused typed-answer, Drill, and Learning flow tests: 24 tests passed;
+- `npm test -- --no-cache --no-file-parallelism`: 111 files, 521 tests passed;
 - `npm run typecheck`: passed;
 - `git diff --check`: passed.
 

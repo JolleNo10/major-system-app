@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { WorldCountriesTypedAnswerResult } from './WorldCountriesTypedAnswer'
-import { FuzzySpellingPracticeControls } from './MiniSpellingPractice'
+import { SpellingPracticeControls } from './MiniSpellingPractice'
 
 const feedbackShellClass = `
   w-full max-w-[420px]
@@ -60,14 +60,43 @@ const iconClass = {
   revealed: 'border-amber-300/30 bg-amber-400/10 text-amber-200',
 } as const
 
-export function WorldCountriesAnswerFeedback({ result, onContinue }: {
+function SpellingPracticeReveal({ answer, outcome, revealed, onReveal }: {
+  answer: string
+  outcome: 'fuzzy' | 'incorrect'
+  revealed: boolean
+  onReveal: () => void
+}) {
+  if (revealed) {
+    return (
+      <div data-spelling-answer-revealed className={`mt-0.5 text-[13px] ${secondaryClass[outcome]}`}>
+        <strong>{answer}</strong>
+      </div>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      data-mini-spelling-action="reveal"
+      onClick={onReveal}
+      aria-controls="world-countries-mini-spelling-practice"
+      className={`mt-0.5 text-[13px] font-medium ${outcome === 'incorrect' ? 'text-rose-200 hover:text-rose-100' : 'text-amber-200 hover:text-amber-100'} underline-offset-4 hover:underline`}
+    >
+      Reveal spelling
+    </button>
+  )
+}
+
+export function WorldCountriesAnswerFeedback({ result, onContinue, allowIncorrectSpellingPractice = false }: {
   result: WorldCountriesTypedAnswerResult
   onContinue: () => void
+  allowIncorrectSpellingPractice?: boolean
 }) {
   const { outcome } = result
   const [practiceOpen, setPracticeOpen] = useState(false)
   const [practiceAnswerRevealed, setPracticeAnswerRevealed] = useState(false)
-  const interactive = outcome === 'fuzzy'
+  const spellingPracticeAvailable = outcome === 'fuzzy' || (outcome === 'incorrect' && allowIncorrectSpellingPractice)
+  const interactive = spellingPracticeAvailable
   const title = outcome === 'exact' || outcome === 'fuzzy'
     ? 'Correct'
     : outcome === 'incorrect'
@@ -81,6 +110,18 @@ export function WorldCountriesAnswerFeedback({ result, onContinue }: {
       : outcome === 'fuzzy'
         ? `Correct. Spelling: ${result.canonicalAnswer}. You typed: ${result.submittedAnswer ?? ''}`
         : `Correct. ${result.canonicalAnswer}`
+  const spellingPracticeControls = spellingPracticeAvailable && (
+    <SpellingPracticeControls
+      answer={result.canonicalAnswer}
+      answerKind={result.answerKind}
+      practiceOpen={practiceOpen}
+      onPracticeOpenChange={open => {
+        setPracticeOpen(open)
+        if (!open) setPracticeAnswerRevealed(false)
+      }}
+      onContinue={onContinue}
+    />
+  )
 
   return (
     <section
@@ -102,21 +143,7 @@ export function WorldCountriesAnswerFeedback({ result, onContinue }: {
       {outcome === 'fuzzy' && (
         <>
           {practiceOpen ? (
-            practiceAnswerRevealed ? (
-              <div data-fuzzy-answer-revealed className={`mt-0.5 text-[13px] ${secondaryClass[outcome]}`}>
-                <strong>{result.canonicalAnswer}</strong>
-              </div>
-            ) : (
-              <button
-                type="button"
-                data-mini-spelling-action="reveal"
-                onClick={() => setPracticeAnswerRevealed(true)}
-                aria-controls="world-countries-mini-spelling-practice"
-                className="mt-0.5 text-[13px] font-medium text-amber-200 underline-offset-4 hover:text-amber-100 hover:underline"
-              >
-                Reveal spelling
-              </button>
-            )
+            <SpellingPracticeReveal answer={result.canonicalAnswer} outcome={outcome} revealed={practiceAnswerRevealed} onReveal={() => setPracticeAnswerRevealed(true)} />
           ) : (
             <div data-fuzzy-answer-comparison>
               <div className={`mt-0.5 text-[13px] ${secondaryClass[outcome]}`}>
@@ -128,25 +155,23 @@ export function WorldCountriesAnswerFeedback({ result, onContinue }: {
               </div>
             </div>
           )}
-          <FuzzySpellingPracticeControls
-            answer={result.canonicalAnswer}
-            answerKind={result.answerKind}
-            practiceOpen={practiceOpen}
-            onPracticeOpenChange={open => {
-              setPracticeOpen(open)
-              if (!open) setPracticeAnswerRevealed(false)
-            }}
-            onContinue={onContinue}
-          />
+          {spellingPracticeControls}
         </>
       )}
 
       {outcome === 'incorrect' && (
         <>
-          <div className={`mt-0.5 text-[13px] ${secondaryClass[outcome]}`}>
-            {result.message ?? 'Try again.'}
-          </div>
-          {result.detail && <div className="mt-1.5 text-xs text-zinc-300">{result.detail}</div>}
+          {spellingPracticeAvailable && practiceOpen ? (
+            <SpellingPracticeReveal answer={result.canonicalAnswer} outcome={outcome} revealed={practiceAnswerRevealed} onReveal={() => setPracticeAnswerRevealed(true)} />
+          ) : (
+            <>
+              <div className={`mt-0.5 text-[13px] ${secondaryClass[outcome]}`}>
+                {result.message ?? 'Try again.'}
+              </div>
+              {result.detail && <div className="mt-1.5 text-xs text-zinc-300">{result.detail}</div>}
+            </>
+          )}
+          {spellingPracticeControls}
         </>
       )}
 

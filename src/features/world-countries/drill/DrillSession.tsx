@@ -241,6 +241,7 @@ export function DrillSession({
         answerLabel={isCapitalQuestion || isLocationQuestion ? 'Type the country name' : 'Type the capital'}
         placeholder={isCapitalQuestion || isLocationQuestion ? 'Type the country…' : 'Type the capital…'}
         correctAnswer={expectedAnswer}
+        allowIncorrectSpellingPractice={activity === 'practice'}
         evaluate={answer => {
           const match = classifyRecallAnswer(step.skill, answer, country, {
             fuzzy: fuzzyMatching,

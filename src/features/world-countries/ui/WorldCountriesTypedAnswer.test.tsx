@@ -99,6 +99,32 @@ describe('WorldCountriesTypedAnswer', () => {
     expect(onTransition).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'incorrect' }))
   })
 
+  it('offers spelling practice for an incorrect answer only when enabled', () => {
+    vi.useFakeTimers()
+    const mount = document.createElement('div')
+    document.body.append(mount)
+    const { onTransition } = renderAnswer(mount, { allowIncorrectSpellingPractice: true })
+    const input = mount.querySelector<HTMLInputElement>('input')!
+
+    typeInto(input, 'Sweden')
+    act(() => input.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
+    act(() => vi.advanceTimersByTime(1800))
+
+    expect(onTransition).not.toHaveBeenCalled()
+    const practiceButton = mount.querySelector<HTMLButtonElement>('[data-fuzzy-spelling-action="practice"]')!
+    expect(practiceButton).not.toBeNull()
+    act(() => practiceButton.click())
+
+    const spellingInput = mount.querySelector<HTMLInputElement>('[aria-label="Spell the country"]')!
+    typeInto(spellingInput, 'Norway')
+    act(() => spellingInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
+    typeInto(spellingInput, 'Norway')
+    act(() => spellingInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
+    act(() => mount.querySelector<HTMLButtonElement>('[data-fuzzy-spelling-action="continue"]')?.click())
+
+    expect(onTransition).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'incorrect' }))
+  })
+
   it('keeps fuzzy remediation active until its explicit continuation', () => {
     vi.useFakeTimers()
     const mount = document.createElement('div')

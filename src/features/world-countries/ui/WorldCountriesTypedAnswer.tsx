@@ -53,6 +53,7 @@ export function WorldCountriesTypedAnswer({
   onAnswer,
   onTransition,
   retryOnIncorrect = false,
+  allowIncorrectSpellingPractice = false,
   reveal,
   children,
 }: {
@@ -64,6 +65,7 @@ export function WorldCountriesTypedAnswer({
   onAnswer: (answer: string, evaluation: WorldCountriesTypedAnswerEvaluation, latencyMs: number) => void
   onTransition: (result: WorldCountriesTypedAnswerResult) => void | Promise<void>
   retryOnIncorrect?: boolean
+  allowIncorrectSpellingPractice?: boolean
   reveal?: WorldCountriesTypedAnswerReveal
   children: (state: WorldCountriesTypedAnswerRenderState) => ReactNode
 }) {
@@ -98,7 +100,9 @@ export function WorldCountriesTypedAnswer({
   }, [])
 
   useEffect(() => {
-    if (!activeResult || activeResult.outcome === 'fuzzy') return
+    const spellingPracticeAvailable = activeResult?.outcome === 'fuzzy'
+      || (allowIncorrectSpellingPractice && activeResult?.outcome === 'incorrect')
+    if (!activeResult || spellingPracticeAvailable) return
 
     const duration = activeResult.outcome === 'exact'
       ? SUCCESS_FEEDBACK_DURATION_MS
@@ -113,7 +117,7 @@ export function WorldCountriesTypedAnswer({
       completeTransition(completedResult)
     }, duration)
     return () => window.clearTimeout(timer)
-  }, [activeResult, completeTransition, retryOnIncorrect])
+  }, [activeResult, allowIncorrectSpellingPractice, completeTransition, retryOnIncorrect])
 
   const submit = (answer: string) => {
     if (activeResult || answeredRef.current) return
@@ -148,9 +152,10 @@ export function WorldCountriesTypedAnswer({
   const feedbackOverlay = useMemo(() => activeResult && (
     <WorldCountriesAnswerFeedback
       result={activeResult}
+      allowIncorrectSpellingPractice={allowIncorrectSpellingPractice}
       onContinue={() => completeTransition(activeResult)}
     />
-  ), [activeResult, completeTransition])
+  ), [activeResult, allowIncorrectSpellingPractice, completeTransition])
 
   useMapSurfaceFeedbackOverlay(feedbackOverlay)
 

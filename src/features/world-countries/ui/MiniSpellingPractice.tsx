@@ -6,7 +6,7 @@ interface MiniSpellingPracticeProps {
   onComplete: () => void
 }
 
-interface FuzzySpellingPracticeControlsProps {
+interface SpellingPracticeControlsProps {
   answer: string
   answerKind: 'country' | 'capital'
   practiceOpen: boolean
@@ -103,8 +103,8 @@ export function MiniSpellingPractice({ answer, answerKind, onComplete }: MiniSpe
   )
 }
 
-/** Actions and temporary inline practice state shared by fuzzy-accepted recall. */
-export function FuzzySpellingPracticeControls({ answer, answerKind, practiceOpen, onPracticeOpenChange, onContinue }: FuzzySpellingPracticeControlsProps) {
+/** Actions and temporary inline practice state shared by eligible typed recall. */
+export function SpellingPracticeControls({ answer, answerKind, practiceOpen, onPracticeOpenChange, onContinue }: SpellingPracticeControlsProps) {
   const [practiceComplete, setPracticeComplete] = useState(false)
   const practiceButtonRef = useRef<HTMLButtonElement>(null)
   const continueButtonRef = useRef<HTMLButtonElement>(null)

@@ -33,6 +33,7 @@ export function SchedulerPracticeStep({
   onBack,
   onExit,
   surface = false,
+  allowIncorrectSpellingPractice = false,
 }: {
   continent: Continent
   entries: readonly Country[]
@@ -51,6 +52,7 @@ export function SchedulerPracticeStep({
   onBack: () => void
   onExit: () => void
   surface?: boolean
+  allowIncorrectSpellingPractice?: boolean
 }) {
   const currentId = session.currentKey
   const current = entries.find(entry => entry.id === currentId)
@@ -72,6 +74,7 @@ export function SchedulerPracticeStep({
       answerLabel={answerLabel}
       placeholder={placeholder}
       correctAnswer={showCountryName ? current.capital : current.country}
+      allowIncorrectSpellingPractice={allowIncorrectSpellingPractice}
       evaluate={answer => {
         const evaluation = evaluateAnswer(answer, current)
         return {

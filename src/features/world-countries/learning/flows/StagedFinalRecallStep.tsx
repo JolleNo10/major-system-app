@@ -24,6 +24,7 @@ export function StagedFinalRecallStep({
   onBack,
   onExit,
   surface = false,
+  allowIncorrectSpellingPractice = false,
 }: {
   continent: Continent
   entries: readonly Country[]
@@ -38,6 +39,7 @@ export function StagedFinalRecallStep({
   onBack: () => void
   onExit: () => void
   surface?: boolean
+  allowIncorrectSpellingPractice?: boolean
 }) {
   const current = entries.find(entry => entry.id === ordered.order[ordered.currentIndex])
   if (!current) return null
@@ -56,6 +58,7 @@ export function StagedFinalRecallStep({
       answerLabel={answerLabel}
       placeholder={placeholder}
       correctAnswer={showCountryName ? current.capital : current.country}
+      allowIncorrectSpellingPractice={allowIncorrectSpellingPractice}
       evaluate={answer => {
         const evaluation = evaluateAnswer(answer, current)
         return {

@@ -451,7 +451,7 @@ describe('DrillSession map presentation', () => {
     expect(revealButton).not.toBeNull()
     await act(async () => revealButton!.click())
     expect(mount.querySelector('[data-mini-spelling-action="reveal"]')).toBeNull()
-    expect(mount.querySelector('[data-fuzzy-answer-revealed]')?.textContent).toBe('Stockholm')
+    expect(mount.querySelector('[data-spelling-answer-revealed]')?.textContent).toBe('Stockholm')
 
     const checkSpelling = async (value: string) => {
       const spellingInput = miniPractice.querySelector<HTMLInputElement>('input')!
@@ -503,5 +503,33 @@ describe('DrillSession map presentation', () => {
     expect(mount.textContent).toContain('The correct country is Norway.')
     await act(async () => vi.advanceTimersByTime(1))
     expect(onContinue).toHaveBeenCalledWith(false)
+  })
+
+  it('offers spelling practice after an incorrect answer in non-recording practice', async () => {
+    const onContinue = vi.fn()
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(DrillSession, {
+        answerMode: 'typing',
+        fuzzyMatching: false,
+        state: createDrillSession({ mode: 'countries', skills: ['country-to-capital'], countryIds: ['NO'] }),
+        selection: createDrillSelection('Europe', ['northern-europe']),
+        entries: [norway],
+        onAnswer: vi.fn(),
+        onContinue,
+        onExit: vi.fn(),
+        activity: 'practice',
+      }))
+    })
+
+    const input = mount.querySelector<HTMLInputElement>('input')!
+    act(() => typeInto(input, 'Osl') )
+    await act(async () => input.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
+
+    expect(mount.querySelector<HTMLButtonElement>('[data-fuzzy-spelling-action="practice"]')).not.toBeNull()
+    expect(onContinue).not.toHaveBeenCalled()
   })
 })

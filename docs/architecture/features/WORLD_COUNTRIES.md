@@ -66,9 +66,12 @@ that lets contextual authoring affect subsequent Learning presentation.
   feedback state, focus/reset, and the shared 500 ms / 1800 ms lifecycle;
   workflow owners provide classification, disclosure copy, evidence, and
   transitions. The form dock owns answer entry and does not repeat result copy.
-  Fuzzy is the interactive feedback exception: its overlay owns Continue and
-  transient mini spelling practice, initially focuses Mini practise spelling,
-  and creates no evidence.
+  Fuzzy is the interactive feedback exception by default: its overlay owns
+  Continue and transient mini spelling practice, initially focuses Mini
+  practise spelling, and creates no evidence. Drill-launched Learn & Practise
+  flows may opt eligible incorrect answers into the same transient remediation
+  controls; ordinary Drill, Today, and Recite incorrect answers retain their
+  existing correction/retry lifecycle.
 - `recite/` owns the ordered World Countries Recite setup, its three typed-recall
   modes, transient setup/session state, current-run outcomes, completion flow,
   and mode-specific latest-outcome status. It consumes geography, answer
@@ -236,11 +239,13 @@ advances automatically after the correction dwell.
   centered map-relative overlay; the dock contains only answer entry and
   answerable-state actions. Exact feedback lasts 500 ms; incorrect and
   revealed feedback lasts 1800 ms. There is no generic post-answer Continue
-  or Next action. Fuzzy remediation is the accepted-answer exception: its
-  inline overlay practice requires two consecutive exact spellings, focuses
-  the spelling input while open, then focuses Continue on completion. Today
-  delayed-retry Skip and Recite Reveal / Skip remain answerable-state actions
-  owned by those workflows.
+  or Next action. Fuzzy remediation is the accepted-answer exception by
+  default: its inline overlay practice requires two consecutive exact
+  spellings, focuses the spelling input while open, then focuses Continue on
+  completion. Drill-launched Learn & Practise may expose the same remediation
+  choice after an incorrect answer; selecting it holds that feedback until
+  Continue or mini-practice completion. Today delayed-retry Skip and Recite
+  Reveal / Skip remain answerable-state actions owned by those workflows.
 - For the same map source, Continent, effective scope membership, and
   intentional zoom behavior, Learning updates map highlights, names, hover,
   and sequence annotations declaratively. Workflow phase alone must not
