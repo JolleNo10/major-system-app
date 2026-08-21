@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import type { AnswerMode } from '@/core/types'
 import { useRails } from '@/app/layout/PageLayoutContext'
 import { useSettings } from '@/app/settings/SettingsContext'
@@ -19,6 +19,10 @@ import { GeographyBreadcrumbs } from '@/features/world-countries/ui/GeographyBre
 import { GeographyHierarchyRow } from '@/features/world-countries/ui/GeographyHierarchyRow'
 import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
+import {
+  WorldCountriesTypedAnswer,
+  type WorldCountriesTypedAnswerEvaluation,
+} from '@/features/world-countries/ui/WorldCountriesTypedAnswer'
 import {
   createWorldCountriesReciteScope,
   getCountriesForReciteSelectionInEffectiveOrder,
@@ -198,19 +202,9 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
     setHoveredGroupId(null)
   }
 
-  const submitAnswer = (value: string) => {
+  const submitAnswer = (evaluation: WorldCountriesTypedAnswerEvaluation) => {
     if (!run) return
-    const prompt = getCurrentRecitePrompt(run.session)
-    if (!prompt) return
-    const country = run.scopeCountries.find(entry => entry.id === prompt.countryId)
-    if (!country) return
-    const skill = prompt.kind === 'capital' ? 'country-to-capital' : 'capital-to-country'
-    const match = classifyRecallAnswer(skill, value, country, {
-      fuzzy: settings.worldCountriesFuzzyAnswerMatching,
-      countryCandidates: run.scopeCountries,
-      capitalCandidates: run.scopeCountries.map(entry => entry.capital),
-    })
-    setRun({ ...run, session: submitReciteAnswer(run.session, match !== 'none') })
+    setRun({ ...run, session: submitReciteAnswer(run.session, evaluation.outcome !== 'incorrect') })
   }
 
   const revealAnswer = () => {
@@ -413,9 +407,11 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
         dockPlacement="stacked"
         dock={(
           <RecitePromptDock
-            key={`${currentPrompt.countryId}-${currentPrompt.kind}-${currentPrompt.incorrectAttempts}`}
+            key={`${currentPrompt.countryId}-${currentPrompt.kind}`}
             prompt={currentPrompt}
             country={currentCountry}
+            scopeCountries={run.scopeCountries}
+            fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching}
             onSubmit={submitAnswer}
             onReveal={revealAnswer}
             onContinue={continueSession}
@@ -508,26 +504,52 @@ function ReciteSessionControls({ run, phase, onExit }: { run: ActiveReciteRun; p
   return <WorldCountriesPanel className="space-y-4" aria-labelledby="world-countries-recite-session-controls-heading"><div><p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Recite</p><h2 id="world-countries-recite-session-controls-heading" className="mt-1 text-lg font-bold text-zinc-100">Session</h2></div><div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3"><p className="text-xs uppercase tracking-wider text-zinc-500">Mode</p><p className="mt-1 text-sm font-semibold text-zinc-200">{modeLabel(run.mode)}</p><p className="mt-1 text-xs text-zinc-500">{assistanceLabel(run.assistance)}</p><div className="mt-3 h-1.5 overflow-hidden rounded-full bg-zinc-800"><div className="h-full rounded-full bg-cyan-500" style={{ width: `${Math.max(2, current ? ((current.countryIndex + (current.kind === 'capital' ? 0.5 : 0)) / run.session.countries.length) * 100 : 100)}%` }} /></div><p className="mt-2 text-xs tabular-nums text-zinc-500">{phase === 'complete' ? run.session.countries.length : (current?.countryIndex ?? run.session.countries.length) + 1} / {run.session.countries.length} Countries</p></div><button type="button" onClick={onExit} className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2.5 text-sm font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100">Back to setup</button></WorldCountriesPanel>
 }
 
-function RecitePromptDock({ prompt, country, onSubmit, onReveal, onContinue }: { prompt: RecitePromptView; country: Country; onSubmit: (value: string) => void; onReveal: () => void; onContinue: () => void }) {
-  const [value, setValue] = useState('')
-  const inputRef = useRef<HTMLInputElement>(null)
-  const answerable = prompt.feedback === 'none' || prompt.feedback === 'incorrect'
+function RecitePromptDock({ prompt, country, scopeCountries, fuzzyMatching, onSubmit, onReveal, onContinue }: { prompt: RecitePromptView; country: Country; scopeCountries: readonly Country[]; fuzzyMatching: boolean; onSubmit: (evaluation: WorldCountriesTypedAnswerEvaluation) => void; onReveal: () => void; onContinue: () => void }) {
   const expected = prompt.kind === 'capital' ? country.capital : country.country
   const placeholder = prompt.kind === 'capital' ? 'Type the capital…' : 'Type the country…'
 
-  useEffect(() => {
-    if (answerable) inputRef.current?.focus()
-  }, [answerable])
-
-  const submit = (event: React.FormEvent) => {
-    event.preventDefault()
-    const answer = value.trim()
-    if (!answerable || !answer) return
-    setValue('')
-    onSubmit(answer)
-  }
-
-  return <TaskDock variant="form" status={<div className="text-[11px] font-bold uppercase tracking-[0.08em] text-cyan-400">{prompt.kind === 'capital' ? `Capital of ${country.country}` : 'Next country'}</div>} focusPrimary={!answerable} enableEnterPrimary={!answerable}><div className="space-y-3">{prompt.feedback === 'incorrect' && <p role="status" className="text-sm text-amber-300">Not quite. Try again; the answer stays hidden.</p>}{prompt.feedback === 'correct' && <p role="status" className="text-sm text-green-300">Correct. {expected}</p>}{prompt.feedback === 'revealed' && <p role="status" className="text-sm text-orange-300">Answer: {expected}</p>}{answerable ? <form onSubmit={submit} className="flex gap-2"><input ref={inputRef} value={value} onChange={event => setValue(event.target.value)} placeholder={placeholder} aria-label={placeholder} autoComplete="off" className="min-w-0 flex-1 rounded-[9px] border border-zinc-700 bg-zinc-800/95 px-4 py-3 text-base text-zinc-100 outline-none placeholder:text-zinc-500 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/40" /><button type="submit" disabled={!value.trim()} data-primary-action className="shrink-0 rounded-[9px] border border-cyan-600 bg-cyan-600 px-3.5 py-3 text-sm font-bold text-white hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40">Check <span aria-label="Enter" className="ml-2 inline-flex min-w-[22px] items-center justify-center rounded-[5px] border border-white/25 border-b-2 px-1.5 py-px text-[11px]">↵</span></button></form> : <div className="flex flex-wrap gap-2"><button type="button" data-primary-action onClick={onContinue} className="rounded-lg bg-cyan-600 px-3 py-2 text-sm font-semibold text-white hover:bg-cyan-500">{prompt.feedback === 'revealed' ? 'Next' : 'Continue'}</button></div>}{answerable && <button type="button" onClick={onReveal} className="rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-300 hover:border-orange-500 hover:text-zinc-100">Reveal / Skip</button>}</div></TaskDock>
+  return (
+    <WorldCountriesTypedAnswer
+      promptKey={`${prompt.countryId}-${prompt.kind}`}
+      answerLabel={prompt.kind === 'capital' ? 'Type the capital' : 'Type the country name'}
+      placeholder={placeholder}
+      correctAnswer={expected}
+      retryOnIncorrect
+      reveal={{ canonicalAnswer: expected, answerKind: prompt.kind === 'capital' ? 'capital' : 'country', message: `Answer: ${expected}` }}
+      evaluate={answer => {
+        const skill = prompt.kind === 'capital' ? 'country-to-capital' : 'capital-to-country'
+        const match = classifyRecallAnswer(skill, answer, country, {
+          fuzzy: fuzzyMatching,
+          countryCandidates: scopeCountries,
+          capitalCandidates: scopeCountries.map(entry => entry.capital),
+        })
+        const outcome = match === 'fuzzy' ? 'fuzzy' : match === 'exact' ? 'exact' : 'incorrect'
+        return {
+          outcome,
+          canonicalAnswer: expected,
+          answerKind: prompt.kind === 'capital' ? 'capital' : 'country',
+          message: outcome === 'incorrect'
+            ? 'Not quite. Try again; the answer stays hidden.'
+            : outcome === 'fuzzy'
+              ? `Correct. The canonical answer is ${expected}.`
+              : `Correct. ${expected}`,
+        } satisfies WorldCountriesTypedAnswerEvaluation
+      }}
+      onAnswer={(_, evaluation) => onSubmit(evaluation)}
+      onTransition={onContinue}
+    >
+      {typed => (
+        <TaskDock variant="form" status={<div className="text-[11px] font-bold uppercase tracking-[0.08em] text-cyan-400">{prompt.kind === 'capital' ? `Capital of ${country.country}` : 'Next country'}</div>}>
+          <div className="space-y-3">
+            {typed.feedback}
+            {typed.input}
+            {typed.fuzzyControls}
+            {typed.isAnswerable && <button type="button" onClick={() => { if (typed.reveal()) onReveal() }} className="rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-300 hover:border-orange-500 hover:text-zinc-100">Reveal / Skip</button>}
+          </div>
+        </TaskDock>
+      )}
+    </WorldCountriesTypedAnswer>
+  )
 }
 
 function modeLabel(mode: ReciteMode): string {

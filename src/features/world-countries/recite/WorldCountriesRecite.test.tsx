@@ -38,6 +38,7 @@ afterEach(() => {
   localStorage.clear()
   mapRender.mockClear()
   vi.restoreAllMocks()
+  vi.useRealTimers()
 })
 
 async function renderRecite(entries = countries.filter(country => country.id === 'NO')) {
@@ -99,6 +100,7 @@ describe('World Countries Recite workflow', () => {
   })
 
   it('keeps a wrong typed answer active, then completes and persists only Recite progress', async () => {
+    vi.useFakeTimers()
     const mount = await renderRecite()
     await act(async () => buttonContaining(mount, 'Europe').click())
     await act(async () => buttonContaining(mount, 'Northern Europe').click())
@@ -112,23 +114,34 @@ describe('World Countries Recite workflow', () => {
     }
     expect(activeMap()?.highlightedCountryIds).toEqual(['NO'])
 
-    const input = mount.querySelector<HTMLInputElement>('input[placeholder="Type the country…"]')
+    const input = mount.querySelector<HTMLInputElement>('input[aria-label="Type the country name"]')
     expect(input).not.toBeNull()
     await act(async () => {
       typeInto(input!, 'Sweden')
       input?.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
     })
     expect(mount.textContent).toContain('Not quite. Try again')
-    expect(mount.querySelector<HTMLInputElement>('input[placeholder="Type the country…"]')).not.toBeNull()
+    expect(input?.disabled).toBe(true)
+    expect(mount.textContent).not.toContain('Answer: Norway')
 
     await act(async () => {
-      typeInto(mount.querySelector<HTMLInputElement>('input[placeholder="Type the country…"]')!, 'Norway')
+      vi.advanceTimersByTime(1800)
+      await Promise.resolve()
+    })
+    const retryInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the country name"]')!
+    expect(retryInput.value).toBe('')
+    expect(retryInput.disabled).toBe(false)
+    await act(async () => {
+      typeInto(retryInput, 'Norway')
       mount.querySelector('form')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
     })
     expect(mount.textContent).toContain('Correct. Norway')
     expect(mount.textContent).not.toContain('Recite complete')
 
-    await act(async () => buttonContaining(mount, 'Continue').click())
+    await act(async () => {
+      vi.advanceTimersByTime(500)
+      await Promise.resolve()
+    })
     expect(mount.textContent).toContain('Recite complete')
     expect(JSON.parse(localStorage.getItem(RECITE_PROGRESS_STORAGE_KEY) ?? '{}')).toMatchObject({
       version: 1,
@@ -137,29 +150,38 @@ describe('World Countries Recite workflow', () => {
     expect(localStorage.getItem('world-countries:capital-to-country:NO')).toBeNull()
   })
 
-  it('runs the Countries + Capitals prompts in order and supports Enter continuation', async () => {
+  it('runs the Countries + Capitals prompts in order with automatic transitions', async () => {
+    vi.useFakeTimers()
     const mount = await renderRecite()
     await act(async () => selectRadio(mount, 1))
     await act(async () => buttonContaining(mount, 'Europe').click())
     await act(async () => buttonContaining(mount, 'Northern Europe').click())
     await act(async () => buttonContaining(mount, 'Start Recite').click())
 
-    const countryInput = mount.querySelector<HTMLInputElement>('input[placeholder="Type the country…"]')
+    const countryInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the country name"]')
     expect(countryInput).not.toBeNull()
     await act(async () => {
       typeInto(countryInput!, 'Norway')
       countryInput?.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
     })
     expect(mount.textContent).toContain('Correct. Norway')
-    await act(async () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })))
+    await act(async () => {
+      vi.advanceTimersByTime(500)
+      await Promise.resolve()
+    })
     expect(mount.textContent).toContain('Capital of Norway')
 
-    const capitalInput = mount.querySelector<HTMLInputElement>('input[placeholder="Type the capital…"]')
+    const capitalInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the capital"]')
     await act(async () => {
       typeInto(capitalInput!, 'Oslo')
       capitalInput?.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
     })
     expect(mount.textContent).toContain('Correct. Oslo')
+    await act(async () => {
+      vi.advanceTimersByTime(500)
+      await Promise.resolve()
+    })
+    expect(mount.textContent).toContain('Recite complete')
   })
 
   it('wires Reveal as you go to hidden Country IDs and reveals the Country after Skip', async () => {

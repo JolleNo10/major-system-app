@@ -24,6 +24,7 @@ afterEach(() => {
   root = null
   document.body.replaceChildren()
   recordAttemptMock.mockClear()
+  vi.useRealTimers()
 })
 
 function candidate(countryId: string) {
@@ -52,7 +53,7 @@ describe('Today review session', () => {
     })
 
     expect(mount.textContent).not.toContain('Norway')
-    const input = mount.querySelector<HTMLInputElement>('#today-review-answer')!
+    const input = mount.querySelector<HTMLInputElement>('input[aria-label="Type the Country name"]')!
     await act(async () => {
       const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
       setValue?.call(input, 'Sweden')
@@ -63,7 +64,7 @@ describe('Today review session', () => {
     })
 
     expect(recordAttemptMock).toHaveBeenCalledWith('NO', 'location-to-country', expect.objectContaining({ ok: false, evidenceKind: 'recall' }))
-    expect(mount.textContent).toContain('Norway')
-    expect(mount.textContent).toContain('Skip for now')
+    expect(mount.textContent).toContain('The correct answer is Norway.')
+    expect(mount.textContent).not.toContain('Skip for now')
   })
 })

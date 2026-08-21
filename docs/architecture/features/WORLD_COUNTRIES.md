@@ -60,7 +60,11 @@ that lets contextual authoring affect subsequent Learning presentation.
   detail or Country-order editor.
 - `ui/` owns feature-local panels, breadcrumbs, hierarchy rows, inline reorder
   presentation, map-surface/dock presentation, task-dock status/action styling,
-  and draft movement without persistence policy.
+  the shared typed-answer lifecycle for primary World Countries recall, and
+  draft movement without persistence policy. The typed-answer seam owns native
+  submit handling, blank prevention, feedback state, focus/reset, and the
+  shared 500 ms / 1800 ms lifecycle; workflow owners provide classification,
+  disclosure copy, evidence, and transitions.
 - `recite/` owns the ordered World Countries Recite setup, its three typed-recall
   modes, transient setup/session state, current-run outcomes, completion flow,
   and mode-specific latest-outcome status. It consumes geography, answer
@@ -164,7 +168,14 @@ Recite mode. Active sessions suppress historical status and use only current-run
 outcomes. `GeographyOverviewMap` and the underlying SVG controller accept
 caller-selected hidden Country IDs; hidden geometry, labels, hover, clicks, and
 accessible descriptions are suppressed generically, without map-layer Recite
-semantics. Active Recite maps are non-interactive geographic scaffolds.
+semantics. Active Recite maps are non-interactive geographic scaffolds. Recite,
+Today, Drill typed recall, standalone Practice, and Learning typed Practice and
+Final recall use the feature-local typed-answer lifecycle. Exact answers
+transition automatically after the shared success dwell; ordinary resolved
+incorrect answers transition after the correction dwell. Recite is the workflow
+exception: an incorrect answer keeps the expected answer hidden, then resets
+the same prompt for another focused attempt, while Reveal / Skip resolves and
+advances automatically after the correction dwell.
 
 ## Contextual authoring rules
 
@@ -212,6 +223,15 @@ semantics. Active Recite maps are non-interactive geographic scaffolds.
   below the map. Learning flows choose placement by task rather than treating
   every dock as a generic card. Overlay docks attach at desktop widths and fall
   back to normal flow below `xl`.
+- Primary typed World Countries recall uses `ui/WorldCountriesTypedAnswer`.
+  Its owner-provided prompt key clears stale value and feedback, and its
+  explicit accessible answer label is separate from visual placeholder copy.
+  Enter, the Check button, and native form submission share one deduplicated
+  path. Exact feedback lasts 500 ms; incorrect and revealed feedback lasts
+  1800 ms. There is no generic post-answer Continue or Next action. Fuzzy
+  remediation is the accepted-answer exception requiring an explicit spelling
+  continuation; Today delayed-retry Skip and Recite Reveal / Skip remain
+  answerable-state actions owned by those workflows.
 - For the same map source, Continent, effective scope membership, and
   intentional zoom behavior, Learning updates map highlights, names, hover,
   and sequence annotations declaratively. Workflow phase alone must not
@@ -319,6 +339,10 @@ flowchart TD
 - Country-set changes do not delete attempts or change atomic target IDs.
 - Temporary Set and Combined scheduler progress is session-only and never
   writes Drill evidence or Learning milestones.
+- Primary typed-answer interaction is workflow-neutral presentation and
+  lifecycle only. Classification, answer disclosure, evidence, queue or
+  scheduler mutation, Recite outcomes, and Learning repair semantics remain
+  owned by Today, Drill, Learning, or Recite.
 - Final recall is mandatory for Learning completion; skipped temporary scopes
   cannot fabricate Ready state or completion evidence.
 - Workflow folders do not depend on sibling workflow internals.
@@ -341,6 +365,7 @@ flowchart TD
 - `src/features/world-countries/drill/drillProficiencyScope.ts`
 - `src/features/world-countries/drill/drillProgressPresentation.ts`
 - `src/features/world-countries/recite/WorldCountriesRecite.tsx`
+- `src/features/world-countries/ui/WorldCountriesTypedAnswer.tsx`
 - `src/features/world-countries/recite/reciteSession.ts`
 - `src/features/world-countries/recite/reciteProgress.ts`
 - `src/features/world-countries/recite/recitePresentation.ts`

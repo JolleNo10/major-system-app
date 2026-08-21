@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AnswerMode } from '@/core/types'
 import { MultipleChoice } from '@/core/ui/MultipleChoice'
 import { RecallFeedback } from '@/core/ui/RecallFeedback'
-import { TypingInput } from '@/core/ui/TypingInput'
 import { shuffle } from '@/core/scoring/quiz'
 import type { Country } from '@/features/world-countries/data/countries'
 import { classifyRecallAnswer } from '@/features/world-countries/learning/recallAnswerMatching'
@@ -10,7 +9,7 @@ import type { WorldCountriesRecallSkill } from '@/features/world-countries/learn
 import type { LearningStates } from '@/features/world-countries/learning/learningProgress'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
-import { FuzzySpellingPracticeControls } from '@/features/world-countries/ui/MiniSpellingPractice'
+import { WorldCountriesTypedAnswer } from '@/features/world-countries/ui/WorldCountriesTypedAnswer'
 import type { WorldCountriesDrillSelection } from './drillSelection'
 import { DrillSessionRails } from './DrillSessionRails'
 import { PracticeSessionRails } from './PracticeSessionRails'
@@ -116,6 +115,7 @@ export function DrillSession({
   const isLocationPractice = interaction === 'location-click' && isLocationQuestion
   const isCapitalLocationPractice = interaction === 'location-click' && isCapitalQuestion
   const isMapClickPractice = isLocationPractice || isCapitalLocationPractice
+  const isTypedRecall = answerMode === 'typing' && !isMapClickPractice
   const scopeCountries = state.countryIds
     .map(countryId => countryById.get(countryId))
     .filter((entry): entry is Country => entry !== undefined)
@@ -188,12 +188,6 @@ export function DrillSession({
       : `That was ${displayedFeedback.answer} — ${country.country} is highlighted.`
     : null
 
-  const continueAfterFuzzyFeedback = () => {
-    if (feedback?.match !== 'fuzzy') return
-    setFeedback(null)
-    onContinue(true)
-  }
-
   const context = (
     <div className="px-1 text-center">
       <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">{activity === 'practice' ? 'Practice · ' : ''}{getDrillSkillLabel(step.skill)}</p>
@@ -217,6 +211,103 @@ export function DrillSession({
       )}
     </div>
   )
+
+  const rails = activity === 'practice' ? (
+    <PracticeSessionRails selection={selection} proficiencySelection={proficiencySelection} state={state} onExit={onExit} entries={entries} learningStates={learningStates} />
+  ) : (
+    <DrillSessionRails
+      selection={selection}
+      proficiencySelection={proficiencySelection}
+      mode={state.mode}
+      state={state}
+      onExit={onExit}
+      entries={entries}
+      mnemonicOpen={mnemonicOpen}
+      onOpenMnemonic={() => {
+        if (!stepKey) return
+        setMnemonicOpenFor(stepKey)
+        setAssistedFor(stepKey)
+      }}
+      onCloseMnemonic={() => setMnemonicOpenFor(null)}
+      mnemonicVersion={mnemonicVersion}
+      onMnemonicChanged={onMnemonicChanged}
+    />
+  )
+
+  if (isTypedRecall) {
+    return (
+      <WorldCountriesTypedAnswer
+        promptKey={`${step.countryId}-${step.skill}`}
+        answerLabel={isCapitalQuestion || isLocationQuestion ? 'Type the country name' : 'Type the capital'}
+        placeholder={isCapitalQuestion || isLocationQuestion ? 'Type the country…' : 'Type the capital…'}
+        correctAnswer={expectedAnswer}
+        evaluate={answer => {
+          const match = classifyRecallAnswer(step.skill, answer, country, {
+            fuzzy: fuzzyMatching,
+            countryCandidates: scopeCountries,
+            capitalCandidates: scopeCountries.map(entry => entry.capital),
+          })
+          const answerKind = step.skill === 'country-to-capital' ? 'capital' : 'country'
+          return {
+            outcome: match === 'exact' ? 'exact' : match === 'fuzzy' ? 'fuzzy' : 'incorrect',
+            canonicalAnswer: expectedAnswer,
+            answerKind,
+            message: match === 'exact'
+              ? 'Correct.'
+              : match === 'fuzzy'
+                ? `Correct. The canonical answer is ${expectedAnswer}.`
+                : `The correct ${answerKind} is ${expectedAnswer}.`,
+          }
+        }}
+        onAnswer={(answer, evaluation, latencyMs) => {
+          onAnswer({
+            countryId: step.countryId,
+            skill: step.skill,
+            answer,
+            correct: evaluation.outcome !== 'incorrect',
+            at: Date.now(),
+            ms: latencyMs,
+            evidenceKind: 'recall',
+            ...(assisted ? { assisted: true } : {}),
+          })
+        }}
+        onTransition={result => onContinue(result.outcome !== 'incorrect')}
+      >
+        {typed => (
+          <>
+            {rails}
+            <MapSurface
+              context={context}
+              map={(
+                <CountryLearningMap
+                  continent={selection.continent}
+                  scopeCountries={scopeCountries}
+                  highlightedCountryId={isCapitalQuestion ? (typed.outcome && typed.outcome !== 'incorrect' ? country.id : null) : country.id}
+                  namedCountryId={isLocationQuestion || isCapitalQuestion ? (typed.outcome && typed.outcome !== 'incorrect' ? country.id : null) : country.id}
+                  showHighlightedNames={isLocationQuestion || isCapitalQuestion ? Boolean(typed.outcome && typed.outcome !== 'incorrect') : true}
+                  ariaLabel={isLocationQuestion && !typed.outcome
+                    ? 'Map showing the selected location for recall without the Country name revealed'
+                    : isCapitalQuestion && !typed.outcome
+                      ? 'Map of the selected geographic scope without the target Country revealed'
+                      : `Map with ${country.country} highlighted for ${activity === 'practice' ? 'Practice' : 'Drill'} recall`}
+                />
+              )}
+              dockPlacement="stacked"
+              dock={(
+                <TaskDock variant="form" status={<div className="text-[11px] font-bold uppercase tracking-[0.08em] text-cyan-400">{activity === 'practice' ? 'Practice' : 'Drill'} · {getDrillSkillLabel(step.skill)}</div>}>
+                  <section className="space-y-3">
+                    {typed.feedback}
+                    {typed.input}
+                    {typed.fuzzyControls}
+                  </section>
+                </TaskDock>
+              )}
+            />
+          </>
+        )}
+      </WorldCountriesTypedAnswer>
+    )
+  }
 
   return (
     <>
@@ -279,20 +370,7 @@ export function DrillSession({
                 onAnswer={submit}
                 answered={feedback?.answer ?? null}
               />
-            ) : (
-              <TypingInput
-                key={`${step.countryId}-${step.skill}`}
-                onAnswer={submit}
-                answeredCorrect={feedback?.correct ?? null}
-                correctAnswer={expectedAnswer}
-                showCorrectAnswer={false}
-                compact
-                placeholder={isCapitalQuestion ? 'Type the country…' : isLocationQuestion ? 'Type the country…' : 'Type the capital…'}
-              />
-            )}
-            {feedback?.match === 'fuzzy' && (
-              <FuzzySpellingPracticeControls answer={feedback.expectedAnswer} answerKind={feedback.answerKind} onContinue={continueAfterFuzzyFeedback} />
-            )}
+            ) : null}
             </section>
           </TaskDock>
         )}
