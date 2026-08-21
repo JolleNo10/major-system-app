@@ -3,7 +3,6 @@ import { useLayoutEffect, useRef, useState } from 'react'
 interface MiniSpellingPracticeProps {
   answer: string
   answerKind: 'country' | 'capital'
-  onClose: () => void
   onComplete: () => void
 }
 
@@ -24,7 +23,7 @@ function normalizeSpelling(value: string): string {
 }
 
 /** A local, non-recording spelling repetition for a fuzzy-accepted answer. */
-export function MiniSpellingPractice({ answer, answerKind, onClose, onComplete }: MiniSpellingPracticeProps) {
+export function MiniSpellingPractice({ answer, answerKind, onComplete }: MiniSpellingPracticeProps) {
   const [value, setValue] = useState('')
   const [correctCount, setCorrectCount] = useState(0)
   const [feedback, setFeedback] = useState<string | null>(null)
@@ -98,16 +97,6 @@ export function MiniSpellingPractice({ answer, answerKind, onClose, onComplete }
           <p aria-live="polite" className="mt-2 min-h-5 text-xs text-amber-100/90">
             {feedback ? `${feedback} ${correctCount} / 2 correct` : `${correctCount} / 2 correct`}
           </p>
-          <div className="mt-2 flex justify-end">
-            <button
-              type="button"
-              onClick={onClose}
-              data-mini-spelling-action="return"
-              className="text-xs font-medium text-zinc-400 underline-offset-4 hover:text-zinc-100 hover:underline"
-            >
-              Back to choices
-            </button>
-          </div>
         </>
       )}
     </div>
@@ -139,7 +128,7 @@ export function FuzzySpellingPracticeControls({ answer, answerKind, practiceOpen
           aria-expanded={practiceOpen}
           onClick={() => {
             setPracticeComplete(false)
-            onPracticeOpenChange(true)
+            onPracticeOpenChange(!practiceOpen)
           }}
           className="rounded-[11px] border border-amber-300/30 bg-amber-400/15 px-3 py-2.5 text-sm font-semibold text-amber-50 transition-colors hover:bg-amber-400/20 focus:outline-none focus:ring-2 focus:ring-amber-300/50 focus:ring-offset-2 focus:ring-offset-transparent"
         >
@@ -159,10 +148,6 @@ export function FuzzySpellingPracticeControls({ answer, answerKind, practiceOpen
         <MiniSpellingPractice
           answer={answer}
           answerKind={answerKind}
-          onClose={() => {
-            onPracticeOpenChange(false)
-            setPracticeComplete(false)
-          }}
           onComplete={() => setPracticeComplete(true)}
         />
       )}

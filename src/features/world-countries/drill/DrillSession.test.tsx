@@ -403,11 +403,15 @@ describe('DrillSession map presentation', () => {
 
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-fuzzy-spelling-action="practice"]')?.click())
     const miniPractice = mount.querySelector<HTMLElement>('[data-mini-spelling-practice]')!
-    await act(async () => miniPractice.querySelector<HTMLButtonElement>('[data-mini-spelling-action="return"]')?.click())
 
-    expect(mount.querySelector('[data-mini-spelling-practice]')).toBeNull()
+    expect(miniPractice.querySelector('[data-mini-spelling-action="return"]')).toBeNull()
     expect(onContinue).not.toHaveBeenCalled()
     expect(input.disabled).toBe(true)
+
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-fuzzy-spelling-action="practice"]')?.click())
+
+    expect(mount.querySelector('[data-mini-spelling-practice]')).toBeNull()
+    expect(document.activeElement).toBe(mount.querySelector('[data-fuzzy-spelling-action="practice"]'))
 
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-fuzzy-spelling-action="continue"]')?.click())
 

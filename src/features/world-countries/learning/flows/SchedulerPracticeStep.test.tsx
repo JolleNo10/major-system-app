@@ -73,10 +73,11 @@ describe('SchedulerPracticeStep', () => {
     act(() => mount.querySelector<HTMLButtonElement>('[data-fuzzy-spelling-action="practice"]')?.click())
     const miniPractice = mount.querySelector<HTMLElement>('[data-mini-spelling-practice]')!
     expect(miniPractice).not.toBeNull()
-    act(() => miniPractice.querySelector<HTMLButtonElement>('[data-mini-spelling-action="return"]')?.click())
 
-    expect(mount.querySelector('[data-mini-spelling-practice]')).toBeNull()
+    expect(miniPractice.querySelector('[data-mini-spelling-action="return"]')).toBeNull()
     expect(onSubmit).not.toHaveBeenCalled()
+    act(() => mount.querySelector<HTMLButtonElement>('[data-fuzzy-spelling-action="practice"]')?.click())
+    expect(mount.querySelector('[data-mini-spelling-practice]')).toBeNull()
     act(() => mount.querySelector<HTMLButtonElement>('[data-fuzzy-spelling-action="continue"]')?.click())
     expect(onSubmit).toHaveBeenCalledWith(true, expect.any(Number))
   })
