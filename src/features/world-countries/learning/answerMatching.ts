@@ -30,19 +30,28 @@ function basicMatch(value: string, answer: string): boolean {
 }
 
 function editDistance(left: string, right: string): number {
-  const previous = Array.from({ length: right.length + 1 }, (_, index) => index)
+  const distances = Array.from({ length: left.length + 1 }, () => Array.from({ length: right.length + 1 }, () => 0))
+  for (let leftIndex = 0; leftIndex <= left.length; leftIndex += 1) distances[leftIndex][0] = leftIndex
+  for (let rightIndex = 0; rightIndex <= right.length; rightIndex += 1) distances[0][rightIndex] = rightIndex
+
   for (let leftIndex = 1; leftIndex <= left.length; leftIndex += 1) {
-    let diagonal = previous[0]
-    previous[0] = leftIndex
     for (let rightIndex = 1; rightIndex <= right.length; rightIndex += 1) {
-      const above = previous[rightIndex]
-      previous[rightIndex] = left[leftIndex - 1] === right[rightIndex - 1]
-        ? diagonal
-        : Math.min(diagonal + 1, previous[rightIndex] + 1, previous[rightIndex - 1] + 1)
-      diagonal = above
+      const substitutionCost = left[leftIndex - 1] === right[rightIndex - 1] ? 0 : 1
+      const transpositionDistance = leftIndex > 1 && rightIndex > 1
+        && left[leftIndex - 1] === right[rightIndex - 2]
+        && left[leftIndex - 2] === right[rightIndex - 1]
+        ? distances[leftIndex - 2][rightIndex - 2] + 1
+        : Number.POSITIVE_INFINITY
+
+      distances[leftIndex][rightIndex] = Math.min(
+        distances[leftIndex - 1][rightIndex] + 1,
+        distances[leftIndex][rightIndex - 1] + 1,
+        distances[leftIndex - 1][rightIndex - 1] + substitutionCost,
+        transpositionDistance,
+      )
     }
   }
-  return previous[right.length]
+  return distances[left.length][right.length]
 }
 
 function fuzzyDistanceLimit(value: string): number {

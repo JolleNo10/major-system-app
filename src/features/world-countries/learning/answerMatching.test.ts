@@ -19,7 +19,15 @@ describe('World Countries answer matching', () => {
   it('only applies controlled fuzzy matching when enabled', () => {
     expect(matchesPlaceName('Noreway', 'Norway')).toBe(false)
     expect(matchesPlaceName('Noreway', 'Norway', { fuzzy: true, candidates: ['Norway', 'Sweden'] })).toBe(true)
-    expect(matchesPlaceName('Austria', 'Australia', { fuzzy: true, candidates: ['Austria', 'Australia'] })).toBe(false)
+    expect(classifyPlaceName('Riyahd', 'Riyadh', { fuzzy: true, candidates: ['Riyadh', 'Jeddah'] })).toBe('fuzzy')
+  })
+
+  it('rejects a short answer with two genuine errors', () => {
+    expect(classifyPlaceName('Riyxah', 'Riyadh', { fuzzy: true, candidates: ['Riyadh'] })).toBe('none')
+  })
+
+  it('rejects ambiguous fuzzy matches', () => {
+    expect(classifyPlaceName('Austria', 'Australia', { fuzzy: true, candidates: ['Austria', 'Australia'] })).toBe('none')
   })
 
   it('classifies exact and fuzzy matches separately', () => {
