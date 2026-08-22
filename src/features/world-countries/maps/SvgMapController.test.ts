@@ -6,8 +6,8 @@ import { SvgMapController } from '@/features/world-countries/maps/SvgMapControll
 
 const TEST_MAP = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
-  <g><path id="Alpha" style="fill:#737373;stroke:#252525"/><text id="Alpha_label"><tspan> ALPHA </tspan></text></g>
-  <g><path id="Beta" style="fill:#737373;stroke:#252525"/><text id="Beta_label"><tspan>BETA LAND</tspan></text></g>
+  <g><path id="Alpha" d="M 10 10" style="fill:#737373;stroke:#252525"/><text id="Alpha_label"><tspan> ALPHA </tspan></text></g>
+  <g><path id="Beta" d="M 40 20" style="fill:#737373;stroke:#252525"/><text id="Beta_label"><tspan>BETA LAND</tspan></text></g>
   <g><path id="Gamma" style="fill:#737373;stroke:#252525"/><text id="Short_label"><tspan>GAMMA</tspan></text></g>
   <g><path id="Delta" style="fill:#737373;stroke:#252525"/><text id="Delta_label"><tspan>DELTA</tspan></text></g>
   <path id="Unlabelled" style="fill:#737373"/>
@@ -277,56 +277,72 @@ describe('SvgMapController persistent state', () => {
   })
 })
 
-describe('SvgMapController hover behavior', () => {
-  it('keeps tiny marker and forgiving-target sizes stable in rendered screen space', async () => {
+function taskAnchor(sourceSvgId: string, sourceFingerprint: string, point?: { x: number; y: number }) {
+  return {
+    sourceSvgId,
+    kind: point ? 'multi-dot-representative' as const : 'single-dot' as const,
+    sourceFingerprint,
+    ...(point ? { point } : {}),
+  }
+}
+
+const alphaAnchor = taskAnchor('Alpha', 'M 10 10')
+const betaAnchor = taskAnchor('Beta', 'M 40 20')
+
+function enableTaskAssistance(
+  controller: SvgMapController,
+  answerSelectionIds: readonly string[] = ['Alpha'],
+  learningAnchors = [alphaAnchor],
+  taskTargetId: string | null = null,
+): void {
+  controller.setCountryClickHandler(() => undefined)
+  controller.setTaskAssistance({ answerSelectionIds, taskTargetId, learningAnchors })
+}
+
+describe('SvgMapController task assistance', () => {
+  it('does not augment ordinary selectable or highlighted maps', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    setBBox(mount, 'Alpha', { x: 10, y: 10, width: 2, height: 2 })
+    controller.setSelectableCountries(['Alpha'])
+    controller.setHighlighted(['Alpha'])
+
+    expect(mount.querySelector('[data-svg-map-task-target]')).toBeNull()
+    expect(mount.querySelector('[data-svg-map-tiny-marker]')).toBeNull()
+  })
+
+  it('uses explicit task candidates with invisible rest targets and screen-space sizing', async () => {
     const first = makeController()
     await first.controller.load({ markup: TEST_MAP })
     setBBox(first.mount, 'Alpha', { x: 10, y: 10, width: 2, height: 2 })
     setSvgRect(first.mount, { width: 100, height: 50 })
-    first.controller.updateSettings({})
+    enableTaskAssistance(first.controller)
 
     const scaledMarkup = TEST_MAP.replace('viewBox="0 0 100 50"', 'viewBox="0 0 1000 500"')
     const second = makeController()
     await second.controller.load({ markup: scaledMarkup })
     setBBox(second.mount, 'Alpha', { x: 100, y: 100, width: 2, height: 2 })
     setSvgRect(second.mount, { width: 100, height: 50 })
-    second.controller.updateSettings({})
+    enableTaskAssistance(second.controller)
 
-    const firstMarker = first.mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-marker="Alpha"]')
-    const firstHit = first.mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-hit-target="Alpha"]')
-    const secondMarker = second.mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-marker="Alpha"]')
-    const secondHit = second.mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-hit-target="Alpha"]')
-    if (!firstMarker || !firstHit || !secondMarker || !secondHit) throw new Error('Missing tiny Country geometry')
+    const firstMarker = first.mount.querySelector<SVGCircleElement>('[data-svg-map-task-marker="Alpha"]')
+    const firstHit = first.mount.querySelector<SVGCircleElement>('[data-svg-map-task-hit-target="Alpha"]')
+    const secondMarker = second.mount.querySelector<SVGCircleElement>('[data-svg-map-task-marker="Alpha"]')
+    const secondHit = second.mount.querySelector<SVGCircleElement>('[data-svg-map-task-hit-target="Alpha"]')
+    if (!firstMarker || !firstHit || !secondMarker || !secondHit) throw new Error('Missing task assistance geometry')
 
-    expect(Number(firstMarker.getAttribute('r'))).toBeCloseTo(3.5)
+    expect(first.mount.querySelector('[data-svg-map-task-target="Alpha"]')?.getAttribute('visibility')).toBe('hidden')
+    expect(Number(firstMarker.getAttribute('r'))).toBeCloseTo(5.5)
     expect(Number(firstHit.getAttribute('r'))).toBeCloseTo(12)
     expect(Number(secondMarker.getAttribute('r')) * 0.1).toBeCloseTo(Number(firstMarker.getAttribute('r')))
     expect(Number(secondHit.getAttribute('r')) * 0.1).toBeCloseTo(Number(firstHit.getAttribute('r')))
   })
 
-  it('keeps source-tiny targets through task zoom and restores them with the source view', async () => {
-    const { mount, controller } = makeController()
-    await controller.load({ markup: TEST_MAP })
-    setBBox(mount, 'Alpha', { x: 10, y: 10, width: 2, height: 2 })
-    setSvgRect(mount, { width: 100, height: 50 })
-    controller.updateSettings({})
-    expect(mount.querySelector('[data-svg-map-tiny-marker="Alpha"]')).not.toBeNull()
-
-    controller.setZoomArea(['Alpha'], 0)
-    expect(mount.querySelector('[data-svg-map-tiny-marker="Alpha"]')).not.toBeNull()
-
-    controller.resetZoom()
-    expect(mount.querySelector('[data-svg-map-tiny-marker="Alpha"]')).not.toBeNull()
-  })
-
-  it('refreshes tiny geometry after resize without remounting the SVG', async () => {
+  it('keeps task targets through zoom and resize without remounting the SVG', async () => {
     const originalResizeObserver = globalThis.ResizeObserver
     const resizeState: { callback: ResizeObserverCallback | null } = { callback: null }
     class TestResizeObserver {
-      constructor(callback: ResizeObserverCallback) {
-        resizeState.callback = callback
-      }
-
+      constructor(callback: ResizeObserverCallback) { resizeState.callback = callback }
       observe() {}
       disconnect() {}
     }
@@ -337,74 +353,65 @@ describe('SvgMapController hover behavior', () => {
       await controller.load({ markup: TEST_MAP })
       setBBox(mount, 'Alpha', { x: 10, y: 10, width: 2, height: 2 })
       setSvgRect(mount, { width: 100, height: 50 })
-      controller.updateSettings({})
+      enableTaskAssistance(controller)
       const svg = mount.querySelector('svg')
-      const marker = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-marker="Alpha"]')
-      const hit = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-hit-target="Alpha"]')
+      const marker = mount.querySelector<SVGCircleElement>('[data-svg-map-task-marker="Alpha"]')
+      const hit = mount.querySelector<SVGCircleElement>('[data-svg-map-task-hit-target="Alpha"]')
       const triggerResize = resizeState.callback
       if (!svg || !marker || !hit || !triggerResize) throw new Error('Missing resize test geometry')
-      expect(Number(marker.getAttribute('r'))).toBeCloseTo(3.5)
 
+      controller.setZoomArea(['Alpha'], 0)
+      controller.resetZoom()
       setSvgRect(mount, { width: 200, height: 100 })
       triggerResize([], {} as ResizeObserver)
 
       expect(mount.querySelector('svg')).toBe(svg)
-      expect(Number(marker.getAttribute('r'))).toBeCloseTo(1.75)
+      expect(Number(marker.getAttribute('r'))).toBeCloseTo(2.75)
       expect(Number(hit.getAttribute('r'))).toBeCloseTo(6)
     } finally {
       globalThis.ResizeObserver = originalResizeObserver
     }
   })
 
-  it('keeps highlighted tiny markers larger through rest, hover, and highlight changes', async () => {
+  it('keeps persistent target emphasis separate from generic highlight and task hover', async () => {
     const { mount, controller } = makeController()
     await controller.load({ markup: TEST_MAP })
     setBBox(mount, 'Alpha', { x: 10, y: 10, width: 2, height: 2 })
     setBBox(mount, 'Beta', { x: 40, y: 20, width: 2, height: 2 })
     setSvgRect(mount, { width: 100, height: 50 })
-    controller.updateSettings({ hoverHighlight: true })
+    enableTaskAssistance(controller, ['Alpha', 'Beta'], [alphaAnchor, betaAnchor], 'Alpha')
 
-    const alphaMarker = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-marker="Alpha"]')
-    const alphaHit = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-hit-target="Alpha"]')
-    const betaMarker = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-marker="Beta"]')
-    if (!alphaMarker || !alphaHit || !betaMarker) throw new Error('Missing tiny Country highlight geometry')
-
-    expect(Number(alphaMarker.getAttribute('r'))).toBeCloseTo(3.5)
-    controller.setHighlighted(['Alpha'])
+    const alphaMarker = mount.querySelector<SVGCircleElement>('[data-svg-map-task-marker="Alpha"]')
+    const alphaHit = mount.querySelector<SVGCircleElement>('[data-svg-map-task-hit-target="Alpha"]')
+    const betaMarker = mount.querySelector<SVGCircleElement>('[data-svg-map-task-marker="Beta"]')
+    if (!alphaMarker || !alphaHit || !betaMarker) throw new Error('Missing task target geometry')
     expect(Number(alphaMarker.getAttribute('r'))).toBeCloseTo(5.5)
+    expect(mount.querySelector('[data-svg-map-task-target="Beta"]')?.getAttribute('visibility')).toBe('hidden')
 
     alphaHit.dispatchEvent(new Event('pointerenter'))
     expect(Number(alphaMarker.getAttribute('r'))).toBeCloseTo(6.875)
     alphaHit.dispatchEvent(new Event('pointerleave'))
     expect(Number(alphaMarker.getAttribute('r'))).toBeCloseTo(5.5)
 
-    controller.setHighlighted(['Beta'])
-    expect(Number(alphaMarker.getAttribute('r'))).toBeCloseTo(3.5)
+    controller.setTaskAssistance({ answerSelectionIds: ['Alpha', 'Beta'], taskTargetId: 'Beta', learningAnchors: [alphaAnchor, betaAnchor] })
+    expect(mount.querySelector('[data-svg-map-task-target="Alpha"]')?.getAttribute('visibility')).toBe('hidden')
     expect(Number(betaMarker.getAttribute('r'))).toBeCloseTo(5.5)
-    controller.clearHighlights()
-    expect(Number(betaMarker.getAttribute('r'))).toBeCloseTo(3.5)
   })
 
-  it('preserves highlighted size while reduced motion suppresses hover scaling', async () => {
+  it('grows on task hover even when generic hover styling is disabled and honors reduced motion', async () => {
     const matchMediaDescriptor = Object.getOwnPropertyDescriptor(window, 'matchMedia')
-    Object.defineProperty(window, 'matchMedia', {
-      configurable: true,
-      value: () => ({ matches: true }),
-    })
-
+    Object.defineProperty(window, 'matchMedia', { configurable: true, value: () => ({ matches: true }) })
     try {
       const { mount, controller } = makeController()
       await controller.load({ markup: TEST_MAP })
       setBBox(mount, 'Alpha', { x: 10, y: 10, width: 2, height: 2 })
-      setSvgRect(mount, { width: 100, height: 50 })
-      controller.updateSettings({ hoverHighlight: true })
-      controller.setHighlighted(['Alpha'])
-      const marker = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-marker="Alpha"]')
-      const hit = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-hit-target="Alpha"]')
-      if (!marker || !hit) throw new Error('Missing reduced-motion tiny Country geometry')
+      enableTaskAssistance(controller)
+      const marker = mount.querySelector<SVGCircleElement>('[data-svg-map-task-marker="Alpha"]')
+      const hit = mount.querySelector<SVGCircleElement>('[data-svg-map-task-hit-target="Alpha"]')
+      if (!marker || !hit) throw new Error('Missing reduced-motion task geometry')
 
       hit.dispatchEvent(new Event('pointerenter'))
-      expect(Number(marker.getAttribute('r'))).toBeCloseTo(5.5)
+      expect(Number(marker.getAttribute('r'))).toBeCloseTo(6.875)
       expect(marker.style.getPropertyValue('transition')).toBe('none')
     } finally {
       if (matchMediaDescriptor) Object.defineProperty(window, 'matchMedia', matchMediaDescriptor)
@@ -412,129 +419,67 @@ describe('SvgMapController hover behavior', () => {
     }
   })
 
-  it('derives tiny markers from geometry and routes their hover, click, and zoom through the source Country', async () => {
+  it('routes task hover and forgiving clicks once without changing generic hover state', async () => {
     const { mount, controller } = makeController()
     await controller.load({ markup: TEST_MAP })
     setBBox(mount, 'Alpha', { x: 10, y: 10, width: 2, height: 2 })
-    setBBox(mount, 'Beta', { x: 40, y: 20, width: 20, height: 15 })
-    controller.updateSettings({ hoverHighlight: true, hoverShowName: true })
-
-    const marker = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-marker="Alpha"]')
-    const hit = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-hit-target="Alpha"]')
-    expect(marker).not.toBeNull()
-    expect(hit).not.toBeNull()
-    expect(marker?.getAttribute('fill')).toBe('#737373')
-    expect(Number(hit?.getAttribute('r'))).toBeGreaterThan(Number(marker?.getAttribute('r')))
-
-    const clicked: string[] = []
-    const hovered: Array<string | null> = []
-    controller.setCountryClickHandler(id => clicked.push(id))
-    controller.setCountryHoverHandler(id => hovered.push(id))
-    hit?.dispatchEvent(new Event('pointerenter'))
-    expect(hovered).toEqual(['Alpha'])
-    expect(label(mount, 'Alpha_label').style.getPropertyValue('display')).toBe('inline')
-    hit?.dispatchEvent(new MouseEvent('click'))
-    expect(clicked).toEqual(['Alpha'])
-    hit?.dispatchEvent(new Event('pointerleave'))
-    expect(hovered).toEqual(['Alpha', null])
-
-    controller.setCountryColors({ Alpha: '#ef4444' })
-    expect(marker?.getAttribute('fill')).toBe('#ef4444')
-    expect(controller.setZoomArea(['Alpha'], 5)).toEqual({ activeIds: ['Alpha'], unknownIds: [] })
-    expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('5 5 12 12')
-  })
-
-  it('resolves overlapping forgiving targets by nearest pointer position', async () => {
-    const { mount, controller } = makeController()
-    await controller.load({ markup: TEST_MAP })
-    setBBox(mount, 'Alpha', { x: 10, y: 10, width: 2, height: 2 })
-    setBBox(mount, 'Beta', { x: 14, y: 10, width: 2, height: 2 })
-    controller.updateSettings({ hoverHighlight: true })
-    const svg = mount.querySelector('svg')
-    if (!svg) throw new Error('Missing map SVG')
-    Object.defineProperty(svg, 'getBoundingClientRect', {
-      configurable: true,
-      value: () => ({ left: 0, top: 0, width: 100, height: 50, right: 100, bottom: 50 }),
-    })
-    const alphaHit = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-hit-target="Alpha"]')
-    if (!alphaHit) throw new Error('Missing Alpha tiny Country hit target')
+    controller.setCountryHoverHandler(() => undefined)
     const clicked: string[] = []
     controller.setCountryClickHandler(id => clicked.push(id))
+    controller.setTaskAssistance({ answerSelectionIds: ['Alpha'], learningAnchors: [alphaAnchor] })
+    const marker = mount.querySelector<SVGCircleElement>('[data-svg-map-task-marker="Alpha"]')
+    const hit = mount.querySelector<SVGCircleElement>('[data-svg-map-task-hit-target="Alpha"]')
+    if (!marker || !hit) throw new Error('Missing task target geometry')
 
-    alphaHit.dispatchEvent(new MouseEvent('click', { clientX: 14, clientY: 10 }))
-    expect(clicked).toEqual(['Beta'])
+    hit.dispatchEvent(new Event('pointerenter'))
+    expect(Number(marker.getAttribute('r'))).toBeCloseTo(6.875)
+    hit.dispatchEvent(new MouseEvent('click'))
+    hit.dispatchEvent(new MouseEvent('click'))
+    expect(clicked).toEqual(['Alpha', 'Alpha'])
+    hit.dispatchEvent(new Event('pointerleave'))
+    expect(mount.querySelector('[data-svg-map-task-target="Alpha"]')?.getAttribute('visibility')).toBe('hidden')
   })
 
-  it('does not let a tiny halo steal a pointer inside a neighboring source Country', async () => {
+  it('resolves direct source geometry before overlapping task halos', async () => {
     const { mount, controller } = makeController()
     await controller.load({ markup: TEST_MAP })
     setBBox(mount, 'Alpha', { x: 10, y: 10, width: 2, height: 2 })
     setBBox(mount, 'Beta', { x: 14, y: 10, width: 20, height: 15 })
-    controller.updateSettings({ hoverHighlight: true })
-    const svg = mount.querySelector('svg')
-    if (!svg) throw new Error('Missing map SVG')
-    Object.defineProperty(svg, 'getBoundingClientRect', {
+    Object.defineProperty(mount.querySelector('svg'), 'getBoundingClientRect', {
       configurable: true,
       value: () => ({ left: 0, top: 0, width: 100, height: 50, right: 100, bottom: 50 }),
     })
-    const alphaHit = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-hit-target="Alpha"]')
-    if (!alphaHit) throw new Error('Missing Alpha tiny Country hit target')
     const clicked: string[] = []
     controller.setCountryClickHandler(id => clicked.push(id))
+    controller.setTaskAssistance({ answerSelectionIds: ['Alpha', 'Beta'], learningAnchors: [alphaAnchor] })
+    const alphaHit = mount.querySelector<SVGCircleElement>('[data-svg-map-task-hit-target="Alpha"]')
+    if (!alphaHit) throw new Error('Missing Alpha task hit target')
 
     alphaHit.dispatchEvent(new MouseEvent('click', { clientX: 20, clientY: 18 }))
     expect(clicked).toEqual(['Beta'])
   })
 
-  it('maps forgiving-target coordinates through letterboxed SVG viewports', async () => {
+  it('uses the nearest eligible anchor, respects hidden countries, and removes task state', async () => {
     const { mount, controller } = makeController()
     await controller.load({ markup: TEST_MAP })
     setBBox(mount, 'Alpha', { x: 10, y: 10, width: 2, height: 2 })
-    controller.updateSettings({ hoverHighlight: true })
-    const svg = mount.querySelector('svg')
-    if (!svg) throw new Error('Missing map SVG')
-    Object.defineProperty(svg, 'getBoundingClientRect', {
+    setBBox(mount, 'Beta', { x: 14, y: 10, width: 2, height: 2 })
+    Object.defineProperty(mount.querySelector('svg'), 'getBoundingClientRect', {
       configurable: true,
-      value: () => ({ left: 0, top: 0, width: 100, height: 200, right: 100, bottom: 200 }),
+      value: () => ({ left: 0, top: 0, width: 100, height: 50, right: 100, bottom: 50 }),
     })
-    const alphaHit = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-hit-target="Alpha"]')
-    if (!alphaHit) throw new Error('Missing Alpha tiny Country hit target')
     const clicked: string[] = []
     controller.setCountryClickHandler(id => clicked.push(id))
+    controller.setTaskAssistance({ answerSelectionIds: ['Alpha', 'Beta'], learningAnchors: [alphaAnchor, betaAnchor] })
+    const alphaHit = mount.querySelector<SVGCircleElement>('[data-svg-map-task-hit-target="Alpha"]')
+    if (!alphaHit) throw new Error('Missing Alpha task hit target')
+    alphaHit.dispatchEvent(new MouseEvent('click', { clientX: 14, clientY: 10 }))
+    expect(clicked).toEqual(['Beta'])
 
-    alphaHit.dispatchEvent(new MouseEvent('click', { clientX: 11, clientY: 96 }))
-    expect(clicked).toEqual(['Alpha'])
-  })
-
-  it('does not leave tiny marker interaction behind for hidden or non-interactive Countries', async () => {
-    const { mount, controller } = makeController()
-    await controller.load({ markup: TEST_MAP })
-    setBBox(mount, 'Alpha', { x: 10, y: 10, width: 2, height: 2 })
-    controller.updateSettings({ hoverHighlight: true, hoverShowName: true })
-    const hit = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-hit-target="Alpha"]')
-    if (!hit) throw new Error('Missing tiny Country hit target')
-
-    const clicked: string[] = []
-    const hovered: Array<string | null> = []
-    controller.setCountryClickHandler(id => clicked.push(id))
-    controller.setCountryHoverHandler(id => hovered.push(id))
     controller.setHiddenCountries(['Alpha'])
-    expect(mount.querySelector('[data-svg-map-tiny-country="Alpha"]')?.getAttribute('visibility')).toBe('hidden')
-    expect(hit.style.getPropertyValue('pointer-events')).toBe('none')
-    hit.dispatchEvent(new Event('pointerenter'))
-    hit.dispatchEvent(new MouseEvent('click'))
-    expect(clicked).toEqual([])
-    expect(hovered).toEqual([null])
-
-    controller.clearHiddenCountries()
-    controller.setHoverableCountries([])
-    controller.setSelectableCountries([])
-    expect(mount.querySelector('[data-svg-map-tiny-country="Alpha"]')?.getAttribute('visibility')).toBe('visible')
-    expect(hit.style.getPropertyValue('pointer-events')).toBe('none')
-    hit.dispatchEvent(new Event('pointerenter'))
-    hit.dispatchEvent(new MouseEvent('click'))
-    expect(clicked).toEqual([])
-    expect(hovered).toEqual([null, null])
+    expect(mount.querySelector('[data-svg-map-task-target="Alpha"]')).toBeNull()
+    controller.setTaskAssistance(null)
+    expect(mount.querySelector('[data-svg-map-task-target]')).toBeNull()
   })
 
   it('hides Countries and suppresses their hover and click interaction', async () => {

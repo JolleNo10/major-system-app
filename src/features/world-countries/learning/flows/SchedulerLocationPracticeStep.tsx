@@ -36,6 +36,8 @@ export function SchedulerLocationPracticeStep({ continent, entries, session, lab
     setFeedback({ correct, expectedId: expected.id, selectedId, latencyMs: Date.now() - startedAt.current })
   }, [expected, feedback])
   useLearningMapPresentation({
+    answerSelectionCountryIds: entries.map(entry => entry.id),
+    taskTargetCountryId: feedback ? feedback.expectedId : null,
     highlightedCountryId: feedback ? feedback.expectedId : null,
     namedCountryId: feedback ? feedback.expectedId : null,
     showHighlightedNames: Boolean(feedback),
@@ -57,7 +59,7 @@ export function SchedulerLocationPracticeStep({ continent, entries, session, lab
     <div className="space-y-4 animate-fade-in">
       <LearningHeader label={`${label} · Step 2 - Locate`} title={`Find ${expected.country}`} onExit={onExit} />
       <div className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm"><span className="text-zinc-500">Spaced location practice</span><span className="font-semibold text-cyan-300">Select the map location</span></div>
-      <div className="relative"><CountryLearningMap continent={continent} scopeCountries={entries} highlightedCountryId={feedback ? feedback.expectedId : null} onCountryClick={submit} ariaLabel="Unlabeled map for location practice" />{feedback && <RecallFeedback correct={feedback.correct} message={feedback.correct ? 'Correct location.' : `That was ${entries.find(entry => entry.id === feedback.selectedId)?.country ?? 'not the target'} - ${expected.country} is highlighted.`} />}</div>
+      <div className="relative"><CountryLearningMap continent={continent} scopeCountries={entries} answerSelectionCountryIds={entries.map(entry => entry.id)} taskTargetCountryId={feedback ? feedback.expectedId : null} highlightedCountryId={feedback ? feedback.expectedId : null} onCountryClick={submit} ariaLabel="Unlabeled map for location practice" />{feedback && <RecallFeedback correct={feedback.correct} message={feedback.correct ? 'Correct location.' : `That was ${entries.find(entry => entry.id === feedback.selectedId)?.country ?? 'not the target'} - ${expected.country} is highlighted.`} />}</div>
       {dock}
     </div>
   )

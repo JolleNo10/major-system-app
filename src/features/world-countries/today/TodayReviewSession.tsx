@@ -142,6 +142,7 @@ export function TodayReviewSession({
               <CountryLearningMap
                 continent={country.continent}
                 scopeCountries={activeCountries}
+                taskTargetCountryId={isLocationQuestion ? country.id : null}
                 highlightedCountryId={country.id}
                 namedCountryId={typed.outcome && typed.outcome !== 'incorrect' || !isLocationQuestion ? country.id : null}
                 showHighlightedNames={Boolean(typed.outcome && typed.outcome !== 'incorrect' || !isLocationQuestion)}

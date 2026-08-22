@@ -4,6 +4,7 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import europeSvg from '@/features/world-countries/maps/assets/MapChart_Map_Europe.svg?raw'
+import oceaniaSvg from '@/features/world-countries/maps/assets/MapChart_Map_Oceania.svg?raw'
 import { PageLayoutProvider } from '@/app/layout/PageLayoutContext'
 import { countries, type Country } from '@/features/world-countries/data/countries'
 import { createSchedulerLearningSession } from '@/features/world-countries/learning/schedulerLearningSession'
@@ -12,10 +13,12 @@ import { LearningMapSurface } from '@/features/world-countries/learning/flows/Le
 import { createDrillSelection } from '@/features/world-countries/drill/drillSelection'
 import { createDrillSession } from '@/features/world-countries/drill/drillSessionState'
 import { DrillSession } from '@/features/world-countries/drill/DrillSession'
+import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 const andorra = countries.find(country => country.id === 'AD') as Country
+const micronesia = countries.find(country => country.id === 'FM') as Country
 const schedulerSettings = { masteryLatencyFactor: 1.4, sessionUnmasteredShare: 0.5 }
 let root: Root | null = null
 let pathBBoxDescriptor: PropertyDescriptor | undefined
@@ -124,7 +127,7 @@ describe('real bundled-map tiny Country selection', () => {
     const marker = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-marker="Andorra"]')
     const hit = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-hit-target="Andorra"]')
     if (!marker || !hit) throw new Error('Missing bundled Andorra tiny target')
-    const restRadius = Number(marker.getAttribute('r'))
+    expect(mount.querySelector('[data-svg-map-task-target="Andorra"]')?.getAttribute('visibility')).toBe('hidden')
     expect(Number(marker.getAttribute('r'))).toBeGreaterThan(0)
     expect(Number(hit.getAttribute('r'))).toBeGreaterThan(Number(marker.getAttribute('r')))
     expect(mount.textContent).toContain('Find Andorra')
@@ -138,7 +141,8 @@ describe('real bundled-map tiny Country selection', () => {
       answer: 'Andorra',
       evidenceKind: 'recognition',
     }))
-    expect(Number(marker.getAttribute('r'))).toBeGreaterThan(restRadius)
+    expect(mount.querySelector('[data-svg-map-task-target="Andorra"]')?.getAttribute('visibility')).toBe('visible')
+    expect(Number(marker.getAttribute('r'))).toBeGreaterThan(0)
   })
 
   it('routes Locate Capitals through the same real tiny Country target', async () => {
@@ -192,15 +196,52 @@ describe('real bundled-map tiny Country selection', () => {
     const marker = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-marker="Andorra"]')
     const hit = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-hit-target="Andorra"]')
     if (!marker || !hit) throw new Error('Missing bundled Andorra tiny marker')
+    expect(mount.querySelector('[data-svg-map-task-target="Andorra"]')?.getAttribute('visibility')).toBe('hidden')
     const restRadius = Number(marker.getAttribute('r'))
     expect(hit.style.getPropertyValue('pointer-events')).toBe('all')
     await act(async () => clickOutsideSourceWithinForgivingTarget())
     expect(onSelect).toHaveBeenCalledTimes(0)
-    expect(Number(marker.getAttribute('r'))).toBeGreaterThan(restRadius)
+    expect(mount.querySelector('[data-svg-map-task-target="Andorra"]')?.getAttribute('visibility')).toBe('visible')
+    expect(Number(marker.getAttribute('r'))).toBeGreaterThan(0)
 
     await act(async () => vi.advanceTimersByTime(500))
     expect(onSelect).toHaveBeenCalledTimes(1)
     expect(onSelect).toHaveBeenCalledWith(true, expect.any(Number))
     expect(Number(marker.getAttribute('r'))).toBeCloseTo(restRadius)
+  })
+
+  it('uses one configured representative anchor for real multi-dot Micronesia', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => oceaniaSvg })))
+    const onCountryClick = vi.fn()
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(CountryLearningMap, {
+        continent: 'Oceania',
+        scopeCountries: [micronesia],
+        answerSelectionCountryIds: [micronesia.id],
+        taskTargetCountryId: micronesia.id,
+        onCountryClick,
+        ariaLabel: 'Micronesia task map',
+      }))
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const target = mount.querySelector('[data-svg-map-task-target="Micronesia"]')
+    const marker = mount.querySelector<SVGCircleElement>('[data-svg-map-task-marker="Micronesia"]')
+    expect(mount.querySelectorAll('[data-svg-map-task-target]')).toHaveLength(1)
+    expect(target?.getAttribute('visibility')).toBe('visible')
+    expect(marker?.getAttribute('cx')).toBe('825.864')
+    expect(marker?.getAttribute('cy')).toBe('268.92')
+
+    await act(async () => {
+      mount.querySelector('path#Micronesia')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    expect(onCountryClick).toHaveBeenCalledTimes(1)
+    expect(onCountryClick).toHaveBeenCalledWith('FM')
   })
 })

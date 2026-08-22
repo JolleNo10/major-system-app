@@ -6,6 +6,7 @@ import { MapSurface, type MapSurfaceDockPlacement } from '@/features/world-count
 export type LearningMapOverride = Partial<Pick<CountryLearningMapProps,
   'overviewCountries' | 'showNames' | 'showHoverNames' | 'showOrderNumbers' | 'namedCountryId' |
   'highlightedCountryId' | 'hoveredCountryId' | 'showHighlightedNames' |
+  'answerSelectionCountryIds' | 'taskTargetCountryId' |
   'mapClassName' |
   'onCountryClick' | 'ariaLabel'
 >>

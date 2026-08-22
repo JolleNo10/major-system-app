@@ -1,11 +1,12 @@
 # Change Spec 0021 - Complete shared tiny-Country map interaction
 
-- **Status:** Implemented
+- **Status:** Superseded
 - **Date:** 2026-08-22
 - **Issue:** None.
 - **Related ADRs:** None required.
 - **Current-state docs:** [World Countries](../architecture/features/WORLD_COUNTRIES.md)
 - **Corrects:** [Change Spec 0020](0020-world-countries-expanded-map-and-tiny-country-targets.md), tiny-Country behavior only.
+- **Superseded by:** [Change Spec 0023](0023-correct-tiny-country-task-assistance.md), which corrects the tiny-Country activation model while preserving the expanded-map work.
 
 ## Goal
 

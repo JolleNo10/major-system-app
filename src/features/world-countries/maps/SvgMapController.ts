@@ -29,6 +29,22 @@ export interface SvgMapZoomArea {
   padding?: number
 }
 
+export interface SvgMapLearningAnchor {
+  sourceSvgId: string
+  kind: 'single-dot' | 'multi-dot-representative'
+  sourceFingerprint: string
+  point?: Readonly<{ x: number; y: number }>
+}
+
+export interface SvgMapTaskAssistance {
+  /** SVG IDs that may be selected by this map-answer task. */
+  answerSelectionIds?: readonly string[]
+  /** SVG ID whose location is intentionally shown as the task target. */
+  taskTargetId?: string | null
+  /** Map-owned anchor decisions for the active source asset. */
+  learningAnchors?: readonly SvgMapLearningAnchor[]
+}
+
 export interface SvgMapSettings {
   countryFill: string | null
   mutedFill: string
@@ -118,13 +134,14 @@ interface HoverListeners {
   click: EventListener
 }
 
-interface TinyCountryTarget {
+interface TaskLearningTarget {
   countryId: string
   centerX: number
   centerY: number
   hitRadius: number
   markerRadius: number
   highlightedMarkerRadius: number
+  answerSelectable: boolean
   group: SVGGElement
   marker: SVGCircleElement
   ring: SVGCircleElement
@@ -136,10 +153,9 @@ interface TinyCountryTarget {
 
 const FORBIDDEN_ELEMENTS = 'script, foreignObject, iframe, object, embed, image, style'
 const XLINK_NS = 'http://www.w3.org/1999/xlink'
-const TINY_GEOMETRY_MAX_SOURCE_DIMENSION = 12
-const TINY_MARKER_REST_RADIUS_PX = 3.5
-const TINY_MARKER_HIGHLIGHT_RADIUS_PX = 5.5
-const TINY_HIT_RADIUS_PX = 12
+const TASK_MARKER_TARGET_RADIUS_PX = 5.5
+const TASK_MARKER_HOVER_SCALE = 1.25
+const TASK_HIT_RADIUS_PX = 12
 
 function captureStyle(element: SVGElement, property: string): OriginalStyle {
   return {
@@ -210,8 +226,13 @@ export class SvgMapController {
   private hoveredNameOverride: boolean | null = null
   private hoveredIds = new Set<string>()
   private listeners: HoverListeners[] = []
-  private tinyTargets = new Map<string, TinyCountryTarget>()
-  private tinyTargetLayer: SVGGElement | null = null
+  private taskLearningTargets = new Map<string, TaskLearningTarget>()
+  private taskTargetLayer: SVGGElement | null = null
+  private taskAnswerSelection = new Set<string>()
+  private taskAnswerSelectionConfigured = false
+  private taskTargetId: string | null = null
+  private taskHoveredCountryId: string | null = null
+  private taskAnchorDefinitions = new Map<string, SvgMapLearningAnchor>()
   private resizeObserver: ResizeObserver | null = null
   private countryClickHandler: ((countryId: string) => void) | null = null
   private countryHoverHandler: ((countryId: string | null) => void) | null = null
@@ -517,6 +538,44 @@ export class SvgMapController {
     this.render()
   }
 
+  /** Configure explicit answer/target semantics for learning-task assistance. */
+  setTaskAssistance(assistance: SvgMapTaskAssistance | null = null): SvgMapMutationResult {
+    this.assertUsable()
+    const answerSelection = assistance?.answerSelectionIds ?? []
+    const { knownIds, unknownIds } = this.resolveKnown(answerSelection)
+    const requestedTarget = assistance?.taskTargetId?.trim() || null
+    const taskTargetUnknown = requestedTarget !== null && !this.countries.has(requestedTarget)
+      ? [requestedTarget]
+      : []
+
+    const anchors = assistance?.learningAnchors ?? []
+    const normalizedAnchors = new Map<string, SvgMapLearningAnchor>()
+    for (const anchor of anchors) {
+      const sourceSvgId = anchor.sourceSvgId.trim()
+      if (!sourceSvgId) continue
+      if (!this.countries.has(sourceSvgId)) {
+        unknownIds.push(sourceSvgId)
+        continue
+      }
+      if (normalizedAnchors.has(sourceSvgId)) {
+        throw new Error(`Duplicate task learning anchor for ${sourceSvgId}`)
+      }
+      this.validateTaskLearningAnchor({ ...anchor, sourceSvgId })
+      normalizedAnchors.set(sourceSvgId, { ...anchor, sourceSvgId })
+    }
+
+    this.taskAnswerSelection = new Set(knownIds)
+    this.taskAnswerSelectionConfigured = assistance?.answerSelectionIds !== undefined
+    this.taskTargetId = taskTargetUnknown.length ? null : requestedTarget
+    for (const countryId of this.taskLearningTargets.keys()) this.removeTaskLearningTarget(countryId)
+    this.taskTargetLayer?.remove()
+    this.taskTargetLayer = null
+    this.taskHoveredCountryId = null
+    this.taskAnchorDefinitions = normalizedAnchors
+    this.render()
+    return { activeIds: [...this.taskAnswerSelection], unknownIds: uniqueStrings([...unknownIds, ...taskTargetUnknown]) }
+  }
+
   toggleNames(ids: Iterable<string>): SvgMapMutationResult {
     this.assertUsable()
     const { knownIds, unknownIds } = this.resolveKnown(ids)
@@ -767,6 +826,7 @@ export class SvgMapController {
   private attachHoverListeners(): void {
     for (const country of this.countries.values()) {
       const enter: EventListener = () => {
+        this.setTaskHoveredCountry(country.id)
         if (!this.isHoverable(country.id)) {
           const hadHover = this.hoveredCountryId !== null || this.hoveredIds.size > 0
           this.setHoveredCountry(null)
@@ -776,11 +836,12 @@ export class SvgMapController {
         this.setHoveredCountryAndNotify(country.id)
       }
       const leave: EventListener = () => {
+        if (this.taskHoveredCountryId === country.id) this.setTaskHoveredCountry(null)
         if (this.hoveredCountryId !== country.id) return
         this.setHoveredCountryAndNotify(null)
       }
       const click: EventListener = () => {
-        if (this.isSelectable(country.id)) this.countryClickHandler?.(country.id)
+        if (this.isSelectableForTask(country.id)) this.countryClickHandler?.(country.id)
       }
       country.path.addEventListener('pointerenter', enter)
       country.path.addEventListener('pointerleave', leave)
@@ -860,6 +921,15 @@ export class SvgMapController {
         : this.selectableCountries.has(id))
   }
 
+  private isSelectableForTask(id: string): boolean {
+    if (!this.isSelectable(id)) return false
+    return !this.taskAnswerSelectionConfigured || this.taskAnswerSelection.has(id)
+  }
+
+  private isTaskCandidate(id: string): boolean {
+    return this.taskAnswerSelectionConfigured && this.taskAnswerSelection.has(id) && this.isSelectable(id)
+  }
+
   private resolveOutlineIds(ids: Iterable<string>): { knownIds: string[]; unknownIds: string[] } {
     const knownIds: string[] = []
     const unknownIds: string[] = []
@@ -892,7 +962,7 @@ export class SvgMapController {
       ? 'none'
       : `fill ${this.settings.transitionMs}ms ease, stroke ${this.settings.transitionMs}ms ease, stroke-width ${this.settings.transitionMs}ms ease`
 
-    this.syncTinyTargets()
+    this.syncTaskLearningTargets()
 
     for (const country of this.countries.values()) {
       const hovered = this.hoveredIds.has(country.id)
@@ -939,55 +1009,72 @@ export class SvgMapController {
       for (const paint of country.labelPaint) {
         setOverride(paint.element, 'fill', this.settings.labelFill, paint.originalFill)
       }
-      const tinyTarget = this.tinyTargets.get(country.id)
-      if (tinyTarget) this.renderTinyTarget(country, tinyTarget, fill, hidden, hovered, reducedMotion)
+      const taskTarget = this.taskLearningTargets.get(country.id)
+      if (taskTarget) this.renderTaskLearningTarget(country, taskTarget, fill, hidden, reducedMotion)
     }
     this.renderGroupOutlines()
   }
 
-  private syncTinyTargets(): void {
-    if (!this.svg) return
-    const tinyIds = new Set<string>()
+  private syncTaskLearningTargets(): void {
+    if (this.taskHoveredCountryId !== null && !this.isTaskCandidate(this.taskHoveredCountryId)) {
+      this.taskHoveredCountryId = null
+    }
+    if (!this.svg || (this.taskAnswerSelection.size === 0 && this.taskTargetId === null)) {
+      for (const countryId of this.taskLearningTargets.keys()) this.removeTaskLearningTarget(countryId)
+      this.taskTargetLayer?.remove()
+      this.taskTargetLayer = null
+      return
+    }
+
+    const activeIds = new Set<string>()
     const scale = this.getRenderedScale()
     const smallestScale = Math.min(scale.x, scale.y)
 
-    for (const country of this.countries.values()) {
-      const bounds = this.readGeometryBounds(country.path)
-      if (!bounds || Math.max(bounds.width, bounds.height) > TINY_GEOMETRY_MAX_SOURCE_DIMENSION) {
-        this.removeTinyTarget(country.id)
-        continue
-      }
+    for (const [sourceSvgId, anchor] of this.taskAnchorDefinitions) {
+      const country = this.countries.get(sourceSvgId)
+      if (!country) continue
+      const answerSelectable = this.isTaskCandidate(sourceSvgId)
+      const taskTarget = this.taskTargetId === sourceSvgId && !this.hiddenCountries.has(sourceSvgId)
+      if (!answerSelectable && !taskTarget) continue
 
-      tinyIds.add(country.id)
-      const markerRadius = TINY_MARKER_REST_RADIUS_PX / smallestScale
-      const highlightedMarkerRadius = TINY_MARKER_HIGHLIGHT_RADIUS_PX / smallestScale
-      const hitRadius = TINY_HIT_RADIUS_PX / smallestScale
-      const existing = this.tinyTargets.get(country.id)
+      const sourceBounds = anchor.kind === 'single-dot' ? this.readGeometryBounds(country.path) : null
+      const point = anchor.kind === 'multi-dot-representative'
+        ? anchor.point
+        : sourceBounds
+          ? { x: sourceBounds.x + sourceBounds.width / 2, y: sourceBounds.y + sourceBounds.height / 2 }
+          : undefined
+      if (!point) continue
+
+      activeIds.add(sourceSvgId)
+      const markerRadius = TASK_MARKER_TARGET_RADIUS_PX / smallestScale
+      const hitRadius = TASK_HIT_RADIUS_PX / smallestScale
+      const existing = this.taskLearningTargets.get(sourceSvgId)
       if (existing) {
-        existing.centerX = bounds.x + bounds.width / 2
-        existing.centerY = bounds.y + bounds.height / 2
+        existing.centerX = point.x
+        existing.centerY = point.y
         existing.markerRadius = markerRadius
-        existing.highlightedMarkerRadius = highlightedMarkerRadius
+        existing.highlightedMarkerRadius = markerRadius
         existing.hitRadius = hitRadius
-        this.positionTinyTarget(existing)
+        existing.answerSelectable = answerSelectable
+        this.positionTaskLearningTarget(existing)
       } else {
-        this.createTinyTarget(
-          country.id,
-          bounds.x + bounds.width / 2,
-          bounds.y + bounds.height / 2,
+        this.createTaskLearningTarget(
+          sourceSvgId,
+          point.x,
+          point.y,
           markerRadius,
-          highlightedMarkerRadius,
           hitRadius,
+          answerSelectable,
         )
       }
     }
 
-    for (const countryId of this.tinyTargets.keys()) {
-      if (!tinyIds.has(countryId)) this.removeTinyTarget(countryId)
+    for (const countryId of this.taskLearningTargets.keys()) {
+      if (!activeIds.has(countryId)) this.removeTaskLearningTarget(countryId)
     }
-    if (this.tinyTargets.size === 0) {
-      this.tinyTargetLayer?.remove()
-      this.tinyTargetLayer = null
+    if (this.taskLearningTargets.size === 0) {
+      this.taskTargetLayer?.remove()
+      this.taskTargetLayer = null
     }
   }
 
@@ -1033,13 +1120,13 @@ export class SvgMapController {
     }
   }
 
-  private createTinyTarget(
+  private createTaskLearningTarget(
     countryId: string,
     centerX: number,
     centerY: number,
     markerRadius: number,
-    highlightedMarkerRadius: number,
     hitRadius: number,
+    answerSelectable: boolean,
   ): void {
     if (!this.svg) return
     const document = this.svg.ownerDocument
@@ -1047,9 +1134,13 @@ export class SvgMapController {
     const marker = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
     const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
     const hit = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+    group.setAttribute('data-svg-map-task-target', countryId)
     group.setAttribute('data-svg-map-tiny-country', countryId)
+    marker.setAttribute('data-svg-map-task-marker', countryId)
     marker.setAttribute('data-svg-map-tiny-marker', countryId)
+    ring.setAttribute('data-svg-map-task-ring', countryId)
     ring.setAttribute('data-svg-map-tiny-ring', countryId)
+    hit.setAttribute('data-svg-map-task-hit-target', countryId)
     hit.setAttribute('data-svg-map-tiny-hit-target', countryId)
     marker.setAttribute('pointer-events', 'none')
     ring.setAttribute('pointer-events', 'none')
@@ -1058,41 +1149,38 @@ export class SvgMapController {
     hit.setAttribute('stroke', 'none')
     hit.setAttribute('pointer-events', 'all')
     group.append(marker, ring, hit)
-    this.tinyTargetLayer ??= document.createElementNS('http://www.w3.org/2000/svg', 'g')
-    this.tinyTargetLayer.setAttribute('data-svg-map-tiny-targets', '')
-    this.tinyTargetLayer.append(group)
-    this.svg.append(this.tinyTargetLayer)
+    this.taskTargetLayer ??= document.createElementNS('http://www.w3.org/2000/svg', 'g')
+    this.taskTargetLayer.setAttribute('data-svg-map-task-targets', '')
+    this.taskTargetLayer.append(group)
+    this.svg.append(this.taskTargetLayer)
 
     const enter: EventListener = event => {
-      const resolvedId = this.resolveTinyTargetId(event, countryId, 'hover')
-      if (!resolvedId || !this.isHoverable(resolvedId)) {
-        this.setHoveredCountryAndNotify(null)
-        return
-      }
-      this.setHoveredCountryAndNotify(resolvedId)
+      const resolvedId = this.resolveTaskTargetId(event, countryId, 'hover')
+      this.setTaskHoveredCountry(resolvedId)
     }
     const leave: EventListener = event => {
-      const nextId = this.resolveTinyTargetId(event, undefined, 'hover')
+      const nextId = this.resolveTaskTargetId(event, undefined, 'hover')
       if (nextId && nextId !== countryId) {
-        this.setHoveredCountryAndNotify(nextId)
+        this.setTaskHoveredCountry(nextId)
         return
       }
-      if (this.hoveredCountryId === countryId) this.setHoveredCountryAndNotify(null)
+      if (this.taskHoveredCountryId === countryId) this.setTaskHoveredCountry(null)
     }
     const click: EventListener = event => {
-      const resolvedId = this.resolveTinyTargetId(event, countryId, 'select')
-      if (resolvedId && this.isSelectable(resolvedId)) this.countryClickHandler?.(resolvedId)
+      const resolvedId = this.resolveTaskTargetId(event, countryId, 'select')
+      if (resolvedId && this.isSelectableForTask(resolvedId)) this.countryClickHandler?.(resolvedId)
     }
     hit.addEventListener('pointerenter', enter)
     hit.addEventListener('pointerleave', leave)
     hit.addEventListener('click', click)
-    this.tinyTargets.set(countryId, {
+    this.taskLearningTargets.set(countryId, {
       countryId,
       centerX,
       centerY,
       hitRadius,
       markerRadius,
-      highlightedMarkerRadius,
+      highlightedMarkerRadius: markerRadius,
+      answerSelectable,
       group,
       marker,
       ring,
@@ -1101,10 +1189,10 @@ export class SvgMapController {
       leave,
       click,
     })
-    this.positionTinyTarget(this.tinyTargets.get(countryId) as TinyCountryTarget)
+    this.positionTaskLearningTarget(this.taskLearningTargets.get(countryId) as TaskLearningTarget)
   }
 
-  private positionTinyTarget(target: TinyCountryTarget): void {
+  private positionTaskLearningTarget(target: TaskLearningTarget): void {
     for (const element of [target.marker, target.ring, target.hit]) {
       element.setAttribute('cx', String(target.centerX))
       element.setAttribute('cy', String(target.centerY))
@@ -1112,22 +1200,21 @@ export class SvgMapController {
     target.hit.setAttribute('r', String(target.hitRadius))
   }
 
-  private removeTinyTarget(countryId: string): void {
-    const target = this.tinyTargets.get(countryId)
+  private removeTaskLearningTarget(countryId: string): void {
+    const target = this.taskLearningTargets.get(countryId)
     if (!target) return
     target.hit.removeEventListener('pointerenter', target.enter)
     target.hit.removeEventListener('pointerleave', target.leave)
     target.hit.removeEventListener('click', target.click)
     target.group.remove()
-    this.tinyTargets.delete(countryId)
+    this.taskLearningTargets.delete(countryId)
   }
 
-  private renderTinyTarget(
+  private renderTaskLearningTarget(
     country: InternalCountry,
-    target: TinyCountryTarget,
+    target: TaskLearningTarget,
     fill: string | null,
     hidden: boolean,
-    hovered: boolean,
     reducedMotion: boolean,
   ): void {
     const sourceFill = country.path.style.getPropertyValue('fill')
@@ -1135,10 +1222,10 @@ export class SvgMapController {
       || country.originalFill.value
       || this.settings.countryFill
       || '#52525b'
-    const restRadius = this.highlighted.has(country.id)
-      ? target.highlightedMarkerRadius
-      : target.markerRadius
-    const markerRadius = hovered && !reducedMotion ? restRadius * 1.25 : restRadius
+    const targetEmphasized = this.taskTargetId === country.id
+    const hovered = this.taskHoveredCountryId === country.id
+    const visible = !hidden && (targetEmphasized || hovered)
+    const markerRadius = hovered ? target.markerRadius * TASK_MARKER_HOVER_SCALE : target.markerRadius
     const markerFill = fill ?? sourceFill
     target.marker.setAttribute('r', String(markerRadius))
     target.marker.setAttribute('fill', markerFill)
@@ -1150,9 +1237,8 @@ export class SvgMapController {
     target.ring.setAttribute('opacity', hovered ? '0.85' : '0')
     target.ring.style.setProperty('transition', reducedMotion ? 'none' : `r ${this.settings.transitionMs}ms ease, opacity ${this.settings.transitionMs}ms ease`)
 
-    const interactive = this.isHoverable(country.id) || this.isSelectable(country.id)
-    target.group.setAttribute('visibility', hidden ? 'hidden' : 'visible')
-    target.hit.style.setProperty('pointer-events', !hidden && interactive ? 'all' : 'none', 'important')
+    target.group.setAttribute('visibility', visible ? 'visible' : 'hidden')
+    target.hit.style.setProperty('pointer-events', !hidden && target.answerSelectable ? 'all' : 'none', 'important')
   }
 
   private setHoveredCountryAndNotify(id: string | null): void {
@@ -1160,18 +1246,52 @@ export class SvgMapController {
     this.countryHoverHandler?.(this.hoveredCountryId === id ? id : null)
   }
 
-  private resolveTinyTargetId(event: Event, fallbackId: string | undefined, mode: 'hover' | 'select'): string | null {
+  private setTaskHoveredCountry(id: string | null): void {
+    const nextId = id !== null && this.isTaskCandidate(id) ? id : null
+    if (this.taskHoveredCountryId === nextId) return
+    this.taskHoveredCountryId = nextId
+    this.render()
+  }
+
+  private validateTaskLearningAnchor(anchor: SvgMapLearningAnchor): void {
+    const country = this.countries.get(anchor.sourceSvgId)
+    if (!country || !this.svg) return
+    const sourceFingerprint = country.path.getAttribute('d') ?? ''
+    if (sourceFingerprint !== anchor.sourceFingerprint) {
+      throw new Error(`Stale task learning anchor source for ${anchor.sourceSvgId}`)
+    }
+    if (anchor.kind === 'multi-dot-representative' && anchor.point === undefined) {
+      throw new Error(`Representative task learning anchor ${anchor.sourceSvgId} has no point`)
+    }
+    if (anchor.kind === 'single-dot' && anchor.point !== undefined) {
+      throw new Error(`Single-dot task learning anchor ${anchor.sourceSvgId} must resolve from source geometry`)
+    }
+    if (!anchor.point) return
+    const viewBox = this.parseViewBox(this.svg.getAttribute('viewBox') ?? '')
+    const { x, y } = anchor.point
+    if (!viewBox || !Number.isFinite(x) || !Number.isFinite(y)
+      || x < viewBox.x || y < viewBox.y
+      || x > viewBox.x + viewBox.width || y > viewBox.y + viewBox.height) {
+      throw new Error(`Task learning anchor ${anchor.sourceSvgId} is outside the map viewBox`)
+    }
+  }
+
+  private resolveTaskTargetId(event: Event, fallbackId: string | undefined, mode: 'hover' | 'select'): string | null {
     const point = this.getSvgPoint(event)
-    const isActive = mode === 'hover' ? this.isHoverable.bind(this) : this.isSelectable.bind(this)
+    const isActive = mode === 'hover' ? this.isTaskCandidate.bind(this) : this.isSelectableForTask.bind(this)
     if (!point) return fallbackId && isActive(fallbackId) ? fallbackId : null
     const sourceCountryId = this.resolveSourceCountryAtPoint(point, mode)
     if (sourceCountryId) return sourceCountryId
-    let nearest: { id: string; distance: number } | null = null
-    for (const target of this.tinyTargets.values()) {
+    let nearest: { id: string; distance: number; order: number } | null = null
+    let order = 0
+    for (const target of this.taskLearningTargets.values()) {
       if (!isActive(target.countryId)) continue
       const distance = Math.hypot(point.x - target.centerX, point.y - target.centerY)
       if (distance > target.hitRadius) continue
-      if (!nearest || distance < nearest.distance) nearest = { id: target.countryId, distance }
+      if (!nearest || distance < nearest.distance || (distance === nearest.distance && order < nearest.order)) {
+        nearest = { id: target.countryId, distance, order }
+      }
+      order += 1
     }
     return nearest?.id ?? null
   }
@@ -1179,7 +1299,9 @@ export class SvgMapController {
   private resolveSourceCountryAtPoint(point: { x: number; y: number }, mode: 'hover' | 'select'): string | null {
     const matches: Array<{ id: string; area: number }> = []
     for (const country of this.countries.values()) {
-      if (mode === 'hover' ? !this.isHoverable(country.id) : !this.isSelectable(country.id)) continue
+      if (mode === 'hover'
+        ? (this.taskAnswerSelectionConfigured ? !this.isTaskCandidate(country.id) : !this.isHoverable(country.id))
+        : !this.isSelectableForTask(country.id)) continue
       const bounds = this.readGeometryBounds(country.path)
       if (!bounds) continue
       const geometry = country.path as SVGGeometryElement & {
@@ -1377,9 +1499,9 @@ export class SvgMapController {
     this.resizeObserver?.disconnect()
     this.resizeObserver = null
     this.detachHoverListeners()
-    for (const countryId of this.tinyTargets.keys()) this.removeTinyTarget(countryId)
-    this.tinyTargetLayer?.remove()
-    this.tinyTargetLayer = null
+    for (const countryId of this.taskLearningTargets.keys()) this.removeTaskLearningTarget(countryId)
+    this.taskTargetLayer?.remove()
+    this.taskTargetLayer = null
     this.countries.clear()
     this.highlighted.clear()
     this.countryColors.clear()
@@ -1387,6 +1509,11 @@ export class SvgMapController {
     this.hiddenCountries.clear()
     this.hoverableCountries = null
     this.selectableCountries = null
+    this.taskAnswerSelection.clear()
+    this.taskAnswerSelectionConfigured = false
+    this.taskTargetId = null
+    this.taskHoveredCountryId = null
+    this.taskAnchorDefinitions.clear()
     this.named.clear()
     this.countryLabelOverrides.clear()
     this.hoverGroups = []

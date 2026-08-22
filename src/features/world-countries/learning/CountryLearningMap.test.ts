@@ -96,4 +96,27 @@ describe('CountryLearningMap', () => {
       mutedIds: ['Sweden'],
     })
   })
+
+  it('translates canonical task semantics at the map adapter boundary', () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement(CountryLearningMap, {
+        continent: 'Europe',
+        scopeCountries: [norway],
+        answerSelectionCountryIds: [norway.id],
+        taskTargetCountryId: norway.id,
+        ariaLabel: 'Task map',
+      }))
+    })
+
+    const latestProps = mapProps.mock.calls[mapProps.mock.calls.length - 1]?.[0]
+    expect(latestProps.taskAssistance).toEqual({
+      answerSelectionIds: ['Norway'],
+      taskTargetId: 'Norway',
+      learningAnchors: [],
+    })
+  })
 })

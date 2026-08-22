@@ -5,7 +5,9 @@
 - **Issue:** None.
 - **Related ADRs:** [ADR 0028 - PageLayout owns an optional expanded-center presentation](../adr/0028-page-layout-expanded-center-presentation.md)
 - **Current-state docs:** [System architecture](../architecture/SYSTEM.md), [World Countries](../architecture/features/WORLD_COUNTRIES.md)
-- **Related Change Specs:** [0010](0010-world-countries-map-centered-interaction-qol.md), [0017](0017-world-countries-uniform-typed-answer-interaction.md), [0018](0018-align-world-countries-today-with-drill-layout.md), [0019](0019-world-countries-overlay-answer-feedback.md)
+- **Related Change Specs:** [0010](0010-world-countries-map-centered-interaction-qol.md), [0017](0017-world-countries-uniform-typed-answer-interaction.md), [0018](0018-align-world-countries-today-with-drill-layout.md), [0019](0019-world-countries-overlay-answer-feedback.md), [0023](0023-correct-tiny-country-task-assistance.md)
+
+> The expanded-map behavior remains valid. Its tiny-Country activation behavior is corrected by Change Spec 0023.
 
 ## Goal
 

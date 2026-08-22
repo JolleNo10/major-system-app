@@ -3,6 +3,7 @@
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { countries } from '@/features/world-countries/data/countries'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import europeSvg from '@/features/world-countries/maps/assets/MapChart_Map_Europe.svg?raw'
 import { GeographyOverviewMap } from './GeographyOverviewMap'
@@ -12,6 +13,27 @@ let root: Root | null = null
 afterEach(() => { act(() => root?.unmount()); root = null; document.body.replaceChildren(); vi.unstubAllGlobals() })
 
 describe('GeographyOverviewMap', () => {
+  it('keeps real tiny Countries at source size without task semantics', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => europeSvg })))
+    const andorra = countries.find(country => country.id === 'AD')
+    const mount = document.createElement('div'); document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(GeographyOverviewMap, {
+        level: 'continent',
+        continent: 'Europe',
+        countryPopulation: andorra ? [andorra] : [],
+        onCountryClick: vi.fn(),
+        ariaLabel: 'Europe geography map',
+      }))
+      await Promise.resolve(); await Promise.resolve()
+    })
+
+    expect(mount.querySelector('[data-svg-map-task-target]')).toBeNull()
+    expect(mount.querySelector('[data-svg-map-tiny-marker]')).toBeNull()
+  })
+
   it('reports grouped map hover and Country clicks through workflow-neutral callbacks', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g></svg>' })))
     const onHoverGroup = vi.fn(); const onCountryClick = vi.fn(); const mount = document.createElement('div'); document.body.append(mount)

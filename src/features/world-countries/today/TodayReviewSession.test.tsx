@@ -8,6 +8,7 @@ import { deriveWorldCountriesReviewSchedule } from '@/features/world-countries/l
 
 const recordAttemptMock = vi.hoisted(() => vi.fn(() => Promise.resolve()))
 const useRailsMock = vi.hoisted(() => vi.fn())
+const countryLearningMapMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@/features/world-countries/learning/recallProgress', () => ({
   recordWorldCountriesAttempt: recordAttemptMock,
@@ -17,7 +18,10 @@ vi.mock('@/app/layout/PageLayoutContext', () => ({
   usePageLayoutPresentation: vi.fn(),
 }))
 vi.mock('@/features/world-countries/learning/CountryLearningMap', () => ({
-  CountryLearningMap: () => createElement('div', { 'data-testid': 'today-map' }),
+  CountryLearningMap: (props: Record<string, unknown>) => {
+    countryLearningMapMock(props)
+    return createElement('div', { 'data-testid': 'today-map' })
+  },
 }))
 
 import { TodayReviewSession } from './TodayReviewSession'
@@ -41,6 +45,7 @@ afterEach(() => {
   document.body.replaceChildren()
   recordAttemptMock.mockClear()
   useRailsMock.mockReset()
+  countryLearningMapMock.mockReset()
   vi.useRealTimers()
 })
 
@@ -70,6 +75,7 @@ describe('Today review session', () => {
     })
 
     expect(mount.textContent).not.toContain('Norway')
+    expect(countryLearningMapMock.mock.calls[0]?.[0]).toMatchObject({ taskTargetCountryId: 'NO' })
     const input = mount.querySelector<HTMLInputElement>('input[aria-label="Type the Country name"]')!
     await act(async () => {
       const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set

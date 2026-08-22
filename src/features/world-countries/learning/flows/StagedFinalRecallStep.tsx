@@ -45,6 +45,7 @@ export function StagedFinalRecallStep({
   if (!current) return null
 
   useLearningMapPresentation({
+    taskTargetCountryId: showCountryName ? null : current.id,
     highlightedCountryId: current.id,
     namedCountryId: showCountryName ? current.id : null,
     showHighlightedNames: showCountryName,
@@ -87,7 +88,7 @@ export function StagedFinalRecallStep({
             <div className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm"><span className="text-zinc-500">{ordered.mode === 'repair' ? 'Repair traversal' : 'Effective Country order'}</span><span className="font-semibold text-cyan-300">{answerLabel}</span></div>
             <MapSurface
               context={null}
-              map={<CountryLearningMap continent={continent} scopeCountries={entries} highlightedCountryId={current.id} namedCountryId={showCountryName ? current.id : null} showHighlightedNames={showCountryName} showHoverNames ariaLabel="Highlighted Country for final recall" />}
+              map={<CountryLearningMap continent={continent} scopeCountries={entries} taskTargetCountryId={showCountryName ? null : current.id} highlightedCountryId={current.id} namedCountryId={showCountryName ? current.id : null} showHighlightedNames={showCountryName} showHoverNames ariaLabel="Highlighted Country for final recall" />}
               feedbackOverlay={typed.feedbackOverlay}
               dockPlacement="stacked"
               dock={dock}

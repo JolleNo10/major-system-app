@@ -250,19 +250,22 @@ advances automatically after the correction dwell.
   choice after an incorrect answer; selecting it holds that feedback until
   Continue or mini-practice completion. Today delayed-retry Skip and Recite
   Reveal / Skip remain answerable-state actions owned by those workflows.
-- `SvgMapController` owns geometry-derived tiny-Country marker and forgiving
-  hit-target augmentation. Tiny-Country hit and marker usability is maintained
-  in rendered screen space across map scale, zoom, and resize, including
-  standard and expanded presentation. Generic highlighted state provides
-  persistent visible emphasis for tiny markers without introducing
-  workflow-specific target semantics. `SvgMapView` carries generic selectable
-  Country IDs independently from hoverable IDs, so pointer-selectable maps
-  inherit the shared tiny-Country behavior without workflow owners adding
-  per-mode marker or hit-target logic. The source Country path remains
-  authoritative for discovery, semantic styling, identity, and `getBBox()`-based
-  zoom; hidden or non-hoverable Countries do not retain an interactive
-  augmentation, and overlapping target candidates resolve by nearest pointer
-  position.
+- `SvgMapController` owns one explicit task-assistance layer for map-answer
+  candidates and an intentional task target. It consumes map-owned,
+  map-specific learning-anchor metadata; generic `selectableIds`, hoverable
+  IDs, highlighted/progress state, semantic colors, click-handler presence,
+  and map level never activate tiny-Country assistance. Answer candidates get
+  invisible screen-space forgiving targets and independent task-hover marker
+  growth; an anchor-backed task target gets persistent visible emphasis.
+  `SvgMapView` carries the generic task contract separately from ordinary map
+  interaction, while `CountryLearningMap` translates canonical Country IDs and
+  map definitions into SVG-level task data. Source Country paths remain
+  authoritative for discovery, semantic styling, identity, direct hits, and
+  `getBBox()`-based zoom. Hidden Countries have no task target or hit area;
+  multi-dot Countries use only their configured representative anchor; and
+  overlap resolution prefers direct source geometry, then the nearest eligible
+  anchor. When task assistance is absent, ordinary maps render only their
+  original SVG geometry.
 - For the same map source, Continent, effective scope membership, and
   intentional zoom behavior, Learning updates map highlights, names, hover,
   and sequence annotations declaratively. Workflow phase alone must not
@@ -423,6 +426,8 @@ flowchart TD
 - `src/features/world-countries/geography/geographyRefresh.ts`
 - `src/features/world-countries/geography/orderAuthoring.ts`
 - `src/features/world-countries/maps/GeographyOverviewMap.tsx`
+- `src/features/world-countries/maps/learningAnchors.ts`
+- `src/features/world-countries/maps/learningAnchors.test.ts`
 - `src/features/world-countries/maps/geographyMapAdapter.ts`
 - `src/features/world-countries/learning/CountryLearningMap.tsx`
 - `src/features/world-countries/mnemonics/GeographyMnemonicEditor.tsx`

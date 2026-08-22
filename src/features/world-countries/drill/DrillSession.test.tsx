@@ -197,6 +197,7 @@ describe('DrillSession map presentation', () => {
 
     const mapProps = learningMapMock.mock.calls[0][0] as Record<string, unknown>
     expect(mapProps.highlightedCountryId).toBe('NO')
+    expect(mapProps.taskTargetCountryId).toBe('NO')
     expect(mapProps.namedCountryId).toBeNull()
     expect(mapProps.countryColorsById).toBeUndefined()
     expect(mapProps.ariaLabel).toBe('Map showing the selected location for recall without the Country name revealed')
@@ -225,6 +226,8 @@ describe('DrillSession map presentation', () => {
 
     const initialMapProps = learningMapMock.mock.calls[0][0] as Record<string, unknown>
     expect(initialMapProps.onCountryClick).toBeTypeOf('function')
+    expect(initialMapProps.answerSelectionCountryIds).toEqual(['NO', 'SE'])
+    expect(initialMapProps.taskTargetCountryId).toBeNull()
     expect(initialMapProps.highlightedCountryId).toBeNull()
     expect(initialMapProps.namedCountryId).toBeNull()
     expect(mount.textContent).toContain('Find Norway')
@@ -240,6 +243,7 @@ describe('DrillSession map presentation', () => {
     }))
     const feedbackMapProps = learningMapMock.mock.calls[learningMapMock.mock.calls.length - 1][0] as Record<string, unknown>
     expect(feedbackMapProps.highlightedCountryId).toBe('NO')
+    expect(feedbackMapProps.taskTargetCountryId).toBe('NO')
     expect(feedbackMapProps.namedCountryId).toBe('NO')
     expect(mount.textContent).toContain('That was Sweden')
   })
@@ -267,6 +271,8 @@ describe('DrillSession map presentation', () => {
 
     const initialMapProps = learningMapMock.mock.calls[0][0] as Record<string, unknown>
     expect(initialMapProps.onCountryClick).toBeTypeOf('function')
+    expect(initialMapProps.answerSelectionCountryIds).toEqual(['NO', 'SE'])
+    expect(initialMapProps.taskTargetCountryId).toBeNull()
     expect(initialMapProps.highlightedCountryId).toBeNull()
     expect(initialMapProps.namedCountryId).toBeNull()
     expect(initialMapProps.ariaLabel).toBe('Map for clicking the Country whose Capital is shown')
@@ -285,6 +291,7 @@ describe('DrillSession map presentation', () => {
     }))
     const feedbackMapProps = learningMapMock.mock.calls[learningMapMock.mock.calls.length - 1][0] as Record<string, unknown>
     expect(feedbackMapProps.highlightedCountryId).toBe('NO')
+    expect(feedbackMapProps.taskTargetCountryId).toBe('NO')
     expect(feedbackMapProps.namedCountryId).toBe('NO')
     expect(mount.textContent).toContain('That was Sweden')
   })

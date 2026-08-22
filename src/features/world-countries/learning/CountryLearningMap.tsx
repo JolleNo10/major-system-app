@@ -1,9 +1,11 @@
 import { useId, useMemo, useState } from 'react'
 import { countriesToSvgIds } from '@/features/world-countries/maps/countryMapIds'
 import { SvgMapView, type SvgMapCountry } from '@/features/world-countries/maps/SvgMapView'
-import type { Continent, Country } from '@/features/world-countries/data/countries'
+import type { Continent, Country, CountryId } from '@/features/world-countries/data/countries'
 import { createCountryColorsById, createCountryOrderLabels, getCountryForSvgId, resolveCountriesToSvgIds } from '@/features/world-countries/maps/geographyMapAdapter'
 import { getMemoMapDefinition } from '@/features/world-countries/maps/mapDefinitions'
+import { getMapLearningAnchors } from '@/features/world-countries/maps/learningAnchors'
+import type { SvgMapLearningAnchor } from '@/features/world-countries/maps/SvgMapController'
 
 export interface CountryLearningMapProps {
   continent: Continent
@@ -22,6 +24,10 @@ export interface CountryLearningMapProps {
   countryColorsById?: ReadonlyMap<string, string>
   /** Optional non-color descriptions for mapped Countries. */
   countryAccessibleDescriptionsById?: ReadonlyMap<string, string>
+  /** Explicit map-answer candidates; generic clickability does not imply assistance. */
+  answerSelectionCountryIds?: readonly CountryId[]
+  /** Country location intentionally presented as the current task target. */
+  taskTargetCountryId?: CountryId | null
   onCountryClick?: (countryId: string) => void
   ariaLabel: string
 }
@@ -49,6 +55,8 @@ export function CountryLearningMap({
   mapClassName,
   countryColorsById,
   countryAccessibleDescriptionsById,
+  answerSelectionCountryIds,
+  taskTargetCountryId = null,
   onCountryClick,
   ariaLabel,
 }: CountryLearningMapProps) {
@@ -86,6 +94,44 @@ export function CountryLearningMap({
     [discoveredIds, overviewCountries, scopeCountries, showOrderNumbers],
   )
   const zoomIds = getCountryLearningMapZoomIds(continent, zoomScopeSvgIds)
+  const taskAssistance = useMemo(() => {
+    if (answerSelectionCountryIds === undefined && taskTargetCountryId === null) return null
+
+    const countryById = new Map(scopeCountries.map(country => [country.id, country]))
+    const targetCountry = taskTargetCountryId ? countryById.get(taskTargetCountryId) : undefined
+    const answerCountries = answerSelectionCountryIds === undefined
+      ? []
+      : answerSelectionCountryIds
+        .map(id => countryById.get(id))
+        .filter((country): country is Country => country !== undefined)
+    const anchorDefinitions = getMapLearningAnchors(
+      definition.id,
+      [...answerCountries.map(country => country.id), ...(targetCountry ? [targetCountry.id] : [])],
+    )
+    const learningAnchors: SvgMapLearningAnchor[] = anchorDefinitions
+      .filter(anchor => discoveredIds.includes(anchor.sourceSvgId))
+      .map(anchor => ({
+        sourceSvgId: anchor.sourceSvgId,
+        kind: anchor.kind,
+        sourceFingerprint: anchor.sourceFingerprint,
+        ...(anchor.point ? { point: anchor.point } : {}),
+      }))
+    const targetSvgIds = targetCountry
+      ? resolveCountriesToSvgIds([targetCountry], discoveredIds)
+      : []
+    const targetAnchor = anchorDefinitions.find(anchor => anchor.countryId === taskTargetCountryId)
+    const taskTargetId = taskTargetCountryId === null
+      ? null
+      : targetAnchor?.sourceSvgId ?? targetSvgIds[0] ?? null
+
+    return {
+      answerSelectionIds: answerSelectionCountryIds === undefined
+        ? undefined
+        : countriesToSvgIds(answerCountries).filter(id => discoveredIds.includes(id)),
+      taskTargetId,
+      learningAnchors,
+    }
+  }, [answerSelectionCountryIds, definition.id, discoveredIds, scopeCountries, taskTargetCountryId])
   const countryColors = useMemo(
     () => countryColorsById
       ? createCountryColorsById(scopeCountries, countryColorsById, discoveredIds)
@@ -115,6 +161,7 @@ export function CountryLearningMap({
         selectableIds={onCountryClick ? scopeSvgIds : []}
         countryLabels={countryLabels}
         countryColors={countryColors}
+        taskAssistance={taskAssistance}
         zoomIds={zoomIds}
         className={mapClassName}
         settings={{ showHighlightedNames, hoverHighlight: hoveredCountryId !== null, hoverShowName: showHoverNames, hoverFill: '#0f766e', hoverStroke: '#d4d4d8', hoverStrokeWidth: '2px' }}

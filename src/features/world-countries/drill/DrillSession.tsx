@@ -283,6 +283,7 @@ export function DrillSession({
                 <CountryLearningMap
                   continent={selection.continent}
                   scopeCountries={scopeCountries}
+                  taskTargetCountryId={isLocationQuestion ? country.id : null}
                   highlightedCountryId={isCapitalQuestion ? (typed.outcome && typed.outcome !== 'incorrect' ? country.id : null) : country.id}
                   namedCountryId={isLocationQuestion || isCapitalQuestion ? (typed.outcome && typed.outcome !== 'incorrect' ? country.id : null) : country.id}
                   showHighlightedNames={isLocationQuestion || isCapitalQuestion ? Boolean(typed.outcome && typed.outcome !== 'incorrect') : true}
@@ -339,6 +340,8 @@ export function DrillSession({
           <CountryLearningMap
             continent={selection.continent}
             scopeCountries={scopeCountries}
+            answerSelectionCountryIds={isMapClickPractice ? scopeCountries.map(entry => entry.id) : undefined}
+            taskTargetCountryId={(!isMapClickPractice && isLocationQuestion) || (isMapClickPractice && feedback) ? country.id : null}
             highlightedCountryId={highlightedCountryId}
             namedCountryId={isMapClickPractice ? practiceNamedCountryId : namedCountryId}
             showHighlightedNames={isMapClickPractice ? Boolean(practiceNamedCountryId) : Boolean(namedCountryId)}
