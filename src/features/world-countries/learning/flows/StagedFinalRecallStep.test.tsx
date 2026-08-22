@@ -4,6 +4,7 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Country } from '@/features/world-countries/data/countries'
+import { PageLayoutProvider } from '@/app/layout/PageLayoutContext'
 import { createOrderedRecallSession } from '@/features/world-countries/learning/orderedRecallSession'
 import { StagedFinalRecallStep } from './StagedFinalRecallStep'
 import { LearningMapSurface } from './LearningMapSurface'
@@ -42,7 +43,7 @@ describe('StagedFinalRecallStep', () => {
 
     act(() => {
       root = createRoot(mount)
-      root.render(createElement(LearningMapSurface, {
+      root.render(createElement(PageLayoutProvider, null, createElement(LearningMapSurface, {
         continent: 'Europe', scopeCountries: [country], presentation: { ariaLabel: 'Final recall map' }, presentationKey: 'final',
         context: createElement('h1', null, 'Final recall'),
         children: createElement(StagedFinalRecallStep, {
@@ -54,7 +55,7 @@ describe('StagedFinalRecallStep', () => {
         formatFeedback: evaluation => `Correct. The canonical answer is ${evaluation.canonicalAnswer}.`,
           onSubmit, onBack: vi.fn(), onExit: vi.fn(), surface: true,
         }),
-      }))
+      })))
     })
 
     const input = mount.querySelector<HTMLInputElement>('input')!

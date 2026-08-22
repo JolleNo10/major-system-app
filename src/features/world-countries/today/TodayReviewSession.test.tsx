@@ -14,6 +14,7 @@ vi.mock('@/features/world-countries/learning/recallProgress', () => ({
 }))
 vi.mock('@/app/layout/PageLayoutContext', () => ({
   useRails: useRailsMock,
+  usePageLayoutPresentation: vi.fn(),
 }))
 vi.mock('@/features/world-countries/learning/CountryLearningMap', () => ({
   CountryLearningMap: () => createElement('div', { 'data-testid': 'today-map' }),

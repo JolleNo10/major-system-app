@@ -41,8 +41,12 @@ selects a mode from `src/app/modes.tsx`.
 - `src/features/` owns product-domain data, rules, workflows, and feature-local
   persistence adapters.
 
-`PageLayout` provides one fixed-center layout with optional side rails. The
-semantic default for those regions is:
+`PageLayout` provides a standard fixed-center layout with optional side rails
+and one transient expanded-center presentation. In standard presentation the
+center remains 42rem / 672px at `xl+`, with the existing symmetric rail gutters
+and responsive drawers. In expanded-center presentation the same center uses
+the available page width, while PageLayout suppresses both rail columns and
+their drawer/toggle presentation. The semantic default for those regions is:
 
 - left rail — feature-local navigation context, scope, state, progress, and
   sequence;
@@ -51,11 +55,15 @@ semantic default for those regions is:
 
 Feature workflow state determines the current rail composition. Feature-owned
 rail composition publishes the appropriate capabilities through `useRails`, and
-`PageLayout` owns only rail geometry and responsive presentation. `PageLayout`
-remains unaware of feature workflow concepts such as recall or learning phases.
+the current view may publish the generic transient presentation through
+`usePageLayoutPresentation`. `PageLayout` owns center geometry, rail geometry,
+responsive presentation, and presentation cleanup; it remains unaware of
+feature workflow concepts such as recall or learning phases. Expanded-center is
+not browser fullscreen and is not persisted.
 The layout slot context separates read access (used by `PageLayout`) from the
-stable write channel used by `useRails` and `useLayoutHeader`, so publishing a
-slot cannot re-render the component that publishes it. Publishers still pass
+stable write channel used by `useRails`, `useLayoutHeader`, and
+`usePageLayoutPresentation`, so publishing a slot cannot re-render the
+component that publishes it. Publishers still pass
 stable dependency values to avoid unnecessary re-registration; provider-boundary
 tests cover accidental dependency recreation and real feature transitions.
 

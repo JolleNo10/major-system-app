@@ -4,6 +4,7 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Country } from '@/features/world-countries/data/countries'
+import { PageLayoutProvider } from '@/app/layout/PageLayoutContext'
 import { createSchedulerLearningSession } from '@/features/world-countries/learning/schedulerLearningSession'
 import { SchedulerPracticeStep } from './SchedulerPracticeStep'
 import { LearningMapSurface } from './LearningMapSurface'
@@ -43,7 +44,7 @@ describe('SchedulerPracticeStep', () => {
 
     act(() => {
       root = createRoot(mount)
-      root.render(createElement(LearningMapSurface, {
+      root.render(createElement(PageLayoutProvider, null, createElement(LearningMapSurface, {
         continent: 'Europe', scopeCountries: [country], presentation: { ariaLabel: 'Practice map' }, presentationKey: 'practice',
         context: createElement('h1', null, 'Practice'),
         children: createElement(SchedulerPracticeStep, {
@@ -55,7 +56,7 @@ describe('SchedulerPracticeStep', () => {
         formatFeedback: evaluation => `Correct. The canonical answer is ${evaluation.canonicalAnswer}.`,
           onSubmit, onBack: vi.fn(), onExit: vi.fn(), surface: true,
         }),
-      }))
+      })))
     })
 
     const input = mount.querySelector<HTMLInputElement>('input')!
@@ -88,14 +89,14 @@ describe('SchedulerPracticeStep', () => {
     const session = createSchedulerLearningSession([country.id], settings)
     act(() => {
       root = createRoot(mount)
-      root.render(createElement(SchedulerPracticeStep, {
+      root.render(createElement(PageLayoutProvider, null, createElement(SchedulerPracticeStep, {
         continent: 'Europe', entries: [country], session,
         stepLabel: 'Combined practice', questionLabel: 'Country name',
         questionTitle: 'Name the country', answerLabel: 'Type the country name',
         placeholder: 'Type the country…', showCountryName: false, showMap: false,
         promptText: 'Name the country', evaluateAnswer: () => ({ correct: true, fuzzyMatch: false, canonicalAnswer: country.country }),
         formatFeedback: () => 'Correct.', onSubmit: vi.fn(), onBack: vi.fn(), onExit: vi.fn(),
-      }))
+      })))
     })
 
     expect(mount.textContent).toContain('Name the country')
@@ -108,7 +109,7 @@ describe('SchedulerPracticeStep', () => {
     const session = createSchedulerLearningSession([country.id], settings)
     act(() => {
       root = createRoot(mount)
-      root.render(createElement(LearningMapSurface, {
+      root.render(createElement(PageLayoutProvider, null, createElement(LearningMapSurface, {
         continent: 'Europe', scopeCountries: [country], presentation: { ariaLabel: 'Test map' }, presentationKey: 'combined',
         context: createElement('h1', null, 'Combined practice'),
         children: createElement(SchedulerPracticeStep, {
@@ -119,7 +120,7 @@ describe('SchedulerPracticeStep', () => {
           promptText: 'Name the country', evaluateAnswer: () => ({ correct: true, fuzzyMatch: false, canonicalAnswer: country.country }),
           formatFeedback: () => 'Correct.', onSubmit: vi.fn(), onBack: vi.fn(), onExit: vi.fn(),
         }),
-      }))
+      })))
     })
 
     expect(mount.querySelector('[data-testid="country-learning-map"]')).not.toBeNull()

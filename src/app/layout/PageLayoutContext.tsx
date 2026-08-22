@@ -22,16 +22,22 @@ export interface RailConfig {
   rightLabel?: string
 }
 
+export type PageLayoutPresentation = 'standard' | 'expanded-center'
+
+const STANDARD_PRESENTATION: PageLayoutPresentation = 'standard'
+
 const EMPTY_RAILS: RailConfig = {}
 
 interface PageLayoutReadContext {
   rails: RailConfig
   header: ReactNode
+  presentation: PageLayoutPresentation
 }
 
 interface PageLayoutWriteContext {
   setRails: (rails: RailConfig) => void
   setHeader: (header: ReactNode) => void
+  setPresentation: (presentation: PageLayoutPresentation) => void
 }
 
 const PageLayoutReadCtx = createContext<PageLayoutReadContext | null>(null)
@@ -40,16 +46,17 @@ const PageLayoutWriteCtx = createContext<PageLayoutWriteContext | null>(null)
 export function PageLayoutProvider({ children }: { children: ReactNode }) {
   const [rails, setRails] = useState<RailConfig>(EMPTY_RAILS)
   const [header, setHeader] = useState<ReactNode>(null)
+  const [presentation, setPresentation] = useState<PageLayoutPresentation>(STANDARD_PRESENTATION)
   // Publishers receive a separate, stable context so publishing a slot does
   // not re-render the component that owns that slot. This matters because
   // useRails/useLayoutHeader accept dependency arrays and their callers may
   // create ReactNodes or functions while rendering.
   const readValue = useMemo<PageLayoutReadContext>(
-    () => ({ rails, header }),
-    [rails, header],
+    () => ({ rails, header, presentation }),
+    [rails, header, presentation],
   )
   const writeValue = useMemo<PageLayoutWriteContext>(
-    () => ({ setRails, setHeader }),
+    () => ({ setRails, setHeader, setPresentation }),
     [],
   )
   return (
@@ -79,6 +86,11 @@ export function usePageRails(): RailConfig {
 /** PageLayout reads the currently-registered header (chrome above the rail row). */
 export function usePageHeader(): ReactNode {
   return usePageLayoutRead().header
+}
+
+/** PageLayout reads the transient presentation requested by the current view. */
+export function usePageLayoutPresentationMode(): PageLayoutPresentation {
+  return usePageLayoutRead().presentation
 }
 
 /**
@@ -111,4 +123,21 @@ export function useLayoutHeader(node: ReactNode, deps: DependencyList): void {
     setHeader(memoized)
     return () => setHeader(null)
   }, [memoized, setHeader])
+}
+
+/**
+ * Register the transient PageLayout presentation for the current view. The
+ * owner is returned to standard presentation automatically when it unmounts.
+ */
+export function usePageLayoutPresentation(
+  presentation: PageLayoutPresentation,
+  deps: DependencyList,
+): void {
+  const { setPresentation } = usePageLayoutWrite()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const memoized = useMemo(() => presentation, deps)
+  useLayoutEffect(() => {
+    setPresentation(memoized)
+    return () => setPresentation(STANDARD_PRESENTATION)
+  }, [memoized, setPresentation])
 }

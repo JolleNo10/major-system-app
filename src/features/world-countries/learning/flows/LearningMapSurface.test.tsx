@@ -4,6 +4,7 @@ import { act, createElement, useEffect } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Country } from '@/features/world-countries/data/countries'
+import { PageLayoutProvider } from '@/app/layout/PageLayoutContext'
 import { LearningMapSurface } from './LearningMapSurface'
 
 const mapMounts = vi.hoisted(() => vi.fn())
@@ -50,9 +51,9 @@ describe('LearningMapSurface continuity', () => {
 
     act(() => {
       root = createRoot(mount)
-      root.render(renderSurface('practice', 'NO'))
+      root.render(createElement(PageLayoutProvider, null, renderSurface('practice', 'NO')))
     })
-    act(() => root?.render(renderSurface('ready', null)))
+    act(() => root?.render(createElement(PageLayoutProvider, null, renderSurface('ready', null))))
 
     expect(mapMounts).toHaveBeenCalledTimes(1)
     expect(mapRenders.mock.calls[mapRenders.mock.calls.length - 1]?.[0]).toMatchObject({ highlightedCountryId: null })
@@ -64,14 +65,14 @@ describe('LearningMapSurface continuity', () => {
 
     act(() => {
       root = createRoot(mount)
-      root.render(createElement(LearningMapSurface, {
+      root.render(createElement(PageLayoutProvider, null, createElement(LearningMapSurface, {
         continent: 'Europe',
         scopeCountries: [norway],
         presentation: { ariaLabel: 'Learning map', overviewCountries: [norway, sweden] },
         presentationKey: 'walkthrough',
         context: createElement('h1', null, 'Learning'),
         children: createElement('p', null, 'Task'),
-      }))
+      })))
     })
 
     expect(mapRenders.mock.calls[mapRenders.mock.calls.length - 1]?.[0]).toMatchObject({
