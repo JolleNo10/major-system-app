@@ -45,8 +45,9 @@ selects a mode from `src/app/modes.tsx`.
 and one transient expanded-center presentation. In standard presentation the
 center remains 42rem / 672px at `xl+`, with the existing symmetric rail gutters
 and responsive drawers. In expanded-center presentation the same center uses
-the available page width, while PageLayout suppresses both rail columns and
-their drawer/toggle presentation. The semantic default for those regions is:
+the available page width, while PageLayout suppresses the registered layout
+header, both rail columns, and their drawer/toggle presentation. The semantic
+default for those regions is:
 
 - left rail — feature-local navigation context, scope, state, progress, and
   sequence;

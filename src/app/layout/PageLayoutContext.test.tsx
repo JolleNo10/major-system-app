@@ -69,6 +69,7 @@ describe('PageLayout slot registration', () => {
     expect(mount.querySelector('[data-page-layout]')?.getAttribute('data-page-layout-presentation')).toBe('expanded-center')
     expect(mount.querySelector('[role="dialog"]')).toBeNull()
     expect([...mount.querySelectorAll('button')].some(button => button.textContent?.includes('Stats'))).toBe(false)
+    expect(mount.textContent).not.toContain('registered header')
     expect(mount.textContent).toContain('center content')
 
     await act(async () => {
@@ -77,6 +78,7 @@ describe('PageLayout slot registration', () => {
     })
     expect(mount.querySelector('[data-page-layout]')?.getAttribute('data-page-layout-presentation')).toBe('standard')
     expect([...mount.querySelectorAll('button')].some(button => button.textContent?.includes('Stats'))).toBe(true)
+    expect(mount.textContent).toContain('registered header')
     expect(mount.querySelector('[role="dialog"]')).toBeNull()
   })
 
@@ -115,6 +117,7 @@ function PresentationHarness() {
   const [expanded, setExpanded] = useState(false)
   usePageLayoutPresentation(expanded ? 'expanded-center' : 'standard', [expanded])
   useRails({ left: <span>left rail</span>, right: <span>right rail</span> }, [])
+  useLayoutHeader(<span>registered header</span>, [])
   return createElement('div', null,
     createElement('button', { type: 'button', 'data-presentation-toggle': true, onClick: () => setExpanded(value => !value) }, expanded ? 'Collapse' : 'Expand'),
     createElement(PageLayout, null, createElement('span', null, 'center content')),

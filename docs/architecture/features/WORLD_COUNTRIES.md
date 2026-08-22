@@ -227,8 +227,9 @@ advances automatically after the correction dwell.
   explicit overlay, attached, and stacked dock placement, and the one common
   World Countries expand/collapse affordance. Expansion publishes the generic
   transient `expanded-center` PageLayout presentation, keeps the same map and
-  dock mounted, bounds task controls, and resets when the owning surface
-  unmounts or the viewport leaves `xl`. `TaskDock`
+  dock mounted, fits the map and its required task controls within the
+  available desktop viewport, and resets when the owning surface unmounts or
+  the viewport leaves `xl`. `TaskDock`
   provides compact navigation, checkpoint, form,
   hint, and completion variants; checkpoint and completion docks compose their
   status copy and action group as one unit at desktop widths. Typed Practice,
@@ -303,8 +304,9 @@ advances automatically after the correction dwell.
 - Standard PageLayout geometry, `useRails`, `useLayoutHeader`, drawer behavior,
   and rail widths remain unchanged. `MapSurface` may publish the transient
   expanded-center presentation through the shared PageLayout context; this
-  suppresses rail presentation without moving expansion state or breakout CSS
-  into Today, Drill, Practice, Learning, or Recite.
+  generically suppresses registered header and rail presentation without
+  moving expansion state or breakout CSS into Today, Drill, Practice, Learning,
+  or Recite.
 - Today follows the World Countries map-centered spatial grammar: the map and
   immediate primary task stay in the center, geographic context stays in the
   left rail, and Today workflow/session status and controls stay in the right

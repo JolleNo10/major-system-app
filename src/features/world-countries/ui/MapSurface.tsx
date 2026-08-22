@@ -80,10 +80,10 @@ export function MapSurface({ context, map, mapMeta, feedbackOverlay, dock, dockP
         data-map-surface-presentation={expanded ? 'expanded' : 'standard'}
         className={`space-y-2 animate-fade-in ${className}`}
       >
-        <div>{context}</div>
-        <div className="relative">
+        <div data-map-surface-context>{context}</div>
+        <div data-map-surface-body className="relative">
           {mapMeta && <div className="pointer-events-none absolute left-[18px] top-4 z-10 text-left text-xs text-zinc-300 drop-shadow-md">{mapMeta}</div>}
-          <div>{map}</div>
+          <div data-map-surface-map>{map}</div>
           <div className="pointer-events-none absolute right-3 top-3 z-30 hidden xl:block">
             <button
               type="button"
@@ -98,7 +98,7 @@ export function MapSurface({ context, map, mapMeta, feedbackOverlay, dock, dockP
           </div>
           {visibleFeedbackOverlay && <MapFeedbackOverlay>{visibleFeedbackOverlay}</MapFeedbackOverlay>}
           {dockPlacement === 'overlay' && <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-32 rounded-b-2xl bg-gradient-to-t from-zinc-950/35 to-transparent" />}
-          {dock && <div className={dockClass}>{dock}</div>}
+          {dock && <div data-map-surface-dock className={dockClass}>{dock}</div>}
         </div>
       </div>
     </MapSurfaceFeedbackContext.Provider>

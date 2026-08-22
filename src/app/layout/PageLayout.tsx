@@ -46,8 +46,8 @@ export function PageLayout({ children }: { children: ReactNode }) {
       {/* Header chrome — spans the center-column width, centered, above the rail
           row. Keeping it out of the grid lets the rails top-align with the body
           content rather than with the chrome. */}
-      {header && (
-        <div className={expanded ? 'mx-auto w-full px-4 xl:px-8' : 'mx-auto w-full max-w-2xl'}>
+      {header && !expanded && (
+        <div className="mx-auto w-full max-w-2xl">
           {header}
         </div>
       )}
