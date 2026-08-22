@@ -136,7 +136,7 @@ interface TinyCountryTarget {
 
 const FORBIDDEN_ELEMENTS = 'script, foreignObject, iframe, object, embed, image, style'
 const XLINK_NS = 'http://www.w3.org/1999/xlink'
-const TINY_GEOMETRY_MAX_SCREEN_DIMENSION = 12
+const TINY_GEOMETRY_MAX_SOURCE_DIMENSION = 12
 const TINY_MARKER_REST_RADIUS_PX = 3.5
 const TINY_MARKER_HIGHLIGHT_RADIUS_PX = 5.5
 const TINY_HIT_RADIUS_PX = 12
@@ -198,6 +198,7 @@ export class SvgMapController {
   private mutedCountries = new Set<string>()
   private hiddenCountries = new Set<string>()
   private hoverableCountries: Set<string> | null = null
+  private selectableCountries: Set<string> | null = null
   private named = new Set<string>()
   private countryLabelOverrides = new Map<string, string>()
   private hoverGroups: SvgMapHoverGroup[] = []
@@ -407,7 +408,7 @@ export class SvgMapController {
     this.assertUsable()
     const { knownIds, unknownIds } = this.resolveKnown(ids)
     this.hiddenCountries = new Set(knownIds)
-    if (this.hoveredCountryId !== null && !this.isInteractive(this.hoveredCountryId)) {
+    if (this.hoveredCountryId !== null && !this.isHoverable(this.hoveredCountryId)) {
       this.hoveredCountryId = null
       this.hoveredNameOverride = null
     }
@@ -500,6 +501,22 @@ export class SvgMapController {
     this.render()
   }
 
+  /** Restrict generic Country selection to a caller-owned set of SVG IDs. */
+  setSelectableCountries(ids: Iterable<string>): SvgMapMutationResult {
+    this.assertUsable()
+    const { knownIds, unknownIds } = this.resolveKnown(ids)
+    this.selectableCountries = new Set(knownIds)
+    this.render()
+    return { activeIds: [...this.selectableCountries], unknownIds }
+  }
+
+  /** Restore handler-driven selection for every discovered Country. */
+  resetSelectableCountries(): void {
+    this.assertUsable()
+    this.selectableCountries = null
+    this.render()
+  }
+
   toggleNames(ids: Iterable<string>): SvgMapMutationResult {
     this.assertUsable()
     const { knownIds, unknownIds } = this.resolveKnown(ids)
@@ -521,6 +538,7 @@ export class SvgMapController {
   setCountryClickHandler(handler: ((countryId: string) => void) | null): void {
     this.assertUsable()
     this.countryClickHandler = handler
+    this.render()
   }
 
   /** Register a framework-neutral callback for pointer hover on discovered countries. */
@@ -749,7 +767,7 @@ export class SvgMapController {
   private attachHoverListeners(): void {
     for (const country of this.countries.values()) {
       const enter: EventListener = () => {
-        if (!this.isInteractive(country.id)) {
+        if (!this.isHoverable(country.id)) {
           const hadHover = this.hoveredCountryId !== null || this.hoveredIds.size > 0
           this.setHoveredCountry(null)
           if (hadHover) this.countryHoverHandler?.(null)
@@ -762,7 +780,7 @@ export class SvgMapController {
         this.setHoveredCountryAndNotify(null)
       }
       const click: EventListener = () => {
-        if (this.isInteractive(country.id)) this.countryClickHandler?.(country.id)
+        if (this.isSelectable(country.id)) this.countryClickHandler?.(country.id)
       }
       country.path.addEventListener('pointerenter', enter)
       country.path.addEventListener('pointerleave', leave)
@@ -782,7 +800,7 @@ export class SvgMapController {
 
   private setHoveredCountry(id: string | null, showName?: boolean): void {
     this.hoveredNameOverride = id === null || showName === undefined ? null : showName
-    if (id !== null && !this.isInteractive(id)) {
+    if (id !== null && !this.isHoverable(id)) {
       this.hoveredCountryId = null
       this.hoveredNameOverride = null
       this.hoveredIds.clear()
@@ -803,7 +821,7 @@ export class SvgMapController {
   private refreshHoveredIds(): void {
     this.hoveredIds.clear()
     const id = this.hoveredCountryId
-    if (!id || !this.isInteractive(id)
+    if (!id || !this.isHoverable(id)
       || (!this.settings.hoverHighlight && !this.settings.hoverShowName && this.hoveredNameOverride !== true)) return
 
     if (this.settings.hoverScope === 'single') {
@@ -814,7 +832,7 @@ export class SvgMapController {
     for (const group of this.hoverGroups) {
       if (!group.countryIds.includes(id)) continue
       for (const countryId of group.countryIds) {
-        if (this.isInteractive(countryId)) this.hoveredIds.add(countryId)
+        if (this.isHoverable(countryId)) this.hoveredIds.add(countryId)
       }
     }
     if (this.hoveredIds.size === 0) this.hoveredIds.add(id)
@@ -831,11 +849,15 @@ export class SvgMapController {
   }
 
   private isHoverable(id: string): boolean {
-    return this.hoverableCountries === null || this.hoverableCountries.has(id)
+    return !this.hiddenCountries.has(id)
+      && (this.hoverableCountries === null || this.hoverableCountries.has(id))
   }
 
-  private isInteractive(id: string): boolean {
-    return !this.hiddenCountries.has(id) && this.isHoverable(id)
+  private isSelectable(id: string): boolean {
+    return !this.hiddenCountries.has(id)
+      && (this.selectableCountries === null
+        ? this.countryClickHandler !== null
+        : this.selectableCountries.has(id))
   }
 
   private resolveOutlineIds(ids: Iterable<string>): { knownIds: string[]; unknownIds: string[] } {
@@ -931,7 +953,7 @@ export class SvgMapController {
 
     for (const country of this.countries.values()) {
       const bounds = this.readGeometryBounds(country.path)
-      if (!bounds || Math.max(bounds.width * scale.x, bounds.height * scale.y) > TINY_GEOMETRY_MAX_SCREEN_DIMENSION) {
+      if (!bounds || Math.max(bounds.width, bounds.height) > TINY_GEOMETRY_MAX_SOURCE_DIMENSION) {
         this.removeTinyTarget(country.id)
         continue
       }
@@ -1042,15 +1064,15 @@ export class SvgMapController {
     this.svg.append(this.tinyTargetLayer)
 
     const enter: EventListener = event => {
-      const resolvedId = this.resolveTinyTargetId(event, countryId)
-      if (!resolvedId || !this.isInteractive(resolvedId)) {
+      const resolvedId = this.resolveTinyTargetId(event, countryId, 'hover')
+      if (!resolvedId || !this.isHoverable(resolvedId)) {
         this.setHoveredCountryAndNotify(null)
         return
       }
       this.setHoveredCountryAndNotify(resolvedId)
     }
     const leave: EventListener = event => {
-      const nextId = this.resolveTinyTargetId(event)
+      const nextId = this.resolveTinyTargetId(event, undefined, 'hover')
       if (nextId && nextId !== countryId) {
         this.setHoveredCountryAndNotify(nextId)
         return
@@ -1058,8 +1080,8 @@ export class SvgMapController {
       if (this.hoveredCountryId === countryId) this.setHoveredCountryAndNotify(null)
     }
     const click: EventListener = event => {
-      const resolvedId = this.resolveTinyTargetId(event, countryId)
-      if (resolvedId && this.isInteractive(resolvedId)) this.countryClickHandler?.(resolvedId)
+      const resolvedId = this.resolveTinyTargetId(event, countryId, 'select')
+      if (resolvedId && this.isSelectable(resolvedId)) this.countryClickHandler?.(resolvedId)
     }
     hit.addEventListener('pointerenter', enter)
     hit.addEventListener('pointerleave', leave)
@@ -1128,7 +1150,7 @@ export class SvgMapController {
     target.ring.setAttribute('opacity', hovered ? '0.85' : '0')
     target.ring.style.setProperty('transition', reducedMotion ? 'none' : `r ${this.settings.transitionMs}ms ease, opacity ${this.settings.transitionMs}ms ease`)
 
-    const interactive = this.isInteractive(country.id)
+    const interactive = this.isHoverable(country.id) || this.isSelectable(country.id)
     target.group.setAttribute('visibility', hidden ? 'hidden' : 'visible')
     target.hit.style.setProperty('pointer-events', !hidden && interactive ? 'all' : 'none', 'important')
   }
@@ -1138,14 +1160,15 @@ export class SvgMapController {
     this.countryHoverHandler?.(this.hoveredCountryId === id ? id : null)
   }
 
-  private resolveTinyTargetId(event: Event, fallbackId?: string): string | null {
+  private resolveTinyTargetId(event: Event, fallbackId: string | undefined, mode: 'hover' | 'select'): string | null {
     const point = this.getSvgPoint(event)
-    if (!point) return fallbackId ?? null
-    const sourceCountryId = this.resolveSourceCountryAtPoint(point)
+    const isActive = mode === 'hover' ? this.isHoverable.bind(this) : this.isSelectable.bind(this)
+    if (!point) return fallbackId && isActive(fallbackId) ? fallbackId : null
+    const sourceCountryId = this.resolveSourceCountryAtPoint(point, mode)
     if (sourceCountryId) return sourceCountryId
     let nearest: { id: string; distance: number } | null = null
     for (const target of this.tinyTargets.values()) {
-      if (!this.isInteractive(target.countryId)) continue
+      if (!isActive(target.countryId)) continue
       const distance = Math.hypot(point.x - target.centerX, point.y - target.centerY)
       if (distance > target.hitRadius) continue
       if (!nearest || distance < nearest.distance) nearest = { id: target.countryId, distance }
@@ -1153,10 +1176,10 @@ export class SvgMapController {
     return nearest?.id ?? null
   }
 
-  private resolveSourceCountryAtPoint(point: { x: number; y: number }): string | null {
+  private resolveSourceCountryAtPoint(point: { x: number; y: number }, mode: 'hover' | 'select'): string | null {
     const matches: Array<{ id: string; area: number }> = []
     for (const country of this.countries.values()) {
-      if (!this.isInteractive(country.id)) continue
+      if (mode === 'hover' ? !this.isHoverable(country.id) : !this.isSelectable(country.id)) continue
       const bounds = this.readGeometryBounds(country.path)
       if (!bounds) continue
       const geometry = country.path as SVGGeometryElement & {
@@ -1363,6 +1386,7 @@ export class SvgMapController {
     this.mutedCountries.clear()
     this.hiddenCountries.clear()
     this.hoverableCountries = null
+    this.selectableCountries = null
     this.named.clear()
     this.countryLabelOverrides.clear()
     this.hoverGroups = []

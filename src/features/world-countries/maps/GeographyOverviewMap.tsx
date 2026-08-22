@@ -171,6 +171,9 @@ export function GeographyOverviewMap({
   const hoverableSvgIds = interactive
     ? focusedSubregionId ? focusSvgIds : visibleSvgIds
     : []
+  const selectableSvgIds = interactive
+    ? focusedSubregionId ? focusSvgIds : visibleSvgIds
+    : []
   const restrictCountryClicks = Boolean(
     focusedSubregionId || (selectedSubregionIds === undefined && hasHoveredSubregionScope),
   )
@@ -245,6 +248,7 @@ export function GeographyOverviewMap({
         highlightedIds={highlightedSvgIds}
         hiddenIds={hiddenSvgIds}
         hoverableIds={hoverableSvgIds}
+        selectableIds={selectableSvgIds}
         hoveredId={hoveredCountryId}
         mutedIds={mutedSvgIds}
         countryColors={countryColors}

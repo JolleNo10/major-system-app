@@ -255,7 +255,10 @@ advances automatically after the correction dwell.
   in rendered screen space across map scale, zoom, and resize, including
   standard and expanded presentation. Generic highlighted state provides
   persistent visible emphasis for tiny markers without introducing
-  workflow-specific target semantics. The source Country path remains
+  workflow-specific target semantics. `SvgMapView` carries generic selectable
+  Country IDs independently from hoverable IDs, so pointer-selectable maps
+  inherit the shared tiny-Country behavior without workflow owners adding
+  per-mode marker or hit-target logic. The source Country path remains
   authoritative for discovery, semantic styling, identity, and `getBBox()`-based
   zoom; hidden or non-hoverable Countries do not retain an interactive
   augmentation, and overlapping target candidates resolve by nearest pointer

@@ -304,7 +304,7 @@ describe('SvgMapController hover behavior', () => {
     expect(Number(secondHit.getAttribute('r')) * 0.1).toBeCloseTo(Number(firstHit.getAttribute('r')))
   })
 
-  it('re-evaluates tiny eligibility when zoom changes the rendered scale', async () => {
+  it('keeps source-tiny targets through task zoom and restores them with the source view', async () => {
     const { mount, controller } = makeController()
     await controller.load({ markup: TEST_MAP })
     setBBox(mount, 'Alpha', { x: 10, y: 10, width: 2, height: 2 })
@@ -313,7 +313,7 @@ describe('SvgMapController hover behavior', () => {
     expect(mount.querySelector('[data-svg-map-tiny-marker="Alpha"]')).not.toBeNull()
 
     controller.setZoomArea(['Alpha'], 0)
-    expect(mount.querySelector('[data-svg-map-tiny-marker="Alpha"]')).toBeNull()
+    expect(mount.querySelector('[data-svg-map-tiny-marker="Alpha"]')).not.toBeNull()
 
     controller.resetZoom()
     expect(mount.querySelector('[data-svg-map-tiny-marker="Alpha"]')).not.toBeNull()
@@ -528,6 +528,7 @@ describe('SvgMapController hover behavior', () => {
 
     controller.clearHiddenCountries()
     controller.setHoverableCountries([])
+    controller.setSelectableCountries([])
     expect(mount.querySelector('[data-svg-map-tiny-country="Alpha"]')?.getAttribute('visibility')).toBe('visible')
     expect(hit.style.getPropertyValue('pointer-events')).toBe('none')
     hit.dispatchEvent(new Event('pointerenter'))

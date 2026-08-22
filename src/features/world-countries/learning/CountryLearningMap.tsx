@@ -109,8 +109,10 @@ export function CountryLearningMap({
         ariaDescribedBy={countryDescriptions.length ? descriptionId : undefined}
         highlightedIds={highlightedSvgIds}
         hoveredId={hoveredSvgId}
+        hoverableIds={onCountryClick ? scopeSvgIds : undefined}
         mutedIds={discoveredIds.filter(id => !unmutedSvgIds.includes(id))}
         namedIds={namedSvgIds}
+        selectableIds={onCountryClick ? scopeSvgIds : []}
         countryLabels={countryLabels}
         countryColors={countryColors}
         zoomIds={zoomIds}

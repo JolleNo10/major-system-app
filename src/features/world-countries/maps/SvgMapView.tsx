@@ -21,6 +21,7 @@ export interface SvgMapViewProps {
   hiddenIds?: readonly string[]
   mutedIds?: readonly string[]
   hoverableIds?: readonly string[]
+  selectableIds?: readonly string[]
   hoverGroups?: readonly SvgMapHoverGroup[]
   groupOutlines?: readonly SvgMapGroupOutline[]
   hoveredId?: string | null
@@ -46,6 +47,7 @@ export function SvgMapView({
   hiddenIds = [],
   mutedIds = [],
   hoverableIds,
+  selectableIds,
   hoverGroups,
   groupOutlines = [],
   hoveredId = null,
@@ -134,6 +136,8 @@ export function SvgMapView({
     controller.setHiddenCountries(hiddenIds)
     if (hoverableIds === undefined) controller.resetHoverableCountries()
     else controller.setHoverableCountries(hoverableIds)
+    if (selectableIds === undefined) controller.resetSelectableCountries()
+    else controller.setSelectableCountries(selectableIds)
     controller.setHighlighted(highlightedIds)
     controller.setMutedCountries(mutedIds)
     controller.clearColors()
@@ -145,7 +149,7 @@ export function SvgMapView({
     if (namedIds.length) controller.setNamesVisible(namedIds, true)
     if (zoomIds.length) controller.setZoomArea(zoomIds, zoomPadding)
     else controller.resetZoom()
-  }, [countries, countryColors, countryLabels, groupOutlines, hiddenIds, highlightedIds, hoverGroups, hoverableIds, mutedIds, namedIds, settings, zoomIds, zoomPadding])
+  }, [countries, countryColors, countryLabels, groupOutlines, hiddenIds, highlightedIds, hoverGroups, hoverableIds, mutedIds, namedIds, selectableIds, settings, zoomIds, zoomPadding])
 
   useEffect(() => {
     const controller = controllerRef.current

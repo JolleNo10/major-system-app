@@ -36,7 +36,7 @@ export function LearningMapSurface({
   children: ReactNode
 }) {
   const [override, setOverride] = useState<LearningMapOverride>({})
-  useLayoutEffect(() => setOverride({}), [presentationKey])
+  useLayoutEffect(() => () => setOverride({}), [presentationKey])
   const effectivePresentation = useMemo(() => ({ ...presentation, ...override }), [override, presentation])
   const contextValue = useMemo(() => ({ setOverride }), [])
   const map = <CountryLearningMap continent={continent} scopeCountries={scopeCountries} ariaLabel={effectivePresentation.ariaLabel ?? 'World Countries Learning map'} {...effectivePresentation} />
