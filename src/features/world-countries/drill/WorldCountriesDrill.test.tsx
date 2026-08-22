@@ -116,6 +116,31 @@ describe('WorldCountriesDrill learning integration', () => {
     expect(drillSetupProps.current?.mode).toBe('countries-capitals')
   })
 
+  it('starts Country for Shape with shape evidence and the full active map population', () => {
+    localStorage.setItem('world-countries-drill-preferences', JSON.stringify({
+      continent: 'Europe', subregionIds: ['northern-europe'], mode: 'countries-from-shape', order: 'ordered',
+    }))
+
+    const mount = document.createElement('div')
+    document.body.append(mount)
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement(SettingsProvider, null,
+        createElement(WorldCountriesDrill, { answerMode: 'multiple-choice' }),
+      ))
+    })
+
+    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="start-drill"]')!.click())
+
+    expect(getDrillSessionSkills(drillSessionProps.current?.state as DrillSessionState)).toEqual(['shape-to-country'])
+    expect((drillSessionProps.current?.activeCountries as readonly Country[]).length).toBeGreaterThan((drillSessionProps.current?.entries as readonly Country[]).length)
+
+    act(() => (drillSessionProps.current?.onAnswer as (record: DrillAnswerRecord) => void)({
+      countryId: 'NO', skill: 'shape-to-country', answer: 'Norway', correct: true, at: 1, ms: 100,
+    }))
+    expect(recordWorldCountriesAttemptMock).toHaveBeenCalledWith('NO', 'shape-to-country', expect.objectContaining({ ok: true }))
+  })
+
   it('starts Locate Capitals as non-recording capital-to-country map practice', () => {
     localStorage.setItem('world-countries-drill-preferences', JSON.stringify({
       continent: 'Europe', subregionIds: ['northern-europe'], mode: 'countries', order: 'ordered',
@@ -264,5 +289,23 @@ describe('WorldCountriesDrill failed-Country retry', () => {
 
     act(() => (drillResultsProps.current?.onAgain as () => void)())
     expect((drillSessionProps.current?.state as DrillSessionState).countryIds).toEqual(configuredCountryIds)
+  })
+
+  it('retries failed Countries with the shape skill through the generic workflow', () => {
+    localStorage.setItem('world-countries-drill-preferences', JSON.stringify({
+      continent: 'Europe', subregionIds: ['northern-europe'], mode: 'countries-from-shape', order: 'ordered',
+    }))
+    renderRetryDrill()
+
+    act(() => document.querySelector<HTMLButtonElement>('[data-testid="start-drill"]')!.click())
+    completeDrillRun(step => step.countryId === 'NO')
+
+    expect(drillResultsProps.current?.retryFailedCountryCount).toBe(1)
+    act(() => (drillResultsProps.current?.onRetryFailedCountries as () => void)())
+
+    const retryState = drillSessionProps.current?.state as DrillSessionState
+    expect(retryState.mode).toBe('countries-from-shape')
+    expect(getDrillSessionSkills(retryState)).toEqual(['shape-to-country'])
+    expect(retryState.countryIds).toEqual(['NO'])
   })
 })

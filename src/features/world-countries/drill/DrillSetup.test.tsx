@@ -167,14 +167,15 @@ describe('DrillSetup activity boundary', () => {
     expect(mount.textContent).not.toContain('World mastery')
   })
 
-  it('exposes exactly three Drill modes and keeps geography authoring in the rail', () => {
+  it('exposes four Drill modes and keeps geography authoring in the rail', () => {
     const mount = renderSetup()
     const config = useRailsMock.mock.calls[0][0] as { left: ReactNode; right: ReactNode }
     act(() => root?.render(createElement('div', null, config.left, config.right)))
     expect(mount.textContent).toContain('Countries + Capitals')
     expect(mount.textContent).toContain('Countries from Capitals')
+    expect(mount.textContent).toContain('Country for Shape')
     expect(mount.textContent).not.toContain('Learn Countries')
-    expect(mount.querySelectorAll('input[type="radio"]')).toHaveLength(5)
+    expect(mount.querySelectorAll('input[type="radio"]')).toHaveLength(6)
     expect(mount.textContent).toContain('Edit order')
     expect(mount.textContent).toContain('Start Drill')
   })

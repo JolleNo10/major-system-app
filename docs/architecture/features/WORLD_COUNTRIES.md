@@ -47,7 +47,8 @@ that lets contextual authoring affect subsequent Learning presentation.
   Learning modes own their milestone writes; the guided UI is not Drill
   implementation detail.
 - `maps/` owns SVG loading, Country-to-SVG translation, overview and learning
-  map presentation, task-scoped answer-selection interaction points,
+  map presentation, generic caller-controlled Country visibility and explicit
+  Country zoom, task-scoped answer-selection interaction points,
   map-owned synthetic dot metadata for visually weak source geography,
   representative learning anchors, map-owned pointer-intent resolution,
   existing Country sequence annotations, and workflow-neutral geographic
@@ -55,7 +56,7 @@ that lets contextual authoring affect subsequent Learning presentation.
 - `mnemonics/` owns World Countries mnemonic target IDs, geography mnemonic
   adapters, backup behavior, read presentation, and the reusable contextual
   Subregion mnemonic editor.
-- `drill/` owns Drill selection, preferences, exactly three Drill modes,
+- `drill/` owns Drill selection, preferences, four Drill modes,
   Learn & Practise purpose selection, shared session mechanics, Drill and
   Practice presentation, results, and World/Continent order authoring in the
   existing Geography rails. It also owns the feature-local, mutually exclusive
@@ -93,9 +94,13 @@ keeps its queue, retry state, and checkpoints transient.
 The shell exposes `[ Today ] [ Drill ] [ Recite ]`, with Today selected by
 default. Drill has a non-persisted Purpose selector:
 
-- **Drill**: `Countries`, `Countries + Capitals`, and `Countries from
-  Capitals`. These are the only `WorldCountriesDrillMode` values and may
-  write atomic Drill evidence according to their defined semantics.
+- **Drill**: `Countries`, `Countries + Capitals`, `Countries from Capitals`,
+  and `Country for Shape`. These are the only `WorldCountriesDrillMode` values
+  and may write atomic Drill evidence according to their defined semantics.
+  Country for Shape uses the ordinary Country-name answer lifecycle while the
+  map adapter isolates the target's source geometry and explicitly fits it;
+  incorrect feedback reveals the active Countries in that target's Subregion
+  on the same mounted map and highlights the target.
 - **Learn & Practise**: Learning (`Learn Countries`, `Learn Capitals`) and
   non-recording Practice (`Locate Countries`, `Locate Capitals`, `Capitals`). Learning writes
   only the durable milestone owned by its active mode. Practice retains only
@@ -371,7 +376,7 @@ flowchart TD
   ordinary `recall` evidence through the existing feature adapter. It owns no
   schedule, plan, queue, retry, or checkpoint persistence.
 - A persisted legacy Drill `mode: "capitals"` remains invalid under the
-  current three-mode union and falls back to the normal `countries` default.
+  current four-mode union and falls back to the normal `countries` default.
   No migration is performed.
 
 ## Invariants

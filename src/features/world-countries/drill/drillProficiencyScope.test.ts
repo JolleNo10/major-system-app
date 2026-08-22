@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Country } from '@/features/world-countries/data/countries'
 import { deriveWorldCountriesRecallProgress } from '@/features/world-countries/learning/recallProgress'
-import { recallTargetIdFor } from '@/features/world-countries/learning/recallTargets'
+import { recallTargetIdFor, type WorldCountriesRecallSkill } from '@/features/world-countries/learning/recallTargets'
 import { resolveDrillProficiencyScope } from './drillProficiencyScope'
 
 const norway: Country = {
@@ -15,7 +15,7 @@ const sweden: Country = {
 
 function progressFor(
   countryId: Country['id'],
-  skill: 'location-to-country' | 'country-to-capital' | 'capital-to-country',
+  skill: WorldCountriesRecallSkill,
   ok: boolean,
 ) {
   return {
@@ -107,5 +107,22 @@ describe('World Countries Drill proficiency scope', () => {
 
     expect(scope.counts).toEqual({ weak: 0, developing: 0 })
     expect(scope.countryIds).toEqual([])
+  })
+
+  it('uses shape-to-country as the Country for Shape proficiency perspective', () => {
+    const progress = deriveWorldCountriesRecallProgress({
+      countryIds: ['NO', 'SE'],
+      skills: ['shape-to-country'],
+    }, [progressFor('NO', 'shape-to-country', false)])
+
+    const scope = resolveDrillProficiencyScope(
+      'Europe',
+      ['weak'],
+      progress,
+      { kind: 'drill', mode: 'countries-from-shape' },
+      [norway, sweden],
+    )
+
+    expect(scope.countryIds).toEqual(['NO'])
   })
 })

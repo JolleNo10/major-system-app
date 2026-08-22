@@ -52,7 +52,7 @@ type StartSessionOptions = {
   countryIds?: readonly CountryId[]
 }
 
-/** Coordinator for setup, the three Drill modes, durable Learning, and non-recording Practice. */
+/** Coordinator for setup, the four Drill modes, durable Learning, and non-recording Practice. */
 export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) {
   const { settings } = useSettings()
   const activeCountries = useWorldCountriesPopulation()
@@ -288,7 +288,7 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
   }
 
   if ((phase === 'recall' || phase === 'practice') && session && sessionMatchesActivePopulation) {
-    return <DrillSession answerMode={answerMode} fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching} state={session} interaction={sessionInteraction} activity={sessionActivity} learningStates={learningStates} proficiencySelection={proficiencySelection} selection={sessionSelection ?? effectivePreferences} entries={sessionEntries} onAnswer={answer} onContinue={continueSession} onExit={exitToSetup} mnemonicVersion={mnemonicVersion} onMnemonicChanged={mnemonicChanged} />
+    return <DrillSession answerMode={answerMode} fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching} state={session} interaction={sessionInteraction} activity={sessionActivity} learningStates={learningStates} proficiencySelection={proficiencySelection} selection={sessionSelection ?? effectivePreferences} entries={sessionEntries} activeCountries={activeCountries} onAnswer={answer} onContinue={continueSession} onExit={exitToSetup} mnemonicVersion={mnemonicVersion} onMnemonicChanged={mnemonicChanged} />
   }
 
   if (phase === 'results') {

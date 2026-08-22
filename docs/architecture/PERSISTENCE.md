@@ -89,7 +89,9 @@ follows the defining module and feature namespace.
 - World Countries atomic Drill and Today review evidence uses the existing
   shared `attempts` store through `core/learning`. The feature constructs opaque IDs in the
   `world-countries:<skill>:<CountryId>` namespace, where the skill is one of
-  `location-to-country`, `country-to-capital`, or `capital-to-country`.
+  `location-to-country`, `shape-to-country`, `country-to-capital`, or
+  `capital-to-country`. `shape-to-country` is an additional skill and is not
+  part of the core World-mastery finish line.
   Countries + Capitals writes two atomic records when both steps are answered;
   its mode name is not part of either ID. The Capitals Drill helper is
   deliberately non-recording: its answers do not write atomic evidence or

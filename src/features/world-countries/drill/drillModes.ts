@@ -4,6 +4,7 @@ export type WorldCountriesDrillMode =
   | 'countries'
   | 'countries-capitals'
   | 'countries-from-capitals'
+  | 'countries-from-shape'
 
 export interface DrillModeDefinition {
   id: WorldCountriesDrillMode
@@ -31,6 +32,12 @@ export const WORLD_COUNTRIES_DRILL_MODES: readonly DrillModeDefinition[] = [
     description: 'Given a Capital, recall its Country.',
     skills: ['capital-to-country'],
   },
+  {
+    id: 'countries-from-shape',
+    label: 'Country for Shape',
+    description: 'Identify a Country from its isolated geographic shape.',
+    skills: ['shape-to-country'],
+  },
 ]
 
 const modeById = new Map(WORLD_COUNTRIES_DRILL_MODES.map(mode => [mode.id, mode]))
@@ -51,6 +58,7 @@ export function getSkillsForDrillMode(mode: WorldCountriesDrillMode): readonly W
 
 export function getDrillSkillLabel(skill: WorldCountriesRecallSkill): string {
   if (skill === 'location-to-country') return 'Location → Country'
+  if (skill === 'shape-to-country') return 'Shape → Country'
   if (skill === 'country-to-capital') return 'Country → Capital'
   return 'Capital → Country'
 }

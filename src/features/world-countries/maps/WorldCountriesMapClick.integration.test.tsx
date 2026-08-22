@@ -21,6 +21,7 @@ const andorra = countries.find(country => country.id === 'AD') as Country
 const sanMarino = countries.find(country => country.id === 'SM') as Country
 const vaticanCity = countries.find(country => country.id === 'VA') as Country
 const malta = countries.find(country => country.id === 'MT') as Country
+const unitedKingdom = countries.find(country => country.id === 'GB') as Country
 const nauru = countries.find(country => country.id === 'NR') as Country
 const micronesia = countries.find(country => country.id === 'FM') as Country
 const samoa = countries.find(country => country.id === 'WS') as Country
@@ -144,6 +145,100 @@ beforeEach(() => {
 // tests keep the real workflow -> CountryLearningMap -> SvgMapView -> SVG
 // chain intact so both shared-map failures remain observable.
 describe('real bundled-map tiny Country selection', () => {
+  it('uses real source geometry for an isolated shape and updates context on the same SVG', async () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(CountryLearningMap, {
+        continent: 'Europe',
+        scopeCountries: [andorra, sanMarino, vaticanCity, malta],
+        visibleCountryIds: [andorra.id],
+        zoomCountryIds: [andorra.id],
+        ariaLabel: 'Isolated Andorra shape',
+      }))
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const initialSvg = mount.querySelector<SVGSVGElement>('.world-map-svg svg')
+    const targetPath = mount.querySelector<SVGPathElement>('path#Andorra')
+    if (!initialSvg || !targetPath) throw new Error('Missing isolated bundled map geometry')
+    expect(targetPath.getAttribute('d')).toBeTruthy()
+    expect(targetPath.style.visibility).not.toBe('hidden')
+    expect(mount.querySelector<SVGPathElement>('path#San_Marino')?.style.visibility).toBe('hidden')
+    expect(mount.querySelector('[data-svg-map-task-targets]')).toBeNull()
+    expect(mount.querySelector('[data-svg-map-task-representative-target]')).toBeNull()
+
+    await act(async () => {
+      root?.render(createElement(CountryLearningMap, {
+        continent: 'Europe',
+        scopeCountries: [andorra, sanMarino, vaticanCity, malta],
+        visibleCountryIds: [andorra.id, sanMarino.id, vaticanCity.id, malta.id],
+        zoomCountryIds: [andorra.id, sanMarino.id, vaticanCity.id, malta.id],
+        highlightedCountryId: andorra.id,
+        ariaLabel: 'Southern Europe shape context',
+      }))
+      await Promise.resolve()
+    })
+
+    expect(mount.querySelector<SVGSVGElement>('.world-map-svg svg')).toBe(initialSvg)
+    expect(mount.querySelector<SVGPathElement>('path#San_Marino')?.style.visibility).not.toBe('hidden')
+    expect(mount.querySelector<SVGPathElement>('path#Andorra')?.style.fill).toBe('#0891b2')
+  })
+
+  it('preserves every source component of a multipart Country shape', async () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(CountryLearningMap, {
+        continent: 'Europe',
+        scopeCountries: [unitedKingdom],
+        visibleCountryIds: [unitedKingdom.id],
+        zoomCountryIds: [unitedKingdom.id],
+        ariaLabel: 'United Kingdom shape',
+      }))
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    for (const svgId of ['England', 'Northern_Ireland', 'Scotland', 'Wales']) {
+      expect(mount.querySelector<SVGPathElement>(`path#${svgId}`)?.style.visibility).not.toBe('hidden')
+    }
+    expect(mount.querySelector('[data-svg-map-task-targets]')).toBeNull()
+  })
+
+  it('applies explicit isolated zoom for an Oceania Country', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => oceaniaSvg })))
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(CountryLearningMap, {
+        continent: 'Oceania',
+        scopeCountries: [nauru],
+        visibleCountryIds: [nauru.id],
+        zoomCountryIds: [nauru.id],
+        ariaLabel: 'Nauru shape',
+      }))
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const svg = mount.querySelector<SVGSVGElement>('.world-map-svg svg')
+    expect(svg).not.toBeNull()
+    expect(mount.querySelector<SVGPathElement>('path#Nauru')?.style.visibility).not.toBe('hidden')
+    expect(svg?.getAttribute('viewBox')).toContain('829.243')
+    expect(mount.querySelector('[data-svg-map-task-targets]')).toBeNull()
+  })
+
   it('assists every compact Europe candidate independently without simple-dot metadata', async () => {
     const mount = document.createElement('div')
     document.body.append(mount)

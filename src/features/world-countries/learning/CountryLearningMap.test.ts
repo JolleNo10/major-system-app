@@ -119,4 +119,41 @@ describe('CountryLearningMap', () => {
       learningAnchors: [],
     })
   })
+
+  it('supports explicit visibility and Country zoom without task assistance', () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement(CountryLearningMap, {
+        continent: 'Europe',
+        scopeCountries: [norway, sweden],
+        visibleCountryIds: [norway.id],
+        zoomCountryIds: [norway.id],
+        ariaLabel: 'Isolated Country shape',
+      }))
+    })
+
+    const isolatedProps = mapProps.mock.calls[mapProps.mock.calls.length - 1]?.[0]
+    expect(isolatedProps).toMatchObject({
+      hiddenIds: ['Sweden'],
+      zoomIds: ['Norway'],
+      taskAssistance: null,
+    })
+
+    act(() => {
+      root?.render(createElement(CountryLearningMap, {
+        continent: 'Europe',
+        scopeCountries: [norway, sweden],
+        visibleCountryIds: [norway.id, sweden.id],
+        zoomCountryIds: [norway.id, sweden.id],
+        highlightedCountryId: norway.id,
+        ariaLabel: 'Country subregion context',
+      }))
+    })
+
+    const contextProps = mapProps.mock.calls[mapProps.mock.calls.length - 1]?.[0]
+    expect(contextProps).toMatchObject({ hiddenIds: [], zoomIds: ['Norway', 'Sweden'], highlightedIds: ['Norway'] })
+  })
 })

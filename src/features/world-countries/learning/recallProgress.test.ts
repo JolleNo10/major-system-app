@@ -160,7 +160,7 @@ describe('World Countries recall progress', () => {
     expect(country.coreState).toBe('complete')
     expect(country.complete).toBe(true)
     expect(country.additionalMasteredSkills).toBe(0)
-    expect(country.additionalSkillCount).toBe(1)
+    expect(country.additionalSkillCount).toBe(2)
     expect(country.skills.get('capital-to-country')?.proficiency).toBe('weak')
   })
 
@@ -173,6 +173,7 @@ describe('World Countries recall progress', () => {
         ['location-to-country', 1], ['location-to-country', 2],
         ['country-to-capital', 3], ['country-to-capital', 4],
         ['capital-to-country', 5], ['capital-to-country', 6],
+        ['shape-to-country', 7], ['shape-to-country', 8],
       ].map(([skill, at], index) => attempt(
         'NO', skill as (typeof WORLD_COUNTRIES_RECALL_SKILLS)[number], at as number,
         true, index % 2 ? '2026-08-11' : '2026-08-10',
@@ -181,7 +182,7 @@ describe('World Countries recall progress', () => {
 
     const country = deriveWorldCountriesCountryProgress('NO', progress)
     expect(country.coreState).toBe('complete')
-    expect(country.additionalMasteredSkills).toBe(1)
+    expect(country.additionalMasteredSkills).toBe(2)
     expect(country.additionalMasteryRatio).toBe(1)
   })
 

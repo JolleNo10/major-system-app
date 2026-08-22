@@ -36,9 +36,9 @@ export function deriveWorldCountriesTargetIntroduction(
   learningState?: SubregionLearningState,
 ): WorldCountriesTargetIntroduction {
   const successfulAttempt = history.some(attempt => attempt.ok === true)
-  const milestoneAt = target.skill === 'capital-to-country'
-    ? null
-    : validMilestoneAt(learningState, target.skill)
+  const milestoneAt = target.skill === 'location-to-country' || target.skill === 'country-to-capital'
+    ? validMilestoneAt(learningState, target.skill)
+    : null
 
   return {
     target,

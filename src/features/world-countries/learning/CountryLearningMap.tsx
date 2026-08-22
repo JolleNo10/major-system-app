@@ -29,6 +29,10 @@ export interface CountryLearningMapProps {
   answerSelectionCountryIds?: readonly CountryId[]
   /** Country location intentionally presented as the current task target. */
   taskTargetCountryId?: CountryId | null
+  /** Restrict rendered geometry to these canonical Countries when provided. */
+  visibleCountryIds?: readonly CountryId[]
+  /** Explicit Country geometry to fit; overrides generic learning-map zoom rules. */
+  zoomCountryIds?: readonly CountryId[]
   onCountryClick?: (countryId: string) => void
   ariaLabel: string
 }
@@ -58,6 +62,8 @@ export function CountryLearningMap({
   countryAccessibleDescriptionsById,
   answerSelectionCountryIds,
   taskTargetCountryId = null,
+  visibleCountryIds,
+  zoomCountryIds,
   onCountryClick,
   ariaLabel,
 }: CountryLearningMapProps) {
@@ -94,7 +100,28 @@ export function CountryLearningMap({
     () => showOrderNumbers ? createCountryOrderLabels(overviewCountries ?? scopeCountries, discoveredIds) : {},
     [discoveredIds, overviewCountries, scopeCountries, showOrderNumbers],
   )
-  const zoomIds = getCountryLearningMapZoomIds(continent, zoomScopeSvgIds)
+  const explicitZoomSvgIds = useMemo(
+    () => zoomCountryIds === undefined
+      ? undefined
+      : resolveCountriesToSvgIds(
+        (overviewCountries ?? scopeCountries).filter(country => zoomCountryIds.includes(country.id)),
+        discoveredIds,
+      ),
+    [discoveredIds, overviewCountries, scopeCountries, zoomCountryIds],
+  )
+  const zoomIds = explicitZoomSvgIds ?? getCountryLearningMapZoomIds(continent, zoomScopeSvgIds)
+  const visibleSvgIds = useMemo(
+    () => visibleCountryIds === undefined
+      ? undefined
+      : resolveCountriesToSvgIds(
+        (overviewCountries ?? scopeCountries).filter(country => visibleCountryIds.includes(country.id)),
+        discoveredIds,
+      ),
+    [discoveredIds, overviewCountries, scopeCountries, visibleCountryIds],
+  )
+  const hiddenIds = visibleSvgIds === undefined
+    ? []
+    : discoveredIds.filter(id => !visibleSvgIds.includes(id))
   const taskAssistance = useMemo(() => {
     if (answerSelectionCountryIds === undefined && taskTargetCountryId === null) return null
 
@@ -169,6 +196,7 @@ export function CountryLearningMap({
         hoveredId={hoveredSvgId}
         hoverableIds={onCountryClick ? scopeSvgIds : undefined}
         mutedIds={discoveredIds.filter(id => !unmutedSvgIds.includes(id))}
+        hiddenIds={hiddenIds}
         namedIds={namedSvgIds}
         selectableIds={onCountryClick ? scopeSvgIds : []}
         countryLabels={countryLabels}

@@ -3,6 +3,7 @@ import type { CountryId } from '@/features/world-countries/data/countries'
 /** Atomic World Countries recall directions. */
 export const WORLD_COUNTRIES_RECALL_SKILLS = [
   'location-to-country',
+  'shape-to-country',
   'country-to-capital',
   'capital-to-country',
 ] as const
@@ -17,6 +18,7 @@ export const WORLD_COUNTRIES_CORE_RECALL_SKILLS = [
 
 /** Useful Country knowledge that does not move the primary finish line. */
 export const WORLD_COUNTRIES_ADDITIONAL_RECALL_SKILLS = [
+  'shape-to-country',
   'capital-to-country',
 ] as const satisfies readonly WorldCountriesRecallSkill[]
 

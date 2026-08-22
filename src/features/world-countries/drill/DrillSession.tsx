@@ -56,6 +56,7 @@ export function DrillSession({
   activity = 'drill',
   learningStates = [],
   proficiencySelection = [],
+  activeCountries,
   mnemonicVersion = 0,
   onMnemonicChanged = () => undefined,
 }: {
@@ -64,6 +65,8 @@ export function DrillSession({
   state: DrillSessionState
   selection: WorldCountriesDrillSelection
   entries: readonly Country[]
+  /** Full active population used for geographic feedback context. */
+  activeCountries?: readonly Country[]
   onAnswer: (record: DrillAnswerRecord) => void
   onContinue: (correct: boolean) => void
   onExit: () => void
@@ -111,6 +114,8 @@ export function DrillSession({
 
   const expectedAnswer = step.skill === 'country-to-capital' ? country.capital : country.country
   const isLocationQuestion = step.skill === 'location-to-country'
+  const isShapeQuestion = step.skill === 'shape-to-country'
+  const isCountryNameQuestion = isLocationQuestion || isShapeQuestion
   const isCapitalQuestion = step.skill === 'capital-to-country'
   const isLocationPractice = interaction === 'location-click' && isLocationQuestion
   const isCapitalLocationPractice = interaction === 'location-click' && isCapitalQuestion
@@ -119,6 +124,14 @@ export function DrillSession({
   const scopeCountries = state.countryIds
     .map(countryId => countryById.get(countryId))
     .filter((entry): entry is Country => entry !== undefined)
+  const mapCountries = isShapeQuestion ? (activeCountries ?? entries) : entries
+  const shapeSubregionCountries = mapCountries.filter(entry => entry.subregionId === country.subregionId)
+  const getShapeMapCountryIds = (outcome: string | null): readonly string[] | undefined => {
+    if (!isShapeQuestion) return undefined
+    return outcome === 'incorrect'
+      ? shapeSubregionCountries.map(entry => entry.id)
+      : [country.id]
+  }
   const now = () => typeof performance === 'undefined' ? Date.now() : performance.now()
 
   const submit = (answer: string) => {
@@ -162,7 +175,7 @@ export function DrillSession({
     })
   }
 
-  const prompt = isLocationQuestion
+  const prompt = isLocationQuestion || isShapeQuestion
     ? 'Which country is this?'
     : isCapitalQuestion
       ? 'Which country has this capital?'
@@ -175,10 +188,14 @@ export function DrillSession({
       : `The correct ${feedback.answerKind} is ${feedback.expectedAnswer}.`
     : null
   const displayedFeedback = feedback
-  const highlightedCountryId = isMapClickPractice
+  const highlightedCountryId = isShapeQuestion
+    ? feedback ? country.id : null
+    : isMapClickPractice
     ? feedback ? country.id : null
     : isCapitalQuestion ? (feedback ? country.id : null) : country.id
-  const namedCountryId = isLocationQuestion || isCapitalQuestion
+  const namedCountryId = isShapeQuestion
+    ? feedback ? country.id : null
+    : isLocationQuestion || isCapitalQuestion
     ? feedback ? country.id : null
     : country.id
   const practiceNamedCountryId = isMapClickPractice ? (feedback ? country.id : null) : namedCountryId
@@ -202,6 +219,11 @@ export function DrillSession({
         <>
           <h1 className="mt-1 text-2xl font-black text-zinc-100">{prompt}</h1>
           <p className="mt-1 text-sm text-zinc-500">The highlighted location remains the same Country used for any following Capital question.</p>
+        </>
+      ) : isShapeQuestion ? (
+        <>
+          <h1 className="mt-1 text-2xl font-black text-zinc-100">{prompt}</h1>
+          <p className="mt-1 text-sm text-zinc-500">Identify the Country from its isolated map shape.</p>
         </>
       ) : (
         <>
@@ -238,8 +260,8 @@ export function DrillSession({
     return (
       <WorldCountriesTypedAnswer
         promptKey={`${step.countryId}-${step.skill}`}
-        answerLabel={isCapitalQuestion || isLocationQuestion ? 'Type the country name' : 'Type the capital'}
-        placeholder={isCapitalQuestion || isLocationQuestion ? 'Type the country…' : 'Type the capital…'}
+        answerLabel={isCapitalQuestion || isCountryNameQuestion ? 'Type the country name' : 'Type the capital'}
+        placeholder={isCapitalQuestion || isCountryNameQuestion ? 'Type the country…' : 'Type the capital…'}
         correctAnswer={expectedAnswer}
         allowIncorrectSpellingPractice={activity === 'practice'}
         evaluate={answer => {
@@ -282,12 +304,22 @@ export function DrillSession({
               map={(
                 <CountryLearningMap
                   continent={selection.continent}
-                  scopeCountries={scopeCountries}
+                  scopeCountries={mapCountries}
                   taskTargetCountryId={isLocationQuestion ? country.id : null}
-                  highlightedCountryId={isCapitalQuestion ? (typed.outcome && typed.outcome !== 'incorrect' ? country.id : null) : country.id}
-                  namedCountryId={isLocationQuestion || isCapitalQuestion ? (typed.outcome && typed.outcome !== 'incorrect' ? country.id : null) : country.id}
-                  showHighlightedNames={isLocationQuestion || isCapitalQuestion ? Boolean(typed.outcome && typed.outcome !== 'incorrect') : true}
-                  ariaLabel={isLocationQuestion && !typed.outcome
+                  highlightedCountryId={isShapeQuestion
+                    ? typed.outcome ? country.id : null
+                    : isCapitalQuestion ? (typed.outcome && typed.outcome !== 'incorrect' ? country.id : null) : country.id}
+                  namedCountryId={isShapeQuestion
+                    ? typed.outcome ? country.id : null
+                    : isLocationQuestion || isCapitalQuestion ? (typed.outcome && typed.outcome !== 'incorrect' ? country.id : null) : country.id}
+                  showHighlightedNames={isShapeQuestion
+                    ? Boolean(typed.outcome)
+                    : isLocationQuestion || isCapitalQuestion ? Boolean(typed.outcome && typed.outcome !== 'incorrect') : true}
+                  visibleCountryIds={getShapeMapCountryIds(typed.outcome)}
+                  zoomCountryIds={getShapeMapCountryIds(typed.outcome)}
+                  ariaLabel={isShapeQuestion && !typed.outcome
+                    ? 'Map showing the isolated Country shape without the Country name revealed'
+                    : isLocationQuestion && !typed.outcome
                     ? 'Map showing the selected location for recall without the Country name revealed'
                     : isCapitalQuestion && !typed.outcome
                       ? 'Map of the selected geographic scope without the target Country revealed'
@@ -339,14 +371,18 @@ export function DrillSession({
           <div className="relative">
           <CountryLearningMap
             continent={selection.continent}
-            scopeCountries={scopeCountries}
+            scopeCountries={mapCountries}
             answerSelectionCountryIds={isMapClickPractice ? scopeCountries.map(entry => entry.id) : undefined}
             taskTargetCountryId={(!isMapClickPractice && isLocationQuestion) || (isMapClickPractice && feedback) ? country.id : null}
-            highlightedCountryId={highlightedCountryId}
-            namedCountryId={isMapClickPractice ? practiceNamedCountryId : namedCountryId}
-            showHighlightedNames={isMapClickPractice ? Boolean(practiceNamedCountryId) : Boolean(namedCountryId)}
+            highlightedCountryId={isShapeQuestion ? feedback ? country.id : null : highlightedCountryId}
+            namedCountryId={isShapeQuestion ? feedback ? country.id : null : isMapClickPractice ? practiceNamedCountryId : namedCountryId}
+            showHighlightedNames={isShapeQuestion ? Boolean(feedback) : isMapClickPractice ? Boolean(practiceNamedCountryId) : Boolean(namedCountryId)}
+            visibleCountryIds={getShapeMapCountryIds(feedback ? (feedback.correct ? 'correct' : 'incorrect') : null)}
+            zoomCountryIds={getShapeMapCountryIds(feedback ? (feedback.correct ? 'correct' : 'incorrect') : null)}
             onCountryClick={isMapClickPractice ? submitLocation : undefined}
-            ariaLabel={isMapClickPractice && !feedback
+            ariaLabel={isShapeQuestion && !feedback
+              ? 'Map showing the isolated Country shape without the Country name revealed'
+              : isMapClickPractice && !feedback
               ? isCapitalLocationPractice
                 ? 'Map for clicking the Country whose Capital is shown'
                 : 'Map for clicking the target Country'

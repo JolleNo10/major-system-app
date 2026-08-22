@@ -53,6 +53,15 @@ const sweden: Country = {
   subregion: 'Northern Europe',
 }
 
+const finland: Country = {
+  id: 'FI',
+  country: 'Finland',
+  capital: 'Helsinki',
+  continent: 'Europe',
+  subregionId: 'northern-europe',
+  subregion: 'Northern Europe',
+}
+
 function typeInto(input: HTMLInputElement, value: string): void {
   const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
   setter?.call(input, value)
@@ -202,6 +211,110 @@ describe('DrillSession map presentation', () => {
     expect(mapProps.countryColorsById).toBeUndefined()
     expect(mapProps.ariaLabel).toBe('Map showing the selected location for recall without the Country name revealed')
     expect(mount.textContent).toContain('Which country is this?')
+  })
+
+  it('isolates a shape prompt and reveals the full active Subregion after an incorrect answer', async () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(DrillSession, {
+        answerMode: 'multiple-choice',
+        fuzzyMatching: false,
+        state: createDrillSession({ mode: 'countries-from-shape', countryIds: ['NO', 'SE'] }),
+        selection: createDrillSelection('Europe', ['northern-europe']),
+        entries: [norway, sweden],
+        activeCountries: [norway, sweden, finland],
+        onAnswer: vi.fn(),
+        onContinue: vi.fn(),
+        onExit: vi.fn(),
+      }))
+    })
+
+    const isolatedProps = learningMapMock.mock.calls[0][0] as Record<string, unknown>
+    expect(isolatedProps).toMatchObject({
+      scopeCountries: [norway, sweden, finland],
+      visibleCountryIds: ['NO'],
+      zoomCountryIds: ['NO'],
+      highlightedCountryId: null,
+      namedCountryId: null,
+      taskTargetCountryId: null,
+      answerSelectionCountryIds: undefined,
+    })
+    expect(mount.textContent).toContain('Which country is this?')
+
+    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')]
+      .find(button => button.textContent?.includes('Sweden'))?.click())
+
+    const contextProps = learningMapMock.mock.calls[learningMapMock.mock.calls.length - 1][0] as Record<string, unknown>
+    expect(contextProps).toMatchObject({
+      visibleCountryIds: ['NO', 'SE', 'FI'],
+      zoomCountryIds: ['NO', 'SE', 'FI'],
+      highlightedCountryId: 'NO',
+      namedCountryId: 'NO',
+    })
+  })
+
+  it('keeps a correct shape answer in the isolated view through feedback', async () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(DrillSession, {
+        answerMode: 'multiple-choice',
+        fuzzyMatching: false,
+        state: createDrillSession({ mode: 'countries-from-shape', countryIds: ['NO', 'SE'] }),
+        selection: createDrillSelection('Europe', ['northern-europe']),
+        entries: [norway, sweden],
+        activeCountries: [norway, sweden, finland],
+        onAnswer: vi.fn(),
+        onContinue: vi.fn(),
+        onExit: vi.fn(),
+      }))
+    })
+
+    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')]
+      .find(button => button.textContent?.includes('Norway'))?.click())
+
+    const feedbackProps = learningMapMock.mock.calls[learningMapMock.mock.calls.length - 1][0] as Record<string, unknown>
+    expect(feedbackProps).toMatchObject({
+      visibleCountryIds: ['NO'],
+      zoomCountryIds: ['NO'],
+    })
+  })
+
+  it('uses active Subregion Countries when a shape session is narrowed to one Country', async () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(DrillSession, {
+        answerMode: 'typing',
+        fuzzyMatching: false,
+        state: createDrillSession({ mode: 'countries-from-shape', countryIds: ['NO'] }),
+        selection: createDrillSelection('Europe', ['northern-europe']),
+        entries: [norway],
+        activeCountries: [norway, sweden, finland],
+        onAnswer: vi.fn(),
+        onContinue: vi.fn(),
+        onExit: vi.fn(),
+      }))
+    })
+
+    act(() => typeInto(mount.querySelector<HTMLInputElement>('input')!, 'Sweden'))
+    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')]
+      .find(button => button.textContent?.includes('Check'))?.click())
+
+    const contextProps = learningMapMock.mock.calls[learningMapMock.mock.calls.length - 1][0] as Record<string, unknown>
+    expect(contextProps).toMatchObject({
+      scopeCountries: [norway, sweden, finland],
+      visibleCountryIds: ['NO', 'SE', 'FI'],
+      zoomCountryIds: ['NO', 'SE', 'FI'],
+      highlightedCountryId: 'NO',
+    })
   })
 
   it('uses map clicks for Locate Countries practice', async () => {
