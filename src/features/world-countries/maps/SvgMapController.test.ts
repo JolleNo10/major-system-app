@@ -338,6 +338,41 @@ describe('SvgMapController task assistance', () => {
     expect(Number(secondHit.getAttribute('r')) * 0.1).toBeCloseTo(Number(firstHit.getAttribute('r')))
   })
 
+  it('derives compact task candidates without per-Country anchor metadata', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    setBBox(mount, 'Alpha', { x: 10, y: 10, width: 2, height: 2 })
+    setBBox(mount, 'Beta', { x: 40, y: 20, width: 2, height: 2 })
+    controller.setCountryClickHandler(() => undefined)
+    controller.setTaskAssistance({ answerSelectionIds: ['Alpha', 'Beta'] })
+
+    expect(mount.querySelectorAll('[data-svg-map-tiny-hit-target]')).toHaveLength(2)
+    expect(mount.querySelectorAll('[data-svg-map-tiny-marker]')).toHaveLength(2)
+  })
+
+  it('uses transformed source geometry for generated placement and real pointer hover', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    setBBox(mount, 'Alpha', { x: 10, y: 10, width: 2, height: 2 })
+    const alpha = path(mount, 'Alpha')
+    const sourceToMap = { a: 2, b: 0, c: 0, d: 2, e: 20, f: 5 }
+    Object.defineProperty(alpha, 'getCTM', { configurable: true, value: () => sourceToMap })
+    Object.defineProperty(alpha, 'getScreenCTM', { configurable: true, value: () => sourceToMap })
+    controller.setCountryClickHandler(() => undefined)
+    controller.setTaskAssistance({ answerSelectionIds: ['Alpha'] })
+
+    const marker = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-marker="Alpha"]')
+    const hit = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-hit-target="Alpha"]')
+    if (!marker || !hit) throw new Error('Missing transformed task geometry')
+    expect(marker.getAttribute('cx')).toBe('42')
+    expect(marker.getAttribute('cy')).toBe('27')
+
+    hit.dispatchEvent(new MouseEvent('pointerenter', { clientX: 42, clientY: 27 }))
+    expect(Number(marker.getAttribute('r'))).toBeCloseTo(6.875)
+    hit.dispatchEvent(new MouseEvent('pointerleave', { clientX: 80, clientY: 40 }))
+    expect(Number(marker.getAttribute('r'))).toBeCloseTo(5.5)
+  })
+
   it('keeps task targets through zoom and resize without remounting the SVG', async () => {
     const originalResizeObserver = globalThis.ResizeObserver
     const resizeState: { callback: ResizeObserverCallback | null } = { callback: null }

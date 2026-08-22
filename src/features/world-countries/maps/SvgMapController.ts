@@ -134,10 +134,32 @@ interface HoverListeners {
   click: EventListener
 }
 
+interface SvgPoint {
+  x: number
+  y: number
+}
+
+interface SvgAffineTransform {
+  a: number
+  b: number
+  c: number
+  d: number
+  e: number
+  f: number
+}
+
+interface AutomaticTaskAnchor {
+  sourceFingerprint: string
+  point: SvgPoint
+}
+
 interface TaskLearningTarget {
   countryId: string
+  layerSvg: SVGSVGElement
   centerX: number
   centerY: number
+  screenCenterX: number
+  screenCenterY: number
   hitRadius: number
   markerRadius: number
   highlightedMarkerRadius: number
@@ -156,6 +178,92 @@ const XLINK_NS = 'http://www.w3.org/1999/xlink'
 const TASK_MARKER_TARGET_RADIUS_PX = 5.5
 const TASK_MARKER_HOVER_SCALE = 1.25
 const TASK_HIT_RADIUS_PX = 12
+const COMPACT_GEOMETRY_MAX_DIMENSION = 12
+const COMPACT_GEOMETRY_MAX_AREA = COMPACT_GEOMETRY_MAX_DIMENSION ** 2
+
+function transformPoint(matrix: SvgAffineTransform, point: SvgPoint): SvgPoint {
+  return {
+    x: matrix.a * point.x + matrix.c * point.y + matrix.e,
+    y: matrix.b * point.x + matrix.d * point.y + matrix.f,
+  }
+}
+
+const IDENTITY_TRANSFORM: SvgAffineTransform = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }
+
+function multiplyTransforms(left: SvgAffineTransform, right: SvgAffineTransform): SvgAffineTransform {
+  return {
+    a: left.a * right.a + left.c * right.b,
+    b: left.b * right.a + left.d * right.b,
+    c: left.a * right.c + left.c * right.d,
+    d: left.b * right.c + left.d * right.d,
+    e: left.a * right.e + left.c * right.f + left.e,
+    f: left.b * right.e + left.d * right.f + left.f,
+  }
+}
+
+function parseSvgTransform(value: string | null): SvgAffineTransform | null {
+  if (!value?.trim()) return null
+  const matches = value.matchAll(/(matrix|translate|scale)\(([^)]+)\)/g)
+  let result = IDENTITY_TRANSFORM
+  let found = false
+  for (const match of matches) {
+    const numbers = match[2].split(/[\s,]+/).map(Number)
+    if (numbers.some(number => !Number.isFinite(number))) continue
+    const transform = match[1] === 'matrix' && numbers.length >= 6
+      ? { a: numbers[0], b: numbers[1], c: numbers[2], d: numbers[3], e: numbers[4], f: numbers[5] }
+      : match[1] === 'translate' && numbers.length >= 1
+        ? { a: 1, b: 0, c: 0, d: 1, e: numbers[0], f: numbers[1] ?? 0 }
+        : match[1] === 'scale' && numbers.length >= 1
+          ? { a: numbers[0], b: 0, c: 0, d: numbers.length > 1 ? numbers[1] : numbers[0], e: 0, f: 0 }
+          : null
+    if (!transform) continue
+    result = multiplyTransforms(result, transform)
+    found = true
+  }
+  return found ? result : null
+}
+
+function invertTransform(matrix: SvgAffineTransform): SvgAffineTransform | null {
+  const determinant = matrix.a * matrix.d - matrix.b * matrix.c
+  if (!Number.isFinite(determinant) || Math.abs(determinant) < Number.EPSILON) return null
+  return {
+    a: matrix.d / determinant,
+    b: -matrix.b / determinant,
+    c: -matrix.c / determinant,
+    d: matrix.a / determinant,
+    e: (matrix.c * matrix.f - matrix.d * matrix.e) / determinant,
+    f: (matrix.b * matrix.e - matrix.a * matrix.f) / determinant,
+  }
+}
+
+/** Count drawn subpaths while treating circle-style `M … m … a …` data as one component. */
+function countDrawnPathComponents(pathData: string): number {
+  const tokens = pathData.match(/[a-zA-Z]|[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/g) ?? []
+  let current: { command: string; numericCount: number; draws: boolean } | null = null
+  let components = 0
+
+  const finish = () => {
+    if (!current) return
+    if (current.draws || current.numericCount > 2) components += 1
+  }
+
+  for (const token of tokens) {
+    if (/^[a-zA-Z]$/.test(token)) {
+      if (token === 'M' || token === 'm') {
+        finish()
+        current = { command: token, numericCount: 0, draws: false }
+      } else if (current) {
+        current.draws = true
+        current.command = token
+      }
+      continue
+    }
+    if (current?.command === 'M' || current?.command === 'm') current.numericCount += 1
+  }
+
+  finish()
+  return components
+}
 
 function captureStyle(element: SVGElement, property: string): OriginalStyle {
   return {
@@ -227,12 +335,13 @@ export class SvgMapController {
   private hoveredIds = new Set<string>()
   private listeners: HoverListeners[] = []
   private taskLearningTargets = new Map<string, TaskLearningTarget>()
-  private taskTargetLayer: SVGGElement | null = null
+  private taskTargetLayers = new Map<SVGSVGElement, SVGGElement>()
   private taskAnswerSelection = new Set<string>()
   private taskAnswerSelectionConfigured = false
   private taskTargetId: string | null = null
   private taskHoveredCountryId: string | null = null
   private taskAnchorDefinitions = new Map<string, SvgMapLearningAnchor>()
+  private automaticTaskAnchors = new Map<string, AutomaticTaskAnchor | null>()
   private resizeObserver: ResizeObserver | null = null
   private countryClickHandler: ((countryId: string) => void) | null = null
   private countryHoverHandler: ((countryId: string | null) => void) | null = null
@@ -568,12 +677,17 @@ export class SvgMapController {
     this.taskAnswerSelectionConfigured = assistance?.answerSelectionIds !== undefined
     this.taskTargetId = taskTargetUnknown.length ? null : requestedTarget
     for (const countryId of this.taskLearningTargets.keys()) this.removeTaskLearningTarget(countryId)
-    this.taskTargetLayer?.remove()
-    this.taskTargetLayer = null
+    this.removeTaskTargetLayers()
     this.taskHoveredCountryId = null
     this.taskAnchorDefinitions = normalizedAnchors
     this.render()
     return { activeIds: [...this.taskAnswerSelection], unknownIds: uniqueStrings([...unknownIds, ...taskTargetUnknown]) }
+  }
+
+  /** Clear task-only hover state when the pointer leaves the map surface. */
+  clearTaskHover(): void {
+    this.assertUsable()
+    this.setTaskHoveredCountry(null)
   }
 
   toggleNames(ids: Iterable<string>): SvgMapMutationResult {
@@ -826,7 +940,7 @@ export class SvgMapController {
   private attachHoverListeners(): void {
     for (const country of this.countries.values()) {
       const enter: EventListener = () => {
-        this.setTaskHoveredCountry(country.id)
+        if (this.canHoverTaskFromSource(country.id)) this.setTaskHoveredCountry(country.id)
         if (!this.isHoverable(country.id)) {
           const hadHover = this.hoveredCountryId !== null || this.hoveredIds.size > 0
           this.setHoveredCountry(null)
@@ -930,6 +1044,12 @@ export class SvgMapController {
     return this.taskAnswerSelectionConfigured && this.taskAnswerSelection.has(id) && this.isSelectable(id)
   }
 
+  private canHoverTaskFromSource(id: string): boolean {
+    if (!this.isTaskCandidate(id)) return false
+    const explicit = this.taskAnchorDefinitions.get(id)
+    return explicit?.kind !== 'multi-dot-representative'
+  }
+
   private resolveOutlineIds(ids: Iterable<string>): { knownIds: string[]; unknownIds: string[] } {
     const knownIds: string[] = []
     const unknownIds: string[] = []
@@ -1019,37 +1139,43 @@ export class SvgMapController {
     if (this.taskHoveredCountryId !== null && !this.isTaskCandidate(this.taskHoveredCountryId)) {
       this.taskHoveredCountryId = null
     }
-    if (!this.svg || (this.taskAnswerSelection.size === 0 && this.taskTargetId === null)) {
+    if (!this.svg || (!this.taskAnswerSelectionConfigured && this.taskTargetId === null)) {
       for (const countryId of this.taskLearningTargets.keys()) this.removeTaskLearningTarget(countryId)
-      this.taskTargetLayer?.remove()
-      this.taskTargetLayer = null
+      this.removeTaskTargetLayers()
       return
     }
 
     const activeIds = new Set<string>()
-    const scale = this.getRenderedScale()
-    const smallestScale = Math.min(scale.x, scale.y)
+    const requestedIds = new Set(this.taskAnswerSelection)
+    if (this.taskTargetId !== null) requestedIds.add(this.taskTargetId)
 
-    for (const [sourceSvgId, anchor] of this.taskAnchorDefinitions) {
+    for (const sourceSvgId of requestedIds) {
       const country = this.countries.get(sourceSvgId)
       if (!country) continue
       const answerSelectable = this.isTaskCandidate(sourceSvgId)
       const taskTarget = this.taskTargetId === sourceSvgId && !this.hiddenCountries.has(sourceSvgId)
       if (!answerSelectable && !taskTarget) continue
 
-      const sourceBounds = anchor.kind === 'single-dot' ? this.readGeometryBounds(country.path) : null
-      const point = anchor.kind === 'multi-dot-representative'
-        ? anchor.point
-        : sourceBounds
-          ? { x: sourceBounds.x + sourceBounds.width / 2, y: sourceBounds.y + sourceBounds.height / 2 }
-          : undefined
+      const anchor = this.resolveTaskAnchor(sourceSvgId, country)
+      if (!anchor) continue
+      const layerSvg = this.svg
+      const point = this.transformSourcePointToLayer(country.path, anchor.point, layerSvg)
       if (!point) continue
+
+      const scale = this.getRenderedScale(layerSvg)
+      const smallestScale = Math.min(scale.x, scale.y)
+      if (!Number.isFinite(smallestScale) || smallestScale <= 0) continue
 
       activeIds.add(sourceSvgId)
       const markerRadius = TASK_MARKER_TARGET_RADIUS_PX / smallestScale
       const hitRadius = TASK_HIT_RADIUS_PX / smallestScale
-      const existing = this.taskLearningTargets.get(sourceSvgId)
+      let existing = this.taskLearningTargets.get(sourceSvgId)
+      if (existing && existing.layerSvg !== layerSvg) {
+        this.removeTaskLearningTarget(sourceSvgId)
+        existing = undefined
+      }
       if (existing) {
+        existing.layerSvg = layerSvg
         existing.centerX = point.x
         existing.centerY = point.y
         existing.markerRadius = markerRadius
@@ -1060,6 +1186,7 @@ export class SvgMapController {
       } else {
         this.createTaskLearningTarget(
           sourceSvgId,
+          layerSvg,
           point.x,
           point.y,
           markerRadius,
@@ -1073,16 +1200,56 @@ export class SvgMapController {
       if (!activeIds.has(countryId)) this.removeTaskLearningTarget(countryId)
     }
     if (this.taskLearningTargets.size === 0) {
-      this.taskTargetLayer?.remove()
-      this.taskTargetLayer = null
+      this.removeTaskTargetLayers()
     }
   }
 
-  private getRenderedScale(): { x: number; y: number } {
-    if (!this.svg) return { x: 1, y: 1 }
+  private resolveTaskAnchor(sourceSvgId: string, country: InternalCountry): { kind: SvgMapLearningAnchor['kind']; point: SvgPoint } | null {
+    const explicit = this.taskAnchorDefinitions.get(sourceSvgId)
+    if (explicit) {
+      const point = explicit.kind === 'multi-dot-representative'
+        ? explicit.point
+        : this.readGeometryCenter(country.path)
+      return point ? { kind: explicit.kind, point } : null
+    }
+
+    const sourceFingerprint = country.path.getAttribute('d') ?? ''
+    if (this.automaticTaskAnchors.has(sourceSvgId)) {
+      const cached = this.automaticTaskAnchors.get(sourceSvgId)
+      if (cached === null || cached?.sourceFingerprint === sourceFingerprint) {
+        return cached ? { kind: 'single-dot', point: cached.point } : null
+      }
+    }
+
+    const bounds = this.readGeometryBounds(country.path)
+    const point = bounds && this.isCompactUnambiguousGeometry(country.path, bounds)
+      ? { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }
+      : null
+    this.automaticTaskAnchors.set(sourceSvgId, point ? { sourceFingerprint, point } : null)
+    return point ? { kind: 'single-dot', point } : null
+  }
+
+  private readGeometryCenter(path: SVGPathElement): SvgPoint | null {
+    const bounds = this.readGeometryBounds(path)
+    return bounds
+      ? { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }
+      : null
+  }
+
+  private isCompactUnambiguousGeometry(
+    path: SVGPathElement,
+    bounds: { width: number; height: number },
+  ): boolean {
+    if (bounds.width <= 0 || bounds.height <= 0) return false
+    if (Math.max(bounds.width, bounds.height) > COMPACT_GEOMETRY_MAX_DIMENSION
+      || bounds.width * bounds.height > COMPACT_GEOMETRY_MAX_AREA) return false
+    return countDrawnPathComponents(path.getAttribute('d') ?? '') <= 1
+  }
+
+  private getRenderedScale(svg: SVGSVGElement): { x: number; y: number } {
 
     try {
-      const transform = this.svg.getScreenCTM?.()
+      const transform = svg.getScreenCTM?.()
       if (transform) {
         const x = Math.hypot(transform.a, transform.b)
         const y = Math.hypot(transform.c, transform.d)
@@ -1092,11 +1259,11 @@ export class SvgMapController {
       // Fall back to the rendered SVG box for test DOMs and partial SVG APIs.
     }
 
-    const viewBox = this.parseViewBox(this.svg.getAttribute('viewBox') ?? '')
-    const rect = this.svg.getBoundingClientRect()
+    const viewBox = this.parseViewBox(svg.getAttribute('viewBox') ?? '')
+    const rect = svg.getBoundingClientRect()
     if (!viewBox || rect.width <= 0 || rect.height <= 0) return { x: 1, y: 1 }
 
-    const preserveAspectRatio = this.svg.getAttribute('preserveAspectRatio')?.trim().toLowerCase() ?? ''
+    const preserveAspectRatio = svg.getAttribute('preserveAspectRatio')?.trim().toLowerCase() ?? ''
     if (preserveAspectRatio.startsWith('none')) {
       return {
         x: rect.width / viewBox.width,
@@ -1120,16 +1287,163 @@ export class SvgMapController {
     }
   }
 
+  private readElementTransform(element: SVGGraphicsElement, screen = false): SvgAffineTransform | null {
+    try {
+      const matrix = screen ? element.getScreenCTM?.() : element.getCTM?.()
+      if (matrix) {
+        const values = [matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f]
+        if (values.every(value => Number.isFinite(value))) {
+          return { a: matrix.a, b: matrix.b, c: matrix.c, d: matrix.d, e: matrix.e, f: matrix.f }
+        }
+      }
+      if (screen) return null
+
+      const ownerSvg = element.ownerSVGElement
+      let current: Element | null = element
+      let result = IDENTITY_TRANSFORM
+      let found = false
+      while (current && current !== ownerSvg) {
+        const transform = parseSvgTransform(current.getAttribute('transform'))
+        if (transform) {
+          result = multiplyTransforms(transform, result)
+          found = true
+        }
+        current = current.parentElement
+      }
+      return found ? result : null
+    } catch {
+      return null
+    }
+  }
+
+  private transformSourcePointToLayer(
+    path: SVGPathElement,
+    point: SvgPoint,
+    layerSvg: SVGSVGElement,
+  ): SvgPoint | null {
+    const localTransform = this.readElementTransform(path)
+    if (path.ownerSVGElement === layerSvg) {
+      return transformPoint(localTransform ?? IDENTITY_TRANSFORM, point)
+    }
+
+    const sourceScreen = this.getScreenPointFromPath(path, point)
+    const layerScreen = this.readElementTransform(layerSvg, true)
+    if (sourceScreen && layerScreen) {
+      const inverse = invertTransform(layerScreen)
+      if (inverse) return transformPoint(inverse, sourceScreen)
+    }
+
+    // In DOM/test environments without screen CTMs, bundled nested map SVGs
+    // share the root map coordinate system; ancestor group transforms are
+    // already included in the local transform above.
+    return transformPoint(localTransform ?? IDENTITY_TRANSFORM, point)
+  }
+
+  private getScreenPointFromPath(path: SVGPathElement, point: SvgPoint): SvgPoint | null {
+    const screenTransform = this.readElementTransform(path, true)
+    if (screenTransform) return transformPoint(screenTransform, point)
+
+    const layerSvg = path.ownerSVGElement
+    if (!layerSvg) return null
+    const localTransform = this.readElementTransform(path)
+    return this.getScreenPointFromSvg(layerSvg, localTransform ? transformPoint(localTransform, point) : point)
+  }
+
+  private getScreenPointFromSvg(svg: SVGSVGElement, point: SvgPoint): SvgPoint | null {
+    const screenTransform = this.readElementTransform(svg, true)
+    if (screenTransform) return transformPoint(screenTransform, point)
+
+    const viewBox = this.parseViewBox(svg.getAttribute('viewBox') ?? '')
+    const rect = svg.getBoundingClientRect()
+    if (!viewBox || rect.width <= 0 || rect.height <= 0) return null
+    const preserveAspectRatio = svg.getAttribute('preserveAspectRatio')?.trim().toLowerCase() ?? ''
+    if (preserveAspectRatio.startsWith('none')) {
+      return {
+        x: rect.left + (point.x - viewBox.x) * rect.width / viewBox.width,
+        y: rect.top + (point.y - viewBox.y) * rect.height / viewBox.height,
+      }
+    }
+
+    const scale = Math.min(rect.width / viewBox.width, rect.height / viewBox.height)
+    const offsetX = (rect.width - viewBox.width * scale) / 2
+    const offsetY = (rect.height - viewBox.height * scale) / 2
+    return {
+      x: rect.left + offsetX + (point.x - viewBox.x) * scale,
+      y: rect.top + offsetY + (point.y - viewBox.y) * scale,
+    }
+  }
+
+  private getSvgPointFromClient(svg: SVGSVGElement, client: SvgPoint): SvgPoint | null {
+    const screenTransform = this.readElementTransform(svg, true)
+    if (screenTransform) {
+      const inverse = invertTransform(screenTransform)
+      return inverse ? transformPoint(inverse, client) : null
+    }
+
+    const rect = svg.getBoundingClientRect()
+    const viewBox = this.parseViewBox(svg.getAttribute('viewBox') ?? '')
+    if (!viewBox || rect.width <= 0 || rect.height <= 0) return null
+    let x = client.x - rect.left
+    let y = client.y - rect.top
+    const preserveAspectRatio = svg.getAttribute('preserveAspectRatio')?.trim().toLowerCase() ?? ''
+    if (!preserveAspectRatio.startsWith('none')) {
+      const scale = Math.min(rect.width / viewBox.width, rect.height / viewBox.height)
+      const contentWidth = viewBox.width * scale
+      const contentHeight = viewBox.height * scale
+      const offsetX = (rect.width - contentWidth) / 2
+      const offsetY = (rect.height - contentHeight) / 2
+      if (x < offsetX || x > offsetX + contentWidth || y < offsetY || y > offsetY + contentHeight) return null
+      x = (x - offsetX) / scale
+      y = (y - offsetY) / scale
+    } else {
+      x /= rect.width / viewBox.width
+      y /= rect.height / viewBox.height
+    }
+    return { x: viewBox.x + x, y: viewBox.y + y }
+  }
+
+  private getLocalPointFromClient(path: SVGPathElement, client: SvgPoint): SvgPoint | null {
+    const screenTransform = this.readElementTransform(path, true)
+    if (screenTransform) {
+      const inverse = invertTransform(screenTransform)
+      return inverse ? transformPoint(inverse, client) : null
+    }
+
+    const layerSvg = path.ownerSVGElement
+    if (!layerSvg) return null
+    const layerPoint = this.getSvgPointFromClient(layerSvg, client)
+    if (!layerPoint) return null
+    const localTransform = this.readElementTransform(path)
+    if (!localTransform) return layerPoint
+    const inverse = invertTransform(localTransform)
+    return inverse ? transformPoint(inverse, layerPoint) : null
+  }
+
+  private getTaskTargetLayer(layerSvg: SVGSVGElement): SVGGElement {
+    const existing = this.taskTargetLayers.get(layerSvg)
+    if (existing) return existing
+    const layer = layerSvg.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'g')
+    layer.setAttribute('data-svg-map-task-targets', '')
+    layerSvg.append(layer)
+    this.taskTargetLayers.set(layerSvg, layer)
+    return layer
+  }
+
+  private removeTaskTargetLayers(): void {
+    for (const layer of this.taskTargetLayers.values()) layer.remove()
+    this.taskTargetLayers.clear()
+  }
+
   private createTaskLearningTarget(
     countryId: string,
+    layerSvg: SVGSVGElement,
     centerX: number,
     centerY: number,
     markerRadius: number,
     hitRadius: number,
     answerSelectable: boolean,
   ): void {
-    if (!this.svg) return
-    const document = this.svg.ownerDocument
+    const document = layerSvg.ownerDocument
     const group = document.createElementNS('http://www.w3.org/2000/svg', 'g')
     const marker = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
     const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
@@ -1149,10 +1463,7 @@ export class SvgMapController {
     hit.setAttribute('stroke', 'none')
     hit.setAttribute('pointer-events', 'all')
     group.append(marker, ring, hit)
-    this.taskTargetLayer ??= document.createElementNS('http://www.w3.org/2000/svg', 'g')
-    this.taskTargetLayer.setAttribute('data-svg-map-task-targets', '')
-    this.taskTargetLayer.append(group)
-    this.svg.append(this.taskTargetLayer)
+    this.getTaskTargetLayer(layerSvg).append(group)
 
     const enter: EventListener = event => {
       const resolvedId = this.resolveTaskTargetId(event, countryId, 'hover')
@@ -1175,8 +1486,11 @@ export class SvgMapController {
     hit.addEventListener('click', click)
     this.taskLearningTargets.set(countryId, {
       countryId,
+      layerSvg,
       centerX,
       centerY,
+      screenCenterX: centerX,
+      screenCenterY: centerY,
       hitRadius,
       markerRadius,
       highlightedMarkerRadius: markerRadius,
@@ -1198,6 +1512,11 @@ export class SvgMapController {
       element.setAttribute('cy', String(target.centerY))
     }
     target.hit.setAttribute('r', String(target.hitRadius))
+    const screenPoint = this.getScreenPointFromSvg(target.layerSvg, { x: target.centerX, y: target.centerY })
+    if (screenPoint) {
+      target.screenCenterX = screenPoint.x
+      target.screenCenterY = screenPoint.y
+    }
   }
 
   private removeTaskLearningTarget(countryId: string): void {
@@ -1208,6 +1527,11 @@ export class SvgMapController {
     target.hit.removeEventListener('click', target.click)
     target.group.remove()
     this.taskLearningTargets.delete(countryId)
+    const layer = this.taskTargetLayers.get(target.layerSvg)
+    if (layer && layer.children.length === 0) {
+      layer.remove()
+      this.taskTargetLayers.delete(target.layerSvg)
+    }
   }
 
   private renderTaskLearningTarget(
@@ -1267,7 +1591,9 @@ export class SvgMapController {
       throw new Error(`Single-dot task learning anchor ${anchor.sourceSvgId} must resolve from source geometry`)
     }
     if (!anchor.point) return
-    const viewBox = this.parseViewBox(this.svg.getAttribute('viewBox') ?? '')
+    const viewBox = this.parseViewBox(
+      country.path.ownerSVGElement?.getAttribute('viewBox') ?? this.svg.getAttribute('viewBox') ?? '',
+    )
     const { x, y } = anchor.point
     if (!viewBox || !Number.isFinite(x) || !Number.isFinite(y)
       || x < viewBox.x || y < viewBox.y
@@ -1277,43 +1603,50 @@ export class SvgMapController {
   }
 
   private resolveTaskTargetId(event: Event, fallbackId: string | undefined, mode: 'hover' | 'select'): string | null {
-    const point = this.getSvgPoint(event)
+    const point = this.getClientPoint(event)
     const isActive = mode === 'hover' ? this.isTaskCandidate.bind(this) : this.isSelectableForTask.bind(this)
-    if (!point) return fallbackId && isActive(fallbackId) ? fallbackId : null
+    if (!point || (point.x === 0 && point.y === 0 && fallbackId)) {
+      return fallbackId && isActive(fallbackId) ? fallbackId : null
+    }
     const sourceCountryId = this.resolveSourceCountryAtPoint(point, mode)
     if (sourceCountryId) return sourceCountryId
-    let nearest: { id: string; distance: number; order: number } | null = null
-    let order = 0
+    let nearest: { id: string; distance: number } | null = null
     for (const target of this.taskLearningTargets.values()) {
       if (!isActive(target.countryId)) continue
-      const distance = Math.hypot(point.x - target.centerX, point.y - target.centerY)
-      if (distance > target.hitRadius) continue
-      if (!nearest || distance < nearest.distance || (distance === nearest.distance && order < nearest.order)) {
-        nearest = { id: target.countryId, distance, order }
+      const distance = Math.hypot(point.x - target.screenCenterX, point.y - target.screenCenterY)
+      const hitRadiusPx = target.hitRadius * Math.min(
+        this.getRenderedScale(target.layerSvg).x,
+        this.getRenderedScale(target.layerSvg).y,
+      )
+      if (distance > hitRadiusPx) continue
+      if (!nearest || distance < nearest.distance
+        || (distance === nearest.distance && target.countryId.localeCompare(nearest.id) < 0)) {
+        nearest = { id: target.countryId, distance }
       }
-      order += 1
     }
     return nearest?.id ?? null
   }
 
-  private resolveSourceCountryAtPoint(point: { x: number; y: number }, mode: 'hover' | 'select'): string | null {
+  private resolveSourceCountryAtPoint(point: SvgPoint, mode: 'hover' | 'select'): string | null {
     const matches: Array<{ id: string; area: number }> = []
     for (const country of this.countries.values()) {
       if (mode === 'hover'
         ? (this.taskAnswerSelectionConfigured ? !this.isTaskCandidate(country.id) : !this.isHoverable(country.id))
         : !this.isSelectableForTask(country.id)) continue
+      const localPoint = this.getLocalPointFromClient(country.path, point)
       const bounds = this.readGeometryBounds(country.path)
+      if (!localPoint) continue
       if (!bounds) continue
       const geometry = country.path as SVGGeometryElement & {
         isPointInFill?: (candidate: { x: number; y: number }) => boolean
       }
-      let contains = point.x >= bounds.x
-        && point.x <= bounds.x + bounds.width
-        && point.y >= bounds.y
-        && point.y <= bounds.y + bounds.height
+      let contains = localPoint.x >= bounds.x
+        && localPoint.x <= bounds.x + bounds.width
+        && localPoint.y >= bounds.y
+        && localPoint.y <= bounds.y + bounds.height
       if (typeof geometry.isPointInFill === 'function') {
         try {
-          contains = geometry.isPointInFill(point)
+          contains = geometry.isPointInFill(localPoint)
         } catch {
           // Keep the conservative bounding-box fallback for test DOMs and
           // browsers that cannot evaluate the path at this moment.
@@ -1321,50 +1654,14 @@ export class SvgMapController {
       }
       if (contains) matches.push({ id: country.id, area: bounds.width * bounds.height })
     }
-    return matches.sort((left, right) => left.area - right.area)[0]?.id ?? null
+    return matches.sort((left, right) => left.area - right.area || left.id.localeCompare(right.id))[0]?.id ?? null
   }
 
-  private getSvgPoint(event: Event): { x: number; y: number } | null {
-    if (!this.svg) return null
+  private getClientPoint(event: Event): SvgPoint | null {
     const pointer = event as MouseEvent
-    if (!Number.isFinite(pointer.clientX) || !Number.isFinite(pointer.clientY)) return null
-
-    try {
-      const transform = this.svg.getScreenCTM?.()
-      if (transform) {
-        const point = this.svg.createSVGPoint()
-        point.x = pointer.clientX
-        point.y = pointer.clientY
-        const mapped = point.matrixTransform(transform.inverse())
-        if (Number.isFinite(mapped.x) && Number.isFinite(mapped.y)) return { x: mapped.x, y: mapped.y }
-      }
-    } catch {
-      // Fall back to the viewBox calculation for test DOMs and partial SVG APIs.
-    }
-
-    const rect = this.svg.getBoundingClientRect()
-    const viewBox = this.parseViewBox(this.svg.getAttribute('viewBox') ?? '')
-    if (!viewBox || rect.width <= 0 || rect.height <= 0) return null
-    let x = pointer.clientX - rect.left
-    let y = pointer.clientY - rect.top
-    const preserveAspectRatio = this.svg.getAttribute('preserveAspectRatio')?.trim().toLowerCase() ?? ''
-    if (!preserveAspectRatio.startsWith('none')) {
-      const scale = Math.min(rect.width / viewBox.width, rect.height / viewBox.height)
-      const contentWidth = viewBox.width * scale
-      const contentHeight = viewBox.height * scale
-      const offsetX = (rect.width - contentWidth) / 2
-      const offsetY = (rect.height - contentHeight) / 2
-      if (x < offsetX || x > offsetX + contentWidth || y < offsetY || y > offsetY + contentHeight) return null
-      x = (x - offsetX) / scale
-      y = (y - offsetY) / scale
-    } else {
-      x /= rect.width / viewBox.width
-      y /= rect.height / viewBox.height
-    }
-    return {
-      x: viewBox.x + x,
-      y: viewBox.y + y,
-    }
+    return Number.isFinite(pointer.clientX) && Number.isFinite(pointer.clientY)
+      ? { x: pointer.clientX, y: pointer.clientY }
+      : null
   }
 
   private renderCountryLabel(country: InternalCountry, override: string | null): void {
@@ -1500,8 +1797,7 @@ export class SvgMapController {
     this.resizeObserver = null
     this.detachHoverListeners()
     for (const countryId of this.taskLearningTargets.keys()) this.removeTaskLearningTarget(countryId)
-    this.taskTargetLayer?.remove()
-    this.taskTargetLayer = null
+    this.removeTaskTargetLayers()
     this.countries.clear()
     this.highlighted.clear()
     this.countryColors.clear()
@@ -1514,6 +1810,7 @@ export class SvgMapController {
     this.taskTargetId = null
     this.taskHoveredCountryId = null
     this.taskAnchorDefinitions.clear()
+    this.automaticTaskAnchors.clear()
     this.named.clear()
     this.countryLabelOverrides.clear()
     this.hoverGroups = []

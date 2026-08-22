@@ -21,27 +21,14 @@ export interface LearningAnchorValidationSource {
 
 /**
  * Map-owned learning decisions. These are deliberately keyed by stable
- * Country identity rather than display labels or SVG IDs.
+ * Country identity rather than display labels or SVG IDs. Compact, unambiguous
+ * single-dot Countries are derived by the controller and do not need records.
  *
  * The Oceania Micronesia representative is the component nearest the source
  * asset's country-label anchor. The explicit point is the authoring decision;
  * runtime code must never replace it with the total path bounding-box center.
  */
 export const MAP_LEARNING_ANCHORS: readonly MapLearningAnchorDefinition[] = [
-  {
-    mapId: 'europe',
-    countryId: 'AD',
-    sourceSvgId: 'Andorra',
-    kind: 'single-dot',
-    sourceFingerprint: 'M446.86 655.34a4.38 4.38 0 1 1-4.38-4.36 4.4 4.4 0 0 1 4.38 4.37z',
-  },
-  {
-    mapId: 'oceania',
-    countryId: 'NR',
-    sourceSvgId: 'Nauru',
-    kind: 'single-dot',
-    sourceFingerprint: 'M 863.393 290.949 m -2.15 0 a 2.15 2.15 0 1 0 4.3 0 a 2.15 2.15 0 1 0 -4.3 0',
-  },
   {
     mapId: 'oceania',
     countryId: 'FM',

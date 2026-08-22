@@ -47,7 +47,8 @@ that lets contextual authoring affect subsequent Learning presentation.
   Learning modes own their milestone writes; the guided UI is not Drill
   implementation detail.
 - `maps/` owns SVG loading, Country-to-SVG translation, overview and learning
-  map presentation, existing Country sequence annotations, and workflow-neutral
+  map presentation, task-scoped tiny-Country assistance, map-owned anchor
+  resolution, existing Country sequence annotations, and workflow-neutral
   geographic callbacks.
 - `mnemonics/` owns World Countries mnemonic target IDs, geography mnemonic
   adapters, backup behavior, read presentation, and the reusable contextual
@@ -251,21 +252,27 @@ advances automatically after the correction dwell.
   Continue or mini-practice completion. Today delayed-retry Skip and Recite
   Reveal / Skip remain answerable-state actions owned by those workflows.
 - `SvgMapController` owns one explicit task-assistance layer for map-answer
-  candidates and an intentional task target. It consumes map-owned,
-  map-specific learning-anchor metadata; generic `selectableIds`, hoverable
-  IDs, highlighted/progress state, semantic colors, click-handler presence,
-  and map level never activate tiny-Country assistance. Answer candidates get
-  invisible screen-space forgiving targets and independent task-hover marker
-  growth; an anchor-backed task target gets persistent visible emphasis.
-  `SvgMapView` carries the generic task contract separately from ordinary map
-  interaction, while `CountryLearningMap` translates canonical Country IDs and
-  map definitions into SVG-level task data. Source Country paths remain
-  authoritative for discovery, semantic styling, identity, direct hits, and
-  `getBBox()`-based zoom. Hidden Countries have no task target or hit area;
-  multi-dot Countries use only their configured representative anchor; and
-  overlap resolution prefers direct source geometry, then the nearest eligible
-  anchor. When task assistance is absent, ordinary maps render only their
-  original SVG geometry.
+  candidates and an intentional task target. Generic `selectableIds`,
+  hoverable IDs, highlighted/progress state, semantic colors, click-handler
+  presence, and map level never activate tiny-Country assistance. For an active
+  task, compact unambiguous source geometry gets an automatically derived
+  anchor; materially distributed geometry uses only a deliberate map-owned
+  representative anchor. Answer candidates get invisible screen-space
+  forgiving targets and independent task-hover marker growth; a task target
+  gets persistent visible emphasis. `SvgMapView` carries the generic task
+  contract separately from ordinary map interaction, while
+  `CountryLearningMap` translates canonical Country IDs and map definitions
+  into SVG-level task data. Source Country paths remain authoritative for
+  discovery, semantic styling, identity, direct hits, and `getBBox()`-based
+  zoom. Generated task geometry is placed in the root SVG user space through
+  source/root CTM conversion, while pointer hit and nearest-anchor resolution
+  use screen coordinates; screen-space sizing is recomputed on resize, zoom,
+  and presentation changes. Hidden Countries have no task target or hit area;
+  multi-dot Countries use only their configured representative anchor, and a
+  non-representative source hover cannot move that marker. Overlap resolution
+  prefers direct source geometry, then the nearest eligible anchor with a
+  deterministic tie-break. When task assistance is absent, ordinary maps
+  render only their original SVG geometry.
 - For the same map source, Continent, effective scope membership, and
   intentional zoom behavior, Learning updates map highlights, names, hover,
   and sequence annotations declaratively. Workflow phase alone must not

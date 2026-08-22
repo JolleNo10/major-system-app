@@ -165,6 +165,7 @@ export function SvgMapView({
     const controller = controllerRef.current
     if (!controller) return
     controller.hoverCountry(null)
+    controller.clearTaskHover()
     hoverRef.current?.(null)
   }
 

@@ -16,7 +16,8 @@ function source(mapId: string, markup: string) {
 }
 
 describe('map learning anchors', () => {
-  it('validates the bundled single-dot and representative multi-dot decisions', () => {
+  it('keeps only deliberate representative decisions in map metadata', () => {
+    expect(MAP_LEARNING_ANCHORS.map(anchor => anchor.countryId)).toEqual(['FM'])
     expect(() => validateMapLearningAnchors(MAP_LEARNING_ANCHORS, [
       source('europe', europeSvg),
       source('oceania', oceaniaSvg),
