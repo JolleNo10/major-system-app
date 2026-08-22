@@ -20,6 +20,14 @@ describe('World Countries Drill session', () => {
     expect(getCurrentDrillStep(state)).toEqual({ countryId: 'SE', skill: 'location-to-country' })
   })
 
+  it('retries every skill for a Country failed on one skill', () => {
+    const state = createDrillSession({ mode: 'countries-capitals', countryIds: ['NO'] })
+
+    expect(state.countryIds).toEqual(['NO'])
+    expect(getCurrentDrillStep(state)).toEqual({ countryId: 'NO', skill: 'location-to-country' })
+    expect(getCurrentDrillStep(submitDrillStep(state, false).state)).toEqual({ countryId: 'NO', skill: 'country-to-capital' })
+  })
+
   it('completes a single-skill Country run after one atomic attempt per Country', () => {
     let state = createDrillSession({ mode: 'countries', countryIds: ['NO'] })
     const result = submitDrillStep(state, false)

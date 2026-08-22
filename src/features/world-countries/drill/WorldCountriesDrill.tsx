@@ -28,6 +28,7 @@ import {
 } from './drillSessionState'
 import { loadDrillPreferences, saveDrillPreferences, type WorldCountriesDrillPreferences } from './drillPreferences'
 import { resolveDrillProficiencyScope, type WorldCountriesProficiencySelection } from './drillProficiencyScope'
+import { getRetryableFailedDrillCountryIds } from './drillResultSummary'
 import type { LearningSetMaximum } from '@/features/world-countries/learning/stagedLearningPlan'
 
 type DrillPhase = 'setup' | 'learning' | 'practice' | 'recall' | 'results'
@@ -47,6 +48,8 @@ type StartSessionOptions = {
   activity?: 'drill' | 'practice'
   skills?: DrillAnswerRecord['skill'][]
   practiceMode?: WorldCountriesPracticeMode
+  /** A transient Country subset for a retry; it never changes preferences. */
+  countryIds?: readonly CountryId[]
 }
 
 /** Coordinator for setup, the three Drill modes, durable Learning, and non-recording Practice. */
@@ -108,7 +111,7 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
     saveDrillPreferences(next)
   }, [])
 
-  const startSession = useCallback(async (startPreferences: WorldCountriesDrillPreferences, { persistPreferences = true, interaction = 'recall', activity = 'drill', skills, practiceMode }: StartSessionOptions = {}) => {
+  const startSession = useCallback(async (startPreferences: WorldCountriesDrillPreferences, { persistPreferences = true, interaction = 'recall', activity = 'drill', skills, practiceMode, countryIds }: StartSessionOptions = {}) => {
     const normalizedStartSelection = normalizeDrillSelection(startPreferences, activeCountries)
     const selectedSubregions = new Set(normalizedStartSelection.subregionIds)
     const startSelection: WorldCountriesDrillSelection = {
@@ -119,8 +122,10 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
         getContinentMetadata(normalizedStartSelection.continent),
       ).map(subregion => subregion.id).filter(id => selectedSubregions.has(id)),
     }
-    let startEntries = getCountriesForDrillSelectionInEffectiveOrder(startPreferences, activeCountries, getContinentMetadata(startPreferences.continent), getAllSubregionMetadata())
-    if (proficiencySelection.length > 0) {
+    let startEntries = countryIds
+      ? [...new Set(countryIds)].map(countryId => activeCountries.find(country => country.id === countryId)).filter((country): country is typeof activeCountries[number] => country !== undefined)
+      : getCountriesForDrillSelectionInEffectiveOrder(startPreferences, activeCountries, getContinentMetadata(startPreferences.continent), getAllSubregionMetadata())
+    if (!countryIds && proficiencySelection.length > 0) {
       const proficiencySkills = skills ?? [...getSkillsForDrillMode(startPreferences.mode)]
       const progress = await loadWorldCountriesRecallProgress({ countryIds: activeCountries.map(country => country.id), skills: proficiencySkills })
       const proficiencyScope = resolveDrillProficiencyScope(
@@ -223,6 +228,19 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
     } else startDrill()
   }, [session, sessionActivity, sessionInteraction, startDrill, startPractice])
 
+  const retryFailedCountryIds = useMemo(() => {
+    if (phase !== 'results' || sessionActivity !== 'drill' || !session) return []
+    return getRetryableFailedDrillCountryIds(answers, session.countryIds, activeCountries.map(country => country.id))
+  }, [activeCountries, answers, phase, session, sessionActivity])
+
+  const retryFailedCountries = useCallback(() => {
+    if (!session || retryFailedCountryIds.length === 0) return
+    void startSession(
+      { ...effectivePreferences, mode: session.mode },
+      { persistPreferences: false, countryIds: retryFailedCountryIds },
+    )
+  }, [effectivePreferences, retryFailedCountryIds, session, startSession])
+
   const answer = useCallback((record: DrillAnswerRecord) => {
     setAnswers(previous => [...previous, record])
     if (sessionActivity === 'practice' || record.assisted) return
@@ -275,7 +293,7 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
 
   if (phase === 'results') {
     if (sessionActivity === 'practice') return <PracticeResults continent={effectivePreferences.continent} scopeCountries={sessionEntries} answers={answers} onAgain={restart} onChangeSetup={exitToSetup} />
-    return <DrillResults mode={session?.mode ?? effectivePreferences.mode} continent={effectivePreferences.continent} scopeCountries={sessionEntries} answers={answers} onAgain={restart} onChangeSetup={exitToSetup} />
+    return <DrillResults mode={session?.mode ?? effectivePreferences.mode} continent={effectivePreferences.continent} scopeCountries={sessionEntries} answers={answers} retryFailedCountryCount={retryFailedCountryIds.length} onRetryFailedCountries={retryFailedCountries} onAgain={restart} onChangeSetup={exitToSetup} />
   }
 
   return <DrillSetup

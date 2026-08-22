@@ -19,6 +19,8 @@ export function DrillResults({
   continent,
   scopeCountries,
   answers,
+  retryFailedCountryCount,
+  onRetryFailedCountries,
   onAgain,
   onChangeSetup,
 }: {
@@ -26,6 +28,8 @@ export function DrillResults({
   continent: Continent
   scopeCountries: readonly Country[]
   answers: readonly DrillAnswerRecord[]
+  retryFailedCountryCount?: number
+  onRetryFailedCountries?: () => void
   onAgain: () => void
   onChangeSetup: () => void
 }) {
@@ -59,6 +63,8 @@ export function DrillResults({
         mode={mode}
         scopeCountries={scopeCountries}
         answers={answers}
+        retryFailedCountryCount={retryFailedCountryCount}
+        onRetryFailedCountries={onRetryFailedCountries}
         onAgain={onAgain}
         onChangeSetup={onChangeSetup}
       />

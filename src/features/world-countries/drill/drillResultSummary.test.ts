@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { summarizeDrillAnswers } from './drillResultSummary'
+import { getFailedDrillCountryIds, getRetryableFailedDrillCountryIds, summarizeDrillAnswers } from './drillResultSummary'
 import type { DrillAnswerRecord } from './drillSessionState'
 
 const answers: DrillAnswerRecord[] = [
@@ -9,6 +9,42 @@ const answers: DrillAnswerRecord[] = [
 ]
 
 describe('World Countries Drill result summary', () => {
+  it('derives unique failed Countries from incorrect answers only', () => {
+    expect(getFailedDrillCountryIds([
+      answers[0],
+      answers[1],
+      { ...answers[1], skill: 'location-to-country' },
+      answers[2],
+    ])).toEqual(['NO'])
+  })
+
+  it('derives each retry from the immediately completed run', () => {
+    const firstRunFailures = getFailedDrillCountryIds([
+      { ...answers[0], correct: false },
+      answers[1],
+      answers[2],
+    ])
+    const retryFailures = getFailedDrillCountryIds([
+      { ...answers[0], correct: false },
+      { ...answers[1], correct: true },
+    ])
+    const finalRetryFailures = getFailedDrillCountryIds([
+      { ...answers[0], correct: true },
+    ])
+
+    expect(firstRunFailures).toEqual(['NO'])
+    expect(retryFailures).toEqual(['NO'])
+    expect(finalRetryFailures).toEqual([])
+  })
+
+  it('filters removed Countries while retaining completed-session order', () => {
+    expect(getRetryableFailedDrillCountryIds([
+      { ...answers[0], countryId: 'SE', correct: false },
+      { ...answers[1], countryId: 'NO' },
+      { ...answers[2], countryId: 'FI', correct: false },
+    ], ['FI', 'SE', 'NO'], ['FI', 'NO'])).toEqual(['FI', 'NO'])
+  })
+
   it('reports skill-specific results alongside aggregate session accuracy', () => {
     const summary = summarizeDrillAnswers(answers)
 

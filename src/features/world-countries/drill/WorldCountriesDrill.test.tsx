@@ -4,11 +4,15 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SettingsProvider } from '@/app/settings/SettingsContext'
+import { WorldCountriesPopulationProvider } from '@/features/world-countries/WorldCountriesPopulationContext'
+import type { Country } from '@/features/world-countries/data/countries'
 import { markSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningStore'
 import { WorldCountriesDrill } from './WorldCountriesDrill'
+import { getCurrentDrillStep, getDrillSessionSkills, type DrillAnswerRecord, type DrillSessionState } from './drillSessionState'
 
 const capitalFlowProps = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }))
 const drillSessionProps = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }))
+const drillResultsProps = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }))
 const drillSetupProps = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }))
 const loadRecallProgressMock = vi.hoisted(() => vi.fn(async () => new Map()))
 const recordWorldCountriesAttemptMock = vi.hoisted(() => vi.fn(() => Promise.resolve()))
@@ -36,6 +40,13 @@ vi.mock('./DrillSession', () => ({
   },
 }))
 
+vi.mock('./DrillResults', () => ({
+  DrillResults: (props: Record<string, unknown>) => {
+    drillResultsProps.current = props
+    return createElement('div', { 'data-testid': 'drill-results' })
+  },
+}))
+
 vi.mock('@/features/world-countries/learning/recallProgress', async importOriginal => ({
   ...await importOriginal<typeof import('@/features/world-countries/learning/recallProgress')>(),
   loadWorldCountriesRecallProgress: loadRecallProgressMock,
@@ -57,6 +68,7 @@ afterEach(() => {
   root = null
   capitalFlowProps.current = null
   drillSessionProps.current = null
+  drillResultsProps.current = null
   drillSetupProps.current = null
   document.body.replaceChildren()
   loadRecallProgressMock.mockClear()
@@ -171,5 +183,86 @@ describe('WorldCountriesDrill learning integration', () => {
     expect(capitalFlowProps.current?.scopeLabel).toBe('Proficiency scope')
     expect(capitalFlowProps.current?.recordCompletion).toBe(false)
     expect((capitalFlowProps.current?.entries as readonly { id: string }[]).map(entry => entry.id)).toEqual(['AL'])
+  })
+})
+
+const retryCountries = [
+  { id: 'NO', country: 'Norway', capital: 'Oslo', continent: 'Europe', subregionId: 'northern-europe', subregion: 'Northern Europe' },
+  { id: 'SE', country: 'Sweden', capital: 'Stockholm', continent: 'Europe', subregionId: 'northern-europe', subregion: 'Northern Europe' },
+  { id: 'FI', country: 'Finland', capital: 'Helsinki', continent: 'Europe', subregionId: 'northern-europe', subregion: 'Northern Europe' },
+] satisfies readonly Country[]
+
+function renderRetryDrill() {
+  const mount = document.createElement('div')
+  document.body.append(mount)
+  act(() => {
+    root = createRoot(mount)
+    root.render(createElement(SettingsProvider, null,
+      createElement(WorldCountriesPopulationProvider, {
+        countries: retryCountries,
+        children: createElement(WorldCountriesDrill, { answerMode: 'typing' }),
+      }),
+    ))
+  })
+  return mount
+}
+
+function completeDrillRun(shouldFail: (step: NonNullable<ReturnType<typeof getCurrentDrillStep>>) => boolean) {
+  const initialState = drillSessionProps.current?.state as DrillSessionState
+  const totalSteps = initialState.countryOrder.length * getDrillSessionSkills(initialState).length
+  for (let index = 0; index < totalSteps; index += 1) {
+    const props = drillSessionProps.current as {
+      state: DrillSessionState
+      onAnswer: (record: DrillAnswerRecord) => void
+      onContinue: (correct: boolean) => void
+    }
+    const step = getCurrentDrillStep(props.state)
+    if (!step) throw new Error('Expected an active Drill step')
+    const correct = !shouldFail(step)
+    act(() => {
+      props.onAnswer({ countryId: step.countryId, skill: step.skill, answer: correct ? 'correct' : 'incorrect', correct, at: index + 1, ms: 100 })
+      props.onContinue(correct)
+    })
+  }
+}
+
+describe('WorldCountriesDrill failed-Country retry', () => {
+  it('uses a transient Country subset, retries all mode skills, narrows repeatedly, and keeps Run again configured', () => {
+    const storedPreferences = {
+      continent: 'Europe', subregionIds: ['northern-europe'], mode: 'countries-capitals', order: 'ordered',
+    }
+    localStorage.setItem('world-countries-drill-preferences', JSON.stringify(storedPreferences))
+    renderRetryDrill()
+
+    act(() => document.querySelector<HTMLButtonElement>('[data-testid="start-drill"]')!.click())
+    const initialState = drillSessionProps.current?.state as DrillSessionState
+    const configuredCountryIds = [...initialState.countryIds]
+    expect(configuredCountryIds).toEqual(['NO', 'SE', 'FI'])
+
+    completeDrillRun(step => step.countryId === 'NO' && step.skill === 'country-to-capital' || step.countryId === 'SE' && step.skill === 'location-to-country')
+    expect(drillResultsProps.current?.retryFailedCountryCount).toBe(2)
+    expect((drillResultsProps.current?.answers as readonly DrillAnswerRecord[])).toHaveLength(6)
+
+    act(() => (drillResultsProps.current?.onRetryFailedCountries as () => void)())
+    const firstRetryState = drillSessionProps.current?.state as DrillSessionState
+    expect(firstRetryState.countryIds).toEqual(['NO', 'SE'])
+    expect(getDrillSessionSkills(firstRetryState)).toEqual(['location-to-country', 'country-to-capital'])
+    expect((drillSessionProps.current?.selection as { subregionIds: readonly string[] }).subregionIds).toEqual(['northern-europe'])
+    expect(JSON.parse(localStorage.getItem('world-countries-drill-preferences')!)).toEqual(storedPreferences)
+
+    completeDrillRun(step => step.countryId === 'NO' && step.skill === 'country-to-capital')
+    expect(drillResultsProps.current?.retryFailedCountryCount).toBe(1)
+    expect((drillResultsProps.current?.answers as readonly DrillAnswerRecord[])).toHaveLength(4)
+
+    act(() => (drillResultsProps.current?.onRetryFailedCountries as () => void)())
+    const secondRetryState = drillSessionProps.current?.state as DrillSessionState
+    expect(secondRetryState.countryIds).toEqual(['NO'])
+    expect(getDrillSessionSkills(secondRetryState)).toEqual(['location-to-country', 'country-to-capital'])
+
+    completeDrillRun(() => false)
+    expect(drillResultsProps.current?.retryFailedCountryCount).toBe(0)
+
+    act(() => (drillResultsProps.current?.onAgain as () => void)())
+    expect((drillSessionProps.current?.state as DrillSessionState).countryIds).toEqual(configuredCountryIds)
   })
 })

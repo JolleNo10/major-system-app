@@ -9,12 +9,16 @@ export function DrillResultsRails({
   mode,
   scopeCountries,
   answers,
+  retryFailedCountryCount = 0,
+  onRetryFailedCountries,
   onAgain,
   onChangeSetup,
 }: {
   mode: WorldCountriesDrillMode
   scopeCountries: readonly Country[]
   answers: readonly DrillAnswerRecord[]
+  retryFailedCountryCount?: number
+  onRetryFailedCountries?: () => void
   onAgain: () => void
   onChangeSetup: () => void
 }) {
@@ -52,14 +56,15 @@ export function DrillResultsRails({
             <h2 id="world-countries-drill-next-heading" className="mt-1 text-lg font-bold text-zinc-100">Next action</h2>
           </div>
           <p className="text-sm leading-relaxed text-zinc-400">Keep the geographic workspace open while you review this run or change the scope.</p>
-          <button type="button" onClick={onAgain} className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">Run again</button>
+          {retryFailedCountryCount > 0 && onRetryFailedCountries && <button type="button" onClick={onRetryFailedCountries} className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">Retry failed countries ({retryFailedCountryCount})</button>}
+          <button type="button" onClick={onAgain} className={`w-full rounded-xl px-4 py-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 ${retryFailedCountryCount > 0 ? 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700' : 'bg-cyan-600 text-white hover:bg-cyan-500'}`}>Run again</button>
           <button type="button" onClick={onChangeSetup} className="w-full rounded-xl bg-zinc-800 px-4 py-3 text-sm font-semibold text-zinc-300 hover:bg-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">Change scope</button>
         </section>
       ),
       leftLabel: 'Results',
       rightLabel: 'Next action',
     },
-    [answers, mode, onAgain, onChangeSetup, scopeCountries, summary.accuracy, summary.correct],
+    [answers, mode, onAgain, onChangeSetup, onRetryFailedCountries, retryFailedCountryCount, scopeCountries, summary.accuracy, summary.correct],
   )
 
   return null
