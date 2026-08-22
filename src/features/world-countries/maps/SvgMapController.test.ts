@@ -3,6 +3,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import europeSvg from '@/features/world-countries/maps/assets/MapChart_Map_Europe.svg?raw'
 import { SvgMapController } from '@/features/world-countries/maps/SvgMapController'
+import { getSyntheticDotSourceFingerprint } from './syntheticDots'
 
 const TEST_MAP = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
@@ -311,7 +312,7 @@ describe('SvgMapController task assistance', () => {
     expect(mount.querySelector('[data-svg-map-tiny-marker]')).toBeNull()
   })
 
-  it('uses explicit task candidates with invisible rest targets and screen-space sizing', async () => {
+  it('uses explicit task candidates with visible rest markers and screen-space sizing', async () => {
     const first = makeController()
     await first.controller.load({ markup: TEST_MAP })
     setBBox(first.mount, 'Alpha', { x: 10, y: 10, width: 2, height: 2 })
@@ -331,7 +332,7 @@ describe('SvgMapController task assistance', () => {
     const secondHit = second.mount.querySelector<SVGCircleElement>('[data-svg-map-task-hit-target="Alpha"]')
     if (!firstMarker || !firstHit || !secondMarker || !secondHit) throw new Error('Missing task assistance geometry')
 
-    expect(first.mount.querySelector('[data-svg-map-task-interaction-point="Alpha:0"]')?.getAttribute('visibility')).toBe('hidden')
+    expect(first.mount.querySelector('[data-svg-map-task-interaction-point="Alpha:0"]')?.getAttribute('visibility')).toBe('visible')
     expect(Number(firstMarker.getAttribute('r'))).toBeCloseTo(5.5)
     expect(Number(firstHit.getAttribute('r'))).toBeCloseTo(12)
     expect(Number(secondMarker.getAttribute('r')) * 0.1).toBeCloseTo(Number(firstMarker.getAttribute('r')))
@@ -348,6 +349,106 @@ describe('SvgMapController task assistance', () => {
 
     expect(mount.querySelectorAll('[data-svg-map-tiny-hit-target]')).toHaveLength(2)
     expect(mount.querySelectorAll('[data-svg-map-tiny-marker]')).toHaveLength(2)
+  })
+
+  it('uses one authored synthetic point through the native task-point pipeline', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    setBBox(mount, 'Alpha', { x: 10, y: 10, width: 30, height: 20 })
+    setBBox(mount, 'Beta', { x: 40, y: 20, width: 2, height: 2 })
+    setSvgRect(mount, { width: 100, height: 50 })
+    const clicked: string[] = []
+    controller.setCountryClickHandler(id => clicked.push(id))
+    controller.setTaskAssistance({
+      answerSelectionIds: ['Alpha', 'Beta'],
+      syntheticDots: [{
+        sourceSvgId: 'Alpha',
+        sourceFingerprint: getSyntheticDotSourceFingerprint('M 10 10'),
+        point: { x: 20, y: 20 },
+      }],
+    })
+
+    const synthetic = mount.querySelector<SVGCircleElement>('[data-svg-map-task-interaction-marker="Alpha:0"]')
+    const native = mount.querySelector<SVGCircleElement>('[data-svg-map-task-interaction-marker="Beta:0"]')
+    const svg = mount.querySelector<SVGSVGElement>('svg')
+    if (!synthetic || !native || !svg) throw new Error('Missing synthetic/native task point')
+    expect(synthetic.getAttribute('cx')).toBe('20')
+    expect(synthetic.parentElement?.getAttribute('data-svg-map-task-interaction-source')).toBe('synthetic')
+    expect(synthetic.parentElement?.getAttribute('visibility')).toBe('visible')
+    expect(Number(synthetic.getAttribute('r'))).toBe(Number(native.getAttribute('r')))
+
+    svg.dispatchEvent(new MouseEvent('pointermove', { clientX: 20, clientY: 20, bubbles: true }))
+    expect(Number(synthetic.getAttribute('r'))).toBeGreaterThan(Number(native.getAttribute('r')))
+    expect(path(mount, 'Alpha').style.getPropertyValue('fill')).toBe('#22d3ee')
+    svg.dispatchEvent(new MouseEvent('click', { clientX: 20, clientY: 20, bubbles: true }))
+    expect(clicked).toEqual(['Alpha'])
+
+    svg.dispatchEvent(new MouseEvent('pointerleave', { bubbles: true }))
+    expect(Number(synthetic.getAttribute('r'))).toBe(Number(native.getAttribute('r')))
+    controller.setTaskAssistance(null)
+    expect(mount.querySelector('[data-svg-map-task-interaction-marker="Alpha:0"]')).toBeNull()
+  })
+
+  it('does not derive extra component points when a synthetic dot is configured', async () => {
+    const { mount, controller } = makeController()
+    const distributedMap = `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
+        <g><path id="Alpha" d="M 10 10 m -1 0 a 1 1 0 1 0 2 0 a 1 1 0 1 0 -2 0 M 40 20 m -1 0 a 1 1 0 1 0 2 0 a 1 1 0 1 0 -2 0"/><text id="Alpha_label">ALPHA</text></g>
+      </svg>`
+    await controller.load({ markup: distributedMap })
+    setBBox(mount, 'Alpha', { x: 9, y: 9, width: 33, height: 13 })
+    controller.setCountryClickHandler(() => undefined)
+    controller.setTaskAssistance({
+      answerSelectionIds: ['Alpha'],
+      syntheticDots: [{
+        sourceSvgId: 'Alpha',
+        sourceFingerprint: getSyntheticDotSourceFingerprint('M 10 10 m -1 0 a 1 1 0 1 0 2 0 a 1 1 0 1 0 -2 0 M 40 20 m -1 0 a 1 1 0 1 0 2 0 a 1 1 0 1 0 -2 0'),
+        point: { x: 40, y: 20 },
+      }],
+    })
+
+    expect(mount.querySelectorAll('[data-svg-map-task-interaction-marker="Alpha:0"]')).toHaveLength(1)
+    expect(mount.querySelector('[data-svg-map-task-interaction-marker="Alpha:1"]')).toBeNull()
+  })
+
+  it('removes synthetic task points when a Country is hidden or leaves the candidate scope', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    setBBox(mount, 'Alpha', { x: 10, y: 10, width: 2, height: 2 })
+    controller.setCountryClickHandler(() => undefined)
+    const syntheticDot = {
+      sourceSvgId: 'Alpha',
+      sourceFingerprint: getSyntheticDotSourceFingerprint('M 10 10'),
+      point: { x: 20, y: 20 },
+    }
+    controller.setTaskAssistance({ answerSelectionIds: ['Alpha'], syntheticDots: [syntheticDot] })
+    expect(mount.querySelector('[data-svg-map-task-interaction-marker="Alpha:0"]')).not.toBeNull()
+
+    controller.setHiddenCountries(['Alpha'])
+    expect(mount.querySelector('[data-svg-map-task-interaction-marker="Alpha:0"]')).toBeNull()
+    controller.clearHiddenCountries()
+    expect(mount.querySelector('[data-svg-map-task-interaction-marker="Alpha:0"]')).not.toBeNull()
+
+    controller.setTaskAssistance({ answerSelectionIds: ['Beta'], syntheticDots: [syntheticDot] })
+    expect(mount.querySelector('[data-svg-map-task-interaction-marker="Alpha:0"]')).toBeNull()
+  })
+
+  it('uses a synthetic point as the singular representative task target', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    controller.setTaskAssistance({
+      taskTargetId: 'Alpha',
+      syntheticDots: [{
+        sourceSvgId: 'Alpha',
+        sourceFingerprint: getSyntheticDotSourceFingerprint('M 10 10'),
+        point: { x: 20, y: 20 },
+      }],
+    })
+
+    const target = mount.querySelector<SVGCircleElement>('[data-svg-map-task-representative-target="Alpha"] [data-svg-map-task-marker="Alpha"]')
+    expect(target?.getAttribute('cx')).toBe('20')
+    expect(mount.querySelectorAll('[data-svg-map-task-representative-target="Alpha"]')).toHaveLength(1)
+    expect(mount.querySelector('[data-svg-map-task-interaction-marker="Alpha:0"]')).toBeNull()
   })
 
   it('uses transformed source geometry for generated placement and real pointer hover', async () => {
@@ -538,14 +639,17 @@ describe('SvgMapController task assistance', () => {
     const markers = [...mount.querySelectorAll<SVGCircleElement>('[data-svg-map-tiny-marker="Micronesia"]')]
     if (!svg || markers.length !== 2) throw new Error('Missing distributed Country interaction points')
 
+    const rings = [...mount.querySelectorAll<SVGCircleElement>('[data-svg-map-task-interaction-ring="Micronesia:0"], [data-svg-map-task-interaction-ring="Micronesia:1"]')]
     svg.dispatchEvent(new MouseEvent('pointermove', { clientX: 10, clientY: 10, bubbles: true }))
-    expect(markers.map(marker => marker.parentElement?.getAttribute('visibility'))).toEqual(['visible', 'hidden'])
+    expect(markers.map(marker => marker.parentElement?.getAttribute('visibility'))).toEqual(['visible', 'visible'])
+    expect(rings.map(ring => ring.getAttribute('opacity'))).toEqual(['0.85', '0'])
     expect(Number(markers[0].getAttribute('r'))).toBeGreaterThan(0)
     svg.dispatchEvent(new MouseEvent('click', { clientX: 10, clientY: 10, bubbles: true }))
     expect(clicked).toEqual(['Micronesia'])
 
     svg.dispatchEvent(new MouseEvent('pointermove', { clientX: 40, clientY: 20, bubbles: true }))
-    expect(markers.map(marker => marker.parentElement?.getAttribute('visibility'))).toEqual(['hidden', 'visible'])
+    expect(markers.map(marker => marker.parentElement?.getAttribute('visibility'))).toEqual(['visible', 'visible'])
+    expect(rings.map(ring => ring.getAttribute('opacity'))).toEqual(['0', '0.85'])
     svg.dispatchEvent(new MouseEvent('click', { clientX: 40, clientY: 20, bubbles: true }))
     expect(clicked).toEqual(['Micronesia', 'Micronesia'])
   })

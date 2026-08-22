@@ -23,6 +23,9 @@ const vaticanCity = countries.find(country => country.id === 'VA') as Country
 const malta = countries.find(country => country.id === 'MT') as Country
 const nauru = countries.find(country => country.id === 'NR') as Country
 const micronesia = countries.find(country => country.id === 'FM') as Country
+const samoa = countries.find(country => country.id === 'WS') as Country
+const solomonIslands = countries.find(country => country.id === 'SB') as Country
+const vanuatu = countries.find(country => country.id === 'VU') as Country
 const schedulerSettings = { masteryLatencyFactor: 1.4, sessionUnmasteredShare: 0.5 }
 let root: Root | null = null
 let pathBBoxDescriptor: PropertyDescriptor | undefined
@@ -300,12 +303,15 @@ describe('real bundled-map tiny Country selection', () => {
     expect(Number(representativeMarker.getAttribute('cy'))).toBeCloseTo(113.848)
 
     const restRadius = Number(interactionMarkers[0].getAttribute('r'))
+    const interactionRings = [...mount.querySelectorAll<SVGCircleElement>('[data-svg-map-task-interaction-ring="Micronesia:0"], [data-svg-map-task-interaction-ring="Micronesia:1"], [data-svg-map-task-interaction-ring="Micronesia:2"], [data-svg-map-task-interaction-ring="Micronesia:3"]')]
     const firstPointer = mapPoint(svg, Number(interactionMarkers[0].getAttribute('cx')), Number(interactionMarkers[0].getAttribute('cy')))
     const secondPointer = mapPoint(svg, Number(interactionMarkers[3].getAttribute('cx')), Number(interactionMarkers[3].getAttribute('cy')))
     svg.dispatchEvent(new MouseEvent('pointermove', { ...firstPointer, bubbles: true }))
     expect(Number(interactionMarkers[0].getAttribute('r'))).toBeGreaterThan(restRadius)
     expect(interactionMarkers[0].parentElement?.getAttribute('visibility')).toBe('visible')
-    expect(interactionMarkers[3].parentElement?.getAttribute('visibility')).toBe('hidden')
+    expect(interactionMarkers[3].parentElement?.getAttribute('visibility')).toBe('visible')
+    expect(interactionRings[0].getAttribute('opacity')).toBe('0.85')
+    expect(interactionRings[3].getAttribute('opacity')).toBe('0')
     await act(async () => {
       svg.dispatchEvent(new MouseEvent('click', { ...firstPointer, bubbles: true }))
       svg.dispatchEvent(new MouseEvent('pointermove', { ...secondPointer, bubbles: true }))
@@ -339,5 +345,100 @@ describe('real bundled-map tiny Country selection', () => {
     expect(marker).not.toBeNull()
     expect(Number(marker?.getAttribute('cx'))).toBeCloseTo(616.188)
     expect(Number(marker?.getAttribute('cy'))).toBeCloseTo(183.239)
+  })
+
+  it('renders and selects one synthetic dot for each configured weak Oceania Country', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => oceaniaSvg })))
+    const onCountryClick = vi.fn()
+    const entries = [samoa, solomonIslands, vanuatu, nauru]
+    const sourceIds = new Map([
+      [samoa.id, 'Samoa'],
+      [solomonIslands.id, 'Solomon_Islands'],
+      [vanuatu.id, 'Vanuatu'],
+      [nauru.id, 'Nauru'],
+    ])
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(CountryLearningMap, {
+        continent: 'Oceania',
+        scopeCountries: entries,
+        answerSelectionCountryIds: entries.map(country => country.id),
+        onCountryClick,
+        ariaLabel: 'Oceania task map',
+      }))
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const svg = mount.querySelector<SVGSVGElement>('.world-map-svg svg')
+    if (!svg) throw new Error('Missing bundled Oceania SVG')
+    const restRadii = new Map<string, number>()
+    for (const country of entries) {
+      const sourceId = sourceIds.get(country.id) as string
+      const marker = mount.querySelector<SVGCircleElement>(`[data-svg-map-task-interaction-marker="${sourceId}:0"]`)
+      if (!marker) throw new Error(`Missing task point for ${sourceId}`)
+      expect(mount.querySelectorAll(`[data-svg-map-task-interaction-marker^="${sourceId}:"]`)).toHaveLength(1)
+      expect(marker.parentElement?.getAttribute('visibility')).toBe('visible')
+      restRadii.set(country.id, Number(marker.getAttribute('r')))
+
+      const pointer = mapPoint(svg, Number(marker.getAttribute('cx')), Number(marker.getAttribute('cy')))
+      svg.dispatchEvent(new MouseEvent('pointermove', { ...pointer, bubbles: true }))
+      expect(Number(marker.getAttribute('r'))).toBeGreaterThan(restRadii.get(country.id) as number)
+      expect(mount.querySelector<SVGPathElement>(`path#${sourceId}`)?.style.getPropertyValue('fill')).toBe('#0f766e')
+      svg.dispatchEvent(new MouseEvent('click', { ...pointer, bubbles: true }))
+      expect(onCountryClick).toHaveBeenLastCalledWith(country.id)
+      svg.dispatchEvent(new MouseEvent('pointerleave', { bubbles: true }))
+      expect(Number(marker.getAttribute('r'))).toBeCloseTo(restRadii.get(country.id) as number)
+    }
+    expect(onCountryClick.mock.calls.map(([countryId]) => countryId)).toEqual(entries.map(country => country.id))
+  })
+
+  it('uses a configured synthetic dot as the one explicit Oceania task target', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => oceaniaSvg })))
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(CountryLearningMap, {
+        continent: 'Oceania',
+        scopeCountries: [samoa],
+        taskTargetCountryId: samoa.id,
+        ariaLabel: 'Samoa target map',
+      }))
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mount.querySelectorAll('[data-svg-map-task-representative-target="Samoa"]')).toHaveLength(1)
+    expect(mount.querySelectorAll('[data-svg-map-task-interaction-marker="Samoa:0"]')).toHaveLength(0)
+    expect(Number(mount.querySelector<SVGCircleElement>('[data-svg-map-task-representative-target="Samoa"] [data-svg-map-task-marker="Samoa"]')?.getAttribute('cx'))).toBeCloseTo(781.333)
+  })
+
+  it('does not add synthetic dots to an ordinary Oceania map', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => oceaniaSvg })))
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(CountryLearningMap, {
+        continent: 'Oceania',
+        scopeCountries: [samoa, solomonIslands, vanuatu],
+        onCountryClick: vi.fn(),
+        ariaLabel: 'Ordinary Oceania map',
+      }))
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mount.querySelector('[data-svg-map-task-targets]')).toBeNull()
+    expect(mount.querySelectorAll('[data-svg-map-task-interaction-marker]')).toHaveLength(0)
   })
 })

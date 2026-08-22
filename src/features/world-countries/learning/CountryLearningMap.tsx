@@ -5,7 +5,8 @@ import type { Continent, Country, CountryId } from '@/features/world-countries/d
 import { createCountryColorsById, createCountryOrderLabels, getCountryForSvgId, resolveCountriesToSvgIds } from '@/features/world-countries/maps/geographyMapAdapter'
 import { getMemoMapDefinition } from '@/features/world-countries/maps/mapDefinitions'
 import { getMapLearningAnchors } from '@/features/world-countries/maps/learningAnchors'
-import type { SvgMapLearningAnchor } from '@/features/world-countries/maps/SvgMapController'
+import { getMapSyntheticDots } from '@/features/world-countries/maps/syntheticDots'
+import type { SvgMapLearningAnchor, SvgMapSyntheticDot } from '@/features/world-countries/maps/SvgMapController'
 
 export interface CountryLearningMapProps {
   continent: Continent
@@ -116,6 +117,16 @@ export function CountryLearningMap({
         sourceFingerprint: anchor.sourceFingerprint,
         ...(anchor.point ? { point: anchor.point } : {}),
       }))
+    const syntheticDots: SvgMapSyntheticDot[] = getMapSyntheticDots(
+      definition.id,
+      [...answerCountries.map(country => country.id), ...(targetCountry ? [targetCountry.id] : [])],
+    )
+      .filter(dot => discoveredIds.includes(dot.sourceSvgId))
+      .map(dot => ({
+        sourceSvgId: dot.sourceSvgId,
+        sourceFingerprint: dot.sourceFingerprint,
+        point: dot.point,
+      }))
     const targetSvgIds = targetCountry
       ? resolveCountriesToSvgIds([targetCountry], discoveredIds)
       : []
@@ -130,6 +141,7 @@ export function CountryLearningMap({
         : countriesToSvgIds(answerCountries).filter(id => discoveredIds.includes(id)),
       taskTargetId,
       learningAnchors,
+      ...(syntheticDots.length ? { syntheticDots } : {}),
     }
   }, [answerSelectionCountryIds, definition.id, discoveredIds, scopeCountries, taskTargetCountryId])
   const countryColors = useMemo(

@@ -1,3 +1,5 @@
+import { getSyntheticDotSourceFingerprint } from './syntheticDots'
+
 export type SvgMapSource = { url: string } | { markup: string }
 export type SvgMapHighlightScope = 'listed' | 'all-except'
 export type SvgMapHoverScope = 'single' | 'group'
@@ -36,6 +38,12 @@ export interface SvgMapLearningAnchor {
   point?: Readonly<{ x: number; y: number }>
 }
 
+export interface SvgMapSyntheticDot {
+  sourceSvgId: string
+  sourceFingerprint: string
+  point: Readonly<{ x: number; y: number }>
+}
+
 export interface SvgMapTaskAssistance {
   /** SVG IDs that may be selected by this map-answer task. */
   answerSelectionIds?: readonly string[]
@@ -43,6 +51,8 @@ export interface SvgMapTaskAssistance {
   taskTargetId?: string | null
   /** Map-owned anchor decisions for the active source asset. */
   learningAnchors?: readonly SvgMapLearningAnchor[]
+  /** Map-owned authored points used as task-scoped synthetic dots. */
+  syntheticDots?: readonly SvgMapSyntheticDot[]
 }
 
 export interface SvgMapSettings {
@@ -178,6 +188,7 @@ interface TaskInteractionPoint {
   marker: SVGCircleElement
   ring: SVGCircleElement
   hit: SVGCircleElement
+  origin: 'derived' | 'synthetic'
 }
 
 interface TaskRepresentativeTarget {
@@ -421,6 +432,7 @@ export class SvgMapController {
   private taskTargetId: string | null = null
   private taskPointerIntent: TaskPointerIntent | null = null
   private taskAnchorDefinitions = new Map<string, SvgMapLearningAnchor>()
+  private taskSyntheticDotDefinitions = new Map<string, SvgMapSyntheticDot>()
   private automaticTaskAnchors = new Map<string, AutomaticTaskAnchor | null>()
   private automaticTaskInteractionPoints = new Map<string, { sourceFingerprint: string; points: readonly SvgPoint[] }>()
   private taskPointerListeners: {
@@ -763,6 +775,22 @@ export class SvgMapController {
       normalizedAnchors.set(sourceSvgId, { ...anchor, sourceSvgId })
     }
 
+    const syntheticDots = assistance?.syntheticDots ?? []
+    const normalizedSyntheticDots = new Map<string, SvgMapSyntheticDot>()
+    for (const dot of syntheticDots) {
+      const sourceSvgId = dot.sourceSvgId.trim()
+      if (!sourceSvgId) continue
+      if (!this.countries.has(sourceSvgId)) {
+        unknownIds.push(sourceSvgId)
+        continue
+      }
+      if (normalizedSyntheticDots.has(sourceSvgId)) {
+        throw new Error(`Duplicate task synthetic dot for ${sourceSvgId}`)
+      }
+      this.validateTaskSyntheticDot({ ...dot, sourceSvgId })
+      normalizedSyntheticDots.set(sourceSvgId, { ...dot, sourceSvgId })
+    }
+
     this.taskAnswerSelection = new Set(knownIds)
     this.taskAnswerSelectionConfigured = assistance?.answerSelectionIds !== undefined
     this.taskTargetId = taskTargetUnknown.length ? null : requestedTarget
@@ -771,6 +799,7 @@ export class SvgMapController {
     this.removeTaskTargetLayers()
     this.taskPointerIntent = null
     this.taskAnchorDefinitions = normalizedAnchors
+    this.taskSyntheticDotDefinitions = normalizedSyntheticDots
     this.render()
     return { activeIds: [...this.taskAnswerSelection], unknownIds: uniqueStrings([...unknownIds, ...taskTargetUnknown]) }
   }
@@ -1258,6 +1287,7 @@ export class SvgMapController {
 
       if (answerSelectable) {
         const interactionPoints = this.resolveTaskInteractionPoints(sourceSvgId, country)
+        const syntheticDot = this.taskSyntheticDotDefinitions.has(sourceSvgId)
         for (let index = 0; index < interactionPoints.length; index += 1) {
           const sourcePoint = interactionPoints[index]
           const point = this.transformSourcePointToLayer(country.path, sourcePoint, this.svg)
@@ -1274,6 +1304,7 @@ export class SvgMapController {
             point,
             TASK_MARKER_TARGET_RADIUS_PX / smallestScale,
             TASK_HIT_RADIUS_PX / smallestScale,
+            syntheticDot ? 'synthetic' : 'derived',
           )
         }
       }
@@ -1307,6 +1338,9 @@ export class SvgMapController {
   }
 
   private resolveTaskInteractionPoints(sourceSvgId: string, country: InternalCountry): readonly SvgPoint[] {
+    const syntheticDot = this.taskSyntheticDotDefinitions.get(sourceSvgId)
+    if (syntheticDot) return [syntheticDot.point]
+
     const sourceFingerprint = country.path.getAttribute('d') ?? ''
     const bounds = this.readGeometryBounds(country.path)
     if (!bounds) return []
@@ -1357,6 +1391,9 @@ export class SvgMapController {
         : this.readGeometryCenter(country.path)
       return point ? { kind: explicit.kind, point } : null
     }
+
+    const syntheticDot = this.taskSyntheticDotDefinitions.get(sourceSvgId)
+    if (syntheticDot) return { kind: 'single-dot', point: syntheticDot.point }
 
     const sourceFingerprint = country.path.getAttribute('d') ?? ''
     if (this.automaticTaskAnchors.has(sourceSvgId)) {
@@ -1586,6 +1623,7 @@ export class SvgMapController {
     point: SvgPoint,
     markerRadius: number,
     hitRadius: number,
+    origin: TaskInteractionPoint['origin'],
   ): void {
     let interactionPoint = this.taskInteractionPoints.get(pointId)
     if (interactionPoint && interactionPoint.layerSvg !== layerSvg) {
@@ -1598,6 +1636,8 @@ export class SvgMapController {
       interactionPoint.markerRadius = markerRadius
       interactionPoint.hitRadius = hitRadius
       interactionPoint.hitRadiusPx = TASK_HIT_RADIUS_PX
+      interactionPoint.origin = origin
+      interactionPoint.group.setAttribute('data-svg-map-task-interaction-source', origin)
       this.positionTaskInteractionPoint(interactionPoint)
       return
     }
@@ -1609,6 +1649,7 @@ export class SvgMapController {
     const hit = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
     group.setAttribute('data-svg-map-task-interaction-point', pointId)
     group.setAttribute('data-svg-map-tiny-country', countryId)
+    group.setAttribute('data-svg-map-task-interaction-source', origin)
     marker.setAttribute('data-svg-map-task-marker', countryId)
     marker.setAttribute('data-svg-map-task-interaction-marker', pointId)
     marker.setAttribute('data-svg-map-tiny-marker', countryId)
@@ -1641,6 +1682,7 @@ export class SvgMapController {
       marker,
       ring,
       hit,
+      origin,
     }
     this.taskInteractionPoints.set(pointId, created)
     this.positionTaskInteractionPoint(created)
@@ -1742,7 +1784,7 @@ export class SvgMapController {
       || this.settings.countryFill
       || '#52525b'
     const hovered = this.taskPointerIntent?.interactionPointId === point.id
-    const visible = !hidden && hovered
+    const visible = !hidden
     const markerRadius = hovered ? point.markerRadius * TASK_MARKER_HOVER_SCALE : point.markerRadius
     const markerFill = fill ?? sourceFill
     point.marker.setAttribute('r', String(markerRadius))
@@ -1815,6 +1857,24 @@ export class SvgMapController {
       || x < viewBox.x || y < viewBox.y
       || x > viewBox.x + viewBox.width || y > viewBox.y + viewBox.height) {
       throw new Error(`Task learning anchor ${anchor.sourceSvgId} is outside the map viewBox`)
+    }
+  }
+
+  private validateTaskSyntheticDot(dot: SvgMapSyntheticDot): void {
+    const country = this.countries.get(dot.sourceSvgId)
+    if (!country || !this.svg) return
+    const sourceFingerprint = country.path.getAttribute('d') ?? ''
+    if (getSyntheticDotSourceFingerprint(sourceFingerprint) !== dot.sourceFingerprint) {
+      throw new Error(`Stale task synthetic dot source for ${dot.sourceSvgId}`)
+    }
+    const viewBox = this.parseViewBox(
+      country.path.ownerSVGElement?.getAttribute('viewBox') ?? this.svg.getAttribute('viewBox') ?? '',
+    )
+    const { x, y } = dot.point
+    if (!viewBox || !Number.isFinite(x) || !Number.isFinite(y)
+      || x < viewBox.x || y < viewBox.y
+      || x > viewBox.x + viewBox.width || y > viewBox.y + viewBox.height) {
+      throw new Error(`Task synthetic dot ${dot.sourceSvgId} is outside the map viewBox`)
     }
   }
 
@@ -2056,6 +2116,7 @@ export class SvgMapController {
     this.taskTargetId = null
     this.taskPointerIntent = null
     this.taskAnchorDefinitions.clear()
+    this.taskSyntheticDotDefinitions.clear()
     this.automaticTaskAnchors.clear()
     this.automaticTaskInteractionPoints.clear()
     this.named.clear()

@@ -47,7 +47,8 @@ that lets contextual authoring affect subsequent Learning presentation.
   Learning modes own their milestone writes; the guided UI is not Drill
   implementation detail.
 - `maps/` owns SVG loading, Country-to-SVG translation, overview and learning
-  map presentation, task-scoped answer-selection interaction points and
+  map presentation, task-scoped answer-selection interaction points,
+  map-owned synthetic dot metadata for visually weak source geography,
   representative learning anchors, map-owned pointer-intent resolution,
   existing Country sequence annotations, and workflow-neutral geographic
   callbacks.
@@ -256,10 +257,12 @@ advances automatically after the correction dwell.
   candidates and an intentional task target. Generic `selectableIds`,
   hoverable IDs, highlighted/progress state, semantic colors, click-handler
   presence, and map level never activate tiny-Country assistance. For an active
-  answer-selection task, each candidate owns zero or more geometry-derived
-  interaction points: one for a compact unambiguous source representation and
-  one for each qualifying compact component of a distributed tiny Country.
-  A location-question/task target is separate and owns at most one
+  answer-selection task, each candidate owns zero or more task interaction
+  points. Points may be derived from compact source geometry or supplied as
+  authored synthetic dots for a source Country whose genuine map geometry is
+  not a usable dot-like target at the displayed scale; configured synthetic
+  dots replace, rather than add to, derived component clouds. A
+  location-question/task target is separate and owns at most one
   representative learning anchor; explicit multi-dot metadata is authoritative
   only for that deliberate representative decision. `SvgMapView` carries the
   generic task contract separately from ordinary map interaction, while
@@ -276,7 +279,10 @@ advances automatically after the correction dwell.
   screen-space sizing. Positions and radii are recomputed on resize, zoom, and
   presentation changes. Hidden Countries have no task target or interaction
   point. When task assistance is absent, ordinary maps render only their
-  original SVG geometry.
+  original SVG geometry. Native geometry-derived points and authored synthetic
+  dots use the same task interaction/presentation pipeline; synthetic dots are
+  task-scoped map presentation and never alter canonical geography or ordinary
+  map rendering.
 - For the same map source, Continent, effective scope membership, and
   intentional zoom behavior, Learning updates map highlights, names, hover,
   and sequence annotations declaratively. Workflow phase alone must not
