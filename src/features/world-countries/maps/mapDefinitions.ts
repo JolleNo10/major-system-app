@@ -1,7 +1,7 @@
 import africaSvgUrl from '@/features/world-countries/maps/assets/MapChart_Map_Africa.svg?url'
 import americaSvgUrl from '@/features/world-countries/maps/assets/MapChart_Map_America.svg?url'
 import asiaSvgUrl from '@/features/world-countries/maps/assets/MapChart_Map_Asia.svg?url'
-import europeSvgUrl from '@/features/world-countries/maps/assets/MapChart_Map_Europe_names.svg?url'
+import europeSvgUrl from '@/features/world-countries/maps/assets/MapChart_Map_Europe.svg?url'
 import oceaniaSvgUrl from '@/features/world-countries/maps/assets/MapChart_Map_Oceania.svg?url'
 import worldSvgUrl from '@/features/world-countries/maps/assets/MapChart_Map_World.svg?url'
 import { CONTINENT_MAP_IDS, type Continent } from '@/features/world-countries/data/countries'

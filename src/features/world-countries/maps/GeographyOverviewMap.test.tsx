@@ -4,7 +4,7 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
-import europeSvg from '@/features/world-countries/maps/assets/MapChart_Map_Europe_names.svg?raw'
+import europeSvg from '@/features/world-countries/maps/assets/MapChart_Map_Europe.svg?raw'
 import { GeographyOverviewMap } from './GeographyOverviewMap'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true

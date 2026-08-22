@@ -575,7 +575,7 @@ MapChart_Map_Africa.svg
 MapChart_Map_America.svg
 MapChart_Map_Asia_names.svg
 MapChart_Map_Europe.svg
-MapChart_Map_Europe_names.svg
+MapChart_Map_Europe.svg
 MapChart_Map_Oceania.svg
 ```
 
