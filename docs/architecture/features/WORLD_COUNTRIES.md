@@ -251,10 +251,15 @@ advances automatically after the correction dwell.
   Continue or mini-practice completion. Today delayed-retry Skip and Recite
   Reveal / Skip remain answerable-state actions owned by those workflows.
 - `SvgMapController` owns geometry-derived tiny-Country marker and forgiving
-  hit-target augmentation. The source Country path remains authoritative for
-  discovery, semantic styling, identity, and `getBBox()`-based zoom; hidden or
-  non-hoverable Countries do not retain an interactive augmentation, and
-  overlapping target candidates resolve by nearest pointer position.
+  hit-target augmentation. Tiny-Country hit and marker usability is maintained
+  in rendered screen space across map scale, zoom, and resize, including
+  standard and expanded presentation. Generic highlighted state provides
+  persistent visible emphasis for tiny markers without introducing
+  workflow-specific target semantics. The source Country path remains
+  authoritative for discovery, semantic styling, identity, and `getBBox()`-based
+  zoom; hidden or non-hoverable Countries do not retain an interactive
+  augmentation, and overlapping target candidates resolve by nearest pointer
+  position.
 - For the same map source, Continent, effective scope membership, and
   intentional zoom behavior, Learning updates map highlights, names, hover,
   and sequence annotations declaratively. Workflow phase alone must not

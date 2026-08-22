@@ -42,6 +42,22 @@ function setBBox(mount: HTMLElement, id: string, bounds: { x: number; y: number;
   })
 }
 
+function setSvgRect(mount: HTMLElement, dimensions: { width: number; height: number }): void {
+  const svg = mount.querySelector<SVGSVGElement>('svg')
+  if (!svg) throw new Error('Missing test map SVG')
+  Object.defineProperty(svg, 'getBoundingClientRect', {
+    configurable: true,
+    value: () => ({
+      left: 0,
+      top: 0,
+      width: dimensions.width,
+      height: dimensions.height,
+      right: dimensions.width,
+      bottom: dimensions.height,
+    }),
+  })
+}
+
 afterEach(() => {
   while (controllers.length) controllers.pop()?.destroy()
   document.body.replaceChildren()
@@ -262,6 +278,140 @@ describe('SvgMapController persistent state', () => {
 })
 
 describe('SvgMapController hover behavior', () => {
+  it('keeps tiny marker and forgiving-target sizes stable in rendered screen space', async () => {
+    const first = makeController()
+    await first.controller.load({ markup: TEST_MAP })
+    setBBox(first.mount, 'Alpha', { x: 10, y: 10, width: 2, height: 2 })
+    setSvgRect(first.mount, { width: 100, height: 50 })
+    first.controller.updateSettings({})
+
+    const scaledMarkup = TEST_MAP.replace('viewBox="0 0 100 50"', 'viewBox="0 0 1000 500"')
+    const second = makeController()
+    await second.controller.load({ markup: scaledMarkup })
+    setBBox(second.mount, 'Alpha', { x: 100, y: 100, width: 2, height: 2 })
+    setSvgRect(second.mount, { width: 100, height: 50 })
+    second.controller.updateSettings({})
+
+    const firstMarker = first.mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-marker="Alpha"]')
+    const firstHit = first.mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-hit-target="Alpha"]')
+    const secondMarker = second.mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-marker="Alpha"]')
+    const secondHit = second.mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-hit-target="Alpha"]')
+    if (!firstMarker || !firstHit || !secondMarker || !secondHit) throw new Error('Missing tiny Country geometry')
+
+    expect(Number(firstMarker.getAttribute('r'))).toBeCloseTo(3.5)
+    expect(Number(firstHit.getAttribute('r'))).toBeCloseTo(12)
+    expect(Number(secondMarker.getAttribute('r')) * 0.1).toBeCloseTo(Number(firstMarker.getAttribute('r')))
+    expect(Number(secondHit.getAttribute('r')) * 0.1).toBeCloseTo(Number(firstHit.getAttribute('r')))
+  })
+
+  it('re-evaluates tiny eligibility when zoom changes the rendered scale', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    setBBox(mount, 'Alpha', { x: 10, y: 10, width: 2, height: 2 })
+    setSvgRect(mount, { width: 100, height: 50 })
+    controller.updateSettings({})
+    expect(mount.querySelector('[data-svg-map-tiny-marker="Alpha"]')).not.toBeNull()
+
+    controller.setZoomArea(['Alpha'], 0)
+    expect(mount.querySelector('[data-svg-map-tiny-marker="Alpha"]')).toBeNull()
+
+    controller.resetZoom()
+    expect(mount.querySelector('[data-svg-map-tiny-marker="Alpha"]')).not.toBeNull()
+  })
+
+  it('refreshes tiny geometry after resize without remounting the SVG', async () => {
+    const originalResizeObserver = globalThis.ResizeObserver
+    const resizeState: { callback: ResizeObserverCallback | null } = { callback: null }
+    class TestResizeObserver {
+      constructor(callback: ResizeObserverCallback) {
+        resizeState.callback = callback
+      }
+
+      observe() {}
+      disconnect() {}
+    }
+    globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserver
+
+    try {
+      const { mount, controller } = makeController()
+      await controller.load({ markup: TEST_MAP })
+      setBBox(mount, 'Alpha', { x: 10, y: 10, width: 2, height: 2 })
+      setSvgRect(mount, { width: 100, height: 50 })
+      controller.updateSettings({})
+      const svg = mount.querySelector('svg')
+      const marker = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-marker="Alpha"]')
+      const hit = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-hit-target="Alpha"]')
+      const triggerResize = resizeState.callback
+      if (!svg || !marker || !hit || !triggerResize) throw new Error('Missing resize test geometry')
+      expect(Number(marker.getAttribute('r'))).toBeCloseTo(3.5)
+
+      setSvgRect(mount, { width: 200, height: 100 })
+      triggerResize([], {} as ResizeObserver)
+
+      expect(mount.querySelector('svg')).toBe(svg)
+      expect(Number(marker.getAttribute('r'))).toBeCloseTo(1.75)
+      expect(Number(hit.getAttribute('r'))).toBeCloseTo(6)
+    } finally {
+      globalThis.ResizeObserver = originalResizeObserver
+    }
+  })
+
+  it('keeps highlighted tiny markers larger through rest, hover, and highlight changes', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    setBBox(mount, 'Alpha', { x: 10, y: 10, width: 2, height: 2 })
+    setBBox(mount, 'Beta', { x: 40, y: 20, width: 2, height: 2 })
+    setSvgRect(mount, { width: 100, height: 50 })
+    controller.updateSettings({ hoverHighlight: true })
+
+    const alphaMarker = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-marker="Alpha"]')
+    const alphaHit = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-hit-target="Alpha"]')
+    const betaMarker = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-marker="Beta"]')
+    if (!alphaMarker || !alphaHit || !betaMarker) throw new Error('Missing tiny Country highlight geometry')
+
+    expect(Number(alphaMarker.getAttribute('r'))).toBeCloseTo(3.5)
+    controller.setHighlighted(['Alpha'])
+    expect(Number(alphaMarker.getAttribute('r'))).toBeCloseTo(5.5)
+
+    alphaHit.dispatchEvent(new Event('pointerenter'))
+    expect(Number(alphaMarker.getAttribute('r'))).toBeCloseTo(6.875)
+    alphaHit.dispatchEvent(new Event('pointerleave'))
+    expect(Number(alphaMarker.getAttribute('r'))).toBeCloseTo(5.5)
+
+    controller.setHighlighted(['Beta'])
+    expect(Number(alphaMarker.getAttribute('r'))).toBeCloseTo(3.5)
+    expect(Number(betaMarker.getAttribute('r'))).toBeCloseTo(5.5)
+    controller.clearHighlights()
+    expect(Number(betaMarker.getAttribute('r'))).toBeCloseTo(3.5)
+  })
+
+  it('preserves highlighted size while reduced motion suppresses hover scaling', async () => {
+    const matchMediaDescriptor = Object.getOwnPropertyDescriptor(window, 'matchMedia')
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: () => ({ matches: true }),
+    })
+
+    try {
+      const { mount, controller } = makeController()
+      await controller.load({ markup: TEST_MAP })
+      setBBox(mount, 'Alpha', { x: 10, y: 10, width: 2, height: 2 })
+      setSvgRect(mount, { width: 100, height: 50 })
+      controller.updateSettings({ hoverHighlight: true })
+      controller.setHighlighted(['Alpha'])
+      const marker = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-marker="Alpha"]')
+      const hit = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-hit-target="Alpha"]')
+      if (!marker || !hit) throw new Error('Missing reduced-motion tiny Country geometry')
+
+      hit.dispatchEvent(new Event('pointerenter'))
+      expect(Number(marker.getAttribute('r'))).toBeCloseTo(5.5)
+      expect(marker.style.getPropertyValue('transition')).toBe('none')
+    } finally {
+      if (matchMediaDescriptor) Object.defineProperty(window, 'matchMedia', matchMediaDescriptor)
+      else Reflect.deleteProperty(window, 'matchMedia')
+    }
+  })
+
   it('derives tiny markers from geometry and routes their hover, click, and zoom through the source Country', async () => {
     const { mount, controller } = makeController()
     await controller.load({ markup: TEST_MAP })

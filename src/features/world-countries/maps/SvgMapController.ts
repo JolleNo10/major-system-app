@@ -124,6 +124,7 @@ interface TinyCountryTarget {
   centerY: number
   hitRadius: number
   markerRadius: number
+  highlightedMarkerRadius: number
   group: SVGGElement
   marker: SVGCircleElement
   ring: SVGCircleElement
@@ -135,11 +136,10 @@ interface TinyCountryTarget {
 
 const FORBIDDEN_ELEMENTS = 'script, foreignObject, iframe, object, embed, image, style'
 const XLINK_NS = 'http://www.w3.org/1999/xlink'
-const TINY_GEOMETRY_MAX_DIMENSION = 12
-const TINY_MARKER_MIN_RADIUS = 3
-const TINY_MARKER_MAX_RADIUS = 6
-const TINY_HIT_MIN_RADIUS = 10
-const TINY_HIT_MAX_RADIUS = 18
+const TINY_GEOMETRY_MAX_SCREEN_DIMENSION = 12
+const TINY_MARKER_REST_RADIUS_PX = 3.5
+const TINY_MARKER_HIGHLIGHT_RADIUS_PX = 5.5
+const TINY_HIT_RADIUS_PX = 12
 
 function captureStyle(element: SVGElement, property: string): OriginalStyle {
   return {
@@ -211,6 +211,7 @@ export class SvgMapController {
   private listeners: HoverListeners[] = []
   private tinyTargets = new Map<string, TinyCountryTarget>()
   private tinyTargetLayer: SVGGElement | null = null
+  private resizeObserver: ResizeObserver | null = null
   private countryClickHandler: ((countryId: string) => void) | null = null
   private countryHoverHandler: ((countryId: string | null) => void) | null = null
   private svg: SVGSVGElement | null = null
@@ -259,6 +260,7 @@ export class SvgMapController {
     this.svg = imported
     this.originalViewBox = imported.getAttribute('viewBox')
     this.syncAspectRatio(this.originalViewBox)
+    this.observeResize()
     this.bindDiscoveredCountries(imported, markup)
     this.attachHoverListeners()
     this.render()
@@ -924,33 +926,37 @@ export class SvgMapController {
   private syncTinyTargets(): void {
     if (!this.svg) return
     const tinyIds = new Set<string>()
+    const scale = this.getRenderedScale()
+    const smallestScale = Math.min(scale.x, scale.y)
 
     for (const country of this.countries.values()) {
       const bounds = this.readGeometryBounds(country.path)
-      if (!bounds || Math.max(bounds.width, bounds.height) > TINY_GEOMETRY_MAX_DIMENSION) {
+      if (!bounds || Math.max(bounds.width * scale.x, bounds.height * scale.y) > TINY_GEOMETRY_MAX_SCREEN_DIMENSION) {
         this.removeTinyTarget(country.id)
         continue
       }
 
       tinyIds.add(country.id)
-      const maxDimension = Math.max(bounds.width, bounds.height)
-      const markerRadius = Math.max(
-        TINY_MARKER_MIN_RADIUS,
-        Math.min(TINY_MARKER_MAX_RADIUS, maxDimension * 0.75),
-      )
-      const hitRadius = Math.max(
-        TINY_HIT_MIN_RADIUS,
-        Math.min(TINY_HIT_MAX_RADIUS, markerRadius * 2.5),
-      )
+      const markerRadius = TINY_MARKER_REST_RADIUS_PX / smallestScale
+      const highlightedMarkerRadius = TINY_MARKER_HIGHLIGHT_RADIUS_PX / smallestScale
+      const hitRadius = TINY_HIT_RADIUS_PX / smallestScale
       const existing = this.tinyTargets.get(country.id)
       if (existing) {
         existing.centerX = bounds.x + bounds.width / 2
         existing.centerY = bounds.y + bounds.height / 2
         existing.markerRadius = markerRadius
+        existing.highlightedMarkerRadius = highlightedMarkerRadius
         existing.hitRadius = hitRadius
         this.positionTinyTarget(existing)
       } else {
-        this.createTinyTarget(country.id, bounds.x + bounds.width / 2, bounds.y + bounds.height / 2, markerRadius, hitRadius)
+        this.createTinyTarget(
+          country.id,
+          bounds.x + bounds.width / 2,
+          bounds.y + bounds.height / 2,
+          markerRadius,
+          highlightedMarkerRadius,
+          hitRadius,
+        )
       }
     }
 
@@ -961,6 +967,36 @@ export class SvgMapController {
       this.tinyTargetLayer?.remove()
       this.tinyTargetLayer = null
     }
+  }
+
+  private getRenderedScale(): { x: number; y: number } {
+    if (!this.svg) return { x: 1, y: 1 }
+
+    try {
+      const transform = this.svg.getScreenCTM?.()
+      if (transform) {
+        const x = Math.hypot(transform.a, transform.b)
+        const y = Math.hypot(transform.c, transform.d)
+        if (Number.isFinite(x) && Number.isFinite(y) && x > 0 && y > 0) return { x, y }
+      }
+    } catch {
+      // Fall back to the rendered SVG box for test DOMs and partial SVG APIs.
+    }
+
+    const viewBox = this.parseViewBox(this.svg.getAttribute('viewBox') ?? '')
+    const rect = this.svg.getBoundingClientRect()
+    if (!viewBox || rect.width <= 0 || rect.height <= 0) return { x: 1, y: 1 }
+
+    const preserveAspectRatio = this.svg.getAttribute('preserveAspectRatio')?.trim().toLowerCase() ?? ''
+    if (preserveAspectRatio.startsWith('none')) {
+      return {
+        x: rect.width / viewBox.width,
+        y: rect.height / viewBox.height,
+      }
+    }
+
+    const scale = Math.min(rect.width / viewBox.width, rect.height / viewBox.height)
+    return { x: scale, y: scale }
   }
 
   private readGeometryBounds(path: SVGPathElement): { x: number; y: number; width: number; height: number } | null {
@@ -980,6 +1016,7 @@ export class SvgMapController {
     centerX: number,
     centerY: number,
     markerRadius: number,
+    highlightedMarkerRadius: number,
     hitRadius: number,
   ): void {
     if (!this.svg) return
@@ -1033,6 +1070,7 @@ export class SvgMapController {
       centerY,
       hitRadius,
       markerRadius,
+      highlightedMarkerRadius,
       group,
       marker,
       ring,
@@ -1075,7 +1113,10 @@ export class SvgMapController {
       || country.originalFill.value
       || this.settings.countryFill
       || '#52525b'
-    const markerRadius = hovered && !reducedMotion ? target.markerRadius * 1.25 : target.markerRadius
+    const restRadius = this.highlighted.has(country.id)
+      ? target.highlightedMarkerRadius
+      : target.markerRadius
+    const markerRadius = hovered && !reducedMotion ? restRadius * 1.25 : restRadius
     const markerFill = fill ?? sourceFill
     target.marker.setAttribute('r', String(markerRadius))
     target.marker.setAttribute('fill', markerFill)
@@ -1286,6 +1327,20 @@ export class SvgMapController {
     if (!this.svg) return
     this.svg.setAttribute('viewBox', value)
     this.syncAspectRatio(value)
+    this.render()
+  }
+
+  private observeResize(): void {
+    this.resizeObserver?.disconnect()
+    this.resizeObserver = null
+    if (typeof ResizeObserver === 'undefined') return
+
+    const observedSvg = this.svg
+    this.resizeObserver = new ResizeObserver(() => {
+      if (this.destroyed || this.svg !== observedSvg) return
+      this.render()
+    })
+    this.resizeObserver.observe(this.mount)
   }
 
   /** Keep auto-height SVG surfaces in step with a focused viewBox. */
@@ -1296,6 +1351,8 @@ export class SvgMapController {
   }
 
   private resetMap(): void {
+    this.resizeObserver?.disconnect()
+    this.resizeObserver = null
     this.detachHoverListeners()
     for (const countryId of this.tinyTargets.keys()) this.removeTinyTarget(countryId)
     this.tinyTargetLayer?.remove()
