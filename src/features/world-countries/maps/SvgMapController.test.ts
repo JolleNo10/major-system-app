@@ -331,7 +331,7 @@ describe('SvgMapController task assistance', () => {
     const secondHit = second.mount.querySelector<SVGCircleElement>('[data-svg-map-task-hit-target="Alpha"]')
     if (!firstMarker || !firstHit || !secondMarker || !secondHit) throw new Error('Missing task assistance geometry')
 
-    expect(first.mount.querySelector('[data-svg-map-task-target="Alpha"]')?.getAttribute('visibility')).toBe('hidden')
+    expect(first.mount.querySelector('[data-svg-map-task-interaction-point="Alpha:0"]')?.getAttribute('visibility')).toBe('hidden')
     expect(Number(firstMarker.getAttribute('r'))).toBeCloseTo(5.5)
     expect(Number(firstHit.getAttribute('r'))).toBeCloseTo(12)
     expect(Number(secondMarker.getAttribute('r')) * 0.1).toBeCloseTo(Number(firstMarker.getAttribute('r')))
@@ -367,9 +367,9 @@ describe('SvgMapController task assistance', () => {
     expect(marker.getAttribute('cx')).toBe('42')
     expect(marker.getAttribute('cy')).toBe('27')
 
-    hit.dispatchEvent(new MouseEvent('pointerenter', { clientX: 42, clientY: 27 }))
+    mount.querySelector('svg')?.dispatchEvent(new MouseEvent('pointermove', { clientX: 42, clientY: 27 }))
     expect(Number(marker.getAttribute('r'))).toBeCloseTo(6.875)
-    hit.dispatchEvent(new MouseEvent('pointerleave', { clientX: 80, clientY: 40 }))
+    mount.querySelector('svg')?.dispatchEvent(new MouseEvent('pointerleave'))
     expect(Number(marker.getAttribute('r'))).toBeCloseTo(5.5)
   })
 
@@ -421,15 +421,15 @@ describe('SvgMapController task assistance', () => {
     const betaMarker = mount.querySelector<SVGCircleElement>('[data-svg-map-task-marker="Beta"]')
     if (!alphaMarker || !alphaHit || !betaMarker) throw new Error('Missing task target geometry')
     expect(Number(alphaMarker.getAttribute('r'))).toBeCloseTo(5.5)
-    expect(mount.querySelector('[data-svg-map-task-target="Beta"]')?.getAttribute('visibility')).toBe('hidden')
+    expect(mount.querySelector('[data-svg-map-task-representative-target="Alpha"]')?.getAttribute('visibility')).toBe('visible')
 
-    alphaHit.dispatchEvent(new Event('pointerenter'))
+    mount.querySelector('svg')?.dispatchEvent(new MouseEvent('pointermove', { clientX: 11, clientY: 11 }))
     expect(Number(alphaMarker.getAttribute('r'))).toBeCloseTo(6.875)
-    alphaHit.dispatchEvent(new Event('pointerleave'))
+    mount.querySelector('svg')?.dispatchEvent(new MouseEvent('pointerleave'))
     expect(Number(alphaMarker.getAttribute('r'))).toBeCloseTo(5.5)
 
     controller.setTaskAssistance({ answerSelectionIds: ['Alpha', 'Beta'], taskTargetId: 'Beta', learningAnchors: [alphaAnchor, betaAnchor] })
-    expect(mount.querySelector('[data-svg-map-task-target="Alpha"]')?.getAttribute('visibility')).toBe('hidden')
+    expect(mount.querySelector('[data-svg-map-task-representative-target="Alpha"]')).toBeNull()
     expect(Number(betaMarker.getAttribute('r'))).toBeCloseTo(5.5)
   })
 
@@ -445,7 +445,7 @@ describe('SvgMapController task assistance', () => {
       const hit = mount.querySelector<SVGCircleElement>('[data-svg-map-task-hit-target="Alpha"]')
       if (!marker || !hit) throw new Error('Missing reduced-motion task geometry')
 
-      hit.dispatchEvent(new Event('pointerenter'))
+      mount.querySelector('svg')?.dispatchEvent(new MouseEvent('pointermove', { clientX: 11, clientY: 11 }))
       expect(Number(marker.getAttribute('r'))).toBeCloseTo(6.875)
       expect(marker.style.getPropertyValue('transition')).toBe('none')
     } finally {
@@ -466,16 +466,16 @@ describe('SvgMapController task assistance', () => {
     const hit = mount.querySelector<SVGCircleElement>('[data-svg-map-task-hit-target="Alpha"]')
     if (!marker || !hit) throw new Error('Missing task target geometry')
 
-    hit.dispatchEvent(new Event('pointerenter'))
+    mount.querySelector('svg')?.dispatchEvent(new MouseEvent('pointermove', { clientX: 11, clientY: 11 }))
     expect(Number(marker.getAttribute('r'))).toBeCloseTo(6.875)
-    hit.dispatchEvent(new MouseEvent('click'))
-    hit.dispatchEvent(new MouseEvent('click'))
+    mount.querySelector('svg')?.dispatchEvent(new MouseEvent('click', { clientX: 11, clientY: 11 }))
+    mount.querySelector('svg')?.dispatchEvent(new MouseEvent('click', { clientX: 11, clientY: 11 }))
     expect(clicked).toEqual(['Alpha', 'Alpha'])
-    hit.dispatchEvent(new Event('pointerleave'))
-    expect(mount.querySelector('[data-svg-map-task-target="Alpha"]')?.getAttribute('visibility')).toBe('hidden')
+    mount.querySelector('svg')?.dispatchEvent(new MouseEvent('pointerleave'))
+    expect(mount.querySelector('[data-svg-map-task-representative-target="Alpha"]')).toBeNull()
   })
 
-  it('resolves direct source geometry before overlapping task halos', async () => {
+  it('uses a bounded tiny halo locally and leaves ordinary source geometry selectable outside it', async () => {
     const { mount, controller } = makeController()
     await controller.load({ markup: TEST_MAP })
     setBBox(mount, 'Alpha', { x: 10, y: 10, width: 2, height: 2 })
@@ -487,11 +487,91 @@ describe('SvgMapController task assistance', () => {
     const clicked: string[] = []
     controller.setCountryClickHandler(id => clicked.push(id))
     controller.setTaskAssistance({ answerSelectionIds: ['Alpha', 'Beta'], learningAnchors: [alphaAnchor] })
-    const alphaHit = mount.querySelector<SVGCircleElement>('[data-svg-map-task-hit-target="Alpha"]')
-    if (!alphaHit) throw new Error('Missing Alpha task hit target')
+    const svg = mount.querySelector<SVGSVGElement>('svg')
+    if (!svg) throw new Error('Missing task map SVG')
 
-    alphaHit.dispatchEvent(new MouseEvent('click', { clientX: 20, clientY: 18 }))
-    expect(clicked).toEqual(['Beta'])
+    svg.dispatchEvent(new MouseEvent('click', { clientX: 20, clientY: 18 }))
+    expect(clicked).toEqual(['Alpha'])
+    svg.dispatchEvent(new MouseEvent('click', { clientX: 32, clientY: 20 }))
+    expect(clicked).toEqual(['Alpha', 'Beta'])
+  })
+
+  it('lets a bounded tiny interaction region win over overlapping source geometry and keeps hover equal to click', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    setBBox(mount, 'Alpha', { x: 10, y: 10, width: 2, height: 2 })
+    setBBox(mount, 'Beta', { x: 14, y: 10, width: 20, height: 15 })
+    setSvgRect(mount, { width: 100, height: 50 })
+    const clicked: string[] = []
+    controller.setCountryClickHandler(id => clicked.push(id))
+    controller.setTaskAssistance({ answerSelectionIds: ['Alpha', 'Beta'] })
+    const svg = mount.querySelector<SVGSVGElement>('svg')
+    if (!svg) throw new Error('Missing task map SVG')
+
+    svg.dispatchEvent(new MouseEvent('pointermove', { clientX: 20, clientY: 18, bubbles: true }))
+    expect(path(mount, 'Alpha').style.getPropertyValue('fill')).toBe('#22d3ee')
+    expect(path(mount, 'Beta').style.getPropertyValue('fill')).toBe('#737373')
+
+    svg.dispatchEvent(new MouseEvent('click', { clientX: 20, clientY: 18, bubbles: true }))
+    expect(clicked).toEqual(['Alpha'])
+
+    svg.dispatchEvent(new MouseEvent('pointermove', { clientX: 30, clientY: 20, bubbles: true }))
+    expect(path(mount, 'Alpha').style.getPropertyValue('fill')).toBe('#737373')
+    expect(path(mount, 'Beta').style.getPropertyValue('fill')).toBe('#22d3ee')
+    svg.dispatchEvent(new MouseEvent('click', { clientX: 30, clientY: 20, bubbles: true }))
+    expect(clicked).toEqual(['Alpha', 'Beta'])
+  })
+
+  it('derives multiple local interaction points for one distributed Country', async () => {
+    const { mount, controller } = makeController()
+    const distributedMap = `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
+        <g><path id="Micronesia" d="M 10 10 m -1 0 a 1 1 0 1 0 2 0 a 1 1 0 1 0 -2 0 M 40 20 m -1 0 a 1 1 0 1 0 2 0 a 1 1 0 1 0 -2 0"/><text id="Micronesia_label">MICRONESIA</text></g>
+      </svg>`
+    await controller.load({ markup: distributedMap })
+    setBBox(mount, 'Micronesia', { x: 9, y: 9, width: 33, height: 13 })
+    setSvgRect(mount, { width: 100, height: 50 })
+    const clicked: string[] = []
+    controller.setCountryClickHandler(id => clicked.push(id))
+    controller.setTaskAssistance({ answerSelectionIds: ['Micronesia'] })
+    const svg = mount.querySelector<SVGSVGElement>('svg')
+    const markers = [...mount.querySelectorAll<SVGCircleElement>('[data-svg-map-tiny-marker="Micronesia"]')]
+    if (!svg || markers.length !== 2) throw new Error('Missing distributed Country interaction points')
+
+    svg.dispatchEvent(new MouseEvent('pointermove', { clientX: 10, clientY: 10, bubbles: true }))
+    expect(markers.map(marker => marker.parentElement?.getAttribute('visibility'))).toEqual(['visible', 'hidden'])
+    expect(Number(markers[0].getAttribute('r'))).toBeGreaterThan(0)
+    svg.dispatchEvent(new MouseEvent('click', { clientX: 10, clientY: 10, bubbles: true }))
+    expect(clicked).toEqual(['Micronesia'])
+
+    svg.dispatchEvent(new MouseEvent('pointermove', { clientX: 40, clientY: 20, bubbles: true }))
+    expect(markers.map(marker => marker.parentElement?.getAttribute('visibility'))).toEqual(['hidden', 'visible'])
+    svg.dispatchEvent(new MouseEvent('click', { clientX: 40, clientY: 20, bubbles: true }))
+    expect(clicked).toEqual(['Micronesia', 'Micronesia'])
+  })
+
+  it('keeps a distributed Country task target on one representative learning anchor', async () => {
+    const { mount, controller } = makeController()
+    const distributedMap = `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
+        <g><path id="Micronesia" d="M 10 10 m -1 0 a 1 1 0 1 0 2 0 a 1 1 0 1 0 -2 0 M 40 20 m -1 0 a 1 1 0 1 0 2 0 a 1 1 0 1 0 -2 0"/><text id="Micronesia_label">MICRONESIA</text></g>
+      </svg>`
+    await controller.load({ markup: distributedMap })
+    const fingerprint = 'M 10 10 m -1 0 a 1 1 0 1 0 2 0 a 1 1 0 1 0 -2 0 M 40 20 m -1 0 a 1 1 0 1 0 2 0 a 1 1 0 1 0 -2 0'
+    setBBox(mount, 'Micronesia', { x: 9, y: 9, width: 33, height: 13 })
+    controller.setTaskAssistance({
+      taskTargetId: 'Micronesia',
+      learningAnchors: [{
+        sourceSvgId: 'Micronesia',
+        kind: 'multi-dot-representative',
+        sourceFingerprint: fingerprint,
+        point: { x: 40, y: 20 },
+      }],
+    })
+
+    expect(mount.querySelectorAll('[data-svg-map-task-target="Micronesia"]')).toHaveLength(1)
+    expect(mount.querySelectorAll('[data-svg-map-tiny-marker="Micronesia"]')).toHaveLength(1)
+    expect(mount.querySelector<SVGCircleElement>('[data-svg-map-task-marker="Micronesia"]')?.getAttribute('cx')).toBe('40')
   })
 
   it('uses the nearest eligible anchor, respects hidden countries, and removes task state', async () => {
@@ -506,9 +586,9 @@ describe('SvgMapController task assistance', () => {
     const clicked: string[] = []
     controller.setCountryClickHandler(id => clicked.push(id))
     controller.setTaskAssistance({ answerSelectionIds: ['Alpha', 'Beta'], learningAnchors: [alphaAnchor, betaAnchor] })
-    const alphaHit = mount.querySelector<SVGCircleElement>('[data-svg-map-task-hit-target="Alpha"]')
-    if (!alphaHit) throw new Error('Missing Alpha task hit target')
-    alphaHit.dispatchEvent(new MouseEvent('click', { clientX: 14, clientY: 10 }))
+    const svg = mount.querySelector<SVGSVGElement>('svg')
+    if (!svg) throw new Error('Missing task map SVG')
+    svg.dispatchEvent(new MouseEvent('click', { clientX: 16, clientY: 11 }))
     expect(clicked).toEqual(['Beta'])
 
     controller.setHiddenCountries(['Alpha'])

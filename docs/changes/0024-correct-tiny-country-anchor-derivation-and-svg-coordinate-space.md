@@ -1,11 +1,12 @@
 # Change Spec 0024 - Correct tiny-Country anchor derivation and SVG coordinate handling
 
-- **Status:** Ready
+- **Status:** Superseded
 - **Date:** 2026-08-22
 - **Issue:** None.
 - **Related ADRs:** [ADR 0030 - Derive unambiguous tiny-Country anchors from map geometry](../adr/0030-derive-unambiguous-tiny-country-anchors-from-map-geometry.md)
 - **Current-state docs:** [World Countries](../architecture/features/WORLD_COUNTRIES.md)
 - **Supersedes:** [Change Spec 0023 - Correct tiny-Country task assistance](0023-correct-tiny-country-task-assistance.md) for anchor eligibility, hover resolution, and coordinate handling. Preserve its explicit task-scoping model.
+- **Superseded by:** [Change Spec 0025 - Correct tiny-Country pointer intent, multi-component selection, and hover feedback](0025-correct-tiny-country-pointer-intent-multi-component-selection-and-hover-feedback.md)
 
 ## Goal
 

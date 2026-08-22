@@ -1,8 +1,9 @@
 # ADR 0030 - Derive unambiguous tiny-Country anchors from map geometry
 
-- **Status:** Accepted
+- **Status:** Superseded
 - **Date:** 2026-08-22
 - **Supersedes:** [ADR 0029 - Tiny-Country assistance is task-scoped and uses map-specific learning anchors](0029-task-scoped-tiny-country-assistance-and-learning-anchors.md)
+- **Superseded by:** [ADR 0031 - Separate answer-selection interaction points from representative learning anchors](0031-separate-selection-interaction-points-from-representative-learning-anchors.md)
 
 ## Context
 
