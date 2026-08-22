@@ -218,7 +218,11 @@ advances automatically after the correction dwell.
   dynamic map presentation through that host.
 - `MapSurface` keeps lightweight context above a relative map container and
   supports optional map metadata, a centered map-relative feedback overlay,
-  plus explicit overlay, attached, and stacked dock placement. `TaskDock`
+  explicit overlay, attached, and stacked dock placement, and the one common
+  World Countries expand/collapse affordance. Expansion publishes the generic
+  transient `expanded-center` PageLayout presentation, keeps the same map and
+  dock mounted, bounds task controls, and resets when the owning surface
+  unmounts or the viewport leaves `xl`. `TaskDock`
   provides compact navigation, checkpoint, form,
   hint, and completion variants; checkpoint and completion docks compose their
   status copy and action group as one unit at desktop widths. Typed Practice,
@@ -241,6 +245,11 @@ advances automatically after the correction dwell.
   the spelling input while open, then focuses Continue on completion. Today
   delayed-retry Skip and Recite Reveal / Skip remain answerable-state actions
   owned by those workflows.
+- `SvgMapController` owns geometry-derived tiny-Country marker and forgiving
+  hit-target augmentation. The source Country path remains authoritative for
+  discovery, semantic styling, identity, and `getBBox()`-based zoom; hidden or
+  non-hoverable Countries do not retain an interactive augmentation, and
+  overlapping target candidates resolve by nearest pointer position.
 - For the same map source, Continent, effective scope membership, and
   intentional zoom behavior, Learning updates map highlights, names, hover,
   and sequence annotations declaratively. Workflow phase alone must not
@@ -258,8 +267,11 @@ advances automatically after the correction dwell.
   Subregion/Country order and are not mutated by later population or order
   changes. Recite mode and map assistance are fixed for the run; only the
   typed prompt/task controls advance it.
-- PageLayout geometry, `useRails`, `useLayoutHeader`, drawer behavior, and rail
-  widths remain unchanged.
+- Standard PageLayout geometry, `useRails`, `useLayoutHeader`, drawer behavior,
+  and rail widths remain unchanged. `MapSurface` may publish the transient
+  expanded-center presentation through the shared PageLayout context; this
+  suppresses rail presentation without moving expansion state or breakout CSS
+  into Today, Drill, Practice, Learning, or Recite.
 - Today follows the World Countries map-centered spatial grammar: the map and
   immediate primary task stay in the center, geographic context stays in the
   left rail, and Today workflow/session status and controls stay in the right

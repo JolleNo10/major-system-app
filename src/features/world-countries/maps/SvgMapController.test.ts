@@ -35,6 +35,13 @@ function label(mount: HTMLElement, id: string): SVGTextElement {
   return element
 }
 
+function setBBox(mount: HTMLElement, id: string, bounds: { x: number; y: number; width: number; height: number }): void {
+  Object.defineProperty(path(mount, id), 'getBBox', {
+    configurable: true,
+    value: () => bounds,
+  })
+}
+
 afterEach(() => {
   while (controllers.length) controllers.pop()?.destroy()
   document.body.replaceChildren()
@@ -255,6 +262,130 @@ describe('SvgMapController persistent state', () => {
 })
 
 describe('SvgMapController hover behavior', () => {
+  it('derives tiny markers from geometry and routes their hover, click, and zoom through the source Country', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    setBBox(mount, 'Alpha', { x: 10, y: 10, width: 2, height: 2 })
+    setBBox(mount, 'Beta', { x: 40, y: 20, width: 20, height: 15 })
+    controller.updateSettings({ hoverHighlight: true, hoverShowName: true })
+
+    const marker = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-marker="Alpha"]')
+    const hit = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-hit-target="Alpha"]')
+    expect(marker).not.toBeNull()
+    expect(hit).not.toBeNull()
+    expect(marker?.getAttribute('fill')).toBe('#737373')
+    expect(Number(hit?.getAttribute('r'))).toBeGreaterThan(Number(marker?.getAttribute('r')))
+
+    const clicked: string[] = []
+    const hovered: Array<string | null> = []
+    controller.setCountryClickHandler(id => clicked.push(id))
+    controller.setCountryHoverHandler(id => hovered.push(id))
+    hit?.dispatchEvent(new Event('pointerenter'))
+    expect(hovered).toEqual(['Alpha'])
+    expect(label(mount, 'Alpha_label').style.getPropertyValue('display')).toBe('inline')
+    hit?.dispatchEvent(new MouseEvent('click'))
+    expect(clicked).toEqual(['Alpha'])
+    hit?.dispatchEvent(new Event('pointerleave'))
+    expect(hovered).toEqual(['Alpha', null])
+
+    controller.setCountryColors({ Alpha: '#ef4444' })
+    expect(marker?.getAttribute('fill')).toBe('#ef4444')
+    expect(controller.setZoomArea(['Alpha'], 5)).toEqual({ activeIds: ['Alpha'], unknownIds: [] })
+    expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('5 5 12 12')
+  })
+
+  it('resolves overlapping forgiving targets by nearest pointer position', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    setBBox(mount, 'Alpha', { x: 10, y: 10, width: 2, height: 2 })
+    setBBox(mount, 'Beta', { x: 14, y: 10, width: 2, height: 2 })
+    controller.updateSettings({ hoverHighlight: true })
+    const svg = mount.querySelector('svg')
+    if (!svg) throw new Error('Missing map SVG')
+    Object.defineProperty(svg, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 0, top: 0, width: 100, height: 50, right: 100, bottom: 50 }),
+    })
+    const alphaHit = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-hit-target="Alpha"]')
+    if (!alphaHit) throw new Error('Missing Alpha tiny Country hit target')
+    const clicked: string[] = []
+    controller.setCountryClickHandler(id => clicked.push(id))
+
+    alphaHit.dispatchEvent(new MouseEvent('click', { clientX: 14, clientY: 10 }))
+    expect(clicked).toEqual(['Beta'])
+  })
+
+  it('does not let a tiny halo steal a pointer inside a neighboring source Country', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    setBBox(mount, 'Alpha', { x: 10, y: 10, width: 2, height: 2 })
+    setBBox(mount, 'Beta', { x: 14, y: 10, width: 20, height: 15 })
+    controller.updateSettings({ hoverHighlight: true })
+    const svg = mount.querySelector('svg')
+    if (!svg) throw new Error('Missing map SVG')
+    Object.defineProperty(svg, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 0, top: 0, width: 100, height: 50, right: 100, bottom: 50 }),
+    })
+    const alphaHit = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-hit-target="Alpha"]')
+    if (!alphaHit) throw new Error('Missing Alpha tiny Country hit target')
+    const clicked: string[] = []
+    controller.setCountryClickHandler(id => clicked.push(id))
+
+    alphaHit.dispatchEvent(new MouseEvent('click', { clientX: 20, clientY: 18 }))
+    expect(clicked).toEqual(['Beta'])
+  })
+
+  it('maps forgiving-target coordinates through letterboxed SVG viewports', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    setBBox(mount, 'Alpha', { x: 10, y: 10, width: 2, height: 2 })
+    controller.updateSettings({ hoverHighlight: true })
+    const svg = mount.querySelector('svg')
+    if (!svg) throw new Error('Missing map SVG')
+    Object.defineProperty(svg, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 0, top: 0, width: 100, height: 200, right: 100, bottom: 200 }),
+    })
+    const alphaHit = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-hit-target="Alpha"]')
+    if (!alphaHit) throw new Error('Missing Alpha tiny Country hit target')
+    const clicked: string[] = []
+    controller.setCountryClickHandler(id => clicked.push(id))
+
+    alphaHit.dispatchEvent(new MouseEvent('click', { clientX: 11, clientY: 96 }))
+    expect(clicked).toEqual(['Alpha'])
+  })
+
+  it('does not leave tiny marker interaction behind for hidden or non-interactive Countries', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    setBBox(mount, 'Alpha', { x: 10, y: 10, width: 2, height: 2 })
+    controller.updateSettings({ hoverHighlight: true, hoverShowName: true })
+    const hit = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-hit-target="Alpha"]')
+    if (!hit) throw new Error('Missing tiny Country hit target')
+
+    const clicked: string[] = []
+    const hovered: Array<string | null> = []
+    controller.setCountryClickHandler(id => clicked.push(id))
+    controller.setCountryHoverHandler(id => hovered.push(id))
+    controller.setHiddenCountries(['Alpha'])
+    expect(mount.querySelector('[data-svg-map-tiny-country="Alpha"]')?.getAttribute('visibility')).toBe('hidden')
+    expect(hit.style.getPropertyValue('pointer-events')).toBe('none')
+    hit.dispatchEvent(new Event('pointerenter'))
+    hit.dispatchEvent(new MouseEvent('click'))
+    expect(clicked).toEqual([])
+    expect(hovered).toEqual([null])
+
+    controller.clearHiddenCountries()
+    controller.setHoverableCountries([])
+    expect(mount.querySelector('[data-svg-map-tiny-country="Alpha"]')?.getAttribute('visibility')).toBe('visible')
+    expect(hit.style.getPropertyValue('pointer-events')).toBe('none')
+    hit.dispatchEvent(new Event('pointerenter'))
+    hit.dispatchEvent(new MouseEvent('click'))
+    expect(clicked).toEqual([])
+    expect(hovered).toEqual([null, null])
+  })
+
   it('hides Countries and suppresses their hover and click interaction', async () => {
     const { mount, controller } = makeController()
     await controller.load({ markup: TEST_MAP })

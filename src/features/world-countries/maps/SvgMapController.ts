@@ -118,8 +118,28 @@ interface HoverListeners {
   click: EventListener
 }
 
+interface TinyCountryTarget {
+  countryId: string
+  centerX: number
+  centerY: number
+  hitRadius: number
+  markerRadius: number
+  group: SVGGElement
+  marker: SVGCircleElement
+  ring: SVGCircleElement
+  hit: SVGCircleElement
+  enter: EventListener
+  leave: EventListener
+  click: EventListener
+}
+
 const FORBIDDEN_ELEMENTS = 'script, foreignObject, iframe, object, embed, image, style'
 const XLINK_NS = 'http://www.w3.org/1999/xlink'
+const TINY_GEOMETRY_MAX_DIMENSION = 12
+const TINY_MARKER_MIN_RADIUS = 3
+const TINY_MARKER_MAX_RADIUS = 6
+const TINY_HIT_MIN_RADIUS = 10
+const TINY_HIT_MAX_RADIUS = 18
 
 function captureStyle(element: SVGElement, property: string): OriginalStyle {
   return {
@@ -189,6 +209,8 @@ export class SvgMapController {
   private hoveredNameOverride: boolean | null = null
   private hoveredIds = new Set<string>()
   private listeners: HoverListeners[] = []
+  private tinyTargets = new Map<string, TinyCountryTarget>()
+  private tinyTargetLayer: SVGGElement | null = null
   private countryClickHandler: ((countryId: string) => void) | null = null
   private countryHoverHandler: ((countryId: string | null) => void) | null = null
   private svg: SVGSVGElement | null = null
@@ -731,13 +753,11 @@ export class SvgMapController {
           if (hadHover) this.countryHoverHandler?.(null)
           return
         }
-        this.setHoveredCountry(country.id)
-        this.countryHoverHandler?.(this.hoveredCountryId === country.id ? country.id : null)
+        this.setHoveredCountryAndNotify(country.id)
       }
       const leave: EventListener = () => {
         if (this.hoveredCountryId !== country.id) return
-        this.setHoveredCountry(null)
-        this.countryHoverHandler?.(null)
+        this.setHoveredCountryAndNotify(null)
       }
       const click: EventListener = () => {
         if (this.isInteractive(country.id)) this.countryClickHandler?.(country.id)
@@ -848,6 +868,8 @@ export class SvgMapController {
       ? 'none'
       : `fill ${this.settings.transitionMs}ms ease, stroke ${this.settings.transitionMs}ms ease, stroke-width ${this.settings.transitionMs}ms ease`
 
+    this.syncTinyTargets()
+
     for (const country of this.countries.values()) {
       const hovered = this.hoveredIds.has(country.id)
       const hasSemanticColor = this.countryColors.has(country.id)
@@ -893,8 +915,270 @@ export class SvgMapController {
       for (const paint of country.labelPaint) {
         setOverride(paint.element, 'fill', this.settings.labelFill, paint.originalFill)
       }
+      const tinyTarget = this.tinyTargets.get(country.id)
+      if (tinyTarget) this.renderTinyTarget(country, tinyTarget, fill, hidden, hovered, reducedMotion)
     }
     this.renderGroupOutlines()
+  }
+
+  private syncTinyTargets(): void {
+    if (!this.svg) return
+    const tinyIds = new Set<string>()
+
+    for (const country of this.countries.values()) {
+      const bounds = this.readGeometryBounds(country.path)
+      if (!bounds || Math.max(bounds.width, bounds.height) > TINY_GEOMETRY_MAX_DIMENSION) {
+        this.removeTinyTarget(country.id)
+        continue
+      }
+
+      tinyIds.add(country.id)
+      const maxDimension = Math.max(bounds.width, bounds.height)
+      const markerRadius = Math.max(
+        TINY_MARKER_MIN_RADIUS,
+        Math.min(TINY_MARKER_MAX_RADIUS, maxDimension * 0.75),
+      )
+      const hitRadius = Math.max(
+        TINY_HIT_MIN_RADIUS,
+        Math.min(TINY_HIT_MAX_RADIUS, markerRadius * 2.5),
+      )
+      const existing = this.tinyTargets.get(country.id)
+      if (existing) {
+        existing.centerX = bounds.x + bounds.width / 2
+        existing.centerY = bounds.y + bounds.height / 2
+        existing.markerRadius = markerRadius
+        existing.hitRadius = hitRadius
+        this.positionTinyTarget(existing)
+      } else {
+        this.createTinyTarget(country.id, bounds.x + bounds.width / 2, bounds.y + bounds.height / 2, markerRadius, hitRadius)
+      }
+    }
+
+    for (const countryId of this.tinyTargets.keys()) {
+      if (!tinyIds.has(countryId)) this.removeTinyTarget(countryId)
+    }
+    if (this.tinyTargets.size === 0) {
+      this.tinyTargetLayer?.remove()
+      this.tinyTargetLayer = null
+    }
+  }
+
+  private readGeometryBounds(path: SVGPathElement): { x: number; y: number; width: number; height: number } | null {
+    if (typeof path.getBBox !== 'function') return null
+    try {
+      const bounds = path.getBBox()
+      const values = [bounds.x, bounds.y, bounds.width, bounds.height]
+      if (values.some(value => !Number.isFinite(value)) || bounds.width < 0 || bounds.height < 0) return null
+      return bounds
+    } catch {
+      return null
+    }
+  }
+
+  private createTinyTarget(
+    countryId: string,
+    centerX: number,
+    centerY: number,
+    markerRadius: number,
+    hitRadius: number,
+  ): void {
+    if (!this.svg) return
+    const document = this.svg.ownerDocument
+    const group = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+    const marker = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+    const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+    const hit = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+    group.setAttribute('data-svg-map-tiny-country', countryId)
+    marker.setAttribute('data-svg-map-tiny-marker', countryId)
+    ring.setAttribute('data-svg-map-tiny-ring', countryId)
+    hit.setAttribute('data-svg-map-tiny-hit-target', countryId)
+    marker.setAttribute('pointer-events', 'none')
+    ring.setAttribute('pointer-events', 'none')
+    hit.setAttribute('fill', 'transparent')
+    hit.setAttribute('fill-opacity', '0')
+    hit.setAttribute('stroke', 'none')
+    hit.setAttribute('pointer-events', 'all')
+    group.append(marker, ring, hit)
+    this.tinyTargetLayer ??= document.createElementNS('http://www.w3.org/2000/svg', 'g')
+    this.tinyTargetLayer.setAttribute('data-svg-map-tiny-targets', '')
+    this.tinyTargetLayer.append(group)
+    this.svg.append(this.tinyTargetLayer)
+
+    const enter: EventListener = event => {
+      const resolvedId = this.resolveTinyTargetId(event, countryId)
+      if (!resolvedId || !this.isInteractive(resolvedId)) {
+        this.setHoveredCountryAndNotify(null)
+        return
+      }
+      this.setHoveredCountryAndNotify(resolvedId)
+    }
+    const leave: EventListener = event => {
+      const nextId = this.resolveTinyTargetId(event)
+      if (nextId && nextId !== countryId) {
+        this.setHoveredCountryAndNotify(nextId)
+        return
+      }
+      if (this.hoveredCountryId === countryId) this.setHoveredCountryAndNotify(null)
+    }
+    const click: EventListener = event => {
+      const resolvedId = this.resolveTinyTargetId(event, countryId)
+      if (resolvedId && this.isInteractive(resolvedId)) this.countryClickHandler?.(resolvedId)
+    }
+    hit.addEventListener('pointerenter', enter)
+    hit.addEventListener('pointerleave', leave)
+    hit.addEventListener('click', click)
+    this.tinyTargets.set(countryId, {
+      countryId,
+      centerX,
+      centerY,
+      hitRadius,
+      markerRadius,
+      group,
+      marker,
+      ring,
+      hit,
+      enter,
+      leave,
+      click,
+    })
+    this.positionTinyTarget(this.tinyTargets.get(countryId) as TinyCountryTarget)
+  }
+
+  private positionTinyTarget(target: TinyCountryTarget): void {
+    for (const element of [target.marker, target.ring, target.hit]) {
+      element.setAttribute('cx', String(target.centerX))
+      element.setAttribute('cy', String(target.centerY))
+    }
+    target.hit.setAttribute('r', String(target.hitRadius))
+  }
+
+  private removeTinyTarget(countryId: string): void {
+    const target = this.tinyTargets.get(countryId)
+    if (!target) return
+    target.hit.removeEventListener('pointerenter', target.enter)
+    target.hit.removeEventListener('pointerleave', target.leave)
+    target.hit.removeEventListener('click', target.click)
+    target.group.remove()
+    this.tinyTargets.delete(countryId)
+  }
+
+  private renderTinyTarget(
+    country: InternalCountry,
+    target: TinyCountryTarget,
+    fill: string | null,
+    hidden: boolean,
+    hovered: boolean,
+    reducedMotion: boolean,
+  ): void {
+    const sourceFill = country.path.style.getPropertyValue('fill')
+      || country.path.getAttribute('fill')
+      || country.originalFill.value
+      || this.settings.countryFill
+      || '#52525b'
+    const markerRadius = hovered && !reducedMotion ? target.markerRadius * 1.25 : target.markerRadius
+    const markerFill = fill ?? sourceFill
+    target.marker.setAttribute('r', String(markerRadius))
+    target.marker.setAttribute('fill', markerFill)
+    target.marker.style.setProperty('transition', reducedMotion ? 'none' : `r ${this.settings.transitionMs}ms ease`)
+    target.ring.setAttribute('r', String(hovered ? markerRadius * 1.45 : markerRadius))
+    target.ring.setAttribute('fill', 'none')
+    target.ring.setAttribute('stroke', this.settings.hoverStroke ?? '#d4d4d8')
+    target.ring.setAttribute('stroke-width', this.settings.hoverStrokeWidth ?? '1.5')
+    target.ring.setAttribute('opacity', hovered ? '0.85' : '0')
+    target.ring.style.setProperty('transition', reducedMotion ? 'none' : `r ${this.settings.transitionMs}ms ease, opacity ${this.settings.transitionMs}ms ease`)
+
+    const interactive = this.isInteractive(country.id)
+    target.group.setAttribute('visibility', hidden ? 'hidden' : 'visible')
+    target.hit.style.setProperty('pointer-events', !hidden && interactive ? 'all' : 'none', 'important')
+  }
+
+  private setHoveredCountryAndNotify(id: string | null): void {
+    this.setHoveredCountry(id)
+    this.countryHoverHandler?.(this.hoveredCountryId === id ? id : null)
+  }
+
+  private resolveTinyTargetId(event: Event, fallbackId?: string): string | null {
+    const point = this.getSvgPoint(event)
+    if (!point) return fallbackId ?? null
+    const sourceCountryId = this.resolveSourceCountryAtPoint(point)
+    if (sourceCountryId) return sourceCountryId
+    let nearest: { id: string; distance: number } | null = null
+    for (const target of this.tinyTargets.values()) {
+      if (!this.isInteractive(target.countryId)) continue
+      const distance = Math.hypot(point.x - target.centerX, point.y - target.centerY)
+      if (distance > target.hitRadius) continue
+      if (!nearest || distance < nearest.distance) nearest = { id: target.countryId, distance }
+    }
+    return nearest?.id ?? null
+  }
+
+  private resolveSourceCountryAtPoint(point: { x: number; y: number }): string | null {
+    const matches: Array<{ id: string; area: number }> = []
+    for (const country of this.countries.values()) {
+      if (!this.isInteractive(country.id)) continue
+      const bounds = this.readGeometryBounds(country.path)
+      if (!bounds) continue
+      const geometry = country.path as SVGGeometryElement & {
+        isPointInFill?: (candidate: { x: number; y: number }) => boolean
+      }
+      let contains = point.x >= bounds.x
+        && point.x <= bounds.x + bounds.width
+        && point.y >= bounds.y
+        && point.y <= bounds.y + bounds.height
+      if (typeof geometry.isPointInFill === 'function') {
+        try {
+          contains = geometry.isPointInFill(point)
+        } catch {
+          // Keep the conservative bounding-box fallback for test DOMs and
+          // browsers that cannot evaluate the path at this moment.
+        }
+      }
+      if (contains) matches.push({ id: country.id, area: bounds.width * bounds.height })
+    }
+    return matches.sort((left, right) => left.area - right.area)[0]?.id ?? null
+  }
+
+  private getSvgPoint(event: Event): { x: number; y: number } | null {
+    if (!this.svg) return null
+    const pointer = event as MouseEvent
+    if (!Number.isFinite(pointer.clientX) || !Number.isFinite(pointer.clientY)) return null
+
+    try {
+      const transform = this.svg.getScreenCTM?.()
+      if (transform) {
+        const point = this.svg.createSVGPoint()
+        point.x = pointer.clientX
+        point.y = pointer.clientY
+        const mapped = point.matrixTransform(transform.inverse())
+        if (Number.isFinite(mapped.x) && Number.isFinite(mapped.y)) return { x: mapped.x, y: mapped.y }
+      }
+    } catch {
+      // Fall back to the viewBox calculation for test DOMs and partial SVG APIs.
+    }
+
+    const rect = this.svg.getBoundingClientRect()
+    const viewBox = this.parseViewBox(this.svg.getAttribute('viewBox') ?? '')
+    if (!viewBox || rect.width <= 0 || rect.height <= 0) return null
+    let x = pointer.clientX - rect.left
+    let y = pointer.clientY - rect.top
+    const preserveAspectRatio = this.svg.getAttribute('preserveAspectRatio')?.trim().toLowerCase() ?? ''
+    if (!preserveAspectRatio.startsWith('none')) {
+      const scale = Math.min(rect.width / viewBox.width, rect.height / viewBox.height)
+      const contentWidth = viewBox.width * scale
+      const contentHeight = viewBox.height * scale
+      const offsetX = (rect.width - contentWidth) / 2
+      const offsetY = (rect.height - contentHeight) / 2
+      if (x < offsetX || x > offsetX + contentWidth || y < offsetY || y > offsetY + contentHeight) return null
+      x = (x - offsetX) / scale
+      y = (y - offsetY) / scale
+    } else {
+      x /= rect.width / viewBox.width
+      y /= rect.height / viewBox.height
+    }
+    return {
+      x: viewBox.x + x,
+      y: viewBox.y + y,
+    }
   }
 
   private renderCountryLabel(country: InternalCountry, override: string | null): void {
@@ -1013,6 +1297,9 @@ export class SvgMapController {
 
   private resetMap(): void {
     this.detachHoverListeners()
+    for (const countryId of this.tinyTargets.keys()) this.removeTinyTarget(countryId)
+    this.tinyTargetLayer?.remove()
+    this.tinyTargetLayer = null
     this.countries.clear()
     this.highlighted.clear()
     this.countryColors.clear()

@@ -1,4 +1,5 @@
 import { createContext, useContext, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { usePageLayoutPresentation } from '@/app/layout/PageLayoutContext'
 
 export type MapSurfaceDockPlacement = 'overlay' | 'attached' | 'stacked'
 export type TaskDockVariant = 'navigation' | 'checkpoint' | 'form' | 'hint' | 'completion'
@@ -8,6 +9,7 @@ interface MapSurfaceFeedbackContextValue {
 }
 
 const MapSurfaceFeedbackContext = createContext<MapSurfaceFeedbackContextValue | null>(null)
+const EXPANDED_MEDIA_QUERY = '(min-width: 1280px)'
 
 export function useMapSurfaceFeedbackOverlay(feedbackOverlay: ReactNode | null): void {
   const surface = useContext(MapSurfaceFeedbackContext)
@@ -43,21 +45,57 @@ export function MapSurface({ context, map, mapMeta, feedbackOverlay, dock, dockP
   className?: string
 }) {
   const [registeredFeedbackOverlay, setRegisteredFeedbackOverlay] = useState<ReactNode | null>(null)
+  const [expanded, setExpanded] = useState(false)
   const surfaceContext = useMemo(() => ({ setFeedbackOverlay: setRegisteredFeedbackOverlay }), [])
   const visibleFeedbackOverlay = feedbackOverlay !== undefined ? feedbackOverlay : registeredFeedbackOverlay
+  usePageLayoutPresentation(expanded ? 'expanded-center' : 'standard', [expanded])
+
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return
+    const media = window.matchMedia(EXPANDED_MEDIA_QUERY)
+    const collapseBelowDesktop = () => {
+      if (!media.matches) setExpanded(false)
+    }
+    collapseBelowDesktop()
+    media.addEventListener?.('change', collapseBelowDesktop)
+    media.addListener?.(collapseBelowDesktop)
+    return () => {
+      media.removeEventListener?.('change', collapseBelowDesktop)
+      media.removeListener?.(collapseBelowDesktop)
+    }
+  }, [])
+
   const dockClass = dockPlacement === 'overlay'
-    ? 'xl:pointer-events-none xl:absolute xl:inset-x-[14px] xl:bottom-[14px] xl:z-20'
+    ? expanded
+      ? 'xl:pointer-events-none xl:absolute xl:left-1/2 xl:bottom-[14px] xl:z-20 xl:w-full xl:max-w-2xl xl:-translate-x-1/2'
+      : 'xl:pointer-events-none xl:absolute xl:inset-x-[14px] xl:bottom-[14px] xl:z-20'
     : dockPlacement === 'attached'
-      ? 'relative z-10 mx-3 xl:-mt-4'
-      : 'relative z-10 mt-2'
+      ? `relative z-10 mx-3 xl:-mt-4 ${expanded ? 'xl:mx-auto xl:max-w-2xl' : ''}`
+      : `relative z-10 mt-2 ${expanded ? 'xl:mx-auto xl:max-w-2xl' : ''}`
 
   return (
     <MapSurfaceFeedbackContext.Provider value={surfaceContext}>
-      <div data-map-surface className={`space-y-2 animate-fade-in ${className}`}>
+      <div
+        data-map-surface
+        data-map-surface-presentation={expanded ? 'expanded' : 'standard'}
+        className={`space-y-2 animate-fade-in ${className}`}
+      >
         <div>{context}</div>
         <div className="relative">
           {mapMeta && <div className="pointer-events-none absolute left-[18px] top-4 z-10 text-left text-xs text-zinc-300 drop-shadow-md">{mapMeta}</div>}
           <div>{map}</div>
+          <div className="pointer-events-none absolute right-3 top-3 z-30 hidden xl:block">
+            <button
+              type="button"
+              aria-expanded={expanded}
+              aria-label={expanded ? 'Collapse map' : 'Expand map'}
+              title={expanded ? 'Collapse map' : 'Expand map'}
+              onClick={() => setExpanded(value => !value)}
+              className="pointer-events-auto inline-flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-600/80 bg-zinc-950/75 text-lg text-zinc-200 shadow-lg backdrop-blur-md transition-colors hover:border-cyan-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400/70"
+            >
+              <span aria-hidden="true">{expanded ? '↙' : '↗'}</span>
+            </button>
+          </div>
           {visibleFeedbackOverlay && <MapFeedbackOverlay>{visibleFeedbackOverlay}</MapFeedbackOverlay>}
           {dockPlacement === 'overlay' && <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-32 rounded-b-2xl bg-gradient-to-t from-zinc-950/35 to-transparent" />}
           {dock && <div className={dockClass}>{dock}</div>}

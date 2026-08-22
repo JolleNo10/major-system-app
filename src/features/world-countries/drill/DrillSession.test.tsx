@@ -15,6 +15,7 @@ const countryCapitalPanelMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@/app/layout/PageLayoutContext', () => ({
   useRails: useRailsMock,
+  usePageLayoutPresentation: vi.fn(),
 }))
 
 vi.mock('@/features/world-countries/learning/CountryLearningMap', () => ({
@@ -361,7 +362,7 @@ describe('DrillSession map presentation', () => {
       }))
     })
 
-    await act(async () => mount.querySelector('button')?.click())
+    await act(async () => mount.querySelector<HTMLButtonElement>('button:not([aria-label="Expand map"])')?.click())
     expect(onContinue).not.toHaveBeenCalled()
     await act(async () => vi.advanceTimersByTime(499))
     expect(onContinue).not.toHaveBeenCalled()

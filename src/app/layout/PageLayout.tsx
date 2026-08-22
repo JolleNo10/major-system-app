@@ -1,6 +1,10 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { useOverlay } from '@/app/layout/useOverlay'
-import { usePageRails, usePageHeader } from '@/app/layout/PageLayoutContext'
+import {
+  usePageLayoutPresentationMode,
+  usePageRails,
+  usePageHeader,
+} from '@/app/layout/PageLayoutContext'
 
 // The one base layout for every screen (ADR 0001). A fixed-width center column
 // flanked by optional left/right rails. Rules that make it drift-proof:
@@ -25,17 +29,31 @@ const TOGGLE_CLS =
 export function PageLayout({ children }: { children: ReactNode }) {
   const { left, right, leftLabel = 'Stats', rightLabel = 'Tools' } = usePageRails()
   const header = usePageHeader()
+  const presentation = usePageLayoutPresentationMode()
+  const expanded = presentation === 'expanded-center'
   const [openDrawer, setOpenDrawer] = useState<'left' | 'right' | null>(null)
 
+  useLayoutEffect(() => {
+    if (expanded) setOpenDrawer(null)
+  }, [expanded])
+
   return (
-    <div className="w-full">
+    <div
+      data-page-layout
+      data-page-layout-presentation={presentation}
+      className="w-full"
+    >
       {/* Header chrome — spans the center-column width, centered, above the rail
           row. Keeping it out of the grid lets the rails top-align with the body
           content rather than with the chrome. */}
-      {header && <div className="mx-auto w-full max-w-2xl">{header}</div>}
+      {header && (
+        <div className={expanded ? 'mx-auto w-full px-4 xl:px-8' : 'mx-auto w-full max-w-2xl'}>
+          {header}
+        </div>
+      )}
 
       {/* Narrow-screen toggles — one per registered rail. */}
-      {(left || right) && (
+      {!expanded && (left || right) && (
         <div className="flex justify-center gap-2 mb-4 xl:hidden">
           {left && (
             <button onClick={() => setOpenDrawer('left')} className={TOGGLE_CLS}>
@@ -56,23 +74,22 @@ export function PageLayout({ children }: { children: ReactNode }) {
           the whole track group, so surplus space splits evenly to both sides.
           items-start keeps every cell content-height (top-aligned) — without it
           the grid stretches the rails to the center's full height. */}
-      <div
-        className="grid w-full items-start justify-center gap-6
-                   grid-cols-[minmax(0,42rem)]
-                   xl:grid-cols-[minmax(0,18rem)_42rem_minmax(0,18rem)]"
+      <div className={expanded
+        ? 'grid w-full min-w-0 items-start justify-center gap-6 px-4 xl:px-8 grid-cols-[minmax(0,1fr)]'
+        : 'grid w-full items-start justify-center gap-6 grid-cols-[minmax(0,42rem)] xl:grid-cols-[minmax(0,18rem)_42rem_minmax(0,18rem)]'}
       >
         {/* Gutters are plain blocks so the rail fills the gutter width and sits
             right beside the center (connected), and stays as tall as its own
             content. Only real columns at xl. */}
-        <div className="hidden min-w-0 xl:block">{left}</div>
-        <div className="min-w-0">{children}</div>
-        <div className="hidden min-w-0 xl:block">{right}</div>
+        <div className={expanded ? 'hidden' : 'hidden min-w-0 xl:block'}>{left}</div>
+        <div className={expanded ? 'min-w-0 w-full' : 'min-w-0'}>{children}</div>
+        <div className={expanded ? 'hidden' : 'hidden min-w-0 xl:block'}>{right}</div>
       </div>
 
-      {openDrawer === 'left' && left && (
+      {!expanded && openDrawer === 'left' && left && (
         <Drawer side="left" label={leftLabel} onClose={() => setOpenDrawer(null)}>{left}</Drawer>
       )}
-      {openDrawer === 'right' && right && (
+      {!expanded && openDrawer === 'right' && right && (
         <Drawer side="right" label={rightLabel} onClose={() => setOpenDrawer(null)}>{right}</Drawer>
       )}
     </div>
