@@ -50,7 +50,7 @@ describe('capital authoring real-asset geometry audit', () => {
     expect(oceania?.entries.find(entry => entry.countryId === 'CK')?.classification).toBe('missing-or-unresolved')
     expect(oceania?.entries.find(entry => entry.countryId === 'NU')?.classification).toBe('missing-or-unresolved')
     expect(world?.entries.filter(entry => entry.classification === 'missing-or-unresolved').map(entry => entry.countryId)).toEqual([
-      'SM', 'VA', 'LK', 'PW', 'FM', 'NR', 'MH', 'KI', 'CK', 'NU', 'TV', 'TO', 'ST', 'SC', 'KN',
+      'SM', 'VA', 'MV', 'PW', 'FM', 'NR', 'MH', 'KI', 'CK', 'NU', 'TV', 'TO', 'ST', 'SC', 'KN',
     ])
     expect(oceania?.entries.find(entry => entry.countryId === 'WS')?.syntheticDotCandidateCount).toBe(1)
     expect(report.warnings.filter(warning => warning.includes('Synthetic metadata')).length).toBe(0)

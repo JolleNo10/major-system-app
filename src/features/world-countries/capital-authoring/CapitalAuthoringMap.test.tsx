@@ -7,6 +7,7 @@ import { countries, type Country } from '@/features/world-countries/data/countri
 import { PageLayoutProvider } from '@/app/layout/PageLayoutContext'
 import { MapSurface } from '@/features/world-countries/ui/MapSurface'
 import { MEMO_MAP_DEFINITIONS } from '@/features/world-countries/maps/mapDefinitions'
+import asiaSvg from '@/features/world-countries/maps/assets/MapChart_Map_Asia.svg?raw'
 import { CapitalAuthoringMap } from './CapitalAuthoringMap'
 import type { CapitalAuthoringMapSource } from './capitalAuthoringMapSource'
 
@@ -17,6 +18,7 @@ const { loadCapitalAuthoringMapSource } = vi.hoisted(() => ({
 vi.mock('./capitalAuthoringMapSource', () => ({ loadCapitalAuthoringMapSource }))
 
 const definition = MEMO_MAP_DEFINITIONS.find(candidate => candidate.id === 'europe') ?? MEMO_MAP_DEFINITIONS[0]
+const asiaDefinition = MEMO_MAP_DEFINITIONS.find(candidate => candidate.id === 'asia') ?? definition
 
 function findCountry(id: string): Country {
   const country = countries.find(candidate => candidate.id === id)
@@ -26,6 +28,9 @@ function findCountry(id: string): Country {
 
 const norway = findCountry('NO')
 const sweden = findCountry('SE')
+const pakistan = findCountry('PK')
+const india = findCountry('IN')
+const nepal = findCountry('NP')
 
 const source: CapitalAuthoringMapSource = {
   markup: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500"><path id="Iceland"/><path id="Norway"/><path id="Sweden"/><path id="Finland"/></svg>',
@@ -34,6 +39,16 @@ const source: CapitalAuthoringMapSource = {
     sourceAsset: 'MapChart_Map_Europe.svg',
     sourceAssetSha: 'sha256:test',
     viewBox: '0 0 1000 500',
+  },
+}
+
+const asiaSource: CapitalAuthoringMapSource = {
+  markup: asiaSvg,
+  metadata: {
+    id: 'asia',
+    sourceAsset: 'MapChart_Map_Asia.svg',
+    sourceAssetSha: 'sha256:asia-test',
+    viewBox: '0 0 1500 1000',
   },
 }
 
@@ -61,6 +76,10 @@ beforeEach(() => {
       if (this.id === 'Norway') return { x: 100, y: 150, width: 20, height: 30 }
       if (this.id === 'Sweden') return { x: 400, y: 250, width: 40, height: 50 }
       if (this.id === 'Finland') return { x: 450, y: 260, width: 35, height: 45 }
+      if (this.id === 'Pakistan') return { x: 448, y: 450, width: 80, height: 80 }
+      if (this.id === 'India') return { x: 535, y: 430, width: 90, height: 120 }
+      if (this.id === 'Nepal') return { x: 535, y: 410, width: 50, height: 20 }
+      if (this.id === 'Maldives') return { x: 520, y: 775, width: 10, height: 15 }
       return { x: 0, y: 0, width: 0, height: 0 }
     },
   })
@@ -80,7 +99,7 @@ afterEach(() => {
   getBBoxDescriptor = undefined
 })
 
-async function renderMap(country = norway) {
+async function renderMap(country = norway, mapDefinition = definition) {
   if (!mount) throw new Error('Test mount is missing')
   const target = mount
   await act(async () => {
@@ -89,7 +108,7 @@ async function renderMap(country = norway) {
       createElement(MapSurface, {
         context: null,
         map: createElement(CapitalAuthoringMap, {
-          definition,
+          definition: mapDefinition,
           country,
           ...authoringCallbacks,
         }),
@@ -132,5 +151,30 @@ describe('CapitalAuthoringMap expanded zoom', () => {
       await Promise.resolve()
     })
     expect(svg?.getAttribute('viewBox')).toBe('0 0 1000 500')
+  })
+
+  it('keeps the rendered country aligned with the current Country across South Asia navigation', async () => {
+    expect(pakistan.country).toBe('Pakistan')
+    expect(india.country).toBe('India')
+    expect(nepal.country).toBe('Nepal')
+    loadCapitalAuthoringMapSource.mockResolvedValue(asiaSource)
+    await renderMap(pakistan, asiaDefinition)
+    await settle()
+
+    await act(async () => {
+      mount?.querySelector<HTMLButtonElement>('[aria-label="Expand map"]')?.click()
+      await Promise.resolve()
+    })
+    await settle()
+
+    await renderMap(india, asiaDefinition)
+    await settle()
+    expect(mount?.querySelector('#India')?.getAttribute('data-capital-authoring-highlight')).toBe('true')
+    expect(mount?.querySelector('#Maldives')?.getAttribute('data-capital-authoring-highlight')).toBeNull()
+
+    await renderMap(nepal, asiaDefinition)
+    await settle()
+    expect(mount?.querySelector('#Nepal')?.getAttribute('data-capital-authoring-highlight')).toBe('true')
+    expect(mount?.querySelector('#India')?.getAttribute('data-capital-authoring-highlight')).toBeNull()
   })
 })

@@ -46,7 +46,7 @@ const COUNTRY_CODES = [
   'MC', 'PT', 'ES', 'AD', 'IT', 'SM', 'VA', 'MT', 'GR', 'CY', 'TR', 'SY',
   'LB', 'IL', 'PS', 'JO', 'SA', 'YE', 'OM', 'AE', 'QA', 'BH', 'KW', 'IQ',
   'IR', 'GE', 'AM', 'AZ', 'KZ', 'TM', 'UZ', 'KG', 'TJ', 'MN', 'CN', 'KP',
-  'KR', 'JP', 'TW', 'AF', 'PK', 'MV', 'IN', 'NP', 'BT', 'BD', 'LK', 'MM',
+  'KR', 'JP', 'TW', 'AF', 'PK', 'IN', 'NP', 'BT', 'BD', 'LK', 'MV', 'MM',
   'LA', 'VN', 'KH', 'TH', 'MY', 'SG', 'BN', 'PH', 'ID', 'TL', 'AU', 'NZ',
   'PW', 'FM', 'NR', 'MH', 'KI', 'PG', 'SB', 'VU', 'FJ', 'CK', 'NU', 'TV',
   'WS', 'TO', 'MA', 'DZ', 'TN', 'LY', 'EG', 'SD', 'TG', 'BJ', 'CV', 'GM',
