@@ -266,6 +266,8 @@ if (COUNTRY_CODES.length !== COUNTRY_RECORDS.length) {
   throw new Error('Country codes and Country records must have matching lengths')
 }
 
+// Temporary branch containment: these positional arrays must remain in the same
+// canonical order until the main-branch identity fix removes this coupling.
 export const countries: Country[] = COUNTRY_RECORDS.map((entry, index) => {
   const subregionId = getSubregionIdForLabel(entry.subregion)
   if (!subregionId) throw new Error(`Unknown country Subregion label: ${entry.subregion}`)

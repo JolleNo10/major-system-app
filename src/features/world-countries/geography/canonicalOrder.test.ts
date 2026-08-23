@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { getCanonicalContinentSubregions } from './continentMetadata'
 import { getCanonicalSubregionCountries } from './subregionMetadata'
 import { getCanonicalWorldContinents } from './worldMetadata'
-import type { CountryId } from '@/features/world-countries/data/countries'
+import { countries, type CountryId } from '@/features/world-countries/data/countries'
 import type { SubregionId } from '@/features/world-countries/data/subregions'
 
 const expectedSubregions = {
@@ -78,5 +78,14 @@ describe('World Countries canonical geography order', () => {
       expect(getCanonicalSubregionCountries(subregionId as SubregionId).map(country => country.id))
         .toEqual(countryIds as readonly CountryId[])
     }
+  })
+
+  it('keeps affected Country names aligned with their stable IDs', () => {
+    const idForCountry = (countryName: string) => countries.find(country => country.country === countryName)?.id
+
+    expect(idForCountry('Pakistan')).toBe('PK')
+    expect(idForCountry('India')).toBe('IN')
+    expect(idForCountry('Maldives')).toBe('MV')
+    expect(idForCountry('Myanmar')).toBe('MM')
   })
 })
