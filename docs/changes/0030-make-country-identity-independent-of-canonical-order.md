@@ -3,6 +3,7 @@
 - **Status:** Implemented
 - **Date:** 2026-08-23
 - **Current-state docs:** `docs/architecture/features/WORLD_COUNTRIES.md`, `docs/architecture/PERSISTENCE.md`
+- **Implementation prompt:** `docs/implementations/IMPLEMENT_0030_COUNTRY_IDENTITY.md`
 - **Related ADRs:** None required
 
 ## Goal
