@@ -7,6 +7,12 @@ import { getCountriesForContinent } from '@/features/world-countries/geography/q
 /** Return possible IDs without asserting that a given asset contains them. */
 export const getCountrySvgIdCandidates = countryToSvgIds
 
+/** Canonical Country-space groups used by renderer-neutral overview maps. */
+export interface CanonicalCountryHoverGroup {
+  id: string
+  countryIds: readonly CountryId[]
+}
+
 export function resolveCountryToSvgIds(
   country: Country,
   discoveredSvgIds: ReadonlySet<string> | readonly string[],
@@ -67,6 +73,20 @@ export function createContinentHoverGroups(
   }))
 }
 
+/** Create overview groups in canonical Country space for non-SVG renderers. */
+export function createContinentCountryHoverGroups(entries: readonly Country[]): CanonicalCountryHoverGroup[] {
+  const groups = new Map<Continent, string[]>()
+  for (const entry of entries) {
+    const group = groups.get(entry.continent) ?? []
+    group.push(entry.id)
+    groups.set(entry.continent, group)
+  }
+  return [...groups.entries()].map(([continent, countryIds]) => ({
+    id: getContinentHoverGroupId(continent),
+    countryIds: [...new Set(countryIds)],
+  }))
+}
+
 export function createSubregionHoverGroups(
   continent: Continent | string,
   entries: readonly Country[],
@@ -83,6 +103,24 @@ export function createSubregionHoverGroups(
   return [...groups.entries()].map(([subregion, ids]) => ({
     id: getSubregionHoverGroupId(subregion),
     countryIds: [...new Set(ids)],
+  }))
+}
+
+/** Create Continent-level Subregion groups in canonical Country space. */
+export function createSubregionCountryHoverGroups(
+  continent: Continent | string,
+  entries: readonly Country[],
+): CanonicalCountryHoverGroup[] {
+  const groups = new Map<string, string[]>()
+  for (const entry of getCountriesForContinent(continent, entries)) {
+    const subregionLabel = getSubregionDefinition(entry.subregionId).label
+    const group = groups.get(subregionLabel) ?? []
+    group.push(entry.id)
+    groups.set(subregionLabel, group)
+  }
+  return [...groups.entries()].map(([subregion, countryIds]) => ({
+    id: getSubregionHoverGroupId(subregion),
+    countryIds: [...new Set(countryIds)],
   }))
 }
 

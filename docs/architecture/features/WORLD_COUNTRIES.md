@@ -46,13 +46,18 @@ that lets contextual authoring affect subsequent Learning presentation.
 - `learning/flows/` owns Country and Capital Learning UI and orchestration.
   Learning modes own their milestone writes; the guided UI is not Drill
   implementation detail.
-- `maps/` owns SVG loading, Country-to-SVG translation, overview and learning
-  map presentation, generic caller-controlled Country visibility and explicit
-  Country zoom, task-scoped answer-selection interaction points,
+- `maps/` owns the renderer-neutral `GeographyOverviewMap` overview boundary,
+  the locally bundled D3 orthographic globe and its canonical geography
+  adapter, SVG loading, Country-to-SVG translation, and learning map
+  presentation. The overview globe is primary and the existing SVG overview
+  is a one-way fallback. The existing SVG path also owns generic
+  caller-controlled Country visibility and explicit Country zoom, task-scoped
+  answer-selection interaction points,
   map-owned synthetic dot metadata for visually weak source geography,
   representative learning anchors, map-owned pointer-intent resolution,
   existing Country sequence annotations, and workflow-neutral geographic
-  callbacks.
+  callbacks. Globe camera/gesture state is transient renderer state; it does
+  not change geography, learning, or persistence state.
 - `mnemonics/` owns World Countries mnemonic target IDs, geography mnemonic
   adapters, backup behavior, read presentation, and the reusable contextual
   Subregion mnemonic editor.
@@ -80,6 +85,11 @@ that lets contextual authoring affect subsequent Learning presentation.
   modes, transient setup/session state, current-run outcomes, completion flow,
   and mode-specific latest-outcome status. It consumes geography, answer
   matching, map, and UI seams without importing Drill internals.
+
+`CountryLearningMap`, `SvgMapView`, and `SvgMapController` remain the
+precision/source-geometry renderer path for learning, answer-selection
+assistance, and Country-for-Shape. Globe geometry is not a prompt source for
+`shape-to-country`.
 
 There is no broad feature `domain/`, `persistence/`, or `common/` layer and no
 compatibility wrapper for the removed authoring workflow.
@@ -222,6 +232,11 @@ advances automatically after the correction dwell.
 - Canonical identity belongs in `data/`; user order belongs in `geography/`.
 - `GeographyOverviewMap` and `CountryLearningMap` report clicks and hover
   neutrally; callers decide selection, navigation, and learning behavior.
+- `GeographyOverviewMap` owns the World/Continent overview renderer policy:
+  bundled orthographic globe first, existing SVG overview fallback on one-time
+  globe initialization/data failure. Workflow owners do not choose the
+  renderer. Globe source IDs and geometry stay under `maps/`, while Country
+  identity and hierarchy membership remain canonical feature data.
 - `learning/flows/` may use geography and maps but never Drill internals.
 - Active Learning map-backed phases use a flow-local map host with the feature
   `ui/` map surface/dock presentation. The host owns the mounted map while
@@ -413,6 +428,8 @@ flowchart TD
   cannot fabricate Ready state or completion evidence.
 - Workflow folders do not depend on sibling workflow internals.
 - World Countries persistence does not modify unrelated feature state.
+- Globe rotation, focus pose, projection scale, and pointer gesture state are
+  transient and are never persisted.
 
 ## Source anchors
 
@@ -450,6 +467,9 @@ flowchart TD
 - `src/features/world-countries/geography/geographyRefresh.ts`
 - `src/features/world-countries/geography/orderAuthoring.ts`
 - `src/features/world-countries/maps/GeographyOverviewMap.tsx`
+- `src/features/world-countries/maps/OrthographicGlobe.tsx`
+- `src/features/world-countries/maps/globeGeography.ts`
+- `src/features/world-countries/maps/globeFocus.ts`
 - `src/features/world-countries/maps/learningAnchors.ts`
 - `src/features/world-countries/maps/learningAnchors.test.ts`
 - `src/features/world-countries/maps/geographyMapAdapter.ts`

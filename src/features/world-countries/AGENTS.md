@@ -23,7 +23,10 @@ Do not scan sibling features for examples.
 
 Start with `index.ts`, `WorldCountries.tsx`, and the owner directory named in
 the feature architecture (`today/` for Today orchestration). Persistence tasks start from the defining store;
-map tasks start from `maps/SvgMapController.ts` or the relevant adapter.
+overview/globe tasks start from `maps/GeographyOverviewMap.tsx` and the
+globe geography/renderer adapters; precision, tiny-Country, task-pointer, and
+Country-for-Shape tasks start from `learning/CountryLearningMap.tsx` and
+`maps/SvgMapController.ts`.
 
 Do not recreate removed `quiz/`, broad `domain/` or `persistence/` layers,
 generic `common/`, or compatibility wrappers for obsolete internal paths.

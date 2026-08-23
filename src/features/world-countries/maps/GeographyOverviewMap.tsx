@@ -1,17 +1,20 @@
 import { useCallback, useId, useMemo, useState } from 'react'
-import type { Continent, Country, CountryId } from '@/features/world-countries/data/countries'
+import { countries, type Continent, type Country, type CountryId } from '@/features/world-countries/data/countries'
 import type { SubregionId } from '@/features/world-countries/data/subregions'
 import { getCountriesForContinent, getCountriesForSubregion } from '@/features/world-countries/geography/queries'
 import { useWorldCountriesPopulation } from '@/features/world-countries/WorldCountriesPopulationContext'
 import {
+  createContinentCountryHoverGroups,
   createContinentHoverGroups,
   createCountryColors,
   createCountryColorsById,
+  createSubregionCountryHoverGroups,
   createSubregionHoverGroups,
   getCountryForSvgId,
   resolveCountriesToSvgIds,
 } from './geographyMapAdapter'
 import { getMemoMapDefinition, MEMO_MAP_DEFINITIONS } from './mapDefinitions'
+import { OrthographicGlobe } from './OrthographicGlobe'
 import type { SvgMapGroupOutline } from './SvgMapController'
 import { SvgMapView, type SvgMapCountry, type SvgMapLoadState } from './SvgMapView'
 
@@ -53,9 +56,10 @@ export interface GeographyOverviewMapProps {
 /**
  * Reusable World/Continent exploration map.
  *
- * This component owns only Geography-to-SVG presentation and interaction.
- * Callers interpret a Country click as navigation, selection, or another
- * workflow action through the callbacks.
+ * This component owns canonical geography overview presentation and interaction.
+ * The orthographic globe is the primary renderer; the existing SVG map remains
+ * a one-way fallback owned by this boundary. Callers interpret Country clicks
+ * as navigation, selection, or another workflow action through the callbacks.
  */
 export function GeographyOverviewMap({
   level,
@@ -105,26 +109,30 @@ export function GeographyOverviewMap({
     return visibleCountries.filter(country => selected.has(country.subregionId))
   }, [continent, level, selectedCountryIds, selectedSubregionIds, visibleCountries])
   const [mapCountries, setMapCountries] = useState<readonly SvgMapCountry[]>([])
+  const [useSvgFallback, setUseSvgFallback] = useState(false)
 
   const mapCountryIds = useMemo(() => mapCountries.map(country => country.id), [mapCountries])
-  const hoverGroups = useMemo(() => {
-    const discoveredIds = new Set(mapCountryIds)
-    return level === 'world'
-      ? createContinentHoverGroups(visibleCountries, discoveredIds)
-      : createSubregionHoverGroups(continent ?? '', visibleCountries, discoveredIds)
-  }, [continent, level, mapCountryIds, visibleCountries])
-
-  const visibleSvgIds = useMemo(
-    () => resolveCountriesToSvgIds(visibleCountries, mapCountryIds),
-    [mapCountryIds, visibleCountries],
+  const globeCountryIds = useMemo(() => countries.map(country => country.id), [])
+  const focusCountryIds = useMemo(() => focusCountries.map(country => country.id), [focusCountries])
+  const overviewMapIds = useMemo(
+    () => useSvgFallback
+      ? resolveCountriesToSvgIds(visibleCountries, mapCountryIds)
+      : visibleCountries.map(country => country.id),
+    [mapCountryIds, useSvgFallback, visibleCountries],
   )
-  const focusSvgIds = useMemo(
-    () => resolveCountriesToSvgIds(focusCountries, mapCountryIds),
-    [focusCountries, mapCountryIds],
+  const focusMapIds = useMemo(
+    () => useSvgFallback
+      ? resolveCountriesToSvgIds(focusCountries, mapCountryIds)
+      : focusCountryIds,
+    [focusCountryIds, focusCountries, mapCountryIds, useSvgFallback],
   )
   const selectedSvgIds = useMemo(
     () => resolveCountriesToSvgIds(selectedCountries, mapCountryIds),
     [mapCountryIds, selectedCountries],
+  )
+  const selectedMapIds = useMemo(
+    () => useSvgFallback ? selectedSvgIds : selectedCountries.map(country => country.id),
+    [selectedCountries, selectedSvgIds, useSvgFallback],
   )
   const highlightedCountryIdSet = useMemo(() => new Set(highlightedCountryIds), [highlightedCountryIds])
   const highlightedSvgIds = useMemo(
@@ -142,9 +150,21 @@ export function GeographyOverviewMap({
     ),
     [hiddenCountryIdSet, mapCountryIds, visibleCountries],
   )
+
+  const hoverGroups = useMemo(() => {
+    if (!useSvgFallback) {
+      return level === 'world'
+        ? createContinentCountryHoverGroups(visibleCountries)
+        : createSubregionCountryHoverGroups(continent ?? '', visibleCountries)
+    }
+    const discoveredIds = new Set(mapCountryIds)
+    return level === 'world'
+      ? createContinentHoverGroups(visibleCountries, discoveredIds)
+      : createSubregionHoverGroups(continent ?? '', visibleCountries, discoveredIds)
+  }, [continent, level, mapCountryIds, useSvgFallback, visibleCountries])
   const [mapHoveredGroupId, setMapHoveredGroupId] = useState<string | null>(null)
   const activeHoveredGroupId = interactive ? hoveredGroupId ?? mapHoveredGroupId : null
-  const hoveredGroupSvgIds = useMemo(
+  const hoveredGroupMapIds = useMemo(
     () => hoverGroups.find(group => group.id === activeHoveredGroupId)?.countryIds ?? [],
     [activeHoveredGroupId, hoverGroups],
   )
@@ -152,43 +172,47 @@ export function GeographyOverviewMap({
   const hasSelectedCountries = selectedCountryIds !== undefined
   const hasSelectedSubregions = selectedSubregionIds !== undefined && selectedSubregionIds.length > 0
   const hasHoveredSubregionScope = level === 'continent' && Boolean(activeHoveredGroupId)
-  const scopedSvgIds = focusedSubregionId
-    ? focusSvgIds
-    : hasSelectedCountries
-      ? selectedSvgIds
-    : hasSelectedSubregions
-      ? selectedSvgIds
-      : hasHoveredSubregionScope
-        ? hoveredGroupSvgIds
-        : hasContinentScope
-          ? visibleSvgIds
-          : []
   const hasScopedCountries = Boolean(
     focusedSubregionId || selectedCountryIds !== undefined || selectedSubregionIds !== undefined || hasHoveredSubregionScope || hasContinentScope,
   )
+  const scopedMapIds = useMemo(
+    () => focusedSubregionId
+      ? focusMapIds
+      : hasSelectedCountries || hasSelectedSubregions
+        ? selectedMapIds
+        : hasHoveredSubregionScope
+          ? hoveredGroupMapIds
+          : hasContinentScope
+            ? overviewMapIds
+            : [],
+    [focusMapIds, focusedSubregionId, hasContinentScope, hasHoveredSubregionScope, hasSelectedCountries, hasSelectedSubregions, hoveredGroupMapIds, overviewMapIds, selectedMapIds],
+  )
   // Selection controls presentation, not which Countries can be chosen next.
   // A focused Subregion is the sole intentional interaction restriction.
-  const hoverableSvgIds = interactive
-    ? focusedSubregionId ? focusSvgIds : visibleSvgIds
+  const hoverableMapIds = interactive
+    ? focusedSubregionId ? focusMapIds : overviewMapIds
     : []
-  const selectableSvgIds = interactive
-    ? focusedSubregionId ? focusSvgIds : visibleSvgIds
+  const selectableMapIds = interactive
+    ? focusedSubregionId ? focusMapIds : overviewMapIds
     : []
   const restrictCountryClicks = Boolean(
     focusedSubregionId || (selectedSubregionIds === undefined && hasHoveredSubregionScope),
   )
-  const handleCountryClick = useCallback((svgId: string) => {
+  const handleCountryClick = useCallback((mapId: string) => {
     if (!interactive) return
-    if (restrictCountryClicks && !scopedSvgIds.includes(svgId)) return
-    const entry = getCountryForSvgId(svgId, visibleCountries)
+    if (restrictCountryClicks && !scopedMapIds.includes(mapId)) return
+    const entry = useSvgFallback
+      ? getCountryForSvgId(mapId, visibleCountries)
+      : visibleCountries.find(country => country.id === mapId)
     if (!entry) return
     onCountryClick?.(entry)
-  }, [interactive, onCountryClick, restrictCountryClicks, scopedSvgIds, visibleCountries])
-  const mutedSvgIds = useMemo(() => {
+  }, [interactive, onCountryClick, restrictCountryClicks, scopedMapIds, useSvgFallback, visibleCountries])
+  const mutedMapIds = useMemo(() => {
     if (!hasScopedCountries) return []
-    const activeIds = new Set(scopedSvgIds)
-    return mapCountryIds.filter(id => !activeIds.has(id))
-  }, [hasScopedCountries, mapCountryIds, scopedSvgIds])
+    const activeIds = new Set(scopedMapIds)
+    const allIds = useSvgFallback ? mapCountryIds : globeCountryIds
+    return allIds.filter(id => !activeIds.has(id))
+  }, [globeCountryIds, hasScopedCountries, mapCountryIds, scopedMapIds, useSvgFallback])
   const countryColors = useMemo(() => {
     const colors: Array<readonly [string, string]> = []
     const colorableCountries = highlightedCountryIdSet.size
@@ -199,10 +223,7 @@ export function GeographyOverviewMap({
     return colors
   }, [coloredCountryIds, countryColor, countryColorsById, highlightedCountryIdSet, mapCountryIds, visibleCountries])
 
-  const hoveredCountryId = useMemo(
-    () => hoveredGroupSvgIds[0] ?? null,
-    [hoveredGroupSvgIds],
-  )
+  const hoveredCountryId = useMemo(() => hoveredGroupMapIds[0] ?? null, [hoveredGroupMapIds])
   const groupOutlines = useMemo<readonly SvgMapGroupOutline[]>(
     () => hoverGroups.map(group => ({
       id: group.id,
@@ -213,10 +234,9 @@ export function GeographyOverviewMap({
     })),
     [activeHoveredGroupId, hoverGroups],
   )
-  const zoomIds = level === 'continent' && continent && (focusedSubregionId || definition.domainContinents.length > 1)
-    ? (focusedSubregionId ? focusSvgIds : visibleSvgIds)
+  const zoomIds = useSvgFallback && level === 'continent' && continent && (focusedSubregionId || definition.domainContinents.length > 1)
+    ? (focusedSubregionId ? focusMapIds : overviewMapIds)
     : []
-
   const title = level === 'world' ? 'World' : continent ?? 'Continent'
   const descriptionId = `geography-map-descriptions-${useId().replace(/:/g, '')}`
   const countryDescriptions = useMemo(
@@ -227,45 +247,75 @@ export function GeographyOverviewMap({
       : [],
     [countryAccessibleDescriptionsById, hiddenCountryIdSet, visibleCountries],
   )
-  const descriptions = countryDescriptions
+  const globeStateChange = useCallback((state: SvgMapLoadState) => {
+    if (state === 'error') setUseSvgFallback(true)
+    onMapStateChange?.(state)
+  }, [onMapStateChange])
 
   return (
     <div className="space-y-2">
-      <SvgMapView
-        svgUrl={definition.svgUrl}
-        ariaLabel={ariaLabel ?? `Geography map of ${title}`}
-        ariaDescribedBy={descriptions.length ? descriptionId : undefined}
-        settings={{
-          countryFill: '#52525b',
-          hoverHighlight: true,
-          hoverShowName: level !== 'world',
-          hoverScope: 'group',
-          hoverFill: GEOGRAPHY_OVERVIEW_HOVER_FILL,
-          showHighlightedNames: false,
-        }}
-        hoverGroups={hoverGroups}
-        groupOutlines={groupOutlines}
-        highlightedIds={highlightedSvgIds}
-        hiddenIds={hiddenSvgIds}
-        hoverableIds={hoverableSvgIds}
-        selectableIds={selectableSvgIds}
-        hoveredId={hoveredCountryId}
-        mutedIds={mutedSvgIds}
-        countryColors={countryColors}
-        zoomIds={zoomIds}
-        zoomPadding={definition.zoomPadding}
-        onCountriesLoaded={setMapCountries}
-        onLoadStateChange={onMapStateChange}
-        onCountryHover={svgId => {
-          const group = hoverGroups.find(candidate => candidate.countryIds.includes(svgId ?? ''))
-          setMapHoveredGroupId(group?.id ?? null)
-          onHoverGroup?.(group?.id ?? null)
-        }}
-        onCountryClick={handleCountryClick}
-      />
-      {descriptions.length > 0 && (
+      {useSvgFallback ? (
+        <SvgMapView
+          svgUrl={definition.svgUrl}
+          ariaLabel={ariaLabel ?? `Geography map of ${title}`}
+          ariaDescribedBy={countryDescriptions.length ? descriptionId : undefined}
+          settings={{
+            countryFill: '#52525b',
+            hoverHighlight: true,
+            hoverShowName: level !== 'world',
+            hoverScope: 'group',
+            hoverFill: GEOGRAPHY_OVERVIEW_HOVER_FILL,
+            showHighlightedNames: false,
+          }}
+          hoverGroups={hoverGroups}
+          groupOutlines={groupOutlines}
+          highlightedIds={highlightedSvgIds}
+          hiddenIds={hiddenSvgIds}
+          hoverableIds={hoverableMapIds}
+          selectableIds={selectableMapIds}
+          hoveredId={hoveredCountryId}
+          mutedIds={mutedMapIds}
+          countryColors={countryColors}
+          zoomIds={zoomIds}
+          zoomPadding={definition.zoomPadding}
+          onCountriesLoaded={setMapCountries}
+          onLoadStateChange={onMapStateChange}
+          onCountryHover={mapId => {
+            const group = hoverGroups.find(candidate => candidate.countryIds.includes(mapId ?? ''))
+            setMapHoveredGroupId(group?.id ?? null)
+            onHoverGroup?.(group?.id ?? null)
+          }}
+          onCountryClick={handleCountryClick}
+        />
+      ) : (
+        <OrthographicGlobe
+          level={level}
+          focusCountryIds={focusCountryIds}
+          focusKey={`${level}:${continent ?? ''}:${focusedSubregionId ?? ''}:${focusCountryIds.join('.')}`}
+          visibleCountryIds={visibleCountries.map(country => country.id)}
+          coloredCountryIds={coloredCountryIds}
+          countryColor={countryColor}
+          countryColorsById={countryColorsById}
+          highlightedCountryIds={highlightedCountryIds}
+          hiddenCountryIds={hiddenCountryIds}
+          mutedCountryIds={mutedMapIds}
+          hoveredCountryIds={hoveredGroupMapIds}
+          selectableCountryIds={selectableMapIds}
+          interactive={interactive}
+          ariaLabel={ariaLabel ?? `Geography map of ${title}`}
+          ariaDescribedBy={countryDescriptions.length ? descriptionId : undefined}
+          onCountryHover={countryId => {
+            const group = hoverGroups.find(candidate => candidate.countryIds.includes(countryId ?? ''))
+            setMapHoveredGroupId(group?.id ?? null)
+            onHoverGroup?.(group?.id ?? null)
+          }}
+          onCountryClick={handleCountryClick}
+          onStateChange={globeStateChange}
+        />
+      )}
+      {countryDescriptions.length > 0 && (
         <ul id={descriptionId} className="sr-only" aria-label={`${title} Country map descriptions`}>
-          {descriptions.map(description => <li key={description}>{description}</li>)}
+          {countryDescriptions.map(description => <li key={description}>{description}</li>)}
         </ul>
       )}
     </div>
