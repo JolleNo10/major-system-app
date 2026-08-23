@@ -4,6 +4,7 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PageLayoutProvider } from '@/app/layout/PageLayoutContext'
+import { countries } from '@/features/world-countries/data/countries'
 import { CapitalMapAuthoringEditor } from './CapitalMapAuthoringEditor'
 import type { CapitalAuthoringMapSource } from './capitalAuthoringMapSource'
 
@@ -86,7 +87,7 @@ async function settle() {
 }
 
 describe('CapitalMapAuthoringEditor reference mode', () => {
-  it('stays closed by default, updates across navigation, and never creates a placement', async () => {
+  it('shows the current capital reference, updates it across navigation, and never creates SVG placement', async () => {
     await renderEditor()
     await settle()
 
@@ -100,25 +101,18 @@ describe('CapitalMapAuthoringEditor reference mode', () => {
     })
     await settle()
 
-    expect(mount?.querySelector('[data-capital-authoring-reference-panel]')?.textContent).toContain('Reykjavík')
-    expect(mount?.querySelector('[data-capital-authoring-reference-map]')?.getAttribute('alt')).toContain('Reykjavík')
-    expect(mount?.querySelector('[data-capital-authoring-reference-map]')?.getAttribute('src')).toContain('mapmap.ai/api/static-map')
+    const iceland = countries.find(country => country.id === 'IS')
+    const initialReferenceMap = mount?.querySelector('[data-capital-authoring-reference-map]')
+    expect(mount?.querySelector('[data-capital-authoring-reference-panel]')).not.toBeNull()
+    expect(initialReferenceMap?.getAttribute('data-capital-authoring-reference-capital')).toBe(iceland?.capital)
+    expect(initialReferenceMap?.getAttribute('data-capital-authoring-reference-lat')).toBe('64.13548')
+    expect(initialReferenceMap?.getAttribute('data-capital-authoring-reference-lon')).toBe('-21.89541')
+    expect(initialReferenceMap?.getAttribute('data-capital-authoring-reference-zoom-controls')).toBe('enabled')
+    expect(mount?.querySelector('[data-capital-authoring-reference-panel] a')).toBeNull()
+    expect(mount?.querySelector('[aria-label="Zoom in reference map"]')).toBeNull()
     expect(mount?.querySelector('[data-capital-authoring-reference-target]')).toBeNull()
+    expect(mount?.querySelector('.world-map-svg [data-capital-authoring-reference-marker]')).toBeNull()
     expect(mount?.querySelector('[data-capital-authoring-editor] dd')?.textContent).toBe('absent')
-
-    const initialReferenceUrl = mount?.querySelector('[data-capital-authoring-reference-map]')?.getAttribute('src')
-    await act(async () => {
-      mount?.querySelector<HTMLButtonElement>('[aria-label="Zoom in reference map"]')?.click()
-      await Promise.resolve()
-    })
-    expect(mount?.querySelector('[data-capital-authoring-reference-map]')?.getAttribute('src')).not.toBe(initialReferenceUrl)
-    expect(mount?.querySelector('[data-capital-authoring-reference-map]')?.getAttribute('src')).toContain('zoom=6')
-
-    await act(async () => {
-      mount?.querySelector<HTMLButtonElement>('[aria-label="Zoom out reference map"]')?.click()
-      await Promise.resolve()
-    })
-    expect(mount?.querySelector('[data-capital-authoring-reference-map]')?.getAttribute('src')).toBe(initialReferenceUrl)
 
     await act(async () => {
       findButton('Next').click()
@@ -126,7 +120,10 @@ describe('CapitalMapAuthoringEditor reference mode', () => {
     })
     await settle()
 
-    expect(mount?.querySelector('[data-capital-authoring-reference-panel]')?.textContent).toContain('Oslo')
+    const nextReferenceMap = mount?.querySelector('[data-capital-authoring-reference-map]')
+    expect(nextReferenceMap?.getAttribute('data-capital-authoring-reference-capital')).toBe('Oslo')
+    expect(nextReferenceMap?.getAttribute('data-capital-authoring-reference-lat')).toBe('59.91273')
+    expect(nextReferenceMap?.getAttribute('data-capital-authoring-reference-lon')).toBe('10.74609')
     expect(mount?.querySelector('button[aria-pressed="true"]')).not.toBeNull()
     expect(mount?.querySelector('[data-capital-authoring-editor] dd')?.textContent).toBe('absent')
 
