@@ -9,6 +9,7 @@ import { WorldCountriesDrill } from '@/features/world-countries/drill/WorldCount
 import { WorldCountriesRecite } from '@/features/world-countries/recite/WorldCountriesRecite'
 import { WorldCountriesToday } from '@/features/world-countries/today/WorldCountriesToday'
 import { WorldCountriesPopulationProvider } from './WorldCountriesPopulationContext'
+import { CapitalMapAuthoringEditor } from './capital-authoring/CapitalMapAuthoringEditor'
 
 type WorldCountriesArea = 'today' | 'drill' | 'recite'
 
@@ -20,6 +21,14 @@ const AREAS: readonly { id: WorldCountriesArea; label: string }[] = [
 
 /** World Countries application shell; workflows own their behavior and state. */
 export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
+  if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('capital-authoring') === '1') {
+    return <CapitalMapAuthoringEditor />
+  }
+
+  return <WorldCountriesActivity answerMode={answerMode} />
+}
+
+function WorldCountriesActivity({ answerMode }: { answerMode: AnswerMode }) {
   const { settings } = useSettings()
   const [area, setArea] = useState<WorldCountriesArea>('today')
   const activeCountries = useMemo(

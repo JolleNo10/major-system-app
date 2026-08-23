@@ -20,12 +20,17 @@ vi.mock('./today/WorldCountriesToday', () => ({
   WorldCountriesToday: () => createElement('div', { 'data-testid': 'today-workflow' }, 'Today workflow'),
 }))
 
+vi.mock('./capital-authoring/CapitalMapAuthoringEditor', () => ({
+  CapitalMapAuthoringEditor: () => createElement('div', { 'data-testid': 'capital-authoring-editor' }, 'Capital authoring editor'),
+}))
+
 let root: Root | null = null
 
 afterEach(() => {
   act(() => root?.unmount())
   root = null
   document.body.replaceChildren()
+  window.history.replaceState({}, '', '/')
 })
 
 async function renderShell() {
@@ -87,5 +92,13 @@ describe('World Countries compact activity header', () => {
     await act(async () => tabs[0]?.click())
     expect(tabs[0]?.getAttribute('aria-selected')).toBe('true')
     expect(mount.querySelector('[data-testid="today-workflow"]')).not.toBeNull()
+  })
+
+  it('exposes the branch-only authoring editor only through its query gate', async () => {
+    window.history.replaceState({}, '', '/?capital-authoring=1')
+    const mount = await renderShell()
+
+    expect(mount.querySelector('[data-testid="capital-authoring-editor"]')).not.toBeNull()
+    expect(mount.querySelector('[data-testid="today-workflow"]')).toBeNull()
   })
 })
