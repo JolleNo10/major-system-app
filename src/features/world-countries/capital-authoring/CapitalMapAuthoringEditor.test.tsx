@@ -106,6 +106,20 @@ describe('CapitalMapAuthoringEditor reference mode', () => {
     expect(mount?.querySelector('[data-capital-authoring-reference-target]')).toBeNull()
     expect(mount?.querySelector('[data-capital-authoring-editor] dd')?.textContent).toBe('absent')
 
+    const initialReferenceUrl = mount?.querySelector('[data-capital-authoring-reference-map]')?.getAttribute('src')
+    await act(async () => {
+      mount?.querySelector<HTMLButtonElement>('[aria-label="Zoom in reference map"]')?.click()
+      await Promise.resolve()
+    })
+    expect(mount?.querySelector('[data-capital-authoring-reference-map]')?.getAttribute('src')).not.toBe(initialReferenceUrl)
+    expect(mount?.querySelector('[data-capital-authoring-reference-map]')?.getAttribute('src')).toContain('zoom=6')
+
+    await act(async () => {
+      mount?.querySelector<HTMLButtonElement>('[aria-label="Zoom out reference map"]')?.click()
+      await Promise.resolve()
+    })
+    expect(mount?.querySelector('[data-capital-authoring-reference-map]')?.getAttribute('src')).toBe(initialReferenceUrl)
+
     await act(async () => {
       findButton('Next').click()
       await Promise.resolve()

@@ -4,6 +4,8 @@ function coordinate(value: number): string {
   return String(value)
 }
 
+const DEFAULT_CAPITAL_AUTHORING_REFERENCE_ZOOM = 5
+
 export function buildCapitalAuthoringGoogleMapsUrl(reference: CapitalAuthoringGeoReference): string {
   return `https://www.google.com/maps/search/?api=1&query=${coordinate(reference.capital.lat)},${coordinate(reference.capital.lon)}`
 }
@@ -17,6 +19,7 @@ export function buildCapitalAuthoringOpenStreetMapUrl(reference: CapitalAuthorin
 export function buildCapitalAuthoringGoogleMapsStaticUrl(
   reference: CapitalAuthoringGeoReference,
   apiKey: string | undefined,
+  zoom = DEFAULT_CAPITAL_AUTHORING_REFERENCE_ZOOM,
 ): string | null {
   const key = apiKey?.trim()
   if (!key) return null
@@ -25,7 +28,7 @@ export function buildCapitalAuthoringGoogleMapsStaticUrl(
   const lon = coordinate(reference.capital.lon)
   const params = new URLSearchParams({
     center: `${lat},${lon}`,
-    zoom: '5',
+    zoom: String(zoom),
     size: '600x320',
     scale: '2',
     maptype: 'roadmap',
@@ -47,12 +50,15 @@ export function buildCapitalAuthoringGoogleMapsStaticUrl(
   return `https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`
 }
 
-export function buildCapitalAuthoringMapMapStaticUrl(reference: CapitalAuthoringGeoReference): string {
+export function buildCapitalAuthoringMapMapStaticUrl(
+  reference: CapitalAuthoringGeoReference,
+  zoom = DEFAULT_CAPITAL_AUTHORING_REFERENCE_ZOOM,
+): string {
   const lat = coordinate(reference.capital.lat)
   const lon = coordinate(reference.capital.lon)
   const params = new URLSearchParams({
     center: `${lon},${lat}`,
-    zoom: '5',
+    zoom: String(zoom),
     size: '600x320@2x',
     style: 'light',
     pois: '0',
