@@ -7,7 +7,6 @@ import { CapitalAuthoringReferencePanel } from './CapitalAuthoringReferencePanel
 import { CAPITAL_AUTHORING_GEO_REFERENCES } from './capitalAuthoringReferenceData'
 import { parseSvgViewBox } from './capitalAuthoringCoordinates'
 import { loadCapitalAuthoringMapSource } from './capitalAuthoringMapSource'
-import type { CapitalAuthoringReferencePrediction } from './capitalAuthoringReferenceProjection'
 import {
   clearCapitalAuthoringStorage,
   getCapitalAuthoringStorageKey,
@@ -109,7 +108,6 @@ export function CapitalMapAuthoringEditor() {
   const [storageError, setStorageError] = useState<string | null>(null)
   const [manualPlacementMode, setManualPlacementMode] = useState(false)
   const [referenceMode, setReferenceMode] = useState(false)
-  const [referencePrediction, setReferencePrediction] = useState<CapitalAuthoringReferencePrediction | null>(null)
   const [isImporting, setIsImporting] = useState(false)
   const importInputRef = useRef<HTMLInputElement>(null)
 
@@ -152,9 +150,6 @@ export function CapitalMapAuthoringEditor() {
 
   const handleSourceError = useCallback((message: string | null) => setSourceError(message), [])
   const handleDetection = useCallback((nextDetection: CapitalAuthoringDetection) => setDetection(nextDetection), [])
-  const handleReferencePrediction = useCallback((prediction: CapitalAuthoringReferencePrediction | null) => {
-    setReferencePrediction(prediction)
-  }, [])
 
   const selectMap = (mapId: string) => {
     const nextDefinition = getDefinition(mapId)
@@ -168,7 +163,6 @@ export function CapitalMapAuthoringEditor() {
     setCurrentCountryId(nextCountries[0]?.id ?? null)
     setReviewFilter('all')
     setManualPlacementMode(false)
-    setReferencePrediction(null)
   }
 
   const commitDocument = (nextDocument: CapitalAuthoringDocument) => {
@@ -352,14 +346,11 @@ export function CapitalMapAuthoringEditor() {
                   onDetection={handleDetection}
                   onMapPoint={commitManualPoint}
                   onCandidateSelect={commitCandidate}
-                  referenceEnabled={referenceMode}
-                  onReferencePrediction={handleReferencePrediction}
                 />
                 {referenceMode && (
                   <CapitalAuthoringReferencePanel
                     country={currentCountry}
                     reference={CAPITAL_AUTHORING_GEO_REFERENCES[currentCountry.id]}
-                    prediction={referencePrediction}
                     onClose={() => setReferenceMode(false)}
                   />
                 )}

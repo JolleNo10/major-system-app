@@ -3,30 +3,39 @@ import type { Country } from '@/features/world-countries/data/countries'
 import type { CapitalAuthoringGeoReference } from './capitalAuthoringReferenceData'
 import {
   buildCapitalAuthoringGoogleMapsUrl,
+  buildCapitalAuthoringGoogleMapsStaticUrl,
   buildCapitalAuthoringImageSearchUrl,
-  buildCapitalAuthoringOpenStreetMapPreviewUrl,
+  buildCapitalAuthoringOpenStreetMapStaticUrl,
   buildCapitalAuthoringOpenStreetMapUrl,
 } from './capitalAuthoringReferenceUrls'
-import type { CapitalAuthoringReferencePrediction } from './capitalAuthoringReferenceProjection'
 
 interface CapitalAuthoringReferencePanelProps {
   country: Country
   reference?: CapitalAuthoringGeoReference
-  prediction: CapitalAuthoringReferencePrediction | null
   onClose: () => void
 }
+
+type ReferenceImageSource = 'google' | 'openstreetmap' | 'unavailable'
 
 export function CapitalAuthoringReferencePanel({
   country,
   reference,
-  prediction,
   onClose,
 }: CapitalAuthoringReferencePanelProps) {
-  const [previewFailed, setPreviewFailed] = useState(false)
+  const googleStaticUrl = reference
+    ? buildCapitalAuthoringGoogleMapsStaticUrl(reference, import.meta.env.VITE_GOOGLE_MAPS_STATIC_API_KEY)
+    : null
+  const [imageSource, setImageSource] = useState<ReferenceImageSource>(googleStaticUrl ? 'google' : 'openstreetmap')
 
   useEffect(() => {
-    setPreviewFailed(false)
-  }, [country.id, reference?.countryId])
+    setImageSource(googleStaticUrl ? 'google' : 'openstreetmap')
+  }, [country.id, googleStaticUrl, reference?.capital.lat, reference?.capital.lon])
+
+  const imageUrl = reference && imageSource === 'google'
+    ? googleStaticUrl
+    : reference && imageSource === 'openstreetmap'
+      ? buildCapitalAuthoringOpenStreetMapStaticUrl(reference)
+      : null
 
   return (
     <aside
@@ -56,29 +65,25 @@ export function CapitalAuthoringReferencePanel({
         </p>
       ) : (
         <>
-          <p className="mt-3 text-xs text-violet-200/80">Approximate geographic reference · advisory to the human author</p>
+          <p className="mt-3 text-xs text-violet-200/80">External geographic reference · advisory to the human author</p>
           <div className="mt-3 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
-            {previewFailed ? (
+            {!imageUrl ? (
               <div className="flex min-h-32 items-center justify-center px-4 text-center text-xs text-zinc-400">
-                OpenStreetMap preview is unavailable. The text reference and external links remain available.
+                Static map image is unavailable. The coordinates and external links remain available.
               </div>
             ) : (
-              <iframe
-                title={'OpenStreetMap reference for ' + country.capital + ', ' + country.country}
-                src={buildCapitalAuthoringOpenStreetMapPreviewUrl(reference)}
+              <img
+                data-capital-authoring-reference-map
+                alt={'Minimal geographic reference for ' + country.capital + ', ' + country.country}
+                src={imageUrl}
                 loading="lazy"
-                onError={() => setPreviewFailed(true)}
-                className="h-40 w-full border-0"
+                onError={() => setImageSource(imageSource === 'google' ? 'openstreetmap' : 'unavailable')}
+                className="h-40 w-full object-cover"
               />
             )}
           </div>
           <p className="mt-3 font-mono text-xs text-zinc-400">
             {reference.capital.lat.toFixed(4)}, {reference.capital.lon.toFixed(4)}
-          </p>
-          <p className="mt-2 rounded-xl border border-violet-400/20 bg-violet-400/10 p-3 text-sm text-violet-100">
-            {prediction
-              ? 'Approximate SVG position: ' + prediction.clue + '.'
-              : 'Approximate SVG position unavailable; use the external references and inspect the map manually.'}
           </p>
           <div className="mt-3 grid grid-cols-3 gap-2">
             <a

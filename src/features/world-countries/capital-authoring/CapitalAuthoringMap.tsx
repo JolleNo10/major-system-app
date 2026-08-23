@@ -1,16 +1,10 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { countries, type Country } from '@/features/world-countries/data/countries'
+import type { Country } from '@/features/world-countries/data/countries'
 import { countryToSvgIds } from '@/features/world-countries/maps/countryMapIds'
 import type { MemoMapDefinition } from '@/features/world-countries/maps/mapDefinitions'
-import { useMapSurfaceExpanded } from '@/features/world-countries/ui/MapSurface'
-import { CAPITAL_AUTHORING_GEO_REFERENCES } from './capitalAuthoringReferenceData'
 import { clientPointToSvgPoint, parseSvgViewBox, type SvgViewBox } from './capitalAuthoringCoordinates'
 import { detectCapitalDotCandidates } from './capitalDotDetection'
 import { loadCapitalAuthoringMapSource, type CapitalAuthoringMapSource } from './capitalAuthoringMapSource'
-import {
-  predictCapitalAuthoringReference,
-  type CapitalAuthoringReferencePrediction,
-} from './capitalAuthoringReferenceProjection'
 import type {
   CapitalAuthoringDetection,
   CapitalAuthoringMapMetadata,
@@ -29,8 +23,6 @@ interface CapitalAuthoringMapProps {
   onDetection: (detection: CapitalAuthoringDetection) => void
   onMapPoint: (point: { x: number; y: number }) => void
   onCandidateSelect: (candidateId: string) => void
-  referenceEnabled?: boolean
-  onReferencePrediction?: (prediction: CapitalAuthoringReferencePrediction | null) => void
 }
 
 function createSvgElement<K extends keyof SVGElementTagNameMap>(
@@ -47,16 +39,31 @@ function markerRadius(svg: SVGSVGElement): number {
   return Math.max(2, Math.min(width, height) * 0.008)
 }
 
+function useCapitalAuthoringMapSurfaceExpanded(mountRef: { current: HTMLDivElement | null }): boolean {
+  const [expanded, setExpanded] = useState(false)
+
+  useEffect(() => {
+    const mount = mountRef.current
+    const surface = mount?.closest<HTMLElement>('[data-map-surface]')
+    if (!surface) return
+
+    const update = () => setExpanded(surface.dataset.mapSurfacePresentation === 'expanded')
+    update()
+    const observer = new MutationObserver(update)
+    observer.observe(surface, { attributes: true, attributeFilter: ['data-map-surface-presentation'] })
+    return () => observer.disconnect()
+  }, [mountRef])
+
+  return expanded
+}
+
 function elementsForCountry(svg: SVGSVGElement, country: Country): SVGGraphicsElement[] {
   const ids = new Set(countryToSvgIds(country))
   return [...svg.querySelectorAll<SVGGraphicsElement>('[id]')]
     .filter(element => ids.has(element.id))
 }
 
-function getCountryGeometry(svg: SVGSVGElement, country: Country): {
-  bounds: SvgViewBox
-  point: { x: number; y: number }
-} | null {
+function getCountryBounds(svg: SVGSVGElement, country: Country, padding: number): SvgViewBox | null {
   const boxes = elementsForCountry(svg, country).flatMap(element => {
     try {
       const box = element.getBBox()
@@ -75,24 +82,13 @@ function getCountryGeometry(svg: SVGSVGElement, country: Country): {
   const minY = Math.min(...boxes.map(box => box.y))
   const maxX = Math.max(...boxes.map(box => box.x + box.width))
   const maxY = Math.max(...boxes.map(box => box.y + box.height))
-  if (maxX <= minX || maxY <= minY) return null
-  return {
-    bounds: { x: minX, y: minY, width: maxX - minX, height: maxY - minY },
-    point: { x: (minX + maxX) / 2, y: (minY + maxY) / 2 },
-  }
-}
-
-function getCountryBounds(svg: SVGSVGElement, country: Country, padding: number): SvgViewBox | null {
-  const geometry = getCountryGeometry(svg, country)
-  if (!geometry) return null
-
   const safePadding = Number.isFinite(padding) ? Math.max(0, padding) : 0
-  const minX = geometry.bounds.x - safePadding
-  const minY = geometry.bounds.y - safePadding
-  const maxX = geometry.bounds.x + geometry.bounds.width + safePadding
-  const maxY = geometry.bounds.y + geometry.bounds.height + safePadding
-  return maxX > minX && maxY > minY
-    ? { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
+  const paddedMinX = minX - safePadding
+  const paddedMinY = minY - safePadding
+  const paddedMaxX = maxX + safePadding
+  const paddedMaxY = maxY + safePadding
+  return paddedMaxX > paddedMinX && paddedMaxY > paddedMinY
+    ? { x: paddedMinX, y: paddedMinY, width: paddedMaxX - paddedMinX, height: paddedMaxY - paddedMinY }
     : null
 }
 
@@ -148,46 +144,11 @@ function addCircle(
   return circle
 }
 
-function addReferenceTarget(
-  document: Document,
-  parent: SVGGElement,
-  prediction: CapitalAuthoringReferencePrediction,
-  radius: number,
-): void {
-  const target = addCircle(document, parent, prediction.target, radius * 2.2, 'rgba(168, 85, 247, 0.12)', '#c084fc')
-  target.setAttribute('data-capital-authoring-reference-target', 'true')
-  target.setAttribute('data-reference-clue', prediction.clue)
-  target.setAttribute('pointer-events', 'none')
-  target.setAttribute('stroke-dasharray', String(Math.max(2, radius * 0.8)))
-
-  const horizontal = createSvgElement(document, 'line')
-  horizontal.setAttribute('x1', String(prediction.target.x - radius * 3.2))
-  horizontal.setAttribute('x2', String(prediction.target.x + radius * 3.2))
-  horizontal.setAttribute('y1', String(prediction.target.y))
-  horizontal.setAttribute('y2', String(prediction.target.y))
-  horizontal.setAttribute('stroke', '#c084fc')
-  horizontal.setAttribute('stroke-width', String(Math.max(1, radius * 0.2)))
-  horizontal.setAttribute('stroke-dasharray', String(Math.max(2, radius * 0.8)))
-  horizontal.setAttribute('pointer-events', 'none')
-
-  const vertical = createSvgElement(document, 'line')
-  vertical.setAttribute('x1', String(prediction.target.x))
-  vertical.setAttribute('x2', String(prediction.target.x))
-  vertical.setAttribute('y1', String(prediction.target.y - radius * 3.2))
-  vertical.setAttribute('y2', String(prediction.target.y + radius * 3.2))
-  vertical.setAttribute('stroke', '#c084fc')
-  vertical.setAttribute('stroke-width', String(Math.max(1, radius * 0.2)))
-  vertical.setAttribute('stroke-dasharray', String(Math.max(2, radius * 0.8)))
-  vertical.setAttribute('pointer-events', 'none')
-  parent.append(horizontal, vertical)
-}
-
 function renderAuthoringOverlay(
   svg: SVGSVGElement,
   country: Country,
   detection: CapitalAuthoringDetection,
   placement: CapitalAuthoringPlacement | undefined,
-  referencePrediction: CapitalAuthoringReferencePrediction | null,
 ): void {
   svg.querySelector('[data-capital-authoring-overlay]')?.remove()
   applyCurrentCountryHighlight(svg, country)
@@ -211,8 +172,6 @@ function renderAuthoringOverlay(
     marker.setAttribute('aria-label', `Candidate ${candidate.id}`)
     marker.style.cursor = 'pointer'
   }
-
-  if (referencePrediction) addReferenceTarget(document, overlay, referencePrediction, radius)
 
   if (placement?.anchor) {
     addCircle(document, overlay, placement.anchor, radius * 1.7, '#ef4444', '#fef2f2')
@@ -258,14 +217,12 @@ export function CapitalAuthoringMap({
   onDetection,
   onMapPoint,
   onCandidateSelect,
-  referenceEnabled = false,
-  onReferencePrediction,
 }: CapitalAuthoringMapProps) {
   const mountRef = useRef<HTMLDivElement>(null)
   const svgRef = useRef<SVGSVGElement | null>(null)
   const [source, setSource] = useState<CapitalAuthoringMapSource | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
-  const expanded = useMapSurfaceExpanded()
+  const expanded = useCapitalAuthoringMapSurfaceExpanded(mountRef)
 
   useEffect(() => {
     let cancelled = false
@@ -314,35 +271,11 @@ export function CapitalAuthoringMap({
 
   useEffect(() => {
     const svg = svgRef.current
-    if (!svg || !source) {
-      onReferencePrediction?.(null)
-      return
-    }
+    if (!svg || !source) return
     const detection = detectCapitalDotCandidates(svg, country)
-    let referencePrediction: CapitalAuthoringReferencePrediction | null = null
-    if (referenceEnabled) {
-      const currentGeometry = getCountryGeometry(svg, country)
-      if (currentGeometry) {
-        const mapCountries = countries.filter(candidate => definition.domainContinents.includes(candidate.continent))
-        const calibrations = mapCountries.flatMap(candidate => {
-          const reference = CAPITAL_AUTHORING_GEO_REFERENCES[candidate.id]
-          const geometry = getCountryGeometry(svg, candidate)
-          return reference && geometry
-            ? [{ countryId: candidate.id, geographic: reference.countryReference, svg: geometry.point }]
-            : []
-        })
-        referencePrediction = predictCapitalAuthoringReference({
-          reference: CAPITAL_AUTHORING_GEO_REFERENCES[country.id],
-          countrySvgPoint: currentGeometry.point,
-          countrySvgBounds: currentGeometry.bounds,
-          calibrations,
-        })
-      }
-    }
     onDetection(detection)
-    onReferencePrediction?.(referencePrediction)
-    renderAuthoringOverlay(svg, country, detection, placement, referencePrediction)
-  }, [country, definition, onDetection, onReferencePrediction, placement, referenceEnabled, source])
+    renderAuthoringOverlay(svg, country, detection, placement)
+  }, [country, onDetection, placement, source])
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     const target = event.target

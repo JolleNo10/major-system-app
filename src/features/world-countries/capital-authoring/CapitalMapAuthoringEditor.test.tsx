@@ -91,7 +91,7 @@ describe('CapitalMapAuthoringEditor reference mode', () => {
     await settle()
 
     expect(mount?.querySelector('[data-capital-authoring-reference-panel]')).toBeNull()
-    expect(mount?.querySelector('iframe')).toBeNull()
+    expect(mount?.querySelector('[data-capital-authoring-reference-map]')).toBeNull()
     expect(mount?.querySelector('[data-capital-authoring-editor] dd')?.textContent).toBe('absent')
 
     await act(async () => {
@@ -101,7 +101,8 @@ describe('CapitalMapAuthoringEditor reference mode', () => {
     await settle()
 
     expect(mount?.querySelector('[data-capital-authoring-reference-panel]')?.textContent).toContain('Reykjavík')
-    expect(mount?.querySelector('iframe')?.getAttribute('title')).toContain('Reykjavík')
+    expect(mount?.querySelector('[data-capital-authoring-reference-map]')?.getAttribute('alt')).toContain('Reykjavík')
+    expect(mount?.querySelector('[data-capital-authoring-reference-target]')).toBeNull()
     expect(mount?.querySelector('[data-capital-authoring-editor] dd')?.textContent).toBe('absent')
 
     await act(async () => {
@@ -119,7 +120,7 @@ describe('CapitalMapAuthoringEditor reference mode', () => {
       await Promise.resolve()
     })
     expect(mount?.querySelector('[data-capital-authoring-reference-panel]')).toBeNull()
-    expect(mount?.querySelector('iframe')).toBeNull()
+    expect(mount?.querySelector('[data-capital-authoring-reference-map]')).toBeNull()
   })
 
   it('can close the panel without changing authoring state', async () => {

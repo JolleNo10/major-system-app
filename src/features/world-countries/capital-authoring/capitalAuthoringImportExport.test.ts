@@ -29,11 +29,15 @@ function documentWithPoint() {
 describe('capital authoring interchange format', () => {
   it('round-trips the current map and preserves inspectable placement identity', () => {
     const document = documentWithPoint()
-    const parsed = parseCapitalAuthoringImport(serializeCapitalAuthoringDocument(document), context)
+    const serialized = serializeCapitalAuthoringDocument(document)
+    const parsed = parseCapitalAuthoringImport(serialized, context)
+    const exported = JSON.parse(serialized) as Record<string, unknown>
 
     expect(parsed.errors).toEqual([])
     expect(parsed.warnings).toEqual([])
     expect(parsed.document).toEqual(document)
+    expect(exported.schemaVersion).toBe(1)
+    expect(exported).not.toHaveProperty('references')
   })
 
   it('allows import against changed SVG metadata but reports conspicuous warnings', () => {

@@ -43,7 +43,6 @@ const authoringCallbacks = {
   onDetection: vi.fn(),
   onMapPoint: vi.fn(),
   onCandidateSelect: vi.fn(),
-  onReferencePrediction: vi.fn(),
 }
 
 let root: Root | null = null
@@ -81,7 +80,7 @@ afterEach(() => {
   getBBoxDescriptor = undefined
 })
 
-async function renderMap(country = norway, referenceEnabled = false) {
+async function renderMap(country = norway) {
   if (!mount) throw new Error('Test mount is missing')
   const target = mount
   await act(async () => {
@@ -93,7 +92,6 @@ async function renderMap(country = norway, referenceEnabled = false) {
           definition,
           country,
           ...authoringCallbacks,
-          referenceEnabled,
         }),
       }),
     ))
@@ -134,16 +132,5 @@ describe('CapitalAuthoringMap expanded zoom', () => {
       await Promise.resolve()
     })
     expect(svg?.getAttribute('viewBox')).toBe('0 0 1000 500')
-  })
-
-  it('renders a non-interactive violet reference target without a placement callback', async () => {
-    await renderMap(norway, true)
-    await settle()
-
-    const target = mount?.querySelector('[data-capital-authoring-reference-target]')
-    expect(target).not.toBeNull()
-    expect(target?.getAttribute('pointer-events')).toBe('none')
-    expect(target?.getAttribute('data-capital-authoring-candidate')).toBeNull()
-    expect(authoringCallbacks.onMapPoint).not.toHaveBeenCalled()
   })
 })
