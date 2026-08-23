@@ -25,6 +25,14 @@ describe('World Countries Recite progress', () => {
     })
   })
 
+  it('does not create a Countries progress entry when saving Countries + Capitals', () => {
+    saveCompletedReciteRun('countries-capitals', [{ countryId: 'NO', outcome: 'recalled' }], 100)
+    const progress = loadWorldCountriesReciteProgress()
+
+    expect(getReciteProgressOutcome(progress, 'countries-capitals', 'NO')?.outcome).toBe('recalled')
+    expect(getReciteProgressOutcome(progress, 'countries', 'NO')).toBeUndefined()
+  })
+
   it('lets the latest completed run win and ignores an older write', () => {
     saveCompletedReciteRun('countries', [{ countryId: 'NO', outcome: 'recalled' }], 200)
     saveCompletedReciteRun('countries', [{ countryId: 'NO', outcome: 'recovered' }], 100)

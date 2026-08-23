@@ -88,6 +88,7 @@ describe('World Countries Recite workflow', () => {
     expect(mount.textContent).toContain('Choose a Continent to enter its Recite setup.')
     expect(mount.textContent).toContain('Countries + Capitals')
     expect(mount.textContent).toContain('Countries from Capitals')
+    expect(mount.textContent).toContain('Countries setup may use a stronger Countries + Capitals result.')
     expect(mount.textContent).toContain('Visible')
     expect(mount.querySelector<HTMLButtonElement>('button:disabled')?.textContent).toContain('Choose a ready Country scope')
 

@@ -180,9 +180,12 @@ Learning milestones, Learning Readiness, or Maintenance evidence. Its setup
 retains only transient per-Continent Subregion selections, mode, and map
 assistance; incomplete sessions are discarded without persistence.
 
-Recite setup colors Countries by the latest completed outcome for the selected
-Recite mode. Active sessions suppress historical status and use only current-run
-outcomes. `GeographyOverviewMap` and the underlying SVG controller accept
+Recite progress remains stored independently by mode. Countries setup derives
+its displayed status from the stronger of the latest Countries and Countries +
+Capitals outcomes, while Countries + Capitals and Countries from Capitals remain
+mode-isolated views. Active sessions suppress historical setup status and use
+only current-run outcomes. `GeographyOverviewMap` and the underlying SVG
+controller accept
 caller-selected hidden Country IDs; hidden geometry, labels, hover, clicks, and
 accessible descriptions are suppressed generically, without map-layer Recite
 semantics. Active Recite maps are non-interactive geographic scaffolds. Recite,
