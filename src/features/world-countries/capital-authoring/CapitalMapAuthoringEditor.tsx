@@ -5,8 +5,16 @@ import { MapSurface } from '@/features/world-countries/ui/MapSurface'
 import { CapitalAuthoringMap } from './CapitalAuthoringMap'
 import { CapitalAuthoringReferencePanel } from './CapitalAuthoringReferencePanel'
 import { CAPITAL_AUTHORING_GEO_REFERENCES } from './capitalAuthoringReferenceData'
+import { CAPITAL_AUTHORING_GEO_BOUNDARIES } from './capitalAuthoringBoundaryData'
 import { parseSvgViewBox } from './capitalAuthoringCoordinates'
 import { loadCapitalAuthoringMapSource } from './capitalAuthoringMapSource'
+import {
+  getCapitalAuthoringPlacementDeviation,
+  registerCapitalAuthoringShape,
+  type CapitalAuthoringGeographicBoundary,
+  type CapitalAuthoringShapeRegistrationResult,
+  type CapitalAuthoringSvgBoundary,
+} from './capitalAuthoringShapeRegistration'
 import {
   clearCapitalAuthoringStorage,
   getCapitalAuthoringStorageKey,
@@ -93,6 +101,35 @@ function placementStatusLabel(placement: CapitalAuthoringDocument['placements'][
   return 'manual point'
 }
 
+type ShapeDiagnosticMode = 'proposal' | 'evaluation'
+
+interface ShapeDiagnosticState {
+  mode: ShapeDiagnosticMode
+  result: CapitalAuthoringShapeRegistrationResult
+  placementDeviation?: number | null
+}
+
+function notEvaluableShape(reason: string): CapitalAuthoringShapeRegistrationResult {
+  return { status: 'not-evaluable', quality: 'not-evaluable', reason }
+}
+
+function shapeQualityLabel(quality: CapitalAuthoringShapeRegistrationResult['quality']): string {
+  return quality === 'not-evaluable' ? 'Not evaluable' : quality[0].toUpperCase() + quality.slice(1)
+}
+
+function shapeInterpretation(
+  result: CapitalAuthoringShapeRegistrationResult,
+  placementDeviation: number | null | undefined,
+): string {
+  if (result.status !== 'ok' || placementDeviation === null || placementDeviation === undefined) return 'Not evaluable'
+  if (result.quality === 'not-evaluable') return 'Not evaluable'
+  if (result.quality === 'low') return 'Review placement'
+  if (placementDeviation <= 0.02) return 'Very close'
+  if (placementDeviation <= 0.06) return 'Looks reasonable'
+  if (placementDeviation <= 0.12) return 'Review placement'
+  return 'Large mismatch'
+}
+
 export function CapitalMapAuthoringEditor() {
   const initialDefinition = getDefinition(DEFAULT_MAP_ID)
   const [selectedMapId, setSelectedMapId] = useState(DEFAULT_MAP_ID)
@@ -108,6 +145,8 @@ export function CapitalMapAuthoringEditor() {
   const [storageError, setStorageError] = useState<string | null>(null)
   const [manualPlacementMode, setManualPlacementMode] = useState(false)
   const [referenceMode, setReferenceMode] = useState(false)
+  const [svgBoundary, setSvgBoundary] = useState<CapitalAuthoringSvgBoundary | null>(null)
+  const [shapeDiagnostic, setShapeDiagnostic] = useState<ShapeDiagnosticState | null>(null)
   const [isImporting, setIsImporting] = useState(false)
   const importInputRef = useRef<HTMLInputElement>(null)
 
@@ -150,6 +189,11 @@ export function CapitalMapAuthoringEditor() {
 
   const handleSourceError = useCallback((message: string | null) => setSourceError(message), [])
   const handleDetection = useCallback((nextDetection: CapitalAuthoringDetection) => setDetection(nextDetection), [])
+  const handleShapeBoundary = useCallback((boundary: CapitalAuthoringSvgBoundary | null) => setSvgBoundary(boundary), [])
+
+  useEffect(() => {
+    setShapeDiagnostic(null)
+  }, [currentCountry?.id, selectedMapId])
 
   const selectMap = (mapId: string) => {
     const nextDefinition = getDefinition(mapId)
@@ -163,6 +207,8 @@ export function CapitalMapAuthoringEditor() {
     setCurrentCountryId(nextCountries[0]?.id ?? null)
     setReviewFilter('all')
     setManualPlacementMode(false)
+    setSvgBoundary(null)
+    setShapeDiagnostic(null)
   }
 
   const commitDocument = (nextDocument: CapitalAuthoringDocument) => {
@@ -175,6 +221,7 @@ export function CapitalMapAuthoringEditor() {
     const placement = createManualPointPlacement(currentCountry, point, detection, currentPlacement)
     commitDocument(updateCapitalAuthoringPlacement(authoringDocument, placement))
     setManualPlacementMode(false)
+    setShapeDiagnostic(null)
   }
 
   const commitCandidate = (candidateId: string) => {
@@ -186,6 +233,7 @@ export function CapitalMapAuthoringEditor() {
       createCandidatePlacement(currentCountry, detection, candidate),
     ))
     setManualPlacementMode(false)
+    setShapeDiagnostic(null)
   }
 
   const markUnresolved = () => {
@@ -195,11 +243,13 @@ export function CapitalMapAuthoringEditor() {
       createUnresolvedPlacement(currentCountry, detection),
     ))
     setManualPlacementMode(false)
+    setShapeDiagnostic(null)
   }
 
   const clearCurrentPlacement = () => {
     if (!currentCountry) return
     commitDocument(removeCapitalAuthoringPlacement(authoringDocument, currentCountry.id))
+    setShapeDiagnostic(null)
   }
 
   const navigate = (direction: -1 | 1) => {
@@ -208,6 +258,7 @@ export function CapitalMapAuthoringEditor() {
     const nextIndex = Math.min(reviewCountries.length - 1, Math.max(0, index + direction))
     setCurrentCountryId(reviewCountries[nextIndex].id)
     setManualPlacementMode(false)
+    setShapeDiagnostic(null)
   }
 
   const handleMapKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -230,6 +281,50 @@ export function CapitalMapAuthoringEditor() {
     event.preventDefault()
     commitManualPoint(point)
   }
+
+  const calculateShapeRegistration = (): CapitalAuthoringShapeRegistrationResult => {
+    if (detection.geometry === 'single-dot') return notEvaluableShape('Symbolic map geometry')
+    if (detection.geometry === 'multi-dot') return notEvaluableShape('Multiple symbolic map points')
+    if (detection.problem) return notEvaluableShape(
+      detection.problem === 'missing-geometry' ? 'Missing SVG geometry' : 'Unmeasurable SVG geometry',
+    )
+    if (!svgBoundary) return notEvaluableShape('No measurable SVG country outline')
+    const reference = CAPITAL_AUTHORING_GEO_REFERENCES[currentCountry.id]
+    const geographicBoundary = (CAPITAL_AUTHORING_GEO_BOUNDARIES as Readonly<Record<string, CapitalAuthoringGeographicBoundary>>)[currentCountry.id]
+    if (!reference || !geographicBoundary) return notEvaluableShape('Geographic reference boundary unavailable')
+    return registerCapitalAuthoringShape({
+      geographicBoundary,
+      capital: [reference.capital.lon, reference.capital.lat],
+      svgBoundary,
+    })
+  }
+
+  const tryAutoPlace = () => {
+    setShapeDiagnostic({ mode: 'proposal', result: calculateShapeRegistration() })
+  }
+
+  const evaluatePlacement = () => {
+    if (!currentPlacement?.anchor) return
+    const result = calculateShapeRegistration()
+    const placementDeviation = result.estimatedCapital && svgBoundary
+      ? getCapitalAuthoringPlacementDeviation(currentPlacement.anchor, result.estimatedCapital, svgBoundary)
+      : null
+    setShapeDiagnostic({ mode: 'evaluation', result, placementDeviation })
+  }
+
+  const useProposedPoint = () => {
+    if (!shapeDiagnostic || shapeDiagnostic.mode !== 'proposal') return
+    const result = shapeDiagnostic.result
+    if (result.status !== 'ok' || !result.estimatedCapital || !['high', 'medium'].includes(result.quality)) return
+    commitManualPoint(result.estimatedCapital)
+  }
+
+  const hasShapeReference = Boolean(
+    CAPITAL_AUTHORING_GEO_REFERENCES[currentCountry.id]
+      && (CAPITAL_AUTHORING_GEO_BOUNDARIES as Readonly<Record<string, CapitalAuthoringGeographicBoundary>>)[currentCountry.id],
+  )
+  const canTryAutoPlace = Boolean(sourceMetadata && hasShapeReference)
+  const canEvaluatePlacement = Boolean(sourceMetadata && currentPlacement?.anchor)
 
   const handleExportCurrent = () => {
     if (!sourceMetadata) return
@@ -346,6 +441,8 @@ export function CapitalMapAuthoringEditor() {
                   onDetection={handleDetection}
                   onMapPoint={commitManualPoint}
                   onCandidateSelect={commitCandidate}
+                  onShapeBoundary={handleShapeBoundary}
+                  diagnostic={shapeDiagnostic?.result}
                 />
                 {referenceMode && (
                   <CapitalAuthoringReferencePanel
@@ -369,9 +466,59 @@ export function CapitalMapAuthoringEditor() {
                 >
                   {referenceMode ? 'Reference: On' : 'Reference'}
                 </button>
+                <button
+                  type="button"
+                  onClick={tryAutoPlace}
+                  disabled={!canTryAutoPlace}
+                  title={!hasShapeReference ? 'Geographic reference data unavailable for this Country' : undefined}
+                  className="min-h-10 rounded-lg border border-fuchsia-400/50 px-3 text-sm font-medium text-fuchsia-200 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Try auto-place
+                </button>
+                <button
+                  type="button"
+                  onClick={evaluatePlacement}
+                  disabled={!canEvaluatePlacement}
+                  className="min-h-10 rounded-lg border border-amber-400/50 px-3 text-sm font-medium text-amber-200 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Evaluate placement
+                </button>
                 <button type="button" onClick={() => setManualPlacementMode(true)} className={`min-h-10 rounded-lg px-3 text-sm font-medium ${manualPlacementMode ? 'bg-cyan-600 text-white' : 'border border-zinc-700 text-zinc-200'}`}>Place/override manually</button>
                 <button type="button" onClick={markUnresolved} disabled={!sourceMetadata} className="min-h-10 rounded-lg border border-red-500/40 px-3 text-sm text-red-200 disabled:opacity-40">Mark unresolved</button>
                 <button type="button" onClick={clearCurrentPlacement} disabled={!currentPlacement} className="min-h-10 rounded-lg border border-zinc-700 px-3 text-sm text-zinc-300 disabled:opacity-40">Clear/reopen</button>
+                {shapeDiagnostic && (
+                  <div data-capital-authoring-shape-diagnostic aria-live="polite" className="w-full rounded-xl border border-fuchsia-400/30 bg-fuchsia-500/10 px-3 py-3 text-xs text-fuchsia-100">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-semibold">{shapeDiagnostic.mode === 'proposal' ? 'Auto-place proposal' : 'Placement evaluation'}</p>
+                      <p>Fit: {shapeQualityLabel(shapeDiagnostic.result.quality)}{shapeDiagnostic.result.normalizedFitError !== undefined ? ` (${shapeDiagnostic.result.normalizedFitError.toFixed(3)})` : ''}</p>
+                    </div>
+                    {shapeDiagnostic.mode === 'evaluation' && (
+                      <p className="mt-1">Model deviation: {shapeDiagnostic.placementDeviation === null || shapeDiagnostic.placementDeviation === undefined ? '—' : `${(shapeDiagnostic.placementDeviation * 100).toFixed(1)}% of country size`} · {shapeInterpretation(shapeDiagnostic.result, shapeDiagnostic.placementDeviation)}</p>
+                    )}
+                    {shapeDiagnostic.result.status === 'not-evaluable' && (
+                      <p className="mt-1">Not evaluable — {shapeDiagnostic.result.reason ?? 'The outlines could not be compared.'}</p>
+                    )}
+                    {shapeDiagnostic.mode === 'proposal' && shapeDiagnostic.result.status === 'ok' && (
+                      <p className="mt-1 text-fuchsia-100/80">Auto-generated from this same model; visually verify against the Google reference.</p>
+                    )}
+                    {shapeDiagnostic.mode === 'proposal' && shapeDiagnostic.result.status === 'ok' && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={useProposedPoint}
+                          disabled={!shapeDiagnostic.result.estimatedCapital || !['high', 'medium'].includes(shapeDiagnostic.result.quality)}
+                          className="min-h-9 rounded-lg bg-fuchsia-600 px-3 font-medium text-white disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          Use this point
+                        </button>
+                        <button type="button" onClick={() => setShapeDiagnostic(null)} className="min-h-9 rounded-lg border border-fuchsia-300/40 px-3 text-fuchsia-100">Discard</button>
+                      </div>
+                    )}
+                    {shapeDiagnostic.mode === 'evaluation' && (
+                      <button type="button" onClick={() => setShapeDiagnostic(null)} className="mt-3 min-h-9 rounded-lg border border-fuchsia-300/40 px-3 text-fuchsia-100">Dismiss</button>
+                    )}
+                  </div>
+                )}
               </div>
             }
           />

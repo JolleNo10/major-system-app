@@ -17,7 +17,7 @@ export function CapitalAuthoringReferencePanel({
     <aside
       id="capital-authoring-reference-panel"
       data-capital-authoring-reference-panel
-      className="pointer-events-auto absolute right-3 top-14 z-20 max-h-[calc(100%-4.5rem)] w-[min(22rem,calc(100%-1.5rem))] overflow-y-auto rounded-2xl border border-violet-400/40 bg-zinc-950/90 p-4 text-zinc-100 shadow-2xl backdrop-blur-xl"
+      className="pointer-events-auto absolute right-3 top-14 z-20 max-h-[calc(100%-4.5rem)] w-[min(30rem,calc(100%-1.5rem))] overflow-y-auto rounded-2xl border border-violet-400/40 bg-zinc-950/90 p-4 text-zinc-100 shadow-2xl backdrop-blur-xl"
       aria-label="Capital geographic reference"
     >
       <div className="flex items-start justify-between gap-3">

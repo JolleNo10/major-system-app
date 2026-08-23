@@ -10,6 +10,11 @@ import type {
   CapitalAuthoringMapMetadata,
   CapitalAuthoringPlacement,
 } from './capitalAuthoringTypes'
+import {
+  extractCapitalAuthoringSvgBoundary,
+  type CapitalAuthoringShapeRegistrationResult,
+  type CapitalAuthoringSvgBoundary,
+} from './capitalAuthoringShapeRegistration'
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
 const FORBIDDEN_ELEMENTS = 'script, foreignObject, iframe, object, embed, image, style'
@@ -23,6 +28,8 @@ interface CapitalAuthoringMapProps {
   onDetection: (detection: CapitalAuthoringDetection) => void
   onMapPoint: (point: { x: number; y: number }) => void
   onCandidateSelect: (candidateId: string) => void
+  onShapeBoundary?: (boundary: CapitalAuthoringSvgBoundary | null) => void
+  diagnostic?: CapitalAuthoringShapeRegistrationResult | null
 }
 
 function createSvgElement<K extends keyof SVGElementTagNameMap>(
@@ -149,6 +156,7 @@ function renderAuthoringOverlay(
   country: Country,
   detection: CapitalAuthoringDetection,
   placement: CapitalAuthoringPlacement | undefined,
+  diagnostic: CapitalAuthoringShapeRegistrationResult | null | undefined,
 ): void {
   svg.querySelector('[data-capital-authoring-overlay]')?.remove()
   applyCurrentCountryHighlight(svg, country)
@@ -195,6 +203,28 @@ function renderAuthoringOverlay(
     vertical.setAttribute('stroke-width', String(Math.max(1, radius * 0.14)))
     overlay.append(horizontal, vertical)
   }
+
+  if (diagnostic?.status === 'ok') {
+    for (const ring of diagnostic.transformedRings ?? []) {
+      const outline = createSvgElement(document, 'polyline')
+      outline.setAttribute('points', ring.map(point => `${point.x},${point.y}`).join(' '))
+      outline.setAttribute('fill', 'none')
+      outline.setAttribute('stroke', '#c084fc')
+      outline.setAttribute('stroke-opacity', '0.7')
+      outline.setAttribute('stroke-dasharray', '6 4')
+      outline.setAttribute('stroke-width', String(Math.max(1, radius * 0.18)))
+      outline.setAttribute('pointer-events', 'none')
+      outline.setAttribute('data-capital-authoring-diagnostic-outline', 'true')
+      overlay.append(outline)
+    }
+    if (diagnostic.estimatedCapital) {
+      const modelMarker = addCircle(document, overlay, diagnostic.estimatedCapital, radius * 0.8, '#c084fc', '#f5d0fe')
+      modelMarker.setAttribute('fill-opacity', '0.3')
+      modelMarker.setAttribute('stroke-opacity', '0.8')
+      modelMarker.setAttribute('pointer-events', 'none')
+      modelMarker.setAttribute('data-capital-authoring-model-point', 'true')
+    }
+  }
   svg.append(overlay)
 }
 
@@ -221,6 +251,8 @@ export function CapitalAuthoringMap({
   onDetection,
   onMapPoint,
   onCandidateSelect,
+  onShapeBoundary,
+  diagnostic,
 }: CapitalAuthoringMapProps) {
   const mountRef = useRef<HTMLDivElement>(null)
   const svgRef = useRef<SVGSVGElement | null>(null)
@@ -275,11 +307,20 @@ export function CapitalAuthoringMap({
 
   useEffect(() => {
     const svg = svgRef.current
+    if (!svg || !source) {
+      onShapeBoundary?.(null)
+      return
+    }
+    onShapeBoundary?.(extractCapitalAuthoringSvgBoundary(svg, country))
+  }, [country, onShapeBoundary, source])
+
+  useEffect(() => {
+    const svg = svgRef.current
     if (!svg || !source) return
     const detection = detectCapitalDotCandidates(svg, country)
     onDetection(detection)
-    renderAuthoringOverlay(svg, country, detection, placement)
-  }, [country, onDetection, placement, source])
+    renderAuthoringOverlay(svg, country, detection, placement, diagnostic)
+  }, [country, diagnostic, onDetection, placement, source])
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     const target = event.target
