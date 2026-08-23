@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 import type { Country } from '@/features/world-countries/data/countries'
 import { countryToSvgIds } from '@/features/world-countries/maps/countryMapIds'
 import type { MemoMapDefinition } from '@/features/world-countries/maps/mapDefinitions'
-import { clientPointToSvgPoint } from './capitalAuthoringCoordinates'
+import { useMapSurfaceExpanded } from '@/features/world-countries/ui/MapSurface'
+import { clientPointToSvgPoint, parseSvgViewBox, type SvgViewBox } from './capitalAuthoringCoordinates'
 import { detectCapitalDotCandidates } from './capitalDotDetection'
 import { loadCapitalAuthoringMapSource, type CapitalAuthoringMapSource } from './capitalAuthoringMapSource'
 import type {
@@ -43,6 +44,36 @@ function elementsForCountry(svg: SVGSVGElement, country: Country): SVGGraphicsEl
   const ids = new Set(countryToSvgIds(country))
   return [...svg.querySelectorAll<SVGGraphicsElement>('[id]')]
     .filter(element => ids.has(element.id))
+}
+
+function getCountryBounds(svg: SVGSVGElement, country: Country, padding: number): SvgViewBox | null {
+  const boxes = elementsForCountry(svg, country).flatMap(element => {
+    try {
+      const box = element.getBBox()
+      return Number.isFinite(box.x) && Number.isFinite(box.y)
+        && Number.isFinite(box.width) && Number.isFinite(box.height)
+        && box.width > 0 && box.height > 0
+        ? [box]
+        : []
+    } catch {
+      return []
+    }
+  })
+  if (!boxes.length) return null
+
+  const safePadding = Number.isFinite(padding) ? Math.max(0, padding) : 0
+  const minX = Math.min(...boxes.map(box => box.x)) - safePadding
+  const minY = Math.min(...boxes.map(box => box.y)) - safePadding
+  const maxX = Math.max(...boxes.map(box => box.x + box.width)) + safePadding
+  const maxY = Math.max(...boxes.map(box => box.y + box.height)) + safePadding
+  return maxX > minX && maxY > minY
+    ? { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
+    : null
+}
+
+function applyViewBox(svg: SVGSVGElement, viewBox: SvgViewBox): void {
+  svg.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`)
+  svg.style.aspectRatio = `${viewBox.width} / ${viewBox.height}`
 }
 
 function applyCurrentCountryHighlight(svg: SVGSVGElement, country: Country): void {
@@ -170,6 +201,7 @@ export function CapitalAuthoringMap({
   const svgRef = useRef<SVGSVGElement | null>(null)
   const [source, setSource] = useState<CapitalAuthoringMapSource | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+  const expanded = useMapSurfaceExpanded()
 
   useEffect(() => {
     let cancelled = false
@@ -206,6 +238,15 @@ export function CapitalAuthoringMap({
       svg.remove()
     }
   }, [source])
+
+  useEffect(() => {
+    const svg = svgRef.current
+    const originalViewBox = source ? parseSvgViewBox(source.metadata.viewBox) : null
+    if (!svg || !source || !originalViewBox) return
+
+    const nextViewBox = expanded ? getCountryBounds(svg, country, definition.zoomPadding) : null
+    applyViewBox(svg, nextViewBox ?? originalViewBox)
+  }, [country, definition, expanded, source])
 
   useEffect(() => {
     const svg = svgRef.current

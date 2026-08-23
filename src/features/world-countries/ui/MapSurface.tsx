@@ -9,6 +9,7 @@ interface MapSurfaceFeedbackContextValue {
 }
 
 const MapSurfaceFeedbackContext = createContext<MapSurfaceFeedbackContextValue | null>(null)
+const MapSurfacePresentationContext = createContext(false)
 const EXPANDED_MEDIA_QUERY = '(min-width: 1280px)'
 
 export function useMapSurfaceFeedbackOverlay(feedbackOverlay: ReactNode | null): void {
@@ -19,6 +20,11 @@ export function useMapSurfaceFeedbackOverlay(feedbackOverlay: ReactNode | null):
     surface.setFeedbackOverlay(feedbackOverlay)
     return () => surface.setFeedbackOverlay(null)
   }, [feedbackOverlay, surface])
+}
+
+/** Whether the nearest MapSurface is currently using its expanded presentation. */
+export function useMapSurfaceExpanded(): boolean {
+  return useContext(MapSurfacePresentationContext)
 }
 
 export function MapFeedbackOverlay({ children }: { children: ReactNode }) {
@@ -74,34 +80,36 @@ export function MapSurface({ context, map, mapMeta, feedbackOverlay, dock, dockP
       : `relative z-10 mt-2 ${expanded ? 'xl:mx-auto xl:max-w-2xl' : ''}`
 
   return (
-    <MapSurfaceFeedbackContext.Provider value={surfaceContext}>
-      <div
-        data-map-surface
-        data-map-surface-presentation={expanded ? 'expanded' : 'standard'}
-        className={`space-y-2 animate-fade-in ${className}`}
-      >
-        <div data-map-surface-context>{context}</div>
-        <div data-map-surface-body className="relative">
-          {mapMeta && <div className="pointer-events-none absolute left-[18px] top-4 z-10 text-left text-xs text-zinc-300 drop-shadow-md">{mapMeta}</div>}
-          <div data-map-surface-map>{map}</div>
-          <div className="pointer-events-none absolute right-3 top-3 z-30 hidden xl:block">
-            <button
-              type="button"
-              aria-expanded={expanded}
-              aria-label={expanded ? 'Collapse map' : 'Expand map'}
-              title={expanded ? 'Collapse map' : 'Expand map'}
-              onClick={() => setExpanded(value => !value)}
-              className="pointer-events-auto inline-flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-600/80 bg-zinc-950/75 text-lg text-zinc-200 shadow-lg backdrop-blur-md transition-colors hover:border-cyan-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400/70"
-            >
-              <span aria-hidden="true">{expanded ? '↙' : '↗'}</span>
-            </button>
+    <MapSurfacePresentationContext.Provider value={expanded}>
+      <MapSurfaceFeedbackContext.Provider value={surfaceContext}>
+        <div
+          data-map-surface
+          data-map-surface-presentation={expanded ? 'expanded' : 'standard'}
+          className={`space-y-2 animate-fade-in ${className}`}
+        >
+          <div data-map-surface-context>{context}</div>
+          <div data-map-surface-body className="relative">
+            {mapMeta && <div className="pointer-events-none absolute left-[18px] top-4 z-10 text-left text-xs text-zinc-300 drop-shadow-md">{mapMeta}</div>}
+            <div data-map-surface-map>{map}</div>
+            <div className="pointer-events-none absolute right-3 top-3 z-30 hidden xl:block">
+              <button
+                type="button"
+                aria-expanded={expanded}
+                aria-label={expanded ? 'Collapse map' : 'Expand map'}
+                title={expanded ? 'Collapse map' : 'Expand map'}
+                onClick={() => setExpanded(value => !value)}
+                className="pointer-events-auto inline-flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-600/80 bg-zinc-950/75 text-lg text-zinc-200 shadow-lg backdrop-blur-md transition-colors hover:border-cyan-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400/70"
+              >
+                <span aria-hidden="true">{expanded ? '↙' : '↗'}</span>
+              </button>
+            </div>
+            {visibleFeedbackOverlay && <MapFeedbackOverlay>{visibleFeedbackOverlay}</MapFeedbackOverlay>}
+            {dockPlacement === 'overlay' && <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-32 rounded-b-2xl bg-gradient-to-t from-zinc-950/35 to-transparent" />}
+            {dock && <div data-map-surface-dock className={dockClass}>{dock}</div>}
           </div>
-          {visibleFeedbackOverlay && <MapFeedbackOverlay>{visibleFeedbackOverlay}</MapFeedbackOverlay>}
-          {dockPlacement === 'overlay' && <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-32 rounded-b-2xl bg-gradient-to-t from-zinc-950/35 to-transparent" />}
-          {dock && <div data-map-surface-dock className={dockClass}>{dock}</div>}
         </div>
-      </div>
-    </MapSurfaceFeedbackContext.Provider>
+      </MapSurfaceFeedbackContext.Provider>
+    </MapSurfacePresentationContext.Provider>
   )
 }
 
