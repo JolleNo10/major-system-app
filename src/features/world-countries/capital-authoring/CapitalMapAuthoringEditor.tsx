@@ -3,8 +3,11 @@ import { countries, type Country } from '@/features/world-countries/data/countri
 import { MEMO_MAP_DEFINITIONS, type MemoMapDefinition } from '@/features/world-countries/maps/mapDefinitions'
 import { MapSurface } from '@/features/world-countries/ui/MapSurface'
 import { CapitalAuthoringMap } from './CapitalAuthoringMap'
+import { CapitalAuthoringReferencePanel } from './CapitalAuthoringReferencePanel'
+import { CAPITAL_AUTHORING_GEO_REFERENCES } from './capitalAuthoringReferenceData'
 import { parseSvgViewBox } from './capitalAuthoringCoordinates'
 import { loadCapitalAuthoringMapSource } from './capitalAuthoringMapSource'
+import type { CapitalAuthoringReferencePrediction } from './capitalAuthoringReferenceProjection'
 import {
   clearCapitalAuthoringStorage,
   getCapitalAuthoringStorageKey,
@@ -105,6 +108,8 @@ export function CapitalMapAuthoringEditor() {
   const [sourceError, setSourceError] = useState<string | null>(null)
   const [storageError, setStorageError] = useState<string | null>(null)
   const [manualPlacementMode, setManualPlacementMode] = useState(false)
+  const [referenceMode, setReferenceMode] = useState(false)
+  const [referencePrediction, setReferencePrediction] = useState<CapitalAuthoringReferencePrediction | null>(null)
   const [isImporting, setIsImporting] = useState(false)
   const importInputRef = useRef<HTMLInputElement>(null)
 
@@ -147,6 +152,9 @@ export function CapitalMapAuthoringEditor() {
 
   const handleSourceError = useCallback((message: string | null) => setSourceError(message), [])
   const handleDetection = useCallback((nextDetection: CapitalAuthoringDetection) => setDetection(nextDetection), [])
+  const handleReferencePrediction = useCallback((prediction: CapitalAuthoringReferencePrediction | null) => {
+    setReferencePrediction(prediction)
+  }, [])
 
   const selectMap = (mapId: string) => {
     const nextDefinition = getDefinition(mapId)
@@ -160,6 +168,7 @@ export function CapitalMapAuthoringEditor() {
     setCurrentCountryId(nextCountries[0]?.id ?? null)
     setReviewFilter('all')
     setManualPlacementMode(false)
+    setReferencePrediction(null)
   }
 
   const commitDocument = (nextDocument: CapitalAuthoringDocument) => {
@@ -343,12 +352,32 @@ export function CapitalMapAuthoringEditor() {
                   onDetection={handleDetection}
                   onMapPoint={commitManualPoint}
                   onCandidateSelect={commitCandidate}
+                  referenceEnabled={referenceMode}
+                  onReferencePrediction={handleReferencePrediction}
                 />
+                {referenceMode && (
+                  <CapitalAuthoringReferencePanel
+                    country={currentCountry}
+                    reference={CAPITAL_AUTHORING_GEO_REFERENCES[currentCountry.id]}
+                    prediction={referencePrediction}
+                    onClose={() => setReferenceMode(false)}
+                  />
+                )}
               </div>
             }
             dockPlacement="stacked"
             dock={
               <div className="flex flex-wrap gap-2 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4">
+                <button
+                  type="button"
+                  onClick={() => setReferenceMode(value => !value)}
+                  aria-pressed={referenceMode}
+                  aria-expanded={referenceMode}
+                  aria-controls="capital-authoring-reference-panel"
+                  className={referenceMode ? 'min-h-10 rounded-lg bg-violet-600 px-3 text-sm font-medium text-white' : 'min-h-10 rounded-lg border border-violet-400/50 px-3 text-sm font-medium text-violet-200'}
+                >
+                  {referenceMode ? 'Reference: On' : 'Reference'}
+                </button>
                 <button type="button" onClick={() => setManualPlacementMode(true)} className={`min-h-10 rounded-lg px-3 text-sm font-medium ${manualPlacementMode ? 'bg-cyan-600 text-white' : 'border border-zinc-700 text-zinc-200'}`}>Place/override manually</button>
                 <button type="button" onClick={markUnresolved} disabled={!sourceMetadata} className="min-h-10 rounded-lg border border-red-500/40 px-3 text-sm text-red-200 disabled:opacity-40">Mark unresolved</button>
                 <button type="button" onClick={clearCurrentPlacement} disabled={!currentPlacement} className="min-h-10 rounded-lg border border-zinc-700 px-3 text-sm text-zinc-300 disabled:opacity-40">Clear/reopen</button>

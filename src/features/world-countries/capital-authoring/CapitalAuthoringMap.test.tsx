@@ -28,7 +28,7 @@ const norway = findCountry('NO')
 const sweden = findCountry('SE')
 
 const source: CapitalAuthoringMapSource = {
-  markup: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500"><path id="Norway"/><path id="Sweden"/></svg>',
+  markup: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500"><path id="Iceland"/><path id="Norway"/><path id="Sweden"/><path id="Finland"/></svg>',
   metadata: {
     id: 'europe',
     sourceAsset: 'MapChart_Map_Europe.svg',
@@ -43,6 +43,7 @@ const authoringCallbacks = {
   onDetection: vi.fn(),
   onMapPoint: vi.fn(),
   onCandidateSelect: vi.fn(),
+  onReferencePrediction: vi.fn(),
 }
 
 let root: Root | null = null
@@ -57,8 +58,10 @@ beforeEach(() => {
   Object.defineProperty(bboxPrototype, 'getBBox', {
     configurable: true,
     value(this: SVGGraphicsElement) {
+      if (this.id === 'Iceland') return { x: 10, y: 100, width: 10, height: 10 }
       if (this.id === 'Norway') return { x: 100, y: 150, width: 20, height: 30 }
       if (this.id === 'Sweden') return { x: 400, y: 250, width: 40, height: 50 }
+      if (this.id === 'Finland') return { x: 450, y: 260, width: 35, height: 45 }
       return { x: 0, y: 0, width: 0, height: 0 }
     },
   })
@@ -78,7 +81,7 @@ afterEach(() => {
   getBBoxDescriptor = undefined
 })
 
-async function renderMap(country = norway) {
+async function renderMap(country = norway, referenceEnabled = false) {
   if (!mount) throw new Error('Test mount is missing')
   const target = mount
   await act(async () => {
@@ -90,6 +93,7 @@ async function renderMap(country = norway) {
           definition,
           country,
           ...authoringCallbacks,
+          referenceEnabled,
         }),
       }),
     ))
@@ -130,5 +134,16 @@ describe('CapitalAuthoringMap expanded zoom', () => {
       await Promise.resolve()
     })
     expect(svg?.getAttribute('viewBox')).toBe('0 0 1000 500')
+  })
+
+  it('renders a non-interactive violet reference target without a placement callback', async () => {
+    await renderMap(norway, true)
+    await settle()
+
+    const target = mount?.querySelector('[data-capital-authoring-reference-target]')
+    expect(target).not.toBeNull()
+    expect(target?.getAttribute('pointer-events')).toBe('none')
+    expect(target?.getAttribute('data-capital-authoring-candidate')).toBeNull()
+    expect(authoringCallbacks.onMapPoint).not.toHaveBeenCalled()
   })
 })
