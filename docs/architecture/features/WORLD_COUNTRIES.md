@@ -220,6 +220,10 @@ advances automatically after the correction dwell.
 ## Decision rules and dependencies
 
 - Canonical identity belongs in `data/`; user order belongs in `geography/`.
+  Country IDs are intrinsic canonical record data and must never be inferred
+  from array position. `COUNTRY_RECORDS` owns both canonical Country identity
+  and canonical Country order; user-order metadata may reorder stable IDs
+  without changing identity.
 - `GeographyOverviewMap` and `CountryLearningMap` report clicks and hover
   neutrally; callers decide selection, navigation, and learning behavior.
 - `learning/flows/` may use geography and maps but never Drill internals.
