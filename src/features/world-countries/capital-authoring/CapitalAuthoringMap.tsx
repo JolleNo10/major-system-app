@@ -173,10 +173,13 @@ function renderAuthoringOverlay(
       overlay,
       candidate,
       radius * 1.35,
-      candidate.id === placement?.authoring.selectedCandidateId ? '#22c55e' : '#38bdf8',
+      candidate.id === placement?.authoring.selectedCandidateId
+        ? '#22c55e'
+        : candidate.origin === 'synthetic' ? '#f59e0b' : '#38bdf8',
       '#f8fafc',
     )
     marker.setAttribute('data-capital-authoring-candidate', candidate.id)
+    marker.setAttribute('data-capital-authoring-candidate-origin', candidate.origin ?? 'native')
     marker.setAttribute('aria-label', `Candidate ${candidate.id}`)
     marker.style.cursor = 'pointer'
   }
@@ -317,10 +320,11 @@ export function CapitalAuthoringMap({
   useEffect(() => {
     const svg = svgRef.current
     if (!svg || !source) return
-    const detection = detectCapitalDotCandidates(svg, country)
+    const originalViewBox = parseSvgViewBox(source.metadata.viewBox)
+    const detection = detectCapitalDotCandidates(svg, country, definition.id, originalViewBox ?? undefined)
     onDetection(detection)
     renderAuthoringOverlay(svg, country, detection, placement, diagnostic)
-  }, [country, diagnostic, onDetection, placement, source])
+  }, [country, definition.id, diagnostic, onDetection, placement, source])
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     const target = event.target

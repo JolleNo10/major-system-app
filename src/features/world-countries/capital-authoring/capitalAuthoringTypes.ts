@@ -4,6 +4,14 @@ export const CAPITAL_AUTHORING_SCHEMA_VERSION = 1 as const
 
 export type CapitalAuthoringPlacementStatus = 'placed' | 'unresolved'
 export type CapitalAuthoringGeometry = 'normal' | 'single-dot' | 'multi-dot'
+export type CapitalAuthoringRepresentation =
+  | 'normal'
+  | 'native-single-dot'
+  | 'native-multi-dot'
+  | 'synthetic-single-dot'
+  | 'synthetic-multi-dot'
+  | 'mixed-or-ambiguous'
+  | 'missing-or-unresolved'
 export type CapitalAuthoringDetectionProblem = 'missing-geometry' | 'unmeasurable-geometry'
 export type CapitalAuthoringDecision =
   | 'manual-point'
@@ -22,10 +30,20 @@ export interface CapitalAuthoringCandidate extends CapitalAuthoringPoint {
   sourceElementId?: string
 }
 
+/** Detector-only provenance; this must not cross into persisted placement data. */
+export interface CapitalAuthoringDetectionCandidate extends CapitalAuthoringCandidate {
+  origin?: 'native' | 'synthetic'
+}
+
 export interface CapitalAuthoringDetection {
   geometry: CapitalAuthoringGeometry
-  candidates: readonly CapitalAuthoringCandidate[]
+  candidates: readonly CapitalAuthoringDetectionCandidate[]
   mappedSvgIds: readonly string[]
+  /** Transient map-representation classification; never persisted as capital data. */
+  classification?: CapitalAuthoringRepresentation
+  nativeDrawableComponentCount?: number
+  nativeDotCandidateCount?: number
+  syntheticDotCandidateCount?: number
   problem?: CapitalAuthoringDetectionProblem
 }
 

@@ -41,7 +41,7 @@ describe('capital authoring state', () => {
     const singleDetection: CapitalAuthoringDetection = {
       geometry: 'single-dot',
       mappedSvgIds: ['Monaco'],
-      candidates: [{ id: 'candidate-1', x: 51, y: 55, sourceElementId: 'Monaco' }],
+      candidates: [{ id: 'candidate-1', x: 51, y: 55, sourceElementId: 'Monaco', origin: 'synthetic' }],
     }
     const single = createCandidatePlacement(norway, singleDetection, singleDetection.candidates[0])
     expect(single.authoring).toMatchObject({
@@ -49,6 +49,9 @@ describe('capital authoring state', () => {
       decision: 'confirmed-suggested-dot',
       selectedCandidateId: 'candidate-1',
     })
+    expect(single.authoring.candidates).toEqual([
+      { id: 'candidate-1', x: 51, y: 55, sourceElementId: 'Monaco' },
+    ])
 
     const multiDetection: CapitalAuthoringDetection = {
       geometry: 'multi-dot',

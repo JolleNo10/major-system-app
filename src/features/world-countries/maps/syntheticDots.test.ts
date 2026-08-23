@@ -49,4 +49,14 @@ describe('Oceania synthetic task dots', () => {
       { ...MAP_SYNTHETIC_DOTS[0], point: { x: 1101, y: 327 } },
     ], [current])).toThrow('outside its map viewBox')
   })
+
+  it('allows multiple explicit points for one Country when each point is distinct', () => {
+    const multiple = [
+      { ...MAP_SYNTHETIC_DOTS[0], point: { x: 915.82, y: 327.45 } },
+      { ...MAP_SYNTHETIC_DOTS[0], point: { x: 916.82, y: 328.45 } },
+    ]
+
+    expect(getMapSyntheticDots('oceania', ['WS'])).toHaveLength(1)
+    expect(() => validateMapSyntheticDots(multiple, [source(oceaniaSvg)])).not.toThrow()
+  })
 })

@@ -3,13 +3,14 @@ import type {
   CapitalAuthoringCandidate,
   CapitalAuthoringCounts,
   CapitalAuthoringDetection,
+  CapitalAuthoringDetectionCandidate,
   CapitalAuthoringDocument,
   CapitalAuthoringPlacement,
   CapitalAuthoringPoint,
 } from './capitalAuthoringTypes'
 
-function copyCandidates(candidates: readonly CapitalAuthoringCandidate[]): CapitalAuthoringCandidate[] {
-  return candidates.map(candidate => ({ ...candidate }))
+function copyCandidates(candidates: readonly CapitalAuthoringDetectionCandidate[]): CapitalAuthoringCandidate[] {
+  return candidates.map(({ origin: _origin, ...candidate }) => ({ ...candidate }))
 }
 
 export function createEmptyCapitalAuthoringDocument(
@@ -52,7 +53,7 @@ export function createManualPointPlacement(
 export function createCandidatePlacement(
   country: Country,
   detection: CapitalAuthoringDetection,
-  candidate: CapitalAuthoringCandidate,
+  candidate: CapitalAuthoringDetectionCandidate,
 ): CapitalAuthoringPlacement {
   const decision = detection.geometry === 'multi-dot'
     ? 'selected-from-multiple'

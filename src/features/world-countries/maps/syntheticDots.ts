@@ -91,7 +91,7 @@ export function validateMapSyntheticDots(
     if (!definition.sourceFingerprint.trim()) {
       throw new Error(`Missing source fingerprint for ${definition.mapId}:${definition.countryId}`)
     }
-    const key = `${definition.mapId}:${definition.countryId}`
+    const key = `${definition.mapId}:${definition.countryId}:${definition.sourceSvgId}:${definition.point.x}:${definition.point.y}`
     if (seen.has(key)) throw new Error(`Duplicate synthetic dot for ${key}`)
     seen.add(key)
     if (!countries.some(country => country.id === definition.countryId)) {

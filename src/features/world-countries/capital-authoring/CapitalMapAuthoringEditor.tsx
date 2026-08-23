@@ -285,6 +285,8 @@ export function CapitalMapAuthoringEditor() {
   const calculateShapeRegistration = (): CapitalAuthoringShapeRegistrationResult => {
     if (detection.geometry === 'single-dot') return notEvaluableShape('Symbolic map geometry')
     if (detection.geometry === 'multi-dot') return notEvaluableShape('Multiple symbolic map points')
+    if (detection.classification === 'mixed-or-ambiguous') return notEvaluableShape('Mixed or ambiguous map geometry')
+    if (detection.classification === 'missing-or-unresolved') return notEvaluableShape('Missing or unresolved map geometry')
     if (detection.problem) return notEvaluableShape(
       detection.problem === 'missing-geometry' ? 'Missing SVG geometry' : 'Unmeasurable SVG geometry',
     )
@@ -529,7 +531,7 @@ export function CapitalMapAuthoringEditor() {
             <h2 className="font-semibold text-zinc-100">Review status</h2>
             <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
               <div><dt className="text-zinc-500">Current</dt><dd className="font-medium text-zinc-100">{currentPlacement?.status ?? 'absent'}</dd></div>
-              <div><dt className="text-zinc-500">Detected</dt><dd className="font-medium text-zinc-100">{detection.geometry}</dd></div>
+              <div><dt className="text-zinc-500">Detected</dt><dd className="font-medium text-zinc-100">{detection.classification ?? detection.geometry}</dd></div>
               <div><dt className="text-zinc-500">Reviewed</dt><dd className="font-medium text-zinc-100">{counts.reviewed} / {counts.total}</dd></div>
               <div><dt className="text-zinc-500">Remaining</dt><dd className="font-medium text-zinc-100">{counts.remaining}</dd></div>
               <div><dt className="text-zinc-500">Manual points</dt><dd className="font-medium text-zinc-100">{counts.manualPoints}</dd></div>
@@ -564,6 +566,12 @@ export function CapitalMapAuthoringEditor() {
           {detection.problem && (
             <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
               {detection.problem === 'missing-geometry' ? 'No matching SVG geometry was found for this Country; it remains visible as an authoring problem.' : 'The matching SVG geometry could not be measured. Manual placement remains available.'}
+            </p>
+          )}
+
+          {detection.classification === 'mixed-or-ambiguous' && (
+            <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+              The SVG combines compact and ordinary geometry. Automatic dot selection is disabled; place the Capital manually.
             </p>
           )}
 
