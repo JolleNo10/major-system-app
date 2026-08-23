@@ -238,7 +238,7 @@ export function WorldCountriesToday({
             />
           )}
           dock={canContinue ? (
-            <TaskDock variant="navigation">
+            <TaskDock variant="navigation" focusPrimary={Boolean(checkpoint) && hasDue && !refreshing}>
               <button type="button" data-primary-action disabled={refreshing} onClick={startPrimary} className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40">
                 {hasDue ? 'Continue review' : 'Continue learning'}
               </button>
