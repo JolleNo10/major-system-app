@@ -5,7 +5,7 @@ import {
   buildCapitalAuthoringGoogleMapsUrl,
   buildCapitalAuthoringGoogleMapsStaticUrl,
   buildCapitalAuthoringImageSearchUrl,
-  buildCapitalAuthoringOpenStreetMapStaticUrl,
+  buildCapitalAuthoringMapMapStaticUrl,
   buildCapitalAuthoringOpenStreetMapUrl,
 } from './capitalAuthoringReferenceUrls'
 
@@ -15,7 +15,7 @@ interface CapitalAuthoringReferencePanelProps {
   onClose: () => void
 }
 
-type ReferenceImageSource = 'google' | 'openstreetmap' | 'unavailable'
+type ReferenceImageSource = 'google' | 'mapmap' | 'unavailable'
 
 export function CapitalAuthoringReferencePanel({
   country,
@@ -25,16 +25,16 @@ export function CapitalAuthoringReferencePanel({
   const googleStaticUrl = reference
     ? buildCapitalAuthoringGoogleMapsStaticUrl(reference, import.meta.env.VITE_GOOGLE_MAPS_STATIC_API_KEY)
     : null
-  const [imageSource, setImageSource] = useState<ReferenceImageSource>(googleStaticUrl ? 'google' : 'openstreetmap')
+  const [imageSource, setImageSource] = useState<ReferenceImageSource>(googleStaticUrl ? 'google' : 'mapmap')
 
   useEffect(() => {
-    setImageSource(googleStaticUrl ? 'google' : 'openstreetmap')
+    setImageSource(googleStaticUrl ? 'google' : 'mapmap')
   }, [country.id, googleStaticUrl, reference?.capital.lat, reference?.capital.lon])
 
   const imageUrl = reference && imageSource === 'google'
     ? googleStaticUrl
-    : reference && imageSource === 'openstreetmap'
-      ? buildCapitalAuthoringOpenStreetMapStaticUrl(reference)
+    : reference && imageSource === 'mapmap'
+      ? buildCapitalAuthoringMapMapStaticUrl(reference)
       : null
 
   return (
@@ -77,7 +77,7 @@ export function CapitalAuthoringReferencePanel({
                 alt={'Minimal geographic reference for ' + country.capital + ', ' + country.country}
                 src={imageUrl}
                 loading="lazy"
-                onError={() => setImageSource(imageSource === 'google' ? 'openstreetmap' : 'unavailable')}
+                onError={() => setImageSource(imageSource === 'google' ? 'mapmap' : 'unavailable')}
                 className="h-40 w-full object-cover"
               />
             )}

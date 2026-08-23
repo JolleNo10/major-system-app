@@ -47,17 +47,18 @@ export function buildCapitalAuthoringGoogleMapsStaticUrl(
   return `https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`
 }
 
-export function buildCapitalAuthoringOpenStreetMapStaticUrl(reference: CapitalAuthoringGeoReference): string {
+export function buildCapitalAuthoringMapMapStaticUrl(reference: CapitalAuthoringGeoReference): string {
   const lat = coordinate(reference.capital.lat)
   const lon = coordinate(reference.capital.lon)
   const params = new URLSearchParams({
-    center: `${lat},${lon}`,
+    center: `${lon},${lat}`,
     zoom: '5',
-    size: '600x320',
-    maptype: 'mapnik',
-    markers: `${lat},${lon},red-pushpin`,
+    size: '600x320@2x',
+    style: 'light',
+    pois: '0',
+    markers: `${lon},${lat},C,red`,
   })
-  return `https://staticmap.openstreetmap.de/staticmap.php?${params.toString()}`
+  return `https://mapmap.ai/api/static-map?${params.toString()}`
 }
 
 export function buildCapitalAuthoringImageSearchUrl(

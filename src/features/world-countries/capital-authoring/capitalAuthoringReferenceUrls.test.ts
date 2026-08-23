@@ -3,7 +3,7 @@ import {
   buildCapitalAuthoringGoogleMapsUrl,
   buildCapitalAuthoringGoogleMapsStaticUrl,
   buildCapitalAuthoringImageSearchUrl,
-  buildCapitalAuthoringOpenStreetMapStaticUrl,
+  buildCapitalAuthoringMapMapStaticUrl,
   buildCapitalAuthoringOpenStreetMapUrl,
 } from './capitalAuthoringReferenceUrls'
 
@@ -30,8 +30,10 @@ describe('capital authoring reference URLs', () => {
 
   it('returns no Google static map URL without configuration and provides an OSM image fallback', () => {
     expect(buildCapitalAuthoringGoogleMapsStaticUrl(reference, '  ')).toBeNull()
-    expect(buildCapitalAuthoringOpenStreetMapStaticUrl(reference)).toContain('center=59.9139%2C10.7522')
-    expect(buildCapitalAuthoringOpenStreetMapStaticUrl(reference)).toContain('markers=59.9139%2C10.7522%2Cred-pushpin')
+    const url = buildCapitalAuthoringMapMapStaticUrl(reference)
+    expect(url).toContain('mapmap.ai/api/static-map')
+    expect(url).toContain('center=10.7522%2C59.9139')
+    expect(url).toContain('markers=10.7522%2C59.9139%2CC%2Cred')
   })
 
   it('encodes the canonical capital and Country in the image search query', () => {
