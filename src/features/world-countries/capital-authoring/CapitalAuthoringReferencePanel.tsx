@@ -39,7 +39,7 @@ export function CapitalAuthoringReferencePanel({
           <CapitalAuthoringGoogleMap country={country} reference={reference} />
         </div>
       ) : (
-        <p className="mt-4 text-sm text-zinc-400">Google reference map unavailable.</p>
+        <p className="mt-4 text-sm text-zinc-400">Google reference map could not be loaded.</p>
       )}
     </aside>
   )

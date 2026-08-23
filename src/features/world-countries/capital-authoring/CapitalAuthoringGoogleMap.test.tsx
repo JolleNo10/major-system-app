@@ -2,13 +2,8 @@
 
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { describe, expect, it } from 'vitest'
-import { afterEach, beforeEach, vi } from 'vitest'
-import {
-  buildCapitalAuthoringStaticMapUrl,
-  CapitalAuthoringGoogleMap,
-  getCapitalAuthoringGoogleMapOptions,
-} from './CapitalAuthoringGoogleMap'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { CapitalAuthoringGoogleMap, buildCapitalAuthoringGoogleMapUrl } from './CapitalAuthoringGoogleMap'
 import { countries } from '@/features/world-countries/data/countries'
 
 const osloReference = {
@@ -29,201 +24,81 @@ afterEach(() => {
   root = null
   mount?.remove()
   mount = null
-  vi.unstubAllEnvs()
-  Reflect.deleteProperty(window, 'google')
 })
 
+async function renderMap(reference = osloReference) {
+  const norway = countries.find(country => country.id === 'NO')!
+
+  await act(async () => {
+    root = createRoot(mount as HTMLDivElement)
+    root.render(createElement(CapitalAuthoringGoogleMap, {
+      country: norway,
+      reference,
+    }))
+    await Promise.resolve()
+  })
+}
+
 describe('capital authoring Google reference map', () => {
-  it('centers and pins the map with the checked-in capital coordinates', () => {
-    const options = getCapitalAuthoringGoogleMapOptions(osloReference)
+  it('builds a no-key embedded map URL from the exact capital coordinates', () => {
+    const url = buildCapitalAuthoringGoogleMapUrl(osloReference)
+    const parsed = new URL(url)
 
-    expect(options.center).toEqual({ lat: 59.91273, lng: 10.74609 })
-    expect(options.zoom).toBe(5)
-    expect(options.zoomControl).toBe(true)
+    expect(parsed.origin).toBe('https://www.google.com')
+    expect(parsed.pathname).toBe('/maps')
+    expect(parsed.searchParams.get('q')).toBe('59.91273,10.74609')
+    expect(parsed.searchParams.get('z')).toBe('5')
+    expect(parsed.searchParams.get('output')).toBe('embed')
+    expect(url).not.toContain('key=')
+    expect(url).not.toContain('staticmap')
   })
 
-  it('keeps the reference presentation focused on geography rather than map clutter', () => {
-    const options = getCapitalAuthoringGoogleMapOptions(osloReference)
-    const styles = JSON.stringify(options.styles)
+  it('renders an interactive iframe without Google API configuration or injected scripts', async () => {
+    await renderMap()
 
-    expect(options.mapTypeControl).toBe(false)
-    expect(options.streetViewControl).toBe(false)
-    expect(options.fullscreenControl).toBe(false)
-    expect(styles).toContain('poi')
-    expect(styles).toContain('transit')
-    expect(styles).toContain('administrative.locality')
-  })
-
-  it('passes the current capital coordinates to the Google map and marker', async () => {
-    const norway = countries.find(country => country.id === 'NO')!
-    const mapOptions: Record<string, unknown>[] = []
-    const markerOptions: Record<string, unknown>[] = []
-    const fakeMap = vi.fn((_element: HTMLElement, options: Record<string, unknown>) => {
-      mapOptions.push(options)
-      return { setCenter: vi.fn(), setZoom: vi.fn() }
-    })
-    const fakeMarker = vi.fn((options: Record<string, unknown>) => {
-      markerOptions.push(options)
-      return { setMap: vi.fn(), setPosition: vi.fn(), setTitle: vi.fn() }
-    })
-    Object.defineProperty(window, 'google', {
-      configurable: true,
-      value: { maps: { Map: fakeMap, Marker: fakeMarker } },
-    })
-    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
-
-    await act(async () => {
-      root = createRoot(mount as HTMLDivElement)
-      root.render(createElement(CapitalAuthoringGoogleMap, {
-        country: norway,
-        reference: osloReference,
-      }))
-      await Promise.resolve()
-      await Promise.resolve()
-    })
-
-    expect(mapOptions[0]?.center).toEqual({ lat: 59.91273, lng: 10.74609 })
-    expect(markerOptions[0]?.position).toEqual({ lat: 59.91273, lng: 10.74609 })
-    expect(markerOptions[0]?.title).toBe('Oslo, Norway')
-  })
-
-  it('uses the static-key fallback without creating a JavaScript API script', async () => {
-    const norway = countries.find(country => country.id === 'NO')!
-    vi.stubEnv('VITE_GOOGLE_MAPS_STATIC_API_KEY', 'static-key')
-
-    await act(async () => {
-      root = createRoot(mount as HTMLDivElement)
-      root.render(createElement(CapitalAuthoringGoogleMap, {
-        country: norway,
-        reference: osloReference,
-      }))
-      await Promise.resolve()
-    })
-
-    const image = mount?.querySelector<HTMLImageElement>('[data-capital-authoring-reference-static-map]')
-    expect(image).not.toBeNull()
-    expect(image?.src).toContain('key=static-key')
-    expect(document.querySelector('script[data-capital-authoring-google-maps]')).toBeNull()
-    expect(mount?.querySelector('[aria-label="Zoom in reference map"]')).not.toBeNull()
-    expect(mount?.querySelector('[aria-label="Zoom out reference map"]')).not.toBeNull()
-
-    const beforeZoom = image?.src
-    await act(async () => {
-      mount?.querySelector<HTMLButtonElement>('[aria-label="Zoom in reference map"]')?.click()
-    })
-    expect(image?.src).not.toBe(beforeZoom)
-    expect(image?.src).toContain('zoom=6')
-  })
-
-  it('uses only the JavaScript key for the interactive loader when both keys exist', async () => {
-    const norway = countries.find(country => country.id === 'NO')!
-    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'javascript-key')
-    vi.stubEnv('VITE_GOOGLE_MAPS_STATIC_API_KEY', 'static-key')
-
-    await act(async () => {
-      root = createRoot(mount as HTMLDivElement)
-      root.render(createElement(CapitalAuthoringGoogleMap, {
-        country: norway,
-        reference: osloReference,
-      }))
-      await Promise.resolve()
-    })
-    const script = document.querySelector<HTMLScriptElement>('script[data-capital-authoring-google-maps]')
-    expect(script?.src).toContain('key=javascript-key')
-    expect(script?.src).not.toContain('static-key')
-    await act(async () => {
-      script?.dispatchEvent(new Event('error'))
-      await Promise.resolve()
-    })
-  })
-
-  it('keeps the interactive map as the preferred mode when both keys exist', async () => {
-    const norway = countries.find(country => country.id === 'NO')!
-    const fakeMap = vi.fn(() => ({ setCenter: vi.fn(), setZoom: vi.fn() }))
-    const fakeMarker = vi.fn(() => ({ setMap: vi.fn(), setPosition: vi.fn(), setTitle: vi.fn() }))
-    Object.defineProperty(window, 'google', {
-      configurable: true,
-      value: { maps: { Map: fakeMap, Marker: fakeMarker } },
-    })
-    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'javascript-key')
-    vi.stubEnv('VITE_GOOGLE_MAPS_STATIC_API_KEY', 'static-key')
-
-    await act(async () => {
-      root = createRoot(mount as HTMLDivElement)
-      root.render(createElement(CapitalAuthoringGoogleMap, {
-        country: norway,
-        reference: osloReference,
-      }))
-      await Promise.resolve()
-      await Promise.resolve()
-    })
-
-    expect(fakeMap).toHaveBeenCalled()
+    const iframe = mount?.querySelector<HTMLIFrameElement>('[data-capital-authoring-reference-iframe]')
+    expect(iframe).not.toBeNull()
+    expect(iframe?.src).toBe(buildCapitalAuthoringGoogleMapUrl(osloReference))
+    expect(iframe?.title).toBe('Google reference map for Norway and Oslo')
+    expect(iframe?.getAttribute('loading')).toBe('lazy')
+    expect(iframe?.getAttribute('allowfullscreen')).toBe('')
+    expect(mount?.querySelector('script')).toBeNull()
     expect(mount?.querySelector('[data-capital-authoring-reference-static-map]')).toBeNull()
+    expect(mount?.querySelector('[aria-label="Zoom in reference map"]')).toBeNull()
+    expect(mount?.querySelector('[aria-label="Zoom out reference map"]')).toBeNull()
   })
 
-  it('shows the missing configuration instead of a misleading generic failure', async () => {
-    const norway = countries.find(country => country.id === 'NO')!
-    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', '')
-    vi.stubEnv('VITE_GOOGLE_MAPS_STATIC_API_KEY', '')
+  it('updates the iframe location when the current capital changes', async () => {
+    const sweden = countries.find(country => country.id === 'SE')!
+    await renderMap()
 
+    const swedenReference = {
+      countryId: 'SE',
+      capital: { lat: 59.32938, lon: 18.06871 },
+    } as const
     await act(async () => {
-      root = createRoot(mount as HTMLDivElement)
-      root.render(createElement(CapitalAuthoringGoogleMap, {
-        country: norway,
-        reference: osloReference,
+      root?.render(createElement(CapitalAuthoringGoogleMap, {
+        country: sweden,
+        reference: swedenReference,
       }))
       await Promise.resolve()
     })
 
-    expect(mount?.textContent).toContain('VITE_GOOGLE_MAPS_API_KEY')
-    expect(mount?.textContent).toContain('VITE_GOOGLE_MAPS_STATIC_API_KEY')
+    const iframe = mount?.querySelector<HTMLIFrameElement>('[data-capital-authoring-reference-iframe]')
+    expect(iframe?.src).toBe(buildCapitalAuthoringGoogleMapUrl(swedenReference))
+    expect(iframe?.title).toBe('Google reference map for Sweden and Stockholm')
   })
 
-  it('removes a failed JavaScript loader script so a later mount can retry', async () => {
-    const norway = countries.find(country => country.id === 'NO')!
-    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'javascript-key')
+  it('shows only a concise generic message when the iframe fails', async () => {
+    await renderMap()
+    const iframe = mount?.querySelector<HTMLIFrameElement>('[data-capital-authoring-reference-iframe]')
 
     await act(async () => {
-      root = createRoot(mount as HTMLDivElement)
-      root.render(createElement(CapitalAuthoringGoogleMap, {
-        country: norway,
-        reference: osloReference,
-      }))
+      iframe?.dispatchEvent(new Event('error'))
       await Promise.resolve()
     })
-    const failedScript = document.querySelector<HTMLScriptElement>('script[data-capital-authoring-google-maps]')
-    expect(failedScript?.src).toContain('key=javascript-key')
 
-    await act(async () => {
-      failedScript?.dispatchEvent(new Event('error'))
-      await Promise.resolve()
-    })
-    expect(document.querySelector('script[data-capital-authoring-google-maps]')).toBeNull()
-
-    const fakeMap = vi.fn(() => ({ setCenter: vi.fn(), setZoom: vi.fn() }))
-    const fakeMarker = vi.fn(() => ({ setMap: vi.fn(), setPosition: vi.fn(), setTitle: vi.fn() }))
-    Object.defineProperty(window, 'google', {
-      configurable: true,
-      value: { maps: { Map: fakeMap, Marker: fakeMarker } },
-    })
-    await act(async () => {
-      root?.unmount()
-      root = createRoot(mount as HTMLDivElement)
-      root.render(createElement(CapitalAuthoringGoogleMap, {
-        country: norway,
-        reference: osloReference,
-      }))
-      await Promise.resolve()
-    })
-    expect(fakeMap).toHaveBeenCalled()
-  })
-
-  it('builds the static reference from the same capital coordinate and marker', () => {
-    const url = buildCapitalAuthoringStaticMapUrl(osloReference, 'static-key', 5)
-
-    expect(url).toContain('center=59.91273%2C10.74609')
-    expect(url).toContain('markers=color%3Ared%7Clabel%3AC%7C59.91273%2C10.74609')
-    expect(url).toContain('style=feature%3Apoi%7Cvisibility%3Aoff')
+    expect(mount?.querySelector('[data-capital-authoring-reference-unavailable]')?.textContent).toBe('Google reference map could not be loaded.')
+    expect(mount?.textContent).not.toContain('API key')
   })
 })
