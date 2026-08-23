@@ -9,6 +9,7 @@ import type { WorldCountriesRecallSkill } from '@/features/world-countries/learn
 import type { LearningStates } from '@/features/world-countries/learning/learningProgress'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
+import { getWorldCountriesAnswerKind, WorldCountriesAnswerKindCue } from '@/features/world-countries/ui/WorldCountriesAnswerKindCue'
 import { WorldCountriesTypedAnswer } from '@/features/world-countries/ui/WorldCountriesTypedAnswer'
 import type { WorldCountriesDrillSelection } from './drillSelection'
 import { DrillSessionRails } from './DrillSessionRails'
@@ -113,6 +114,7 @@ export function DrillSession({
   if (!step || !country) return null
 
   const expectedAnswer = step.skill === 'country-to-capital' ? country.capital : country.country
+  const answerKind = getWorldCountriesAnswerKind(step.skill)
   const isLocationQuestion = step.skill === 'location-to-country'
   const isShapeQuestion = step.skill === 'shape-to-country'
   const isCountryNameQuestion = isLocationQuestion || isShapeQuestion
@@ -143,7 +145,7 @@ export function DrillSession({
     })
     const correct = match !== 'none'
     const elapsed = Math.max(0, now() - startedAtRef.current)
-    setFeedback({ answer, correct, match, expectedAnswer, answerKind: step.skill === 'country-to-capital' ? 'capital' : 'country' })
+    setFeedback({ answer, correct, match, expectedAnswer, answerKind })
     onAnswer({
       countryId: step.countryId,
       skill: step.skill,
@@ -162,7 +164,7 @@ export function DrillSession({
     if (!selectedCountry) return
     const correct = selectedCountry.id === country.id
     const elapsed = Math.max(0, now() - startedAtRef.current)
-    setFeedback({ answer: selectedCountry.country, correct, match: 'exact', expectedAnswer: country.country, answerKind: 'country' })
+    setFeedback({ answer: selectedCountry.country, correct, match: 'exact', expectedAnswer: country.country, answerKind })
     onAnswer({
       countryId: country.id,
       skill: isCapitalLocationPractice ? 'capital-to-country' : 'location-to-country',
@@ -207,6 +209,7 @@ export function DrillSession({
 
   const context = (
     <div className="px-1 text-center">
+      <WorldCountriesAnswerKindCue answerKind={answerKind} className="mb-1" />
       <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">{activity === 'practice' ? 'Practice · ' : ''}{getDrillSkillLabel(step.skill)}</p>
       {isLocationPractice ? (
         <h1 className="mt-1 text-2xl font-black text-zinc-100">Find {country.country}</h1>
@@ -270,7 +273,6 @@ export function DrillSession({
             countryCandidates: scopeCountries,
             capitalCandidates: scopeCountries.map(entry => entry.capital),
           })
-          const answerKind = step.skill === 'country-to-capital' ? 'capital' : 'country'
           return {
             outcome: match === 'exact' ? 'exact' : match === 'fuzzy' ? 'fuzzy' : 'incorrect',
             canonicalAnswer: expectedAnswer,

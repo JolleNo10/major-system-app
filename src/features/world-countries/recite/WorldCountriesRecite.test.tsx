@@ -161,6 +161,8 @@ describe('World Countries Recite workflow', () => {
 
     const countryInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the country name"]')
     expect(countryInput).not.toBeNull()
+    expect(mount.querySelector('[data-answer-kind]')?.getAttribute('data-answer-kind')).toBe('country')
+    expect(mount.textContent).toContain('ANSWER · COUNTRY')
     await act(async () => {
       typeInto(countryInput!, 'Norway')
       countryInput?.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
@@ -172,6 +174,8 @@ describe('World Countries Recite workflow', () => {
       await Promise.resolve()
     })
     expect(mount.textContent).toContain('Capital of Norway')
+    expect(mount.querySelector('[data-answer-kind]')?.getAttribute('data-answer-kind')).toBe('capital')
+    expect(mount.textContent).toContain('ANSWER · CAPITAL')
 
     const capitalInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the capital"]')
     await act(async () => {

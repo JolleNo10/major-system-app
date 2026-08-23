@@ -92,6 +92,56 @@ afterEach(() => {
 })
 
 describe('DrillSession map presentation', () => {
+  it('shows one shared answer-kind cue for typed and multiple-choice question contexts', async () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+    root = createRoot(mount)
+
+    for (const answerMode of ['typing', 'multiple-choice'] as const) {
+      await act(async () => {
+        root?.render(createElement(DrillSession, {
+          answerMode,
+          fuzzyMatching: false,
+          state: createDrillSession({ mode: 'countries', skills: ['country-to-capital'], countryIds: ['NO'] }),
+          selection: createDrillSelection('Europe', ['northern-europe']),
+          entries: [norway, sweden],
+          onAnswer: vi.fn(),
+          onContinue: vi.fn(),
+          onExit: vi.fn(),
+        }))
+      })
+
+      expect(mount.querySelectorAll('[data-answer-kind]')).toHaveLength(1)
+      expect(mount.querySelector('[data-answer-kind]')?.getAttribute('data-answer-kind')).toBe('capital')
+    }
+  })
+
+  it.each([
+    ['countries', 'country'],
+    ['countries-from-shape', 'country'],
+    ['countries-from-capitals', 'country'],
+  ] as const)('shows the Country cue for %s', async (mode, expectedKind) => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(DrillSession, {
+        answerMode: 'multiple-choice',
+        fuzzyMatching: false,
+        state: createDrillSession({ mode, countryIds: ['NO'] }),
+        selection: createDrillSelection('Europe', ['northern-europe']),
+        entries: [norway, sweden],
+        onAnswer: vi.fn(),
+        onContinue: vi.fn(),
+        onExit: vi.fn(),
+      }))
+    })
+
+    expect(mount.querySelector('[data-answer-kind]')?.getAttribute('data-answer-kind')).toBe(expectedKind)
+    expect(mount.textContent).toContain('ANSWER · COUNTRY')
+  })
+
   it('offers mnemonic editing for each single-Country Drill skill without leaking the answer', async () => {
     const mount = document.createElement('div')
     const railMount = document.createElement('div')

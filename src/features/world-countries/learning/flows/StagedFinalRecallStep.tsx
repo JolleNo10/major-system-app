@@ -2,8 +2,10 @@ import type { Continent, Country } from '@/features/world-countries/data/countri
 import type { OrderedRecallState } from '@/features/world-countries/learning/orderedRecallSession'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
+import { WorldCountriesAnswerKindCue } from '@/features/world-countries/ui/WorldCountriesAnswerKindCue'
 import {
   WorldCountriesTypedAnswer,
+  type WorldCountriesTypedAnswerKind,
   type WorldCountriesTypedAnswerEvaluation,
 } from '@/features/world-countries/ui/WorldCountriesTypedAnswer'
 import { useLearningMapPresentation } from './LearningMapSurface'
@@ -18,6 +20,7 @@ export function StagedFinalRecallStep({
   answerLabel,
   placeholder,
   showCountryName,
+  answerKind,
   evaluateAnswer,
   formatFeedback,
   onSubmit,
@@ -33,6 +36,7 @@ export function StagedFinalRecallStep({
   answerLabel: string
   placeholder: string
   showCountryName: boolean
+  answerKind: WorldCountriesTypedAnswerKind
   evaluateAnswer: (answer: string, country: Country) => SchedulerAnswerEvaluation
   formatFeedback: (evaluation: SchedulerAnswerEvaluation, country: Country) => string
   onSubmit: (correct: boolean) => void
@@ -65,7 +69,7 @@ export function StagedFinalRecallStep({
         return {
           outcome: evaluation.fuzzyMatch ? 'fuzzy' : evaluation.correct ? 'exact' : 'incorrect',
           canonicalAnswer: evaluation.canonicalAnswer,
-          answerKind: showCountryName ? 'capital' : 'country',
+          answerKind,
           message: formatFeedback(evaluation, current),
           detail: evaluation.correct ? undefined : 'The ordered repair traversal rewinds before the next clean pass.',
         } satisfies WorldCountriesTypedAnswerEvaluation
@@ -75,7 +79,12 @@ export function StagedFinalRecallStep({
     >
       {typed => {
         const dock = (
-          <TaskDock variant="form" status={<div className="mb-2 flex items-center justify-between gap-3 text-[11px] font-bold uppercase tracking-[0.08em] text-cyan-400"><span>{ordered.mode === 'repair' ? 'Repair traversal' : 'Final recall'}</span><span className="text-xs font-normal tabular-nums text-zinc-400">{ordered.currentIndex + 1} / {ordered.order.length}</span></div>}>
+          <TaskDock variant="form" status={(
+            <div className="space-y-2">
+              <WorldCountriesAnswerKindCue answerKind={answerKind} />
+              <div className="flex items-center justify-between gap-3 text-[11px] font-bold uppercase tracking-[0.08em] text-cyan-400"><span>{ordered.mode === 'repair' ? 'Repair traversal' : 'Final recall'}</span><span className="text-xs font-normal tabular-nums text-zinc-400">{ordered.currentIndex + 1} / {ordered.order.length}</span></div>
+            </div>
+          )}>
             {typed.input}
             {!surface && <button type="button" onClick={onBack} className="mt-3 w-full rounded-[9px] border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-400 hover:text-zinc-200">Back to Final recall</button>}
           </TaskDock>

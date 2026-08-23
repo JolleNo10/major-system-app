@@ -18,6 +18,7 @@ import { getContinentHoverGroupId, getSubregionHoverGroupId } from '@/features/w
 import { GeographyBreadcrumbs } from '@/features/world-countries/ui/GeographyBreadcrumbs'
 import { GeographyHierarchyRow } from '@/features/world-countries/ui/GeographyHierarchyRow'
 import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
+import { WorldCountriesAnswerKindCue } from '@/features/world-countries/ui/WorldCountriesAnswerKindCue'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
 import {
   WorldCountriesTypedAnswer,
@@ -390,6 +391,7 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
         context={(
           <div className="px-1 text-center">
             <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World Countries · Recite</p>
+            <WorldCountriesAnswerKindCue answerKind={currentPrompt.kind} className="mb-1" />
             {run.mode === 'countries-from-capitals' && currentPrompt.kind === 'country' ? (
               <>
                 <h1 id="world-countries-recite-session-heading" className="mt-1 text-3xl font-black text-zinc-100">{currentCountry.capital}</h1>

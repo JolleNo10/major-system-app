@@ -65,7 +65,9 @@ that lets contextual authoring affect subsequent Learning presentation.
 - `ui/` owns feature-local panels, breadcrumbs, hierarchy rows, inline reorder
   presentation, map-surface/dock presentation, task-dock status/action styling,
   the shared typed-answer lifecycle for primary World Countries recall, and
-  draft movement without persistence policy. The typed-answer seam owns native
+  the shared semantic Country/Capital answer-kind cue, and draft movement
+  without persistence policy. Workflows provide the active answer kind from
+  their task or skill. The typed-answer seam owns native
   submit handling, blank prevention, map-relative answer-feedback overlay,
   feedback state, focus/reset, and the shared 500 ms / 1800 ms lifecycle;
   workflow owners provide classification, disclosure copy, evidence, and
@@ -263,6 +265,10 @@ advances automatically after the correction dwell.
   choice after an incorrect answer; selecting it holds that feedback until
   Continue or mini-practice completion. Today delayed-retry Skip and Recite
   Reveal / Skip remain answerable-state actions owned by those workflows.
+- Active Country/Capital question contexts use the feature-local `ui/` answer-kind
+  cue (`ANSWER · COUNTRY` in blue/sky or `ANSWER · CAPITAL` in violet/purple).
+  These task-orientation colors remain separate from correctness feedback and
+  map proficiency/status palettes.
 - `SvgMapController` owns one explicit task-assistance layer for map-answer
   candidates and an intentional task target. Generic `selectableIds`,
   hoverable IDs, highlighted/progress state, semantic colors, click-handler
