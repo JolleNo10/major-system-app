@@ -75,6 +75,8 @@ export function DrillResults({
           <p className="text-sm text-zinc-500">The map keeps the selected Countries in their geographic context while you review the run.</p>
         </section>
 
+        <button type="button" autoFocus onClick={onAgain} className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 xl:hidden">Run again</button>
+
         <CountryLearningMap
           continent={continent}
           scopeCountries={scopeCountries}

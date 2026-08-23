@@ -68,4 +68,11 @@ describe('World Countries Drill result actions', () => {
       'Change scope',
     ])
   })
+
+  it('focuses Run again when the completed Drill actions appear', () => {
+    const { mount } = renderResults(2)
+    const runAgain = [...mount.querySelectorAll('button')].find(button => button.textContent === 'Run again')
+
+    expect(document.activeElement).toBe(runAgain)
+  })
 })
