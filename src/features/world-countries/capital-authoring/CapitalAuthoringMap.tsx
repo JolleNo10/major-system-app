@@ -153,7 +153,6 @@ function prepareSvg(markup: string, document: Document): SVGSVGElement {
   imported.setAttribute('aria-hidden', 'true')
   imported.setAttribute('focusable', 'false')
   imported.style.width = '100%'
-  imported.style.height = 'auto'
   return imported
 }
 

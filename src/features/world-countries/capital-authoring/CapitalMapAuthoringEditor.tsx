@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react'
 import { countries, type Country } from '@/features/world-countries/data/countries'
 import { MEMO_MAP_DEFINITIONS, type MemoMapDefinition } from '@/features/world-countries/maps/mapDefinitions'
+import { MapSurface } from '@/features/world-countries/ui/MapSurface'
 import { CapitalAuthoringMap } from './CapitalAuthoringMap'
 import { parseSvgViewBox } from './capitalAuthoringCoordinates'
 import { loadCapitalAuthoringMapSource } from './capitalAuthoringMapSource'
@@ -285,7 +286,7 @@ export function CapitalMapAuthoringEditor() {
   }
 
   return (
-    <section className="space-y-4" aria-labelledby="capital-authoring-title">
+    <section data-capital-authoring-editor className="space-y-4" aria-labelledby="capital-authoring-title">
       <header className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -324,29 +325,36 @@ export function CapitalMapAuthoringEditor() {
             </div>
           </div>
 
-          <div
-            tabIndex={0}
-            onKeyDown={handleMapKeyDown}
-            className="rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
-            aria-label="Capital map. Use arrow keys to nudge the saved anchor when focused."
-          >
-            <CapitalAuthoringMap
-              definition={definition}
-              country={currentCountry}
-              placement={currentPlacement}
-              onSourceReady={handleSourceReady}
-              onSourceError={handleSourceError}
-              onDetection={handleDetection}
-              onMapPoint={commitManualPoint}
-              onCandidateSelect={commitCandidate}
-            />
-          </div>
-
-          <div className="flex flex-wrap gap-2 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4">
-            <button type="button" onClick={() => setManualPlacementMode(true)} className={`min-h-10 rounded-lg px-3 text-sm font-medium ${manualPlacementMode ? 'bg-cyan-600 text-white' : 'border border-zinc-700 text-zinc-200'}`}>Place/override manually</button>
-            <button type="button" onClick={markUnresolved} disabled={!sourceMetadata} className="min-h-10 rounded-lg border border-red-500/40 px-3 text-sm text-red-200 disabled:opacity-40">Mark unresolved</button>
-            <button type="button" onClick={clearCurrentPlacement} disabled={!currentPlacement} className="min-h-10 rounded-lg border border-zinc-700 px-3 text-sm text-zinc-300 disabled:opacity-40">Clear/reopen</button>
-          </div>
+          <MapSurface
+            context={null}
+            map={
+              <div
+                tabIndex={0}
+                onKeyDown={handleMapKeyDown}
+                className="h-full rounded-2xl outline-none focus-visible:ring-2 focus:ring-cyan-400"
+                aria-label="Capital map. Use arrow keys to nudge the saved anchor when focused."
+              >
+                <CapitalAuthoringMap
+                  definition={definition}
+                  country={currentCountry}
+                  placement={currentPlacement}
+                  onSourceReady={handleSourceReady}
+                  onSourceError={handleSourceError}
+                  onDetection={handleDetection}
+                  onMapPoint={commitManualPoint}
+                  onCandidateSelect={commitCandidate}
+                />
+              </div>
+            }
+            dockPlacement="stacked"
+            dock={
+              <div className="flex flex-wrap gap-2 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4">
+                <button type="button" onClick={() => setManualPlacementMode(true)} className={`min-h-10 rounded-lg px-3 text-sm font-medium ${manualPlacementMode ? 'bg-cyan-600 text-white' : 'border border-zinc-700 text-zinc-200'}`}>Place/override manually</button>
+                <button type="button" onClick={markUnresolved} disabled={!sourceMetadata} className="min-h-10 rounded-lg border border-red-500/40 px-3 text-sm text-red-200 disabled:opacity-40">Mark unresolved</button>
+                <button type="button" onClick={clearCurrentPlacement} disabled={!currentPlacement} className="min-h-10 rounded-lg border border-zinc-700 px-3 text-sm text-zinc-300 disabled:opacity-40">Clear/reopen</button>
+              </div>
+            }
+          />
         </div>
 
         <aside className="space-y-4">
