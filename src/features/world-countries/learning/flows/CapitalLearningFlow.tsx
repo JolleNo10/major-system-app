@@ -31,6 +31,8 @@ import { StagedFinalRecallStep } from './StagedFinalRecallStep'
 import { FinalRecallGate, StagedLearningReadyStep } from './StagedLearningReadyStep'
 import { LearningHeader } from './MemoryPreviewStep'
 import type { SchedulerAnswerEvaluation } from './SchedulerPracticeStep'
+import type { WorldCountriesActivityTask } from '@/features/world-countries/ui/WorldCountriesActivity'
+import { useLearningCountryOrderAuthoring } from './useLearningCountryOrderAuthoring'
 
 function evaluateCapitalAnswer(answer: string, country: Country, fuzzyMatching: boolean, candidates: readonly string[]): SchedulerAnswerEvaluation {
   const match = classifyPlaceName(answer, country.capital, { fuzzy: fuzzyMatching, candidates })
@@ -91,7 +93,7 @@ export function CapitalLearningFlow({
   const [orderDraft, setOrderDraft] = useState<readonly Country[] | null>(null)
   const [editingOrder, setEditingOrder] = useState(false)
   const [hoveredCountryId, setHoveredCountryId] = useState<string | null>(null)
-  const allPresentationEntries = orderDraft ?? entries
+  const { allPresentationEntries, mapPresentation: orderMapPresentation, onClickOrderStateChange, onClickOrderToggle } = useLearningCountryOrderAuthoring({ entries, orderDraft, editingOrder })
   const stageIds = currentStagedCapitalIds(flow)
   const stageEntries = useMemo(() => stageIds.map(id => entries.find(entry => entry.id === id)).filter((entry): entry is Country => Boolean(entry)), [entries, stageIds])
   const currentPlanStage = flow.plan[flow.stageIndex]
@@ -153,7 +155,7 @@ export function CapitalLearningFlow({
     hoveredCountryId,
     showHighlightedNames: flow.phase === 'walkthrough',
     showHoverNames: flow.phase === 'final-recall',
-    overviewCountries: editingOrder ? allPresentationEntries : undefined,
+    ...orderMapPresentation,
     mapClassName: ['practice', 'combined-practice'].includes(flow.phase) ? '[&>svg]:max-h-[510px]' : undefined,
     ariaLabel: flow.phase === 'final-recall' ? 'Highlighted Country for final recall' : 'World Countries Learning map',
   } as const
@@ -181,6 +183,19 @@ export function CapitalLearningFlow({
   const practiceProgress = flow.phase === 'practice' || flow.phase === 'combined-practice'
     ? flow.practice ? deriveLearningPracticeProgress(flow.practice, schedulerSettings) : null
     : null
+  const activeTask: WorldCountriesActivityTask | undefined = (() => {
+    switch (flow.phase) {
+      case 'walkthrough':
+        return { direction: 'Country ↔ Capital', cue: walkthroughCountry ? `${walkthroughCountry.country} ↔ ${walkthroughCountry.capital}` : 'Review', sessionContext: `Set ${stageSetNumber} · Review`, progress: { label: 'Country', current: flow.walkthroughIndex + 1, total: stageEntries.length } }
+      case 'practice':
+      case 'combined-practice':
+        return { direction: 'Country → Capital', cue: 'Name the capital', sessionContext: flow.phase === 'combined-practice' ? 'Combined practice' : `Set ${stageSetNumber} · Practice`, progress: practiceProgress ? { label: 'Practice', current: practiceProgress.atTarget, total: practiceProgress.total, percent: practiceProgress.pct * 100 } : undefined }
+      case 'final-recall':
+        return { direction: 'Country → Capital', cue: 'Name the capital', sessionContext: flow.ordered?.mode === 'repair' ? 'Repair traversal' : 'Final recall', progress: { label: 'Country', current: (flow.ordered?.currentIndex ?? 0) + 1, total: flow.ordered?.order.length ?? entries.length } }
+      default:
+        return undefined
+    }
+  })()
 
   const rails = <GuidedLearningRails
     continent={continent}
@@ -199,6 +214,8 @@ export function CapitalLearningFlow({
     onOrderDraftChanged={setOrderDraft}
     onOrderEditingChange={setEditingOrder}
     onOrderSaved={onOrderSaved}
+    onClickOrderStateChange={onClickOrderStateChange}
+    onClickOrderToggle={onClickOrderToggle}
     onBack={backAvailable ? () => run(backStagedCapital) : undefined}
     backLabel={backLabel}
     onExit={onExit}
@@ -234,5 +251,5 @@ export function CapitalLearningFlow({
       break
   }
   const dockPlacement = ['practice', 'combined-practice', 'final-recall'].includes(flow.phase) ? 'stacked' : 'attached'
-  return <>{rails}<LearningMapSurface continent={continent} scopeCountries={mapEntries} presentation={mapPresentation} presentationKey={presentationKey} context={context} mapMeta={mapMeta} dockPlacement={dockPlacement}>{content}</LearningMapSurface></>
+  return <>{rails}<LearningMapSurface continent={continent} scopeCountries={mapEntries} presentation={mapPresentation} presentationKey={presentationKey} context={context} task={activeTask} mapMeta={mapMeta} dockPlacement={dockPlacement}>{content}</LearningMapSurface></>
 }

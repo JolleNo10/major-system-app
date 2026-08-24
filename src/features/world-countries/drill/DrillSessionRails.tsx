@@ -7,7 +7,7 @@ import type { WorldCountriesDrillSelection } from './drillSelection'
 import { getDrillModeDefinition, type WorldCountriesDrillMode } from './drillModes'
 import { getCurrentDrillStep, type DrillSessionState } from './drillSessionState'
 import { deriveDrillSessionProgress } from './drillSessionProgress'
-import { DrillSessionProgressBar } from './DrillSessionProgressPanel'
+import { WorldCountriesSessionProgressBar } from '@/features/world-countries/ui/WorldCountriesActivity'
 import type { WorldCountriesProficiencySelection } from './drillProficiencyScope'
 
 export function DrillSessionRails({
@@ -61,7 +61,7 @@ export function DrillSessionRails({
           <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
             <p className="text-xs uppercase tracking-wider text-zinc-500">Mode</p>
             <p className="mt-1 text-sm font-semibold text-zinc-200">{getDrillModeDefinition(mode).label}</p>
-            <DrillSessionProgressBar progressPercent={progressPercent} />
+            <WorldCountriesSessionProgressBar progressPercent={progressPercent} label="Drill progress" />
             <p className="mt-2 text-xs tabular-nums text-zinc-500">Country {countryPosition} / {totalCountries}</p>
           </div>
           {step && country && (

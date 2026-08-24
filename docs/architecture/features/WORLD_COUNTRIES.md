@@ -63,8 +63,9 @@ that lets contextual authoring affect subsequent Learning presentation.
   Geography/proficiency setup scope. It does not expose a Drill Subregion
   detail or Country-order editor.
 - `ui/` owns feature-local panels, breadcrumbs, hierarchy rows, inline reorder
-  and opt-in Country click-sequence presentation, map-surface/dock presentation,
-  task-dock status/action styling,
+  and opt-in Country click-sequence presentation, shared active map-task,
+  task-context, and session-progress presentation, map-surface/dock
+  presentation, task-dock status/action styling,
   the shared typed-answer lifecycle for primary World Countries recall, reusable
   answer-kind semantics for workflows that need them, and draft movement
   without persistence policy. Workflows provide the active answer kind from
@@ -157,8 +158,11 @@ journey and scheduler state are not persisted.
 
 During active scheduler-driven Learning Practice, the flows expose temporary
 scheduler progress through the feature-local progress seam in the right rail.
-The progress section is session-scoped and phase-specific; the map and task
-surface remain unchanged.
+The progress section is session-scoped and phase-specific. Active Drill,
+Practice, Recite, Today Review, and map-backed Learning phases also provide
+semantic task/context/progress data to the shared World Countries map-activity
+surface; setup, overview, readiness, and completion screens retain their own
+presentation.
 
 ## Learning Readiness
 
@@ -211,9 +215,13 @@ advances automatically after the correction dwell.
   into an inline `Click order` mode. Click mode starts an empty local sequence
   over the current full Country draft, gives selected Countries contiguous
   1-based positions, and keeps Save disabled until the complete membership is
-  selected exactly once. A complete sequence becomes the current full draft
-  and saves through the same `geography/orderAuthoring.ts` seam; an incomplete
-  sequence is discarded when returning to drag/drop.
+  selected exactly once. While active, the map is the primary pointer surface
+  for that same sequence and receives the full order-authoring membership,
+  even when the current Learning stage is a smaller subset; the rail remains
+  the synchronized status and keyboard-accessible secondary surface. A
+  complete sequence becomes the current full draft and saves through the same
+  `geography/orderAuthoring.ts` seam; an incomplete sequence is discarded when
+  returning to drag/drop.
 - Draft changes are local to the mounted context. Save writes through
   `geography/orderAuthoring.ts`; Cancel or unmount discards the draft. Reset
   canonical and map auto-order are draft-only actions requiring explicit Save.
@@ -239,11 +247,24 @@ advances automatically after the correction dwell.
   without changing identity.
 - `GeographyOverviewMap` and `CountryLearningMap` report clicks and hover
   neutrally; callers decide selection, navigation, and learning behavior.
+- During Learning Country `Click order`, `InlineOrderEditor` remains the sole
+  click-sequence owner. The Learning flow routes both rail and map activation
+  into that owner, while `CountryLearningMap` receives the full authoring
+  membership plus semantic Country-ID position labels as presentation inputs;
+  staged Learning scope must not narrow order-authoring map clickability.
 - `learning/flows/` may use geography and maps but never Drill internals.
 - Active Learning map-backed phases use a flow-local map host with the feature
   `ui/` map surface/dock presentation. The host owns the mounted map while
   flow stages change; phase-specific content owns task status, controls, and
   dynamic map presentation through that host.
+- Active World Countries map sessions use one feature-local task/activity
+  presentation seam. Workflow owners provide direction, cue, compact hidden-
+  rail context, and meaningful progress; the shared UI adapts that semantic
+  input between standard and expanded MapSurface presentations. Expanded mode
+  promotes only essential task context and progress while keeping the map and
+  compact interaction dominant. The active task is rendered once, without
+  redundant activity or answer-kind badges; accessible form and map labels
+  remain workflow-owned.
 - `MapSurface` keeps lightweight context above a relative map container and
   supports optional map metadata, a centered map-relative feedback overlay,
   explicit overlay, attached, and stacked dock placement, and the one common
@@ -285,22 +306,19 @@ advances automatically after the correction dwell.
   choice after an incorrect answer; selecting it holds that feedback until
   Continue or mini-practice completion. Today delayed-retry Skip and Recite
   Reveal / Skip remain answerable-state actions owned by those workflows.
-- Active Drill and Practice Country/Capital questions use one feature-local
-  task-presentation model: a direction, a main cue, and the answer interaction.
-  They do not repeat an explicit `ANSWER · COUNTRY` / `ANSWER · CAPITAL` badge
-  in the task context, dock, or Session rail. `CountryLearningMap` translates
-  the model's semantic task tone to a cyan Country-answer highlight or violet
-  Capital-answer highlight; the tone supplements textual and accessible answer
-  cues and remains separate from correctness feedback and map
-  proficiency/status palettes. Standard presentation keeps selected geography
-  in the left rail, the direction/cue, map, and answer interaction in the
-  center, and session mode/progress/actions in the right rail. Expanded
-  Drill presentation uses a dominant task card with left-aligned direction/cue
-  and secondary geography/mode context, beside a secondary progress-only card
-  for Country position, percentage, and the progress bar. Drill does not use a
-  bottom progress companion in expanded mode. Other workflows may retain the
-  reusable answer-kind cue where their own presentation contract still calls
-  for it.
+- Active Drill, Practice, Recite, Today Review, and map-backed Learning tasks
+  use the shared World Countries task/activity presentation: a direction when
+  meaningful, one main cue, compact session context, and workflow-owned
+  progress. They do not repeat an explicit `ANSWER · COUNTRY` /
+  `ANSWER · CAPITAL` badge or redundant activity chrome in the active task or
+  dock. Standard presentation keeps selected geography in the left rail, the
+  task/map/interaction in the center, and workflow status/actions in the right
+  rail. Expanded presentation uses one dominant task card and an optional
+  secondary progress-only card for useful hidden-rail context; it does not
+  recreate the rails or move progress into a separate workflow-specific
+  header. Drill-specific Country-answer cyan versus Capital-answer violet map
+  tone remains owned by Drill task semantics and translated by
+  `CountryLearningMap`.
 - `SvgMapController` owns one explicit task-assistance layer for map-answer
   candidates and an intentional task target. Generic `selectableIds`,
   hoverable IDs, highlighted/progress state, semantic colors, click-handler

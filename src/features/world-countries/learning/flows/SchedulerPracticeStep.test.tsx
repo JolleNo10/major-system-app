@@ -100,8 +100,7 @@ describe('SchedulerPracticeStep', () => {
     })
 
     expect(mount.textContent).toContain('Name the country')
-    expect(mount.textContent).toContain('ANSWER · COUNTRY')
-    expect(mount.querySelector('[data-answer-kind]')?.getAttribute('data-answer-kind')).toBe('country')
+    expect(mount.querySelector('[data-world-countries-task-direction]')?.textContent).toBe('Country name')
     expect(mount.querySelector('[data-testid="country-learning-map"]')).toBeNull()
   })
 

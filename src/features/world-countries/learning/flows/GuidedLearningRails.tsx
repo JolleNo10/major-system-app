@@ -10,7 +10,7 @@ import { GeographyMnemonicView } from '@/features/world-countries/mnemonics/Geog
 import { CountryCapitalMnemonicPanel } from '@/features/world-countries/mnemonics/CountryCapitalMnemonicPanel'
 import { deriveWorldCountriesLearningReadiness, getWorldCountriesLearningReadinessLabel } from '@/features/world-countries/learning/learningReadiness'
 import type { LearningPracticeProgress } from '@/features/world-countries/learning/learningPracticeProgress'
-import { InlineOrderEditor } from '@/features/world-countries/ui/InlineOrderEditor'
+import { InlineOrderEditor, type InlineOrderClickState } from '@/features/world-countries/ui/InlineOrderEditor'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
 import type { StagedCountryLearningPhase } from '@/features/world-countries/learning/stagedCountryLearningFlow'
 import type { StagedCapitalLearningPhase } from '@/features/world-countries/learning/stagedCapitalLearningFlow'
@@ -34,6 +34,8 @@ export function GuidedLearningRails({
   onOrderDraftChanged,
   onOrderEditingChange,
   onOrderSaved,
+  onClickOrderStateChange,
+  onClickOrderToggle,
   onExit,
   onBack,
   backLabel = 'Back',
@@ -58,6 +60,8 @@ export function GuidedLearningRails({
   onOrderDraftChanged: (draft: readonly Country[] | null) => void
   onOrderEditingChange?: (editing: boolean) => void
   onOrderSaved?: (draft: readonly Country[]) => void
+  onClickOrderStateChange?: (state: InlineOrderClickState) => void
+  onClickOrderToggle?: (toggle: ((countryId: string) => void) | null) => void
   onExit?: () => void
   onBack?: () => void
   backLabel?: string
@@ -80,8 +84,10 @@ export function GuidedLearningRails({
     onCountryHover(null)
     setEditingOrder(false)
     onOrderEditingChange?.(false)
+    onClickOrderStateChange?.({ active: false, positions: new Map() })
+    onClickOrderToggle?.(null)
     setEditingMnemonic(null)
-  }, [onCountryHover, onOrderDraftChanged, onOrderEditingChange, quietPhase])
+  }, [onClickOrderStateChange, onClickOrderToggle, onCountryHover, onOrderDraftChanged, onOrderEditingChange, quietPhase])
 
   const beginOrderEdit = () => {
     setEditingOrder(true)
@@ -143,6 +149,8 @@ export function GuidedLearningRails({
                 onCancel={cancelOrder}
                 onResetCanonical={() => activeCountries.filter(entry => entry.subregionId === subregion && entry.continent === continent)}
                 clickOrder
+                onClickOrderStateChange={onClickOrderStateChange}
+                onClickOrderToggle={onClickOrderToggle}
                 autoOrder={{
                   label: 'Auto-order from map',
                   pendingLabel: 'Reading map…',

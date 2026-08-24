@@ -89,8 +89,7 @@ describe('Today review session', () => {
     expect(recordAttemptMock).toHaveBeenCalledWith('NO', 'location-to-country', expect.objectContaining({ ok: false, evidenceKind: 'recall' }))
     expect(mount.textContent).toContain('The correct answer is Norway.')
     expect(mount.textContent).not.toContain('Skip for now')
-    expect(mount.querySelector('[data-answer-kind]')?.getAttribute('data-answer-kind')).toBe('country')
-    expect(mount.textContent).toContain('ANSWER · COUNTRY')
+    expect(mount.querySelector('[data-world-countries-task-direction]')?.textContent).toBe('Location → Country')
   })
 
   it('uses the Capital cue for Country-to-Capital review prompts', async () => {
@@ -107,8 +106,7 @@ describe('Today review session', () => {
       }))
     })
 
-    expect(mount.querySelector('[data-answer-kind]')?.getAttribute('data-answer-kind')).toBe('capital')
-    expect(mount.textContent).toContain('ANSWER · CAPITAL')
+    expect(mount.querySelector('[data-world-countries-task-direction]')?.textContent).toBe('Country → Capital')
   })
 
   it('keeps review workflow state in the rails without revealing a hidden Country', async () => {

@@ -18,7 +18,7 @@ import { getContinentHoverGroupId, getSubregionHoverGroupId } from '@/features/w
 import { GeographyBreadcrumbs } from '@/features/world-countries/ui/GeographyBreadcrumbs'
 import { GeographyHierarchyRow } from '@/features/world-countries/ui/GeographyHierarchyRow'
 import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
-import { WorldCountriesAnswerKindCue } from '@/features/world-countries/ui/WorldCountriesAnswerKindCue'
+import { WorldCountriesMapActivitySurface, type WorldCountriesActivityTask } from '@/features/world-countries/ui/WorldCountriesActivity'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
 import {
   WorldCountriesTypedAnswer,
@@ -385,26 +385,23 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
   }
 
   if (!currentPrompt || !currentCountry) return null
+  const activeTask: WorldCountriesActivityTask = run.mode === 'countries-from-capitals' && currentPrompt.kind === 'country'
+    ? {
+      direction: 'Capital → Country',
+      cue: currentCountry.capital,
+      sessionContext: <><span className="text-zinc-300">{run.continent}</span> · {modeLabel(run.mode)}</>,
+      progress: { label: 'Country', current: currentPrompt.countryIndex + 1, total: run.session.countries.length },
+    }
+    : {
+      direction: currentPrompt.kind === 'capital' ? 'Country → Capital' : 'Ordered Country recall',
+      cue: currentPrompt.kind === 'capital' ? `Capital of ${currentCountry.country}` : 'Next country',
+      sessionContext: <><span className="text-zinc-300">{run.continent}</span> · {modeLabel(run.mode)}</>,
+      progress: { label: 'Country', current: currentPrompt.countryIndex + 1, total: run.session.countries.length },
+    }
   return (
-    <section className="space-y-3 animate-fade-in" aria-labelledby="world-countries-recite-session-heading">
-      <MapSurface
-        context={(
-          <div className="px-1 text-center">
-            <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World Countries · Recite</p>
-            <WorldCountriesAnswerKindCue answerKind={currentPrompt.kind} className="mb-1" />
-            {run.mode === 'countries-from-capitals' && currentPrompt.kind === 'country' ? (
-              <>
-                <h1 id="world-countries-recite-session-heading" className="mt-1 text-3xl font-black text-zinc-100">{currentCountry.capital}</h1>
-                <p className="mt-1 text-sm text-zinc-500">Country: recall the next Country in order</p>
-              </>
-            ) : (
-              <>
-                <h1 id="world-countries-recite-session-heading" className="mt-1 text-2xl font-black text-zinc-100">{currentPrompt.kind === 'capital' ? `Capital of ${currentCountry.country}` : 'Next country'}</h1>
-                <p className="mt-1 text-sm text-zinc-500">Country {currentPrompt.countryIndex + 1} of {run.session.countries.length}</p>
-              </>
-            )}
-          </div>
-        )}
+    <section className="space-y-3 animate-fade-in">
+      <WorldCountriesMapActivitySurface
+        task={activeTask}
         map={map}
         dockPlacement="stacked"
         dock={(
@@ -541,7 +538,7 @@ function RecitePromptDock({ prompt, country, scopeCountries, fuzzyMatching, onSu
       onTransition={onContinue}
     >
       {typed => (
-        <TaskDock variant="form" status={<div className="text-[11px] font-bold uppercase tracking-[0.08em] text-cyan-400">{prompt.kind === 'capital' ? `Capital of ${country.country}` : 'Next country'}</div>}>
+        <TaskDock variant="form">
           <div className="space-y-3">
             {typed.input}
             {typed.isAnswerable && <button type="button" onClick={() => { if (typed.reveal()) onReveal() }} className="rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-300 hover:border-orange-500 hover:text-zinc-100">Reveal / Skip</button>}

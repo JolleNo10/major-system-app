@@ -8,7 +8,8 @@ import { classifyRecallAnswer } from '@/features/world-countries/learning/recall
 import type { WorldCountriesRecallSkill } from '@/features/world-countries/learning/recallTargets'
 import type { LearningStates } from '@/features/world-countries/learning/learningProgress'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
-import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
+import { TaskDock } from '@/features/world-countries/ui/MapSurface'
+import { WorldCountriesMapActivitySurface, type WorldCountriesActivityTask } from '@/features/world-countries/ui/WorldCountriesActivity'
 import { WorldCountriesTypedAnswer } from '@/features/world-countries/ui/WorldCountriesTypedAnswer'
 import type { WorldCountriesDrillSelection } from './drillSelection'
 import { DrillSessionRails } from './DrillSessionRails'
@@ -16,7 +17,6 @@ import { PracticeSessionRails } from './PracticeSessionRails'
 import { getDrillModeDefinition } from './drillModes'
 import type { WorldCountriesProficiencySelection } from './drillProficiencyScope'
 import { deriveDrillSessionProgress } from './drillSessionProgress'
-import { DrillSessionProgressBar } from './DrillSessionProgressPanel'
 import { deriveDrillTaskPresentation, type DrillTaskPresentation } from './drillTaskPresentation'
 import {
   getCurrentDrillStep,
@@ -44,76 +44,6 @@ function answerValues(skill: WorldCountriesRecallSkill, entries: readonly Countr
 function buildChoiceOptions(expected: string, values: readonly string[]): string[] {
   const alternatives = [...new Set(values.filter(value => value !== expected))]
   return shuffle([expected, ...shuffle(alternatives).slice(0, 3)])
-}
-
-function DrillTaskPrompt({ task, sessionContext }: {
-  task: DrillTaskPresentation
-  sessionContext?: {
-    geography: string
-    label: string
-  }
-}) {
-  return (
-    <section data-drill-task-prompt className={`rounded-xl border border-zinc-800 bg-zinc-950/55 px-4 py-3 ${sessionContext ? 'grid items-center gap-4 text-left xl:grid-cols-[minmax(0,1fr)_auto]' : 'text-center'}`}>
-      <div data-drill-task-copy className={sessionContext ? 'text-left' : undefined}>
-        <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-cyan-400">{task.direction}</p>
-        <h1 className="mt-1 text-2xl font-black tracking-tight text-zinc-100">{task.cue}</h1>
-      </div>
-      {sessionContext && (
-        <p data-drill-session-context className="text-right text-xs font-medium text-zinc-500">
-          <span className="text-zinc-300">{sessionContext.geography}</span> · {sessionContext.label}
-        </p>
-      )}
-    </section>
-  )
-}
-
-function DrillSessionProgress({
-  progress,
-  label,
-}: {
-  progress: ReturnType<typeof deriveDrillSessionProgress>
-  label: string
-}) {
-  return (
-    <>
-      <div className="flex items-center justify-between gap-3 text-xs tabular-nums text-zinc-400">
-        <span>Country {progress.countryPosition} / {progress.totalCountries}</span>
-        <span>{progress.progressPercent}%</span>
-      </div>
-      <DrillSessionProgressBar progressPercent={progress.progressPercent} label={label} />
-    </>
-  )
-}
-
-function DrillExpandedSessionSummary({ progress }: {
-  progress: ReturnType<typeof deriveDrillSessionProgress>
-}) {
-  return (
-    <section data-drill-expanded-session-summary className="rounded-xl border border-zinc-800 bg-zinc-950/75 px-3 py-2.5">
-      <DrillSessionProgress progress={progress} label="Drill progress" />
-    </section>
-  )
-}
-
-function PracticeExpandedSessionSummary({
-  geography,
-  progress,
-  onExit,
-}: {
-  geography: string
-  progress: ReturnType<typeof deriveDrillSessionProgress>
-  onExit: () => void
-}) {
-  return (
-    <section data-drill-expanded-session-summary className="rounded-xl border border-zinc-800 bg-zinc-950/75 px-3 py-2.5">
-      <p className="text-[11px] text-zinc-500"><strong className="font-semibold text-zinc-200">{geography}</strong> · Practice</p>
-      <div className="mt-2">
-        <DrillSessionProgress progress={progress} label="Practice progress" />
-      </div>
-      <button type="button" onClick={onExit} className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-xs font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">Exit Practice</button>
-    </section>
-  )
 }
 
 export function DrillSession({
@@ -273,33 +203,22 @@ export function DrillSession({
       ? 'Correct location.'
       : `That was ${displayedFeedback.answer} — ${country.country} is highlighted.`
     : null
-  const context = (
-    <div data-drill-standard-context className="px-1 text-center">
-      <DrillTaskPrompt task={task} />
-    </div>
-  )
-
-  const expandedContext = activity === 'practice' ? (
-    <div data-drill-expanded-context className="grid grid-cols-[minmax(0,1fr)_16rem] gap-3 px-1">
-      <DrillTaskPrompt task={task} />
-      <PracticeExpandedSessionSummary
-        geography={selection.continent}
-        progress={deriveDrillSessionProgress(state)}
-        onExit={onExit}
-      />
-    </div>
-  ) : (
-    <div data-drill-expanded-context className="grid grid-cols-[minmax(0,1fr)_minmax(18rem,28%)] gap-3 px-1">
-      <DrillTaskPrompt
-        task={task}
-        sessionContext={{
-          geography: selection.continent,
-          label: getDrillModeDefinition(state.mode).label,
-        }}
-      />
-      <DrillExpandedSessionSummary progress={deriveDrillSessionProgress(state)} />
-    </div>
-  )
+  const progress = deriveDrillSessionProgress(state)
+  const activityTask: WorldCountriesActivityTask = {
+    direction: task.direction,
+    cue: task.cue,
+    sessionContext: (
+      <>
+        <span className="text-zinc-300">{selection.continent}</span> · {activity === 'practice' ? 'Practice' : getDrillModeDefinition(state.mode).label}
+      </>
+    ),
+    progress: {
+      label: 'Country',
+      current: progress.countryPosition,
+      total: progress.totalCountries,
+      percent: progress.progressPercent,
+    },
+  }
 
   const rails = activity === 'practice' ? (
     <PracticeSessionRails selection={selection} proficiencySelection={proficiencySelection} state={state} onExit={onExit} entries={entries} learningStates={learningStates} />
@@ -364,9 +283,8 @@ export function DrillSession({
         {typed => (
           <>
             {rails}
-            <MapSurface
-              context={context}
-              expandedContext={expandedContext}
+            <WorldCountriesMapActivitySurface
+              task={activityTask}
               map={(
                 <CountryLearningMap
                   continent={selection.continent}
@@ -431,42 +349,41 @@ export function DrillSession({
           onMnemonicChanged={onMnemonicChanged}
         />
       )}
-      <MapSurface
-        context={context}
-        expandedContext={expandedContext}
-        map={(
-          <div className="relative">
-          <CountryLearningMap
-            continent={selection.continent}
-            scopeCountries={mapCountries}
-            taskHighlightTone={task.highlightTone}
-            answerSelectionCountryIds={isMapClickPractice ? scopeCountries.map(entry => entry.id) : undefined}
-            taskTargetCountryId={(!isMapClickPractice && isLocationQuestion) || (isMapClickPractice && feedback) ? country.id : null}
-            highlightedCountryId={isShapeQuestion ? feedback ? country.id : null : highlightedCountryId}
-            namedCountryId={isShapeQuestion ? feedback ? country.id : null : isMapClickPractice ? practiceNamedCountryId : namedCountryId}
-            showHighlightedNames={isShapeQuestion ? Boolean(feedback) : isMapClickPractice ? Boolean(practiceNamedCountryId) : Boolean(namedCountryId)}
-            visibleCountryIds={getShapeMapCountryIds(feedback ? (feedback.correct ? 'correct' : 'incorrect') : null)}
-            zoomCountryIds={getShapeMapCountryIds(feedback ? (feedback.correct ? 'correct' : 'incorrect') : null)}
-            onCountryClick={isMapClickPractice ? submitLocation : undefined}
-            ariaLabel={isShapeQuestion && !feedback
-              ? 'Map showing the isolated Country shape without the Country name revealed'
-              : isMapClickPractice && !feedback
-              ? isCapitalLocationPractice
-                ? 'Map for clicking the Country whose Capital is shown'
-                : 'Map for clicking the target Country'
-              : isLocationQuestion && !feedback
-                ? 'Map showing the selected location for recall without the Country name revealed'
-              : isCapitalQuestion && !feedback
-                ? 'Map of the selected geographic scope without the target Country revealed'
-              : `Map with ${country.country} highlighted for ${activity === 'practice' ? 'Practice' : 'Drill'} recall`}
-          />
-          {displayedFeedback && <RecallFeedback correct={displayedFeedback.correct} message={isMapClickPractice ? practiceFeedbackText : feedbackText} />}
-          </div>
-        )}
-        dockPlacement={answerMode === 'typing' && !isMapClickPractice ? 'stacked' : 'attached'}
-        dock={isMapClickPractice ? (
-          <p className="text-center text-sm text-zinc-400">Click the country on the map.</p>
-        ) : (
+            <WorldCountriesMapActivitySurface
+              task={activityTask}
+              map={(
+                <div className="relative">
+                  <CountryLearningMap
+                    continent={selection.continent}
+                    scopeCountries={mapCountries}
+                    taskHighlightTone={task.highlightTone}
+                    answerSelectionCountryIds={isMapClickPractice ? scopeCountries.map(entry => entry.id) : undefined}
+                    taskTargetCountryId={(!isMapClickPractice && isLocationQuestion) || (isMapClickPractice && feedback) ? country.id : null}
+                    highlightedCountryId={isShapeQuestion ? feedback ? country.id : null : highlightedCountryId}
+                    namedCountryId={isShapeQuestion ? feedback ? country.id : null : isMapClickPractice ? practiceNamedCountryId : namedCountryId}
+                    showHighlightedNames={isShapeQuestion ? Boolean(feedback) : isMapClickPractice ? Boolean(practiceNamedCountryId) : Boolean(namedCountryId)}
+                    visibleCountryIds={getShapeMapCountryIds(feedback ? (feedback.correct ? 'correct' : 'incorrect') : null)}
+                    zoomCountryIds={getShapeMapCountryIds(feedback ? (feedback.correct ? 'correct' : 'incorrect') : null)}
+                    onCountryClick={isMapClickPractice ? submitLocation : undefined}
+                    ariaLabel={isShapeQuestion && !feedback
+                      ? 'Map showing the isolated Country shape without the Country name revealed'
+                      : isMapClickPractice && !feedback
+                      ? isCapitalLocationPractice
+                        ? 'Map for clicking the Country whose Capital is shown'
+                        : 'Map for clicking the target Country'
+                      : isLocationQuestion && !feedback
+                        ? 'Map showing the selected location for recall without the Country name revealed'
+                      : isCapitalQuestion && !feedback
+                        ? 'Map of the selected geographic scope without the target Country revealed'
+                      : `Map with ${country.country} highlighted for ${activity === 'practice' ? 'Practice' : 'Drill'} recall`}
+                  />
+                  {displayedFeedback && <RecallFeedback correct={displayedFeedback.correct} message={isMapClickPractice ? practiceFeedbackText : feedbackText} />}
+                </div>
+              )}
+              dockPlacement={answerMode === 'typing' && !isMapClickPractice ? 'stacked' : 'attached'}
+              dock={isMapClickPractice ? (
+                <p className="sr-only">Click a Country on the map to answer.</p>
+              ) : (
           <TaskDock variant={answerMode === 'typing' ? 'form' : 'navigation'}>
             <section className="space-y-3">
             {answerMode === 'multiple-choice' ? (
@@ -480,8 +397,8 @@ export function DrillSession({
             ) : null}
             </section>
           </TaskDock>
-        )}
-      />
+              )}
+            />
     </>
   )
 }

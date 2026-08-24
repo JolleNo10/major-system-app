@@ -1,15 +1,14 @@
 import type { Continent, Country } from '@/features/world-countries/data/countries'
 import type { SchedulerLearningSession } from '@/features/world-countries/learning/schedulerLearningSession'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
-import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
-import { WorldCountriesAnswerKindCue } from '@/features/world-countries/ui/WorldCountriesAnswerKindCue'
+import { TaskDock } from '@/features/world-countries/ui/MapSurface'
+import { WorldCountriesMapActivitySurface, type WorldCountriesActivityTask } from '@/features/world-countries/ui/WorldCountriesActivity'
 import {
   WorldCountriesTypedAnswer,
   type WorldCountriesTypedAnswerKind,
   type WorldCountriesTypedAnswerEvaluation,
 } from '@/features/world-countries/ui/WorldCountriesTypedAnswer'
 import { useLearningMapPresentation } from './LearningMapSurface'
-import { LearningHeader } from './MemoryPreviewStep'
 
 export interface SchedulerAnswerEvaluation {
   correct: boolean
@@ -65,6 +64,11 @@ export function SchedulerPracticeStep({
   const ariaLabel = showCountryName
     ? `Map showing ${current.country} for practice`
     : 'Map for typed Country practice without the Country name revealed'
+  const activityTask: WorldCountriesActivityTask = {
+    direction: questionLabel,
+    cue: showCountryName ? current.country : promptText,
+    sessionContext: stepLabel,
+  }
   useLearningMapPresentation({
     taskTargetCountryId: showCountryName ? null : current.id,
     highlightedCountryId: current.id,
@@ -95,24 +99,18 @@ export function SchedulerPracticeStep({
       {typed => {
         const dock = (
           <TaskDock variant="form" status={(
-            <div className="space-y-2">
-              <WorldCountriesAnswerKindCue answerKind={answerKind} />
-              <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-cyan-400">{questionLabel} · {showCountryName ? current.country : promptText}</div>
-            </div>
+            <span className="sr-only">{questionLabel}</span>
           )}>
             {typed.input}
-            {!surface && <button type="button" onClick={onBack} className="mt-3 w-full rounded-[9px] border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-400 hover:text-zinc-200">Back</button>}
+            {!surface && <div className="mt-3 flex gap-2"><button type="button" onClick={onBack} className="w-full rounded-[9px] border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-400 hover:text-zinc-200">Back</button><button type="button" onClick={onExit} className="w-full rounded-[9px] border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-400 hover:text-zinc-200">Exit</button></div>}
           </TaskDock>
         )
         if (surface) return dock
 
         return (
           <div className="space-y-4 animate-fade-in">
-            <LearningHeader label={stepLabel} title={questionTitle} onExit={onExit} />
-            <div className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm"><span className="text-zinc-500">Spaced practice</span><span className="font-semibold text-cyan-300">{questionLabel}</span></div>
-            <section className="rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-4 text-center"><p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">{questionLabel}</p><h2 className="mt-2 text-3xl font-black text-zinc-100">{showCountryName ? current.country : promptText}</h2></section>
-            <MapSurface
-              context={null}
+            <WorldCountriesMapActivitySurface
+              task={activityTask}
               map={showMap
                 ? <CountryLearningMap continent={continent} scopeCountries={entries} taskTargetCountryId={showCountryName ? null : current.id} highlightedCountryId={current.id} namedCountryId={showCountryName ? current.id : null} showHighlightedNames={showCountryName} ariaLabel={ariaLabel} />
                 : <div className="hidden" aria-hidden="true" />}

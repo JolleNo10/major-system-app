@@ -12,6 +12,11 @@ export interface AutoOrderAction<T> {
   run: (draft: readonly T[]) => Promise<readonly T[]>
 }
 
+export interface InlineOrderClickState {
+  active: boolean
+  positions: ReadonlyMap<string, number>
+}
+
 /** Workflow-neutral, draft-first ordering controls for an existing rail list. */
 export function InlineOrderEditor<T>({
   entries,
@@ -25,6 +30,8 @@ export function InlineOrderEditor<T>({
   onResetCanonical,
   autoOrder,
   clickOrder = false,
+  onClickOrderStateChange,
+  onClickOrderToggle,
 }: {
   entries: readonly T[]
   getId: (item: T) => string
@@ -37,6 +44,8 @@ export function InlineOrderEditor<T>({
   onResetCanonical: () => readonly T[]
   autoOrder?: AutoOrderAction<T>
   clickOrder?: boolean
+  onClickOrderStateChange?: (state: InlineOrderClickState) => void
+  onClickOrderToggle?: ((toggle: ((id: string) => void) | null) => void)
 }) {
   const [draft, setDraft] = useState(() => [...entries])
   const [clickMode, setClickMode] = useState(false)
@@ -46,6 +55,12 @@ export function InlineOrderEditor<T>({
   const [saveError, setSaveError] = useState(false)
   const autoOrderRunRef = useRef(0)
   const clickModeDraftRef = useRef<readonly T[] | null>(null)
+  const clickSequenceRef = useRef<readonly string[]>([])
+  const clickToggleRef = useRef<(id: string) => void>(() => undefined)
+  const clickStateCallbackRef = useRef(onClickOrderStateChange)
+  const clickToggleCallbackRef = useRef(onClickOrderToggle)
+  clickStateCallbackRef.current = onClickOrderStateChange
+  clickToggleCallbackRef.current = onClickOrderToggle
 
   useEffect(() => () => {
     autoOrderRunRef.current += 1
@@ -64,6 +79,7 @@ export function InlineOrderEditor<T>({
 
   const clearClickMode = () => {
     setClickMode(false)
+    clickSequenceRef.current = []
     setClickSequence([])
     clickModeDraftRef.current = null
   }
@@ -126,6 +142,7 @@ export function InlineOrderEditor<T>({
   const enterClickMode = () => {
     if (!clickOrder || autoOrdering) return
     clickModeDraftRef.current = [...draft]
+    clickSequenceRef.current = []
     setClickSequence([])
     setClickMode(true)
   }
@@ -133,9 +150,11 @@ export function InlineOrderEditor<T>({
   const toggleClickEntry = (entry: T) => {
     if (!clickMode) return
     const id = getId(entry)
-    const nextSequence = clickSequence.includes(id)
-      ? clickSequence.filter(candidate => candidate !== id)
-      : [...clickSequence, id]
+    const currentSequence = clickSequenceRef.current
+    const nextSequence = currentSequence.includes(id)
+      ? currentSequence.filter(candidate => candidate !== id)
+      : [...currentSequence, id]
+    clickSequenceRef.current = nextSequence
     setClickSequence(nextSequence)
 
     if (nextSequence.length !== draft.length || draft.some(item => !nextSequence.includes(getId(item)))) return
@@ -149,6 +168,26 @@ export function InlineOrderEditor<T>({
 
   const clickSequencePositions = new Map(clickSequence.map((id, index) => [id, index + 1]))
   const clickSequenceComplete = clickSequence.length === draft.length && draft.every(item => clickSequencePositions.has(getId(item)))
+
+  clickToggleRef.current = (id: string) => {
+    if (!clickMode) return
+    const entry = draft.find(item => getId(item) === id)
+    if (entry) toggleClickEntry(entry)
+  }
+
+  useEffect(() => {
+    onClickOrderStateChange?.({ active: clickMode, positions: clickSequencePositions })
+  }, [clickMode, clickSequence, draft, onClickOrderStateChange])
+
+  useEffect(() => {
+    onClickOrderToggle?.(clickMode ? id => clickToggleRef.current(id) : null)
+    return () => onClickOrderToggle?.(null)
+  }, [clickMode, onClickOrderToggle])
+
+  useEffect(() => () => {
+    clickStateCallbackRef.current?.({ active: false, positions: new Map() })
+    clickToggleCallbackRef.current?.(null)
+  }, [])
 
   return (
     <>

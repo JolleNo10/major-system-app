@@ -30,6 +30,8 @@ export interface CountryLearningMapProps {
   mapClassName?: string
   /** Optional caller-owned result/overview progress colors. */
   countryColorsById?: ReadonlyMap<string, string>
+  /** Optional semantic labels for the currently presented Country collection. */
+  countryLabelsById?: ReadonlyMap<CountryId, string>
   /** Optional non-color descriptions for mapped Countries. */
   countryAccessibleDescriptionsById?: ReadonlyMap<string, string>
   /** Explicit map-answer candidates; generic clickability does not imply assistance. */
@@ -68,6 +70,7 @@ export function CountryLearningMap({
   showHighlightedNames = true,
   mapClassName,
   countryColorsById,
+  countryLabelsById,
   countryAccessibleDescriptionsById,
   answerSelectionCountryIds,
   taskTargetCountryId = null,
@@ -88,6 +91,11 @@ export function CountryLearningMap({
     () => resolveCountriesToSvgIds(overviewCountries ?? scopeCountries, discoveredIds),
     [discoveredIds, overviewCountries, scopeCountries],
   )
+  const interactionCountries = overviewCountries ?? scopeCountries
+  const interactionSvgIds = useMemo(
+    () => resolveCountriesToSvgIds(interactionCountries, discoveredIds),
+    [discoveredIds, interactionCountries],
+  )
   const highlightedSvgIds = useMemo(() => {
     if (overviewCountries) return []
     if (!highlightedCountryId) return []
@@ -107,8 +115,16 @@ export function CountryLearningMap({
     return country ? countriesToSvgIds([country]).filter(id => discoveredIds.includes(id)) : []
   }, [discoveredIds, namedCountryId, overviewCountries, scopeCountries, scopeSvgIds, showNames, showOrderNumbers, zoomScopeSvgIds])
   const countryLabels = useMemo(
-    () => showOrderNumbers ? createCountryOrderLabels(overviewCountries ?? scopeCountries, discoveredIds) : {},
-    [discoveredIds, overviewCountries, scopeCountries, showOrderNumbers],
+    () => {
+      if (countryLabelsById) {
+        return Object.fromEntries([...countryLabelsById].flatMap(([countryId, label]) => {
+          const country = interactionCountries.find(entry => entry.id === countryId)
+          return country ? resolveCountriesToSvgIds([country], discoveredIds).map(svgId => [svgId, label] as const) : []
+        }))
+      }
+      return showOrderNumbers ? createCountryOrderLabels(overviewCountries ?? scopeCountries, discoveredIds) : {}
+    },
+    [countryLabelsById, discoveredIds, interactionCountries, overviewCountries, scopeCountries, showOrderNumbers],
   )
   const explicitZoomSvgIds = useMemo(
     () => zoomCountryIds === undefined
@@ -135,7 +151,7 @@ export function CountryLearningMap({
   const taskAssistance = useMemo(() => {
     if (answerSelectionCountryIds === undefined && taskTargetCountryId === null) return null
 
-    const countryById = new Map(scopeCountries.map(country => [country.id, country]))
+    const countryById = new Map(interactionCountries.map(country => [country.id, country]))
     const targetCountry = taskTargetCountryId ? countryById.get(taskTargetCountryId) : undefined
     const answerCountries = answerSelectionCountryIds === undefined
       ? []
@@ -180,7 +196,7 @@ export function CountryLearningMap({
       learningAnchors,
       ...(syntheticDots.length ? { syntheticDots } : {}),
     }
-  }, [answerSelectionCountryIds, definition.id, discoveredIds, scopeCountries, taskTargetCountryId])
+  }, [answerSelectionCountryIds, definition.id, discoveredIds, interactionCountries, scopeCountries, taskTargetCountryId])
   const countryColors = useMemo(
     () => countryColorsById
       ? createCountryColorsById(scopeCountries, countryColorsById, discoveredIds)
@@ -205,11 +221,11 @@ export function CountryLearningMap({
         ariaDescribedBy={countryDescriptions.length ? descriptionId : undefined}
         highlightedIds={highlightedSvgIds}
         hoveredId={hoveredSvgId}
-        hoverableIds={onCountryClick ? scopeSvgIds : undefined}
+        hoverableIds={onCountryClick ? interactionSvgIds : undefined}
         mutedIds={discoveredIds.filter(id => !unmutedSvgIds.includes(id))}
         hiddenIds={hiddenIds}
         namedIds={namedSvgIds}
-        selectableIds={onCountryClick ? scopeSvgIds : []}
+        selectableIds={onCountryClick ? interactionSvgIds : []}
         countryLabels={countryLabels}
         countryColors={countryColors}
         taskAssistance={taskAssistance}
@@ -218,7 +234,7 @@ export function CountryLearningMap({
         settings={{ showHighlightedNames, hoverHighlight: hoveredCountryId !== null, hoverShowName: showHoverNames, hoverFill: '#0f766e', hoverStroke: '#d4d4d8', hoverStrokeWidth: '2px', ...(taskHighlightFill ? { highlightFill: taskHighlightFill } : {}) }}
         onCountriesLoaded={setDiscovered}
         onCountryClick={svgId => {
-          const country = getCountryForSvgId(svgId, scopeCountries)
+          const country = getCountryForSvgId(svgId, interactionCountries)
           if (country) onCountryClick?.(country.id)
         }}
       />

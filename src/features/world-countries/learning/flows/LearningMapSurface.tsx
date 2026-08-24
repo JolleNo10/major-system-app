@@ -2,11 +2,13 @@ import { createContext, useContext, useLayoutEffect, useMemo, useState, type Dep
 import type { Continent, Country } from '@/features/world-countries/data/countries'
 import { CountryLearningMap, type CountryLearningMapProps } from '@/features/world-countries/learning/CountryLearningMap'
 import { MapSurface, type MapSurfaceDockPlacement } from '@/features/world-countries/ui/MapSurface'
+import { WorldCountriesTaskContext, type WorldCountriesActivityTask } from '@/features/world-countries/ui/WorldCountriesActivity'
 
 export type LearningMapOverride = Partial<Pick<CountryLearningMapProps,
   'overviewCountries' | 'showNames' | 'showHoverNames' | 'showOrderNumbers' | 'namedCountryId' |
   'highlightedCountryId' | 'hoveredCountryId' | 'showHighlightedNames' |
   'answerSelectionCountryIds' | 'taskTargetCountryId' |
+  'countryLabelsById' |
   'mapClassName' |
   'onCountryClick' | 'ariaLabel'
 >>
@@ -23,6 +25,7 @@ export function LearningMapSurface({
   presentation,
   presentationKey,
   context,
+  task,
   mapMeta,
   dockPlacement = 'overlay',
   children,
@@ -32,6 +35,7 @@ export function LearningMapSurface({
   presentation: LearningMapOverride
   presentationKey: string
   context: ReactNode
+  task?: WorldCountriesActivityTask
   mapMeta?: ReactNode
   dockPlacement?: MapSurfaceDockPlacement
   children: ReactNode
@@ -44,7 +48,7 @@ export function LearningMapSurface({
 
   return (
     <LearningMapSurfaceContext.Provider value={contextValue}>
-      <MapSurface context={context} map={map} mapMeta={mapMeta} dock={children} dockPlacement={dockPlacement} />
+      <MapSurface context={task ? <WorldCountriesTaskContext task={task} /> : context} map={map} mapMeta={mapMeta} dock={children} dockPlacement={dockPlacement} />
     </LearningMapSurfaceContext.Provider>
   )
 }

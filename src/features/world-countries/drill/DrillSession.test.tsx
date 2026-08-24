@@ -111,8 +111,8 @@ describe('DrillSession map presentation', () => {
       }))
     })
 
-    expect(mount.querySelector('[data-drill-expanded-progress]')).toBeNull()
-    expect(mount.querySelector('[data-drill-standard-context]')).not.toBeNull()
+    expect(mount.querySelector('[data-world-countries-task-progress]')).toBeNull()
+    expect(mount.querySelector('[data-world-countries-task][data-world-countries-task-presentation="standard"]')).not.toBeNull()
     renderRightRail(railMount)
     expect(railMount.textContent).toContain('Country 1 / 2')
     expect(railMount.textContent).not.toContain('Location → Country')
@@ -123,21 +123,21 @@ describe('DrillSession map presentation', () => {
     })
 
     expect(mount.querySelector('[data-map-surface-dock-row]')?.querySelector('[data-map-surface-companion]')).toBeNull()
-    const taskPrompt = mount.querySelector('[data-drill-task-prompt]')
-    const progressCard = mount.querySelector('[data-drill-expanded-session-summary]')
+    const taskPrompt = mount.querySelector('[data-world-countries-task]')
+    const progressCard = mount.querySelector('[data-world-countries-task-progress]')
 
     expect(progressCard?.textContent).toContain('Country 1 / 2')
-    expect(progressCard?.querySelector('[aria-label="Drill progress"]')).not.toBeNull()
+    expect(progressCard?.querySelector('[role="progressbar"]')).not.toBeNull()
     expect(taskPrompt?.textContent).toContain('Europe · Countries + Capitals')
-    expect(taskPrompt?.querySelector('[data-drill-task-copy]')?.className).toContain('text-left')
-    expect(taskPrompt?.querySelector('[data-drill-task-copy]')?.textContent).toContain('Location → Country')
-    expect(taskPrompt?.querySelector('[data-drill-task-copy]')?.textContent).toContain('Name the highlighted country')
+    expect(taskPrompt?.querySelector('[data-world-countries-task-copy]')?.className).toContain('text-left')
+    expect(taskPrompt?.querySelector('[data-world-countries-task-copy]')?.textContent).toContain('Location → Country')
+    expect(taskPrompt?.querySelector('[data-world-countries-task-copy]')?.textContent).toContain('Name the highlighted country')
     expect(progressCard?.textContent).not.toContain('Europe')
     expect(progressCard?.textContent).not.toContain('Countries + Capitals')
     expect(progressCard?.textContent).not.toContain('Location → Country')
     expect(progressCard?.textContent).not.toContain('Name the highlighted country')
     expect(progressCard?.textContent).not.toContain('Exit Drill')
-    expect(mount.querySelector('[data-drill-standard-context]')).toBeNull()
+    expect(taskPrompt?.getAttribute('data-world-countries-task-presentation')).toBe('expanded')
   })
 
   it.each([
@@ -174,7 +174,7 @@ describe('DrillSession map presentation', () => {
     })
 
     expect(mount.querySelector('[data-map-surface-dock-row] [data-task-dock], [data-map-surface-dock-row] p')).not.toBeNull()
-    expect(mount.querySelector('[data-drill-expanded-session-summary]')).not.toBeNull()
+    expect(mount.querySelector('[data-world-countries-task-progress]')).not.toBeNull()
     if (draft !== undefined) expect(mount.querySelector<HTMLInputElement>('input')?.value).toBe(draft)
 
     await act(async () => {
@@ -182,7 +182,7 @@ describe('DrillSession map presentation', () => {
       await Promise.resolve()
     })
 
-    expect(mount.querySelector('[data-drill-standard-context]')).not.toBeNull()
+    expect(mount.querySelector('[data-world-countries-task][data-world-countries-task-presentation="standard"]')).not.toBeNull()
     if (draft !== undefined) expect(mount.querySelector<HTMLInputElement>('input')?.value).toBe(draft)
 
     if (interaction === 'recall' && answerMode === 'multiple-choice') {
@@ -220,8 +220,8 @@ describe('DrillSession map presentation', () => {
       })
 
       expect(mount.querySelectorAll('[data-answer-kind]')).toHaveLength(0)
-      expect(mount.querySelector('[data-drill-task-prompt]')?.textContent).toContain('Country → Capital')
-      expect(mount.querySelector('[data-drill-task-prompt]')?.textContent).toContain('Norway')
+      expect(mount.querySelector('[data-world-countries-task]')?.textContent).toContain('Country → Capital')
+      expect(mount.querySelector('[data-world-countries-task]')?.textContent).toContain('Norway')
     }
   })
 
@@ -537,7 +537,7 @@ describe('DrillSession map presentation', () => {
     expect(initialMapProps.highlightedCountryId).toBeNull()
     expect(initialMapProps.namedCountryId).toBeNull()
     expect(mount.textContent).toContain('Name the highlighted country')
-    expect(mount.textContent).toContain('Click the country on the map.')
+    expect(mount.textContent).toContain('Click a Country on the map to answer.')
     expect(mount.querySelector('input')).toBeNull()
 
     await act(async () => (initialMapProps.onCountryClick as (countryId: string) => void)('SE'))
@@ -584,7 +584,7 @@ describe('DrillSession map presentation', () => {
     expect(initialMapProps.ariaLabel).toBe('Map for clicking the Country whose Capital is shown')
     expect(mount.textContent).toContain('Oslo')
     expect(mount.textContent).toContain('Oslo')
-    expect(mount.textContent).toContain('Click the country on the map.')
+    expect(mount.textContent).toContain('Click a Country on the map to answer.')
     expect(mount.querySelector('input')).toBeNull()
 
     await act(async () => (initialMapProps.onCountryClick as (countryId: string) => void)('SE'))

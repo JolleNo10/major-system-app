@@ -4,8 +4,9 @@ import { classifyRecallAnswer } from '@/features/world-countries/learning/recall
 import { recordWorldCountriesAttempt } from '@/features/world-countries/learning/recallProgress'
 import type { WorldCountriesRecallSkill } from '@/features/world-countries/learning/recallTargets'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
-import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
-import { getWorldCountriesAnswerKind, WorldCountriesAnswerKindCue } from '@/features/world-countries/ui/WorldCountriesAnswerKindCue'
+import { TaskDock } from '@/features/world-countries/ui/MapSurface'
+import { WorldCountriesMapActivitySurface, type WorldCountriesActivityTask } from '@/features/world-countries/ui/WorldCountriesActivity'
+import { getWorldCountriesAnswerKind } from '@/features/world-countries/ui/WorldCountriesAnswerKindCue'
 import {
   WorldCountriesTypedAnswer,
   type WorldCountriesTypedAnswerEvaluation,
@@ -56,7 +57,17 @@ export function TodayReviewSession({
   const answerKind = getWorldCountriesAnswerKind(skill)
   const isLocationQuestion = skill === 'location-to-country'
   const expectedAnswer = isLocationQuestion ? country.country : country.capital
-  const promptLabel = isLocationQuestion ? 'Which country is this?' : 'What is the capital?'
+  const promptLabel = isLocationQuestion ? 'Which country is this?' : `Capital of ${country.country}`
+  const activityTask: WorldCountriesActivityTask = {
+    direction: isLocationQuestion ? 'Location → Country' : 'Country → Capital',
+    cue: promptLabel,
+    sessionContext: 'Today review',
+    progress: {
+      label: 'Review',
+      current: queue.cursor + 1,
+      total: queue.prompts.length,
+    },
+  }
 
   const finishOrAdvance = async (result: 'correct' | 'incorrect' | 'skip') => {
     if (advancingRef.current || exitingRef.current) return
@@ -162,15 +173,8 @@ export function TodayReviewSession({
             </TaskDock>
           )
           return (
-            <MapSurface
-              context={(
-                <div className="px-1 text-center">
-                  <WorldCountriesAnswerKindCue answerKind={answerKind} className="mb-1" />
-                  <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Today · Review</p>
-                  <h1 className="mt-1 text-2xl font-black text-zinc-100">{promptLabel}</h1>
-                  <p className="mt-1 text-sm text-zinc-500">{isLocationQuestion ? 'Type the Country name.' : `Type the capital of ${country.country}.`}</p>
-                </div>
-              )}
+            <WorldCountriesMapActivitySurface
+              task={activityTask}
               map={map}
               feedbackOverlay={typed.feedbackOverlay}
               dock={dock}

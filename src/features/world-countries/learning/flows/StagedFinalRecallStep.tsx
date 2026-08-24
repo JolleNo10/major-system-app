@@ -1,15 +1,14 @@
 import type { Continent, Country } from '@/features/world-countries/data/countries'
 import type { OrderedRecallState } from '@/features/world-countries/learning/orderedRecallSession'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
-import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
-import { WorldCountriesAnswerKindCue } from '@/features/world-countries/ui/WorldCountriesAnswerKindCue'
+import { TaskDock } from '@/features/world-countries/ui/MapSurface'
+import { WorldCountriesMapActivitySurface, type WorldCountriesActivityTask } from '@/features/world-countries/ui/WorldCountriesActivity'
 import {
   WorldCountriesTypedAnswer,
   type WorldCountriesTypedAnswerKind,
   type WorldCountriesTypedAnswerEvaluation,
 } from '@/features/world-countries/ui/WorldCountriesTypedAnswer'
 import { useLearningMapPresentation } from './LearningMapSurface'
-import { LearningHeader } from './MemoryPreviewStep'
 import type { SchedulerAnswerEvaluation } from './SchedulerPracticeStep'
 
 export function StagedFinalRecallStep({
@@ -56,6 +55,12 @@ export function StagedFinalRecallStep({
     showHoverNames: true,
     ariaLabel: 'Highlighted Country for final recall',
   }, [current.id, showCountryName])
+  const activityTask: WorldCountriesActivityTask = {
+    direction: showCountryName ? 'Location → Country' : answerKind === 'capital' ? 'Country → Capital' : 'Location → Country',
+    cue: showCountryName ? current.country : answerKind === 'capital' ? `Capital of ${current.country}` : 'Name the country',
+    sessionContext: ordered.mode === 'repair' ? 'Repair traversal' : stepLabel,
+    progress: { label: 'Country', current: ordered.currentIndex + 1, total: ordered.order.length },
+  }
 
   return (
     <WorldCountriesTypedAnswer
@@ -80,23 +85,18 @@ export function StagedFinalRecallStep({
       {typed => {
         const dock = (
           <TaskDock variant="form" status={(
-            <div className="space-y-2">
-              <WorldCountriesAnswerKindCue answerKind={answerKind} />
-              <div className="flex items-center justify-between gap-3 text-[11px] font-bold uppercase tracking-[0.08em] text-cyan-400"><span>{ordered.mode === 'repair' ? 'Repair traversal' : 'Final recall'}</span><span className="text-xs font-normal tabular-nums text-zinc-400">{ordered.currentIndex + 1} / {ordered.order.length}</span></div>
-            </div>
+            <span className="sr-only">{answerLabel}</span>
           )}>
             {typed.input}
-            {!surface && <button type="button" onClick={onBack} className="mt-3 w-full rounded-[9px] border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-400 hover:text-zinc-200">Back to Final recall</button>}
+            {!surface && <div className="mt-3 flex gap-2"><button type="button" onClick={onBack} className="w-full rounded-[9px] border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-400 hover:text-zinc-200">Back to Final recall</button><button type="button" onClick={onExit} className="w-full rounded-[9px] border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-400 hover:text-zinc-200">Exit</button></div>}
           </TaskDock>
         )
         if (surface) return dock
 
         return (
           <div className="space-y-4 animate-fade-in">
-            <LearningHeader label={stepLabel} title={`${ordered.currentIndex + 1} / ${ordered.order.length}`} onExit={onExit} />
-            <div className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm"><span className="text-zinc-500">{ordered.mode === 'repair' ? 'Repair traversal' : 'Effective Country order'}</span><span className="font-semibold text-cyan-300">{answerLabel}</span></div>
-            <MapSurface
-              context={null}
+            <WorldCountriesMapActivitySurface
+              task={activityTask}
               map={<CountryLearningMap continent={continent} scopeCountries={entries} taskTargetCountryId={showCountryName ? null : current.id} highlightedCountryId={current.id} namedCountryId={showCountryName ? current.id : null} showHighlightedNames={showCountryName} showHoverNames ariaLabel="Highlighted Country for final recall" />}
               feedbackOverlay={typed.feedbackOverlay}
               dockPlacement="stacked"

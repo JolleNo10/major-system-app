@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, createElement } from 'react'
+import { act, createElement, useMemo, useRef, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import europeSvg from '@/features/world-countries/maps/assets/MapChart_Map_Europe.svg?raw'
@@ -14,6 +14,7 @@ import { createDrillSelection } from '@/features/world-countries/drill/drillSele
 import { createDrillSession } from '@/features/world-countries/drill/drillSessionState'
 import { DrillSession } from '@/features/world-countries/drill/DrillSession'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
+import { InlineOrderEditor, type InlineOrderClickState } from '@/features/world-countries/ui/InlineOrderEditor'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -145,6 +146,73 @@ beforeEach(() => {
 // tests keep the real workflow -> CountryLearningMap -> SvgMapView -> SVG
 // chain intact so both shared-map failures remain observable.
 describe('real bundled-map tiny Country selection', () => {
+  it('routes the full Learning order-authoring membership through one map/rail click sequence', async () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+    const authoringEntries = [andorra, sanMarino, vaticanCity]
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(PageLayoutProvider, null, createElement(MapOrderAuthoringHarness, {
+        authoringEntries,
+        scopeEntries: [andorra],
+      })))
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Click order')?.click()
+      await Promise.resolve()
+    })
+
+    const svg = mount.querySelector<SVGSVGElement>('.world-map-svg svg')
+    const sanMarinoMarker = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-marker="San_Marino"]')
+    if (!svg || !sanMarinoMarker) throw new Error('Missing full-membership San Marino map target')
+    expect(mount.textContent).toContain('0 / 3 selected')
+
+    const outsideMembershipPath = mount.querySelector<SVGPathElement>('path#Malta')
+    if (!outsideMembershipPath) throw new Error('Missing outside-membership Malta map shape')
+    await act(async () => {
+      const bounds = outsideMembershipPath.getBBox()
+      const point = mapPoint(svg, bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)
+      svg.dispatchEvent(new MouseEvent('click', { ...point, bubbles: true }))
+      await Promise.resolve()
+    })
+    expect(mount.textContent).toContain('0 / 3 selected')
+
+    await act(async () => {
+      const point = mapPoint(svg, Number(sanMarinoMarker.getAttribute('cx')), Number(sanMarinoMarker.getAttribute('cy')))
+      svg.dispatchEvent(new MouseEvent('click', { ...point, bubbles: true }))
+      await Promise.resolve()
+    })
+
+    expect(mount.textContent).toContain('1 / 3 selected')
+    expect(mount.querySelector('button[aria-label="Remove San Marino from click order, position 1"]')).not.toBeNull()
+    expect(mount.querySelector('#San_Marino_label')?.textContent).toContain('1. San Marino')
+
+    const andorraMarker = mount.querySelector<SVGCircleElement>('[data-svg-map-tiny-marker="Andorra"]')
+    if (!andorraMarker) throw new Error('Missing staged-subset Andorra map target')
+    await act(async () => {
+      const point = mapPoint(svg, Number(andorraMarker.getAttribute('cx')), Number(andorraMarker.getAttribute('cy')))
+      svg.dispatchEvent(new MouseEvent('click', { ...point, bubbles: true }))
+      await Promise.resolve()
+    })
+    expect(mount.textContent).toContain('2 / 3 selected')
+    expect(mount.querySelector('#Andorra_label')?.textContent).toContain('2. Andorra')
+
+    await act(async () => {
+      const point = mapPoint(svg, Number(sanMarinoMarker.getAttribute('cx')), Number(sanMarinoMarker.getAttribute('cy')))
+      svg.dispatchEvent(new MouseEvent('click', { ...point, bubbles: true }))
+      await Promise.resolve()
+    })
+    expect(mount.textContent).toContain('1 / 3 selected')
+    expect(mount.querySelector('button[aria-label="Add San Marino to click order"]')).not.toBeNull()
+    expect(mount.querySelector('#Andorra_label')?.textContent).toContain('1. Andorra')
+    expect(mount.querySelector('#San_Marino_label')?.textContent).not.toContain('1. San Marino')
+  })
+
   it('uses real source geometry for an isolated shape and updates context on the same SVG', async () => {
     const mount = document.createElement('div')
     document.body.append(mount)
@@ -537,3 +605,43 @@ describe('real bundled-map tiny Country selection', () => {
     expect(mount.querySelectorAll('[data-svg-map-task-interaction-marker]')).toHaveLength(0)
   })
 })
+
+function MapOrderAuthoringHarness({ authoringEntries, scopeEntries }: {
+  authoringEntries: readonly Country[]
+  scopeEntries: readonly Country[]
+}) {
+  const [clickState, setClickState] = useState<InlineOrderClickState>({ active: false, positions: new Map() })
+  const toggleRef = useRef<(countryId: string) => void>(() => undefined)
+  const labels = useMemo(() => new Map([...clickState.positions].flatMap(([countryId, position]) => {
+    const country = authoringEntries.find(entry => entry.id === countryId)
+    return country ? [[countryId, `${position}. ${country.country}`] as const] : []
+  })), [authoringEntries, clickState.positions])
+  const orderEditor = (
+    <InlineOrderEditor<Country>
+      entries={authoringEntries}
+      getId={entry => entry.id}
+      getLabel={entry => entry.country}
+      onDraftChanged={() => undefined}
+      onSave={() => undefined}
+      onCancel={() => undefined}
+      onResetCanonical={() => authoringEntries}
+      clickOrder
+      onClickOrderStateChange={setClickState}
+      onClickOrderToggle={toggle => { toggleRef.current = toggle ?? (() => undefined) }}
+    />
+  )
+  return createElement(LearningMapSurface, {
+    continent: 'Europe',
+    scopeCountries: scopeEntries,
+    presentation: {
+      overviewCountries: authoringEntries,
+      countryLabelsById: clickState.active ? labels : undefined,
+      answerSelectionCountryIds: clickState.active ? authoringEntries.map(entry => entry.id) : undefined,
+      onCountryClick: clickState.active ? (countryId: string) => toggleRef.current(countryId) : undefined,
+      ariaLabel: 'Country order authoring map',
+    },
+    presentationKey: 'country-order-authoring',
+    context: createElement('h1', null, 'Learning order'),
+    children: orderEditor,
+  })
+}
