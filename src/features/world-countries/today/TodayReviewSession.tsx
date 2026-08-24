@@ -5,6 +5,7 @@ import { recordWorldCountriesAttempt } from '@/features/world-countries/learning
 import type { WorldCountriesRecallSkill } from '@/features/world-countries/learning/recallTargets'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
+import { getWorldCountriesAnswerKind, WorldCountriesAnswerKindCue } from '@/features/world-countries/ui/WorldCountriesAnswerKindCue'
 import {
   WorldCountriesTypedAnswer,
   type WorldCountriesTypedAnswerEvaluation,
@@ -52,6 +53,7 @@ export function TodayReviewSession({
   const { candidate } = prompt
   const country = candidate.country
   const skill: WorldCountriesRecallSkill = candidate.target.skill
+  const answerKind = getWorldCountriesAnswerKind(skill)
   const isLocationQuestion = skill === 'location-to-country'
   const expectedAnswer = isLocationQuestion ? country.country : country.capital
   const promptLabel = isLocationQuestion ? 'Which country is this?' : 'What is the capital?'
@@ -109,7 +111,7 @@ export function TodayReviewSession({
           return {
             outcome,
             canonicalAnswer: expectedAnswer,
-            answerKind: isLocationQuestion ? 'country' : 'capital',
+            answerKind,
             message: outcome === 'incorrect'
               ? `The correct answer is ${expectedAnswer}.`
               : outcome === 'fuzzy'
@@ -163,6 +165,7 @@ export function TodayReviewSession({
             <MapSurface
               context={(
                 <div className="px-1 text-center">
+                  <WorldCountriesAnswerKindCue answerKind={answerKind} className="mb-1" />
                   <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Today · Review</p>
                   <h1 className="mt-1 text-2xl font-black text-zinc-100">{promptLabel}</h1>
                   <p className="mt-1 text-sm text-zinc-500">{isLocationQuestion ? 'Type the Country name.' : `Type the capital of ${country.country}.`}</p>

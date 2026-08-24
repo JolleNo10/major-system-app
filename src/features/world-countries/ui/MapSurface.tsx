@@ -3,13 +3,19 @@ import { usePageLayoutPresentation } from '@/app/layout/PageLayoutContext'
 
 export type MapSurfaceDockPlacement = 'overlay' | 'attached' | 'stacked'
 export type TaskDockVariant = 'navigation' | 'checkpoint' | 'form' | 'hint' | 'completion'
+export type MapSurfacePresentation = 'standard' | 'expanded'
 
 interface MapSurfaceFeedbackContextValue {
   setFeedbackOverlay: (feedbackOverlay: ReactNode | null) => void
 }
 
 const MapSurfaceFeedbackContext = createContext<MapSurfaceFeedbackContextValue | null>(null)
+const MapSurfacePresentationContext = createContext<MapSurfacePresentation>('standard')
 const EXPANDED_MEDIA_QUERY = '(min-width: 1280px)'
+
+export function useMapSurfacePresentation(): MapSurfacePresentation {
+  return useContext(MapSurfacePresentationContext)
+}
 
 export function useMapSurfaceFeedbackOverlay(feedbackOverlay: ReactNode | null): void {
   const surface = useContext(MapSurfaceFeedbackContext)
@@ -35,12 +41,14 @@ function isNativeInteractiveTarget(target: EventTarget | null): boolean {
   return Boolean(target.closest('button, a, input, textarea, select, [contenteditable="true"], [role="button"]'))
 }
 
-export function MapSurface({ context, map, mapMeta, feedbackOverlay, dock, dockPlacement = 'overlay', className = '' }: {
+export function MapSurface({ context, expandedContext, map, mapMeta, feedbackOverlay, dock, expandedCompanion, dockPlacement = 'overlay', className = '' }: {
   context: ReactNode
+  expandedContext?: ReactNode
   map: ReactNode
   mapMeta?: ReactNode
   feedbackOverlay?: ReactNode
   dock?: ReactNode
+  expandedCompanion?: ReactNode
   dockPlacement?: MapSurfaceDockPlacement
   className?: string
 }) {
@@ -48,6 +56,10 @@ export function MapSurface({ context, map, mapMeta, feedbackOverlay, dock, dockP
   const [expanded, setExpanded] = useState(false)
   const surfaceContext = useMemo(() => ({ setFeedbackOverlay: setRegisteredFeedbackOverlay }), [])
   const visibleFeedbackOverlay = feedbackOverlay !== undefined ? feedbackOverlay : registeredFeedbackOverlay
+  const hasExpandedCompanion = expandedCompanion !== undefined && expandedCompanion !== null
+  const expandedDockRow = expanded && hasExpandedCompanion
+  const presentation: MapSurfacePresentation = expanded ? 'expanded' : 'standard'
+  const visibleContext = expanded && expandedContext !== undefined ? expandedContext : context
   usePageLayoutPresentation(expanded ? 'expanded-center' : 'standard', [expanded])
 
   useLayoutEffect(() => {
@@ -65,25 +77,31 @@ export function MapSurface({ context, map, mapMeta, feedbackOverlay, dock, dockP
     }
   }, [])
 
-  const dockClass = dockPlacement === 'overlay'
-    ? expanded
-      ? 'xl:pointer-events-none xl:absolute xl:left-1/2 xl:bottom-[14px] xl:z-20 xl:w-full xl:max-w-2xl xl:-translate-x-1/2'
-      : 'xl:pointer-events-none xl:absolute xl:inset-x-[14px] xl:bottom-[14px] xl:z-20'
-    : dockPlacement === 'attached'
-      ? `relative z-10 mx-3 xl:-mt-4 ${expanded ? 'xl:mx-auto xl:max-w-2xl' : ''}`
-      : `relative z-10 mt-2 ${expanded ? 'xl:mx-auto xl:max-w-2xl' : ''}`
+  const dockClass = expandedDockRow
+    ? 'relative z-10 min-w-0 flex-1'
+    : dockPlacement === 'overlay'
+      ? expanded
+        ? 'xl:pointer-events-none xl:absolute xl:left-1/2 xl:bottom-[14px] xl:z-20 xl:w-full xl:max-w-2xl xl:-translate-x-1/2'
+        : 'xl:pointer-events-none xl:absolute xl:inset-x-[14px] xl:bottom-[14px] xl:z-20'
+      : dockPlacement === 'attached'
+        ? `relative z-10 mx-3 xl:-mt-4 ${expanded ? 'xl:mx-auto xl:max-w-2xl' : ''}`
+        : `relative z-10 mt-2 ${expanded ? 'xl:mx-auto xl:max-w-2xl' : ''}`
 
   return (
-    <MapSurfaceFeedbackContext.Provider value={surfaceContext}>
+    <MapSurfacePresentationContext.Provider value={presentation}>
+      <MapSurfaceFeedbackContext.Provider value={surfaceContext}>
       <div
         data-map-surface
-        data-map-surface-presentation={expanded ? 'expanded' : 'standard'}
+        data-map-surface-presentation={presentation}
         className={`space-y-2 animate-fade-in ${className}`}
       >
-        <div data-map-surface-context>{context}</div>
+        <div data-map-surface-context>{visibleContext}</div>
         <div data-map-surface-body className="relative">
           {mapMeta && <div className="pointer-events-none absolute left-[18px] top-4 z-10 text-left text-xs text-zinc-300 drop-shadow-md">{mapMeta}</div>}
-          <div data-map-surface-map>{map}</div>
+          <div data-map-surface-map className="relative">
+            {map}
+            {visibleFeedbackOverlay && <MapFeedbackOverlay>{visibleFeedbackOverlay}</MapFeedbackOverlay>}
+          </div>
           <div className="pointer-events-none absolute right-3 top-3 z-30 hidden xl:block">
             <button
               type="button"
@@ -96,12 +114,15 @@ export function MapSurface({ context, map, mapMeta, feedbackOverlay, dock, dockP
               <span aria-hidden="true">{expanded ? '↙' : '↗'}</span>
             </button>
           </div>
-          {visibleFeedbackOverlay && <MapFeedbackOverlay>{visibleFeedbackOverlay}</MapFeedbackOverlay>}
           {dockPlacement === 'overlay' && <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-32 rounded-b-2xl bg-gradient-to-t from-zinc-950/35 to-transparent" />}
-          {dock && <div data-map-surface-dock className={dockClass}>{dock}</div>}
+          <div data-map-surface-dock-row className={expandedDockRow ? 'mx-auto mb-3 mt-2 flex min-w-0 w-full max-w-4xl items-stretch gap-3 px-3' : 'contents'}>
+            {dock && <div data-map-surface-dock className={dockClass}>{dock}</div>}
+            {expandedDockRow && <div data-map-surface-companion className="relative z-10 flex min-w-0 shrink-0 grow-0 basis-44 items-stretch">{expandedCompanion}</div>}
+          </div>
         </div>
       </div>
-    </MapSurfaceFeedbackContext.Provider>
+      </MapSurfaceFeedbackContext.Provider>
+    </MapSurfacePresentationContext.Provider>
   )
 }
 

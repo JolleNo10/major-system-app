@@ -51,7 +51,7 @@ describe('SchedulerPracticeStep', () => {
         continent: 'Europe', entries: [country], session,
         stepLabel: 'Practice', questionLabel: 'Country name',
         questionTitle: 'Name the country', answerLabel: 'Type the country name',
-        placeholder: 'Type the country…', showCountryName: false, showMap: false,
+        placeholder: 'Type the country…', showCountryName: false, answerKind: 'country', showMap: false,
         evaluateAnswer: () => ({ correct: true, fuzzyMatch: true, canonicalAnswer: country.country }),
         formatFeedback: evaluation => `Correct. The canonical answer is ${evaluation.canonicalAnswer}.`,
           onSubmit, onBack: vi.fn(), onExit: vi.fn(), surface: true,
@@ -93,13 +93,15 @@ describe('SchedulerPracticeStep', () => {
         continent: 'Europe', entries: [country], session,
         stepLabel: 'Combined practice', questionLabel: 'Country name',
         questionTitle: 'Name the country', answerLabel: 'Type the country name',
-        placeholder: 'Type the country…', showCountryName: false, showMap: false,
+        placeholder: 'Type the country…', showCountryName: false, answerKind: 'country', showMap: false,
         promptText: 'Name the country', evaluateAnswer: () => ({ correct: true, fuzzyMatch: false, canonicalAnswer: country.country }),
         formatFeedback: () => 'Correct.', onSubmit: vi.fn(), onBack: vi.fn(), onExit: vi.fn(),
       })))
     })
 
     expect(mount.textContent).toContain('Name the country')
+    expect(mount.textContent).toContain('ANSWER · COUNTRY')
+    expect(mount.querySelector('[data-answer-kind]')?.getAttribute('data-answer-kind')).toBe('country')
     expect(mount.querySelector('[data-testid="country-learning-map"]')).toBeNull()
   })
 
@@ -116,7 +118,7 @@ describe('SchedulerPracticeStep', () => {
           continent: 'Europe', entries: [country], session,
           stepLabel: 'Combined practice', questionLabel: 'Country name',
           questionTitle: 'Name the country', answerLabel: 'Type the country name',
-          placeholder: 'Type the country…', showCountryName: false, showMap: false, surface: true,
+          placeholder: 'Type the country…', showCountryName: false, answerKind: 'country', showMap: false, surface: true,
           promptText: 'Name the country', evaluateAnswer: () => ({ correct: true, fuzzyMatch: false, canonicalAnswer: country.country }),
           formatFeedback: () => 'Correct.', onSubmit: vi.fn(), onBack: vi.fn(), onExit: vi.fn(),
         }),

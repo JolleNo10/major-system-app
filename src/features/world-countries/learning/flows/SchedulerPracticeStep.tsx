@@ -2,8 +2,10 @@ import type { Continent, Country } from '@/features/world-countries/data/countri
 import type { SchedulerLearningSession } from '@/features/world-countries/learning/schedulerLearningSession'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
+import { WorldCountriesAnswerKindCue } from '@/features/world-countries/ui/WorldCountriesAnswerKindCue'
 import {
   WorldCountriesTypedAnswer,
+  type WorldCountriesTypedAnswerKind,
   type WorldCountriesTypedAnswerEvaluation,
 } from '@/features/world-countries/ui/WorldCountriesTypedAnswer'
 import { useLearningMapPresentation } from './LearningMapSurface'
@@ -25,6 +27,7 @@ export function SchedulerPracticeStep({
   answerLabel,
   placeholder,
   showCountryName,
+  answerKind,
   showMap = true,
   promptText = 'Identify the highlighted location',
   evaluateAnswer,
@@ -44,6 +47,7 @@ export function SchedulerPracticeStep({
   answerLabel: string
   placeholder: string
   showCountryName: boolean
+  answerKind: WorldCountriesTypedAnswerKind
   showMap?: boolean
   promptText?: string
   evaluateAnswer: (answer: string, country: Country) => SchedulerAnswerEvaluation
@@ -81,7 +85,7 @@ export function SchedulerPracticeStep({
         return {
           outcome: evaluation.fuzzyMatch ? 'fuzzy' : evaluation.correct ? 'exact' : 'incorrect',
           canonicalAnswer: evaluation.canonicalAnswer,
-          answerKind: showCountryName ? 'capital' : 'country',
+          answerKind,
           message: formatFeedback(evaluation, current),
         } satisfies WorldCountriesTypedAnswerEvaluation
       }}
@@ -90,7 +94,12 @@ export function SchedulerPracticeStep({
     >
       {typed => {
         const dock = (
-          <TaskDock variant="form" status={<div className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-cyan-400">{questionLabel} · {showCountryName ? current.country : promptText}</div>}>
+          <TaskDock variant="form" status={(
+            <div className="space-y-2">
+              <WorldCountriesAnswerKindCue answerKind={answerKind} />
+              <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-cyan-400">{questionLabel} · {showCountryName ? current.country : promptText}</div>
+            </div>
+          )}>
             {typed.input}
             {!surface && <button type="button" onClick={onBack} className="mt-3 w-full rounded-[9px] border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-400 hover:text-zinc-200">Back</button>}
           </TaskDock>

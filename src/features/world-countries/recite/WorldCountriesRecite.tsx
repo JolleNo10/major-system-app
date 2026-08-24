@@ -18,6 +18,7 @@ import { getContinentHoverGroupId, getSubregionHoverGroupId } from '@/features/w
 import { GeographyBreadcrumbs } from '@/features/world-countries/ui/GeographyBreadcrumbs'
 import { GeographyHierarchyRow } from '@/features/world-countries/ui/GeographyHierarchyRow'
 import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
+import { WorldCountriesAnswerKindCue } from '@/features/world-countries/ui/WorldCountriesAnswerKindCue'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
 import {
   WorldCountriesTypedAnswer,
@@ -390,6 +391,7 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
         context={(
           <div className="px-1 text-center">
             <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World Countries · Recite</p>
+            <WorldCountriesAnswerKindCue answerKind={currentPrompt.kind} className="mb-1" />
             {run.mode === 'countries-from-capitals' && currentPrompt.kind === 'country' ? (
               <>
                 <h1 id="world-countries-recite-session-heading" className="mt-1 text-3xl font-black text-zinc-100">{currentCountry.capital}</h1>
@@ -491,7 +493,7 @@ function ReciteSetupControls({ mode, assistance, onModeChange, onAssistanceChang
 
 function ReciteStatusLegend({ mode, progress }: { mode: ReciteMode; progress: WorldCountriesReciteProgress }) {
   const statuses: readonly ReciteStatus[] = ['unrecited', 'revealed', 'recovered', 'recalled']
-  return <details className="border-t border-zinc-800 pt-4"><summary className="cursor-pointer text-xs font-semibold uppercase tracking-wider text-zinc-500">{modeLabel(mode)} status legend</summary><ul className="mt-3 space-y-2 text-xs text-zinc-400">{statuses.map(status => <li key={status} className="flex items-start gap-2"><span aria-hidden="true" className="mt-0.5 h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: status === 'unrecited' ? RECITE_STATUS_COLORS.unrecited : RECITE_STATUS_COLORS[status] }} /><span><span className="font-semibold text-zinc-200">{statusLabel(status)}</span> — {getReciteStatusDescription(status)}{status !== 'unrecited' && <span className="sr-only"> Stored outcomes for this mode are kept independently.</span>}</span></li>)}</ul><p className="mt-3 text-xs text-zinc-500">Mode changes show that mode's latest completed outcomes. Drill and Learning status are not used here.</p><span className="sr-only">{progress.version === 1 ? 'Recite progress storage active.' : ''}</span></details>
+  return <details className="border-t border-zinc-800 pt-4"><summary className="cursor-pointer text-xs font-semibold uppercase tracking-wider text-zinc-500">{modeLabel(mode)} status legend</summary><ul className="mt-3 space-y-2 text-xs text-zinc-400">{statuses.map(status => <li key={status} className="flex items-start gap-2"><span aria-hidden="true" className="mt-0.5 h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: status === 'unrecited' ? RECITE_STATUS_COLORS.unrecited : RECITE_STATUS_COLORS[status] }} /><span><span className="font-semibold text-zinc-200">{statusLabel(status)}</span> — {getReciteStatusDescription(status)}{status !== 'unrecited' && <span className="sr-only"> Stored outcomes remain mode-specific.</span>}</span></li>)}</ul><p className="mt-3 text-xs text-zinc-500">Countries setup may use a stronger Countries + Capitals result. Countries + Capitals and Countries from Capitals remain their own status views; stored progress remains independent. Drill and Learning status are not used here.</p><span className="sr-only">{progress.version === 1 ? 'Recite progress storage active.' : ''}</span></details>
 }
 
 function ReciteSessionGeographyRail({ run, onExit }: { run: ActiveReciteRun; onExit: () => void }) {

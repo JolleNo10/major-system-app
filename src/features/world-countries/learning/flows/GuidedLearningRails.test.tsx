@@ -15,6 +15,9 @@ vi.mock('@/features/world-countries/mnemonics/GeographyMnemonicView', () => ({
 vi.mock('@/features/world-countries/mnemonics/GeographyMnemonicEditor', () => ({
   GeographyMnemonicEditor: ({ headerAction }: { headerAction?: ReactNode }) => headerAction ?? null,
 }))
+vi.mock('@/features/world-countries/ui/InlineOrderEditor', () => ({
+  InlineOrderEditor: ({ clickOrder }: { clickOrder?: boolean }) => createElement('span', { 'data-click-order': clickOrder ? 'enabled' : 'disabled' }, 'Inline order editor'),
+}))
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 const entries: Country[] = [
@@ -67,6 +70,21 @@ describe('GuidedLearningRails contextual authoring visibility', () => {
 
     act(() => root?.render(createElement('div', null, config.right)))
     expect(mount.textContent).toContain('Edit mnemonics')
+  })
+
+  it('opts only the Learning Country editor into click-sequence authoring', () => {
+    const { config } = renderRails('walkthrough')
+    const previewMount = document.createElement('div')
+    document.body.append(previewMount)
+    const previewRoot = createRoot(previewMount)
+    act(() => previewRoot.render(createElement('div', null, config.left)))
+    act(() => [...previewMount.querySelectorAll('button')].find(button => button.textContent === 'Edit order')?.click())
+
+    const editingConfig = useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1]?.[0] as { left?: ReactNode }
+    act(() => previewRoot.render(createElement('div', null, editingConfig.left)))
+
+    expect(previewMount.querySelector('[data-click-order="enabled"]')).not.toBeNull()
+    act(() => previewRoot.unmount())
   })
 
   it('shows separate mnemonic actions for the Subregion and Country–Capital panels', () => {

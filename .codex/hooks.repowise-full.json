@@ -13,18 +13,6 @@
         ]
       }
     ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "repowise-augment --client codex",
-            "timeout": 30,
-            "statusMessage": "Loading repowise context..."
-          }
-        ]
-      }
-    ],
     "PostToolUse": [
       {
         "matcher": "Bash|shell_command",

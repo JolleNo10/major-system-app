@@ -63,9 +63,12 @@ that lets contextual authoring affect subsequent Learning presentation.
   Geography/proficiency setup scope. It does not expose a Drill Subregion
   detail or Country-order editor.
 - `ui/` owns feature-local panels, breadcrumbs, hierarchy rows, inline reorder
-  presentation, map-surface/dock presentation, task-dock status/action styling,
-  the shared typed-answer lifecycle for primary World Countries recall, and
-  draft movement without persistence policy. The typed-answer seam owns native
+  and opt-in Country click-sequence presentation, map-surface/dock presentation,
+  task-dock status/action styling,
+  the shared typed-answer lifecycle for primary World Countries recall, reusable
+  answer-kind semantics for workflows that need them, and draft movement
+  without persistence policy. Workflows provide the active answer kind from
+  their task or skill. The typed-answer seam owns native
   submit handling, blank prevention, map-relative answer-feedback overlay,
   feedback state, focus/reset, and the shared 500 ms / 1800 ms lifecycle;
   workflow owners provide classification, disclosure copy, evidence, and
@@ -178,9 +181,12 @@ Learning milestones, Learning Readiness, or Maintenance evidence. Its setup
 retains only transient per-Continent Subregion selections, mode, and map
 assistance; incomplete sessions are discarded without persistence.
 
-Recite setup colors Countries by the latest completed outcome for the selected
-Recite mode. Active sessions suppress historical status and use only current-run
-outcomes. `GeographyOverviewMap` and the underlying SVG controller accept
+Recite progress remains stored independently by mode. Countries setup derives
+its displayed status from the stronger of the latest Countries and Countries +
+Capitals outcomes, while Countries + Capitals and Countries from Capitals remain
+mode-isolated views. Active sessions suppress historical setup status and use
+only current-run outcomes. `GeographyOverviewMap` and the underlying SVG
+controller accept
 caller-selected hidden Country IDs; hidden geometry, labels, hover, clicks, and
 accessible descriptions are suppressed generically, without map-layer Recite
 semantics. Active Recite maps are non-interactive geographic scaffolds. Recite,
@@ -201,6 +207,13 @@ advances automatically after the correction dwell.
   panel, or separate screen.
 - World and Continent Drill rails edit only their represented hierarchy.
   Learning rails edit Country order only.
+- The Learning Subregion Country editor keeps drag/drop available and may opt
+  into an inline `Click order` mode. Click mode starts an empty local sequence
+  over the current full Country draft, gives selected Countries contiguous
+  1-based positions, and keeps Save disabled until the complete membership is
+  selected exactly once. A complete sequence becomes the current full draft
+  and saves through the same `geography/orderAuthoring.ts` seam; an incomplete
+  sequence is discarded when returning to drag/drop.
 - Draft changes are local to the mounted context. Save writes through
   `geography/orderAuthoring.ts`; Cancel or unmount discards the draft. Reset
   canonical and map auto-order are draft-only actions requiring explicit Save.
@@ -220,6 +233,10 @@ advances automatically after the correction dwell.
 ## Decision rules and dependencies
 
 - Canonical identity belongs in `data/`; user order belongs in `geography/`.
+  Country IDs are intrinsic canonical record data and must never be inferred
+  from array position. `COUNTRY_RECORDS` owns both canonical Country identity
+  and canonical Country order; user-order metadata may reorder stable IDs
+  without changing identity.
 - `GeographyOverviewMap` and `CountryLearningMap` report clicks and hover
   neutrally; callers decide selection, navigation, and learning behavior.
 - `learning/flows/` may use geography and maps but never Drill internals.
@@ -232,9 +249,18 @@ advances automatically after the correction dwell.
   explicit overlay, attached, and stacked dock placement, and the one common
   World Countries expand/collapse affordance. Expansion publishes the generic
   transient `expanded-center` PageLayout presentation, keeps the same map and
-  dock mounted, fits the map and its required task controls within the
-  available desktop viewport, and resets when the owning surface unmounts or
-  the viewport leaves `xl`. `TaskDock`
+  dock mounted, reserves the complete bottom task row before fitting the active
+  SVG/viewBox as contain sizing within the actual remaining desktop map slot.
+  The map controller retains semantic zoom intent separately from the concrete
+  viewBox, derives the expanded viewBox from that intent plus the measured slot
+  aspect ratio, and recomputes it through the existing resize lifecycle without
+  accumulating camera drift. Standard presentation keeps the source or normal
+  semantic zoom framing. Expansion resets when the owning surface unmounts or the
+  viewport leaves `xl`.
+  `MapSurface` may also compose an expanded-only generic companion beside the
+  primary dock for callers that need it. Drill promotes its Country-position
+  and step-progress semantics into a compact expanded header summary instead
+  of supplying a bottom progress companion. `TaskDock`
   provides compact navigation, checkpoint, form,
   hint, and completion variants; checkpoint and completion docks compose their
   status copy and action group as one unit at desktop widths. Typed Practice,
@@ -259,6 +285,19 @@ advances automatically after the correction dwell.
   choice after an incorrect answer; selecting it holds that feedback until
   Continue or mini-practice completion. Today delayed-retry Skip and Recite
   Reveal / Skip remain answerable-state actions owned by those workflows.
+- Active Drill and Practice Country/Capital questions use one feature-local
+  task-presentation model: a direction, a main cue, and the answer interaction.
+  They do not repeat an explicit `ANSWER · COUNTRY` / `ANSWER · CAPITAL` badge
+  in the task context, dock, or Session rail. `CountryLearningMap` translates
+  the model's semantic task tone to a cyan Country-answer highlight or violet
+  Capital-answer highlight; the tone supplements textual and accessible answer
+  cues and remains separate from correctness feedback and map
+  proficiency/status palettes. Standard presentation keeps selected geography
+  in the left rail, the direction/cue, map, and answer interaction in the
+  center, and session mode/progress/actions in the right rail. Expanded
+  presentation promotes only the essential hidden-rail session summary into
+  the compact header. Other workflows may retain the reusable answer-kind cue
+  where their own presentation contract still calls for it.
 - `SvgMapController` owns one explicit task-assistance layer for map-answer
   candidates and an intentional task target. Generic `selectableIds`,
   hoverable IDs, highlighted/progress state, semantic colors, click-handler

@@ -25,7 +25,7 @@ const expectedCountries = {
   caucasus: ['GE', 'AM', 'AZ'],
   'central-asia': ['KZ', 'TM', 'UZ', 'KG', 'TJ'],
   'east-asia': ['MN', 'CN', 'KP', 'KR', 'JP', 'TW'],
-  'south-asia': ['AF', 'PK', 'MV', 'IN', 'NP', 'BT', 'BD', 'LK'],
+  'south-asia': ['AF', 'PK', 'IN', 'NP', 'BT', 'BD', 'LK', 'MV'],
   'southeast-asia': ['MM', 'LA', 'VN', 'KH', 'TH', 'MY', 'SG', 'BN', 'PH', 'ID', 'TL'],
   'australia-new-zealand': ['AU', 'NZ'],
   micronesia: ['PW', 'FM', 'NR', 'MH', 'KI'],

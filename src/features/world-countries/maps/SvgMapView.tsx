@@ -8,6 +8,7 @@ import {
   type SvgMapTaskAssistance,
   type SvgMapSettings,
 } from './SvgMapController'
+import { useMapSurfacePresentation } from '@/features/world-countries/ui/MapSurface'
 
 export type { SvgMapCountry } from './SvgMapController'
 
@@ -77,6 +78,7 @@ export function SvgMapView({
   const [countries, setCountries] = useState<readonly SvgMapCountry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const presentation = useMapSurfacePresentation()
 
   clickRef.current = onCountryClick
   hoverRef.current = onCountryHover
@@ -87,11 +89,12 @@ export function SvgMapView({
     const mount = mountRef.current
     if (!mount) return
     let cancelled = false
+    const viewportElement = mount.closest<HTMLElement>('[data-map-surface-map]') ?? undefined
     const controller = new SvgMapController(mount, {
       countryFill: '#52525b',
       showHighlightedNames: false,
       ...settings,
-    })
+    }, viewportElement)
     controllerRef.current = controller
     setCountries([])
     setLoading(true)
@@ -129,6 +132,12 @@ export function SvgMapView({
   // is the only operation that needs to reload and rediscover the SVG.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [svgUrl])
+
+  useEffect(() => {
+    const controller = controllerRef.current
+    if (!controller || countries.length === 0) return
+    controller.setPresentation(presentation)
+  }, [countries, presentation])
 
   useEffect(() => {
     const controller = controllerRef.current

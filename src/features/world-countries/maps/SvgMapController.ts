@@ -1,8 +1,10 @@
 import { getSyntheticDotSourceFingerprint } from './syntheticDots'
+import { fitViewBoxToAspect, type SvgViewBoxRect } from './viewBoxFit'
 
 export type SvgMapSource = { url: string } | { markup: string }
 export type SvgMapHighlightScope = 'listed' | 'all-except'
 export type SvgMapHoverScope = 'single' | 'group'
+export type SvgMapPresentation = 'standard' | 'expanded'
 
 export interface SvgMapCountry {
   id: string
@@ -405,6 +407,7 @@ function copyOutline(outline: SvgMapGroupOutline): SvgMapGroupOutline {
 
 export class SvgMapController {
   private readonly mount: HTMLElement
+  private readonly viewportElement: HTMLElement
   private settings: SvgMapSettings
   private countries = new Map<string, InternalCountry>()
   private highlighted = new Set<string>()
@@ -448,13 +451,16 @@ export class SvgMapController {
   private countryHoverHandler: ((countryId: string | null) => void) | null = null
   private svg: SVGSVGElement | null = null
   private originalViewBox: string | null = null
+  private presentation: SvgMapPresentation = 'standard'
+  private zoomIntent: { countryIds: readonly string[]; padding: number } | null = null
   private loadVersion = 0
   private abortController: AbortController | null = null
   private destroyed = false
   private discoveryCache: { markup: string; countries: readonly SvgMapCountry[] } | null = null
 
-  constructor(mount: HTMLElement, settings: Partial<SvgMapSettings> = {}) {
+  constructor(mount: HTMLElement, settings: Partial<SvgMapSettings> = {}, viewportElement: HTMLElement = mount) {
     this.mount = mount
+    this.viewportElement = viewportElement
     this.settings = this.mergeSettings(DEFAULT_SVG_MAP_SETTINGS, settings)
   }
 
@@ -525,6 +531,13 @@ export class SvgMapController {
     return [...this.named]
   }
 
+  /** Keep a retained camera intent fitted to the current map presentation. */
+  setPresentation(presentation: SvgMapPresentation): void {
+    this.assertUsable()
+    this.presentation = presentation
+    this.recomputeViewBox()
+  }
+
   setZoomArea(countryIds: Iterable<string>, padding = 40): SvgMapMutationResult {
     this.assertUsable()
     const { knownIds, unknownIds } = this.resolveKnown(countryIds)
@@ -532,42 +545,18 @@ export class SvgMapController {
       return { activeIds: [], unknownIds }
     }
 
-    const originalBounds = this.parseViewBox(this.originalViewBox)
-    if (!originalBounds) return { activeIds: knownIds, unknownIds }
-
-    const boxes = knownIds.flatMap(id => {
-      const country = this.countries.get(id)
-      if (!country) return []
-      try {
-        const box = country.path.getBBox()
-        return Number.isFinite(box.x) && Number.isFinite(box.y)
-          && Number.isFinite(box.width) && Number.isFinite(box.height)
-          && box.width > 0 && box.height > 0
-          ? [box]
-          : []
-      } catch {
-        return []
-      }
-    })
-    if (boxes.length === 0) return { activeIds: knownIds, unknownIds }
-
     const safePadding = Number.isFinite(padding) ? Math.max(0, padding) : 0
-    // Keep the requested breathing room even when the target is near an edge
-    // of the source map. The SVG background remains visible in this overscan
-    // area, while resetZoom() still restores the source viewBox exactly.
-    const minX = Math.min(...boxes.map(box => box.x)) - safePadding
-    const minY = Math.min(...boxes.map(box => box.y)) - safePadding
-    const maxX = Math.max(...boxes.map(box => box.x + box.width)) + safePadding
-    const maxY = Math.max(...boxes.map(box => box.y + box.height)) + safePadding
-    if (maxX <= minX || maxY <= minY) return { activeIds: knownIds, unknownIds }
-
-    this.setViewBox(`${minX} ${minY} ${maxX - minX} ${maxY - minY}`)
+    const target = this.getPaddedCountryBounds(knownIds, safePadding)
+    if (!target) return { activeIds: knownIds, unknownIds }
+    this.zoomIntent = { countryIds: knownIds, padding: safePadding }
+    this.recomputeViewBox(target)
     return { activeIds: knownIds, unknownIds }
   }
 
   resetZoom(): void {
     this.assertUsable()
-    if (this.svg && this.originalViewBox) this.setViewBox(this.originalViewBox)
+    this.zoomIntent = null
+    this.recomputeViewBox()
   }
 
   setHighlighted(
@@ -2069,6 +2058,60 @@ export class SvgMapController {
     return { x, y, width, height }
   }
 
+  private getPaddedCountryBounds(countryIds: readonly string[], padding: number): SvgViewBoxRect | null {
+    const boxes = countryIds.flatMap(id => {
+      const country = this.countries.get(id)
+      if (!country) return []
+      try {
+        const box = country.path.getBBox()
+        return Number.isFinite(box.x) && Number.isFinite(box.y)
+          && Number.isFinite(box.width) && Number.isFinite(box.height)
+          && box.width > 0 && box.height > 0
+          ? [box]
+          : []
+      } catch {
+        return []
+      }
+    })
+    if (boxes.length === 0) return null
+
+    // Keep the requested breathing room even when the target is near an edge
+    // of the source map. The SVG background remains visible in this overscan
+    // area, while resetZoom() still restores the source viewBox exactly.
+    const minX = Math.min(...boxes.map(box => box.x)) - padding
+    const minY = Math.min(...boxes.map(box => box.y)) - padding
+    const maxX = Math.max(...boxes.map(box => box.x + box.width)) + padding
+    const maxY = Math.max(...boxes.map(box => box.y + box.height)) + padding
+    if (maxX <= minX || maxY <= minY) return null
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
+  }
+
+  private getMapSlotAspect(): number | null {
+    const viewportRect = this.viewportElement.getBoundingClientRect()
+    if (viewportRect.width > 0 && viewportRect.height > 0) return viewportRect.width / viewportRect.height
+    const mountRect = this.mount.getBoundingClientRect()
+    if (mountRect.width > 0 && mountRect.height > 0) return mountRect.width / mountRect.height
+    const svgRect = this.svg?.getBoundingClientRect()
+    if (svgRect && svgRect.width > 0 && svgRect.height > 0) return svgRect.width / svgRect.height
+    return null
+  }
+
+  private recomputeViewBox(explicitTarget?: SvgViewBoxRect): void {
+    if (!this.svg) return
+    const target = explicitTarget ?? (this.zoomIntent
+      ? this.getPaddedCountryBounds(this.zoomIntent.countryIds, this.zoomIntent.padding)
+      : this.originalViewBox ? this.parseViewBox(this.originalViewBox) : null)
+    if (!target) return
+    const fitted = this.presentation === 'expanded' ? fitViewBoxToAspect(target, this.getMapSlotAspect()) : target
+    const value = `${fitted.x} ${fitted.y} ${fitted.width} ${fitted.height}`
+    if (this.svg.getAttribute('viewBox') === value) {
+      this.syncAspectRatio(value)
+      this.render()
+      return
+    }
+    this.setViewBox(value)
+  }
+
   private setViewBox(value: string): void {
     if (!this.svg) return
     this.svg.setAttribute('viewBox', value)
@@ -2084,9 +2127,11 @@ export class SvgMapController {
     const observedSvg = this.svg
     this.resizeObserver = new ResizeObserver(() => {
       if (this.destroyed || this.svg !== observedSvg) return
-      this.render()
+      if (this.presentation === 'expanded') this.recomputeViewBox()
+      else this.render()
     })
     this.resizeObserver.observe(this.mount)
+    if (this.viewportElement !== this.mount) this.resizeObserver.observe(this.viewportElement)
   }
 
   /** Keep auto-height SVG surfaces in step with a focused viewBox. */
@@ -2130,6 +2175,7 @@ export class SvgMapController {
     this.hoveredIds.clear()
     this.svg = null
     this.originalViewBox = null
+    this.zoomIntent = null
     this.mount.replaceChildren()
   }
 }

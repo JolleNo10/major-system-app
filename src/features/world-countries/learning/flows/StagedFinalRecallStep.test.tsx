@@ -49,7 +49,7 @@ describe('StagedFinalRecallStep', () => {
         children: createElement(StagedFinalRecallStep, {
         continent: 'Europe', entries: [country],
         ordered: createOrderedRecallSession({ order: [country.id], rewindOnError: 1 }),
-        stepLabel: 'Final recall', answerLabel: 'Country → Capital',
+        stepLabel: 'Final recall', answerLabel: 'Country → Capital', answerKind: 'capital',
         placeholder: 'Type the capital…', showCountryName: true,
         evaluateAnswer: () => ({ correct: true, fuzzyMatch: true, canonicalAnswer: country.capital }),
         formatFeedback: evaluation => `Correct. The canonical answer is ${evaluation.canonicalAnswer}.`,
@@ -63,6 +63,8 @@ describe('StagedFinalRecallStep', () => {
     act(() => mount.querySelector('form')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
 
     expect(input.disabled).toBe(true)
+    expect(mount.textContent).toContain('ANSWER · CAPITAL')
+    expect(mount.querySelector('[data-answer-kind]')?.getAttribute('data-answer-kind')).toBe('capital')
     expect(mount.textContent).toContain('Spelling: Oslo')
 
     act(() => vi.advanceTimersByTime(1800))

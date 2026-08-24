@@ -13,8 +13,11 @@ import { WorldCountriesTypedAnswer } from '@/features/world-countries/ui/WorldCo
 import type { WorldCountriesDrillSelection } from './drillSelection'
 import { DrillSessionRails } from './DrillSessionRails'
 import { PracticeSessionRails } from './PracticeSessionRails'
-import { getDrillSkillLabel } from './drillModes'
+import { getDrillModeDefinition } from './drillModes'
 import type { WorldCountriesProficiencySelection } from './drillProficiencyScope'
+import { deriveDrillSessionProgress } from './drillSessionProgress'
+import { DrillSessionProgressBar } from './DrillSessionProgressPanel'
+import { deriveDrillTaskPresentation, type DrillTaskPresentation } from './drillTaskPresentation'
 import {
   getCurrentDrillStep,
   type DrillAnswerRecord,
@@ -41,6 +44,41 @@ function answerValues(skill: WorldCountriesRecallSkill, entries: readonly Countr
 function buildChoiceOptions(expected: string, values: readonly string[]): string[] {
   const alternatives = [...new Set(values.filter(value => value !== expected))]
   return shuffle([expected, ...shuffle(alternatives).slice(0, 3)])
+}
+
+function DrillTaskPrompt({ task }: { task: DrillTaskPresentation }) {
+  return (
+    <section data-drill-task-prompt className="rounded-xl border border-zinc-800 bg-zinc-950/55 px-4 py-3 text-center">
+      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-cyan-400">{task.direction}</p>
+      <h1 className="mt-1 text-2xl font-black tracking-tight text-zinc-100">{task.cue}</h1>
+    </section>
+  )
+}
+
+function DrillExpandedSessionSummary({
+  activity,
+  geography,
+  mode,
+  progress,
+  onExit,
+}: {
+  activity: 'drill' | 'practice'
+  geography: string
+  mode?: string
+  progress: ReturnType<typeof deriveDrillSessionProgress>
+  onExit: () => void
+}) {
+  return (
+    <section data-drill-expanded-session-summary className="rounded-xl border border-zinc-800 bg-zinc-950/75 px-3 py-2.5">
+      <p className="text-[11px] text-zinc-500"><strong className="font-semibold text-zinc-200">{geography}</strong> · {activity === 'practice' ? 'Practice' : mode}</p>
+      <div className="mt-2 flex items-center justify-between gap-3 text-xs tabular-nums text-zinc-400">
+        <span>Country {progress.countryPosition} / {progress.totalCountries}</span>
+        <span>{progress.progressPercent}%</span>
+      </div>
+      <DrillSessionProgressBar progressPercent={progress.progressPercent} label={`${activity === 'practice' ? 'Practice' : 'Drill'} progress`} />
+      {activity === 'practice' && <button type="button" onClick={onExit} className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-xs font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">Exit Practice</button>}
+    </section>
+  )
 }
 
 export function DrillSession({
@@ -113,9 +151,10 @@ export function DrillSession({
   if (!step || !country) return null
 
   const expectedAnswer = step.skill === 'country-to-capital' ? country.capital : country.country
+  const task = deriveDrillTaskPresentation(step.skill, country)
+  const answerKind = task.answerKind
   const isLocationQuestion = step.skill === 'location-to-country'
   const isShapeQuestion = step.skill === 'shape-to-country'
-  const isCountryNameQuestion = isLocationQuestion || isShapeQuestion
   const isCapitalQuestion = step.skill === 'capital-to-country'
   const isLocationPractice = interaction === 'location-click' && isLocationQuestion
   const isCapitalLocationPractice = interaction === 'location-click' && isCapitalQuestion
@@ -143,7 +182,7 @@ export function DrillSession({
     })
     const correct = match !== 'none'
     const elapsed = Math.max(0, now() - startedAtRef.current)
-    setFeedback({ answer, correct, match, expectedAnswer, answerKind: step.skill === 'country-to-capital' ? 'capital' : 'country' })
+    setFeedback({ answer, correct, match, expectedAnswer, answerKind })
     onAnswer({
       countryId: step.countryId,
       skill: step.skill,
@@ -162,7 +201,7 @@ export function DrillSession({
     if (!selectedCountry) return
     const correct = selectedCountry.id === country.id
     const elapsed = Math.max(0, now() - startedAtRef.current)
-    setFeedback({ answer: selectedCountry.country, correct, match: 'exact', expectedAnswer: country.country, answerKind: 'country' })
+    setFeedback({ answer: selectedCountry.country, correct, match: 'exact', expectedAnswer: country.country, answerKind })
     onAnswer({
       countryId: country.id,
       skill: isCapitalLocationPractice ? 'capital-to-country' : 'location-to-country',
@@ -175,11 +214,6 @@ export function DrillSession({
     })
   }
 
-  const prompt = isLocationQuestion || isShapeQuestion
-    ? 'Which country is this?'
-    : isCapitalQuestion
-      ? 'Which country has this capital?'
-      : 'What is the capital?'
   const feedbackText = feedback
     ? feedback.correct
       ? feedback.match === 'fuzzy'
@@ -204,33 +238,22 @@ export function DrillSession({
       ? 'Correct location.'
       : `That was ${displayedFeedback.answer} — ${country.country} is highlighted.`
     : null
-
   const context = (
-    <div className="px-1 text-left">
-      <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">{activity === 'practice' ? 'Practice · ' : ''}{getDrillSkillLabel(step.skill)}</p>
-      {isLocationPractice ? (
-        <h1 className="mt-1 text-2xl font-black text-zinc-100">Find {country.country}</h1>
-      ) : isCapitalLocationPractice ? (
-        <>
-          <h1 className="mt-1 text-3xl font-black text-zinc-100">{country.capital}</h1>
-          <p className="mt-1 text-sm text-zinc-500">{prompt}</p>
-        </>
-      ) : isLocationQuestion ? (
-        <>
-          <h1 className="mt-1 text-2xl font-black text-zinc-100">{prompt}</h1>
-          <p className="mt-1 text-sm text-zinc-500">The highlighted location remains the same Country used for any following Capital question.</p>
-        </>
-      ) : isShapeQuestion ? (
-        <>
-          <h1 className="mt-1 text-2xl font-black text-zinc-100">{prompt}</h1>
-          <p className="mt-1 text-sm text-zinc-500">Identify the Country from its isolated map shape.</p>
-        </>
-      ) : (
-        <>
-          <h1 className="mt-1 text-3xl font-black text-zinc-100">{isCapitalQuestion ? country.capital : country.country}</h1>
-          <p className="mt-1 text-sm text-zinc-500">{prompt}</p>
-        </>
-      )}
+    <div data-drill-standard-context className="px-1 text-center">
+      <DrillTaskPrompt task={task} />
+    </div>
+  )
+
+  const expandedContext = (
+    <div data-drill-expanded-context className="grid grid-cols-[minmax(0,1fr)_16rem] gap-3 px-1">
+      <DrillTaskPrompt task={task} />
+      <DrillExpandedSessionSummary
+        activity={activity}
+        geography={selection.continent}
+        mode={activity === 'practice' ? undefined : getDrillModeDefinition(state.mode).label}
+        progress={deriveDrillSessionProgress(state)}
+        onExit={onExit}
+      />
     </div>
   )
 
@@ -259,8 +282,8 @@ export function DrillSession({
     return (
       <WorldCountriesTypedAnswer
         promptKey={`${step.countryId}-${step.skill}`}
-        answerLabel={isCapitalQuestion || isCountryNameQuestion ? 'Type the country name' : 'Type the capital'}
-        placeholder={isCapitalQuestion || isCountryNameQuestion ? 'Type the country…' : 'Type the capital…'}
+        answerLabel={task.typedAnswerLabel}
+        placeholder={task.typedPlaceholder}
         correctAnswer={expectedAnswer}
         allowIncorrectSpellingPractice={activity === 'practice'}
         evaluate={answer => {
@@ -269,7 +292,6 @@ export function DrillSession({
             countryCandidates: scopeCountries,
             capitalCandidates: scopeCountries.map(entry => entry.capital),
           })
-          const answerKind = step.skill === 'country-to-capital' ? 'capital' : 'country'
           return {
             outcome: match === 'exact' ? 'exact' : match === 'fuzzy' ? 'fuzzy' : 'incorrect',
             canonicalAnswer: expectedAnswer,
@@ -300,10 +322,12 @@ export function DrillSession({
             {rails}
             <MapSurface
               context={context}
+              expandedContext={expandedContext}
               map={(
                 <CountryLearningMap
                   continent={selection.continent}
                   scopeCountries={mapCountries}
+                  taskHighlightTone={task.highlightTone}
                   taskTargetCountryId={isLocationQuestion ? country.id : null}
                   highlightedCountryId={isShapeQuestion
                     ? typed.outcome ? country.id : null
@@ -328,7 +352,7 @@ export function DrillSession({
               feedbackOverlay={typed.feedbackOverlay}
               dockPlacement="stacked"
               dock={(
-                <TaskDock variant="form" status={<div className="text-[11px] font-bold uppercase tracking-[0.08em] text-cyan-400">{activity === 'practice' ? 'Practice' : 'Drill'} · {getDrillSkillLabel(step.skill)}</div>}>
+                <TaskDock variant="form">
                   <section className="space-y-3">
                     {typed.input}
                   </section>
@@ -365,11 +389,13 @@ export function DrillSession({
       )}
       <MapSurface
         context={context}
+        expandedContext={expandedContext}
         map={(
           <div className="relative">
           <CountryLearningMap
             continent={selection.continent}
             scopeCountries={mapCountries}
+            taskHighlightTone={task.highlightTone}
             answerSelectionCountryIds={isMapClickPractice ? scopeCountries.map(entry => entry.id) : undefined}
             taskTargetCountryId={(!isMapClickPractice && isLocationQuestion) || (isMapClickPractice && feedback) ? country.id : null}
             highlightedCountryId={isShapeQuestion ? feedback ? country.id : null : highlightedCountryId}
@@ -397,7 +423,7 @@ export function DrillSession({
         dock={isMapClickPractice ? (
           <p className="text-center text-sm text-zinc-400">Click the country on the map.</p>
         ) : (
-          <TaskDock variant={answerMode === 'typing' ? 'form' : 'navigation'} status={answerMode === 'typing' ? <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-cyan-400">{activity === 'practice' ? 'Practice' : 'Drill'} · {getDrillSkillLabel(step.skill)}</div> : undefined}>
+          <TaskDock variant={answerMode === 'typing' ? 'form' : 'navigation'}>
             <section className="space-y-3">
             {answerMode === 'multiple-choice' ? (
               <MultipleChoice
