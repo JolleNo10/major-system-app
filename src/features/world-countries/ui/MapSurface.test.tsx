@@ -18,6 +18,53 @@ afterEach(() => {
 })
 
 describe('MapSurface expanded presentation', () => {
+  it('composes an expanded-only companion beside the primary dock', async () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(PageLayoutProvider, null,
+        createElement(PageLayout, null,
+          createElement(MapSurface, {
+            context: createElement('span', null, 'prompt context'),
+            map: createElement('span', null, 'map content'),
+            feedbackOverlay: createElement('span', { 'data-feedback-content': true }, 'feedback'),
+            dock: createElement('span', { 'data-primary-dock': true }, 'answer dock'),
+            expandedCompanion: createElement('span', { 'data-companion-content': true }, 'session progress'),
+          }),
+        ),
+      ))
+      await Promise.resolve()
+    })
+
+    const map = mount.querySelector('[data-map-surface-map]')
+    const dock = mount.querySelector('[data-primary-dock]')
+    expect(mount.querySelector('[data-map-surface-companion]')).toBeNull()
+    expect(mount.querySelector('[data-map-surface-map] [data-map-feedback-overlay-host] [data-feedback-content]')).not.toBeNull()
+
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[aria-label="Expand map"]')?.click()
+      await Promise.resolve()
+    })
+
+    const row = mount.querySelector('[data-map-surface-dock-row]')
+    expect(row?.contains(mount.querySelector('[data-map-surface-dock]'))).toBe(true)
+    expect(row?.contains(mount.querySelector('[data-map-surface-companion]'))).toBe(true)
+    expect(mount.querySelector('[data-companion-content]')?.textContent).toBe('session progress')
+    expect(mount.querySelector('[data-map-surface-map]')).toBe(map)
+    expect(mount.querySelector('[data-primary-dock]')).toBe(dock)
+
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[aria-label="Collapse map"]')?.click()
+      await Promise.resolve()
+    })
+
+    expect(mount.querySelector('[data-map-surface-companion]')).toBeNull()
+    expect(mount.querySelector('[data-map-surface-map]')).toBe(map)
+    expect(mount.querySelector('[data-primary-dock]')).toBe(dock)
+  })
+
   it('provides one expand/collapse control while preserving map and dock content', async () => {
     const mount = document.createElement('div')
     document.body.append(mount)

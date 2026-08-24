@@ -16,6 +16,8 @@ import { DrillSessionRails } from './DrillSessionRails'
 import { PracticeSessionRails } from './PracticeSessionRails'
 import { getDrillSkillLabel } from './drillModes'
 import type { WorldCountriesProficiencySelection } from './drillProficiencyScope'
+import { deriveDrillSessionProgress } from './drillSessionProgress'
+import { DrillSessionProgressPanel } from './DrillSessionProgressPanel'
 import {
   getCurrentDrillStep,
   type DrillAnswerRecord,
@@ -206,6 +208,9 @@ export function DrillSession({
       ? 'Correct location.'
       : `That was ${displayedFeedback.answer} — ${country.country} is highlighted.`
     : null
+  const expandedProgress = activity === 'drill'
+    ? <DrillSessionProgressPanel progress={deriveDrillSessionProgress(state)} />
+    : undefined
 
   const context = (
     <div className="px-1 text-center">
@@ -330,6 +335,7 @@ export function DrillSession({
               )}
               feedbackOverlay={typed.feedbackOverlay}
               dockPlacement="stacked"
+              expandedCompanion={expandedProgress}
               dock={(
                 <TaskDock variant="form" status={<div className="text-[11px] font-bold uppercase tracking-[0.08em] text-cyan-400">{activity === 'practice' ? 'Practice' : 'Drill'} · {getDrillSkillLabel(step.skill)}</div>}>
                   <section className="space-y-3">
@@ -398,6 +404,7 @@ export function DrillSession({
           </div>
         )}
         dockPlacement={answerMode === 'typing' && !isMapClickPractice ? 'stacked' : 'attached'}
+        expandedCompanion={expandedProgress}
         dock={isMapClickPractice ? (
           <p className="text-center text-sm text-zinc-400">Click the country on the map.</p>
         ) : (

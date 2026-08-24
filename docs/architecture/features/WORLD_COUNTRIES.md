@@ -241,9 +241,12 @@ advances automatically after the correction dwell.
   explicit overlay, attached, and stacked dock placement, and the one common
   World Countries expand/collapse affordance. Expansion publishes the generic
   transient `expanded-center` PageLayout presentation, keeps the same map and
-  dock mounted, fits the map and its required task controls within the
-  available desktop viewport, and resets when the owning surface unmounts or
-  the viewport leaves `xl`. `TaskDock`
+  dock mounted, reserves the complete bottom task row before fitting the active
+  SVG/viewBox as contain sizing within the remaining desktop viewport, and
+  resets when the owning surface unmounts or the viewport leaves `xl`.
+  `MapSurface` may also compose an expanded-only generic companion beside the
+  primary dock; Drill supplies its compact progress content while Drill owns
+  Country-position and step-progress semantics. `TaskDock`
   provides compact navigation, checkpoint, form,
   hint, and completion variants; checkpoint and completion docks compose their
   status copy and action group as one unit at desktop widths. Typed Practice,

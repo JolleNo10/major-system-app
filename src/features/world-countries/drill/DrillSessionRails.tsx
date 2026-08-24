@@ -5,7 +5,9 @@ import { GeographyBreadcrumbs } from '@/features/world-countries/ui/GeographyBre
 import { CountryCapitalMnemonicPanel } from '@/features/world-countries/mnemonics/CountryCapitalMnemonicPanel'
 import type { WorldCountriesDrillSelection } from './drillSelection'
 import { getDrillSkillLabel, getDrillModeDefinition, type WorldCountriesDrillMode } from './drillModes'
-import { getCurrentDrillStep, getDrillSessionTotalSteps, type DrillSessionState } from './drillSessionState'
+import { getCurrentDrillStep, type DrillSessionState } from './drillSessionState'
+import { deriveDrillSessionProgress } from './drillSessionProgress'
+import { DrillSessionProgressBar } from './DrillSessionProgressPanel'
 import type { WorldCountriesProficiencySelection } from './drillProficiencyScope'
 
 export function DrillSessionRails({
@@ -35,9 +37,7 @@ export function DrillSessionRails({
 }) {
   const step = getCurrentDrillStep(state)
   const country = step ? entries.find(entry => entry.id === step.countryId) : undefined
-  const totalSteps = getDrillSessionTotalSteps(state)
-  const completedSteps = state.countryIndex * getDrillModeDefinition(mode).skills.length + state.stepIndex
-  const progressPercent = totalSteps ? Math.round((completedSteps / totalSteps) * 100) : 0
+  const { totalSteps, progressPercent, countryPosition, totalCountries } = deriveDrillSessionProgress(state)
   const subregions = selection.subregionIds.map(getSubregionDefinition)
 
   useRails(
@@ -64,10 +64,8 @@ export function DrillSessionRails({
             <p className="text-xs uppercase tracking-wider text-zinc-500">Mode</p>
             <p className="mt-1 text-sm font-semibold text-zinc-200">{getDrillModeDefinition(mode).label}</p>
             <p className="mt-1 text-xs text-zinc-500">{step ? getDrillSkillLabel(step.skill) : 'Complete'}</p>
-            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-zinc-800" aria-label="Drill progress">
-              <div className="h-full rounded-full bg-cyan-500" style={{ width: `${Math.max(2, progressPercent)}%` }} />
-            </div>
-            <p className="mt-2 text-xs tabular-nums text-zinc-500">Country {Math.min(state.countryIndex + 1, state.countryOrder.length)} / {state.countryOrder.length}</p>
+            <DrillSessionProgressBar progressPercent={progressPercent} />
+            <p className="mt-2 text-xs tabular-nums text-zinc-500">Country {countryPosition} / {totalCountries}</p>
           </div>
           <button type="button" onClick={onExit} className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2.5 text-sm font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">Exit Drill</button>
           {step && country && (
@@ -83,7 +81,7 @@ export function DrillSessionRails({
       leftLabel: 'Drill context',
       rightLabel: 'Session',
     },
-    [country, entries, mnemonicOpen, mnemonicVersion, mode, onCloseMnemonic, onExit, onMnemonicChanged, onOpenMnemonic, proficiencySelection, selection.continent, selection.subregionIds, state.countryIds.length, state.countryIndex, state.countryOrder.length, state.stepIndex, step?.skill, totalSteps, progressPercent],
+    [country, entries, mnemonicOpen, mnemonicVersion, mode, onCloseMnemonic, onExit, onMnemonicChanged, onOpenMnemonic, proficiencySelection, selection.continent, selection.subregionIds, state.countryIds.length, state.countryIndex, state.countryOrder.length, state.stepIndex, step?.skill, totalSteps, progressPercent, countryPosition, totalCountries],
   )
 
   return null

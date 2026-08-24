@@ -92,6 +92,76 @@ afterEach(() => {
 })
 
 describe('DrillSession map presentation', () => {
+  it('keeps Drill progress beside the expanded task dock without duplicating it in standard mode', async () => {
+    const mount = document.createElement('div')
+    const railMount = document.createElement('div')
+    document.body.append(mount, railMount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(DrillSession, {
+        answerMode: 'multiple-choice',
+        fuzzyMatching: false,
+        state: createDrillSession({ mode: 'countries-capitals', countryIds: ['NO', 'SE'] }),
+        selection: createDrillSelection('Europe', ['northern-europe']),
+        entries: [norway, sweden],
+        onAnswer: vi.fn(),
+        onContinue: vi.fn(),
+        onExit: vi.fn(),
+      }))
+    })
+
+    expect(mount.querySelector('[data-drill-expanded-progress]')).toBeNull()
+    renderRightRail(railMount)
+    expect(railMount.textContent).toContain('Country 1 / 2')
+
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[aria-label="Expand map"]')?.click()
+      await Promise.resolve()
+    })
+
+    expect(mount.querySelector('[data-map-surface-dock-row]')?.querySelector('[data-map-surface-companion]')).not.toBeNull()
+    expect(mount.querySelector('[data-drill-expanded-progress]')?.textContent).toContain('Country 1 / 2')
+    expect(mount.querySelector('[data-drill-expanded-progress] [aria-label="Drill progress"]')).not.toBeNull()
+  })
+
+  it.each([
+    ['typed recall', 'typing', 'recall'],
+    ['multiple choice', 'multiple-choice', 'recall'],
+    ['map click', 'multiple-choice', 'location-click'],
+  ] as const)('keeps the %s task usable beside expanded progress', async (_label, answerMode, interaction) => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(DrillSession, {
+        answerMode,
+        interaction,
+        fuzzyMatching: false,
+        state: createDrillSession({ mode: 'countries', countryIds: ['NO', 'SE'] }),
+        selection: createDrillSelection('Europe', ['northern-europe']),
+        entries: [norway, sweden],
+        onAnswer: vi.fn(),
+        onContinue: vi.fn(),
+        onExit: vi.fn(),
+      }))
+    })
+
+    const input = mount.querySelector<HTMLInputElement>('input')
+    if (input) act(() => typeInto(input, 'draft answer'))
+    const draft = input?.value
+
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[aria-label="Expand map"]')?.click()
+      await Promise.resolve()
+    })
+
+    expect(mount.querySelector('[data-map-surface-dock-row] [data-task-dock], [data-map-surface-dock-row] p')).not.toBeNull()
+    expect(mount.querySelector('[data-drill-expanded-progress]')).not.toBeNull()
+    if (draft !== undefined) expect(mount.querySelector<HTMLInputElement>('input')?.value).toBe(draft)
+  })
+
   it('shows one shared answer-kind cue for typed and multiple-choice question contexts', async () => {
     const mount = document.createElement('div')
     document.body.append(mount)
