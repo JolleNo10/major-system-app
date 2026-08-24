@@ -59,6 +59,20 @@ function setSvgRect(mount: HTMLElement, dimensions: { width: number; height: num
   })
 }
 
+function setMountRect(mount: HTMLElement, dimensions: { width: number; height: number }): void {
+  Object.defineProperty(mount, 'getBoundingClientRect', {
+    configurable: true,
+    value: () => ({
+      left: 0,
+      top: 0,
+      width: dimensions.width,
+      height: dimensions.height,
+      right: dimensions.width,
+      bottom: dimensions.height,
+    }),
+  })
+}
+
 afterEach(() => {
   while (controllers.length) controllers.pop()?.destroy()
   document.body.replaceChildren()
@@ -152,6 +166,70 @@ describe('SvgMapController persistent state', () => {
       unknownIds: [],
     })
     expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('10 75 30 35')
+  })
+
+  it('fits the retained zoom intent to the expanded map slot and refits after a slot change', async () => {
+    const viewport = document.createElement('div')
+    const mount = document.createElement('div')
+    viewport.append(mount)
+    document.body.append(viewport)
+    const controller = new SvgMapController(mount, {}, viewport)
+    controllers.push(controller)
+    await controller.load({ markup: TEST_MAP })
+    setBBox(mount, 'Alpha', { x: 10, y: 10, width: 10, height: 10 })
+    setMountRect(viewport, { width: 200, height: 100 })
+
+    controller.setZoomArea(['Alpha'], 5)
+    controller.setPresentation('expanded')
+    expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('-5 5 40 20')
+
+    setMountRect(viewport, { width: 100, height: 200 })
+    controller.setPresentation('expanded')
+    expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('5 -5 20 40')
+
+    controller.setPresentation('standard')
+    expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('5 5 20 20')
+  })
+
+  it('fits the original source viewBox when expanded without an explicit zoom target', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    setMountRect(mount, { width: 100, height: 100 })
+
+    controller.setPresentation('expanded')
+    expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('0 -25 100 100')
+    controller.setPresentation('expanded')
+    expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('0 -25 100 100')
+  })
+
+  it('recomputes the expanded source camera from the resize observer without accumulating drift', async () => {
+    const originalResizeObserver = globalThis.ResizeObserver
+    const resizeState: { callback: ResizeObserverCallback | null } = { callback: null }
+    class TestResizeObserver {
+      constructor(callback: ResizeObserverCallback) { resizeState.callback = callback }
+      observe() {}
+      disconnect() {}
+    }
+    globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserver
+
+    try {
+      const { mount, controller } = makeController()
+      await controller.load({ markup: TEST_MAP })
+      setMountRect(mount, { width: 200, height: 100 })
+      controller.setPresentation('expanded')
+      const triggerResize = resizeState.callback
+      if (!triggerResize) throw new Error('Missing resize observer callback')
+
+      setMountRect(mount, { width: 100, height: 200 })
+      triggerResize([], {} as ResizeObserver)
+      expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('0 -75 100 200')
+
+      setMountRect(mount, { width: 200, height: 100 })
+      triggerResize([], {} as ResizeObserver)
+      expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('0 0 100 50')
+    } finally {
+      globalThis.ResizeObserver = originalResizeObserver
+    }
   })
 
   it('sets, toggles, clears, and reports listed or complement highlights', async () => {

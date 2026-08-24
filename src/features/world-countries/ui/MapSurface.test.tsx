@@ -28,6 +28,7 @@ describe('MapSurface expanded presentation', () => {
         createElement(PageLayout, null,
           createElement(MapSurface, {
             context: createElement('span', null, 'prompt context'),
+            expandedContext: createElement('span', { 'data-expanded-context': true }, 'compact context'),
             map: createElement('span', null, 'map content'),
             feedbackOverlay: createElement('span', { 'data-feedback-content': true }, 'feedback'),
             dock: createElement('span', { 'data-primary-dock': true }, 'answer dock'),
@@ -41,6 +42,7 @@ describe('MapSurface expanded presentation', () => {
     const map = mount.querySelector('[data-map-surface-map]')
     const dock = mount.querySelector('[data-primary-dock]')
     expect(mount.querySelector('[data-map-surface-companion]')).toBeNull()
+    expect(mount.querySelector('[data-expanded-context]')).toBeNull()
     expect(mount.querySelector('[data-map-surface-map] [data-map-feedback-overlay-host] [data-feedback-content]')).not.toBeNull()
 
     await act(async () => {
@@ -52,6 +54,7 @@ describe('MapSurface expanded presentation', () => {
     expect(row?.contains(mount.querySelector('[data-map-surface-dock]'))).toBe(true)
     expect(row?.contains(mount.querySelector('[data-map-surface-companion]'))).toBe(true)
     expect(mount.querySelector('[data-companion-content]')?.textContent).toBe('session progress')
+    expect(mount.querySelector('[data-expanded-context]')?.textContent).toBe('compact context')
     expect(mount.querySelector('[data-map-surface-map]')).toBe(map)
     expect(mount.querySelector('[data-primary-dock]')).toBe(dock)
 

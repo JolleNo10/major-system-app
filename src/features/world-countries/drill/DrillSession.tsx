@@ -213,7 +213,7 @@ export function DrillSession({
     : undefined
 
   const context = (
-    <div className="px-1 text-center">
+    <div data-drill-standard-context className="px-1 text-center">
       <WorldCountriesAnswerKindCue answerKind={answerKind} className="mb-1" />
       <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">{activity === 'practice' ? 'Practice · ' : ''}{getDrillSkillLabel(step.skill)}</p>
       {isLocationPractice ? (
@@ -239,6 +239,24 @@ export function DrillSession({
           <p className="mt-1 text-sm text-zinc-500">{prompt}</p>
         </>
       )}
+    </div>
+  )
+
+  const expandedContext = (
+    <div data-drill-expanded-context className="px-1 text-center">
+      <div className="flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-wider text-cyan-400">
+        <WorldCountriesAnswerKindCue answerKind={answerKind} />
+        <span>{getDrillSkillLabel(step.skill)}</span>
+      </div>
+      <div className="mt-1 text-xl font-black text-zinc-100">
+        {isLocationPractice
+          ? `Find ${country.country}`
+          : isCapitalLocationPractice
+            ? `${country.capital} · ${prompt}`
+            : isLocationQuestion || isShapeQuestion
+              ? prompt
+              : `${isCapitalQuestion ? country.capital : country.country} · ${prompt}`}
+      </div>
     </div>
   )
 
@@ -308,6 +326,7 @@ export function DrillSession({
             {rails}
             <MapSurface
               context={context}
+              expandedContext={expandedContext}
               map={(
                 <CountryLearningMap
                   continent={selection.continent}
@@ -375,6 +394,7 @@ export function DrillSession({
       )}
       <MapSurface
         context={context}
+        expandedContext={expandedContext}
         map={(
           <div className="relative">
           <CountryLearningMap

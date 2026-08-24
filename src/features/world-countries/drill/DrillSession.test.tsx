@@ -112,6 +112,7 @@ describe('DrillSession map presentation', () => {
     })
 
     expect(mount.querySelector('[data-drill-expanded-progress]')).toBeNull()
+    expect(mount.querySelector('[data-drill-standard-context]')).not.toBeNull()
     renderRightRail(railMount)
     expect(railMount.textContent).toContain('Country 1 / 2')
 
@@ -123,6 +124,9 @@ describe('DrillSession map presentation', () => {
     expect(mount.querySelector('[data-map-surface-dock-row]')?.querySelector('[data-map-surface-companion]')).not.toBeNull()
     expect(mount.querySelector('[data-drill-expanded-progress]')?.textContent).toContain('Country 1 / 2')
     expect(mount.querySelector('[data-drill-expanded-progress] [aria-label="Drill progress"]')).not.toBeNull()
+    expect(mount.querySelector('[data-drill-standard-context]')).toBeNull()
+    expect(mount.querySelector('[data-drill-expanded-context]')?.textContent).toContain('Location → Country')
+    expect(mount.querySelector('[data-drill-expanded-context]')?.textContent).toContain('Which country is this?')
   })
 
   it.each([

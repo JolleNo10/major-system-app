@@ -242,8 +242,13 @@ advances automatically after the correction dwell.
   World Countries expand/collapse affordance. Expansion publishes the generic
   transient `expanded-center` PageLayout presentation, keeps the same map and
   dock mounted, reserves the complete bottom task row before fitting the active
-  SVG/viewBox as contain sizing within the remaining desktop viewport, and
-  resets when the owning surface unmounts or the viewport leaves `xl`.
+  SVG/viewBox as contain sizing within the actual remaining desktop map slot.
+  The map controller retains semantic zoom intent separately from the concrete
+  viewBox, derives the expanded viewBox from that intent plus the measured slot
+  aspect ratio, and recomputes it through the existing resize lifecycle without
+  accumulating camera drift. Standard presentation keeps the source or normal
+  semantic zoom framing. Expansion resets when the owning surface unmounts or the
+  viewport leaves `xl`.
   `MapSurface` may also compose an expanded-only generic companion beside the
   primary dock; Drill supplies its compact progress content while Drill owns
   Country-position and step-progress semantics. `TaskDock`
