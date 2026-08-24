@@ -64,8 +64,8 @@ that lets contextual authoring affect subsequent Learning presentation.
   detail or Country-order editor.
 - `ui/` owns feature-local panels, breadcrumbs, hierarchy rows, inline reorder
   presentation, map-surface/dock presentation, task-dock status/action styling,
-  the shared typed-answer lifecycle for primary World Countries recall, and
-  the shared semantic Country/Capital answer-kind cue, and draft movement
+  the shared typed-answer lifecycle for primary World Countries recall, reusable
+  answer-kind semantics for workflows that need them, and draft movement
   without persistence policy. Workflows provide the active answer kind from
   their task or skill. The typed-answer seam owns native
   submit handling, blank prevention, map-relative answer-feedback overlay,
@@ -250,8 +250,9 @@ advances automatically after the correction dwell.
   semantic zoom framing. Expansion resets when the owning surface unmounts or the
   viewport leaves `xl`.
   `MapSurface` may also compose an expanded-only generic companion beside the
-  primary dock; Drill supplies its compact progress content while Drill owns
-  Country-position and step-progress semantics. `TaskDock`
+  primary dock for callers that need it. Drill promotes its Country-position
+  and step-progress semantics into a compact expanded header summary instead
+  of supplying a bottom progress companion. `TaskDock`
   provides compact navigation, checkpoint, form,
   hint, and completion variants; checkpoint and completion docks compose their
   status copy and action group as one unit at desktop widths. Typed Practice,
@@ -276,10 +277,19 @@ advances automatically after the correction dwell.
   choice after an incorrect answer; selecting it holds that feedback until
   Continue or mini-practice completion. Today delayed-retry Skip and Recite
   Reveal / Skip remain answerable-state actions owned by those workflows.
-- Active Country/Capital question contexts use the feature-local `ui/` answer-kind
-  cue (`ANSWER · COUNTRY` in blue/sky or `ANSWER · CAPITAL` in violet/purple).
-  These task-orientation colors remain separate from correctness feedback and
-  map proficiency/status palettes.
+- Active Drill and Practice Country/Capital questions use one feature-local
+  task-presentation model: a direction, a main cue, and the answer interaction.
+  They do not repeat an explicit `ANSWER · COUNTRY` / `ANSWER · CAPITAL` badge
+  in the task context, dock, or Session rail. `CountryLearningMap` translates
+  the model's semantic task tone to a cyan Country-answer highlight or violet
+  Capital-answer highlight; the tone supplements textual and accessible answer
+  cues and remains separate from correctness feedback and map
+  proficiency/status palettes. Standard presentation keeps selected geography
+  in the left rail, the direction/cue, map, and answer interaction in the
+  center, and session mode/progress/actions in the right rail. Expanded
+  presentation promotes only the essential hidden-rail session summary into
+  the compact header. Other workflows may retain the reusable answer-kind cue
+  where their own presentation contract still calls for it.
 - `SvgMapController` owns one explicit task-assistance layer for map-answer
   candidates and an intentional task target. Generic `selectableIds`,
   hoverable IDs, highlighted/progress state, semantic colors, click-handler

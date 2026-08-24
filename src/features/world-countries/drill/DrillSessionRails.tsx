@@ -4,7 +4,7 @@ import { getSubregionDefinition } from '@/features/world-countries/data/subregio
 import { GeographyBreadcrumbs } from '@/features/world-countries/ui/GeographyBreadcrumbs'
 import { CountryCapitalMnemonicPanel } from '@/features/world-countries/mnemonics/CountryCapitalMnemonicPanel'
 import type { WorldCountriesDrillSelection } from './drillSelection'
-import { getDrillSkillLabel, getDrillModeDefinition, type WorldCountriesDrillMode } from './drillModes'
+import { getDrillModeDefinition, type WorldCountriesDrillMode } from './drillModes'
 import { getCurrentDrillStep, type DrillSessionState } from './drillSessionState'
 import { deriveDrillSessionProgress } from './drillSessionProgress'
 import { DrillSessionProgressBar } from './DrillSessionProgressPanel'
@@ -37,7 +37,7 @@ export function DrillSessionRails({
 }) {
   const step = getCurrentDrillStep(state)
   const country = step ? entries.find(entry => entry.id === step.countryId) : undefined
-  const { totalSteps, progressPercent, countryPosition, totalCountries } = deriveDrillSessionProgress(state)
+  const { progressPercent, countryPosition, totalCountries } = deriveDrillSessionProgress(state)
   const subregions = selection.subregionIds.map(getSubregionDefinition)
 
   useRails(
@@ -47,7 +47,7 @@ export function DrillSessionRails({
           <GeographyBreadcrumbs items={[{ label: 'World' }, { label: selection.continent, current: true }]} />
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Selected geography</p>
-            <h2 id="world-countries-drill-session-context-heading" className="mt-1 text-lg font-bold text-zinc-100">Drill context</h2>
+            <h2 id="world-countries-drill-session-context-heading" className="mt-1 text-lg font-bold text-zinc-100">{selection.continent}</h2>
           </div>
           <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
             {proficiencySelection.length > 0 ? <><p className="text-xs uppercase tracking-wider text-zinc-500">Proficiency scope</p><ul className="mt-2 space-y-1 text-sm text-zinc-300">{proficiencySelection.map(filter => <li key={filter}>{filter === 'weak' ? 'Weak' : 'Developing'}</li>)}</ul><p className="mt-2 text-xs text-zinc-500">{state.countryIds.length} Countries in this session</p></> : <><p className="text-xs uppercase tracking-wider text-zinc-500">Subregions</p><ul className="mt-2 space-y-1 text-sm text-zinc-300">{subregions.filter(subregion => selection.subregionIds.includes(subregion.id)).map(subregion => <li key={subregion.id}>{subregion.label}</li>)}</ul></>}
@@ -63,7 +63,6 @@ export function DrillSessionRails({
           <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
             <p className="text-xs uppercase tracking-wider text-zinc-500">Mode</p>
             <p className="mt-1 text-sm font-semibold text-zinc-200">{getDrillModeDefinition(mode).label}</p>
-            <p className="mt-1 text-xs text-zinc-500">{step ? getDrillSkillLabel(step.skill) : 'Complete'}</p>
             <DrillSessionProgressBar progressPercent={progressPercent} />
             <p className="mt-2 text-xs tabular-nums text-zinc-500">Country {countryPosition} / {totalCountries}</p>
           </div>
@@ -78,10 +77,10 @@ export function DrillSessionRails({
           )}
         </section>
       ),
-      leftLabel: 'Drill context',
+      leftLabel: 'Selected geography',
       rightLabel: 'Session',
     },
-    [country, entries, mnemonicOpen, mnemonicVersion, mode, onCloseMnemonic, onExit, onMnemonicChanged, onOpenMnemonic, proficiencySelection, selection.continent, selection.subregionIds, state.countryIds.length, state.countryIndex, state.countryOrder.length, state.stepIndex, step?.skill, totalSteps, progressPercent, countryPosition, totalCountries],
+    [country, entries, mnemonicOpen, mnemonicVersion, mode, onCloseMnemonic, onExit, onMnemonicChanged, onOpenMnemonic, proficiencySelection, selection.continent, selection.subregionIds, state.countryIds.length, state.countryIndex, state.countryOrder.length, state.stepIndex, progressPercent, countryPosition, totalCountries],
   )
 
   return null

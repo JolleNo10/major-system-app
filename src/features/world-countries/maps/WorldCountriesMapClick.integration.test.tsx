@@ -286,7 +286,7 @@ describe('real bundled-map tiny Country selection', () => {
     expect(mount.querySelector('[data-svg-map-task-representative-target="Andorra"]')).toBeNull()
     expect(Number(marker.getAttribute('r'))).toBeGreaterThan(0)
     expect(Number(hit.getAttribute('r'))).toBeGreaterThan(Number(marker.getAttribute('r')))
-    expect(mount.textContent).toContain('Find Andorra')
+    expect(mount.textContent).toContain('Name the highlighted country')
 
     await act(async () => clickOutsideSourceWithinForgivingTarget())
 
@@ -304,7 +304,7 @@ describe('real bundled-map tiny Country selection', () => {
   it('routes Locate Capitals through the same real tiny Country target', async () => {
     const { mount, onAnswer } = await renderAndorraDrill('capital-to-country')
     expect(mount.textContent).toContain('Andorra la Vella')
-    expect(mount.textContent).toContain('Which country has this capital?')
+    expect(mount.textContent).toContain('Capital → Country')
 
     await act(async () => clickOutsideSourceWithinForgivingTarget())
 

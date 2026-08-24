@@ -120,6 +120,28 @@ describe('CountryLearningMap', () => {
     })
   })
 
+  it.each([
+    ['country-answer', '#0891b2'],
+    ['capital-answer', '#8b5cf6'],
+  ] as const)('translates the %s task tone to map settings', (taskHighlightTone, highlightFill) => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement(CountryLearningMap, {
+        continent: 'Europe',
+        scopeCountries: [norway],
+        highlightedCountryId: norway.id,
+        taskHighlightTone,
+        ariaLabel: 'Task map',
+      }))
+    })
+
+    const latestProps = mapProps.mock.calls[mapProps.mock.calls.length - 1]?.[0]
+    expect(latestProps.settings).toMatchObject({ highlightFill })
+  })
+
   it('supports explicit visibility and Country zoom without task assistance', () => {
     const mount = document.createElement('div')
     document.body.append(mount)
