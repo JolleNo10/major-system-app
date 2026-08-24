@@ -132,6 +132,7 @@ export function GuidedLearningRails({
             </div>
             {editingOrder ? (
               <InlineOrderEditor
+                key={`country-order-${subregion}-${entries.map(entry => entry.id).sort().join('|')}`}
                 entries={entries}
                 getId={entry => entry.id}
                 getLabel={entry => entry.country}
@@ -141,6 +142,7 @@ export function GuidedLearningRails({
                 onSave={saveOrder}
                 onCancel={cancelOrder}
                 onResetCanonical={() => activeCountries.filter(entry => entry.subregionId === subregion && entry.continent === continent)}
+                clickOrder
                 autoOrder={{
                   label: 'Auto-order from map',
                   pendingLabel: 'Reading map…',

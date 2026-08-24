@@ -24,6 +24,7 @@ export function InlineOrderEditor<T>({
   onCancel,
   onResetCanonical,
   autoOrder,
+  clickOrder = false,
 }: {
   entries: readonly T[]
   getId: (item: T) => string
@@ -35,12 +36,16 @@ export function InlineOrderEditor<T>({
   onCancel: () => void
   onResetCanonical: () => readonly T[]
   autoOrder?: AutoOrderAction<T>
+  clickOrder?: boolean
 }) {
   const [draft, setDraft] = useState(() => [...entries])
+  const [clickMode, setClickMode] = useState(false)
+  const [clickSequence, setClickSequence] = useState<readonly string[]>([])
   const [autoOrdering, setAutoOrdering] = useState(false)
   const [autoOrderError, setAutoOrderError] = useState(false)
   const [saveError, setSaveError] = useState(false)
   const autoOrderRunRef = useRef(0)
+  const clickModeDraftRef = useRef<readonly T[] | null>(null)
 
   useEffect(() => () => {
     autoOrderRunRef.current += 1
@@ -57,16 +62,40 @@ export function InlineOrderEditor<T>({
     onDraftChanged(nextDraft)
   }
 
-  const reset = () => updateDraft(onResetCanonical())
+  const clearClickMode = () => {
+    setClickMode(false)
+    setClickSequence([])
+    clickModeDraftRef.current = null
+  }
+
+  const restoreClickModeDraft = () => {
+    if (!clickMode || clickSequence.length === draft.length) return draft
+    const restoredDraft = clickModeDraftRef.current ?? draft
+    setDraft([...restoredDraft])
+    onDraftChanged(restoredDraft)
+    return restoredDraft
+  }
+
+  const leaveClickMode = () => {
+    const nextDraft = restoreClickModeDraft()
+    clearClickMode()
+    return nextDraft
+  }
+
+  const reset = () => {
+    if (clickMode) clearClickMode()
+    updateDraft(onResetCanonical())
+  }
 
   const runAutoOrder = async () => {
     if (!autoOrder) return
+    const sourceDraft = clickMode ? leaveClickMode() : draft
     const runId = autoOrderRunRef.current + 1
     autoOrderRunRef.current = runId
     setAutoOrdering(true)
     setAutoOrderError(false)
     try {
-      const nextDraft = [...await autoOrder.run(draft)]
+      const nextDraft = [...await autoOrder.run(sourceDraft)]
       if (autoOrderRunRef.current !== runId) return
       setDraft(nextDraft)
       onDraftChanged(nextDraft)
@@ -79,7 +108,7 @@ export function InlineOrderEditor<T>({
   }
 
   const save = () => {
-    if (autoOrdering) return
+    if (autoOrdering || (clickMode && clickSequence.length !== draft.length)) return
     invalidateAutoOrder()
     try {
       onSave(draft)
@@ -93,6 +122,33 @@ export function InlineOrderEditor<T>({
     invalidateAutoOrder()
     onCancel()
   }
+
+  const enterClickMode = () => {
+    if (!clickOrder || autoOrdering) return
+    clickModeDraftRef.current = [...draft]
+    setClickSequence([])
+    setClickMode(true)
+  }
+
+  const toggleClickEntry = (entry: T) => {
+    if (!clickMode) return
+    const id = getId(entry)
+    const nextSequence = clickSequence.includes(id)
+      ? clickSequence.filter(candidate => candidate !== id)
+      : [...clickSequence, id]
+    setClickSequence(nextSequence)
+
+    if (nextSequence.length !== draft.length || draft.some(item => !nextSequence.includes(getId(item)))) return
+    const nextDraft = nextSequence
+      .map(candidate => draft.find(item => getId(item) === candidate))
+      .filter((item): item is T => item !== undefined)
+    if (nextDraft.length !== draft.length) return
+    setDraft(nextDraft)
+    onDraftChanged(nextDraft)
+  }
+
+  const clickSequencePositions = new Map(clickSequence.map((id, index) => [id, index + 1]))
+  const clickSequenceComplete = clickSequence.length === draft.length && draft.every(item => clickSequencePositions.has(getId(item)))
 
   return (
     <>
@@ -115,45 +171,118 @@ export function InlineOrderEditor<T>({
           {autoOrderError && <p role="alert" className="text-xs text-red-300">{autoOrder.errorMessage}</p>}
         </div>
       )}
-      <DragDropProvider
-        sensors={defaults => [
-          PointerSensor.configure({
-            activationConstraints(event) {
-              if (event.pointerType === 'touch') {
-                return [new PointerActivationConstraints.Delay({ value: 300, tolerance: 5 })]
-              }
-              return [new PointerActivationConstraints.Distance({ value: 8 })]
-            },
-          }),
-          ...defaults.filter(sensor => sensor !== PointerSensor),
-        ]}
-        onDragEnd={event => {
-          if (event.canceled) return
-          const { source } = event.operation
-          if (!source || !isSortable(source) || source.initialIndex === source.index) return
-          updateDraft(reorderDraft(draft, source.initialIndex, source.index))
-        }}
-      >
-        <ol className="mt-2 space-y-2" aria-describedby="inline-order-editor-instructions">
-          {draft.map((item, index) => (
-            <SortableOrderRow
-              key={getId(item)}
-              id={getId(item)}
-              label={getLabel(item)}
-              index={index}
-              onHover={onItemHover ? () => onItemHover(item) : undefined}
-              onLeave={onItemLeave}
-            />
-          ))}
-        </ol>
-      </DragDropProvider>
+      {clickOrder && (
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-cyan-300">{clickMode ? 'Click order' : 'Order tools'}</p>
+            {clickMode && <p id="inline-click-order-status" role="status" aria-live="polite" className="mt-1 text-xs tabular-nums text-zinc-400">{clickSequence.length} / {draft.length} selected</p>}
+          </div>
+          <button
+            type="button"
+            onClick={clickMode ? leaveClickMode : enterClickMode}
+            disabled={autoOrdering}
+            className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:border-cyan-500 hover:text-zinc-100 disabled:cursor-wait disabled:opacity-50"
+          >
+            {clickMode ? 'Use drag & drop' : 'Click order'}
+          </button>
+        </div>
+      )}
+      {clickMode ? (
+        <ClickOrderList
+          entries={draft}
+          getId={getId}
+          getLabel={getLabel}
+          positions={clickSequencePositions}
+          onSelect={toggleClickEntry}
+          onHover={onItemHover}
+          onLeave={onItemLeave}
+        />
+      ) : (
+        <DragDropProvider
+          sensors={defaults => [
+            PointerSensor.configure({
+              activationConstraints(event) {
+                if (event.pointerType === 'touch') {
+                  return [new PointerActivationConstraints.Delay({ value: 300, tolerance: 5 })]
+                }
+                return [new PointerActivationConstraints.Distance({ value: 8 })]
+              },
+            }),
+            ...defaults.filter(sensor => sensor !== PointerSensor),
+          ]}
+          onDragEnd={event => {
+            if (event.canceled) return
+            const { source } = event.operation
+            if (!source || !isSortable(source) || source.initialIndex === source.index) return
+            updateDraft(reorderDraft(draft, source.initialIndex, source.index))
+          }}
+        >
+          <ol className="mt-2 space-y-2" aria-describedby="inline-order-editor-instructions">
+            {draft.map((item, index) => (
+              <SortableOrderRow
+                key={getId(item)}
+                id={getId(item)}
+                label={getLabel(item)}
+                index={index}
+                onHover={onItemHover ? () => onItemHover(item) : undefined}
+                onLeave={onItemLeave}
+              />
+            ))}
+          </ol>
+        </DragDropProvider>
+      )}
       {saveError && <p role="alert" className="mt-2 text-xs text-red-300">Could not save this order. Your draft is still available.</p>}
       <div className="mt-3 flex flex-wrap gap-2">
-        <button type="button" onClick={save} disabled={autoOrdering} className="rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 disabled:cursor-wait disabled:opacity-50">Save</button>
+        <button type="button" onClick={save} disabled={autoOrdering || (clickMode && !clickSequenceComplete)} className="rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 disabled:cursor-wait disabled:opacity-50">Save</button>
         <button type="button" onClick={cancel} className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-xs text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Cancel</button>
         <button type="button" onClick={reset} className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-xs text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Reset canonical order</button>
       </div>
     </>
+  )
+}
+
+function ClickOrderList<T>({
+  entries,
+  getId,
+  getLabel,
+  positions,
+  onSelect,
+  onHover,
+  onLeave,
+}: {
+  entries: readonly T[]
+  getId: (item: T) => string
+  getLabel: (item: T) => string
+  positions: ReadonlyMap<string, number>
+  onSelect: (item: T) => void
+  onHover?: (item: T) => void
+  onLeave?: () => void
+}) {
+  return (
+    <ol className="mt-2 space-y-2" aria-describedby="inline-click-order-status">
+      {entries.map(item => {
+        const id = getId(item)
+        const position = positions.get(id)
+        const label = getLabel(item)
+        return (
+          <li key={id} className="world-order-row rounded-lg border border-zinc-800 bg-zinc-950/40 transition-colors" onMouseEnter={onHover ? () => onHover(item) : undefined} onMouseLeave={onLeave}>
+            <button
+              type="button"
+              aria-pressed={position !== undefined}
+              aria-label={position === undefined ? `Add ${label} to click order` : `Remove ${label} from click order, position ${position}`}
+              onClick={() => onSelect(item)}
+              onFocus={onHover ? () => onHover(item) : undefined}
+              onBlur={onLeave}
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70"
+            >
+              <span className={`w-5 shrink-0 text-right text-xs tabular-nums ${position === undefined ? 'text-zinc-600' : 'font-semibold text-cyan-300'}`} aria-hidden="true">{position ?? '·'}.</span>
+              <span className="min-w-0 flex-1 text-sm text-zinc-300">{label}</span>
+              <span className="sr-only">{position === undefined ? 'Not selected' : `Selected as position ${position}`}</span>
+            </button>
+          </li>
+        )
+      })}
+    </ol>
   )
 }
 

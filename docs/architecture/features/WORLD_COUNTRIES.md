@@ -63,7 +63,8 @@ that lets contextual authoring affect subsequent Learning presentation.
   Geography/proficiency setup scope. It does not expose a Drill Subregion
   detail or Country-order editor.
 - `ui/` owns feature-local panels, breadcrumbs, hierarchy rows, inline reorder
-  presentation, map-surface/dock presentation, task-dock status/action styling,
+  and opt-in Country click-sequence presentation, map-surface/dock presentation,
+  task-dock status/action styling,
   the shared typed-answer lifecycle for primary World Countries recall, reusable
   answer-kind semantics for workflows that need them, and draft movement
   without persistence policy. Workflows provide the active answer kind from
@@ -206,6 +207,13 @@ advances automatically after the correction dwell.
   panel, or separate screen.
 - World and Continent Drill rails edit only their represented hierarchy.
   Learning rails edit Country order only.
+- The Learning Subregion Country editor keeps drag/drop available and may opt
+  into an inline `Click order` mode. Click mode starts an empty local sequence
+  over the current full Country draft, gives selected Countries contiguous
+  1-based positions, and keeps Save disabled until the complete membership is
+  selected exactly once. A complete sequence becomes the current full draft
+  and saves through the same `geography/orderAuthoring.ts` seam; an incomplete
+  sequence is discarded when returning to drag/drop.
 - Draft changes are local to the mounted context. Save writes through
   `geography/orderAuthoring.ts`; Cancel or unmount discards the draft. Reset
   canonical and map auto-order are draft-only actions requiring explicit Save.
