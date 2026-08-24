@@ -92,7 +92,7 @@ afterEach(() => {
 })
 
 describe('DrillSession map presentation', () => {
-  it('moves Drill progress into the expanded session summary without a bottom companion', async () => {
+  it('keeps expanded task context in the dominant card and isolates progress', async () => {
     const mount = document.createElement('div')
     const railMount = document.createElement('div')
     document.body.append(mount, railMount)
@@ -123,12 +123,21 @@ describe('DrillSession map presentation', () => {
     })
 
     expect(mount.querySelector('[data-map-surface-dock-row]')?.querySelector('[data-map-surface-companion]')).toBeNull()
-    expect(mount.querySelector('[data-drill-expanded-session-summary]')?.textContent).toContain('Country 1 / 2')
-    expect(mount.querySelector('[data-drill-expanded-session-summary] [aria-label="Drill progress"]')).not.toBeNull()
+    const taskPrompt = mount.querySelector('[data-drill-task-prompt]')
+    const progressCard = mount.querySelector('[data-drill-expanded-session-summary]')
+
+    expect(progressCard?.textContent).toContain('Country 1 / 2')
+    expect(progressCard?.querySelector('[aria-label="Drill progress"]')).not.toBeNull()
+    expect(taskPrompt?.textContent).toContain('Europe · Countries + Capitals')
+    expect(taskPrompt?.querySelector('[data-drill-task-copy]')?.className).toContain('text-left')
+    expect(taskPrompt?.querySelector('[data-drill-task-copy]')?.textContent).toContain('Location → Country')
+    expect(taskPrompt?.querySelector('[data-drill-task-copy]')?.textContent).toContain('Name the highlighted country')
+    expect(progressCard?.textContent).not.toContain('Europe')
+    expect(progressCard?.textContent).not.toContain('Countries + Capitals')
+    expect(progressCard?.textContent).not.toContain('Location → Country')
+    expect(progressCard?.textContent).not.toContain('Name the highlighted country')
+    expect(progressCard?.textContent).not.toContain('Exit Drill')
     expect(mount.querySelector('[data-drill-standard-context]')).toBeNull()
-    expect(mount.querySelector('[data-drill-expanded-context]')?.textContent).toContain('Location → Country')
-    expect(mount.querySelector('[data-drill-expanded-context]')?.textContent).toContain('Name the highlighted country')
-    expect(mount.querySelector('[data-drill-expanded-context]')?.textContent).toContain('Europe · Countries + Capitals')
   })
 
   it.each([
@@ -138,6 +147,7 @@ describe('DrillSession map presentation', () => {
   ] as const)('keeps the %s task usable below the expanded header', async (_label, answerMode, interaction) => {
     const mount = document.createElement('div')
     document.body.append(mount)
+    const onAnswer = vi.fn()
 
     await act(async () => {
       root = createRoot(mount)
@@ -148,7 +158,7 @@ describe('DrillSession map presentation', () => {
         state: createDrillSession({ mode: 'countries', countryIds: ['NO', 'SE'] }),
         selection: createDrillSelection('Europe', ['northern-europe']),
         entries: [norway, sweden],
-        onAnswer: vi.fn(),
+        onAnswer,
         onContinue: vi.fn(),
         onExit: vi.fn(),
       }))
@@ -166,6 +176,28 @@ describe('DrillSession map presentation', () => {
     expect(mount.querySelector('[data-map-surface-dock-row] [data-task-dock], [data-map-surface-dock-row] p')).not.toBeNull()
     expect(mount.querySelector('[data-drill-expanded-session-summary]')).not.toBeNull()
     if (draft !== undefined) expect(mount.querySelector<HTMLInputElement>('input')?.value).toBe(draft)
+
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[aria-label="Collapse map"]')?.click()
+      await Promise.resolve()
+    })
+
+    expect(mount.querySelector('[data-drill-standard-context]')).not.toBeNull()
+    if (draft !== undefined) expect(mount.querySelector<HTMLInputElement>('input')?.value).toBe(draft)
+
+    if (interaction === 'recall' && answerMode === 'multiple-choice') {
+      const choice = mount.querySelector<HTMLButtonElement>('[data-task-dock] button')
+      expect(choice).not.toBeNull()
+      await act(async () => choice?.click())
+      expect(onAnswer).toHaveBeenCalled()
+    }
+
+    if (interaction === 'location-click') {
+      const mapProps = learningMapMock.mock.calls[learningMapMock.mock.calls.length - 1]?.[0] as Record<string, unknown>
+      expect(mapProps.onCountryClick).toBeTypeOf('function')
+      await act(async () => (mapProps.onCountryClick as (countryId: string) => void)('SE'))
+      expect(onAnswer).toHaveBeenCalled()
+    }
   })
 
   it('uses one direction and cue without an answer-kind badge', async () => {

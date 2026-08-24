@@ -75,10 +75,13 @@ button{font:inherit}
 
 /* expanded */
 .expanded{height:calc(100% - 58px);display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:10px;padding:12px 18px 15px}
-.expanded-top{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:10px}
+.expanded-top{display:grid;grid-template-columns:minmax(0,1fr) minmax(18rem,28%);gap:10px}
+.expanded-prompt{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px;text-align:left}
+.expanded-prompt .prompt-copy{text-align:left}
+.session-context{justify-self:end;color:#85858f;font-size:10px;font-weight:700;white-space:nowrap}
 .summary{padding:11px 13px}
 .summary-line{font-size:10px;color:#85858f}.summary-line strong{color:#d0d0d5}
-.summary .progress-head{margin-top:8px}
+.summary .progress-head{margin-top:0}
 .expanded .answer{width:min(800px,78vw);justify-self:center}
 .session-exit{margin-top:8px;border:1px solid var(--line);background:#17171b;color:#b8b8c0;border-radius:8px;padding:7px 9px;font-size:9px;width:100%}
 
@@ -149,21 +152,21 @@ button{font:inherit}
           <div class="track"><span></span></div>
         </div>
         <button class="action cyan">Show mnemonics</button>
-        <button class="action">Exit Drill</button>
       </aside>
     </section>
 
     <section id="expanded" class="expanded" hidden>
       <div class="expanded-top">
-        <div class="card prompt">
-          <div class="meta" data-direction>Location → Country</div>
-          <div class="question" data-cue>Name the highlighted country</div>
+        <div class="card prompt expanded-prompt">
+          <div class="prompt-copy">
+            <div class="meta" data-direction>Location → Country</div>
+            <div class="question" data-cue>Name the highlighted country</div>
+          </div>
+          <div class="session-context"><strong>Oceania</strong> · Countries + Capitals</div>
         </div>
         <div class="card summary">
-          <div class="summary-line"><strong>Oceania</strong> · Countries + Capitals</div>
           <div class="progress-head"><span>Country 1 / 12</span><span>8%</span></div>
           <div class="track"><span></span></div>
-          <button class="session-exit">Exit Drill</button>
         </div>
       </div>
       <div class="map">

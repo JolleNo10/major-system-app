@@ -46,37 +46,72 @@ function buildChoiceOptions(expected: string, values: readonly string[]): string
   return shuffle([expected, ...shuffle(alternatives).slice(0, 3)])
 }
 
-function DrillTaskPrompt({ task }: { task: DrillTaskPresentation }) {
+function DrillTaskPrompt({ task, sessionContext }: {
+  task: DrillTaskPresentation
+  sessionContext?: {
+    geography: string
+    label: string
+  }
+}) {
   return (
-    <section data-drill-task-prompt className="rounded-xl border border-zinc-800 bg-zinc-950/55 px-4 py-3 text-center">
-      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-cyan-400">{task.direction}</p>
-      <h1 className="mt-1 text-2xl font-black tracking-tight text-zinc-100">{task.cue}</h1>
+    <section data-drill-task-prompt className={`rounded-xl border border-zinc-800 bg-zinc-950/55 px-4 py-3 ${sessionContext ? 'grid items-center gap-4 text-left xl:grid-cols-[minmax(0,1fr)_auto]' : 'text-center'}`}>
+      <div data-drill-task-copy className={sessionContext ? 'text-left' : undefined}>
+        <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-cyan-400">{task.direction}</p>
+        <h1 className="mt-1 text-2xl font-black tracking-tight text-zinc-100">{task.cue}</h1>
+      </div>
+      {sessionContext && (
+        <p data-drill-session-context className="text-right text-xs font-medium text-zinc-500">
+          <span className="text-zinc-300">{sessionContext.geography}</span> · {sessionContext.label}
+        </p>
+      )}
     </section>
   )
 }
 
-function DrillExpandedSessionSummary({
-  activity,
+function DrillSessionProgress({
+  progress,
+  label,
+}: {
+  progress: ReturnType<typeof deriveDrillSessionProgress>
+  label: string
+}) {
+  return (
+    <>
+      <div className="flex items-center justify-between gap-3 text-xs tabular-nums text-zinc-400">
+        <span>Country {progress.countryPosition} / {progress.totalCountries}</span>
+        <span>{progress.progressPercent}%</span>
+      </div>
+      <DrillSessionProgressBar progressPercent={progress.progressPercent} label={label} />
+    </>
+  )
+}
+
+function DrillExpandedSessionSummary({ progress }: {
+  progress: ReturnType<typeof deriveDrillSessionProgress>
+}) {
+  return (
+    <section data-drill-expanded-session-summary className="rounded-xl border border-zinc-800 bg-zinc-950/75 px-3 py-2.5">
+      <DrillSessionProgress progress={progress} label="Drill progress" />
+    </section>
+  )
+}
+
+function PracticeExpandedSessionSummary({
   geography,
-  mode,
   progress,
   onExit,
 }: {
-  activity: 'drill' | 'practice'
   geography: string
-  mode?: string
   progress: ReturnType<typeof deriveDrillSessionProgress>
   onExit: () => void
 }) {
   return (
     <section data-drill-expanded-session-summary className="rounded-xl border border-zinc-800 bg-zinc-950/75 px-3 py-2.5">
-      <p className="text-[11px] text-zinc-500"><strong className="font-semibold text-zinc-200">{geography}</strong> · {activity === 'practice' ? 'Practice' : mode}</p>
-      <div className="mt-2 flex items-center justify-between gap-3 text-xs tabular-nums text-zinc-400">
-        <span>Country {progress.countryPosition} / {progress.totalCountries}</span>
-        <span>{progress.progressPercent}%</span>
+      <p className="text-[11px] text-zinc-500"><strong className="font-semibold text-zinc-200">{geography}</strong> · Practice</p>
+      <div className="mt-2">
+        <DrillSessionProgress progress={progress} label="Practice progress" />
       </div>
-      <DrillSessionProgressBar progressPercent={progress.progressPercent} label={`${activity === 'practice' ? 'Practice' : 'Drill'} progress`} />
-      {activity === 'practice' && <button type="button" onClick={onExit} className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-xs font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">Exit Practice</button>}
+      <button type="button" onClick={onExit} className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-xs font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">Exit Practice</button>
     </section>
   )
 }
@@ -244,16 +279,25 @@ export function DrillSession({
     </div>
   )
 
-  const expandedContext = (
+  const expandedContext = activity === 'practice' ? (
     <div data-drill-expanded-context className="grid grid-cols-[minmax(0,1fr)_16rem] gap-3 px-1">
       <DrillTaskPrompt task={task} />
-      <DrillExpandedSessionSummary
-        activity={activity}
+      <PracticeExpandedSessionSummary
         geography={selection.continent}
-        mode={activity === 'practice' ? undefined : getDrillModeDefinition(state.mode).label}
         progress={deriveDrillSessionProgress(state)}
         onExit={onExit}
       />
+    </div>
+  ) : (
+    <div data-drill-expanded-context className="grid grid-cols-[minmax(0,1fr)_minmax(18rem,28%)] gap-3 px-1">
+      <DrillTaskPrompt
+        task={task}
+        sessionContext={{
+          geography: selection.continent,
+          label: getDrillModeDefinition(state.mode).label,
+        }}
+      />
+      <DrillExpandedSessionSummary progress={deriveDrillSessionProgress(state)} />
     </div>
   )
 

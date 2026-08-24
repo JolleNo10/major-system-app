@@ -295,9 +295,12 @@ advances automatically after the correction dwell.
   proficiency/status palettes. Standard presentation keeps selected geography
   in the left rail, the direction/cue, map, and answer interaction in the
   center, and session mode/progress/actions in the right rail. Expanded
-  presentation promotes only the essential hidden-rail session summary into
-  the compact header. Other workflows may retain the reusable answer-kind cue
-  where their own presentation contract still calls for it.
+  Drill presentation uses a dominant task card with left-aligned direction/cue
+  and secondary geography/mode context, beside a secondary progress-only card
+  for Country position, percentage, and the progress bar. Drill does not use a
+  bottom progress companion in expanded mode. Other workflows may retain the
+  reusable answer-kind cue where their own presentation contract still calls
+  for it.
 - `SvgMapController` owns one explicit task-assistance layer for map-answer
   candidates and an intentional task target. Generic `selectableIds`,
   hoverable IDs, highlighted/progress state, semantic colors, click-handler

@@ -88,16 +88,23 @@ Do not repeat geography/mode/progress in the center task area.
 
 ### Expanded view
 
-Rails are hidden, so promote only the essential session information into a compact top-right session summary beside the task prompt.
+Rails are hidden, so use the expanded top row for a dominant task card and a
+secondary progress card.
 
-Expanded session summary contains:
+The dominant task card contains:
 
-- geography + Drill mode as compact secondary text;
+- the direction and cue, left aligned;
+- geography + Drill mode as compact secondary text on the right side of that
+  same card.
+
+The secondary progress card contains:
+
 - `Country X / N`;
+- the current percentage;
 - progress bar;
-- current expanded-safe session action(s), preserving existing behavior.
 
-Do not recreate the full rails in expanded mode.
+Do not put geography, Drill mode, task direction/cue, or an Exit Drill button
+in the progress card. Do not recreate the full rails in expanded mode.
 
 ## Current-task information
 
@@ -321,31 +328,32 @@ The existing accessible `answerLabel` remains.
 
 # 4. Expanded / fullscreen composition
 
-Expanded mode removes the rails and uses the horizontal space instead of stacking extra task labels.
+Expanded mode removes the rails and uses the horizontal space for one dominant
+task card beside one secondary progress card. The map remains the dominant
+surface below this row.
 
 Use:
 
 ```text
-┌───────────────────────────────────────────────────────────────────────────┐
-│ TASK PROMPT                                      SESSION SUMMARY           │
-│ Country → Capital                               Oceania · Countries+Caps │
-│ Micronesia                                      Country 2 / 12  ━━━━━    │
-├───────────────────────────────────────────────────────────────────────────┤
-│                                                                           │
-│                                  MAP                                      │
-│                                                                           │
-├───────────────────────────────────────────────────────────────────────────┤
-│                        compact bottom answer dock                         │
-│                 [ Type the capital…          ][ Check ]                  │
-└───────────────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────┐ ┌─────────────────┐
+│ COUNTRY → CAPITAL                 Oceania · Countries+Caps │ │ Country 2 / 12  │
+│ Micronesia                                             │ │ ━━━━━━━━━  16% │
+├───────────────────────────────────────────────────────┤ └─────────────────┘
+│                                                                       │
+│                                  MAP                                  │
+│                                                                       │
+├───────────────────────────────────────────────────────────────────────┤
+│                        compact bottom answer dock                     │
+│                 [ Type the capital…          ][ Check ]              │
+└───────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Expanded prompt region
 
 Use a two-column top composition:
 
-- prompt card: flexible / dominant;
-- session summary: compact / secondary.
+- large task card: flexible / dominant;
+- progress card: compact / secondary.
 
 Illustrative structure:
 
@@ -353,24 +361,27 @@ Illustrative structure:
 const expandedContext = (
   <div
     data-drill-expanded-task-header
-    className="grid grid-cols-[minmax(0,1fr)_16rem] gap-3"
+    className="grid grid-cols-[minmax(0,1fr)_minmax(18rem,28%)] gap-3"
   >
     <DrillTaskPrompt
       direction={task.direction}
       cue={task.cue}
+      sessionContext={{
+        geography: selection.continent,
+        label: getDrillModeDefinition(state.mode).label,
+      }}
     />
 
     <DrillExpandedSessionSummary
-      geography={selection.continent}
-      mode={getDrillModeDefinition(state.mode).label}
       progress={deriveDrillSessionProgress(state)}
-      onExit={onExit}
     />
   </div>
 )
 ```
 
-The exact width may adapt, but the session summary must remain visually secondary.
+The task direction and cue are left aligned. Geography and Drill mode are
+secondary context on the right side of the same large task card. The exact
+width may adapt, but the progress card must remain visually secondary.
 
 Do not use an `ANSWER · ...` badge.
 
@@ -378,13 +389,20 @@ Do not show helper text.
 
 ## Expanded progress
 
-This change supersedes the first 0033 Drill-specific placement of progress beside the bottom answer dock.
+The progress card owns only:
 
-For Drill, progress moves into the compact **top session summary**.
+- `Country X / N`;
+- the current percentage;
+- the existing Drill progress bar.
+
+It does not contain geography, Drill mode, task direction/cue, or an Exit Drill
+button. For Drill, this top-right card supersedes the first 0033 placement of
+progress beside the bottom answer dock.
 
 The generic `MapSurface.expandedCompanion` seam may remain if it is useful to other callers, but Drill should no longer use it for the session-progress panel.
 
-This leaves the bottom answer dock visually clean and consistent between standard and expanded views.
+This leaves the bottom answer dock visually clean and consistent between
+standard and expanded views.
 
 ## Expanded bottom answer
 
@@ -825,7 +843,7 @@ Protect:
 - no `ANSWER · COUNTRY` / `ANSWER · CAPITAL` badge in active task context;
 - no old explanatory helper sentence;
 - standard context renders one direction + one cue;
-- expanded context renders prompt + compact session summary;
+- expanded context renders a left-aligned task/geography/mode card plus a progress-only card;
 - typed dock does not repeat `DRILL · <direction>`;
 - existing typed state survives expand/collapse;
 - multiple-choice/map-click still render usable interaction;
@@ -875,8 +893,9 @@ Protect:
 ## Expanded layout
 
 - [ ] Rails remain hidden through existing `expanded-center`.
-- [ ] Top uses horizontal space: dominant prompt + compact session summary.
-- [ ] Expanded session summary shows essential geography/mode/progress without recreating full rails.
+- [ ] Top uses horizontal space: dominant task + geography/mode card plus a compact progress-only card.
+- [ ] Expanded task direction/cue are left aligned, with geography/mode as secondary context on the same card.
+- [ ] The right progress card contains only `Country X / N`, percentage, and the progress bar.
 - [ ] Drill progress is no longer presented as a separate companion beside the bottom answer form.
 - [ ] Bottom answer form is centered and bounded.
 - [ ] 0033 viewport-aware map camera fitting continues to work.
@@ -966,12 +985,15 @@ Do not add a pre-answer cyan fill if current isolation behavior intentionally ke
 
 Verify:
 
-- prompt/session summary use horizontal space;
+- dominant task card and progress-only card use horizontal space;
+- task direction/cue are left aligned and geography/mode appear only on the task card;
+- progress card contains `Country X / N`, percentage, and progress bar only;
 - map remains dominant;
 - map camera still refits correctly;
 - answer dock is compact at bottom;
 - no answer-kind badge;
 - no repeated direction in bottom dock;
+- no Exit Drill button;
 - no progress companion beside the answer form.
 
 ---
