@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Change Spec 0034 Visual Reference</title>
+<style>
+:root{
+  color-scheme:dark;
+  --page:#050506;
+  --bg:#08080a;
+  --panel:#111114;
+  --panel2:#17171b;
+  --line:rgba(255,255,255,.09);
+  --line2:rgba(255,255,255,.14);
+  --text:#f4f4f5;
+  --muted:#8c8c96;
+  --cyan:#0891b2;
+  --cyan-text:#22d3ee;
+  --violet:#8b5cf6;
+  --map:#252525;
+  --land:#3a3a44;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--page);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{padding:16px}
+button{font:inherit}
+.wrap{max-width:1660px;margin:auto}
+.note{max-width:1100px;margin:0 auto 14px;color:#aaaab3;font-size:13px;line-height:1.45}
+.controls{display:flex;justify-content:center;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+.controls .group{display:flex;gap:5px;padding:5px;border:1px solid var(--line);background:#0e0e11;border-radius:11px}
+.controls button{border:1px solid transparent;background:transparent;color:#92929c;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:11px;font-weight:750}
+.controls button.active{color:white;background:#1b1b20;border-color:var(--line2)}
+.controls .mode.active{color:#cffafe;background:rgba(34,211,238,.08);border-color:rgba(34,211,238,.35)}
+
+.app{height:860px;background:var(--bg);border:1px solid rgba(255,255,255,.07);box-shadow:0 26px 90px rgba(0,0,0,.42);overflow:hidden}
+.global{height:58px;border-bottom:1px solid var(--line);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 22px}
+.left{display:flex;gap:16px;align-items:center}.brand{font-weight:850}.back{color:#aaa;font-size:20px}
+.activity{display:flex;gap:5px;padding:4px;background:#121216;border:1px solid var(--line);border-radius:11px}
+.activity span{padding:8px 30px;font-size:11px;color:#85858f;border-radius:8px}.activity .active{background:#0e9dc1;color:white}
+.tools{justify-self:end;display:flex;gap:7px}.tool{border:1px solid var(--line2);background:#232329;color:#c7c7ce;border-radius:8px;padding:8px 10px;font-size:11px}
+
+.meta{color:var(--cyan-text);font-size:10px;font-weight:850;letter-spacing:.13em;text-transform:uppercase}
+.question{margin-top:6px;font-size:27px;line-height:1.05;font-weight:900;letter-spacing:-.025em}
+.card{border:1px solid var(--line);background:#111114;border-radius:13px}
+.prompt{padding:13px 15px}
+.map{position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.06);border-radius:15px;background:var(--map)}
+.map:before{content:"";position:absolute;left:-8%;bottom:-20%;width:47%;height:72%;border-radius:45% 52% 40% 46%;background:var(--land);transform:rotate(9deg)}
+.islands{position:absolute;inset:0;background:radial-gradient(circle at 44% 28%,#50505a 0 4px,transparent 5px),radial-gradient(circle at 52% 38%,#45454f 0 4px,transparent 5px),radial-gradient(circle at 63% 30%,#50505a 0 5px,transparent 6px),radial-gradient(circle at 73% 48%,#45454f 0 4px,transparent 5px)}
+.target-country{position:absolute;left:52%;top:42%;width:96px;height:58px;border-radius:46% 54% 40% 50%;transform:rotate(-8deg);z-index:2;transition:background .15s ease,opacity .15s ease}
+.target-country.country{background:var(--cyan)}
+.target-country.capital{background:var(--violet)}
+.target-country.none{opacity:0}
+.expand{position:absolute;right:12px;top:12px;width:36px;height:36px;display:grid;place-items:center;border:1px solid rgba(34,211,238,.55);border-radius:9px;background:rgba(9,9,11,.78);z-index:4}
+
+.answer{border:1px solid var(--line2);background:linear-gradient(180deg,rgba(22,22,27,.9),rgba(12,12,15,.98));border-radius:15px;padding:10px;box-shadow:0 14px 40px rgba(0,0,0,.28)}
+.answer-hint{display:flex;justify-content:flex-end;color:#67e8f9;font-size:9px;margin-bottom:7px}
+.answer-row{display:grid;grid-template-columns:minmax(0,1fr) 120px}
+.input{height:46px;display:flex;align-items:center;padding:0 14px;background:#29292e;border:1px solid rgba(255,255,255,.09);border-right:0;border-radius:9px 0 0 9px;color:#777780}
+.check{height:46px;display:grid;place-items:center;background:rgba(8,145,178,.32);border:1px solid rgba(34,211,238,.25);border-radius:0 9px 9px 0;color:#67e8f9;font-weight:800}
+
+.rail-title{margin-bottom:10px}.eyebrow{color:var(--cyan-text);font-size:9px;font-weight:850;letter-spacing:.12em;text-transform:uppercase}.rail-title h3{margin:4px 0 0;font-size:16px}
+.rail-card{padding:12px}.rail-card h4{margin:0 0 8px;color:#777781;font-size:9px;letter-spacing:.1em;text-transform:uppercase}
+.list{display:grid;gap:6px;font-size:11px;color:#c5c5cb}
+.session-mode{font-size:13px;font-weight:800}
+.progress-head{display:flex;justify-content:space-between;font-size:10px;color:#aaaab3;margin-top:12px}
+.track{height:5px;margin-top:7px;border-radius:999px;background:#29292e;overflow:hidden}.track span{display:block;width:28%;height:100%;background:var(--cyan-text)}
+.action{width:100%;border:1px solid var(--line);background:#17171b;color:#b8b8c0;border-radius:9px;padding:10px;font-size:10px}.action.cyan{color:#67e8f9}
+
+/* standard */
+.standard{height:calc(100% - 58px);display:grid;grid-template-columns:205px minmax(0,1fr) 220px;gap:15px;padding:15px}
+.rail{min-height:0;display:flex;flex-direction:column;gap:11px}
+.center{min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:10px}
+.center .answer{width:min(700px,100%);justify-self:center}
+
+/* expanded */
+.expanded{height:calc(100% - 58px);display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:10px;padding:12px 18px 15px}
+.expanded-top{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:10px}
+.summary{padding:11px 13px}
+.summary-line{font-size:10px;color:#85858f}.summary-line strong{color:#d0d0d5}
+.summary .progress-head{margin-top:8px}
+.expanded .answer{width:min(800px,78vw);justify-self:center}
+.session-exit{margin-top:8px;border:1px solid var(--line);background:#17171b;color:#b8b8c0;border-radius:8px;padding:7px 9px;font-size:9px;width:100%}
+
+.legend{max-width:1100px;margin:12px auto 0;display:flex;justify-content:center;gap:18px;flex-wrap:wrap;color:#92929c;font-size:11px}
+.swatch{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}.cyan{background:var(--cyan)}.violet{background:var(--violet)}
+@media(max-width:950px){.standard{grid-template-columns:165px 1fr 175px}.global{grid-template-columns:1fr auto}.activity{display:none}.expanded-top{grid-template-columns:1fr 210px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="note">
+    <strong>0034 visual reference.</strong> No explicit “ANSWER · COUNTRY/CAPITAL” badge.
+    Direction + cue + input are the textual orientation. The map adds a redundant semantic cue:
+    Country-answer highlights are cyan; Capital-answer highlights are violet.
+  </div>
+
+  <div class="controls">
+    <div class="group">
+      <button class="view active" data-view="standard">Normal</button>
+      <button class="view" data-view="expanded">Expanded</button>
+    </div>
+    <div class="group">
+      <button class="mode active" data-mode="location">Location → Country</button>
+      <button class="mode" data-mode="countryCapital">Country → Capital</button>
+      <button class="mode" data-mode="capitalCountry">Capital → Country</button>
+      <button class="mode" data-mode="shape">Shape → Country</button>
+    </div>
+  </div>
+
+  <main class="app">
+    <header class="global">
+      <div class="left"><span class="back">←</span><span class="brand">World Countries</span></div>
+      <div class="activity"><span>Today</span><span class="active">Drill</span><span>Recite</span></div>
+      <div class="tools"><span class="tool">⌨ Typing</span><span class="tool">📊</span><span class="tool">⚙</span></div>
+    </header>
+
+    <section id="standard" class="standard">
+      <aside class="rail">
+        <div class="rail-title"><div class="eyebrow">Selected geography</div><h3>Oceania</h3></div>
+        <div class="card rail-card">
+          <h4>Subregions</h4>
+          <div class="list"><span>Micronesia</span><span>Melanesia</span><span>Polynesia</span></div>
+        </div>
+      </aside>
+
+      <div class="center">
+        <div class="card prompt">
+          <div class="meta" data-direction>Location → Country</div>
+          <div class="question" data-cue>Name the highlighted country</div>
+        </div>
+        <div class="map">
+          <div class="islands"></div>
+          <div class="target-country country" data-highlight></div>
+          <div class="expand">↗</div>
+        </div>
+        <div class="answer">
+          <div class="answer-hint">↵ Enter to check</div>
+          <div class="answer-row"><div class="input" data-placeholder>Type the country…</div><div class="check">Check</div></div>
+        </div>
+      </div>
+
+      <aside class="rail">
+        <div class="rail-title"><div class="eyebrow" style="color:#c4b5fd">Drill</div><h3>Session</h3></div>
+        <div class="card rail-card">
+          <h4>Mode</h4>
+          <div class="session-mode">Countries + Capitals</div>
+          <div class="progress-head"><span>Country 1 / 12</span><span>8%</span></div>
+          <div class="track"><span></span></div>
+        </div>
+        <button class="action cyan">Show mnemonics</button>
+        <button class="action">Exit Drill</button>
+      </aside>
+    </section>
+
+    <section id="expanded" class="expanded" hidden>
+      <div class="expanded-top">
+        <div class="card prompt">
+          <div class="meta" data-direction>Location → Country</div>
+          <div class="question" data-cue>Name the highlighted country</div>
+        </div>
+        <div class="card summary">
+          <div class="summary-line"><strong>Oceania</strong> · Countries + Capitals</div>
+          <div class="progress-head"><span>Country 1 / 12</span><span>8%</span></div>
+          <div class="track"><span></span></div>
+          <button class="session-exit">Exit Drill</button>
+        </div>
+      </div>
+      <div class="map">
+        <div class="islands"></div>
+        <div class="target-country country" data-highlight></div>
+        <div class="expand">↙</div>
+      </div>
+      <div class="answer">
+        <div class="answer-hint">↵ Enter to check</div>
+        <div class="answer-row"><div class="input" data-placeholder>Type the country…</div><div class="check">Check</div></div>
+      </div>
+    </section>
+  </main>
+
+  <div class="legend">
+    <span><i class="swatch cyan"></i>Country-answer task highlight</span>
+    <span><i class="swatch violet"></i>Capital-answer task highlight</span>
+    <span>Shape/Capital → Country can remain neutral until existing reveal rules allow a highlight.</span>
+  </div>
+</div>
+
+<script>
+const modes = {
+  location:{
+    direction:"Location → Country",
+    cue:"Name the highlighted country",
+    placeholder:"Type the country…",
+    highlight:"country"
+  },
+  countryCapital:{
+    direction:"Country → Capital",
+    cue:"Micronesia",
+    placeholder:"Type the capital…",
+    highlight:"capital"
+  },
+  capitalCountry:{
+    direction:"Capital → Country",
+    cue:"Palikir",
+    placeholder:"Type the country…",
+    highlight:"none"
+  },
+  shape:{
+    direction:"Shape → Country",
+    cue:"Name this country",
+    placeholder:"Type the country…",
+    highlight:"none"
+  }
+};
+function applyMode(key){
+  const m=modes[key];
+  document.querySelectorAll("[data-direction]").forEach(e=>e.textContent=m.direction);
+  document.querySelectorAll("[data-cue]").forEach(e=>e.textContent=m.cue);
+  document.querySelectorAll("[data-placeholder]").forEach(e=>e.textContent=m.placeholder);
+  document.querySelectorAll("[data-highlight]").forEach(e=>e.className="target-country "+m.highlight);
+}
+document.querySelectorAll(".mode").forEach(btn=>btn.addEventListener("click",()=>{
+  document.querySelectorAll(".mode").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");applyMode(btn.dataset.mode);
+}));
+document.querySelectorAll(".view").forEach(btn=>btn.addEventListener("click",()=>{
+  document.querySelectorAll(".view").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");
+  document.getElementById("standard").hidden=btn.dataset.view!=="standard";
+  document.getElementById("expanded").hidden=btn.dataset.view!=="expanded";
+}));
+</script>
+</body>
+</html>
