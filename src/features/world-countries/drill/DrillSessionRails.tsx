@@ -13,7 +13,6 @@ export function DrillSessionRails({
   proficiencySelection = [],
   mode,
   state,
-  onExit,
   entries,
   mnemonicOpen,
   onOpenMnemonic,
@@ -25,7 +24,6 @@ export function DrillSessionRails({
   proficiencySelection?: WorldCountriesProficiencySelection
   mode: WorldCountriesDrillMode
   state: DrillSessionState
-  onExit: () => void
   entries: readonly Country[]
   mnemonicOpen: boolean
   onOpenMnemonic: () => void
@@ -69,7 +67,6 @@ export function DrillSessionRails({
             </div>
             <p className="mt-2 text-xs tabular-nums text-zinc-500">Country {Math.min(state.countryIndex + 1, state.countryOrder.length)} / {state.countryOrder.length}</p>
           </div>
-          <button type="button" onClick={onExit} className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2.5 text-sm font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">Exit Drill</button>
           {step && country && (
             <>
               <button type="button" onClick={mnemonicOpen ? onCloseMnemonic : onOpenMnemonic} className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm font-medium text-cyan-300 hover:border-cyan-500 hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">
@@ -83,7 +80,7 @@ export function DrillSessionRails({
       leftLabel: 'Drill context',
       rightLabel: 'Session',
     },
-    [country, entries, mnemonicOpen, mnemonicVersion, mode, onCloseMnemonic, onExit, onMnemonicChanged, onOpenMnemonic, proficiencySelection, selection.continent, selection.subregionIds, state.countryIds.length, state.countryIndex, state.countryOrder.length, state.stepIndex, step?.skill, totalSteps, progressPercent],
+    [country, entries, mnemonicOpen, mnemonicVersion, mode, onCloseMnemonic, onMnemonicChanged, onOpenMnemonic, proficiencySelection, selection.continent, selection.subregionIds, state.countryIds.length, state.countryIndex, state.countryOrder.length, state.stepIndex, step?.skill, totalSteps, progressPercent],
   )
 
   return null

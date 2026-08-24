@@ -206,7 +206,7 @@ export function DrillSession({
     : null
 
   const context = (
-    <div className="px-1 text-center">
+    <div className="px-1 text-left">
       <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">{activity === 'practice' ? 'Practice · ' : ''}{getDrillSkillLabel(step.skill)}</p>
       {isLocationPractice ? (
         <h1 className="mt-1 text-2xl font-black text-zinc-100">Find {country.country}</h1>
@@ -242,7 +242,6 @@ export function DrillSession({
       proficiencySelection={proficiencySelection}
       mode={state.mode}
       state={state}
-      onExit={onExit}
       entries={entries}
       mnemonicOpen={mnemonicOpen}
       onOpenMnemonic={() => {
@@ -352,7 +351,6 @@ export function DrillSession({
           proficiencySelection={proficiencySelection}
           mode={state.mode}
           state={state}
-          onExit={onExit}
           entries={entries}
           mnemonicOpen={mnemonicOpen}
           onOpenMnemonic={() => {
