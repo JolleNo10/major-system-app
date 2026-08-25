@@ -66,7 +66,7 @@ export function MiniSpellingPractice({ answer, answerKind, onComplete }: MiniSpe
         </div>
       ) : (
         <>
-          <p className="mb-2 text-xs text-zinc-300">Type the canonical spelling from memory. Get it right twice in a row.</p>
+          <p className="mb-2 whitespace-nowrap text-xs text-zinc-300">Type the canonical spelling from memory.</p>
           <SpellingPeek answer={answer} inputRef={inputRef} />
           <form
             onSubmit={event => {

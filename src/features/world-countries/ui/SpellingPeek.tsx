@@ -91,7 +91,7 @@ export function SpellingPeek({ answer, inputRef }: {
     <div
       data-spelling-peek
       data-spelling-peek-state={revealed ? 'revealed' : 'hidden'}
-      className="mt-2 box-border h-[74px] shrink-0 overflow-hidden rounded-[14px] border border-amber-300/20 bg-white/[0.025] px-[14px] pb-2 pt-[9px] text-left transition-colors hover:border-amber-300/35"
+      className="mt-2 box-border h-[56px] shrink-0 overflow-hidden rounded-[14px] border border-amber-300/20 bg-white/[0.025] px-[14px] text-left transition-colors hover:border-amber-300/35"
     >
       <button
         type="button"
@@ -107,29 +107,30 @@ export function SpellingPeek({ answer, inputRef }: {
           event.preventDefault()
           inputRef.current?.focus()
         }}
-        className="block w-full cursor-pointer select-none touch-none rounded-md px-0.5 py-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/40"
+        className="flex h-full w-full cursor-pointer select-none items-center justify-between gap-4 touch-none rounded-md px-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/40"
       >
-        <span className="flex h-[27px] items-center justify-between gap-4">
-          <span className="inline-flex min-w-0 items-center gap-2 text-[17px] font-semibold text-amber-100/90">
-            <svg aria-hidden="true" viewBox="0 0 24 24" className="size-4 shrink-0 text-amber-200/75" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M2.5 12s3.5-5.5 9.5-5.5 9.5 5.5 9.5 5.5-3.5 5.5-9.5 5.5S2.5 12 2.5 12Z" />
-              <circle cx="12" cy="12" r="2.25" />
-            </svg>
-            <span className="truncate">Peek at spelling</span>
-          </span>
-          <span data-spelling-peek-hint className="inline-flex shrink-0 items-center gap-1.5 text-[15px] font-medium text-zinc-500">
-            {revealed ? 'Release to hide' : <>Hold <kbd className="rounded border border-zinc-700/70 bg-zinc-950/45 px-1 py-0.5 font-mono text-[11px] text-zinc-400">{modifierLabel}</kbd> to reveal</>}
-          </span>
+        <span className="min-w-0 flex-1">
+          {revealed ? (
+            <span
+              data-spelling-peek-answer
+              data-spelling-answer-revealed
+              aria-hidden="false"
+              className="block truncate whitespace-nowrap text-[17px] font-semibold text-amber-50 opacity-100"
+            >
+              {answer}
+            </span>
+          ) : (
+            <span data-spelling-peek-label className="inline-flex items-center gap-2 whitespace-nowrap text-[16px] font-semibold text-amber-100/90">
+              <svg aria-hidden="true" viewBox="0 0 24 24" className="size-4 shrink-0 text-amber-200/75" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <path d="M2.5 12s3.5-5.5 9.5-5.5 9.5 5.5 9.5 5.5-3.5 5.5-9.5 5.5S2.5 12 2.5 12Z" />
+                <circle cx="12" cy="12" r="2.25" />
+              </svg>
+              <span>Peek at spelling</span>
+            </span>
+          )}
         </span>
-        <span className="ml-[25px] block h-[23px] whitespace-nowrap text-left text-[17px] font-semibold leading-[23px] text-amber-50">
-          <span
-            data-spelling-peek-answer
-            data-spelling-answer-revealed={revealed ? true : undefined}
-            aria-hidden={!revealed}
-            className={`inline-block transition-[filter,opacity,color] duration-100 ${revealed ? 'text-amber-50 opacity-100' : 'blur-[4px] text-amber-100/70 opacity-[0.55]'}`}
-          >
-            {answer}
-          </span>
+        <span data-spelling-peek-hint className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[14px] font-medium text-zinc-500">
+          {revealed ? <>Release <kbd className="rounded border border-zinc-700/70 bg-zinc-950/45 px-1 py-0.5 font-mono text-[11px] text-zinc-400">{modifierLabel}</kbd></> : <>Hold <kbd className="rounded border border-zinc-700/70 bg-zinc-950/45 px-1 py-0.5 font-mono text-[11px] text-zinc-400">{modifierLabel}</kbd></>}
         </span>
       </button>
     </div>

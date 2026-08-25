@@ -761,15 +761,15 @@ describe('DrillSession map presentation', () => {
     const miniPractice = mount.querySelector<HTMLElement>('[data-mini-spelling-practice]')!
     expect(mount.querySelector('[data-fuzzy-answer-comparison]')).toBeNull()
     expect(miniPractice.textContent).toContain('Peek at spelling')
-    expect(miniPractice.textContent).toContain('Hold Ctrl to reveal')
+    expect(miniPractice.textContent).toContain('Hold Ctrl')
     const spellingInput = miniPractice.querySelector<HTMLInputElement>('input')!
-    const peekAnswer = miniPractice.querySelector<HTMLElement>('[data-spelling-peek-answer]')!
-    expect(peekAnswer.className).toContain('blur-[4px]')
+    expect(miniPractice.querySelector('[data-spelling-peek-answer]')).toBeNull()
     await act(async () => spellingInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Control', ctrlKey: true, bubbles: true })))
+    const peekAnswer = miniPractice.querySelector<HTMLElement>('[data-spelling-peek-answer]')!
     expect(peekAnswer.hasAttribute('data-spelling-answer-revealed')).toBe(true)
     expect(peekAnswer.textContent).toBe('Stockholm')
     await act(async () => spellingInput.dispatchEvent(new KeyboardEvent('keyup', { key: 'Control', bubbles: true })))
-    expect(peekAnswer.hasAttribute('data-spelling-answer-revealed')).toBe(false)
+    expect(miniPractice.querySelector('[data-spelling-peek-answer]')).toBeNull()
 
     const checkSpelling = async (value: string) => {
       act(() => typeInto(spellingInput, value))
