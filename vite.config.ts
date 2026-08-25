@@ -38,6 +38,7 @@ function readGitCommit(): string {
 
 const buildTime = new Date().toISOString()
 const commit = readGitCommit()
+const usePolling = process.env.VITE_USE_POLLING === 'true'
 
 // A production service worker can keep serving an old build after switching the
 // same origin back to Vite development. Vite normally serves index.html for
@@ -118,10 +119,12 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
-    watch: {
-      usePolling: true,
-      interval: 5000,
-      ignored: ['**/node_modules/**', '**/dist/**', '**/.git/**'],
-    },
+    ...(usePolling ? {
+      watch: {
+        usePolling: true,
+        interval: 500,
+        ignored: ['**/node_modules/**', '**/dist/**', '**/.git/**'],
+      },
+    } : {}),
   },
 })
