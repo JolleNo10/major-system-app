@@ -6,20 +6,32 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SettingsProvider } from './SettingsContext'
 import { SettingsOverlay } from './SettingsOverlay'
 import { exportWorldCountriesOrder } from '@/features/world-countries'
+import type { PwaUpdate } from './usePwaUpdate'
 
 let root: Root | null = null
 let mount: HTMLDivElement
 
-const pwa = {
+const pwa: PwaUpdate = {
   buildTime: '2026-08-16T00:00:00.000Z',
   version: 'test',
   buildCommit: 'test',
   checking: false,
   needRefresh: false,
   lastChecked: null,
+  updateError: null,
   checkForUpdate: vi.fn(async () => undefined),
   updateNow: vi.fn(async () => undefined),
 }
+
+describe('Settings app version', () => {
+  it('reports an update check failure instead of claiming the app is current', () => {
+    renderSettings({ updateError: 'Could not contact the update service.' })
+
+    expect(mount.textContent).toContain('Check failed')
+    expect(mount.querySelector('[role="alert"]')?.textContent).toBe('Could not contact the update service.')
+    expect(mount.textContent).not.toContain('Up to date')
+  })
+})
 
 afterEach(() => {
   act(() => root?.unmount())
@@ -131,13 +143,13 @@ describe('Settings World Countries geography order', () => {
   })
 })
 
-function renderSettings(): void {
+function renderSettings(pwaOverrides: Partial<PwaUpdate> = {}): void {
   mount = document.createElement('div')
   document.body.append(mount)
   act(() => {
     root = createRoot(mount)
     root.render(createElement(SettingsProvider, null,
-      createElement(SettingsOverlay, { onClose: vi.fn(), pwa }),
+      createElement(SettingsOverlay, { onClose: vi.fn(), pwa: { ...pwa, ...pwaOverrides } }),
     ))
   })
 }

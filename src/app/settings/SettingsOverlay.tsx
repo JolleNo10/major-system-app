@@ -42,7 +42,9 @@ export function SettingsOverlay({ onClose, pwa }: Props) {
     const d = new Date(pwa.buildTime)
     return isNaN(d.getTime()) ? pwa.buildTime : d.toLocaleString()
   })()
-  const updateStatus = pwa.checking
+  const updateStatus = pwa.updateError
+    ? 'Check failed'
+    : pwa.checking
     ? 'Checking…'
     : pwa.needRefresh
       ? 'Update ready'
@@ -479,6 +481,9 @@ export function SettingsOverlay({ onClose, pwa }: Props) {
               Built {buildLabel}
               {pwa.lastChecked != null && ` · Last checked ${new Date(pwa.lastChecked).toLocaleTimeString()}`}
             </p>
+            {pwa.updateError && (
+              <p role="alert" className="text-sm text-rose-400 mb-3">{pwa.updateError}</p>
+            )}
 
             <div className="flex flex-wrap gap-2">
               <button

@@ -8,6 +8,8 @@ export interface PwaUpdate {
   checking: boolean
   /** Epoch ms of the last completed check, or null if never checked. */
   lastChecked: number | null
+  /** User-facing reason the latest update check could not complete. */
+  updateError: string | null
   /** Explicit update check — runs regardless of offline mode (user action). */
   checkForUpdate: () => Promise<void>
   /** Apply the waiting version: skipWaiting + reload. */
@@ -27,6 +29,7 @@ export interface PwaUpdate {
 export function usePwaUpdate(offlineMode: boolean): PwaUpdate {
   const [checking, setChecking] = useState(false)
   const [lastChecked, setLastChecked] = useState<number | null>(null)
+  const [updateError, setUpdateError] = useState<string | null>(null)
 
   const registrationRef = useRef<ServiceWorkerRegistration | undefined>(undefined)
   const offlineModeRef = useRef(offlineMode)
@@ -47,7 +50,13 @@ export function usePwaUpdate(offlineMode: boolean): PwaUpdate {
       // Launch check — only when the user allows it (online mode).
       if (r && !offlineModeRef.current) {
         autoApplyRef.current = true
-        void r.update().finally(() => setLastChecked(Date.now()))
+        void r.update().then(() => {
+          setUpdateError(null)
+          setLastChecked(Date.now())
+        }).catch(() => {
+          autoApplyRef.current = false
+          setUpdateError('Could not contact the update service.')
+        })
       }
     },
     onNeedRefresh() {
@@ -60,18 +69,25 @@ export function usePwaUpdate(offlineMode: boolean): PwaUpdate {
     },
     onRegisterError(err) {
       console.error('SW registration failed', err)
+      setUpdateError('The update service could not start.')
     },
   })
 
   const checkForUpdate = useCallback(async () => {
     if (checking) return
     setChecking(true)
+    setUpdateError(null)
     autoApplyRef.current = true
     try {
-      await registrationRef.current?.update()
+      const registration = registrationRef.current
+      if (!registration) throw new Error('Service worker registration unavailable')
+      await registration.update()
+      setLastChecked(Date.now())
+    } catch {
+      autoApplyRef.current = false
+      setUpdateError('Could not contact the update service.')
     } finally {
       setChecking(false)
-      setLastChecked(Date.now())
     }
   }, [checking])
 
@@ -83,6 +99,7 @@ export function usePwaUpdate(offlineMode: boolean): PwaUpdate {
     needRefresh,
     checking,
     lastChecked,
+    updateError,
     checkForUpdate,
     updateNow,
     buildTime: __BUILD_TIME__,

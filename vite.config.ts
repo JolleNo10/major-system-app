@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -39,6 +39,42 @@ function readGitCommit(): string {
 const buildTime = new Date().toISOString()
 const commit = readGitCommit()
 
+// A production service worker can keep serving an old build after switching the
+// same origin back to Vite development. Vite normally serves index.html for
+// /sw.js in development, so that worker can never update or unregister itself.
+const DEV_PWA_CLEANUP_WORKER = `
+self.addEventListener('install', () => self.skipWaiting())
+self.addEventListener('activate', event => {
+  event.waitUntil((async () => {
+    await Promise.all((await caches.keys()).map(key => caches.delete(key)))
+    await self.clients.claim()
+    await self.registration.unregister()
+    for (const client of await self.clients.matchAll({ type: 'window' })) {
+      await client.navigate(client.url)
+    }
+  })())
+})
+`
+
+function devPwaCleanup(): Plugin {
+  return {
+    name: 'dev-pwa-cleanup',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const pathname = new URL(req.url ?? '/', 'http://localhost').pathname
+        if (pathname !== '/sw.js') return next()
+
+        res.statusCode = 200
+        res.setHeader('Content-Type', 'application/javascript; charset=utf-8')
+        res.setHeader('Cache-Control', 'no-store')
+        res.setHeader('Service-Worker-Allowed', '/')
+        res.end(req.method === 'HEAD' ? undefined : DEV_PWA_CLEANUP_WORKER)
+      })
+    },
+  }
+}
+
 export default defineConfig({
   resolve: {
     alias: { '@': path.resolve(__dirname, 'src') },
@@ -49,6 +85,7 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '0.0.0'),
   },
   plugins: [
+    devPwaCleanup(),
     tailwindcss(),
     react(),
     VitePWA({
