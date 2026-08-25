@@ -43,7 +43,7 @@ export function WorldCountriesSessionProgressBar({ progressPercent, label }: {
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(percent)}
-      className="mt-3 h-1.5 overflow-hidden rounded-full bg-zinc-800"
+      className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-800"
     >
       <div className="h-full rounded-full bg-cyan-500" style={{ width: `${Math.max(2, percent)}%` }} />
     </div>
@@ -64,7 +64,7 @@ export function WorldCountriesSessionProgress({ progress }: {
     <section
       data-world-countries-session-progress
       aria-label={progress.label}
-      className="min-w-0 rounded-xl border border-zinc-800 bg-zinc-950/75 px-3 py-2.5"
+      className="min-w-0 rounded-xl border border-zinc-800 bg-zinc-950/75 px-3 py-2"
     >
       <div className="flex items-center justify-between gap-3 text-xs tabular-nums text-zinc-400">
         <span>{count ? `${progress.label} ${count}` : progress.label}</span>
@@ -88,16 +88,21 @@ export function WorldCountriesTaskContext({ task }: {
       data-world-countries-task-presentation={presentation}
       className={expanded ? 'grid items-center gap-3 text-left xl:grid-cols-[minmax(0,1fr)_minmax(0,28%)]' : 'rounded-xl border border-zinc-800 bg-zinc-950/55 px-4 py-3 text-center'}
     >
-      <div data-world-countries-task-card={expanded ? true : undefined} className={expanded ? 'min-w-0 rounded-xl border border-zinc-800 bg-zinc-950/55 px-4 py-3' : undefined}>
+      <div data-world-countries-task-card={expanded ? true : undefined} className={expanded ? 'min-w-0 rounded-xl border border-zinc-800 bg-zinc-950/55 px-4 py-2' : undefined}>
         <div data-world-countries-task-copy className={expanded ? 'min-w-0 text-left' : undefined}>
           {task.direction && <p data-world-countries-task-direction className="text-[11px] font-bold uppercase tracking-[0.12em] text-cyan-400">{task.direction}</p>}
-          <h1 data-world-countries-task-cue className="mt-1 text-2xl font-black tracking-tight text-zinc-100">{task.cue}</h1>
-        </div>
-        {expanded && task.sessionContext && (
-          <div data-world-countries-task-context className="mt-2 min-w-0 text-left text-xs font-medium text-zinc-500 xl:text-right">
-            {task.sessionContext}
+          <div
+            data-world-countries-task-main={expanded && task.sessionContext ? true : undefined}
+            className={expanded && task.sessionContext ? 'mt-1 flex min-w-0 flex-col gap-1 lg:flex-row lg:items-baseline lg:justify-between lg:gap-6' : undefined}
+          >
+            <h1 data-world-countries-task-cue className={`${expanded && task.sessionContext ? 'min-w-0 flex-1' : 'mt-1'} text-2xl font-black tracking-tight text-zinc-100`}>{task.cue}</h1>
+            {expanded && task.sessionContext && (
+              <div data-world-countries-task-context className="min-w-0 text-left text-xs font-medium text-zinc-500 lg:shrink-0 lg:whitespace-nowrap lg:text-right">
+                {task.sessionContext}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
       {progress && (
         <div data-world-countries-task-progress className="min-w-0">
