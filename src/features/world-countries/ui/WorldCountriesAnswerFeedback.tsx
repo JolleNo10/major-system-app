@@ -60,33 +60,6 @@ const iconClass = {
   revealed: 'border-amber-300/30 bg-amber-400/10 text-amber-200',
 } as const
 
-function SpellingPracticeReveal({ answer, outcome, revealed, onReveal }: {
-  answer: string
-  outcome: 'fuzzy' | 'incorrect'
-  revealed: boolean
-  onReveal: () => void
-}) {
-  if (revealed) {
-    return (
-      <div data-spelling-answer-revealed className={`mt-0.5 text-[13px] ${secondaryClass[outcome]}`}>
-        <strong>{answer}</strong>
-      </div>
-    )
-  }
-
-  return (
-    <button
-      type="button"
-      data-mini-spelling-action="reveal"
-      onClick={onReveal}
-      aria-controls="world-countries-mini-spelling-practice"
-      className={`mt-0.5 text-[13px] font-medium ${outcome === 'incorrect' ? 'text-rose-200 hover:text-rose-100' : 'text-amber-200 hover:text-amber-100'} underline-offset-4 hover:underline`}
-    >
-      Reveal spelling
-    </button>
-  )
-}
-
 export function WorldCountriesAnswerFeedback({ result, onContinue, allowIncorrectSpellingPractice = false }: {
   result: WorldCountriesTypedAnswerResult
   onContinue: () => void
@@ -94,7 +67,6 @@ export function WorldCountriesAnswerFeedback({ result, onContinue, allowIncorrec
 }) {
   const { outcome } = result
   const [practiceOpen, setPracticeOpen] = useState(false)
-  const [practiceAnswerRevealed, setPracticeAnswerRevealed] = useState(false)
   const spellingPracticeAvailable = outcome === 'fuzzy' || (outcome === 'incorrect' && allowIncorrectSpellingPractice)
   const interactive = spellingPracticeAvailable
   const title = outcome === 'exact' || outcome === 'fuzzy'
@@ -115,10 +87,7 @@ export function WorldCountriesAnswerFeedback({ result, onContinue, allowIncorrec
       answer={result.canonicalAnswer}
       answerKind={result.answerKind}
       practiceOpen={practiceOpen}
-      onPracticeOpenChange={open => {
-        setPracticeOpen(open)
-        if (!open) setPracticeAnswerRevealed(false)
-      }}
+      onPracticeOpenChange={setPracticeOpen}
       onContinue={onContinue}
     />
   )
@@ -142,9 +111,7 @@ export function WorldCountriesAnswerFeedback({ result, onContinue, allowIncorrec
 
       {outcome === 'fuzzy' && (
         <>
-          {practiceOpen ? (
-            <SpellingPracticeReveal answer={result.canonicalAnswer} outcome={outcome} revealed={practiceAnswerRevealed} onReveal={() => setPracticeAnswerRevealed(true)} />
-          ) : (
+          {!practiceOpen && (
             <div data-fuzzy-answer-comparison>
               <div className={`mt-0.5 text-[13px] ${secondaryClass[outcome]}`}>
                 Spelling: <strong>{result.canonicalAnswer}</strong>
@@ -161,9 +128,7 @@ export function WorldCountriesAnswerFeedback({ result, onContinue, allowIncorrec
 
       {outcome === 'incorrect' && (
         <>
-          {spellingPracticeAvailable && practiceOpen ? (
-            <SpellingPracticeReveal answer={result.canonicalAnswer} outcome={outcome} revealed={practiceAnswerRevealed} onReveal={() => setPracticeAnswerRevealed(true)} />
-          ) : (
+          {(!spellingPracticeAvailable || !practiceOpen) && (
             <>
               <div className={`mt-0.5 text-[13px] ${secondaryClass[outcome]}`}>
                 {result.message ?? 'Try again.'}

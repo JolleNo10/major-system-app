@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react'
+import { SpellingPeek } from './SpellingPeek'
 
 interface MiniSpellingPracticeProps {
   answer: string
@@ -66,6 +67,7 @@ export function MiniSpellingPractice({ answer, answerKind, onComplete }: MiniSpe
       ) : (
         <>
           <p className="mb-2 text-xs text-zinc-300">Type the canonical spelling from memory. Get it right twice in a row.</p>
+          <SpellingPeek answer={answer} inputRef={inputRef} />
           <form
             onSubmit={event => {
               event.preventDefault()
