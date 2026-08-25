@@ -91,7 +91,7 @@ export function SpellingPeek({ answer, inputRef }: {
     <div
       data-spelling-peek
       data-spelling-peek-state={revealed ? 'revealed' : 'hidden'}
-      className="mt-2 box-border min-h-16 max-h-20 overflow-hidden rounded-lg border border-amber-300/20 bg-white/[0.025] px-3 py-2 text-left transition-colors hover:border-amber-300/35"
+      className="mt-2 box-border h-[74px] shrink-0 overflow-hidden rounded-[14px] border border-amber-300/20 bg-white/[0.025] px-[14px] pb-2 pt-[9px] text-left transition-colors hover:border-amber-300/35"
     >
       <button
         type="button"
@@ -109,24 +109,24 @@ export function SpellingPeek({ answer, inputRef }: {
         }}
         className="block w-full cursor-pointer select-none touch-none rounded-md px-0.5 py-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/40"
       >
-        <span className="flex min-h-5 items-center justify-between gap-3">
-          <span className="inline-flex min-w-0 items-center gap-1.5 text-[13px] font-semibold text-amber-100/90">
-            <svg aria-hidden="true" viewBox="0 0 24 24" className="size-3.5 shrink-0 text-amber-200/75" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <span className="flex h-[27px] items-center justify-between gap-4">
+          <span className="inline-flex min-w-0 items-center gap-2 text-[17px] font-semibold text-amber-100/90">
+            <svg aria-hidden="true" viewBox="0 0 24 24" className="size-4 shrink-0 text-amber-200/75" fill="none" stroke="currentColor" strokeWidth="1.8">
               <path d="M2.5 12s3.5-5.5 9.5-5.5 9.5 5.5 9.5 5.5-3.5 5.5-9.5 5.5S2.5 12 2.5 12Z" />
               <circle cx="12" cy="12" r="2.25" />
             </svg>
             <span className="truncate">Peek at spelling</span>
           </span>
-          <span data-spelling-peek-hint className="shrink-0 text-[11px] font-medium text-zinc-500">
-            {revealed ? 'Release to hide' : <>Hold <kbd className="rounded border border-zinc-700/70 bg-zinc-950/45 px-1 py-0.5 font-mono text-[10px] text-zinc-400">{modifierLabel}</kbd> to reveal</>}
+          <span data-spelling-peek-hint className="inline-flex shrink-0 items-center gap-1.5 text-[15px] font-medium text-zinc-500">
+            {revealed ? 'Release to hide' : <>Hold <kbd className="rounded border border-zinc-700/70 bg-zinc-950/45 px-1 py-0.5 font-mono text-[11px] text-zinc-400">{modifierLabel}</kbd> to reveal</>}
           </span>
         </span>
-        <span className="mt-0.5 block min-h-6 whitespace-nowrap text-left text-[17px] font-semibold leading-6 text-amber-50">
+        <span className="ml-[25px] block h-[23px] whitespace-nowrap text-left text-[17px] font-semibold leading-[23px] text-amber-50">
           <span
             data-spelling-peek-answer
             data-spelling-answer-revealed={revealed ? true : undefined}
             aria-hidden={!revealed}
-            className={`inline-block transition-[filter,opacity,color] duration-100 ${revealed ? 'text-amber-50' : 'blur-[3px] text-amber-100/70 opacity-60'}`}
+            className={`inline-block transition-[filter,opacity,color] duration-100 ${revealed ? 'text-amber-50 opacity-100' : 'blur-[4px] text-amber-100/70 opacity-[0.55]'}`}
           >
             {answer}
           </span>

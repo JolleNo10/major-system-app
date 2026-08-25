@@ -764,7 +764,7 @@ describe('DrillSession map presentation', () => {
     expect(miniPractice.textContent).toContain('Hold Ctrl to reveal')
     const spellingInput = miniPractice.querySelector<HTMLInputElement>('input')!
     const peekAnswer = miniPractice.querySelector<HTMLElement>('[data-spelling-peek-answer]')!
-    expect(peekAnswer.className).toContain('blur-[3px]')
+    expect(peekAnswer.className).toContain('blur-[4px]')
     await act(async () => spellingInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Control', ctrlKey: true, bubbles: true })))
     expect(peekAnswer.hasAttribute('data-spelling-answer-revealed')).toBe(true)
     expect(peekAnswer.textContent).toBe('Stockholm')

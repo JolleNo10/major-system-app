@@ -52,13 +52,14 @@ describe('MiniSpellingPractice spelling peek', () => {
     const peek = mount.querySelector<HTMLElement>('[data-spelling-peek]')!
 
     expect(mount.querySelector('[data-spelling-peek]')).not.toBeNull()
-    expect(peek.className).toContain('min-h-16')
-    expect(peek.className).toContain('max-h-20')
+    expect(peek.className).toContain('h-[74px]')
     expect(peek.className).toContain('overflow-hidden')
     expect(peek.className).not.toContain('shadow-')
     expect(peekAnswer(mount).textContent).toBe('Stockholm')
-    expect(peekAnswer(mount).className).toContain('blur-[3px]')
-    expect(peekAnswer(mount).className).toContain('opacity-60')
+    expect(peekAnswer(mount).className).toContain('blur-[4px]')
+    expect(peekAnswer(mount).className).toContain('opacity-[0.55]')
+    expect(mount.querySelector('[data-spelling-answer-row]')?.className).toContain('mt-[14px]')
+    expect(mount.querySelector('[data-spelling-answer-row]')?.className).toContain('gap-[14px]')
     expect(mount.querySelector('[data-spelling-peek-hint]')?.textContent).toBe('Hold Ctrl to reveal')
   })
 
@@ -69,13 +70,13 @@ describe('MiniSpellingPractice spelling peek', () => {
     expect(document.activeElement).toBe(input)
     dispatchKey(input, 'keydown', 'Control', { ctrlKey: true })
     expect(peekAnswer(mount).hasAttribute('data-spelling-answer-revealed')).toBe(true)
-    expect(peekAnswer(mount).className).not.toContain('blur-[3px]')
+    expect(peekAnswer(mount).className).not.toContain('blur-[4px]')
     expect(mount.querySelector('[data-spelling-peek-hint]')?.textContent).toBe('Release to hide')
     expect(document.activeElement).toBe(input)
 
     dispatchKey(input, 'keyup', 'Control')
     expect(peekAnswer(mount).hasAttribute('data-spelling-answer-revealed')).toBe(false)
-    expect(peekAnswer(mount).className).toContain('blur-[3px]')
+    expect(peekAnswer(mount).className).toContain('blur-[4px]')
     expect(document.activeElement).toBe(input)
   })
 
