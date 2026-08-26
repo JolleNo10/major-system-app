@@ -194,13 +194,13 @@ export function CountryLearningFlow({
         return { direction: 'Country ↔ Capital', cue: walkthroughCountry ? `${walkthroughCountry.country} ↔ ${walkthroughCountry.capital}` : 'Review', sessionContext: `Set ${currentStagedCountrySetNumber(flow)} · Review`, progress: { label: 'Country', current: flow.walkthroughIndex + 1, total: stageEntries.length } }
       case 'location-practice': {
         const current = flow.location ? stageEntries.find(entry => entry.id === flow.location?.currentKey) : undefined
-        return { direction: 'Location → Country', cue: current ? `Find ${current.country}` : 'Find the Country', sessionContext: `Set ${currentStagedCountrySetNumber(flow)} · Locate`, progress: practiceProgress ? { label: 'Practice', current: practiceProgress.atTarget, total: practiceProgress.total, percent: practiceProgress.pct * 100 } : undefined }
+        return { direction: 'Location → Country', cue: current ? `Find ${current.country}` : 'Find the Country', sessionContext: `Set ${currentStagedCountrySetNumber(flow)} · Locate`, answerKind: 'country', progress: practiceProgress ? { label: 'Practice', current: practiceProgress.atTarget, total: practiceProgress.total, percent: practiceProgress.pct * 100 } : undefined }
       }
       case 'practice':
       case 'combined-practice':
-        return { direction: 'Location → Country', cue: 'Name the country', sessionContext: flow.phase === 'combined-practice' ? 'Combined practice' : `Set ${currentStagedCountrySetNumber(flow)} · Practice`, progress: practiceProgress ? { label: 'Practice', current: practiceProgress.atTarget, total: practiceProgress.total, percent: practiceProgress.pct * 100 } : undefined }
+        return { direction: 'Location → Country', cue: 'Name the country', sessionContext: flow.phase === 'combined-practice' ? 'Combined practice' : `Set ${currentStagedCountrySetNumber(flow)} · Practice`, answerKind: 'country', progress: practiceProgress ? { label: 'Practice', current: practiceProgress.atTarget, total: practiceProgress.total, percent: practiceProgress.pct * 100 } : undefined }
       case 'final-recall':
-        return { direction: 'Location → Country', cue: 'Name the country', sessionContext: flow.ordered?.mode === 'repair' ? 'Repair traversal' : 'Final recall', progress: { label: 'Country', current: (flow.ordered?.currentIndex ?? 0) + 1, total: flow.ordered?.order.length ?? entries.length } }
+        return { direction: 'Location → Country', cue: 'Name the country', sessionContext: flow.ordered?.mode === 'repair' ? 'Repair traversal' : 'Final recall', answerKind: 'country', progress: { label: 'Country', current: (flow.ordered?.currentIndex ?? 0) + 1, total: flow.ordered?.order.length ?? entries.length } }
       default:
         return undefined
     }

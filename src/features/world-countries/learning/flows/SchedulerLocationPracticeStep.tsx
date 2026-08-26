@@ -4,6 +4,7 @@ import type { Continent, Country } from '@/features/world-countries/data/countri
 import type { SchedulerLearningSession } from '@/features/world-countries/learning/schedulerLearningSession'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import { WorldCountriesMapActivitySurface } from '@/features/world-countries/ui/WorldCountriesActivity'
+import { getWorldCountriesTaskHighlightFill } from '@/features/world-countries/ui/WorldCountriesAnswerSemantics'
 import type { WorldCountriesActivityTask } from '@/features/world-countries/ui/WorldCountriesActivity'
 import { useLearningMapPresentation } from './LearningMapSurface'
 
@@ -60,13 +61,14 @@ export function SchedulerLocationPracticeStep({ continent, entries, session, lab
     direction: 'Location → Country',
     cue: `Find ${expected.country}`,
     sessionContext: label,
+    answerKind: 'country',
   }
 
   return (
     <div className="space-y-4 animate-fade-in">
       <WorldCountriesMapActivitySurface
         task={activityTask}
-        map={<CountryLearningMap continent={continent} scopeCountries={entries} answerSelectionCountryIds={entries.map(entry => entry.id)} taskTargetCountryId={feedback ? feedback.expectedId : null} highlightedCountryId={feedback ? feedback.expectedId : null} onCountryClick={submit} ariaLabel="Unlabeled map for location practice" />}
+        map={<CountryLearningMap continent={continent} scopeCountries={entries} highlightFill={getWorldCountriesTaskHighlightFill('country')} answerSelectionCountryIds={entries.map(entry => entry.id)} taskTargetCountryId={feedback ? feedback.expectedId : null} highlightedCountryId={feedback ? feedback.expectedId : null} onCountryClick={submit} ariaLabel="Unlabeled map for location practice" />}
         dock={dock}
         dockPlacement="stacked"
       />

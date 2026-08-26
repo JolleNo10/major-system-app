@@ -90,6 +90,13 @@ describe('GeographyOverviewMap', () => {
     expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toBe('#0891b2')
   })
 
+  it('applies a caller-owned highlight fill without changing semantic Country colors', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g></svg>' })))
+    const mount = document.createElement('div'); document.body.append(mount)
+    await act(async () => { root = createRoot(mount); root.render(createElement(GeographyOverviewMap, { level: 'world', highlightedCountryIds: ['NO'], highlightFill: '#8b5cf6', countryColorsById: new Map([['NO', '#71717a']]), ariaLabel: 'World map' })); await Promise.resolve(); await Promise.resolve() })
+    expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toBe('#8b5cf6')
+  })
+
   it('exposes non-color descriptions on individual Country maps', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g></svg>' })))
     const mount = document.createElement('div'); document.body.append(mount)

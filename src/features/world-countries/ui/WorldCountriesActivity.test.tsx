@@ -30,6 +30,7 @@ describe('World Countries active map-task presentation', () => {
             task: {
               direction: 'Country → Capital',
               cue: 'Capital of Norway',
+              answerKind: 'capital',
               sessionContext: 'Europe · Practice',
               reviewReason: 'Spaced review',
               progress: { label: 'Country', current: 2, total: 5, percent: 40 },

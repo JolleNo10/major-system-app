@@ -270,7 +270,7 @@ describe('DrillSession map presentation', () => {
     })
 
     const locationProps = learningMapMock.mock.calls[learningMapMock.mock.calls.length - 1]?.[0] as Record<string, unknown>
-    expect(locationProps).toMatchObject({ highlightedCountryId: 'NO', taskHighlightTone: 'country-answer' })
+    expect(locationProps).toMatchObject({ highlightedCountryId: 'NO', highlightFill: '#0891b2' })
 
     await act(async () => {
       root?.render(createElement(DrillSession, {
@@ -286,7 +286,7 @@ describe('DrillSession map presentation', () => {
     })
 
     const capitalProps = learningMapMock.mock.calls[learningMapMock.mock.calls.length - 1]?.[0] as Record<string, unknown>
-    expect(capitalProps).toMatchObject({ highlightedCountryId: 'NO', taskHighlightTone: 'capital-answer' })
+    expect(capitalProps).toMatchObject({ highlightedCountryId: 'NO', highlightFill: '#8b5cf6' })
   })
 
   it('offers mnemonic editing for each single-Country Drill skill without leaking the answer', async () => {

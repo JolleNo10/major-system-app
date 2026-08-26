@@ -6,7 +6,7 @@ import type { WorldCountriesRecallSkill } from '@/features/world-countries/learn
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import { TaskDock } from '@/features/world-countries/ui/MapSurface'
 import { WorldCountriesMapActivitySurface, type WorldCountriesActivityTask } from '@/features/world-countries/ui/WorldCountriesActivity'
-import { getWorldCountriesAnswerKind } from '@/features/world-countries/ui/WorldCountriesAnswerKindCue'
+import { getWorldCountriesAnswerKind, getWorldCountriesTaskHighlightFill } from '@/features/world-countries/ui/WorldCountriesAnswerSemantics'
 import {
   WorldCountriesTypedAnswer,
   type WorldCountriesTypedAnswerEvaluation,
@@ -70,6 +70,7 @@ export function TodayReviewSession({
     direction: isLocationQuestion ? 'Location → Country' : 'Country → Capital',
     cue: promptLabel,
     sessionContext: 'Today review',
+    answerKind,
     reviewReason,
     progress: {
       label: 'Review',
@@ -165,6 +166,7 @@ export function TodayReviewSession({
               <CountryLearningMap
                 continent={country.continent}
                 scopeCountries={activeCountries}
+                highlightFill={getWorldCountriesTaskHighlightFill(answerKind)}
                 taskTargetCountryId={isLocationQuestion ? country.id : null}
                 highlightedCountryId={country.id}
                 namedCountryId={typed.outcome && typed.outcome !== 'incorrect' || !isLocationQuestion ? country.id : null}

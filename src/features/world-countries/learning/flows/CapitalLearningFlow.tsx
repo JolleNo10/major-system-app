@@ -192,9 +192,9 @@ export function CapitalLearningFlow({
         return { direction: 'Country ↔ Capital', cue: walkthroughCountry ? `${walkthroughCountry.country} ↔ ${walkthroughCountry.capital}` : 'Review', sessionContext: `Set ${stageSetNumber} · Review`, progress: { label: 'Country', current: flow.walkthroughIndex + 1, total: stageEntries.length } }
       case 'practice':
       case 'combined-practice':
-        return { direction: 'Country → Capital', cue: 'Name the capital', sessionContext: flow.phase === 'combined-practice' ? 'Combined practice' : `Set ${stageSetNumber} · Practice`, progress: practiceProgress ? { label: 'Practice', current: practiceProgress.atTarget, total: practiceProgress.total, percent: practiceProgress.pct * 100 } : undefined }
+        return { direction: 'Country → Capital', cue: 'Name the capital', sessionContext: flow.phase === 'combined-practice' ? 'Combined practice' : `Set ${stageSetNumber} · Practice`, answerKind: 'capital', progress: practiceProgress ? { label: 'Practice', current: practiceProgress.atTarget, total: practiceProgress.total, percent: practiceProgress.pct * 100 } : undefined }
       case 'final-recall':
-        return { direction: 'Country → Capital', cue: 'Name the capital', sessionContext: flow.ordered?.mode === 'repair' ? 'Repair traversal' : 'Final recall', progress: { label: 'Country', current: (flow.ordered?.currentIndex ?? 0) + 1, total: flow.ordered?.order.length ?? entries.length } }
+        return { direction: 'Country → Capital', cue: 'Name the capital', sessionContext: flow.ordered?.mode === 'repair' ? 'Repair traversal' : 'Final recall', answerKind: 'capital', progress: { label: 'Country', current: (flow.ordered?.currentIndex ?? 0) + 1, total: flow.ordered?.order.length ?? entries.length } }
       default:
         return undefined
     }

@@ -66,8 +66,8 @@ that lets contextual authoring affect subsequent Learning presentation.
   and opt-in Country click-sequence presentation, shared active map-task,
   task-context, and session-progress presentation, map-surface/dock
   presentation, task-dock status/action styling,
-  the shared typed-answer lifecycle for primary World Countries recall, reusable
-  answer-kind semantics for workflows that need them, and draft movement
+  the shared typed-answer lifecycle for primary World Countries recall, shared
+  reusable answer-kind semantics across active workflows, and draft movement
   without persistence policy. Workflows provide the active answer kind from
   their task or skill. The typed-answer seam owns native
   submit handling, blank prevention, map-relative answer-feedback overlay,
@@ -331,9 +331,11 @@ advances automatically after the correction dwell.
   rail. Expanded presentation uses one dominant task card and an optional
   secondary progress-only card for useful hidden-rail context; it does not
   recreate the rails or move progress into a separate workflow-specific
-  header. Drill-specific Country-answer cyan versus Capital-answer violet map
-  tone remains owned by Drill task semantics and translated by
-  `CountryLearningMap`.
+  header. Reusable answer-kind semantics are shared across active World
+  Countries workflows: Country-answer highlights use cyan `#0891b2` and
+  Capital-answer highlights use violet `#8b5cf6` across Drill, Practice, Today
+  Review, Learning, and Recite. This active-task palette is separate from
+  setup, progress, proficiency, status, result, and geography palettes.
 - `SvgMapController` owns one explicit task-assistance layer for map-answer
   candidates and an intentional task target. Generic `selectableIds`,
   hoverable IDs, highlighted/progress state, semantic colors, click-handler

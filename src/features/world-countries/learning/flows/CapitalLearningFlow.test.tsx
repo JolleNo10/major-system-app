@@ -8,8 +8,9 @@ import { getSubregionLearningState } from '@/features/world-countries/learning/s
 import { CapitalLearningFlow } from './CapitalLearningFlow'
 
 const useRailsMock = vi.hoisted(() => vi.fn())
+const learningMapSurfaceMock = vi.hoisted(() => vi.fn())
 vi.mock('@/app/layout/PageLayoutContext', () => ({ useRails: useRailsMock }))
-vi.mock('./LearningMapSurface', () => ({ LearningMapSurface: ({ context, children }: { context: ReactNode; children: ReactNode }) => createElement('div', null, context, children) }))
+vi.mock('./LearningMapSurface', () => ({ LearningMapSurface: (props: { context: ReactNode; children: ReactNode }) => { learningMapSurfaceMock(props); return createElement('div', null, props.context, props.children) } }))
 vi.mock('./StagedCapitalWalkthroughStep', () => ({
   StagedCapitalWalkthroughStep: ({ onContinue }: { onContinue: () => void }) => <button type="button" data-testid="start-practice" onClick={onContinue}>Start practice</button>,
 }))
@@ -44,6 +45,7 @@ afterEach(() => {
   railRoot = null
   localStorage.clear()
   useRailsMock.mockReset()
+  learningMapSurfaceMock.mockReset()
 })
 
 function renderFlow(onPhaseChange: (phase: string) => void): HTMLDivElement {
@@ -113,6 +115,21 @@ describe('CapitalLearningFlow orchestration', () => {
     expect(practiceRail.textContent).toContain('Practice progress')
     expect(practiceRail.textContent).toContain('0%')
     expect(practiceRail.textContent).toContain('0 / 1 at target')
+  })
+
+  it('passes Capital answer semantics to the shared map surface during practice and Final recall', () => {
+    const container = renderFlow(() => undefined)
+
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-practice"]')!.click())
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0]).toMatchObject({ task: { answerKind: 'capital' } })
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      act(() => container.querySelector<HTMLButtonElement>('[data-testid="submit-correct"]')!.click())
+    }
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-start"]')!.click())
+
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0]).toMatchObject({ task: { answerKind: 'capital' } })
   })
 
   it('hides progress at Ready and resumes retained progress when practising continues', () => {

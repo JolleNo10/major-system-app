@@ -10,6 +10,7 @@ import type { LearningStates } from '@/features/world-countries/learning/learnin
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import { TaskDock } from '@/features/world-countries/ui/MapSurface'
 import { WorldCountriesMapActivitySurface, type WorldCountriesActivityTask } from '@/features/world-countries/ui/WorldCountriesActivity'
+import { getWorldCountriesTaskHighlightFill, type WorldCountriesAnswerKind } from '@/features/world-countries/ui/WorldCountriesAnswerSemantics'
 import { WorldCountriesTypedAnswer } from '@/features/world-countries/ui/WorldCountriesTypedAnswer'
 import type { WorldCountriesDrillSelection } from './drillSelection'
 import { DrillSessionRails } from './DrillSessionRails'
@@ -32,7 +33,7 @@ interface StepFeedback {
   correct: boolean
   match: 'none' | 'exact' | 'fuzzy'
   expectedAnswer: string
-  answerKind: 'country' | 'capital'
+  answerKind: WorldCountriesAnswerKind
 }
 
 export type DrillSessionInteraction = 'recall' | 'location-click'
@@ -212,6 +213,7 @@ export function DrillSession({
         <span className="text-zinc-300">{selection.continent}</span> · {activity === 'practice' ? 'Practice' : getDrillModeDefinition(state.mode).label}
       </>
     ),
+    answerKind,
     progress: {
       label: 'Country',
       current: progress.countryPosition,
@@ -289,7 +291,7 @@ export function DrillSession({
                 <CountryLearningMap
                   continent={selection.continent}
                   scopeCountries={mapCountries}
-                  taskHighlightTone={task.highlightTone}
+                  highlightFill={getWorldCountriesTaskHighlightFill(answerKind)}
                   taskTargetCountryId={isLocationQuestion ? country.id : null}
                   highlightedCountryId={isShapeQuestion
                     ? typed.outcome ? country.id : null
@@ -356,7 +358,7 @@ export function DrillSession({
                   <CountryLearningMap
                     continent={selection.continent}
                     scopeCountries={mapCountries}
-                    taskHighlightTone={task.highlightTone}
+                    highlightFill={getWorldCountriesTaskHighlightFill(answerKind)}
                     answerSelectionCountryIds={isMapClickPractice ? scopeCountries.map(entry => entry.id) : undefined}
                     taskTargetCountryId={(!isMapClickPractice && isLocationQuestion) || (isMapClickPractice && feedback) ? country.id : null}
                     highlightedCountryId={isShapeQuestion ? feedback ? country.id : null : highlightedCountryId}

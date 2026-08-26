@@ -4,6 +4,7 @@ import {
   type MapSurfaceDockPlacement,
   useMapSurfacePresentation,
 } from './MapSurface'
+import type { WorldCountriesAnswerKind } from './WorldCountriesAnswerSemantics'
 
 export interface WorldCountriesActivityProgress {
   label: string
@@ -16,6 +17,7 @@ export interface WorldCountriesActivityTask {
   direction?: ReactNode
   cue: ReactNode
   sessionContext?: ReactNode
+  answerKind?: WorldCountriesAnswerKind
   reviewReason?: ReactNode
   progress?: WorldCountriesActivityProgress
 }

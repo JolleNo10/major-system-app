@@ -19,7 +19,6 @@ describe('deriveDrillTaskPresentation', () => {
       typedPlaceholder: 'Type the country…',
       typedAnswerLabel: 'Type the country name',
       answerKind: 'country',
-      highlightTone: 'country-answer',
     }],
     ['country-to-capital', {
       direction: 'Country → Capital',
@@ -27,7 +26,6 @@ describe('deriveDrillTaskPresentation', () => {
       typedPlaceholder: 'Type the capital…',
       typedAnswerLabel: 'Type the capital',
       answerKind: 'capital',
-      highlightTone: 'capital-answer',
     }],
     ['capital-to-country', {
       direction: 'Capital → Country',
@@ -35,7 +33,6 @@ describe('deriveDrillTaskPresentation', () => {
       typedPlaceholder: 'Type the country…',
       typedAnswerLabel: 'Type the country name',
       answerKind: 'country',
-      highlightTone: 'country-answer',
     }],
     ['shape-to-country', {
       direction: 'Shape → Country',
@@ -43,7 +40,6 @@ describe('deriveDrillTaskPresentation', () => {
       typedPlaceholder: 'Type the country…',
       typedAnswerLabel: 'Type the country name',
       answerKind: 'country',
-      highlightTone: 'country-answer',
     }],
   ] as const)('derives the %s task semantics', (skill, expected) => {
     expect(deriveDrillTaskPresentation(skill, country)).toEqual(expected)

@@ -5,9 +5,9 @@ import { TaskDock } from '@/features/world-countries/ui/MapSurface'
 import { WorldCountriesMapActivitySurface, type WorldCountriesActivityTask } from '@/features/world-countries/ui/WorldCountriesActivity'
 import {
   WorldCountriesTypedAnswer,
-  type WorldCountriesTypedAnswerKind,
   type WorldCountriesTypedAnswerEvaluation,
 } from '@/features/world-countries/ui/WorldCountriesTypedAnswer'
+import { getWorldCountriesTaskHighlightFill, type WorldCountriesAnswerKind } from '@/features/world-countries/ui/WorldCountriesAnswerSemantics'
 import { useLearningMapPresentation } from './LearningMapSurface'
 
 export interface SchedulerAnswerEvaluation {
@@ -46,7 +46,7 @@ export function SchedulerPracticeStep({
   answerLabel: string
   placeholder: string
   showCountryName: boolean
-  answerKind: WorldCountriesTypedAnswerKind
+  answerKind: WorldCountriesAnswerKind
   showMap?: boolean
   promptText?: string
   evaluateAnswer: (answer: string, country: Country) => SchedulerAnswerEvaluation
@@ -68,6 +68,7 @@ export function SchedulerPracticeStep({
     direction: questionLabel,
     cue: showCountryName ? current.country : promptText,
     sessionContext: stepLabel,
+    answerKind,
   }
   useLearningMapPresentation({
     taskTargetCountryId: showCountryName ? null : current.id,
@@ -112,7 +113,7 @@ export function SchedulerPracticeStep({
             <WorldCountriesMapActivitySurface
               task={activityTask}
               map={showMap
-                ? <CountryLearningMap continent={continent} scopeCountries={entries} taskTargetCountryId={showCountryName ? null : current.id} highlightedCountryId={current.id} namedCountryId={showCountryName ? current.id : null} showHighlightedNames={showCountryName} ariaLabel={ariaLabel} />
+                ? <CountryLearningMap continent={continent} scopeCountries={entries} highlightFill={getWorldCountriesTaskHighlightFill(answerKind)} taskTargetCountryId={showCountryName ? null : current.id} highlightedCountryId={current.id} namedCountryId={showCountryName ? current.id : null} showHighlightedNames={showCountryName} ariaLabel={ariaLabel} />
                 : <div className="hidden" aria-hidden="true" />}
               feedbackOverlay={typed.feedbackOverlay}
               dockPlacement="stacked"

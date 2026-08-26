@@ -19,6 +19,7 @@ import { GeographyBreadcrumbs } from '@/features/world-countries/ui/GeographyBre
 import { GeographyHierarchyRow } from '@/features/world-countries/ui/GeographyHierarchyRow'
 import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
 import { WorldCountriesMapActivitySurface, type WorldCountriesActivityTask } from '@/features/world-countries/ui/WorldCountriesActivity'
+import { getWorldCountriesTaskHighlightFill } from '@/features/world-countries/ui/WorldCountriesAnswerSemantics'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
 import {
   WorldCountriesTypedAnswer,
@@ -256,6 +257,9 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
     : []
   const currentPrompt = run && phase === 'session' ? getCurrentRecitePrompt(run.session) : null
   const currentCountry = currentPrompt ? run?.scopeCountries.find(country => country.id === currentPrompt.countryId) : undefined
+  const currentAnswerKind = currentPrompt
+    ? currentPrompt.kind === 'capital' ? 'capital' : 'country'
+    : undefined
   const highlightedCountryIds = run && run.assistance === 'visible' && currentPrompt
     ? [currentPrompt.countryId]
     : []
@@ -281,6 +285,7 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
       countryColorsById={activeCountryColors}
       countryPopulation={run.population}
       highlightedCountryIds={highlightedCountryIds}
+      highlightFill={currentAnswerKind ? getWorldCountriesTaskHighlightFill(currentAnswerKind) : undefined}
       hiddenCountryIds={hiddenCountryIds}
       interactive={false}
       ariaLabel={`${run.continent} map for active Recite session`}
@@ -389,12 +394,14 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
     ? {
       direction: 'Capital → Country',
       cue: currentCountry.capital,
+      answerKind: 'country',
       sessionContext: <><span className="text-zinc-300">{run.continent}</span> · {modeLabel(run.mode)}</>,
       progress: { label: 'Country', current: currentPrompt.countryIndex + 1, total: run.session.countries.length },
     }
     : {
       direction: currentPrompt.kind === 'capital' ? 'Country → Capital' : 'Ordered Country recall',
       cue: currentPrompt.kind === 'capital' ? `Capital of ${currentCountry.country}` : 'Next country',
+      answerKind: currentAnswerKind,
       sessionContext: <><span className="text-zinc-300">{run.continent}</span> · {modeLabel(run.mode)}</>,
       progress: { label: 'Country', current: currentPrompt.countryIndex + 1, total: run.session.countries.length },
     }

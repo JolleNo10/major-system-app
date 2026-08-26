@@ -155,6 +155,8 @@ describe('World Countries Recite workflow', () => {
   it('runs the Countries + Capitals prompts in order with automatic transitions', async () => {
     vi.useFakeTimers()
     const mount = await renderRecite()
+    const setupMap = mapRender.mock.calls[mapRender.mock.calls.length - 1]?.[0] as Record<string, unknown>
+    expect(setupMap.highlightFill).toBeUndefined()
     await act(async () => selectRadio(mount, 1))
     await act(async () => buttonContaining(mount, 'Europe').click())
     await act(async () => buttonContaining(mount, 'Northern Europe').click())
@@ -162,6 +164,13 @@ describe('World Countries Recite workflow', () => {
 
     const countryInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the country name"]')
     expect(countryInput).not.toBeNull()
+    const activeMap = () => {
+      const activeMaps = mapRender.mock.calls
+        .map(([props]) => props as Record<string, unknown>)
+        .filter(props => props.interactive === false)
+      return activeMaps[activeMaps.length - 1]
+    }
+    expect(activeMap()?.highlightFill).toBe('#0891b2')
     expect(mount.querySelector('[data-world-countries-task-direction]')?.textContent).toBe('Ordered Country recall')
     await act(async () => {
       typeInto(countryInput!, 'Norway')
@@ -174,6 +183,7 @@ describe('World Countries Recite workflow', () => {
       await Promise.resolve()
     })
     expect(mount.textContent).toContain('Capital of Norway')
+    expect(activeMap()?.highlightFill).toBe('#8b5cf6')
     expect(mount.querySelector('[data-world-countries-task-direction]')?.textContent).toBe('Country → Capital')
 
     const capitalInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the capital"]')
@@ -210,6 +220,19 @@ describe('World Countries Recite workflow', () => {
     expect(mount.textContent).toContain('Answer revealed')
     expect(mount.textContent).toContain('Norway')
     expect(activeMap()?.hiddenCountryIds).toEqual([])
+  })
+
+  it('keeps Countries from Capitals on the Country-answer color', async () => {
+    const mount = await renderRecite()
+    await act(async () => selectRadio(mount, 2))
+    await act(async () => buttonContaining(mount, 'Europe').click())
+    await act(async () => buttonContaining(mount, 'Northern Europe').click())
+    await act(async () => buttonContaining(mount, 'Start Recite').click())
+
+    const activeMaps = mapRender.mock.calls
+      .map(([props]) => props as Record<string, unknown>)
+      .filter(props => props.interactive === false)
+    expect(activeMaps[activeMaps.length - 1]).toMatchObject({ highlightFill: '#0891b2' })
   })
 
   it('keeps the active Recite geography rail on its start-time order snapshot', async () => {

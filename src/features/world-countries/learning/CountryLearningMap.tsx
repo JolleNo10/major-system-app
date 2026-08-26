@@ -8,13 +8,6 @@ import { getMapLearningAnchors } from '@/features/world-countries/maps/learningA
 import { getMapSyntheticDots } from '@/features/world-countries/maps/syntheticDots'
 import type { SvgMapLearningAnchor, SvgMapSyntheticDot } from '@/features/world-countries/maps/SvgMapController'
 
-export type CountryLearningTaskHighlightTone = 'country-answer' | 'capital-answer'
-
-const TASK_HIGHLIGHT_FILLS: Record<CountryLearningTaskHighlightTone, string> = {
-  'country-answer': '#0891b2',
-  'capital-answer': '#8b5cf6',
-}
-
 export interface CountryLearningMapProps {
   continent: Continent
   scopeCountries: readonly Country[]
@@ -38,8 +31,8 @@ export interface CountryLearningMapProps {
   answerSelectionCountryIds?: readonly CountryId[]
   /** Country location intentionally presented as the current task target. */
   taskTargetCountryId?: CountryId | null
-  /** Semantic answer-domain tone for an active task highlight. */
-  taskHighlightTone?: CountryLearningTaskHighlightTone
+  /** Caller-controlled concrete fill for the active task highlight. */
+  highlightFill?: string
   /** Restrict rendered geometry to these canonical Countries when provided. */
   visibleCountryIds?: readonly CountryId[]
   /** Explicit Country geometry to fit; overrides generic learning-map zoom rules. */
@@ -74,7 +67,7 @@ export function CountryLearningMap({
   countryAccessibleDescriptionsById,
   answerSelectionCountryIds,
   taskTargetCountryId = null,
-  taskHighlightTone,
+  highlightFill,
   visibleCountryIds,
   zoomCountryIds,
   onCountryClick,
@@ -211,8 +204,6 @@ export function CountryLearningMap({
     [countryAccessibleDescriptionsById, scopeCountries],
   )
   const unmutedSvgIds = overviewCountries ? zoomScopeSvgIds : scopeSvgIds
-  const taskHighlightFill = taskHighlightTone ? TASK_HIGHLIGHT_FILLS[taskHighlightTone] : undefined
-
   return (
     <div className="space-y-2">
       <SvgMapView
@@ -231,7 +222,7 @@ export function CountryLearningMap({
         taskAssistance={taskAssistance}
         zoomIds={zoomIds}
         className={mapClassName}
-        settings={{ showHighlightedNames, hoverHighlight: hoveredCountryId !== null, hoverShowName: showHoverNames, hoverFill: '#0f766e', hoverStroke: '#d4d4d8', hoverStrokeWidth: '2px', ...(taskHighlightFill ? { highlightFill: taskHighlightFill } : {}) }}
+        settings={{ showHighlightedNames, hoverHighlight: hoveredCountryId !== null, hoverShowName: showHoverNames, hoverFill: '#0f766e', hoverStroke: '#d4d4d8', hoverStrokeWidth: '2px', ...(highlightFill ? { highlightFill } : {}) }}
         onCountriesLoaded={setDiscovered}
         onCountryClick={svgId => {
           const country = getCountryForSvgId(svgId, interactionCountries)

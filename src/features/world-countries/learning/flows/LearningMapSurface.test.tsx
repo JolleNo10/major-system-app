@@ -80,4 +80,29 @@ describe('LearningMapSurface continuity', () => {
       overviewCountries: [norway, sweden],
     })
   })
+
+  it.each([
+    ['country', '#0891b2'],
+    ['capital', '#8b5cf6'],
+  ] as const)('resolves the %s active task answer kind into the mounted map fill', (answerKind, highlightFill) => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement(PageLayoutProvider, null, createElement(LearningMapSurface, {
+        continent: 'Europe',
+        scopeCountries: [norway],
+        presentation: { ariaLabel: 'Learning map', highlightedCountryId: norway.id },
+        presentationKey: 'capital-practice',
+        context: createElement('h1', null, 'Learning'),
+         task: { cue: 'Answer the task', answerKind },
+        children: createElement('p', null, 'Task'),
+      })))
+    })
+
+    expect(mapRenders.mock.calls[mapRenders.mock.calls.length - 1]?.[0]).toMatchObject({
+      highlightFill,
+    })
+  })
 })

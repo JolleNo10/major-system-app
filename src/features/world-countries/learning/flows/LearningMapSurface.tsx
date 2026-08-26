@@ -3,12 +3,14 @@ import type { Continent, Country } from '@/features/world-countries/data/countri
 import { CountryLearningMap, type CountryLearningMapProps } from '@/features/world-countries/learning/CountryLearningMap'
 import { MapSurface, type MapSurfaceDockPlacement } from '@/features/world-countries/ui/MapSurface'
 import { WorldCountriesTaskContext, type WorldCountriesActivityTask } from '@/features/world-countries/ui/WorldCountriesActivity'
+import { getWorldCountriesTaskHighlightFill } from '@/features/world-countries/ui/WorldCountriesAnswerSemantics'
 
 export type LearningMapOverride = Partial<Pick<CountryLearningMapProps,
   'overviewCountries' | 'showNames' | 'showHoverNames' | 'showOrderNumbers' | 'namedCountryId' |
   'highlightedCountryId' | 'hoveredCountryId' | 'showHighlightedNames' |
   'answerSelectionCountryIds' | 'taskTargetCountryId' |
   'countryLabelsById' |
+  'highlightFill' |
   'mapClassName' |
   'onCountryClick' | 'ariaLabel'
 >>
@@ -42,7 +44,14 @@ export function LearningMapSurface({
 }) {
   const [override, setOverride] = useState<LearningMapOverride>({})
   useLayoutEffect(() => () => setOverride({}), [presentationKey])
-  const effectivePresentation = useMemo(() => ({ ...presentation, ...override }), [override, presentation])
+  const taskHighlightFill = task?.answerKind
+    ? getWorldCountriesTaskHighlightFill(task.answerKind)
+    : undefined
+  const effectivePresentation = useMemo(() => ({
+    ...presentation,
+    ...(taskHighlightFill ? { highlightFill: taskHighlightFill } : {}),
+    ...override,
+  }), [override, presentation, taskHighlightFill])
   const contextValue = useMemo(() => ({ setOverride }), [])
   const map = <CountryLearningMap continent={continent} scopeCountries={scopeCountries} ariaLabel={effectivePresentation.ariaLabel ?? 'World Countries Learning map'} {...effectivePresentation} />
 

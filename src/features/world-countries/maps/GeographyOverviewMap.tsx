@@ -35,6 +35,8 @@ export interface GeographyOverviewMapProps {
   countryColorsById?: ReadonlyMap<CountryId, string>
   /** Caller-owned Country IDs to emphasize with the map's highlight treatment. */
   highlightedCountryIds?: readonly CountryId[]
+  /** Caller-controlled fill for highlighted Country geometry. */
+  highlightFill?: string
   /** Optional non-color descriptions for the mapped Countries. */
   countryAccessibleDescriptionsById?: ReadonlyMap<CountryId, string>
   /** Optional caller-owned population snapshot; defaults to the active context population. */
@@ -67,6 +69,7 @@ export function GeographyOverviewMap({
   countryColor = '#16a34a',
   countryColorsById,
   highlightedCountryIds = [],
+  highlightFill,
   countryAccessibleDescriptionsById,
   countryPopulation,
   hiddenCountryIds = [],
@@ -242,6 +245,7 @@ export function GeographyOverviewMap({
           hoverScope: 'group',
           hoverFill: GEOGRAPHY_OVERVIEW_HOVER_FILL,
           showHighlightedNames: false,
+          ...(highlightFill ? { highlightFill } : {}),
         }}
         hoverGroups={hoverGroups}
         groupOutlines={groupOutlines}

@@ -5,9 +5,9 @@ import { TaskDock } from '@/features/world-countries/ui/MapSurface'
 import { WorldCountriesMapActivitySurface, type WorldCountriesActivityTask } from '@/features/world-countries/ui/WorldCountriesActivity'
 import {
   WorldCountriesTypedAnswer,
-  type WorldCountriesTypedAnswerKind,
   type WorldCountriesTypedAnswerEvaluation,
 } from '@/features/world-countries/ui/WorldCountriesTypedAnswer'
+import { getWorldCountriesTaskHighlightFill, type WorldCountriesAnswerKind } from '@/features/world-countries/ui/WorldCountriesAnswerSemantics'
 import { useLearningMapPresentation } from './LearningMapSurface'
 import type { SchedulerAnswerEvaluation } from './SchedulerPracticeStep'
 
@@ -35,7 +35,7 @@ export function StagedFinalRecallStep({
   answerLabel: string
   placeholder: string
   showCountryName: boolean
-  answerKind: WorldCountriesTypedAnswerKind
+  answerKind: WorldCountriesAnswerKind
   evaluateAnswer: (answer: string, country: Country) => SchedulerAnswerEvaluation
   formatFeedback: (evaluation: SchedulerAnswerEvaluation, country: Country) => string
   onSubmit: (correct: boolean) => void
@@ -59,6 +59,7 @@ export function StagedFinalRecallStep({
     direction: showCountryName ? 'Location → Country' : answerKind === 'capital' ? 'Country → Capital' : 'Location → Country',
     cue: showCountryName ? current.country : answerKind === 'capital' ? `Capital of ${current.country}` : 'Name the country',
     sessionContext: ordered.mode === 'repair' ? 'Repair traversal' : stepLabel,
+    answerKind,
     progress: { label: 'Country', current: ordered.currentIndex + 1, total: ordered.order.length },
   }
 
@@ -97,7 +98,7 @@ export function StagedFinalRecallStep({
           <div className="space-y-4 animate-fade-in">
             <WorldCountriesMapActivitySurface
               task={activityTask}
-              map={<CountryLearningMap continent={continent} scopeCountries={entries} taskTargetCountryId={showCountryName ? null : current.id} highlightedCountryId={current.id} namedCountryId={showCountryName ? current.id : null} showHighlightedNames={showCountryName} showHoverNames ariaLabel="Highlighted Country for final recall" />}
+              map={<CountryLearningMap continent={continent} scopeCountries={entries} highlightFill={getWorldCountriesTaskHighlightFill(answerKind)} taskTargetCountryId={showCountryName ? null : current.id} highlightedCountryId={current.id} namedCountryId={showCountryName ? current.id : null} showHighlightedNames={showCountryName} showHoverNames ariaLabel="Highlighted Country for final recall" />}
               feedbackOverlay={typed.feedbackOverlay}
               dockPlacement="stacked"
               dock={dock}

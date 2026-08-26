@@ -121,9 +121,9 @@ describe('CountryLearningMap', () => {
   })
 
   it.each([
-    ['country-answer', '#0891b2'],
-    ['capital-answer', '#8b5cf6'],
-  ] as const)('translates the %s task tone to map settings', (taskHighlightTone, highlightFill) => {
+    ['#0891b2'],
+    ['#8b5cf6'],
+  ] as const)('passes a caller-owned active task fill to map settings', (highlightFill) => {
     const mount = document.createElement('div')
     document.body.append(mount)
 
@@ -133,7 +133,7 @@ describe('CountryLearningMap', () => {
         continent: 'Europe',
         scopeCountries: [norway],
         highlightedCountryId: norway.id,
-        taskHighlightTone,
+        highlightFill,
         ariaLabel: 'Task map',
       }))
     })

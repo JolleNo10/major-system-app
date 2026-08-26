@@ -7,8 +7,9 @@ import type { Country } from '@/features/world-countries/data/countries'
 import { CountryLearningFlow } from './CountryLearningFlow'
 
 const useRailsMock = vi.hoisted(() => vi.fn())
+const learningMapSurfaceMock = vi.hoisted(() => vi.fn())
 vi.mock('@/app/layout/PageLayoutContext', () => ({ useRails: useRailsMock }))
-vi.mock('./LearningMapSurface', () => ({ LearningMapSurface: ({ context, children }: { context: ReactNode; children: ReactNode }) => createElement('div', null, context, children) }))
+vi.mock('./LearningMapSurface', () => ({ LearningMapSurface: (props: { context: ReactNode; children: ReactNode }) => { learningMapSurfaceMock(props); return createElement('div', null, props.context, props.children) } }))
 vi.mock('./StagedCountryWalkthroughStep', () => ({
   StagedCountryWalkthroughStep: ({ onContinue }: { onContinue: () => void }) => <button type="button" data-testid="start-location" onClick={onContinue}>Start location</button>,
 }))
@@ -44,6 +45,7 @@ afterEach(() => {
   railRoot = null
   document.body.replaceChildren()
   useRailsMock.mockReset()
+  learningMapSurfaceMock.mockReset()
 })
 
 function renderRail() {
@@ -85,5 +87,28 @@ describe('CountryLearningFlow scheduler progress wiring', () => {
     expect(locationRail.textContent).toContain('Practice progress')
     expect(locationRail.textContent).toContain('0%')
     expect(locationRail.textContent).toContain('0 / 1 at target')
+  })
+
+  it('passes Country answer semantics to the shared map surface for active location practice', () => {
+    const container = document.createElement('div')
+    document.body.append(container)
+    act(() => {
+      root = createRoot(container)
+      root.render(
+        <CountryLearningFlow
+          continent="Europe"
+          subregion="northern-europe"
+          entries={entries}
+          newItemsPerSet={3}
+          schedulerSettings={{ masteryLatencyFactor: 1.4, sessionUnmasteredShare: 0.5 }}
+          fuzzyMatching={false}
+          onPhaseChange={() => undefined}
+          onExit={() => undefined}
+        />,
+      )
+    })
+
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-location"]')!.click())
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0]).toMatchObject({ task: { answerKind: 'country' } })
   })
 })

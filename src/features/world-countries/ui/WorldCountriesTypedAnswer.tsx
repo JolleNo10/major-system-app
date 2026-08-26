@@ -2,24 +2,24 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { TypingInput } from '@/core/ui/TypingInput'
 import { useMapSurfaceFeedbackOverlay } from './MapSurface'
 import { WorldCountriesAnswerFeedback } from './WorldCountriesAnswerFeedback'
+import type { WorldCountriesAnswerKind } from './WorldCountriesAnswerSemantics'
 
 const SUCCESS_FEEDBACK_DURATION_MS = 500
 const CORRECTION_FEEDBACK_DURATION_MS = 1800
 
 export type WorldCountriesTypedAnswerOutcome = 'exact' | 'fuzzy' | 'incorrect' | 'revealed'
-export type WorldCountriesTypedAnswerKind = 'country' | 'capital'
 
 export interface WorldCountriesTypedAnswerEvaluation {
   outcome: Exclude<WorldCountriesTypedAnswerOutcome, 'revealed'>
   canonicalAnswer: string
-  answerKind: WorldCountriesTypedAnswerKind
+  answerKind: WorldCountriesAnswerKind
   message: ReactNode
   detail?: ReactNode
 }
 
 export interface WorldCountriesTypedAnswerReveal {
   canonicalAnswer: string
-  answerKind: WorldCountriesTypedAnswerKind
+  answerKind: WorldCountriesAnswerKind
   message: ReactNode
   detail?: ReactNode
 }
@@ -27,7 +27,7 @@ export interface WorldCountriesTypedAnswerReveal {
 export interface WorldCountriesTypedAnswerResult {
   outcome: WorldCountriesTypedAnswerOutcome
   canonicalAnswer: string
-  answerKind: WorldCountriesTypedAnswerKind
+  answerKind: WorldCountriesAnswerKind
   message: ReactNode
   detail?: ReactNode
   submittedAnswer?: string

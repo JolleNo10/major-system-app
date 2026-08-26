@@ -1,16 +1,13 @@
 import type { Country } from '@/features/world-countries/data/countries'
 import type { WorldCountriesRecallSkill } from '@/features/world-countries/learning/recallTargets'
-
-export type DrillTaskAnswerKind = 'country' | 'capital'
-export type DrillTaskHighlightTone = 'country-answer' | 'capital-answer'
+import { getWorldCountriesAnswerKind, type WorldCountriesAnswerKind } from '@/features/world-countries/ui/WorldCountriesAnswerSemantics'
 
 export interface DrillTaskPresentation {
   direction: string
   cue: string
   typedPlaceholder: string
   typedAnswerLabel: string
-  answerKind: DrillTaskAnswerKind
-  highlightTone: DrillTaskHighlightTone
+  answerKind: WorldCountriesAnswerKind
 }
 
 /** Derive the active question's copy and visual answer-domain cue. */
@@ -18,6 +15,7 @@ export function deriveDrillTaskPresentation(
   skill: WorldCountriesRecallSkill,
   country: Country,
 ): DrillTaskPresentation {
+  const answerKind = getWorldCountriesAnswerKind(skill)
   switch (skill) {
     case 'location-to-country':
       return {
@@ -25,8 +23,7 @@ export function deriveDrillTaskPresentation(
         cue: 'Name the highlighted country',
         typedPlaceholder: 'Type the country…',
         typedAnswerLabel: 'Type the country name',
-        answerKind: 'country',
-        highlightTone: 'country-answer',
+        answerKind,
       }
     case 'country-to-capital':
       return {
@@ -34,8 +31,7 @@ export function deriveDrillTaskPresentation(
         cue: country.country,
         typedPlaceholder: 'Type the capital…',
         typedAnswerLabel: 'Type the capital',
-        answerKind: 'capital',
-        highlightTone: 'capital-answer',
+        answerKind,
       }
     case 'capital-to-country':
       return {
@@ -43,8 +39,7 @@ export function deriveDrillTaskPresentation(
         cue: country.capital,
         typedPlaceholder: 'Type the country…',
         typedAnswerLabel: 'Type the country name',
-        answerKind: 'country',
-        highlightTone: 'country-answer',
+        answerKind,
       }
     case 'shape-to-country':
       return {
@@ -52,8 +47,7 @@ export function deriveDrillTaskPresentation(
         cue: 'Name this country',
         typedPlaceholder: 'Type the country…',
         typedAnswerLabel: 'Type the country name',
-        answerKind: 'country',
-        highlightTone: 'country-answer',
+        answerKind,
       }
   }
 }
