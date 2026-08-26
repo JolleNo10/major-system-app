@@ -3,6 +3,7 @@ import type { Continent } from '@/features/world-countries/data/countries'
 import { GeographyBreadcrumbs } from '@/features/world-countries/ui/GeographyBreadcrumbs'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
 import type { WorldCountriesTodayReviewPromptKind } from './reviewQueue'
+import type { WorldCountriesTodayReviewReasonSummary } from './reviewReason'
 import type { WorldCountriesTodayLearningTrack } from './todayPlan'
 
 interface TodayCheckpointSummary {
@@ -21,6 +22,7 @@ export function TodayHomeRails({
   evidenceStatus,
   dueCount,
   dueCountryCount,
+  reviewReasonSummary,
   nextLearning,
   checkpoint,
   refreshing,
@@ -31,12 +33,20 @@ export function TodayHomeRails({
   evidenceStatus: 'loading' | 'ready' | 'error'
   dueCount: number
   dueCountryCount: number
+  reviewReasonSummary: WorldCountriesTodayReviewReasonSummary
   nextLearning: { track: WorldCountriesTodayLearningTrack; subregionLabel: string } | null
   checkpoint: TodayCheckpointSummary | null
   refreshing: boolean
   caughtUp: boolean
   onNavigate: (area: 'drill' | 'recite') => void
 }) {
+  const whyTodayItems = [
+    reviewReasonSummary.mistakes > 0 && `${reviewReasonSummary.mistakes} ${reviewReasonSummary.mistakes === 1 ? 'mistake' : 'mistakes'}`,
+    reviewReasonSummary.firstRecall > 0 && `${reviewReasonSummary.firstRecall} first recall`,
+    reviewReasonSummary.firstReviewAfterLearning > 0 && `${reviewReasonSummary.firstReviewAfterLearning} first review after Learning`,
+    reviewReasonSummary.spaced > 0 && `${reviewReasonSummary.spaced} spaced`,
+  ].filter((item): item is string => Boolean(item))
+  const whyTodayText = whyTodayItems.join(' · ')
   const statusHeading = activeCountryCount === 0
     ? '0 Countries active'
     : evidenceStatus === 'error'
@@ -89,16 +99,25 @@ export function TodayHomeRails({
           </div>
 
           {evidenceStatus === 'ready' && activeCountryCount > 0 && (
-            <dl className="grid grid-cols-2 gap-2 text-sm">
-              <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
-                <dt className="text-xs uppercase tracking-wider text-zinc-500">Due reviews</dt>
-                <dd className="mt-1 font-semibold tabular-nums text-zinc-100">{dueCount}</dd>
-              </div>
-              <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
-                <dt className="text-xs uppercase tracking-wider text-zinc-500">Due Countries</dt>
-                <dd className="mt-1 font-semibold tabular-nums text-zinc-100">{dueCountryCount}</dd>
-              </div>
-            </dl>
+            <>
+              <dl className="grid grid-cols-2 gap-2 text-sm">
+                <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
+                  <dt className="text-xs uppercase tracking-wider text-zinc-500">Due reviews</dt>
+                  <dd className="mt-1 font-semibold tabular-nums text-zinc-100">{dueCount}</dd>
+                </div>
+                <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
+                  <dt className="text-xs uppercase tracking-wider text-zinc-500">Due Countries</dt>
+                  <dd className="mt-1 font-semibold tabular-nums text-zinc-100">{dueCountryCount}</dd>
+                </div>
+              </dl>
+              {dueCount > 0 && whyTodayText.length > 0 && (
+                <section className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3 text-sm" aria-labelledby="world-countries-today-why-heading">
+                  <p id="world-countries-today-why-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Why today</p>
+                  <p className="mt-1 leading-relaxed text-zinc-300">{whyTodayText}</p>
+                  {reviewReasonSummary.repeated > 0 && <p className="mt-1 text-xs font-semibold text-amber-300">{reviewReasonSummary.repeated} repeated difficulty</p>}
+                </section>
+              )}
+            </>
           )}
 
           {nextLearning && (
@@ -131,7 +150,7 @@ export function TodayHomeRails({
       leftLabel: 'Geography',
       rightLabel: 'Today',
     },
-    [activeCountryCount, caughtUp, checkpoint, dueCount, dueCountryCount, evidenceStatus, nextLearning, onNavigate, refreshing, showSecondaryActions, statusExplanation, statusHeading],
+    [activeCountryCount, caughtUp, checkpoint, dueCount, dueCountryCount, evidenceStatus, nextLearning, onNavigate, refreshing, reviewReasonSummary, showSecondaryActions, statusExplanation, statusHeading, whyTodayText],
   )
 
   return null
@@ -145,6 +164,7 @@ export function TodayReviewRails({
   promptCount,
   blockSize,
   reviewed,
+  reviewReason,
   onExit,
 }: {
   continent: Continent
@@ -154,6 +174,7 @@ export function TodayReviewRails({
   promptCount: number
   blockSize: number
   reviewed: number
+  reviewReason: string
   onExit: () => void
 }) {
   const currentPrompt = Math.min(cursor + 1, promptCount)
@@ -186,13 +207,17 @@ export function TodayReviewRails({
             <p className="mt-2 text-xs tabular-nums text-zinc-500">Initial reviews {Math.min(reviewed, blockSize)} / {blockSize}</p>
             {promptKind === 'retry' && <p className="mt-2 text-xs font-semibold text-amber-300">Delayed retry · answerable now</p>}
           </section>
+          <section className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3 text-sm" aria-labelledby="world-countries-today-review-why-heading">
+            <p id="world-countries-today-review-why-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Why now</p>
+            <p className="mt-1 font-semibold text-zinc-200">{reviewReason}</p>
+          </section>
           <button type="button" onClick={onExit} className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2.5 text-sm font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">Exit Review</button>
         </WorldCountriesPanel>
       ),
       leftLabel: 'Geography',
       rightLabel: 'Today · Review',
     },
-    [blockSize, continent, cursor, onExit, promptCount, promptKind, reviewed, subregion, currentPrompt, progressPercent],
+    [blockSize, continent, cursor, onExit, promptCount, promptKind, reviewed, reviewReason, subregion, currentPrompt, progressPercent],
   )
 
   return null

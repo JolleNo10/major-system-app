@@ -16,6 +16,7 @@ export interface WorldCountriesActivityTask {
   direction?: ReactNode
   cue: ReactNode
   sessionContext?: ReactNode
+  reviewReason?: ReactNode
   progress?: WorldCountriesActivityProgress
 }
 
@@ -99,6 +100,11 @@ export function WorldCountriesTaskContext({ task }: {
             {expanded && task.sessionContext && (
               <div data-world-countries-task-context className="min-w-0 text-left text-xs font-medium text-zinc-500 lg:shrink-0 lg:whitespace-nowrap lg:text-right">
                 {task.sessionContext}
+              </div>
+            )}
+            {expanded && task.reviewReason && (
+              <div data-world-countries-task-reason className="min-w-0 text-left text-xs font-medium text-zinc-400 lg:shrink-0 lg:whitespace-nowrap lg:text-right">
+                <span className="text-zinc-500">Why now</span> · {task.reviewReason}
               </div>
             )}
           </div>

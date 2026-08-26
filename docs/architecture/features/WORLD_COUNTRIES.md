@@ -95,6 +95,21 @@ milestones. It reviews only `location-to-country` and `country-to-capital`,
 prioritizes due review before recommending new whole-Subregion Learning, and
 keeps its queue, retry state, and checkpoints transient.
 
+Today exposes all derived due candidates for urgency/counts, then snapshots at
+most 12 candidates into a deterministic interleaved review block. Priority
+tiers remain authoritative: latest failures, missing successful typed recall,
+then scheduled/overdue review. Interleaving prefers unseen Countries, a
+different skill, and a different Subregion within the active tier before using
+the existing due-candidate rank, so variety never displaces more urgent work.
+
+World Countries review spacing is also derived from retained raw attempts. The
+fixed `1, 3, 7, 14, 30, 60` day ladder advances on clean typed-recall days and
+regresses one level for an isolated lapse or two levels for repeated
+difficulty. Multiple attempts on one local date count as one event; difficulty
+is not persisted and clears after two clean recall days. Today presents the
+resulting reason as concise `Why today` summary counts and a per-prompt `Why
+now` explanation, including repeated difficulty and useful overdue wording.
+
 The shell exposes `[ Today ] [ Drill ] [ Recite ]`, with Today selected by
 default. Drill has a non-persisted Purpose selector:
 

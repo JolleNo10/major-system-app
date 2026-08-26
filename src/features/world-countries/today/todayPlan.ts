@@ -13,6 +13,11 @@ import {
   WORLD_COUNTRIES_CORE_RECALL_SKILLS,
   type WorldCountriesCoreRecallSkill,
 } from '@/features/world-countries/learning/recallTargets'
+import {
+  summarizeWorldCountriesTodayReviewReasons,
+  type WorldCountriesTodayReviewReasonSummary,
+} from './reviewReason'
+import { interleaveWorldCountriesTodayReviewCandidates } from './reviewInterleaving'
 
 export const WORLD_COUNTRIES_TODAY_REVIEW_BLOCK_SIZE = 12
 
@@ -35,6 +40,7 @@ export interface WorldCountriesTodayLearningRecommendation {
 export interface WorldCountriesTodayPlan {
   dueCandidates: readonly WorldCountriesTodayReviewCandidate[]
   reviewQueue: readonly WorldCountriesTodayReviewCandidate[]
+  reviewReasonSummary: WorldCountriesTodayReviewReasonSummary
   dueCount: number
   dueCountryCount: number
   introductions: ReadonlyMap<string, WorldCountriesTargetIntroduction>
@@ -185,7 +191,11 @@ export function buildWorldCountriesTodayPlan(
 
   return {
     dueCandidates,
-    reviewQueue: dueCandidates.slice(0, WORLD_COUNTRIES_TODAY_REVIEW_BLOCK_SIZE),
+    reviewQueue: interleaveWorldCountriesTodayReviewCandidates(
+      dueCandidates,
+      WORLD_COUNTRIES_TODAY_REVIEW_BLOCK_SIZE,
+    ),
+    reviewReasonSummary: summarizeWorldCountriesTodayReviewReasons(dueCandidates),
     dueCount: dueCandidates.length,
     dueCountryCount: new Set(dueCandidates.map(candidate => candidate.country.id)).size,
     introductions,

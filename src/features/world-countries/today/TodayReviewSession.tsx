@@ -21,6 +21,10 @@ import {
 } from './reviewQueue'
 import { TodayReviewRails } from './TodayRails'
 import type { WorldCountriesTodayReviewCandidate } from './todayPlan'
+import {
+  classifyWorldCountriesTodayReviewReason,
+  worldCountriesTodayReviewReasonLabel,
+} from './reviewReason'
 
 export interface WorldCountriesTodayReviewCheckpoint {
   reviewed: number
@@ -58,10 +62,15 @@ export function TodayReviewSession({
   const isLocationQuestion = skill === 'location-to-country'
   const expectedAnswer = isLocationQuestion ? country.country : country.capital
   const promptLabel = isLocationQuestion ? 'Which country is this?' : `Capital of ${country.country}`
+  const reviewReason = worldCountriesTodayReviewReasonLabel(
+    classifyWorldCountriesTodayReviewReason(candidate),
+    candidate.schedule.overdueDays,
+  )
   const activityTask: WorldCountriesActivityTask = {
     direction: isLocationQuestion ? 'Location → Country' : 'Country → Capital',
     cue: promptLabel,
     sessionContext: 'Today review',
+    reviewReason,
     progress: {
       label: 'Review',
       current: queue.cursor + 1,
@@ -105,6 +114,7 @@ export function TodayReviewSession({
         promptCount={queue.prompts.length}
         blockSize={candidates.length}
         reviewed={queue.reviewed}
+        reviewReason={reviewReason}
         onExit={() => { void exit() }}
       />
       <WorldCountriesTypedAnswer

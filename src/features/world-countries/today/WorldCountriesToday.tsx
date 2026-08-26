@@ -18,6 +18,7 @@ import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
 import { WorldMasterySummary } from '@/features/world-countries/ui/WorldMasterySummary'
 import { TodayReviewSession, type WorldCountriesTodayReviewCheckpoint } from './TodayReviewSession'
 import { TodayHomeRails } from './TodayRails'
+import type { WorldCountriesTodayReviewReasonSummary } from './reviewReason'
 import { buildWorldCountriesTodayPlan, type WorldCountriesTodayLearningRecommendation, type WorldCountriesTodayPlan } from './todayPlan'
 
 type TodayArea = 'drill' | 'recite'
@@ -29,6 +30,14 @@ type EvidenceState =
 interface LearningRun {
   recommendation: WorldCountriesTodayLearningRecommendation
   countryEntries: readonly Country[]
+}
+
+const EMPTY_REVIEW_REASON_SUMMARY: WorldCountriesTodayReviewReasonSummary = {
+  mistakes: 0,
+  firstRecall: 0,
+  firstReviewAfterLearning: 0,
+  spaced: 0,
+  repeated: 0,
 }
 
 /** Map-centered Today orchestration for derived World Countries review. */
@@ -211,6 +220,7 @@ export function WorldCountriesToday({
         evidenceStatus={evidence.status}
         dueCount={plan?.dueCount ?? 0}
         dueCountryCount={plan?.dueCountryCount ?? 0}
+        reviewReasonSummary={plan?.reviewReasonSummary ?? EMPTY_REVIEW_REASON_SUMMARY}
         nextLearning={nextLearning ? { track: nextLearning.track, subregionLabel: nextLearning.subregionLabel } : null}
         checkpoint={checkpoint}
         refreshing={refreshing}

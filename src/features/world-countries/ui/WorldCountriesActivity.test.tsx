@@ -31,6 +31,7 @@ describe('World Countries active map-task presentation', () => {
               direction: 'Country → Capital',
               cue: 'Capital of Norway',
               sessionContext: 'Europe · Practice',
+              reviewReason: 'Spaced review',
               progress: { label: 'Country', current: 2, total: 5, percent: 40 },
             },
             map: createElement('span', { 'data-map-content': true }, 'map'),
@@ -55,6 +56,8 @@ describe('World Countries active map-task presentation', () => {
 
     expect(mount.querySelector('[data-world-countries-task]')).toBe(task)
     expect(mount.querySelector('[data-world-countries-task-context]')?.textContent).toBe('Europe · Practice')
+    expect(mount.querySelector('[data-world-countries-task-reason]')?.textContent).toContain('Why now')
+    expect(mount.querySelector('[data-world-countries-task-reason]')?.textContent).toContain('Spaced review')
     expect(mount.querySelector('[data-world-countries-task-progress]')?.textContent).toContain('Country 2 / 5')
     expect(mount.querySelector('[data-world-countries-task-progress]')?.textContent).toContain('40%')
     expect(mount.querySelector('[data-map-surface-map]')).toBe(map)

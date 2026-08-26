@@ -54,7 +54,10 @@ function candidate(countryId: string, skill: 'location-to-country' | 'country-to
   return {
     country,
     target: { countryId, skill },
-    schedule: deriveWorldCountriesReviewSchedule([{ at: 1, ok: false, ms: 1 }], { localDate: '2026-08-19' }),
+    schedule: deriveWorldCountriesReviewSchedule([
+      { at: 0, ok: true, ms: 1, evidenceKind: 'recall', localDate: '2026-08-01' },
+      { at: 1, ok: false, ms: 1, evidenceKind: 'recall', localDate: '2026-08-02' },
+    ], { localDate: '2026-08-19' }),
   }
 }
 
@@ -130,9 +133,17 @@ describe('Today review session', () => {
     expect(railMount.textContent).toContain('Europe')
     expect(railMount.textContent).toContain('Northern Europe')
     expect(railMount.textContent).toContain('Review progress')
+    expect(railMount.textContent).toContain('Why now')
+    expect(railMount.textContent).toContain('Recent mistake')
     expect(railMount.textContent).toContain('Exit Review')
     expect(mount.textContent).not.toContain('Exit Review')
     expect(mount.textContent).not.toContain('Northern Europe')
     expect(mount.textContent).not.toContain('Norway')
+
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[aria-label="Expand map"]')?.click()
+      await Promise.resolve()
+    })
+    expect(mount.querySelector('[data-world-countries-task-reason]')?.textContent).toContain('Recent mistake')
   })
 })

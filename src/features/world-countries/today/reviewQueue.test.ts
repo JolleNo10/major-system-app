@@ -8,6 +8,7 @@ import {
   isWorldCountriesTodayReviewQueueComplete,
   submitWorldCountriesTodayReviewPrompt,
 } from './reviewQueue'
+import { interleaveWorldCountriesTodayReviewCandidates } from './reviewInterleaving'
 import type { WorldCountriesTodayReviewCandidate } from './todayPlan'
 
 function candidates(count: number): WorldCountriesTodayReviewCandidate[] {
@@ -49,5 +50,17 @@ describe('World Countries Today review queue', () => {
     const complete = submitWorldCountriesTodayReviewPrompt(afterThird, 'correct')
     expect(complete.recoveredOnRetry).toBe(1)
     expect(complete.unresolvedTargetIds).not.toContain(recallTargetIdFor(countries[0].id, 'location-to-country'))
+  })
+
+  it('keeps delayed retries working after the initial candidates are interleaved', () => {
+    const initial = createWorldCountriesTodayReviewQueue(
+      interleaveWorldCountriesTodayReviewCandidates(candidates(3)),
+    )
+    const afterFirst = submitWorldCountriesTodayReviewPrompt(initial, 'incorrect')
+    const afterSecond = submitWorldCountriesTodayReviewPrompt(afterFirst, 'correct')
+    const afterThird = submitWorldCountriesTodayReviewPrompt(afterSecond, 'correct')
+
+    expect(getCurrentWorldCountriesTodayReviewPrompt(afterThird)?.kind).toBe('retry')
+    expect(afterThird.prompts).toHaveLength(4)
   })
 })
