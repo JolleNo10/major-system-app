@@ -185,7 +185,7 @@ describe('WorldCountriesDrill learning integration', () => {
   })
 
   it('starts proficiency Learning as a temporary Country scope', async () => {
-    resolveProficiencyScopeMock.mockReturnValue({ counts: { weak: 1, developing: 0 }, countryIds: ['AL'], countries: [{}] } as never)
+    resolveProficiencyScopeMock.mockReturnValue({ counts: { weak: 1, developing: 0 }, countryIds: ['AL'], countries: [{ id: 'AL' }] } as never)
     localStorage.setItem('world-countries-drill-preferences', JSON.stringify({
       continent: 'Europe', subregionIds: [], mode: 'countries', order: 'ordered',
     }))
@@ -208,6 +208,60 @@ describe('WorldCountriesDrill learning integration', () => {
     expect(capitalFlowProps.current?.scopeLabel).toBe('Proficiency scope')
     expect(capitalFlowProps.current?.recordCompletion).toBe(false)
     expect((capitalFlowProps.current?.entries as readonly { id: string }[]).map(entry => entry.id)).toEqual(['AL'])
+  })
+
+  it('starts a proficiency Drill scope without replacing persisted geographic selection', async () => {
+    resolveProficiencyScopeMock.mockReturnValue({ counts: { weak: 1, developing: 0 }, countryIds: ['AL'], countries: [{ id: 'AL' }] } as never)
+    const storedPreferences = {
+      continent: 'Europe', subregionIds: ['northern-europe'], mode: 'countries', order: 'ordered',
+    }
+    localStorage.setItem('world-countries-drill-preferences', JSON.stringify(storedPreferences))
+
+    const mount = document.createElement('div')
+    document.body.append(mount)
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement(SettingsProvider, null,
+        createElement(WorldCountriesDrill, { answerMode: 'typing' }),
+      ))
+    })
+
+    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="select-proficiency"]')!.click())
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-testid="start-drill"]')!.click()
+      await Promise.resolve()
+    })
+
+    expect((drillSessionProps.current?.state as DrillSessionState).countryIds).toEqual(['AL'])
+    expect(drillSessionProps.current?.activity).toBe('drill')
+    expect(JSON.parse(localStorage.getItem('world-countries-drill-preferences')!)).toEqual(storedPreferences)
+  })
+
+  it('starts proficiency Practice with the practice skill and transient Country scope', async () => {
+    resolveProficiencyScopeMock.mockReturnValue({ counts: { weak: 1, developing: 0 }, countryIds: ['AL'], countries: [{ id: 'AL' }] } as never)
+    localStorage.setItem('world-countries-drill-preferences', JSON.stringify({
+      continent: 'Europe', subregionIds: ['northern-europe'], mode: 'countries', order: 'ordered',
+    }))
+
+    const mount = document.createElement('div')
+    document.body.append(mount)
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement(SettingsProvider, null,
+        createElement(WorldCountriesDrill, { answerMode: 'typing' }),
+      ))
+    })
+
+    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="select-proficiency"]')!.click())
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-testid="start-locate-capitals"]')!.click()
+      await Promise.resolve()
+    })
+
+    expect((drillSessionProps.current?.state as DrillSessionState).countryIds).toEqual(['AL'])
+    expect(drillSessionProps.current?.activity).toBe('practice')
+    expect(drillSessionProps.current?.interaction).toBe('location-click')
+    expect((drillSessionProps.current?.state as DrillSessionState).skills).toEqual(['capital-to-country'])
   })
 })
 

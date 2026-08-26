@@ -2,15 +2,19 @@ import { useEffect } from 'react'
 import type { Country } from '@/features/world-countries/data/countries'
 import { TaskDock } from '@/features/world-countries/ui/MapSurface'
 
-export function StagedCapitalWalkthroughStep({
-  entries, index, onMove, onContinue,
-}: {
+export interface StagedWalkthroughStepProps {
   entries: readonly Country[]
   index: number
   onMove: (offset: -1 | 1) => void
   onContinue: () => void
-}) {
+  continueLabel: string
+}
+
+export function StagedWalkthroughStep({
+  entries, index, onMove, onContinue, continueLabel,
+}: StagedWalkthroughStepProps) {
   const country = entries[index]
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.repeat || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
@@ -26,14 +30,17 @@ export function StagedCapitalWalkthroughStep({
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [entries.length, index, onMove])
+
   if (!country) return null
-  const controls = (
+
+  return (
     <TaskDock variant="navigation" enableEnterPrimary>
       <div className="flex items-center justify-between gap-2">
         <button type="button" onClick={() => onMove(-1)} disabled={index === 0} className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-800/80 px-3 py-2 text-sm text-zinc-300 hover:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-30">← Previous</button>
-        {index < entries.length - 1 ? <button type="button" data-primary-action onClick={() => onMove(1)} className="min-w-0 flex-1 rounded-lg bg-cyan-600 px-3 py-2 text-sm font-semibold text-white hover:bg-cyan-500">Next →</button> : <button type="button" data-primary-action onClick={onContinue} className="min-w-0 flex-1 rounded-lg bg-cyan-600 px-3 py-2 text-sm font-semibold text-white hover:bg-cyan-500">Continue to Practice</button>}
+        {index < entries.length - 1
+          ? <button type="button" data-primary-action onClick={() => onMove(1)} className="min-w-0 flex-1 rounded-lg bg-cyan-600 px-3 py-2 text-sm font-semibold text-white hover:bg-cyan-500">Next →</button>
+          : <button type="button" data-primary-action onClick={onContinue} className="min-w-0 flex-1 rounded-lg bg-cyan-600 px-3 py-2 text-sm font-semibold text-white hover:bg-cyan-500">{continueLabel}</button>}
       </div>
     </TaskDock>
   )
-  return controls
 }

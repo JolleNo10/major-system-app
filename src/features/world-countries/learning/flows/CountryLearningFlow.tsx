@@ -30,7 +30,7 @@ import { GuidedLearningRails } from './GuidedLearningRails'
 import { LearningMapSurface } from './LearningMapSurface'
 import { SchedulerLocationPracticeStep } from './SchedulerLocationPracticeStep'
 import { SchedulerPracticeStep } from './SchedulerPracticeStep'
-import { StagedCountryWalkthroughStep } from './StagedCountryWalkthroughStep'
+import { StagedWalkthroughStep } from './StagedWalkthroughStep'
 import { StagedFinalRecallStep } from './StagedFinalRecallStep'
 import { FinalRecallGate, StagedLearningReadyStep } from './StagedLearningReadyStep'
 import { LearningHeader } from './MemoryPreviewStep'
@@ -236,7 +236,7 @@ export function CountryLearningFlow({
   let content: ReactNode
   switch (flow.phase) {
     case 'walkthrough':
-      content = <StagedCountryWalkthroughStep entries={stageEntries} index={flow.walkthroughIndex} onMove={offset => run(state => moveStagedCountryWalkthrough(state, offset))} onContinue={() => run(startStagedCountryLocation)} />
+      content = <StagedWalkthroughStep entries={stageEntries} index={flow.walkthroughIndex} onMove={offset => run(state => moveStagedCountryWalkthrough(state, offset))} onContinue={() => run(startStagedCountryLocation)} continueLabel="Continue to Locate" />
       break
     case 'location-practice':
       content = flow.location ? <SchedulerLocationPracticeStep continent={continent} entries={stageEntries} session={flow.location} label={`Set ${currentStagedCountrySetNumber(flow)}`} onSelect={updateLocation} onBack={() => run(backStagedCountry)} onExit={onExit} surface /> : null

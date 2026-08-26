@@ -26,7 +26,7 @@ import { CapitalLearningComplete } from './CapitalLearningComplete'
 import { GuidedLearningRails } from './GuidedLearningRails'
 import { LearningMapSurface } from './LearningMapSurface'
 import { SchedulerPracticeStep } from './SchedulerPracticeStep'
-import { StagedCapitalWalkthroughStep } from './StagedCapitalWalkthroughStep'
+import { StagedWalkthroughStep } from './StagedWalkthroughStep'
 import { StagedFinalRecallStep } from './StagedFinalRecallStep'
 import { FinalRecallGate, StagedLearningReadyStep } from './StagedLearningReadyStep'
 import { LearningHeader } from './MemoryPreviewStep'
@@ -231,7 +231,7 @@ export function CapitalLearningFlow({
   let content: ReactNode
   switch (flow.phase) {
     case 'walkthrough':
-      content = <StagedCapitalWalkthroughStep entries={stageEntries} index={flow.walkthroughIndex} onMove={offset => run(state => moveStagedCapitalWalkthrough(state, offset))} onContinue={() => run(startStagedCapitalPractice)} />
+      content = <StagedWalkthroughStep entries={stageEntries} index={flow.walkthroughIndex} onMove={offset => run(state => moveStagedCapitalWalkthrough(state, offset))} onContinue={() => run(startStagedCapitalPractice)} continueLabel="Continue to Practice" />
       break
     case 'practice':
     case 'combined-practice':

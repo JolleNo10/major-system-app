@@ -10,8 +10,8 @@ const useRailsMock = vi.hoisted(() => vi.fn())
 const learningMapSurfaceMock = vi.hoisted(() => vi.fn())
 vi.mock('@/app/layout/PageLayoutContext', () => ({ useRails: useRailsMock }))
 vi.mock('./LearningMapSurface', () => ({ LearningMapSurface: (props: { context: ReactNode; children: ReactNode }) => { learningMapSurfaceMock(props); return createElement('div', null, props.context, props.children) } }))
-vi.mock('./StagedCountryWalkthroughStep', () => ({
-  StagedCountryWalkthroughStep: ({ onContinue }: { onContinue: () => void }) => <button type="button" data-testid="start-location" onClick={onContinue}>Start location</button>,
+vi.mock('./StagedWalkthroughStep', () => ({
+  StagedWalkthroughStep: ({ onContinue }: { onContinue: () => void }) => <button type="button" data-testid="start-location" onClick={onContinue}>Start location</button>,
 }))
 vi.mock('./SchedulerLocationPracticeStep', () => ({
   SchedulerLocationPracticeStep: () => <div>Location practice</div>,

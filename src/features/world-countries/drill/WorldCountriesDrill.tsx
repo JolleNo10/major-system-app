@@ -17,7 +17,7 @@ import { PracticeResults } from './PracticeResults'
 import { DrillSession, type DrillSessionInteraction } from './DrillSession'
 import { DrillSetup } from './DrillSetup'
 import { getSkillsForDrillMode, type WorldCountriesDrillMode } from './drillModes'
-import { createDrillCountryOrder, getWorldCountriesSessionOrder, type WorldCountriesDrillOrder } from './drillOrder'
+import type { WorldCountriesDrillOrder } from './drillOrder'
 import { createDrillSelection, getCountriesForDrillSelectionInEffectiveOrder, normalizeDrillSelection, type WorldCountriesDrillSelection } from './drillSelection'
 import {
   createDrillSession,
@@ -29,6 +29,7 @@ import {
 import { loadDrillPreferences, saveDrillPreferences, type WorldCountriesDrillPreferences } from './drillPreferences'
 import { resolveDrillProficiencyScope, type WorldCountriesProficiencySelection } from './drillProficiencyScope'
 import { getRetryableFailedDrillCountryIds } from './drillResultSummary'
+import { resolveDrillSessionLaunch, type WorldCountriesDrillSessionLaunch } from './drillSessionLaunch'
 import type { LearningSetMaximum } from '@/features/world-countries/learning/stagedLearningPlan'
 
 type DrillPhase = 'setup' | 'learning' | 'practice' | 'recall' | 'results'
@@ -111,49 +112,36 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
     saveDrillPreferences(next)
   }, [])
 
-  const startSession = useCallback(async (startPreferences: WorldCountriesDrillPreferences, { persistPreferences = true, interaction = 'recall', activity = 'drill', skills, practiceMode, countryIds }: StartSessionOptions = {}) => {
-    const normalizedStartSelection = normalizeDrillSelection(startPreferences, activeCountries)
-    const selectedSubregions = new Set(normalizedStartSelection.subregionIds)
-    const startSelection: WorldCountriesDrillSelection = {
-      continent: normalizedStartSelection.continent,
-      subregionIds: getSubregionsForContinentInEffectiveOrder(
-        normalizedStartSelection.continent,
-        activeCountries,
-        getContinentMetadata(normalizedStartSelection.continent),
-      ).map(subregion => subregion.id).filter(id => selectedSubregions.has(id)),
+  const startSession = useCallback((startPreferences: WorldCountriesDrillPreferences, { persistPreferences = true, interaction = 'recall', activity = 'drill', skills, practiceMode, countryIds }: StartSessionOptions = {}) => {
+    const applyLaunch = (launch: WorldCountriesDrillSessionLaunch | null) => {
+      if (!launch) return
+      if (persistPreferences) saveDrillPreferences(startPreferences)
+      setAnswers([])
+      setSessionActivity(launch.activity)
+      setSessionInteraction(launch.interaction)
+      setSessionSelection(launch.selection)
+      setSession(createDrillSession({
+        mode: startPreferences.mode,
+        ...(launch.skills ? { skills: launch.skills } : {}),
+        countryIds: launch.countryIds,
+        countryOrder: launch.countryOrder,
+      }))
+      setLearningRun(null)
+      setPhase(activity === 'practice' ? 'practice' : 'recall')
     }
-    let startEntries = countryIds
-      ? [...new Set(countryIds)].map(countryId => activeCountries.find(country => country.id === countryId)).filter((country): country is typeof activeCountries[number] => country !== undefined)
-      : getCountriesForDrillSelectionInEffectiveOrder(startPreferences, activeCountries, getContinentMetadata(startPreferences.continent), getAllSubregionMetadata())
-    if (!countryIds && proficiencySelection.length > 0) {
-      const proficiencySkills = skills ?? [...getSkillsForDrillMode(startPreferences.mode)]
-      const progress = await loadWorldCountriesRecallProgress({ countryIds: activeCountries.map(country => country.id), skills: proficiencySkills })
-      const proficiencyScope = resolveDrillProficiencyScope(
-        startPreferences.continent,
-        proficiencySelection,
-        progress,
-        activity === 'practice'
-          ? { kind: 'practice', mode: practiceMode ?? (interaction === 'location-click' ? 'locate-countries' : 'capitals') }
-          : { kind: 'drill', mode: startPreferences.mode },
-        activeCountries,
-        getAllSubregionMetadata(),
-      )
-      startEntries = [...proficiencyScope.countries]
-    }
-    if (startEntries.length === 0) return
-    if (persistPreferences) saveDrillPreferences(startPreferences)
-    setAnswers([])
-    setSessionActivity(activity)
-    setSessionInteraction(interaction)
-    setSessionSelection(startSelection)
-    setSession(createDrillSession({
-      mode: startPreferences.mode,
-      ...(skills ? { skills } : {}),
-      countryIds: startEntries.map(entry => entry.id),
-      countryOrder: createDrillCountryOrder(startEntries.map(entry => entry.id), getWorldCountriesSessionOrder(activity, startPreferences.order)),
-    }))
-    setLearningRun(null)
-    setPhase(activity === 'practice' ? 'practice' : 'recall')
+
+    const launch = resolveDrillSessionLaunch({
+      startPreferences,
+      activeCountries,
+      proficiencySelection,
+      interaction,
+      activity,
+      skills,
+      practiceMode,
+      countryIds,
+    })
+    if (launch instanceof Promise) void launch.then(applyLaunch)
+    else applyLaunch(launch)
   }, [activeCountries, proficiencySelection])
 
   const startDrill = useCallback(() => startSession(effectivePreferences), [effectivePreferences, startSession])
