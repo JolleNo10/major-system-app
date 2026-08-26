@@ -122,7 +122,7 @@ export default defineConfig({
     ...(usePolling ? {
       watch: {
         usePolling: true,
-        interval: 5000,
+        interval: 2000,
         ignored: ['**/node_modules/**', '**/dist/**', '**/.git/**'],
       },
     } : {}),

@@ -176,7 +176,7 @@ export const COUNTRY_RECORDS: CountryRecordInput[] = [
   { id: 'TD', country: "Chad", capital: "N'Djamena", continent: "Africa", subregion: "Central Africa" },
   { id: 'CF', country: "Central African Republic", capital: "Bangui", continent: "Africa", subregion: "Central Africa", countryAliases: ["CAR"] },
   { id: 'CD', country: "Democratic Republic of the Congo", capital: "Kinshasa", continent: "Africa", subregion: "Central Africa", countryAliases: ["DRC", "DR Congo", "Congo-Kinshasa"] },
-  { id: 'CG', country: "Republic of the Congo", capital: "Brazzaville", continent: "Africa", subregion: "Central Africa", countryAliases: ["Congo Republic", "Congo-Brazzaville"] },
+  { id: 'CG', country: "Republic of the Congo", capital: "Brazzaville", continent: "Africa", subregion: "Central Africa", countryAliases: ["Congo Republic", "Congo-Brazzaville", "roc"] },
   { id: 'GA', country: "Gabon", capital: "Libreville", continent: "Africa", subregion: "Central Africa" },
   { id: 'GQ', country: "Equatorial Guinea", capital: "Ciudad de la Paz", continent: "Africa", subregion: "Central Africa" },
   { id: 'CM', country: "Cameroon", capital: "Yaoundé", continent: "Africa", subregion: "Central Africa" },
