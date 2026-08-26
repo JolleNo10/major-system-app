@@ -4,7 +4,7 @@ import { SpellingPracticeControls } from './MiniSpellingPractice'
 
 const feedbackShellClass = `
   w-full max-w-[420px]
-  max-h-[calc(100%_-_2.5rem)]
+  max-h-full
   overflow-y-auto
   rounded-[22px]
   border
