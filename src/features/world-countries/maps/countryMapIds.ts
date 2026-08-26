@@ -34,7 +34,6 @@ export function countryToSvgIds(country: Country): string[] {
   const values = [
     ...(EXPLICIT_SVG_ALIASES[country.country] ?? []),
     country.country,
-    ...(country.aliases ?? []),
   ]
   return [...new Set(values.flatMap(svgNameCandidates))]
 }

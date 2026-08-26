@@ -110,7 +110,7 @@ export function classifyCountryName(
 ): PlaceMatchKind {
   return classifyPlaceName(value, country.country, {
     ...options,
-    aliases: country.aliases,
+    aliases: country.countryAliases,
   })
 }
 

@@ -12,6 +12,7 @@ export interface RecallAnswerOptions {
   capitalCandidates?: readonly string[]
 }
 
+
 /** Evaluate a typed answer against the relationship represented by a skill. */
 export function classifyRecallAnswer(
   skill: WorldCountriesRecallSkill,
@@ -23,6 +24,7 @@ export function classifyRecallAnswer(
     return classifyPlaceName(value, country.capital, {
       fuzzy: options.fuzzy,
       candidates: options.capitalCandidates,
+      aliases: country.capitalAliases,
     })
   }
 
@@ -31,4 +33,3 @@ export function classifyRecallAnswer(
     candidates: options.countryCandidates?.map(candidate => candidate.country),
   })
 }
-
