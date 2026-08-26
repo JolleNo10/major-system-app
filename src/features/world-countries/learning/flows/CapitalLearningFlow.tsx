@@ -21,7 +21,7 @@ import {
   type StagedCapitalLearningPhase,
 } from '@/features/world-countries/learning/stagedCapitalLearningFlow'
 import { createSubregionCapitalCompletionReporter } from '@/features/world-countries/learning/capitalLearningCompletion'
-import { classifyPlaceName } from '@/features/world-countries/learning/answerMatching'
+import { classifyRecallAnswer } from '@/features/world-countries/learning/recallAnswerMatching'
 import { CapitalLearningComplete } from './CapitalLearningComplete'
 import { GuidedLearningRails } from './GuidedLearningRails'
 import { LearningMapSurface } from './LearningMapSurface'
@@ -35,7 +35,10 @@ import type { WorldCountriesActivityTask } from '@/features/world-countries/ui/W
 import { useLearningCountryOrderAuthoring } from './useLearningCountryOrderAuthoring'
 
 function evaluateCapitalAnswer(answer: string, country: Country, fuzzyMatching: boolean, candidates: readonly string[]): SchedulerAnswerEvaluation {
-  const match = classifyPlaceName(answer, country.capital, { fuzzy: fuzzyMatching, candidates })
+  const match = classifyRecallAnswer('country-to-capital', answer, country, {
+    fuzzy: fuzzyMatching,
+    capitalCandidates: candidates,
+  })
   return { correct: match !== 'none', fuzzyMatch: match === 'fuzzy', canonicalAnswer: country.capital }
 }
 
