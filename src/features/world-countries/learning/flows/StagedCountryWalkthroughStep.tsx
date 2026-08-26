@@ -14,7 +14,7 @@ export function StagedCountryWalkthroughStep({
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.repeat || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
-      if (event.target instanceof HTMLElement && event.target.closest('button, a, input, textarea, select, [contenteditable="true"], [role="button"]')) return
+      if (event.target instanceof HTMLElement && event.target.closest('input, textarea, select, [contenteditable="true"], [role="textbox"], [role="combobox"], [role="slider"], [role="spinbutton"]')) return
       if (event.key === 'ArrowLeft' && index > 0) {
         event.preventDefault()
         onMove(-1)

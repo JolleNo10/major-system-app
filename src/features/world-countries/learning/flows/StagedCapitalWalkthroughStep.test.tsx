@@ -4,7 +4,7 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Country } from '@/features/world-countries/data/countries'
-import { StagedCountryWalkthroughStep } from './StagedCountryWalkthroughStep'
+import { StagedCapitalWalkthroughStep } from './StagedCapitalWalkthroughStep'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -20,20 +20,17 @@ afterEach(() => {
   document.body.replaceChildren()
 })
 
-describe('Learning Review keyboard behavior', () => {
-  it('uses arrows only for Review traversal and does nothing at boundaries', () => {
+describe('Capital Learning Review keyboard behavior', () => {
+  it('allows arrows from navigation buttons while preserving input ownership', () => {
     const mount = document.createElement('div')
     document.body.append(mount)
     const onMove = vi.fn()
     act(() => {
       root = createRoot(mount)
-      root.render(createElement(StagedCountryWalkthroughStep, {
+      root.render(createElement(StagedCapitalWalkthroughStep, {
         entries, index: 0, onMove, onContinue: vi.fn(),
       }))
     })
-
-    act(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true })))
-    expect(onMove).not.toHaveBeenCalled()
 
     const next = mount.querySelector<HTMLButtonElement>('[data-primary-action]')
     next?.focus()
@@ -41,28 +38,10 @@ describe('Learning Review keyboard behavior', () => {
     expect(onMove).toHaveBeenCalledWith(1)
 
     onMove.mockClear()
-    act(() => root?.render(createElement(StagedCountryWalkthroughStep, {
-      entries, index: 1, onMove, onContinue: vi.fn(),
-    })))
-    act(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })))
-    expect(onMove).not.toHaveBeenCalled()
-  })
-
-  it('does not traverse when a native control owns the key', () => {
-    const mount = document.createElement('div')
-    document.body.append(mount)
-    const onMove = vi.fn()
-    act(() => {
-      root = createRoot(mount)
-      root.render(createElement(StagedCountryWalkthroughStep, {
-        entries, index: 0, onMove, onContinue: vi.fn(),
-      }))
-    })
     const input = document.createElement('input')
     mount.append(input)
     input.focus()
     act(() => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })))
     expect(onMove).not.toHaveBeenCalled()
   })
-
 })

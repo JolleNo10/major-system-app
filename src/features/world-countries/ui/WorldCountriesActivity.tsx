@@ -64,7 +64,7 @@ export function WorldCountriesSessionProgress({ progress }: {
     <section
       data-world-countries-session-progress
       aria-label={progress.label}
-      className="min-w-0 rounded-xl border border-zinc-800 bg-zinc-950/75 px-3 py-2"
+      className="flex h-full min-w-0 flex-col justify-center rounded-xl border border-zinc-800 bg-zinc-950/75 px-3 py-2"
     >
       <div className="flex items-center justify-between gap-3 text-xs tabular-nums text-zinc-400">
         <span>{count ? `${progress.label} ${count}` : progress.label}</span>
@@ -86,7 +86,7 @@ export function WorldCountriesTaskContext({ task }: {
     <section
       data-world-countries-task
       data-world-countries-task-presentation={presentation}
-      className={expanded ? 'grid items-center gap-3 text-left xl:grid-cols-[minmax(0,1fr)_minmax(0,28%)]' : 'rounded-xl border border-zinc-800 bg-zinc-950/55 px-4 py-3 text-center'}
+      className={expanded ? 'grid items-stretch gap-3 text-left xl:grid-cols-[minmax(0,1fr)_minmax(0,28%)]' : 'rounded-xl border border-zinc-800 bg-zinc-950/55 px-4 py-3 text-center'}
     >
       <div data-world-countries-task-card={expanded ? true : undefined} className={expanded ? 'min-w-0 rounded-xl border border-zinc-800 bg-zinc-950/55 px-4 py-2' : undefined}>
         <div data-world-countries-task-copy className={expanded ? 'min-w-0 text-left' : undefined}>
