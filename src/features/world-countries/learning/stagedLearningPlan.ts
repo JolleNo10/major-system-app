@@ -12,6 +12,35 @@ export type LearningPlanStage<TId = CountryId> =
   | { kind: 'combined'; ids: readonly TId[] }
   | { kind: 'final'; ids: readonly TId[] }
 
+export function getNextLearningStageLabel<TId>(
+  plan: readonly LearningPlanStage<TId>[],
+  stageIndex: number,
+): string {
+  const next = plan[stageIndex + 1]
+  if (!next) return 'Continue to Final recall'
+  if (next.kind === 'set') return `Continue to Set ${next.set.index + 1}`
+  return `Practise all ${next.ids.length}`
+}
+
+export function rebuildLearningPlanAfterCountryOrderSave<TId>(
+  countryIds: readonly TId[],
+  maximum: LearningSetMaximum,
+  stageIndex: number,
+): {
+  countryIds: readonly TId[]
+  plan: LearningPlanStage<TId>[]
+  stageIndex: number
+  walkthroughIndex: 0
+} {
+  const plan = buildLearningPlan(countryIds, maximum)
+  return {
+    countryIds,
+    plan,
+    stageIndex: Math.min(stageIndex, plan.length - 1),
+    walkthroughIndex: 0,
+  }
+}
+
 export function partitionLearningSets<TId>(
   orderedIds: readonly TId[],
   maximum: LearningSetMaximum,

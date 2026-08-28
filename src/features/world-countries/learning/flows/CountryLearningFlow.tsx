@@ -1,8 +1,11 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
-import type { LearningSetMaximum } from '@/features/world-countries/learning/stagedLearningPlan'
-import { buildLearningPlan } from '@/features/world-countries/learning/stagedLearningPlan'
+import {
+  getNextLearningStageLabel,
+  rebuildLearningPlanAfterCountryOrderSave,
+  type LearningSetMaximum,
+} from '@/features/world-countries/learning/stagedLearningPlan'
 import { deriveLearningPracticeProgress } from '@/features/world-countries/learning/learningPracticeProgress'
 import {
   backStagedCountry,
@@ -37,6 +40,8 @@ import { LearningHeader } from './MemoryPreviewStep'
 import type { SchedulerAnswerEvaluation } from './SchedulerPracticeStep'
 import type { WorldCountriesActivityTask } from '@/features/world-countries/ui/WorldCountriesActivity'
 import { useLearningCountryOrderAuthoring } from './useLearningCountryOrderAuthoring'
+import { deriveLearningMapPresentation } from './learningMapPresentation'
+import { LearningMapMetadata } from './LearningMapMetadata'
 
 function evaluateCountryAnswer(answer: string, country: Country, fuzzyMatching: boolean, candidates: readonly string[]): SchedulerAnswerEvaluation {
   const match = classifyCountryName(answer, country, { fuzzy: fuzzyMatching, candidates })
@@ -120,16 +125,10 @@ export function CountryLearningFlow({
   const onOrderSaved = (draft: readonly Country[]) => {
     setOrderDraft(draft)
     const nextIds = draft.map(country => country.id)
-    setFlow(previous => {
-      const plan = buildLearningPlan(nextIds, previous.maximum)
-      return { ...previous, countryIds: nextIds, plan, stageIndex: Math.min(previous.stageIndex, plan.length - 1), walkthroughIndex: 0 }
-    })
-  }
-  const nextReadyLabel = () => {
-    const next = flow.plan[flow.stageIndex + 1]
-    if (!next) return 'Continue to Final recall'
-    if (next.kind === 'set') return `Continue to Set ${next.set.index + 1}`
-    return `Practise all ${next.ids.length}`
+    setFlow(previous => ({
+      ...previous,
+      ...rebuildLearningPlanAfterCountryOrderSave(nextIds, previous.maximum, previous.stageIndex),
+    }))
   }
   const skip = () => run(state => skipStagedCountry(state))
   const backAvailable = flow.phase === 'location-practice'
@@ -143,31 +142,19 @@ export function CountryLearningFlow({
     : flow.phase === 'final-recall' ? 'Back to Final recall'
       : 'Back'
 
-  const mapEntries = ['final-gate', 'final-recall', 'complete'].includes(flow.phase)
-    ? entries
-    : stageEntries.length ? stageEntries : allPresentationEntries
   const walkthroughCountry = stageEntries[flow.walkthroughIndex]
-  const currentRecallId = flow.ordered?.order[flow.ordered.currentIndex] ?? null
-  const currentPracticeId = flow.practice?.currentKey ?? null
-  const mapPresentation = {
-    showNames: flow.phase === 'complete',
-    showOrderNumbers: flow.phase === 'walkthrough' || flow.phase === 'complete',
-    namedCountryId: flow.phase === 'walkthrough' ? walkthroughCountry?.id ?? null : null,
-    highlightedCountryId: flow.phase === 'walkthrough' ? walkthroughCountry?.id ?? null : flow.phase === 'final-recall' ? currentRecallId : currentPracticeId,
+  const { mapEntries, presentation: mapPresentation, presentationKey } = deriveLearningMapPresentation({
+    phase: flow.phase,
+    fullEntries: entries,
+    stageEntries,
+    fallbackEntries: allPresentationEntries,
+    walkthroughIndex: flow.walkthroughIndex,
+    ordered: flow.ordered,
+    practice: flow.practice,
     hoveredCountryId,
-    showHighlightedNames: flow.phase === 'walkthrough',
-    showHoverNames: flow.phase === 'final-recall',
-    ...orderMapPresentation,
-    mapClassName: ['practice', 'combined-practice'].includes(flow.phase) ? '[&>svg]:max-h-[510px]' : undefined,
-    ariaLabel: flow.phase === 'final-recall' ? 'Highlighted Country for final recall' : 'World Countries Learning map',
-  } as const
-  const presentationKey = `${flow.phase}:${[...mapEntries].map(entry => entry.id).sort().join(',')}`
-  const mapMeta = (
-    <div>
-      <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-400">{learningScopeLabel}</div>
-      <div className="mt-1 text-sm font-semibold text-zinc-100">{mapEntries.length} {mapEntries.length === 1 ? 'country' : 'countries'} in scope</div>
-    </div>
-  )
+    orderPresentation: orderMapPresentation,
+  })
+  const mapMeta = <LearningMapMetadata scopeLabel={learningScopeLabel} entries={mapEntries} />
 
   const context = (() => {
     switch (flow.phase) {
@@ -249,10 +236,10 @@ export function CountryLearningFlow({
       content = flow.practice ? <SchedulerPracticeStep continent={continent} entries={stageEntries.length ? stageEntries : allPresentationEntries} session={flow.practice} stepLabel={flow.phase === 'combined-practice' ? 'Combined practice' : `Set ${currentStagedCountrySetNumber(flow)} · Step 3 - Practice`} questionLabel="Country name" questionTitle="Name the country" answerLabel="Type the country name" placeholder="Type the country…" showCountryName={false} answerKind="country" showMap={flow.phase !== 'combined-practice'} promptText="Name the country" evaluateAnswer={(answer, country) => evaluateCountryAnswer(answer, country, fuzzyMatching, allPresentationEntries.map(entry => entry.country))} formatFeedback={formatCountryFeedback} onSubmit={updatePractice} onBack={() => run(backStagedCountry)} onExit={onExit} allowIncorrectSpellingPractice={allowIncorrectSpellingPractice} surface /> : null
       break
     case 'set-ready':
-      content = <StagedLearningReadyStep title={`Set ${currentStagedCountrySetNumber(flow)} Ready`} summary="Every Country in this Set met the spaced Country-name Practice threshold." nextLabel={nextReadyLabel()} onNext={() => run(advanceStagedCountryPlan)} onKeepPractising={() => run(keepStagedCountryPractising)} onBack={() => run(backStagedCountry)} onExit={onExit} surface />
+      content = <StagedLearningReadyStep title={`Set ${currentStagedCountrySetNumber(flow)} Ready`} summary="Every Country in this Set met the spaced Country-name Practice threshold." nextLabel={getNextLearningStageLabel(flow.plan, flow.stageIndex)} onNext={() => run(advanceStagedCountryPlan)} onKeepPractising={() => run(keepStagedCountryPractising)} onBack={() => run(backStagedCountry)} onExit={onExit} surface />
       break
     case 'combined-ready':
-      content = <StagedLearningReadyStep title="Combined practice ready" summary="Every introduced Country met the spaced Combined practice threshold." nextLabel={nextReadyLabel()} onNext={() => run(advanceStagedCountryPlan)} onKeepPractising={() => run(keepStagedCountryPractising)} onBack={() => run(backStagedCountry)} onExit={onExit} surface />
+      content = <StagedLearningReadyStep title="Combined practice ready" summary="Every introduced Country met the spaced Combined practice threshold." nextLabel={getNextLearningStageLabel(flow.plan, flow.stageIndex)} onNext={() => run(advanceStagedCountryPlan)} onKeepPractising={() => run(keepStagedCountryPractising)} onBack={() => run(backStagedCountry)} onExit={onExit} surface />
       break
     case 'final-gate':
       content = <FinalRecallGate ready={flow.finalScopeReady} onStart={() => run(startStagedCountryFinalRecall)} onKeepPractising={() => run(keepStagedCountryPractising)} onBack={() => run(backStagedCountry)} onExit={onExit} surface />
