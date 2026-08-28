@@ -1,13 +1,13 @@
-import type { Country, CountryId } from '@/features/world-countries/data/countries'
+import type { Continent, Country, CountryId } from '@/features/world-countries/data/countries'
 import { getAllSubregionMetadata } from '@/features/world-countries/geography/subregionMetadataStore'
-import { getContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
-import { getSubregionsForContinentInEffectiveOrder } from '@/features/world-countries/geography/queries'
+import { getAllContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
+import { getWorldMetadata } from '@/features/world-countries/geography/worldMetadataStore'
 import { loadWorldCountriesRecallProgress } from '@/features/world-countries/learning/recallProgress'
 import type { WorldCountriesRecallSkill } from '@/features/world-countries/learning/recallTargets'
 import type { WorldCountriesPracticeMode } from '@/features/world-countries/learning/learnPracticeModes'
 import { createDrillCountryOrder, getWorldCountriesSessionOrder } from './drillOrder'
 import { getSkillsForDrillMode } from './drillModes'
-import { getCountriesForDrillSelectionInEffectiveOrder, normalizeDrillSelection, type WorldCountriesDrillSelection } from './drillSelection'
+import { getCountriesForDrillSelectionInEffectiveOrder, getDrillSelectionScopeLabel, normalizeDrillSelection, type DrillSelectionMetadata, type WorldCountriesDrillSelection } from './drillSelection'
 import { resolveDrillProficiencyScope, type WorldCountriesProficiencySelection } from './drillProficiencyScope'
 import type { DrillSessionInteraction } from './DrillSession'
 import type { WorldCountriesDrillPreferences } from './drillPreferences'
@@ -22,10 +22,15 @@ export interface ResolveDrillSessionLaunchOptions {
   practiceMode?: WorldCountriesPracticeMode
   /** A transient Country subset for a retry; it never changes preferences. */
   countryIds?: readonly CountryId[]
+  /** The open setup Continent used only for the still-Continent-scoped proficiency activity. */
+  proficiencyContinent?: Continent | null
+  /** Effective geography metadata captured by the setup coordinator. */
+  selectionMetadata?: DrillSelectionMetadata
 }
 
 export interface WorldCountriesDrillSessionLaunch {
   selection: WorldCountriesDrillSelection
+  scopeLabel: string
   entries: readonly Country[]
   countryIds: readonly CountryId[]
   countryOrder: readonly CountryId[]
@@ -44,17 +49,15 @@ export function resolveDrillSessionLaunch({
   skills,
   practiceMode,
   countryIds,
+  proficiencyContinent = null,
+  selectionMetadata = {
+    world: getWorldMetadata(),
+    continents: getAllContinentMetadata(),
+    subregions: getAllSubregionMetadata(),
+  },
 }: ResolveDrillSessionLaunchOptions): WorldCountriesDrillSessionLaunch | null | Promise<WorldCountriesDrillSessionLaunch | null> {
-  const normalizedStartSelection = normalizeDrillSelection(startPreferences, activeCountries)
-  const selectedSubregions = new Set(normalizedStartSelection.subregionIds)
-  const selection: WorldCountriesDrillSelection = {
-    continent: normalizedStartSelection.continent,
-    subregionIds: getSubregionsForContinentInEffectiveOrder(
-      normalizedStartSelection.continent,
-      activeCountries,
-      getContinentMetadata(normalizedStartSelection.continent),
-    ).map(subregion => subregion.id).filter(id => selectedSubregions.has(id)),
-  }
+  const normalizedStartSelection = normalizeDrillSelection(startPreferences, activeCountries, selectionMetadata)
+  const selection: WorldCountriesDrillSelection = normalizedStartSelection
 
   let entries = countryIds
     ? [...new Set(countryIds)]
@@ -63,8 +66,7 @@ export function resolveDrillSessionLaunch({
     : getCountriesForDrillSelectionInEffectiveOrder(
       startPreferences,
       activeCountries,
-      getContinentMetadata(startPreferences.continent),
-      getAllSubregionMetadata(),
+      selectionMetadata,
     )
 
   const finish = (resolvedEntries: readonly Country[]): WorldCountriesDrillSessionLaunch | null => {
@@ -73,6 +75,9 @@ export function resolveDrillSessionLaunch({
     const resolvedCountryIds = resolvedEntries.map(entry => entry.id)
     return {
       selection,
+      scopeLabel: proficiencySelection.length > 0 && proficiencyContinent
+        ? proficiencyContinent
+        : getDrillSelectionScopeLabel(selection, activeCountries),
       entries: resolvedEntries,
       countryIds: resolvedCountryIds,
       countryOrder: createDrillCountryOrder(
@@ -86,20 +91,21 @@ export function resolveDrillSessionLaunch({
   }
 
   if (!countryIds && proficiencySelection.length > 0) {
+    if (!proficiencyContinent) return null
     const proficiencySkills = skills ?? [...getSkillsForDrillMode(startPreferences.mode)]
     return loadWorldCountriesRecallProgress({
       countryIds: activeCountries.map(country => country.id),
       skills: proficiencySkills,
     }).then(progress => {
       const proficiencyScope = resolveDrillProficiencyScope(
-        startPreferences.continent,
+        proficiencyContinent,
         proficiencySelection,
         progress,
         activity === 'practice'
           ? { kind: 'practice', mode: practiceMode ?? (interaction === 'location-click' ? 'locate-countries' : 'capitals') }
           : { kind: 'drill', mode: startPreferences.mode },
         activeCountries,
-        getAllSubregionMetadata(),
+        selectionMetadata.subregions ?? [],
       )
       return finish(proficiencyScope.countries)
     })

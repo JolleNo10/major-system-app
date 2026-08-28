@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import type { Continent, Country } from '@/features/world-countries/data/countries'
+import type { Country } from '@/features/world-countries/data/countries'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import { DrillResultStats } from './DrillResultStats'
 import { DrillResultsRails } from './DrillResultsRails'
@@ -16,7 +16,6 @@ import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountrie
 
 export function DrillResults({
   mode,
-  continent,
   scopeCountries,
   answers,
   retryFailedCountryCount,
@@ -25,7 +24,6 @@ export function DrillResults({
   onChangeSetup,
 }: {
   mode: WorldCountriesDrillMode
-  continent: Continent
   scopeCountries: readonly Country[]
   answers: readonly DrillAnswerRecord[]
   retryFailedCountryCount?: number
@@ -56,6 +54,11 @@ export function DrillResults({
       : undefined,
     [learningStates, mode, recallProgress, scopeCountries],
   )
+  const continentGroups = [...new Set(scopeCountries.map(country => country.continent))].map(continent => ({
+    continent,
+    countries: scopeCountries.filter(country => country.continent === continent),
+  }))
+  const scopeLabel = continentGroups.length === 1 ? continentGroups[0]!.continent : 'World'
 
   return (
     <>
@@ -77,14 +80,15 @@ export function DrillResults({
 
         <button type="button" autoFocus onClick={onAgain} className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 xl:hidden">Run again</button>
 
-        <CountryLearningMap
-          continent={continent}
-          scopeCountries={scopeCountries}
+        {continentGroups.map(group => <CountryLearningMap
+          key={group.continent}
+          continent={group.continent}
+          scopeCountries={group.countries}
           showNames
           countryColorsById={countryColorsById}
           countryAccessibleDescriptionsById={countryAccessibleDescriptionsById}
-          ariaLabel={`Results map for ${continent} Drill Countries`}
-        />
+          ariaLabel={`Results map for ${scopeLabel} Drill Countries`}
+        />)}
         <DrillProgressLegend mode={mode} />
 
         <DrillResultStats summary={summary} answerCount={answers.length} showCountryCount />

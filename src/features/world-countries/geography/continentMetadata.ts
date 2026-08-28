@@ -37,7 +37,7 @@ export function getCanonicalContinentSubregions(
 export function resolveContinentSubregionOrder(
   continent: Continent | string,
   availableCountries: readonly Country[] = countries,
-  metadata?: Pick<ContinentMetadata, 'continentId' | 'subregionOrder'> | null,
+  metadata?: { continentId: ContinentId; subregionOrder: readonly SubregionId[] } | null,
 ): SubregionDefinition[] {
   const canonical = getCanonicalContinentSubregions(continent, availableCountries)
   const continentId = continentIdFor(continent)
@@ -63,7 +63,7 @@ export function resolveContinentSubregionOrder(
 export function resolveContinentSubregionIds(
   continent: Continent | string,
   availableCountries: readonly Country[] = countries,
-  metadata?: Pick<ContinentMetadata, 'continentId' | 'subregionOrder'> | null,
+  metadata?: { continentId: ContinentId; subregionOrder: readonly SubregionId[] } | null,
 ): SubregionId[] {
   return resolveContinentSubregionOrder(continent, availableCountries, metadata).map(subregion => subregion.id)
 }

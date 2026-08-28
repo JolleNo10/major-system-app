@@ -138,6 +138,21 @@ The summary is non-persisted presentation state. It is independent of Drill
 purpose and mode, while activity-specific map progress, Learning Readiness, and
 Recite outcomes remain separate concepts.
 
+Drill Geography is a World-wide selection of stable `SubregionId` values.
+`WorldCountriesDrill.tsx` keeps `setupContinent` as transient setup navigation:
+opening a Continent, returning to World, and opening a different Continent do
+not change the selected scope. World setup derives each Continent's unchecked,
+mixed, or checked state from the selected Subregions; full-Continent actions
+are bulk operations over those IDs. The World rail and summary are the
+authoritative selection surfaces, while the World map remains navigation.
+
+Geography-backed Drill, non-recording Practice, Learn Countries, and Learn
+Capitals may span multiple Continents. Ordered Country membership follows the
+effective World Continent, Subregion, and Country order, and Learning advances
+between selected Subregions with each flow receiving its active Continent.
+Proficiency remains the mutually exclusive, Continent-scoped alternative
+scope source.
+
 Learn & Practise uses the derived Drill selection. Selected Subregions run
 sequentially in effective geographic order, and each uses its effective
 Country order from `geography/`. An already completed Subregion remains
@@ -433,9 +448,13 @@ flowchart TD
   and active membership fingerprint behavior.
 - Geography mnemonics remain in the shared IndexedDB `mnemonics` store with
   existing `geo:*` target IDs.
-- `world-countries-drill-preferences` remains the owner of the last Continent,
-  selected Subregion IDs, actual Drill mode, and Drill order. Purpose state and
-  Learn & Practise mode are not added to this schema.
+- `world-countries-drill-preferences` remains the owner of the selected
+  World-wide Subregion IDs, actual Drill mode, and Drill order. New writes have
+  the shape `{ subregionIds, mode, order }`; they do not persist setup
+  navigation, derived Continent state, scope counts, or Country IDs. Reads
+  continue to accept the legacy `{ continent, subregionIds, mode, order }`
+  shape and preserve all valid selected Subregions across the World. Purpose
+  state and Learn & Practise mode are not added to this schema.
 - Proficiency filter selection and any resolved Country membership remain
   transient Drill setup/session state; no resolved Country list or new
   persistence key is stored.

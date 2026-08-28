@@ -34,7 +34,6 @@ describe('World Countries Drill results', () => {
       root = createRoot(mount)
       root.render(createElement(DrillResults, {
         mode: 'countries',
-        continent: 'Europe',
         scopeCountries: [],
         answers: [],
         onAgain,

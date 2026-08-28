@@ -1,12 +1,13 @@
 import { readJSON, safeSet } from '@/core/storage'
 import { countries } from '@/features/world-countries/data/countries'
-import { getContinentsInEffectiveOrder } from '@/features/world-countries/geography/queries'
 import { getWorldMetadata } from '@/features/world-countries/geography/worldMetadataStore'
+import { getAllContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
+import { getAllSubregionMetadata } from '@/features/world-countries/geography/subregionMetadataStore'
 import { isSubregionId, type SubregionId } from '@/features/world-countries/data/subregions'
 import {
   createDrillSelection,
-  isDrillContinent,
   normalizeDrillSelection,
+  type DrillSelectionMetadata,
   type WorldCountriesDrillSelection,
 } from './drillSelection'
 import {
@@ -26,8 +27,15 @@ export interface WorldCountriesDrillPreferences extends WorldCountriesDrillSelec
 }
 
 function defaultPreferences(): WorldCountriesDrillPreferences {
-  const continent = getContinentsInEffectiveOrder(undefined, getWorldMetadata())[0] ?? 'Africa'
-  return { ...createDrillSelection(continent), mode: 'countries-capitals', order: 'ordered' }
+  return { ...createDrillSelection(), mode: 'countries-capitals', order: 'ordered' }
+}
+
+function getSelectionMetadata(): DrillSelectionMetadata {
+  return {
+    world: getWorldMetadata(),
+    continents: getAllContinentMetadata(),
+    subregions: getAllSubregionMetadata(),
+  }
 }
 
 export function loadDrillPreferences(): WorldCountriesDrillPreferences {
@@ -35,27 +43,22 @@ export function loadDrillPreferences(): WorldCountriesDrillPreferences {
   const raw = readJSON<unknown>(DRILL_PREFERENCES_STORAGE_KEY, null)
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return fallback
   const row = raw as Record<string, unknown>
-  const continent = isDrillContinent(row.continent) ? row.continent : fallback.continent
   const subregionIds: readonly SubregionId[] = Array.isArray(row.subregionIds)
     ? row.subregionIds.filter((id): id is SubregionId => typeof id === 'string' && isSubregionId(id))
-    : createDrillSelection(continent).subregionIds
+    : []
   const mode = typeof row.mode === 'string' && isWorldCountriesDrillMode(row.mode)
     ? row.mode
     : fallback.mode
   const order = typeof row.order === 'string' && isWorldCountriesDrillOrder(row.order)
     ? row.order
     : fallback.order
-  const selection = normalizeDrillSelection({
-    continent,
-    subregionIds,
-  }, countries)
+  const selection = normalizeDrillSelection({ subregionIds }, countries, getSelectionMetadata())
   return { ...selection, mode, order }
 }
 
 export function saveDrillPreferences(preferences: WorldCountriesDrillPreferences): void {
-  const selection = normalizeDrillSelection(preferences, countries)
+  const selection = normalizeDrillSelection(preferences, countries, getSelectionMetadata())
   safeSet(DRILL_PREFERENCES_STORAGE_KEY, JSON.stringify({
-    continent: selection.continent,
     subregionIds: [...selection.subregionIds],
     mode: preferences.mode,
     order: preferences.order,

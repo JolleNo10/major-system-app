@@ -82,10 +82,13 @@ follows the defining module and feature namespace.
 - Shared mnemonic target IDs are opaque to core. Feature adapters own namespace
   construction and import validation.
 - World Countries Drill preferences use the small localStorage key
-  `world-countries-drill-preferences` and contain only setup state: one
-  Continent, selected Subregion IDs, a Drill mode, and a Country order
-  (`ordered` or `random`). They never contain a flattened Country membership
-  list.
+  `world-countries-drill-preferences` and contain only `{ subregionIds, mode,
+  order }`: a World-wide stable Subregion-ID selection, Drill mode, and
+  Country order (`ordered` or `random`). They do not persist transient setup
+  navigation, derived Continent state, counts, or flattened Country
+  membership. Reads accept the legacy `{ continent, subregionIds, mode,
+  order }` shape and retain every valid selected Subregion across Continents;
+  no second key or reset migration is used.
 - World Countries atomic Drill and Today review evidence uses the existing
   shared `attempts` store through `core/learning`. The feature constructs opaque IDs in the
   `world-countries:<skill>:<CountryId>` namespace, where the skill is one of

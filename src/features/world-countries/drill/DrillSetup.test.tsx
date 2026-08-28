@@ -23,7 +23,7 @@ let root: Root | null = null
 afterEach(() => { act(() => root?.unmount()); root = null; document.body.replaceChildren(); useRailsMock.mockReset(); mapMock.mockReset(); loadRecallProgressMock.mockClear(); loadRecallProgressMock.mockImplementation(async () => new Map()); proficiencyScopeMock.mockReset(); proficiencyScopeMock.mockImplementation(() => ({ counts: { weak: 0, developing: 0 }, countryIds: [], countries: [] })); localStorage.clear() })
 
 function createSetupProps(overrides: Record<string, unknown> = {}) {
-  return { level: 'continent', selection: createDrillSelection('Europe', ['northern-europe']), mode: 'countries', order: 'ordered', purpose: 'drill', learnPracticeMode: 'learn-countries', learningStates: [], onSelectionChange: vi.fn(), onModeChange: vi.fn(), onOrderChange: vi.fn(), onPurposeChange: vi.fn(), onLearnPracticeModeChange: vi.fn(), onStart: vi.fn(), onLearnPracticeStart: vi.fn(), onWorld: vi.fn(), onSelectContinent: vi.fn(), hoveredGroupId: null, onHoverGroup: vi.fn(), ...overrides } as never
+  return { level: 'continent', setupContinent: 'Europe', selection: createDrillSelection(['northern-europe']), selectionMetadata: {}, mode: 'countries', order: 'ordered', purpose: 'drill', learnPracticeMode: 'learn-countries', learningStates: [], onSelectionChange: vi.fn(), onModeChange: vi.fn(), onOrderChange: vi.fn(), onPurposeChange: vi.fn(), onLearnPracticeModeChange: vi.fn(), onStart: vi.fn(), onLearnPracticeStart: vi.fn(), onWorld: vi.fn(), onSelectContinent: vi.fn(), onSelectAllWorld: vi.fn(), onClearWorld: vi.fn(), hoveredGroupId: null, onHoverGroup: vi.fn(), ...overrides } as never
 }
 
 function renderSetup(overrides: Record<string, unknown> = {}) {
@@ -214,7 +214,7 @@ describe('DrillSetup activity boundary', () => {
   })
 
   it('explains that a Continent needs a Subregion before Drill can start', () => {
-    const mount = renderSetup({ selection: createDrillSelection('Europe', []) })
+    const mount = renderSetup({ selection: createDrillSelection([]) })
     const config = useRailsMock.mock.calls[0][0] as { right: ReactNode }
     act(() => root?.render(config.right))
 
@@ -232,7 +232,7 @@ describe('DrillSetup activity boundary', () => {
   })
 
   it('shows the Country count on each Subregion button', () => {
-    const mount = renderSetup({ selection: createDrillSelection('Europe', []) })
+    const mount = renderSetup({ selection: createDrillSelection([]) })
     const config = useRailsMock.mock.calls[0][0] as { left: ReactNode }
     act(() => root?.render(config.left))
     expect(mount.textContent).toContain('Northern Europe')
@@ -266,7 +266,7 @@ describe('DrillSetup activity boundary', () => {
     const onSelectionChange = vi.fn()
     const onProficiencySelectionChange = vi.fn()
     const mount = renderSetup({
-      selection: createDrillSelection('Europe', []),
+      selection: createDrillSelection([]),
       proficiencySelection: ['weak'],
       onSelectionChange,
       onProficiencySelectionChange,
@@ -291,6 +291,43 @@ describe('DrillSetup activity boundary', () => {
     const config = useRailsMock.mock.calls[0][0] as { left: ReactNode }
     act(() => root?.render(config.left))
     expect(mount.textContent).not.toContain('Proficiency')
+  })
+
+  it('keeps multi-Continent selection separate from navigation and exposes mixed state accessibly', () => {
+    const entries = [
+      { id: 'NO', country: 'Norway', capital: 'Oslo', continent: 'Europe' as const, subregionId: 'northern-europe' as const, subregion: 'Northern Europe' },
+      { id: 'FR', country: 'France', capital: 'Paris', continent: 'Europe' as const, subregionId: 'western-europe' as const, subregion: 'Western Europe' },
+      { id: 'IN', country: 'India', capital: 'New Delhi', continent: 'Asia' as const, subregionId: 'south-asia' as const, subregion: 'South Asia' },
+    ]
+    const selection = createDrillSelection(['northern-europe', 'south-asia'], entries)
+    const onSelectionChange = vi.fn()
+    const onSelectContinent = vi.fn()
+    const mount = renderSetup({ level: 'world', setupContinent: null, entries, selection, onSelectionChange, onSelectContinent })
+    const config = useRailsMock.mock.calls[0][0] as { left: ReactNode }
+    act(() => root?.render(config.left))
+
+    const europeCheckbox = mount.querySelector<HTMLButtonElement>('[aria-label="Select Europe"]')
+    const asiaCheckbox = mount.querySelector<HTMLButtonElement>('[aria-label="Select Asia"]')
+    expect(europeCheckbox?.getAttribute('aria-checked')).toBe('mixed')
+    expect(asiaCheckbox?.getAttribute('aria-checked')).toBe('true')
+    expect(mount.textContent).toContain('2 Continents')
+    expect(mount.textContent).toContain('2 Subregions')
+
+    act(() => europeCheckbox?.click())
+    expect(onSelectionChange).toHaveBeenLastCalledWith({ subregionIds: ['northern-europe', 'western-europe', 'south-asia'] })
+    expect(onSelectContinent).not.toHaveBeenCalled()
+
+    act(() => mount.querySelector<HTMLButtonElement>('[aria-label="Open Europe setup"]')?.click())
+    expect(onSelectContinent).toHaveBeenCalledWith('Europe')
+  })
+
+  it('enables World-level Start for a non-empty geographic selection', () => {
+    const mount = renderSetup({ level: 'world', setupContinent: null, selection: createDrillSelection(['northern-europe']) })
+    const config = useRailsMock.mock.calls[0][0] as { right: ReactNode }
+    act(() => root?.render(config.right))
+
+    const start = [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Start Drill')
+    expect(start?.disabled).toBe(false)
   })
 
 })

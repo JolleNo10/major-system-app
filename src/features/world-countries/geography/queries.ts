@@ -1,6 +1,7 @@
-import { countries, type Continent, type Country } from '@/features/world-countries/data/countries'
+import { countries, type Continent, type Country, type CountryId } from '@/features/world-countries/data/countries'
 import {
   getSubregionDefinition,
+  type ContinentId,
   type SubregionDefinition,
   type SubregionId,
 } from '@/features/world-countries/data/subregions'
@@ -35,7 +36,7 @@ export function getContinents(entries: readonly Country[] = countries): Continen
  */
 export function getContinentsInEffectiveOrder(
   entries: readonly Country[] = countries,
-  metadata?: Pick<WorldMetadata, 'continentOrder'> | null,
+  metadata?: { continentOrder: readonly WorldMetadata['continentOrder'][number][] } | null,
 ): Continent[] {
   return resolveWorldContinentOrder(entries, metadata)
 }
@@ -94,7 +95,7 @@ export function getCountriesForSubregionId(
 export function getCountriesForSubregionInEffectiveOrder(
   subregionId: SubregionId,
   entries: readonly Country[] = countries,
-  metadata?: Pick<SubregionMetadata, 'subregionId' | 'countryOrder'> | null,
+  metadata?: { subregionId: SubregionId; countryOrder: readonly CountryId[] } | null,
 ): Country[] {
   return resolveSubregionCountryOrder(subregionId, entries, metadata)
 }
@@ -106,7 +107,7 @@ export function getCountriesForSubregionInEffectiveOrder(
 export function getSubregionsForContinentInEffectiveOrder(
   continent: Continent | string,
   entries: readonly Country[] = countries,
-  metadata?: Pick<ContinentMetadata, 'continentId' | 'subregionOrder'> | null,
+  metadata?: { continentId: ContinentId; subregionOrder: readonly SubregionId[] } | null,
 ): SubregionDefinition[] {
   return resolveContinentSubregionOrder(continent, entries, metadata)
 }

@@ -15,27 +15,18 @@ describe('World Countries Drill preferences', () => {
     })
   })
 
-  it('uses the effective World Continent order for a fresh preference', () => {
-    setWorldContinentOrder(['north-america', 'europe'])
-
-    expect(loadDrillPreferences().continent).toBe('North America')
-  })
-
   it('persists setup preferences without flattening Country membership', () => {
     saveDrillPreferences({
-      continent: 'Europe',
       subregionIds: ['western-europe', 'northern-europe'],
       mode: 'countries-capitals',
       order: 'random',
     })
     expect(JSON.parse(localStorage.getItem(DRILL_PREFERENCES_STORAGE_KEY)!)).toEqual({
-      continent: 'Europe',
       subregionIds: ['northern-europe', 'western-europe'],
       mode: 'countries-capitals',
       order: 'random',
     })
     expect(loadDrillPreferences()).toEqual({
-      continent: 'Europe',
       subregionIds: ['northern-europe', 'western-europe'],
       mode: 'countries-capitals',
       order: 'random',
@@ -43,6 +34,7 @@ describe('World Countries Drill preferences', () => {
   })
 
   it('falls back legacy persisted Capitals Drill values to the normal Drill default', () => {
+    setWorldContinentOrder(['europe', 'asia'])
     localStorage.setItem(DRILL_PREFERENCES_STORAGE_KEY, JSON.stringify({
       continent: 'Europe',
       subregionIds: ['northern-europe', 'south-asia'],
@@ -50,10 +42,24 @@ describe('World Countries Drill preferences', () => {
       order: 'random',
     }))
     expect(loadDrillPreferences()).toEqual({
-      continent: 'Europe',
-      subregionIds: ['northern-europe'],
+      subregionIds: ['northern-europe', 'south-asia'],
       mode: 'countries-capitals',
       order: 'random',
+    })
+  })
+
+  it('preserves valid legacy selection when stale IDs are mixed in', () => {
+    localStorage.setItem(DRILL_PREFERENCES_STORAGE_KEY, JSON.stringify({
+      continent: 'Europe',
+      subregionIds: ['south-asia', 'not-a-subregion', 'northern-europe'],
+      mode: 'invalid-mode',
+      order: 'ordered',
+    }))
+
+    expect(loadDrillPreferences()).toMatchObject({
+      subregionIds: expect.arrayContaining(['northern-europe', 'south-asia']),
+      mode: 'countries-capitals',
+      order: 'ordered',
     })
   })
 })

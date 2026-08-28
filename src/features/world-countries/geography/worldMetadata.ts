@@ -24,7 +24,7 @@ export function getCanonicalWorldContinents(
  */
 export function resolveWorldContinentOrder(
   currentCountries: readonly Country[] = countries,
-  metadata?: Pick<WorldMetadata, 'continentOrder'> | null,
+  metadata?: { continentOrder: readonly ContinentId[] } | null,
 ): Continent[] {
   const canonical = getCanonicalWorldContinents(currentCountries)
   if (!metadata) return canonical
@@ -54,7 +54,7 @@ export function resolveWorldContinentOrder(
 
 export function resolveWorldContinentIds(
   currentCountries: readonly Country[] = countries,
-  metadata?: Pick<WorldMetadata, 'continentOrder'> | null,
+  metadata?: { continentOrder: readonly ContinentId[] } | null,
 ): ContinentId[] {
   return resolveWorldContinentOrder(currentCountries, metadata)
     .map(continentIdFor)

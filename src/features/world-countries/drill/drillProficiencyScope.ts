@@ -41,14 +41,17 @@ export function resolveDrillProficiencyScope(
   recallProgress: RecallProgress,
   activity: WorldCountriesProficiencyActivity,
   entries: readonly Country[],
-  subregionMetadata: readonly Pick<SubregionMetadata, 'subregionId' | 'countryOrder'>[] = [],
+  subregionMetadata: readonly { subregionId: SubregionMetadata['subregionId']; countryOrder: readonly CountryId[] }[] = [],
 ): WorldCountriesProficiencyScope {
   const selected = new Set(selection)
+  const selectionMetadata = {
+    continents: [getContinentMetadata(continent)].filter((metadata): metadata is NonNullable<typeof metadata> => metadata !== null),
+    subregions: subregionMetadata,
+  }
   const countriesInOrder = getCountriesForDrillSelectionInEffectiveOrder(
-    withAllDrillSubregions(continent, entries),
+    withAllDrillSubregions(continent, entries, selectionMetadata),
     entries,
-    getContinentMetadata(continent),
-    subregionMetadata,
+    selectionMetadata,
   )
   const matchingByFilter = new Map<WorldCountriesProficiencyFilter, Country[]>()
   for (const filter of PROFICIENCY_FILTERS) matchingByFilter.set(filter, [])

@@ -12,7 +12,7 @@ import { TaskDock } from '@/features/world-countries/ui/MapSurface'
 import { WorldCountriesMapActivitySurface, type WorldCountriesActivityTask } from '@/features/world-countries/ui/WorldCountriesActivity'
 import { getWorldCountriesTaskHighlightFill, type WorldCountriesAnswerKind } from '@/features/world-countries/ui/WorldCountriesAnswerSemantics'
 import { WorldCountriesTypedAnswer } from '@/features/world-countries/ui/WorldCountriesTypedAnswer'
-import type { WorldCountriesDrillSelection } from './drillSelection'
+import { getDrillSelectionScopeLabel, type WorldCountriesDrillSelection } from './drillSelection'
 import { DrillSessionRails } from './DrillSessionRails'
 import { PracticeSessionRails } from './PracticeSessionRails'
 import { getDrillModeDefinition } from './drillModes'
@@ -52,6 +52,7 @@ export function DrillSession({
   fuzzyMatching,
   state,
   selection,
+  scopeLabel,
   entries,
   onAnswer,
   onContinue,
@@ -68,6 +69,7 @@ export function DrillSession({
   fuzzyMatching: boolean
   state: DrillSessionState
   selection: WorldCountriesDrillSelection
+  scopeLabel?: string
   entries: readonly Country[]
   /** Full active population used for geographic feedback context. */
   activeCountries?: readonly Country[]
@@ -130,7 +132,8 @@ export function DrillSession({
     .map(countryId => countryById.get(countryId))
     .filter((entry): entry is Country => entry !== undefined)
   const mapCountries = isShapeQuestion ? (activeCountries ?? entries) : entries
-  const shapeSubregionCountries = mapCountries.filter(entry => entry.subregionId === country.subregionId)
+  const currentContinentMapCountries = mapCountries.filter(entry => entry.continent === country.continent)
+  const shapeSubregionCountries = currentContinentMapCountries.filter(entry => entry.subregionId === country.subregionId)
   const getShapeMapCountryIds = (outcome: string | null): readonly string[] | undefined => {
     if (!isShapeQuestion) return undefined
     return outcome === 'incorrect'
@@ -199,6 +202,7 @@ export function DrillSession({
     ? feedback ? country.id : null
     : country.id
   const practiceNamedCountryId = isMapClickPractice ? (feedback ? country.id : null) : namedCountryId
+  const resolvedScopeLabel = scopeLabel ?? getDrillSelectionScopeLabel(selection, entries)
   const practiceFeedbackText = displayedFeedback
     ? displayedFeedback.correct
       ? 'Correct location.'
@@ -210,7 +214,7 @@ export function DrillSession({
     cue: task.cue,
     sessionContext: (
       <>
-        <span className="text-zinc-300">{selection.continent}</span> · {activity === 'practice' ? 'Practice' : getDrillModeDefinition(state.mode).label}
+        <span className="text-zinc-300">{resolvedScopeLabel}</span> · {activity === 'practice' ? 'Practice' : getDrillModeDefinition(state.mode).label}
       </>
     ),
     answerKind,
@@ -223,10 +227,11 @@ export function DrillSession({
   }
 
   const rails = activity === 'practice' ? (
-    <PracticeSessionRails selection={selection} proficiencySelection={proficiencySelection} state={state} onExit={onExit} entries={entries} learningStates={learningStates} />
+    <PracticeSessionRails selection={selection} scopeLabel={resolvedScopeLabel} proficiencySelection={proficiencySelection} state={state} onExit={onExit} entries={entries} learningStates={learningStates} />
   ) : (
     <DrillSessionRails
       selection={selection}
+      scopeLabel={resolvedScopeLabel}
       proficiencySelection={proficiencySelection}
       mode={state.mode}
       state={state}
@@ -289,8 +294,8 @@ export function DrillSession({
               task={activityTask}
               map={(
                 <CountryLearningMap
-                  continent={selection.continent}
-                  scopeCountries={mapCountries}
+                  continent={country.continent}
+                  scopeCountries={currentContinentMapCountries}
                   highlightFill={getWorldCountriesTaskHighlightFill(answerKind)}
                   taskTargetCountryId={isLocationQuestion ? country.id : null}
                   highlightedCountryId={isShapeQuestion
@@ -356,8 +361,8 @@ export function DrillSession({
               map={(
                 <div className="relative">
                   <CountryLearningMap
-                    continent={selection.continent}
-                    scopeCountries={mapCountries}
+                    continent={country.continent}
+                    scopeCountries={currentContinentMapCountries}
                     highlightFill={getWorldCountriesTaskHighlightFill(answerKind)}
                     answerSelectionCountryIds={isMapClickPractice ? scopeCountries.map(entry => entry.id) : undefined}
                     taskTargetCountryId={(!isMapClickPractice && isLocationQuestion) || (isMapClickPractice && feedback) ? country.id : null}

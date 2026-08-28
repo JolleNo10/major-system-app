@@ -1,4 +1,4 @@
-import type { Continent, Country } from '@/features/world-countries/data/countries'
+import type { Country } from '@/features/world-countries/data/countries'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
 import { DrillResultStats } from './DrillResultStats'
@@ -9,14 +9,18 @@ import { PracticeResultsRails } from './PracticeResultsRails'
 import { ProgressMapLegend } from '@/features/world-countries/learning/ProgressMapLegend'
 import { WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES } from '@/features/world-countries/learning/learningReadiness'
 
-export function PracticeResults({ continent, scopeCountries, answers, onAgain, onChangeSetup }: {
-  continent: Continent
+export function PracticeResults({ scopeCountries, answers, onAgain, onChangeSetup }: {
   scopeCountries: readonly Country[]
   answers: readonly DrillAnswerRecord[]
   onAgain: () => void
   onChangeSetup: () => void
 }) {
   const summary = summarizeDrillAnswers(answers)
+  const continentGroups = [...new Set(scopeCountries.map(country => country.continent))].map(continent => ({
+    continent,
+    countries: scopeCountries.filter(country => country.continent === continent),
+  }))
+  const scopeLabel = continentGroups.length === 1 ? continentGroups[0]!.continent : 'World'
   return <>
     <PracticeResultsRails scopeCountries={scopeCountries} answers={answers} onAgain={onAgain} onChangeSetup={onChangeSetup} />
     <div className="space-y-4 animate-fade-in">
@@ -25,7 +29,7 @@ export function PracticeResults({ continent, scopeCountries, answers, onAgain, o
         <h1 className="text-2xl font-bold text-zinc-100">Practice results</h1>
         <p className="text-sm text-zinc-500">This session was practice only. It did not change Learning Readiness or Drill proficiency.</p>
       </section>
-      <CountryLearningMap continent={continent} scopeCountries={scopeCountries} showNames ariaLabel={`Results map for ${continent} Practice Countries`} />
+      {continentGroups.map(group => <CountryLearningMap key={group.continent} continent={group.continent} scopeCountries={group.countries} showNames ariaLabel={`Results map for ${scopeLabel} Practice Countries`} />)}
       <ProgressMapLegend title="Learning Readiness" entries={WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES} explanation="Practice results are transient and do not change Learning Readiness." mapCues="Learning Readiness remains separate from this Practice result." ariaLabel="Learning Readiness legend" collapsibleDetails />
       <DrillResultStats summary={summary} answerCount={answers.length} showCountryCount ariaLabel="Practice summary" />
       {summary.bySkill.size > 0 && <WorldCountriesPanel aria-label="Practice results by skill">

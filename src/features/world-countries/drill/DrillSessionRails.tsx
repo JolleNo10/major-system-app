@@ -3,7 +3,7 @@ import type { Country } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition } from '@/features/world-countries/data/subregions'
 import { GeographyBreadcrumbs } from '@/features/world-countries/ui/GeographyBreadcrumbs'
 import { CountryCapitalMnemonicPanel } from '@/features/world-countries/mnemonics/CountryCapitalMnemonicPanel'
-import type { WorldCountriesDrillSelection } from './drillSelection'
+import { getDrillSelectionScopeLabel, type WorldCountriesDrillSelection } from './drillSelection'
 import { getDrillModeDefinition, type WorldCountriesDrillMode } from './drillModes'
 import { getCurrentDrillStep, type DrillSessionState } from './drillSessionState'
 import { deriveDrillSessionProgress } from './drillSessionProgress'
@@ -12,6 +12,7 @@ import type { WorldCountriesProficiencySelection } from './drillProficiencyScope
 
 export function DrillSessionRails({
   selection,
+  scopeLabel: providedScopeLabel,
   proficiencySelection = [],
   mode,
   state,
@@ -23,6 +24,7 @@ export function DrillSessionRails({
   onMnemonicChanged,
 }: {
   selection: WorldCountriesDrillSelection
+  scopeLabel?: string
   proficiencySelection?: WorldCountriesProficiencySelection
   mode: WorldCountriesDrillMode
   state: DrillSessionState
@@ -37,15 +39,16 @@ export function DrillSessionRails({
   const country = step ? entries.find(entry => entry.id === step.countryId) : undefined
   const { progressPercent, countryPosition, totalCountries } = deriveDrillSessionProgress(state)
   const subregions = selection.subregionIds.map(getSubregionDefinition)
+  const scopeLabel = providedScopeLabel ?? getDrillSelectionScopeLabel(selection, entries)
 
   useRails(
     {
       left: (
         <section className="space-y-4" aria-labelledby="world-countries-drill-session-context-heading">
-          <GeographyBreadcrumbs items={[{ label: 'World' }, { label: selection.continent, current: true }]} />
+          <GeographyBreadcrumbs items={[{ label: 'World' }, { label: scopeLabel, current: true }]} />
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Selected geography</p>
-            <h2 id="world-countries-drill-session-context-heading" className="mt-1 text-lg font-bold text-zinc-100">{selection.continent}</h2>
+            <h2 id="world-countries-drill-session-context-heading" className="mt-1 text-lg font-bold text-zinc-100">{scopeLabel}</h2>
           </div>
           <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
             {proficiencySelection.length > 0 ? <><p className="text-xs uppercase tracking-wider text-zinc-500">Proficiency scope</p><ul className="mt-2 space-y-1 text-sm text-zinc-300">{proficiencySelection.map(filter => <li key={filter}>{filter === 'weak' ? 'Weak' : 'Developing'}</li>)}</ul><p className="mt-2 text-xs text-zinc-500">{state.countryIds.length} Countries in this session</p></> : <><p className="text-xs uppercase tracking-wider text-zinc-500">Subregions</p><ul className="mt-2 space-y-1 text-sm text-zinc-300">{subregions.filter(subregion => selection.subregionIds.includes(subregion.id)).map(subregion => <li key={subregion.id}>{subregion.label}</li>)}</ul></>}
@@ -77,7 +80,7 @@ export function DrillSessionRails({
       leftLabel: 'Selected geography',
       rightLabel: 'Session',
     },
-    [country, entries, mnemonicOpen, mnemonicVersion, mode, onCloseMnemonic, onMnemonicChanged, onOpenMnemonic, proficiencySelection, selection.continent, selection.subregionIds, state.countryIds.length, state.countryIndex, state.countryOrder.length, state.stepIndex, progressPercent, countryPosition, totalCountries],
+    [country, entries, mnemonicOpen, mnemonicVersion, mode, onCloseMnemonic, onMnemonicChanged, onOpenMnemonic, proficiencySelection, scopeLabel, selection.subregionIds, state.countryIds.length, state.countryIndex, state.countryOrder.length, state.stepIndex, progressPercent, countryPosition, totalCountries],
   )
 
   return null

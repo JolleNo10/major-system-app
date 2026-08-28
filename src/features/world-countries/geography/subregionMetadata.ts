@@ -25,7 +25,7 @@ export function getCanonicalSubregionCountries(
 export function resolveSubregionCountryOrder(
   subregionId: SubregionId,
   availableCountries: readonly Country[] = countries,
-  metadata?: Pick<SubregionMetadata, 'subregionId' | 'countryOrder'> | null,
+  metadata?: { subregionId: SubregionId; countryOrder: readonly CountryId[] } | null,
 ): Country[] {
   const canonical = getCanonicalSubregionCountries(subregionId, availableCountries)
   if (!metadata || metadata.subregionId !== subregionId) return canonical
@@ -51,7 +51,7 @@ export function resolveSubregionCountryOrder(
 export function resolveSubregionCountryIds(
   subregionId: SubregionId,
   availableCountries: readonly Country[] = countries,
-  metadata?: Pick<SubregionMetadata, 'subregionId' | 'countryOrder'> | null,
+  metadata?: { subregionId: SubregionId; countryOrder: readonly CountryId[] } | null,
 ): CountryId[] {
   return resolveSubregionCountryOrder(subregionId, availableCountries, metadata).map(country => country.id)
 }

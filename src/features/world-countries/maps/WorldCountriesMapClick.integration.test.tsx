@@ -113,7 +113,7 @@ async function renderAndorraDrill(skill: 'location-to-country' | 'capital-to-cou
       interaction: 'location-click',
       activity: 'practice',
       state,
-      selection: createDrillSelection('Europe', ['southern-europe']),
+      selection: createDrillSelection(['southern-europe']),
       entries: [andorra],
       onAnswer,
       onContinue: vi.fn(),
