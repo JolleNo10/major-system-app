@@ -14,8 +14,7 @@ interface MembershipRecord {
 }
 type PersistedMembership = string | MembershipRecord
 
-function readStoredStates(): SubregionLearningState[] {
-  const raw = readJSON<unknown>(SUBREGION_LEARNING_STORAGE_KEY, [])
+export function parseStoredStates(raw: unknown): SubregionLearningState[] {
   if (!Array.isArray(raw)) return []
   const seen = new Set<SubregionId>()
   const states: SubregionLearningState[] = []
@@ -39,8 +38,11 @@ function readStoredStates(): SubregionLearningState[] {
   return states
 }
 
-function readMembershipRecords(): Record<string, PersistedMembership> {
-  const raw = readJSON<unknown>(SUBREGION_LEARNING_MEMBERSHIP_KEY, {})
+function readStoredStates(): SubregionLearningState[] {
+  return parseStoredStates(readJSON<unknown>(SUBREGION_LEARNING_STORAGE_KEY, []))
+}
+
+export function parseMembershipRecords(raw: unknown): Record<string, PersistedMembership> {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
   const records: Record<string, PersistedMembership> = {}
   for (const [subregionId, value] of Object.entries(raw)) {
@@ -70,6 +72,10 @@ function readMembershipRecords(): Record<string, PersistedMembership> {
     records[subregionId] = { current: row.current, history }
   }
   return records
+}
+
+function readMembershipRecords(): Record<string, PersistedMembership> {
+  return parseMembershipRecords(readJSON<unknown>(SUBREGION_LEARNING_MEMBERSHIP_KEY, {}))
 }
 
 function writeMembershipRecords(records: Record<string, PersistedMembership>): void {
@@ -116,26 +122,50 @@ function compactMembershipRecord(record: MembershipRecord): PersistedMembership 
   return Object.keys(record.history).length > 0 ? record : record.current
 }
 
-/**
- * Read completion for the active Country membership while retaining facts for
- * other memberships in the existing learning storage keys.
- */
-function readActiveStates(activeCountries: readonly Country[] = countries): SubregionLearningState[] {
-  const states = readStoredStates()
-  const records = readMembershipRecords()
+function cloneMembershipRecords(records: Readonly<Record<string, PersistedMembership>>): Record<string, PersistedMembership> {
+  const cloned: Record<string, PersistedMembership> = {}
+  for (const [subregionId, value] of Object.entries(records)) {
+    if (typeof value === 'string') {
+      cloned[subregionId] = value
+      continue
+    }
+    const history: Record<string, CompletionSnapshot> = {}
+    for (const [fingerprint, snapshot] of Object.entries(value.history)) {
+      history[fingerprint] = { ...snapshot }
+    }
+    cloned[subregionId] = { current: value.current, history }
+  }
+  return cloned
+}
+
+type ReconciliationResult = {
+  states: SubregionLearningState[]
+  records: Record<string, PersistedMembership>
+  statesChanged: boolean
+  recordsChanged: boolean
+}
+
+export function reconcileSubregionLearningMembership(
+  states: readonly SubregionLearningState[],
+  records: Readonly<Record<string, PersistedMembership>>,
+  activeCountries: readonly Country[],
+): ReconciliationResult {
+  const nextRecords = cloneMembershipRecords(records)
   const nextStates: SubregionLearningState[] = []
+  const reconciledSubregions = new Set<SubregionId>()
   let statesChanged = false
   let recordsChanged = false
 
   for (const state of states) {
     const currentFingerprint = activeMembershipFingerprint(state.subregionId, activeCountries)
-    const stored = asMembershipRecord(records[state.subregionId])
+    const stored = asMembershipRecord(nextRecords[state.subregionId])
     if (!stored) {
       statesChanged = true
       continue
     }
     if (stored.current === currentFingerprint) {
-      nextStates.push(state)
+      nextStates.push({ ...state })
+      reconciledSubregions.add(state.subregionId)
       continue
     }
 
@@ -143,17 +173,18 @@ function readActiveStates(activeCountries: readonly Country[] = countries): Subr
     const historical = stored.history[currentFingerprint]
     if (historical) {
       nextStates.push(stateFromSnapshot(state.subregionId, historical))
+      reconciledSubregions.add(state.subregionId)
       delete stored.history[currentFingerprint]
       stored.current = currentFingerprint
     }
-    records[state.subregionId] = compactMembershipRecord(stored)
+    nextRecords[state.subregionId] = compactMembershipRecord(stored)
     statesChanged = true
     recordsChanged = true
   }
 
-  for (const [subregionId, value] of Object.entries(records)) {
+  for (const [subregionId, value] of Object.entries(nextRecords)) {
     if (!isSubregionId(subregionId)) continue
-    if (nextStates.some(state => state.subregionId === subregionId)) continue
+    if (reconciledSubregions.has(subregionId)) continue
     const currentFingerprint = activeMembershipFingerprint(subregionId, activeCountries)
     const stored = asMembershipRecord(value)
     const historical = stored?.history[currentFingerprint]
@@ -161,14 +192,53 @@ function readActiveStates(activeCountries: readonly Country[] = countries): Subr
     nextStates.push(stateFromSnapshot(subregionId, historical))
     delete stored.history[currentFingerprint]
     stored.current = currentFingerprint
-    records[subregionId] = compactMembershipRecord(stored)
+    nextRecords[subregionId] = compactMembershipRecord(stored)
     statesChanged = true
     recordsChanged = true
+    reconciledSubregions.add(subregionId)
   }
 
-  if (statesChanged || nextStates.length !== states.length) writeStates(nextStates)
-  if (recordsChanged) writeMembershipRecords(records)
-  return nextStates
+  return {
+    states: nextStates,
+    records: nextRecords,
+    statesChanged: statesChanged || nextStates.length !== states.length,
+    recordsChanged,
+  }
+}
+
+/**
+ * Read completion for the active Country membership while retaining facts for
+ * other memberships in the existing learning storage keys.
+ */
+function readActiveStates(activeCountries: readonly Country[] = countries): SubregionLearningState[] {
+  const states = readStoredStates()
+  const records = readMembershipRecords()
+  const reconciled = reconcileSubregionLearningMembership(states, records, activeCountries)
+
+  if (reconciled.statesChanged) writeStates(reconciled.states)
+  if (reconciled.recordsChanged) writeMembershipRecords(reconciled.records)
+  return reconciled.states
+}
+
+function updateMembershipRecords(
+  records: Readonly<Record<string, PersistedMembership>>,
+  subregionId: SubregionId,
+  fingerprint: string,
+  nextState: SubregionLearningState | null,
+): Record<string, PersistedMembership> {
+  const nextRecords = cloneMembershipRecords(records)
+  const record = asMembershipRecord(nextRecords[subregionId]) ?? { current: fingerprint, history: {} }
+  record.current = fingerprint
+  delete record.history[fingerprint]
+
+  if (nextState) {
+    nextRecords[subregionId] = compactMembershipRecord(record)
+  } else if (Object.keys(record.history).length > 0) {
+    nextRecords[subregionId] = record
+  } else {
+    delete nextRecords[subregionId]
+  }
+  return nextRecords
 }
 
 function updateCompletion(
@@ -198,17 +268,7 @@ function updateCompletion(
 
   const records = readMembershipRecords()
   const fingerprint = activeMembershipFingerprint(subregionId, activeCountries)
-  const record = asMembershipRecord(records[subregionId]) ?? { current: fingerprint, history: {} }
-  record.current = fingerprint
-  if (nextState) {
-    delete record.history[fingerprint]
-    records[subregionId] = compactMembershipRecord(record)
-  } else {
-    delete record.history[fingerprint]
-    if (Object.keys(record.history).length > 0) records[subregionId] = record
-    else delete records[subregionId]
-  }
-  writeMembershipRecords(records)
+  writeMembershipRecords(updateMembershipRecords(records, subregionId, fingerprint, nextState))
   return nextState ? { ...nextState } : null
 }
 
