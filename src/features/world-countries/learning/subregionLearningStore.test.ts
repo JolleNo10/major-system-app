@@ -9,12 +9,14 @@ import {
   getSubregionLearningState,
   markSubregionCapitalsLearned,
   markSubregionCountriesLearned,
-  parseMembershipRecords,
-  parseStoredStates,
-  reconcileSubregionLearningMembership,
   SUBREGION_LEARNING_MEMBERSHIP_KEY,
   SUBREGION_LEARNING_STORAGE_KEY,
 } from './subregionLearningStore'
+import {
+  parseMembershipRecords,
+  parseStoredStates,
+  reconcileSubregionLearningMembership,
+} from './subregionLearningPersistence'
 
 afterEach(() => localStorage.clear())
 
