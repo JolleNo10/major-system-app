@@ -10,7 +10,7 @@ import {
 import { getAllContinentMetadata, setContinentMetadata } from './continentMetadataStore'
 import { getAllSubregionMetadata, setSubregionMetadata } from './subregionMetadataStore'
 import { getWorldMetadata, setWorldMetadata } from './worldMetadataStore'
-import { subscribeToWorldCountriesGeography } from './geographyRefresh'
+import { getWorldCountriesGeographyRevision, subscribeToWorldCountriesGeography } from './geographyRefresh'
 
 afterEach(() => localStorage.clear())
 
@@ -24,6 +24,18 @@ const emptyOrder = {
 } as const
 
 describe('World Countries order backup', () => {
+  it('publishes the geography revision after a semantic metadata mutation', () => {
+    const before = getWorldCountriesGeographyRevision()
+    const listener = vi.fn()
+    const unsubscribe = subscribeToWorldCountriesGeography(listener)
+
+    setWorldMetadata({ continentOrder: ['europe'], updatedAt: 1 })
+
+    unsubscribe()
+    expect(getWorldCountriesGeographyRevision()).toBe(before + 1)
+    expect(listener).toHaveBeenCalledOnce()
+  })
+
   it('exports raw saved order metadata, including hidden Country IDs', async () => {
     setSubregionMetadata({
       subregionId: 'northern-america',
@@ -128,7 +140,32 @@ describe('World Countries order backup', () => {
     expect(getAllSubregionMetadata()).toEqual([])
     expect(listener).toHaveBeenCalledOnce()
   })
+
+  it('preserves unrelated persistence while exporting, restoring, and resetting order', async () => {
+    const sentinels = {
+      'unrelated-feature': '{"keep":true}',
+      'major-settings': '{"offlineMode":false}',
+      'world-countries-subregion-learning': '[{"subregionId":"northern-europe","countriesLearnedAt":1}]',
+      'world-countries-subregion-learning-membership': '{"northern-europe":"IS|NO"}',
+      'world-countries-recite-progress': '{"keep":"progress"}',
+    }
+    for (const [key, value] of Object.entries(sentinels)) localStorage.setItem(key, value)
+
+    setWorldMetadata({ continentOrder: ['europe'], updatedAt: 1 })
+    const exported = await readBlob(exportWorldCountriesOrder())
+    expectPersistenceSentinels(sentinels)
+
+    resetWorldCountriesOrder()
+    expectPersistenceSentinels(sentinels)
+
+    restoreWorldCountriesOrder(parseWorldCountriesOrder(exported))
+    expectPersistenceSentinels(sentinels)
+  })
 })
+
+function expectPersistenceSentinels(sentinels: Record<string, string>): void {
+  for (const [key, value] of Object.entries(sentinels)) expect(localStorage.getItem(key)).toBe(value)
+}
 
 function readBlob(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {

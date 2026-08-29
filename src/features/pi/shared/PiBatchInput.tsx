@@ -14,13 +14,15 @@ interface Props {
 export function PiBatchInput({ expected, answeredCorrect, onAnswer }: Props) {
   const [values, setValues] = useState<string[]>(() => expected.map(() => ''))
   const inputRefs = useRef<Array<HTMLInputElement | null>>([])
+  const expectedRef = useRef(expected)
+  expectedRef.current = expected
   const expectedKey = expected.join('|')
 
   useEffect(() => {
-    setValues(expected.map(() => ''))
+    setValues(expectedRef.current.map(() => ''))
     const focusTimer = window.setTimeout(() => inputRefs.current[0]?.focus(), 50)
     return () => window.clearTimeout(focusTimer)
-  }, [expectedKey, expected.length])
+  }, [expectedKey])
 
   const complete = useMemo(
     () => values.length === expected.length && values.every(value => isCompleteNumericAnswer(value, 2)),

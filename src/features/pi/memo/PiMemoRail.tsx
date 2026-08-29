@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { PiSegmentRangePreview } from '@/features/pi/shared/PiSegmentGrid'
 import { useBlobUrl } from '@/features/pi/shared/story/usePiStory'
 import { StoryView } from '@/features/pi/shared/story/StoryView'
@@ -40,7 +40,8 @@ export function usePiMemoRail({
   phase, nextSeg, statusesLoading, onStudySeg,
   storyEditor, sequence, words, onCopyWords, copied,
 }: PiMemoRailArgs): void {
-  const storyPanel = (
+  const rails = useMemo(() => {
+    const storyPanel = (
     <StoryPanel
       story={storyEditor.story}
       loading={storyEditor.loading}
@@ -67,10 +68,9 @@ export function usePiMemoRail({
       : undefined
   const rightLabel =
     phase === 'setup' ? 'Next to memo' : phase === 'study' ? 'Study tools' : 'Story & picture'
-  useRails(
-    { right: rightRail, rightLabel },
-    [phase, nextSeg, statusesLoading, onStudySeg, storyEditor.story, storyEditor.loading, sequence, words, storyEditor.editing, storyEditor.onSave, storyEditor.onImport, storyEditor.onExport, storyEditor.flash, onCopyWords, copied],
-  )
+    return { right: rightRail, rightLabel }
+  }, [phase, nextSeg, statusesLoading, onStudySeg, storyEditor.story, storyEditor.loading, sequence, words, storyEditor.editing, storyEditor.onCancel, storyEditor.onEdit, storyEditor.onSave, storyEditor.onImport, storyEditor.onExport, storyEditor.flash, onCopyWords, copied])
+  useRails(rails)
 }
 
 // Setup-phase rail tool: JSON backup of all per-segment stories (moved here from

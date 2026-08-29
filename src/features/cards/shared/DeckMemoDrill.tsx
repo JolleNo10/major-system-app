@@ -149,9 +149,8 @@ export function DeckMemoDrill({ activeNumbers, words, cardCount, historyKey, act
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Save run when done phase is entered
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (phase !== 'done' || !historyKey) return
+    if (phase !== 'done' || !historyKey || currentRunAtRef.current !== null) return
     const at = Date.now()
     currentRunAtRef.current = at
     const run: DeckMemoRun = {
@@ -165,7 +164,7 @@ export function DeckMemoDrill({ activeNumbers, words, cardCount, historyKey, act
     const updated = [run, ...history].slice(0, MAX_HISTORY)
     setHistory(updated)
     safeSet(historyKey, JSON.stringify(updated))
-  }, [phase])
+  }, [activeSuits, deck.length, history, historyKey, phase, rankRange, results])
 
   const changeRecallMode = useCallback((m: RecallMode) => {
     setRecallMode(m)

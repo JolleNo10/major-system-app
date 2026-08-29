@@ -45,16 +45,15 @@ export function StagedFinalRecallStep({
   allowIncorrectSpellingPractice?: boolean
 }) {
   const current = entries.find(entry => entry.id === ordered.order[ordered.currentIndex])
-  if (!current) return null
-
   useLearningMapPresentation({
-    taskTargetCountryId: showCountryName ? null : current.id,
-    highlightedCountryId: current.id,
-    namedCountryId: showCountryName ? current.id : null,
+    taskTargetCountryId: showCountryName ? null : current?.id ?? null,
+    highlightedCountryId: current?.id ?? null,
+    namedCountryId: showCountryName ? current?.id ?? null : null,
     showHighlightedNames: showCountryName,
     showHoverNames: true,
     ariaLabel: 'Highlighted Country for final recall',
-  }, [current.id, showCountryName])
+  }, [current?.id, showCountryName])
+  if (!current) return null
   const activityTask: WorldCountriesActivityTask = {
     direction: showCountryName ? 'Location → Country' : answerKind === 'capital' ? 'Country → Capital' : 'Location → Country',
     cue: showCountryName ? current.country : answerKind === 'capital' ? `Capital of ${current.country}` : 'Name the country',

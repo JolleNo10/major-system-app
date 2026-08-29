@@ -60,7 +60,7 @@ export function MapSurface({ context, expandedContext, map, mapMeta, feedbackOve
   const expandedDockRow = expanded && hasExpandedCompanion
   const presentation: MapSurfacePresentation = expanded ? 'expanded' : 'standard'
   const visibleContext = expanded && expandedContext !== undefined ? expandedContext : context
-  usePageLayoutPresentation(expanded ? 'expanded-center' : 'standard', [expanded])
+  usePageLayoutPresentation(expanded ? 'expanded-center' : 'standard')
 
   useLayoutEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return

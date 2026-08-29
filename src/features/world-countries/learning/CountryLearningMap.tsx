@@ -189,7 +189,7 @@ export function CountryLearningMap({
       learningAnchors,
       ...(syntheticDots.length ? { syntheticDots } : {}),
     }
-  }, [answerSelectionCountryIds, definition.id, discoveredIds, interactionCountries, scopeCountries, taskTargetCountryId])
+  }, [answerSelectionCountryIds, definition.id, discoveredIds, interactionCountries, taskTargetCountryId])
   const countryColors = useMemo(
     () => countryColorsById
       ? createCountryColorsById(scopeCountries, countryColorsById, discoveredIds)

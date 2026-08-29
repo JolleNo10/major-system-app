@@ -1,7 +1,8 @@
 import { useMemo, type ReactNode } from 'react'
-import { useBlobUrl, useMnemonic } from '@/core/mnemonics'
+import { useBlobUrl } from '@/core/mnemonics'
 import type { Mnemonic } from '@/core/mnemonics'
 import { isSubregionMnemonicStale } from './geographyMnemonics'
+import { useWorldCountriesMnemonic } from './mnemonicRefresh'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
 
 /** Workflow-neutral mnemonic presentation. It deliberately exposes no authoring controls. */
@@ -10,17 +11,15 @@ export function GeographyMnemonicView({
   title,
   subtitle,
   countryIds,
-  refreshKey,
   headerAction,
 }: {
   targetId: string
   title: string
   subtitle: string
   countryIds?: readonly string[]
-  refreshKey: unknown
   headerAction?: ReactNode
 }) {
-  const { mnemonic, loading } = useMnemonic(targetId, refreshKey)
+  const { mnemonic, loading } = useWorldCountriesMnemonic(targetId)
   const imageUrl = useBlobUrl(mnemonic?.image ?? null)
   const savedCountryIds = useMemo(() => {
     if (!mnemonic || !('countryIds' in mnemonic) || !Array.isArray((mnemonic as Mnemonic & { countryIds?: unknown }).countryIds)) return null

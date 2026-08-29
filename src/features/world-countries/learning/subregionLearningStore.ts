@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from 'react'
 import { readJSON, safeSet } from '@/core/storage'
 import { countries, type Country } from '@/features/world-countries/data/countries'
 import { isSubregionId, type SubregionId } from '@/features/world-countries/data/subregions'
@@ -14,6 +15,33 @@ import {
 
 export const SUBREGION_LEARNING_STORAGE_KEY = 'world-countries-subregion-learning'
 export const SUBREGION_LEARNING_MEMBERSHIP_KEY = 'world-countries-subregion-learning-membership'
+
+type LearningListener = () => void
+
+let learningRevision = 0
+const listeners = new Set<LearningListener>()
+
+export function getWorldCountriesSubregionLearningRevision(): number {
+  return learningRevision
+}
+
+export function subscribeToWorldCountriesSubregionLearning(listener: LearningListener): () => void {
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}
+
+function notifyWorldCountriesSubregionLearningChanged(): void {
+  learningRevision += 1
+  for (const listener of listeners) listener()
+}
+
+export function useWorldCountriesSubregionLearningRevision(): number {
+  return useSyncExternalStore(
+    subscribeToWorldCountriesSubregionLearning,
+    getWorldCountriesSubregionLearningRevision,
+    getWorldCountriesSubregionLearningRevision,
+  )
+}
 
 function readStoredStates(): SubregionLearningState[] {
   return parseStoredStates(readJSON<unknown>(SUBREGION_LEARNING_STORAGE_KEY, []))
@@ -73,6 +101,7 @@ function updateCompletion(
   const records = readMembershipRecords()
   const fingerprint = activeMembershipFingerprint(subregionId, activeCountries)
   writeMembershipRecords(updateMembershipRecords(records, subregionId, fingerprint, nextState))
+  notifyWorldCountriesSubregionLearningChanged()
   return nextState ? { ...nextState } : null
 }
 

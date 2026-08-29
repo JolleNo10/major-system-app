@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from 'react'
+import { useId, useMemo, type ReactNode } from 'react'
 import { useRails } from '@/app/layout/PageLayoutContext'
 import { countries, type Continent, type Country } from '@/features/world-countries/data/countries'
 import type { SubregionDefinition, SubregionId } from '@/features/world-countries/data/subregions'
@@ -116,7 +116,7 @@ export function DrillSetupRails({
     ? getContinentSubregionScopeCounts(selection, continent, entries, selectionMetadata).selectedSubregions
     : selectionCounts.subregions
 
-  useRails({
+  const rails = useMemo(() => ({
     left: (
       <section className="space-y-4">
         <GeographySelectionRail
@@ -149,7 +149,8 @@ export function DrillSetupRails({
     right: <ActivityPurposePanel purpose={purpose} groupName={purposeGroupName} onChange={onPurposeChange}>{purpose === 'drill' ? <CurrentDrillPanel level={level} mode={mode} order={order} groupName={modeGroupName} onModeChange={onModeChange} onOrderChange={onOrderChange} canStart={proficiencySelection.length > 0 ? !proficiencyLoading && proficiencyScope.countries.length > 0 : selectionCounts.countries > 0} noMatching={proficiencySelection.length > 0 && !proficiencyLoading && proficiencyScope.countries.length === 0} onStart={onStart} /> : purpose === 'learn-practise' ? <LearnPracticePanel selectedCount={selectedCount} selectedCountryCount={selectionCounts.countries} level={level} selectedStates={selectedStates} countriesIncomplete={countriesIncomplete} mode={learnPracticeMode} proficiencySelected={proficiencySelection.length > 0} proficiencyLoading={proficiencyLoading} proficiencyCountryCount={proficiencyScope.countries.length} onModeChange={onLearnPracticeModeChange} onStart={onLearnPracticeStart} /> : null}</ActivityPurposePanel>,
     leftLabel: 'Geography',
     rightLabel: purpose === 'drill' ? 'Drill' : purpose === 'learn-practise' ? 'Learn & Practise' : 'Choose activity',
-  }, [continent, countriesIncomplete, editingOrder, entries, hoveredGroupId, learnPracticeMode, learningReadinessBySubregion, learningStates, level, mode, modeGroupName, onBeginOrderEdit, onCancelOrderEdit, onClearWorld, onDraftSubregionOrder, onDraftWorldOrder, onHoverGroup, onLearnPracticeModeChange, onLearnPracticeStart, onModeChange, onOrderChange, onProficiencySelectionChange, onSaveSubregionOrder, onSaveWorldOrder, onSelectAllWorld, onSelectContinent, onSelectEntireContinent, onStart, onToggleContinent, onToggleSubregion, onWorld, order, purpose, purposeGroupName, proficiencyLoading, proficiencyScope, proficiencySelection, selectedCount, selectedStates, selection, selectionCounts, selectionMetadata, subregions, worldOrder])
+  }), [continent, countriesIncomplete, editingOrder, entries, hoveredGroupId, learnPracticeMode, level, mode, modeGroupName, onBeginOrderEdit, onCancelOrderEdit, onClearWorld, onDraftSubregionOrder, onDraftWorldOrder, onHoverGroup, onLearnPracticeModeChange, onLearnPracticeStart, onModeChange, onOrderChange, onProficiencySelectionChange, onPurposeChange, onSaveSubregionOrder, onSaveWorldOrder, onSelectAllWorld, onSelectContinent, onSelectEntireContinent, onStart, onToggleContinent, onToggleSubregion, onWorld, order, purpose, purposeGroupName, proficiencyLoading, proficiencyScope, proficiencySelection, selectedCount, selectedStates, selection, selectionCounts, selectionMetadata, subregions, worldOrder])
+  useRails(rails)
   return null
 }
 

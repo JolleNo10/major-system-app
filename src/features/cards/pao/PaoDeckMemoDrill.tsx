@@ -150,9 +150,8 @@ export function PaoDeckMemoDrill({ activeNumbers, byNumber, cardCount, historyKe
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Save run when done phase is entered
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (phase !== 'done' || !historyKey) return
+    if (phase !== 'done' || !historyKey || currentRunAtRef.current !== null) return
     const at = Date.now()
     currentRunAtRef.current = at
     const run: DeckMemoRun = {
@@ -166,7 +165,7 @@ export function PaoDeckMemoDrill({ activeNumbers, byNumber, cardCount, historyKe
     const updated = [run, ...history].slice(0, MAX_HISTORY)
     setHistory(updated)
     safeSet(historyKey, JSON.stringify(updated))
-  }, [phase])
+  }, [activeSuits, deck.length, history, historyKey, phase, rankRange, results])
 
   useEffect(() => {
     if (phase === 'recall' && answerState === 'pending') inputRef.current?.focus()

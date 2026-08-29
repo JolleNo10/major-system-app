@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useRails } from '@/app/layout/PageLayoutContext'
 import type { Continent } from '@/features/world-countries/data/countries'
 import { GeographyBreadcrumbs } from '@/features/world-countries/ui/GeographyBreadcrumbs'
@@ -74,8 +75,7 @@ export function TodayHomeRails({
             : 'No core review is due and no new guided Learning remains.'
   const showSecondaryActions = evidenceStatus === 'error' || caughtUp || activeCountryCount === 0
 
-  useRails(
-    {
+  const rails = useMemo(() => ({
       left: (
         <WorldCountriesPanel className="space-y-4" aria-labelledby="world-countries-today-geography-heading">
           <GeographyBreadcrumbs items={[{ label: 'World', current: true }]} />
@@ -149,9 +149,8 @@ export function TodayHomeRails({
       ),
       leftLabel: 'Geography',
       rightLabel: 'Today',
-    },
-    [activeCountryCount, caughtUp, checkpoint, dueCount, dueCountryCount, evidenceStatus, nextLearning, onNavigate, refreshing, reviewReasonSummary, showSecondaryActions, statusExplanation, statusHeading, whyTodayText],
-  )
+    }), [activeCountryCount, checkpoint, dueCount, dueCountryCount, evidenceStatus, nextLearning, onNavigate, refreshing, reviewReasonSummary, showSecondaryActions, statusExplanation, statusHeading, whyTodayText])
+  useRails(rails)
 
   return null
 }
@@ -180,8 +179,7 @@ export function TodayReviewRails({
   const currentPrompt = Math.min(cursor + 1, promptCount)
   const progressPercent = promptCount > 0 ? Math.round((currentPrompt / promptCount) * 100) : 0
 
-  useRails(
-    {
+  const rails = useMemo(() => ({
       left: (
         <WorldCountriesPanel className="space-y-4" aria-labelledby="world-countries-today-review-geography-heading">
           <GeographyBreadcrumbs items={[{ label: 'World' }, { label: continent }, { label: subregion, current: true }]} />
@@ -216,9 +214,8 @@ export function TodayReviewRails({
       ),
       leftLabel: 'Geography',
       rightLabel: 'Today · Review',
-    },
-    [blockSize, continent, cursor, onExit, promptCount, promptKind, reviewed, reviewReason, subregion, currentPrompt, progressPercent],
-  )
+    }), [blockSize, continent, onExit, promptCount, promptKind, reviewed, reviewReason, subregion, currentPrompt, progressPercent])
+  useRails(rails)
 
   return null
 }

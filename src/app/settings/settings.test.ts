@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { DEFAULT_SETTINGS, loadSettings, saveSettings } from './settings'
 
 describe('default settings', () => {
@@ -41,5 +43,10 @@ describe('default settings', () => {
       worldCountriesIncludedEntityGroups: 'territories',
     }))
     expect(loadSettings().worldCountriesIncludedEntityGroups).toEqual([])
+  })
+
+  it('keeps low-level settings persistence independent of the World Countries runtime tree', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/app/settings/settings.ts'), 'utf8')
+    expect(source).not.toContain('@/features/world-countries')
   })
 })

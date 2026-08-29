@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
-import { deleteMnemonic, processImage, putMnemonic, useBlobUrl, useMnemonic } from '@/core/mnemonics'
+import { processImage, useBlobUrl } from '@/core/mnemonics'
 import type { Mnemonic } from '@/core/mnemonics'
 import { isSubregionMnemonicStale } from './geographyMnemonics'
+import { deleteWorldCountriesMnemonic, putWorldCountriesMnemonic, useWorldCountriesMnemonic } from './mnemonicRefresh'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
 
 /** Reusable contextual authoring for an existing geography mnemonic target. */
@@ -10,8 +11,6 @@ export function GeographyMnemonicEditor({
   title,
   subtitle,
   countryIds,
-  refreshKey,
-  onChanged,
   headerAction,
   initiallyEditing = false,
 }: {
@@ -19,12 +18,10 @@ export function GeographyMnemonicEditor({
   title: string
   subtitle: string
   countryIds?: readonly string[]
-  refreshKey: unknown
-  onChanged: () => void
   headerAction?: ReactNode
   initiallyEditing?: boolean
 }) {
-  const { mnemonic, loading } = useMnemonic(targetId, refreshKey)
+  const { mnemonic, loading } = useWorldCountriesMnemonic(targetId)
   const [editing, setEditing] = useState(initiallyEditing)
   const [draftText, setDraftText] = useState('')
   const [draftImage, setDraftImage] = useState<Blob | null>(null)
@@ -46,11 +43,10 @@ export function GeographyMnemonicEditor({
 
   const save = async () => {
     try {
-      if (!draftText.trim() && !draftImage) await deleteMnemonic(targetId)
-      else await putMnemonic({ targetId, text: draftText, image: draftImage, ...(countryIds ? { countryIds: [...countryIds] } : {}), updatedAt: Date.now() })
+      if (!draftText.trim() && !draftImage) await deleteWorldCountriesMnemonic(targetId)
+      else await putWorldCountriesMnemonic({ targetId, text: draftText, image: draftImage, ...(countryIds ? { countryIds: [...countryIds] } : {}), updatedAt: Date.now() })
       setEditing(false)
       setError(null)
-      onChanged()
     } catch {
       setError('Could not save this mnemonic.')
     }

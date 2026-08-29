@@ -236,7 +236,7 @@ export function CardsDrill({
       ok: correct, rawMs: ms, adjustedMs: adjusted, hinted: false,
     }))
     setTimeout(() => next(), 1500)
-  }, [answered, paused, question, answerMode, drillType, onRecord, next])
+  }, [answered, paused, question, answerMode, drillType, onRecord, next, elapsedMs, wasPaused])
 
   const switchDrillType = useCallback((newType: CardsDrillType) => {
     safeSet(drilltypeKey, newType)

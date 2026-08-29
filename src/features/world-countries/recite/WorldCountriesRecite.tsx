@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from 'react'
+import { useCallback, useId, useMemo, useState } from 'react'
 import type { AnswerMode } from '@/core/types'
 import { useRails } from '@/app/layout/PageLayoutContext'
 import { useSettings } from '@/app/settings/SettingsContext'
@@ -100,27 +100,33 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
   const [progress, setProgress] = useState<WorldCountriesReciteProgress>(() => loadWorldCountriesReciteProgress())
   const [run, setRun] = useState<ActiveReciteRun | null>(null)
 
-  const worldOrder = useMemo(
-    () => getContinentsInEffectiveOrder(activeCountries, getWorldMetadata()),
-    [activeCountries, geographyRevision],
-  )
-  const selectionMetadata = useMemo<WorldCountriesSubregionScopeMetadata>(() => ({
-    world: getWorldMetadata(),
-    continents: getAllContinentMetadata(),
-    subregions: getAllSubregionMetadata(),
-  }), [activeCountries, geographyRevision])
+  const worldOrder = useMemo(() => {
+    void geographyRevision
+    return getContinentsInEffectiveOrder(activeCountries, getWorldMetadata())
+  }, [activeCountries, geographyRevision])
+  const selectionMetadata = useMemo<WorldCountriesSubregionScopeMetadata>(() => {
+    void geographyRevision
+    return {
+      world: getWorldMetadata(),
+      continents: getAllContinentMetadata(),
+      subregions: getAllSubregionMetadata(),
+    }
+  }, [geographyRevision])
   const normalizedSelection = useMemo(
     () => normalizeSubregionScope({ subregionIds: selectedSubregionIds }, activeCountries, selectionMetadata),
     [activeCountries, selectedSubregionIds, selectionMetadata],
   )
   const selectedScopeSubregionIds = normalizedSelection.subregionIds
-  const continentMetadata = useMemo(
-    () => selectedContinent ? getContinentMetadata(selectedContinent) : null,
-    [geographyRevision, selectedContinent],
-  )
-  const subregions = selectedContinent
-    ? getSubregionsForContinentInEffectiveOrder(selectedContinent, activeCountries, continentMetadata)
-    : []
+  const continentMetadata = useMemo(() => {
+    void geographyRevision
+    return selectedContinent ? getContinentMetadata(selectedContinent) : null
+  }, [geographyRevision, selectedContinent])
+  const subregions = useMemo(() => {
+    void geographyRevision
+    return selectedContinent
+      ? getSubregionsForContinentInEffectiveOrder(selectedContinent, activeCountries, continentMetadata)
+      : []
+  }, [activeCountries, continentMetadata, geographyRevision, selectedContinent])
   const setupScopeCountries = useMemo(
     () => getCountriesForSubregionScopeInEffectiveOrder(normalizedSelection, activeCountries, selectionMetadata),
     [activeCountries, normalizedSelection, selectionMetadata],
@@ -152,39 +158,39 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
     else setReadyMapKey(current => current === mapKey ? null : current)
   }
 
-  const selectContinent = (continent: Continent) => {
+  const selectContinent = useCallback((continent: Continent) => {
     setSelectedContinent(continent)
     setHoveredGroupId(null)
-  }
+  }, [])
 
-  const goToWorld = () => {
+  const goToWorld = useCallback(() => {
     setSelectedContinent(null)
     setHoveredGroupId(null)
-  }
+  }, [])
 
-  const toggleSubregion = (subregionId: SubregionId) => {
+  const toggleSubregion = useCallback((subregionId: SubregionId) => {
     if (!selectedContinent) return
     setSelectedSubregionIds(toggleSubregionInScope(normalizedSelection, subregionId, activeCountries, selectionMetadata).subregionIds)
-  }
+  }, [activeCountries, normalizedSelection, selectedContinent, selectionMetadata])
 
-  const toggleEntireContinent = () => {
+  const toggleEntireContinent = useCallback(() => {
     if (!selectedContinent) return
     setSelectedSubregionIds(toggleContinentInScope(normalizedSelection, selectedContinent, activeCountries, selectionMetadata).subregionIds)
-  }
+  }, [activeCountries, normalizedSelection, selectedContinent, selectionMetadata])
 
-  const toggleWorldContinent = (continent: Continent) => {
+  const toggleWorldContinent = useCallback((continent: Continent) => {
     setSelectedSubregionIds(toggleContinentInScope(normalizedSelection, continent, activeCountries, selectionMetadata).subregionIds)
-  }
+  }, [activeCountries, normalizedSelection, selectionMetadata])
 
-  const selectAllWorld = () => {
+  const selectAllWorld = useCallback(() => {
     setSelectedSubregionIds(selectAllSubregions(activeCountries, selectionMetadata).subregionIds)
-  }
+  }, [activeCountries, selectionMetadata])
 
-  const clearWorld = () => {
+  const clearWorld = useCallback(() => {
     setSelectedSubregionIds(clearSubregionScope().subregionIds)
-  }
+  }, [])
 
-  const startRecite = () => {
+  const startRecite = useCallback(() => {
     if (setupScopeCountries.length === 0 || !mapReady) return
     const sessionCountries = setupScopeCountries.map(country => ({
       id: country.id,
@@ -202,7 +208,7 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
     })
     setPhase('session')
     setHoveredGroupId(null)
-  }
+  }, [activeCountries, assistance, mapReady, mode, normalizedSelection, selectedScopeSubregionIds, selectionMetadata, setupScopeCountries])
 
   const submitAnswer = (evaluation: WorldCountriesTypedAnswerEvaluation) => {
     if (!run) return
@@ -295,8 +301,7 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
     />
   ) : null
 
-  useRails(
-    phase === 'setup'
+  const rails = useMemo(() => phase === 'setup'
       ? {
         left: (
             <GeographySelectionRail
@@ -342,10 +347,11 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
         rightLabel: 'Recite',
       },
     [
-      activeCountries, assistance, hoveredGroupId, mapReady, mapState, mode, phase, progress,
-      normalizedSelection, run, selectedContinent, selectedScopeSubregionIds, setupScopeCountries.length, subregions, worldOrder,
+      activeCountries, assistance, clearWorld, goToWorld, hoveredGroupId, mapReady, mapState, mode, phase, progress,
+      normalizedSelection, run, selectAllWorld, selectContinent, selectedContinent, selectedScopeSubregionIds, selectionMetadata, setupScopeCountries.length, startRecite, subregions, toggleEntireContinent, toggleSubregion, toggleWorldContinent, worldOrder,
     ],
   )
+  useRails(rails)
 
   if (phase === 'setup') {
     return (

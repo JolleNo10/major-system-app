@@ -67,9 +67,6 @@ export function CountryLearningFlow({
   onExit,
   onDone,
   doneLabel = 'Back to Learn & Practise',
-  mnemonicVersion = 0,
-  onGeographyChanged = () => undefined,
-  onMnemonicChanged = () => undefined,
   recordCompletion = true,
   allowIncorrectSpellingPractice = false,
 }: {
@@ -85,9 +82,6 @@ export function CountryLearningFlow({
   onExit: () => void
   onDone?: () => void
   doneLabel?: string
-  mnemonicVersion?: number
-  onGeographyChanged?: () => void
-  onMnemonicChanged?: () => void
   recordCompletion?: boolean
   allowIncorrectSpellingPractice?: boolean
 }) {
@@ -203,10 +197,7 @@ export function CountryLearningFlow({
     track="countries"
     learned={false}
     capitalsLearned={false}
-    mnemonicVersion={mnemonicVersion}
-    onGeographyChanged={onGeographyChanged}
     onCountryHover={setHoveredCountryId}
-    onMnemonicChanged={onMnemonicChanged}
     onOrderDraftChanged={setOrderDraft}
     onOrderEditingChange={setEditingOrder}
     onOrderSaved={onOrderSaved}

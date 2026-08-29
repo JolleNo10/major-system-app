@@ -54,7 +54,7 @@ export function SpeedRound({ answerMode }: Props) {
       })
     }, 1000)
     return () => clearInterval(interval)
-  }, [gameState])
+  }, [gameState, personalBest])
 
   const nextQuestion = useCallback((exclude?: string) => {
     setQuestion(makeQuestion(words, exclude))
@@ -87,7 +87,7 @@ export function SpeedRound({ answerMode }: Props) {
         return c
       })
     }
-  }, [gameState])
+  }, [gameState, personalBest])
 
   const start = () => {
     setCorrect(0)

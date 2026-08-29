@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useRails } from '@/app/layout/PageLayoutContext'
 import type { Country } from '@/features/world-countries/data/countries'
 import { DrillResultStats } from './DrillResultStats'
@@ -22,11 +23,10 @@ export function DrillResultsRails({
   onAgain: () => void
   onChangeSetup: () => void
 }) {
-  const summary = summarizeDrillAnswers(answers)
-  const countryById = new Map(scopeCountries.map(entry => [entry.id, entry]))
+  const summary = useMemo(() => summarizeDrillAnswers(answers), [answers])
+  const countryById = useMemo(() => new Map(scopeCountries.map(entry => [entry.id, entry])), [scopeCountries])
 
-  useRails(
-    {
+  const rails = useMemo(() => ({
       left: (
         <section className="space-y-4" aria-labelledby="world-countries-drill-results-heading">
           <div>
@@ -63,9 +63,8 @@ export function DrillResultsRails({
       ),
       leftLabel: 'Results',
       rightLabel: 'Next action',
-    },
-    [answers, mode, onAgain, onChangeSetup, onRetryFailedCountries, retryFailedCountryCount, scopeCountries, summary.accuracy, summary.correct],
-  )
+    }), [answers, countryById, mode, onAgain, onChangeSetup, onRetryFailedCountries, retryFailedCountryCount, summary])
+  useRails(rails)
 
   return null
 }

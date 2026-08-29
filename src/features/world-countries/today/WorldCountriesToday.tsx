@@ -4,7 +4,8 @@ import { useSettings } from '@/app/settings/SettingsContext'
 import type { Country } from '@/features/world-countries/data/countries'
 import { useWorldCountriesPopulation } from '@/features/world-countries/WorldCountriesPopulationContext'
 import { getWorldCountriesInEffectiveOrder } from '@/features/world-countries/geography/effectiveOrder'
-import { getAllSubregionLearningStates } from '@/features/world-countries/learning/subregionLearningStore'
+import { getAllSubregionLearningStates, useWorldCountriesSubregionLearningRevision } from '@/features/world-countries/learning/subregionLearningStore'
+import { useWorldCountriesGeographyRevision } from '@/features/world-countries/geography/geographyRefresh'
 import { deriveWorldCountriesCountryProgress, deriveWorldCountriesRecallProgress, type RecallProgress } from '@/features/world-countries/learning/recallProgress'
 import { flattenWorldCountriesRecallHistory, loadWorldCountriesRecallHistory, type WorldCountriesRecallHistory } from '@/features/world-countries/learning/recallHistory'
 import { WORLD_COUNTRIES_CORE_RECALL_SKILLS } from '@/features/world-countries/learning/recallTargets'
@@ -51,7 +52,8 @@ export function WorldCountriesToday({
   const { settings } = useSettings()
   const activeCountries = useWorldCountriesPopulation()
   const [evidence, setEvidence] = useState<EvidenceState>({ status: 'loading' })
-  const [revision, setRevision] = useState(0)
+  const geographyRevision = useWorldCountriesGeographyRevision()
+  const learningRevision = useWorldCountriesSubregionLearningRevision()
   const [reviewCandidates, setReviewCandidates] = useState<WorldCountriesTodayPlan['reviewQueue'] | null>(null)
   const [checkpoint, setCheckpoint] = useState<WorldCountriesTodayReviewCheckpoint | null>(null)
   const [reviewing, setReviewing] = useState(false)
@@ -77,11 +79,14 @@ export function WorldCountriesToday({
 
   useEffect(() => { void loadEvidence() }, [loadEvidence])
 
-  const learningStates = useMemo(
-    () => getAllSubregionLearningStates(activeCountries),
-    [activeCountries, revision],
-  )
-  const geographicOrder = useMemo(() => getWorldCountriesInEffectiveOrder(activeCountries), [activeCountries, revision])
+  const learningStates = useMemo(() => {
+    void learningRevision
+    return getAllSubregionLearningStates(activeCountries)
+  }, [activeCountries, learningRevision])
+  const geographicOrder = useMemo(() => {
+    void geographyRevision
+    return getWorldCountriesInEffectiveOrder(activeCountries)
+  }, [activeCountries, geographyRevision])
   const plan = useMemo<WorldCountriesTodayPlan | null>(() => {
     if (evidence.status !== 'ready') return null
     return buildWorldCountriesTodayPlan({
@@ -112,7 +117,6 @@ export function WorldCountriesToday({
   }, [activeCountries, recallProgress])
 
   const refreshAfterActivity = async () => {
-    setRevision(value => value + 1)
     setRefreshing(true)
     await loadEvidence()
     setRefreshing(false)
@@ -173,7 +177,6 @@ export function WorldCountriesToday({
         onExit={finishLearning}
         onDone={finishLearning}
         doneLabel="Back to Today"
-        onGeographyChanged={() => setRevision(value => value + 1)}
         recordCompletion={true}
       />
     }
@@ -192,7 +195,6 @@ export function WorldCountriesToday({
       onExit={finishLearning}
       onDone={finishLearning}
       doneLabel="Back to Today"
-      onGeographyChanged={() => setRevision(value => value + 1)}
       recordCompletion={true}
     />
   }

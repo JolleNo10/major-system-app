@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useRails } from '@/app/layout/PageLayoutContext'
 import type { Country } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition } from '@/features/world-countries/data/subregions'
@@ -20,10 +21,10 @@ export function PracticeSessionRails({ selection, scopeLabel: providedScopeLabel
   const totalSteps = getDrillSessionTotalSteps(state)
   const completedSteps = state.countryIndex * getDrillSessionSkills(state).length + state.stepIndex
   const progressPercent = totalSteps ? Math.round((completedSteps / totalSteps) * 100) : 0
-  const subregions = selection.subregionIds.map(getSubregionDefinition)
+  const subregions = useMemo(() => selection.subregionIds.map(getSubregionDefinition), [selection.subregionIds])
   const scopeLabel = providedScopeLabel ?? getDrillSelectionScopeLabel(selection, entries)
-  const stateList = getWorldCountriesLearningStateList(learningStates)
-  useRails({
+  const stateList = useMemo(() => getWorldCountriesLearningStateList(learningStates), [learningStates])
+  const rails = useMemo(() => ({
     left: (
       <section className="space-y-4" aria-labelledby="world-countries-practice-context-heading">
         <GeographyBreadcrumbs items={[{ label: 'World' }, { label: scopeLabel, current: true }]} />
@@ -51,6 +52,7 @@ export function PracticeSessionRails({ selection, scopeLabel: providedScopeLabel
     ),
     leftLabel: 'Selected geography',
     rightLabel: 'Session',
-  }, [entries, learningStates, onExit, proficiencySelection, progressPercent, scopeLabel, selection.subregionIds, state.countryIds.length, state.countryIndex, state.countryOrder.length, state.stepIndex, totalSteps])
+  }), [onExit, proficiencySelection, progressPercent, scopeLabel, selection.subregionIds, state.countryIds.length, state.countryIndex, state.countryOrder.length, stateList, subregions])
+  useRails(rails)
   return null
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRails } from '@/app/layout/PageLayoutContext'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
@@ -26,11 +26,8 @@ export function GuidedLearningRails({
   track,
   learned,
   capitalsLearned,
-  mnemonicVersion,
   walkthroughCountryId,
-  onGeographyChanged,
   onCountryHover = () => undefined,
-  onMnemonicChanged,
   onOrderDraftChanged,
   onOrderEditingChange,
   onOrderSaved,
@@ -52,11 +49,8 @@ export function GuidedLearningRails({
   track: 'countries' | 'capitals'
   learned: boolean
   capitalsLearned: boolean
-  mnemonicVersion: number
   walkthroughCountryId?: string | null
-  onGeographyChanged: () => void
   onCountryHover?: (countryId: string | null) => void
-  onMnemonicChanged: () => void
   onOrderDraftChanged: (draft: readonly Country[] | null) => void
   onOrderEditingChange?: (editing: boolean) => void
   onOrderSaved?: (draft: readonly Country[]) => void
@@ -89,35 +83,33 @@ export function GuidedLearningRails({
     setEditingMnemonic(null)
   }, [onClickOrderStateChange, onClickOrderToggle, onCountryHover, onOrderDraftChanged, onOrderEditingChange, quietPhase])
 
-  const beginOrderEdit = () => {
+  const beginOrderEdit = useCallback(() => {
     setEditingOrder(true)
     onOrderEditingChange?.(true)
-  }
+  }, [onOrderEditingChange])
 
-  const saveOrder = (draft: readonly Country[]) => {
+  const saveOrder = useCallback((draft: readonly Country[]) => {
     if (!subregion) return
     saveSubregionCountryOrder(subregion, draft.map(entry => entry.id), activeCountries)
     onOrderDraftChanged([...draft])
     onOrderSaved?.(draft)
-    onGeographyChanged()
     onCountryHover(null)
     setEditingOrder(false)
     onOrderEditingChange?.(false)
-  }
-  const cancelOrder = () => {
+  }, [activeCountries, onCountryHover, onOrderDraftChanged, onOrderEditingChange, onOrderSaved, subregion])
+  const cancelOrder = useCallback(() => {
     onOrderDraftChanged(null)
     onCountryHover(null)
     setEditingOrder(false)
     onOrderEditingChange?.(false)
-  }
-  const mnemonicAction = (target: 'subregion') => (
+  }, [onCountryHover, onOrderDraftChanged, onOrderEditingChange])
+  const mnemonicAction = useCallback((target: 'subregion') => (
     <button type="button" onClick={() => setEditingMnemonic(current => current === target ? null : target)} className="shrink-0 text-left text-xs font-semibold text-cyan-300 hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70">
       {editingMnemonic === target ? 'Close mnemonic editor' : 'Edit mnemonics'}
     </button>
-  )
+  ), [editingMnemonic])
 
-  useRails(
-    {
+  const rails = useMemo(() => ({
       left: quietPhase ? undefined : (
         <WorldCountriesPanel className="space-y-4" aria-labelledby="world-countries-guided-context-heading">
           <nav aria-label="World Countries hierarchy" className="flex flex-wrap items-center gap-1.5 text-xs">
@@ -169,15 +161,14 @@ export function GuidedLearningRails({
         <div className="space-y-4">
           {practiceProgress && <SchedulerPracticeProgress progress={practiceProgress} />}
           {(onBack || onExit || onSkip) && <section aria-labelledby="guided-learning-actions-heading" className="space-y-2"><h3 id="guided-learning-actions-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Learning actions</h3>{onBack && <button type="button" onClick={onBack} className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">{backLabel}</button>}{onSkip && <button type="button" onClick={onSkip} className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-400 hover:border-cyan-500 hover:text-zinc-200">{skipLabel ?? 'Skip'}</button>}{onExit && <button type="button" onClick={onExit} className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2.5 text-sm text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Exit</button>}</section>}
-          {showSubregionMnemonic && subregion && (editingMnemonic === 'subregion' ? <GeographyMnemonicEditor targetId={subregionMnemonicId(subregion)} title="Subregion memory aid" subtitle={`Optional story or picture for this ordered ${entries.length}-country group`} countryIds={entries.map(entry => entry.id)} refreshKey={mnemonicVersion} onChanged={onMnemonicChanged} headerAction={mnemonicAction('subregion')} /> : <GeographyMnemonicView targetId={subregionMnemonicId(subregion)} title="Subregion memory aid" subtitle={`Optional story or picture for this ordered ${entries.length}-country group`} countryIds={entries.map(entry => entry.id)} refreshKey={mnemonicVersion} headerAction={mnemonicAction('subregion')} />)}
-          {showCapitalMnemonic && walkthroughCountry && <CountryCapitalMnemonicPanel country={walkthroughCountry} refreshKey={mnemonicVersion} onChanged={onMnemonicChanged} />}
+          {showSubregionMnemonic && subregion && (editingMnemonic === 'subregion' ? <GeographyMnemonicEditor targetId={subregionMnemonicId(subregion)} title="Subregion memory aid" subtitle={`Optional story or picture for this ordered ${entries.length}-country group`} countryIds={entries.map(entry => entry.id)} headerAction={mnemonicAction('subregion')} /> : <GeographyMnemonicView targetId={subregionMnemonicId(subregion)} title="Subregion memory aid" subtitle={`Optional story or picture for this ordered ${entries.length}-country group`} countryIds={entries.map(entry => entry.id)} headerAction={mnemonicAction('subregion')} />)}
+          {showCapitalMnemonic && walkthroughCountry && <CountryCapitalMnemonicPanel country={walkthroughCountry} />}
         </div>
       ) : undefined,
       leftLabel: 'Learning context',
       rightLabel: practiceProgress ? 'Practice progress' : showMemoryAid && (onBack || onExit || onSkip) ? 'Learning tools' : showMemoryAid ? 'Memory aid' : onBack || onExit || onSkip ? 'Learning actions' : undefined,
-    },
-    [activeCountries, backLabel, continent, editingMnemonic, editingOrder, entries, learned, learningScopeLabel, capitalsLearned, mnemonicVersion, onBack, onCountryHover, onExit, onGeographyChanged, onMnemonicChanged, onOrderDraftChanged, onOrderEditingChange, onOrderSaved, onSkip, phase, practiceProgress, scopeLabel, showCapitalMnemonic, showMemoryAid, showSubregionMnemonic, skipLabel, subregion, track, walkthroughCountry, quietPhase],
-  )
+    }), [activeCountries, backLabel, beginOrderEdit, cancelOrder, continent, editingMnemonic, editingOrder, entries, learned, learningScopeLabel, capitalsLearned, mnemonicAction, onBack, onClickOrderStateChange, onClickOrderToggle, onCountryHover, onExit, onOrderDraftChanged, onSkip, practiceProgress, saveOrder, showCapitalMnemonic, showMemoryAid, showSubregionMnemonic, skipLabel, subregion, track, walkthroughCountry, quietPhase])
+  useRails(rails)
 
   return null
 }

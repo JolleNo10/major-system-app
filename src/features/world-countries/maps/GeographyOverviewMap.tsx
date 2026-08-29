@@ -155,7 +155,7 @@ export function GeographyOverviewMap({
   const hasSelectedCountries = selectedCountryIds !== undefined
   const hasSelectedSubregions = selectedSubregionIds !== undefined && selectedSubregionIds.length > 0
   const hasHoveredSubregionScope = level === 'continent' && Boolean(activeHoveredGroupId)
-  const scopedSvgIds = focusedSubregionId
+  const scopedSvgIds = useMemo(() => focusedSubregionId
     ? focusSvgIds
     : hasSelectedCountries
       ? selectedSvgIds
@@ -165,7 +165,7 @@ export function GeographyOverviewMap({
         ? hoveredGroupSvgIds
         : hasContinentScope
           ? visibleSvgIds
-          : []
+          : [], [focusSvgIds, focusedSubregionId, hasContinentScope, hasHoveredSubregionScope, hasSelectedCountries, hasSelectedSubregions, hoveredGroupSvgIds, selectedSvgIds, visibleSvgIds])
   const hasScopedCountries = Boolean(
     focusedSubregionId || selectedCountryIds !== undefined || selectedSubregionIds !== undefined || hasHoveredSubregionScope || hasContinentScope,
   )

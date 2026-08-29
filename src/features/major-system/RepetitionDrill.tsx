@@ -47,7 +47,7 @@ export function RepetitionDrill({ answerMode }: Props) {
   // Reset timer on new question
   useEffect(() => {
     if (current) timerStartRef.current = Date.now()
-  }, [current?.dir, current?.num])
+  }, [current])
 
   const next = useCallback(() => {
     setAnswered(null)

@@ -1,6 +1,6 @@
 import {
   createContext, useContext, useLayoutEffect, useMemo, useState,
-  type DependencyList, type ReactNode,
+  type ReactNode,
 } from 'react'
 
 // Slots injected into the single app-wide PageLayout (ADR 0001). A drill/tab
@@ -48,9 +48,8 @@ export function PageLayoutProvider({ children }: { children: ReactNode }) {
   const [header, setHeader] = useState<ReactNode>(null)
   const [presentation, setPresentation] = useState<PageLayoutPresentation>(STANDARD_PRESENTATION)
   // Publishers receive a separate, stable context so publishing a slot does
-  // not re-render the component that owns that slot. This matters because
-  // useRails/useLayoutHeader accept dependency arrays and their callers may
-  // create ReactNodes or functions while rendering.
+  // not re-render the component that owns that slot. Callers memoize their
+  // published values with standard React Hooks before writing to this context.
   const readValue = useMemo<PageLayoutReadContext>(
     () => ({ rails, header, presentation }),
     [rails, header, presentation],
@@ -94,35 +93,30 @@ export function usePageLayoutPresentationMode(): PageLayoutPresentation {
 }
 
 /**
- * Register the rails for the current view. Pass a `deps` array (like useMemo):
- * the rails are re-published only when a dep changes, avoiding unnecessary slot
- * updates when a fresh ReactNode is created on every render. Publishers use a
- * write-only context, so publishing cannot re-render the publisher itself.
- * Rails are cleared automatically on unmount (e.g. switching Pi tabs).
+ * Register the rails for the current view. Callers should pass a value created
+ * by `useMemo` so fresh ReactNodes do not cause unnecessary slot updates.
+ * Publishers use a write-only context, so publishing cannot re-render the
+ * publisher itself. Rails are cleared automatically on unmount.
  */
-export function useRails(config: RailConfig, deps: DependencyList): void {
+export function useRails(config: RailConfig): void {
   const { setRails } = usePageLayoutWrite()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const memoized = useMemo(() => config, deps)
   useLayoutEffect(() => {
-    setRails(memoized)
+    setRails(config)
     return () => setRails(EMPTY_RAILS)
-  }, [memoized, setRails])
+  }, [config, setRails])
 }
 
 /**
  * Register the header chrome (rendered above the rail row, centered at the
- * center-column width). Same `deps`/loop rules as {@link useRails}; cleared on
- * unmount.
+ * center-column width). Callers should pass a value created by `useMemo` when
+ * its ReactNode is built from render-time inputs. Cleared on unmount.
  */
-export function useLayoutHeader(node: ReactNode, deps: DependencyList): void {
+export function useLayoutHeader(node: ReactNode): void {
   const { setHeader } = usePageLayoutWrite()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const memoized = useMemo(() => node, deps)
   useLayoutEffect(() => {
-    setHeader(memoized)
+    setHeader(node)
     return () => setHeader(null)
-  }, [memoized, setHeader])
+  }, [node, setHeader])
 }
 
 /**
@@ -131,13 +125,10 @@ export function useLayoutHeader(node: ReactNode, deps: DependencyList): void {
  */
 export function usePageLayoutPresentation(
   presentation: PageLayoutPresentation,
-  deps: DependencyList,
 ): void {
   const { setPresentation } = usePageLayoutWrite()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const memoized = useMemo(() => presentation, deps)
   useLayoutEffect(() => {
-    setPresentation(memoized)
+    setPresentation(presentation)
     return () => setPresentation(STANDARD_PRESENTATION)
-  }, [memoized, setPresentation])
+  }, [presentation, setPresentation])
 }

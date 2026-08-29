@@ -4,7 +4,7 @@ import { useLayoutHeader } from '@/app/layout/PageLayoutContext'
 import { useSettings } from '@/app/settings/SettingsContext'
 import { countries } from './data/countries'
 import { countryClassifications } from './data/countryClassification'
-import { resolveCountrySet } from './geography/countrySet'
+import { normalizeWorldCountriesIncludedEntityGroups, resolveCountrySet } from './geography/countrySet'
 import { WorldCountriesDrill } from '@/features/world-countries/drill/WorldCountriesDrill'
 import { WorldCountriesRecite } from '@/features/world-countries/recite/WorldCountriesRecite'
 import { WorldCountriesToday } from '@/features/world-countries/today/WorldCountriesToday'
@@ -23,11 +23,15 @@ export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
   const { settings } = useSettings()
   const [area, setArea] = useState<WorldCountriesArea>('today')
   const activeCountries = useMemo(
-    () => resolveCountrySet(countries, countryClassifications, settings.worldCountriesIncludedEntityGroups),
+    () => resolveCountrySet(
+      countries,
+      countryClassifications,
+      normalizeWorldCountriesIncludedEntityGroups(settings.worldCountriesIncludedEntityGroups),
+    ),
     [settings.worldCountriesIncludedEntityGroups],
   )
 
-  useLayoutHeader(
+  const header = useMemo(() => (
     <nav
       aria-label="World Countries navigation"
       className="w-full min-w-0 py-2"
@@ -60,9 +64,9 @@ export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
           ))}
         </div>
       </div>
-    </nav>,
-    [area],
-  )
+    </nav>
+  ), [area])
+  useLayoutHeader(header)
 
   return (
     <WorldCountriesPopulationProvider countries={activeCountries}>

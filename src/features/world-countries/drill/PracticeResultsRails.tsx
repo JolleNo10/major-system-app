@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useRails } from '@/app/layout/PageLayoutContext'
 import type { Country } from '@/features/world-countries/data/countries'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
@@ -12,9 +13,9 @@ export function PracticeResultsRails({ scopeCountries, answers, onAgain, onChang
   onAgain: () => void
   onChangeSetup: () => void
 }) {
-  const summary = summarizeDrillAnswers(answers)
-  const countryById = new Map(scopeCountries.map(entry => [entry.id, entry]))
-  useRails({
+  const summary = useMemo(() => summarizeDrillAnswers(answers), [answers])
+  const countryById = useMemo(() => new Map(scopeCountries.map(entry => [entry.id, entry])), [scopeCountries])
+  const rails = useMemo(() => ({
     left: <section className="space-y-4" aria-labelledby="world-countries-practice-results-heading">
       <div><p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Practice complete</p><h2 id="world-countries-practice-results-heading" className="mt-1 text-lg font-bold text-zinc-100">Results</h2></div>
       <DrillResultStats summary={summary} answerCount={answers.length} ariaLabel="Practice summary" />
@@ -22,6 +23,7 @@ export function PracticeResultsRails({ scopeCountries, answers, onAgain, onChang
     </section>,
     right: <WorldCountriesPanel className="space-y-3" aria-labelledby="world-countries-practice-next-heading"><div><p className="text-xs font-semibold uppercase tracking-wider text-violet-400">Practice</p><h2 id="world-countries-practice-next-heading" className="mt-1 text-lg font-bold text-zinc-100">Next action</h2></div><p className="text-sm leading-relaxed text-zinc-400">Practice results are transient. Run another session or return to the mode selector.</p><button type="button" onClick={onAgain} className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500">Run again</button><button type="button" onClick={onChangeSetup} className="w-full rounded-xl bg-zinc-800 px-4 py-3 text-sm font-semibold text-zinc-300 hover:bg-zinc-700">Change mode</button></WorldCountriesPanel>,
     leftLabel: 'Results', rightLabel: 'Next action',
-  }, [answers, onAgain, onChangeSetup, scopeCountries, summary.accuracy, summary.correct])
+  }), [answers, countryById, onAgain, onChangeSetup, summary])
+  useRails(rails)
   return null
 }

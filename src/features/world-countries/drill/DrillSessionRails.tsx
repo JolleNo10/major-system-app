@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useRails } from '@/app/layout/PageLayoutContext'
 import type { Country } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition } from '@/features/world-countries/data/subregions'
@@ -20,8 +21,6 @@ export function DrillSessionRails({
   mnemonicOpen,
   onOpenMnemonic,
   onCloseMnemonic,
-  mnemonicVersion,
-  onMnemonicChanged,
 }: {
   selection: WorldCountriesDrillSelection
   scopeLabel?: string
@@ -32,17 +31,14 @@ export function DrillSessionRails({
   mnemonicOpen: boolean
   onOpenMnemonic: () => void
   onCloseMnemonic: () => void
-  mnemonicVersion: number
-  onMnemonicChanged: () => void
 }) {
   const step = getCurrentDrillStep(state)
   const country = step ? entries.find(entry => entry.id === step.countryId) : undefined
   const { progressPercent, countryPosition, totalCountries } = deriveDrillSessionProgress(state)
-  const subregions = selection.subregionIds.map(getSubregionDefinition)
+  const subregions = useMemo(() => selection.subregionIds.map(getSubregionDefinition), [selection.subregionIds])
   const scopeLabel = providedScopeLabel ?? getDrillSelectionScopeLabel(selection, entries)
 
-  useRails(
-    {
+  const rails = useMemo(() => ({
       left: (
         <section className="space-y-4" aria-labelledby="world-countries-drill-session-context-heading">
           <GeographyBreadcrumbs items={[{ label: 'World' }, { label: scopeLabel, current: true }]} />
@@ -72,16 +68,15 @@ export function DrillSessionRails({
               <button type="button" onClick={mnemonicOpen ? onCloseMnemonic : onOpenMnemonic} className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm font-medium text-cyan-300 hover:border-cyan-500 hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">
                 {mnemonicOpen ? 'Hide mnemonics' : 'Show mnemonics'}
               </button>
-              {mnemonicOpen && <CountryCapitalMnemonicPanel country={country} refreshKey={mnemonicVersion} onChanged={onMnemonicChanged} />}
+              {mnemonicOpen && <CountryCapitalMnemonicPanel country={country} />}
             </>
           )}
         </section>
       ),
       leftLabel: 'Selected geography',
       rightLabel: 'Session',
-    },
-    [country, entries, mnemonicOpen, mnemonicVersion, mode, onCloseMnemonic, onMnemonicChanged, onOpenMnemonic, proficiencySelection, scopeLabel, selection.subregionIds, state.countryIds.length, state.countryIndex, state.countryOrder.length, state.stepIndex, progressPercent, countryPosition, totalCountries],
-  )
+    }), [country, mnemonicOpen, mode, onCloseMnemonic, onOpenMnemonic, proficiencySelection, scopeLabel, selection.subregionIds, state.countryIds.length, progressPercent, countryPosition, subregions, totalCountries, step])
+  useRails(rails)
 
   return null
 }

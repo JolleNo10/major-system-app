@@ -23,8 +23,9 @@ separate workflow:
 `WorldCountries.tsx` resolves the Settings country-set policy once, provides
 the active population, and composes Today, Drill, and Recite.
 `WorldCountriesDrill.tsx` owns the Drill setup coordinator, Drill and Learn &
-Practise purpose selection, active sessions, results, and the refresh boundary
-that lets contextual authoring affect subsequent Learning presentation.
+Practise purpose selection, active sessions, and results. Geography metadata
+changes reach mounted consumers through the feature-owned geography subscription
+signal rather than coordinator-owned refresh counters.
 
 ## Ownership
 
@@ -35,12 +36,13 @@ that lets contextual authoring affect subsequent Learning presentation.
   Subregion -> Country ordering, the shared pure World-wide Subregion-scope
   normalization/toggling/count/label/effective-membership seam, order metadata,
   the semantic order-saving seam used by contextual editors, and the
-  feature-owned refresh signal used by mounted setup views after successful
-  order writes.
+  feature-owned geography subscription signal published after successful
+  metadata mutations.
 - `learning/` owns recall skills, answer matching, evidence adapters,
   raw per-target history, Today introduction and review scheduling,
-  proficiency, pure session mechanics, durable Subregion learning facts,
-  Learning Readiness, and reusable guided Learning flows.
+  proficiency, pure session mechanics, durable Subregion learning facts and
+  their feature-local subscription signal, Learning Readiness, and reusable
+  guided Learning flows.
 - `today/` owns the derived Today plan, bounded due-review queue and retry
   state, Today setup/checkpoint states, and delegation into existing Learning
   flows. It consumes learning, geography, maps, and feature-local UI but not
@@ -56,8 +58,9 @@ that lets contextual authoring affect subsequent Learning presentation.
   existing Country sequence annotations, and workflow-neutral geographic
   callbacks.
 - `mnemonics/` owns World Countries mnemonic target IDs, geography mnemonic
-  adapters, backup behavior, read presentation, and the reusable contextual
-  Subregion mnemonic editor.
+  adapters, backup behavior, read presentation, the reusable contextual
+  Subregion mnemonic editor, and the feature-local mnemonic subscription over
+  shared core mnemonic persistence.
 - `drill/` owns Drill selection, preferences, four Drill modes,
   Learn & Practise purpose selection, shared session mechanics, Drill and
   Practice presentation, results, and World/Continent order authoring in the
@@ -90,6 +93,11 @@ that lets contextual authoring affect subsequent Learning presentation.
 
 There is no broad feature `domain/`, `persistence/`, or `common/` layer and no
 compatibility wrapper for the removed authoring workflow.
+
+Mounted World Countries consumers subscribe directly to the external state they
+derive: geography metadata, durable Subregion learning, and World Countries
+mnemonics each publish through a feature-local revision signal. Workflow
+coordinators do not carry generic version counters solely to force a re-read.
 
 ## Activity model
 

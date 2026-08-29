@@ -4,12 +4,7 @@ import {
   parseMnemonicExport,
 } from '@/core/mnemonics/backup'
 import type { MnemonicExportEntry } from '@/core/mnemonics/backup'
-import {
-  deleteMnemonic,
-  getMnemonic,
-  getMnemonics,
-  putMnemonic,
-} from '@/core/mnemonics/mnemonicStore'
+import { getMnemonic, getMnemonics, putMnemonic } from '@/core/mnemonics/mnemonicStore'
 import type { Mnemonic, MnemonicRecord, MnemonicTargetId } from '@/core/mnemonics/types'
 import { countries, type Continent, type Country, type CountryId } from '@/features/world-countries/data/countries'
 import {
@@ -50,6 +45,7 @@ import {
   isSubregionMnemonicTargetId,
   subregionMnemonicId,
 } from './geographyMnemonicIds'
+import { deleteWorldCountriesMnemonic, putWorldCountriesMnemonic } from './mnemonicRefresh'
 
 export interface SubregionMnemonic extends Mnemonic {
   countryIds: CountryId[]
@@ -91,12 +87,12 @@ export async function putCountryCapitalMnemonic(
   data: { text: string; image: Blob | null },
 ): Promise<void> {
   const targetId = countryCapitalMnemonicId(country)
-  if (!data.text.trim() && !data.image) return deleteMnemonic(targetId)
-  await putMnemonic({ targetId, ...data, updatedAt: Date.now() })
+  if (!data.text.trim() && !data.image) return deleteWorldCountriesMnemonic(targetId)
+  await putWorldCountriesMnemonic({ targetId, ...data, updatedAt: Date.now() })
 }
 
 export function deleteCountryCapitalMnemonic(country: Country | CountryId): Promise<void> {
-  return deleteMnemonic(countryCapitalMnemonicId(country))
+  return deleteWorldCountriesMnemonic(countryCapitalMnemonicId(country))
 }
 
 export function getSubregionMnemonic(subregion: SubregionId): Promise<SubregionMnemonic | null>
@@ -137,8 +133,8 @@ export async function putSubregionMnemonic(
     : subregionMnemonicId(first as Continent, second as SubregionId | string)
   const countryIds = (isShortForm ? second : third) as readonly CountryId[]
   const data = (isShortForm ? third : fourth) as { text: string; image: Blob | null }
-  if (!data.text.trim() && !data.image) return deleteMnemonic(targetId)
-  await putMnemonic({
+  if (!data.text.trim() && !data.image) return deleteWorldCountriesMnemonic(targetId)
+  await putWorldCountriesMnemonic({
     targetId,
     countryIds: [...new Set(countryIds)],
     ...data,
@@ -158,7 +154,7 @@ export function deleteSubregionMnemonic(
   const targetId = subregion === undefined
     ? subregionMnemonicId(continentOrSubregion as SubregionId)
     : subregionMnemonicId(continentOrSubregion as Continent, subregion)
-  return deleteMnemonic(targetId)
+  return deleteWorldCountriesMnemonic(targetId)
 }
 
 export function isSubregionMnemonicStale(
@@ -255,7 +251,7 @@ export async function importGeographyMnemonics(json: string): Promise<number> {
   const parsed = parseGeographyExport(json)
   // Parse and decode the entire payload before writing anything. This keeps a
   // malformed metadata row from partially importing mnemonic content.
-  for (const mnemonic of parsed.mnemonics) await putMnemonic(mnemonic)
+  for (const mnemonic of parsed.mnemonics) await putWorldCountriesMnemonic(mnemonic)
   if (parsed.subregions.length) importSubregionMetadata(parsed.subregions)
   if (parsed.continents.length) importContinentMetadata(parsed.continents)
   if (parsed.world) importWorldMetadata(parsed.world)

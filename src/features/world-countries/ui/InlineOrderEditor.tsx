@@ -1,7 +1,7 @@
 import { PointerActivationConstraints } from '@dnd-kit/dom'
 import { DragDropProvider, PointerSensor } from '@dnd-kit/react'
 import { isSortable, useSortable } from '@dnd-kit/react/sortable'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { reorderDraft } from './reorderDraft'
 
 export interface AutoOrderAction<T> {
@@ -166,7 +166,7 @@ export function InlineOrderEditor<T>({
     onDraftChanged(nextDraft)
   }
 
-  const clickSequencePositions = new Map(clickSequence.map((id, index) => [id, index + 1]))
+  const clickSequencePositions = useMemo(() => new Map(clickSequence.map((id, index) => [id, index + 1])), [clickSequence])
   const clickSequenceComplete = clickSequence.length === draft.length && draft.every(item => clickSequencePositions.has(getId(item)))
 
   clickToggleRef.current = (id: string) => {
@@ -177,7 +177,7 @@ export function InlineOrderEditor<T>({
 
   useEffect(() => {
     onClickOrderStateChange?.({ active: clickMode, positions: clickSequencePositions })
-  }, [clickMode, clickSequence, draft, onClickOrderStateChange])
+  }, [clickMode, clickSequence, clickSequencePositions, draft, onClickOrderStateChange])
 
   useEffect(() => {
     onClickOrderToggle?.(clickMode ? id => clickToggleRef.current(id) : null)

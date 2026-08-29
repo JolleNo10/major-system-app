@@ -46,8 +46,6 @@ function renderPanel(mount: HTMLElement, country: Country) {
     root = createRoot(mount)
     root.render(createElement(CountryCapitalMnemonicPanel, {
       country,
-      refreshKey: 0,
-      onChanged: vi.fn(),
     }))
   })
 }
@@ -74,8 +72,6 @@ describe('CountryCapitalMnemonicPanel', () => {
 
     act(() => root?.render(createElement(CountryCapitalMnemonicPanel, {
       country: sweden,
-      refreshKey: 0,
-      onChanged: vi.fn(),
     })))
 
     expect(viewProps.current?.targetId).toBe(countryCapitalMnemonicId(sweden))

@@ -82,6 +82,10 @@ npm test
 npm run build
 ```
 
+For repository integration/configuration changes, include the lint baseline in
+the final verification: `npm run lint`, then `npm test` and `npm run build`.
+The CI workflow mirrors this sequence; the build supplies the TypeScript check.
+
 A normal feature-local implementation must not automatically run the entire
 repository suite or production build. `npm run build` already runs TypeScript,
 so do not run a separate typecheck immediately before a full production build.

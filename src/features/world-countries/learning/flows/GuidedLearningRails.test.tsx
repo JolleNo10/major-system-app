@@ -48,9 +48,6 @@ function renderRails(phase: 'walkthrough' | 'location-practice', track: 'countri
       track,
       learned: false,
       capitalsLearned: false,
-      mnemonicVersion: 0,
-      onGeographyChanged: vi.fn(),
-      onMnemonicChanged: vi.fn(),
       onOrderDraftChanged,
       walkthroughCountryId,
       practiceProgress,
@@ -114,7 +111,6 @@ describe('GuidedLearningRails contextual authoring visibility', () => {
       root.render(createElement(GuidedLearningRails, {
         continent: 'Europe', subregion: 'northern-europe', entries, activeCountries: entries,
         phase: 'location-practice', track: 'countries', learned: false, capitalsLearned: false,
-        mnemonicVersion: 0, onGeographyChanged: vi.fn(), onMnemonicChanged: vi.fn(),
         onOrderDraftChanged, onBack, backLabel: 'Back to Review', onSkip, skipLabel: 'Next: Practice', onExit,
       }))
     })

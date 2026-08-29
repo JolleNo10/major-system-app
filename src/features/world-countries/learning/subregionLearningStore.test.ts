@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { countries, getCanonicalCountryIdsForSubregion } from '@/features/world-countries/data/countries'
 import { setSubregionCountryOrder } from '@/features/world-countries/geography/subregionMetadataStore'
 import {
@@ -8,6 +8,8 @@ import {
   clearSubregionCountriesLearned,
   getSubregionLearningState,
   markSubregionCapitalsLearned,
+  getWorldCountriesSubregionLearningRevision,
+  subscribeToWorldCountriesSubregionLearning,
   markSubregionCountriesLearned,
   SUBREGION_LEARNING_MEMBERSHIP_KEY,
   SUBREGION_LEARNING_STORAGE_KEY,
@@ -24,6 +26,19 @@ const fullNorthernEuropeMembership = countries.filter(country => country.id === 
 const reducedNorthernEuropeMembership = fullNorthernEuropeMembership.filter(country => country.id === 'IS')
 
 describe('Subregion learning store', () => {
+  it('publishes a revision after semantic mark and clear operations', () => {
+    const before = getWorldCountriesSubregionLearningRevision()
+    const listener = vi.fn()
+    const unsubscribe = subscribeToWorldCountriesSubregionLearning(listener)
+
+    markSubregionCountriesLearned('northern-europe', 1234)
+    clearSubregionCountriesLearned('northern-europe')
+
+    unsubscribe()
+    expect(getWorldCountriesSubregionLearningRevision()).toBe(before + 2)
+    expect(listener).toHaveBeenCalledTimes(2)
+  })
+
   it('preserves independent Country and Capital completion facts', () => {
     expect(getSubregionLearningState('northern-europe')).toBeNull()
     expect(markSubregionCountriesLearned('northern-europe', 1234)).toEqual({ subregionId: 'northern-europe', countriesLearnedAt: 1234 })

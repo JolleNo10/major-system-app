@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useRails } from '@/app/layout/PageLayoutContext'
 import {
   fromStartRecordRun,
@@ -35,8 +35,7 @@ export function usePiReciteRail({
   phase, piSessions, formatRate, pendingRanges,
   statusesLoading, availableMemoedCount, onRecite,
 }: PiReciteRailArgs): void {
-  useRails(
-    {
+  const rails = useMemo(() => ({
       left: phase === 'setup' && piSessions.length > 0
         ? <RunHistoryTool piSessions={piSessions} formatRate={formatRate} />
         : undefined,
@@ -52,9 +51,8 @@ export function usePiReciteRail({
           )
         : undefined,
       rightLabel: 'Ready to recite',
-    },
-    [phase, piSessions, pendingRanges, statusesLoading, availableMemoedCount, onRecite],
-  )
+    }), [phase, piSessions, pendingRanges, statusesLoading, availableMemoedCount, onRecite, formatRate])
+  useRails(rails)
 }
 
 // Two tracks: full recites (runs that started at π #1 — the progress that

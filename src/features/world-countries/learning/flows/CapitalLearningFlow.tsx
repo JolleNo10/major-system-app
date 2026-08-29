@@ -68,9 +68,6 @@ export function CapitalLearningFlow({
   doneLabel = 'Back to Learn & Practise',
   countriesLearned = false,
   onWalkthroughCountryChange,
-  mnemonicVersion = 0,
-  onGeographyChanged = () => undefined,
-  onMnemonicChanged = () => undefined,
   recordCompletion = true,
   allowIncorrectSpellingPractice = false,
 }: {
@@ -88,9 +85,6 @@ export function CapitalLearningFlow({
   doneLabel?: string
   countriesLearned?: boolean
   onWalkthroughCountryChange?: (countryId: string | null) => void
-  mnemonicVersion?: number
-  onGeographyChanged?: () => void
-  onMnemonicChanged?: () => void
   recordCompletion?: boolean
   allowIncorrectSpellingPractice?: boolean
 }) {
@@ -197,10 +191,7 @@ export function CapitalLearningFlow({
     track="capitals"
     learned={countriesLearned}
     capitalsLearned={false}
-    mnemonicVersion={mnemonicVersion}
-    onGeographyChanged={onGeographyChanged}
     onCountryHover={setHoveredCountryId}
-    onMnemonicChanged={onMnemonicChanged}
     onOrderDraftChanged={setOrderDraft}
     onOrderEditingChange={setEditingOrder}
     onOrderSaved={onOrderSaved}

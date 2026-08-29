@@ -27,7 +27,7 @@ export function WeakSpots({ answerMode }: Props) {
     const all = Object.keys(words)
     const extra = shuffle(all.filter(n => !weak.includes(n))).slice(0, 10 - weak.length)
     return shuffle([...weak, ...extra])
-  }, []) // compute once on mount
+  }, [words])
 
   if (pool.length === 0) {
     return (

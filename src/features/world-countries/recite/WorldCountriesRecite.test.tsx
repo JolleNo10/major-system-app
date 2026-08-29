@@ -24,7 +24,7 @@ vi.mock('@/features/world-countries/maps/GeographyOverviewMap', () => ({
       if (typeof onMapStateChange !== 'function') return
       onMapStateChange('loading')
       onMapStateChange('ready')
-    }, [props.level, props.continent])
+    }, [props.continent, props.level, props.onMapStateChange])
     return createElement('div', { 'data-testid': 'recite-map' })
   },
 }))

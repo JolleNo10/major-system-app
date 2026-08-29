@@ -62,8 +62,6 @@ export function DrillSession({
   learningStates = [],
   proficiencySelection = [],
   activeCountries,
-  mnemonicVersion = 0,
-  onMnemonicChanged = () => undefined,
 }: {
   answerMode: AnswerMode
   fuzzyMatching: boolean
@@ -80,8 +78,6 @@ export function DrillSession({
   activity?: 'drill' | 'practice'
   learningStates?: LearningStates
   proficiencySelection?: WorldCountriesProficiencySelection
-  mnemonicVersion?: number
-  onMnemonicChanged?: () => void
 }) {
   const step = getCurrentDrillStep(state)
   const [feedback, setFeedback] = useState<StepFeedback | null>(null)
@@ -243,8 +239,6 @@ export function DrillSession({
         setAssistedFor(stepKey)
       }}
       onCloseMnemonic={() => setMnemonicOpenFor(null)}
-      mnemonicVersion={mnemonicVersion}
-      onMnemonicChanged={onMnemonicChanged}
     />
   )
 
@@ -352,8 +346,6 @@ export function DrillSession({
             setAssistedFor(stepKey)
           }}
           onCloseMnemonic={() => setMnemonicOpenFor(null)}
-          mnemonicVersion={mnemonicVersion}
-          onMnemonicChanged={onMnemonicChanged}
         />
       )}
             <WorldCountriesMapActivitySurface

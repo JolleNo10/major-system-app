@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, createElement, StrictMode, useState } from 'react'
+import { act, createElement, StrictMode, useCallback, useMemo, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it } from 'vitest'
 import { PageLayout } from './PageLayout'
@@ -22,7 +22,7 @@ afterEach(() => {
 })
 
 describe('PageLayout slot registration', () => {
-  it('does not recurse when a publisher recreates a dependency every render', async () => {
+  it('does not recurse when a publisher publishes memoized values', async () => {
     const mount = document.createElement('div')
     document.body.append(mount)
 
@@ -104,20 +104,22 @@ describe('PageLayout slot registration', () => {
 })
 
 function UnstableRailPublisher() {
-  const recreatedDependency = () => undefined
-  useRails(
-    { left: <span>unstable rail</span> },
-    [recreatedDependency],
-  )
-  useLayoutHeader(<span>unstable header</span>, [recreatedDependency])
+  const recreatedDependency = useCallback(() => undefined, [])
+  const rails = useMemo(() => ({ left: <span>{recreatedDependency() ?? 'unstable rail'}</span> }), [recreatedDependency])
+  const header = useMemo(() => <span>{recreatedDependency() ?? 'unstable header'}</span>, [recreatedDependency])
+  useRails(rails)
+  useLayoutHeader(header)
   return null
 }
 
 function PresentationHarness() {
   const [expanded, setExpanded] = useState(false)
-  usePageLayoutPresentation(expanded ? 'expanded-center' : 'standard', [expanded])
-  useRails({ left: <span>left rail</span>, right: <span>right rail</span> }, [])
-  useLayoutHeader(<span>registered header</span>, [])
+  const presentation = useMemo(() => expanded ? 'expanded-center' : 'standard', [expanded])
+  const rails = useMemo(() => ({ left: <span>left rail</span>, right: <span>right rail</span> }), [])
+  const header = useMemo(() => <span>registered header</span>, [])
+  usePageLayoutPresentation(presentation)
+  useRails(rails)
+  useLayoutHeader(header)
   return createElement('div', null,
     createElement('button', { type: 'button', 'data-presentation-toggle': true, onClick: () => setExpanded(value => !value) }, expanded ? 'Collapse' : 'Expand'),
     createElement(PageLayout, null, createElement('span', null, 'center content')),
@@ -134,6 +136,6 @@ function CleanupHarness() {
 }
 
 function PresentationPublisher() {
-  usePageLayoutPresentation('expanded-center', [])
+  usePageLayoutPresentation('expanded-center')
   return null
 }

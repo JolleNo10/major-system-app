@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useSettings } from '@/app/settings/SettingsContext'
 import { useLayoutHeader } from '@/app/layout/PageLayoutContext'
 import { readString, safeSet } from '@/core/storage'
@@ -39,7 +39,7 @@ export function PiDrill({ answerMode }: Props) {
   // Tab bar + digit slider are chrome shared by every tab: publish them as the
   // PageLayout header (above the rail row) so each tab's rail top-aligns with
   // its body content, not with this chrome.
-  useLayoutHeader(
+  const header = useMemo(() => (
     <div className="flex flex-col items-center gap-0">
       <div className="flex gap-1 p-1 rounded-lg bg-zinc-800 mb-2">
         {TABS.map(t => (
@@ -73,9 +73,9 @@ export function PiDrill({ answerMode }: Props) {
         />
         <span className="text-cyan-400 tabular-nums text-xs w-8 text-right">{maxPiPairs * 2}</span>
       </div>
-    </div>,
-    [tab, maxPiPairs, settingsMaxPairs],
-  )
+    </div>
+  ), [tab, maxPiPairs, settingsMaxPairs])
+  useLayoutHeader(header)
 
   return tab === 'memo'
     ? <PiMemoTab answerMode={answerMode} maxPiPairs={maxPiPairs} />

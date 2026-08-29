@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, createElement, Fragment, StrictMode, useState } from 'react'
+import { act, createElement, Fragment, StrictMode, useMemo, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { PageLayout } from '@/app/layout/PageLayout'
@@ -67,11 +67,11 @@ describe('Pi PageLayout integration', () => {
 
 function LayoutPulse() {
   const [pulse, setPulse] = useState(0)
-  useLayoutHeader(
+  const header = useMemo(() => (
     <button type="button" onClick={() => setPulse(value => value + 1)}>
       layout pulse {pulse}
-    </button>,
-    [pulse],
-  )
+    </button>
+  ), [pulse])
+  useLayoutHeader(header)
   return null
 }

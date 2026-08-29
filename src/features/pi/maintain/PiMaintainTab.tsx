@@ -38,7 +38,10 @@ export function PiMaintainTab({ answerMode, maxPiPairs }: Props) {
 
   // Reload the schedule store each time we (re-)enter setup, so a finished run's
   // reschedules are reflected. Keyed off `runNonce` (bumped on every complete).
-  const store = useMemo(() => loadMaintainStore(), [runNonce])
+  const store = useMemo(() => {
+    void runNonce
+    return loadMaintainStore()
+  }, [runNonce])
 
   const { due, upcoming } = useMemo(
     () => buildMaintenanceBatches(statuses, store, settings.piMaintainBatchSegs, maxSegments),

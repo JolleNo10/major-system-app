@@ -59,24 +59,25 @@ export function SchedulerPracticeStep({
 }) {
   const currentId = session.currentKey
   const current = entries.find(entry => entry.id === currentId)
-  if (!current) return null
-
-  const ariaLabel = showCountryName
+  const ariaLabel = current && showCountryName
     ? `Map showing ${current.country} for practice`
     : 'Map for typed Country practice without the Country name revealed'
+  const presentationCountryId = current?.id ?? null
+  useLearningMapPresentation({
+    taskTargetCountryId: showCountryName ? null : presentationCountryId,
+    highlightedCountryId: presentationCountryId,
+    namedCountryId: showCountryName ? presentationCountryId : null,
+    showHighlightedNames: showCountryName,
+    ariaLabel,
+  }, [presentationCountryId, showCountryName, ariaLabel])
+
+  if (!current) return null
   const activityTask: WorldCountriesActivityTask = {
     direction: questionLabel,
     cue: showCountryName ? current.country : promptText,
     sessionContext: stepLabel,
     answerKind,
   }
-  useLearningMapPresentation({
-    taskTargetCountryId: showCountryName ? null : current.id,
-    highlightedCountryId: current.id,
-    namedCountryId: showCountryName ? current.id : null,
-    showHighlightedNames: showCountryName,
-    ariaLabel,
-  }, [current.id, showCountryName, ariaLabel])
 
   return (
     <WorldCountriesTypedAnswer

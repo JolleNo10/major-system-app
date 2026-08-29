@@ -30,7 +30,7 @@ const EMPTY_PROFICIENCY_SCOPE: WorldCountriesProficiencyScope = {
 }
 
 export function DrillSetup({
-  level, setupContinent, selection, selectionMetadata, mode, order, purpose, learnPracticeMode, proficiencySelection = [], learningStates, hoveredGroupId, onHoverGroup, onSelectionChange, onProficiencySelectionChange = () => undefined, onModeChange, onOrderChange, onPurposeChange, onLearnPracticeModeChange, onStart, onLearnPracticeStart, onWorld, onSelectContinent, onSelectAllWorld, onClearWorld, onGeographyChanged, entries = countries,
+  level, setupContinent, selection, selectionMetadata, mode, order, purpose, learnPracticeMode, proficiencySelection = [], learningStates, hoveredGroupId, onHoverGroup, onSelectionChange, onProficiencySelectionChange = () => undefined, onModeChange, onOrderChange, onPurposeChange, onLearnPracticeModeChange, onStart, onLearnPracticeStart, onWorld, onSelectContinent, onSelectAllWorld, onClearWorld, entries = countries,
 }: {
   level: 'world' | 'continent'
   setupContinent: Continent | null
@@ -56,14 +56,13 @@ export function DrillSetup({
   onSelectContinent: (continent: Continent) => void
   onSelectAllWorld: () => void
   onClearWorld: () => void
-  onGeographyChanged: () => void
   entries?: readonly Country[]
 }) {
   const geographyRevision = useWorldCountriesGeographyRevision()
   const subregions = setupContinent ? getDrillSubregions(setupContinent, entries, selectionMetadata) : []
   const [recallProgress, setRecallProgress] = useState<RecallProgress | null>(null)
-  const activeCountryIds = [...new Set(entries.map(country => country.id))].sort()
-  const activeCountryKey = activeCountryIds.join('|')
+  const activeCountryKey = [...new Set(entries.map(country => country.id))].sort().join('|')
+  const activeCountryIds = useMemo(() => activeCountryKey ? activeCountryKey.split('|') : [], [activeCountryKey])
   const [loadedCountryKey, setLoadedCountryKey] = useState<string | null>(null)
   const currentRecallProgress = loadedCountryKey === activeCountryKey ? recallProgress : null
   const allLearningStates = useMemo(() => getWorldCountriesLearningStateList(learningStates), [learningStates])
@@ -84,17 +83,22 @@ export function DrillSetup({
     )
     : EMPTY_PROFICIENCY_SCOPE, [currentRecallProgress, entries, proficiencyActivity, proficiencySelection, selectionMetadata.subregions, setupContinent])
   const hasProficiencyScope = proficiencySelection.length > 0
-  const [orderVersion, setOrderVersion] = useState(0)
   const [editingOrder, setEditingOrder] = useState<'world' | 'continent' | null>(null)
   const [draftWorldOrder, setDraftWorldOrder] = useState<readonly Continent[] | null>(null)
   const [draftSubregionOrder, setDraftSubregionOrder] = useState<readonly SubregionDefinition[] | null>(null)
   const worldOrder = useMemo(
-    () => draftWorldOrder ?? getContinentsInEffectiveOrder(entries, getWorldMetadata()),
-    [draftWorldOrder, entries, geographyRevision, orderVersion],
+    () => {
+      void geographyRevision
+      return draftWorldOrder ?? getContinentsInEffectiveOrder(entries, getWorldMetadata())
+    },
+    [draftWorldOrder, entries, geographyRevision],
   )
   const subregionOrder = useMemo(
-    () => draftSubregionOrder ?? (setupContinent ? getSubregionsForContinentInEffectiveOrder(setupContinent, entries, getContinentMetadata(setupContinent)) : []),
-    [draftSubregionOrder, entries, geographyRevision, orderVersion, setupContinent],
+    () => {
+      void geographyRevision
+      return draftSubregionOrder ?? (setupContinent ? getSubregionsForContinentInEffectiveOrder(setupContinent, entries, getContinentMetadata(setupContinent)) : [])
+    },
+    [draftSubregionOrder, entries, geographyRevision, setupContinent],
   )
 
   const beginOrderEdit = (target: 'world' | 'continent') => {
@@ -111,15 +115,11 @@ export function DrillSetup({
     const ids = draft.map(continent => continentIdFor(continent)).filter((id): id is NonNullable<typeof id> => id !== undefined)
     saveWorldContinentOrder(ids)
     cancelOrderEdit()
-    setOrderVersion(version => version + 1)
-    onGeographyChanged()
   }
   const saveSubregionOrder = (draft: readonly SubregionDefinition[]) => {
     if (!setupContinent) return
     saveContinentSubregionOrder(setupContinent, draft.map(subregion => subregion.id as SubregionId))
     cancelOrderEdit()
-    setOrderVersion(version => version + 1)
-    onGeographyChanged()
   }
 
   useEffect(() => {
@@ -132,7 +132,7 @@ export function DrillSetup({
       setLoadedCountryKey(activeCountryKey)
     })
     return () => { active = false }
-  }, [activeCountryKey])
+  }, [activeCountryIds, activeCountryKey])
 
   const readinessBySubregion = useMemo(
     () => purpose === 'learn-practise' && currentRecallProgress

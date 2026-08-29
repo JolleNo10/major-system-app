@@ -7,12 +7,8 @@ import { GeographyMnemonicView } from './GeographyMnemonicView'
 /** Shared Country ↔ Capital mnemonic panel used by Learning and Drill. */
 export function CountryCapitalMnemonicPanel({
   country,
-  refreshKey,
-  onChanged,
 }: {
   country: Country
-  refreshKey: unknown
-  onChanged: () => void
 }) {
   const [editing, setEditing] = useState(false)
 
@@ -38,8 +34,6 @@ export function CountryCapitalMnemonicPanel({
       targetId={targetId}
       title={title}
       subtitle={subtitle}
-      refreshKey={`${country.id}-${String(refreshKey)}`}
-      onChanged={onChanged}
       headerAction={action}
       initiallyEditing
     />
@@ -48,7 +42,6 @@ export function CountryCapitalMnemonicPanel({
       targetId={targetId}
       title={title}
       subtitle={subtitle}
-      refreshKey={`${country.id}-${String(refreshKey)}`}
       headerAction={action}
     />
   )
