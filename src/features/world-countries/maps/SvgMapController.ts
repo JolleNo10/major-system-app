@@ -1,17 +1,14 @@
-import { getSyntheticDotSourceFingerprint } from './syntheticDots'
 import {
-  countDrawnPathComponents,
-  IDENTITY_TRANSFORM,
-  invertTransform,
-  multiplyTransforms,
-  parseSvgTransform,
-  readPathComponents,
-  transformPoint,
-  type SvgAffineTransform,
-  type SvgPoint,
-} from './svgGeometry'
-import { createTaskInteractionMarkerElements, createTaskRepresentativeMarkerElements } from './svgTaskMarkers'
+  SvgTaskAssistanceRuntime,
+  type SvgMapTaskAssistance,
+} from './svgTaskAssistance'
 import { fitViewBoxToAspect, type SvgViewBoxRect } from './viewBoxFit'
+
+export type {
+  SvgMapLearningAnchor,
+  SvgMapSyntheticDot,
+  SvgMapTaskAssistance,
+} from './svgTaskAssistance'
 
 export type SvgMapSource = { url: string } | { markup: string }
 export type SvgMapHighlightScope = 'listed' | 'all-except'
@@ -43,30 +40,6 @@ export interface SvgMapZoomArea {
   label: string
   countryIds: readonly string[]
   padding?: number
-}
-
-export interface SvgMapLearningAnchor {
-  sourceSvgId: string
-  kind: 'single-dot' | 'multi-dot-representative'
-  sourceFingerprint: string
-  point?: Readonly<{ x: number; y: number }>
-}
-
-export interface SvgMapSyntheticDot {
-  sourceSvgId: string
-  sourceFingerprint: string
-  point: Readonly<{ x: number; y: number }>
-}
-
-export interface SvgMapTaskAssistance {
-  /** SVG IDs that may be selected by this map-answer task. */
-  answerSelectionIds?: readonly string[]
-  /** SVG ID whose location is intentionally shown as the task target. */
-  taskTargetId?: string | null
-  /** Map-owned anchor decisions for the active source asset. */
-  learningAnchors?: readonly SvgMapLearningAnchor[]
-  /** Map-owned authored points used as task-scoped synthetic dots. */
-  syntheticDots?: readonly SvgMapSyntheticDot[]
 }
 
 export interface SvgMapSettings {
@@ -158,52 +131,8 @@ interface HoverListeners {
   click: EventListener
 }
 
-interface AutomaticTaskAnchor {
-  sourceFingerprint: string
-  point: SvgPoint
-}
-
-interface TaskPointerIntent {
-  countryId: string
-  interactionPointId: string | null
-}
-
-interface TaskInteractionPoint {
-  id: string
-  countryId: string
-  layerSvg: SVGSVGElement
-  centerX: number
-  centerY: number
-  screenCenterX: number
-  screenCenterY: number
-  hitRadius: number
-  hitRadiusPx: number
-  markerRadius: number
-  group: SVGGElement
-  marker: SVGCircleElement
-  ring: SVGCircleElement
-  hit: SVGCircleElement
-  origin: 'derived' | 'synthetic'
-}
-
-interface TaskRepresentativeTarget {
-  countryId: string
-  layerSvg: SVGSVGElement
-  centerX: number
-  centerY: number
-  markerRadius: number
-  group: SVGGElement
-  marker: SVGCircleElement
-  ring: SVGCircleElement
-}
-
 const FORBIDDEN_ELEMENTS = 'script, foreignObject, iframe, object, embed, image, style'
 const XLINK_NS = 'http://www.w3.org/1999/xlink'
-const TASK_MARKER_TARGET_RADIUS_PX = 5.5
-const TASK_MARKER_HOVER_SCALE = 1.25
-const TASK_HIT_RADIUS_PX = 12
-const COMPACT_GEOMETRY_MAX_DIMENSION = 12
-const COMPACT_GEOMETRY_MAX_AREA = COMPACT_GEOMETRY_MAX_DIMENSION ** 2
 
 function captureStyle(element: SVGElement, property: string): OriginalStyle {
   return {
@@ -275,25 +204,7 @@ export class SvgMapController {
   private hoveredNameOverride: boolean | null = null
   private hoveredIds = new Set<string>()
   private listeners: HoverListeners[] = []
-  private taskRepresentativeTargets = new Map<string, TaskRepresentativeTarget>()
-  private taskInteractionPoints = new Map<string, TaskInteractionPoint>()
-  private taskTargetLayers = new Map<SVGSVGElement, SVGGElement>()
-  private taskAnswerSelection = new Set<string>()
-  private taskAnswerSelectionConfigured = false
-  private taskTargetId: string | null = null
-  private taskPointerIntent: TaskPointerIntent | null = null
-  private taskAnchorDefinitions = new Map<string, SvgMapLearningAnchor>()
-  private taskSyntheticDotDefinitions = new Map<string, SvgMapSyntheticDot>()
-  private automaticTaskAnchors = new Map<string, AutomaticTaskAnchor | null>()
-  private automaticTaskInteractionPoints = new Map<string, { sourceFingerprint: string; points: readonly SvgPoint[] }>()
-  private taskPointerListeners: {
-    svg: SVGSVGElement
-    move: EventListener
-    over: EventListener
-    leave: EventListener
-    cancel: EventListener
-    click: EventListener
-  } | null = null
+  private readonly taskAssistance: SvgTaskAssistanceRuntime
   private resizeObserver: ResizeObserver | null = null
   private countryClickHandler: ((countryId: string) => void) | null = null
   private countryHoverHandler: ((countryId: string | null) => void) | null = null
@@ -310,6 +221,14 @@ export class SvgMapController {
     this.mount = mount
     this.viewportElement = viewportElement
     this.settings = this.mergeSettings(DEFAULT_SVG_MAP_SETTINGS, settings)
+    this.taskAssistance = new SvgTaskAssistanceRuntime({
+      getCountries: () => this.countries.values(),
+      isSelectable: countryId => this.isSelectable(countryId),
+      isHidden: countryId => this.hiddenCountries.has(countryId),
+      dispatchCountryClick: countryId => this.countryClickHandler?.(countryId),
+      requestRender: () => this.render(),
+      getSettings: () => this.settings,
+    })
   }
 
   async load(source: SvgMapSource): Promise<readonly SvgMapCountry[]> {
@@ -349,7 +268,7 @@ export class SvgMapController {
     this.observeResize()
     this.bindDiscoveredCountries(imported, markup)
     this.attachHoverListeners()
-    this.attachTaskPointerListeners(imported)
+    this.taskAssistance.attach(imported)
     this.render()
 
     return this.getCountries()
@@ -589,62 +508,13 @@ export class SvgMapController {
   /** Configure explicit answer/target semantics for learning-task assistance. */
   setTaskAssistance(assistance: SvgMapTaskAssistance | null = null): SvgMapMutationResult {
     this.assertUsable()
-    const answerSelection = assistance?.answerSelectionIds ?? []
-    const { knownIds, unknownIds } = this.resolveKnown(answerSelection)
-    const requestedTarget = assistance?.taskTargetId?.trim() || null
-    const taskTargetUnknown = requestedTarget !== null && !this.countries.has(requestedTarget)
-      ? [requestedTarget]
-      : []
-
-    const anchors = assistance?.learningAnchors ?? []
-    const normalizedAnchors = new Map<string, SvgMapLearningAnchor>()
-    for (const anchor of anchors) {
-      const sourceSvgId = anchor.sourceSvgId.trim()
-      if (!sourceSvgId) continue
-      if (!this.countries.has(sourceSvgId)) {
-        unknownIds.push(sourceSvgId)
-        continue
-      }
-      if (normalizedAnchors.has(sourceSvgId)) {
-        throw new Error(`Duplicate task learning anchor for ${sourceSvgId}`)
-      }
-      this.validateTaskLearningAnchor({ ...anchor, sourceSvgId })
-      normalizedAnchors.set(sourceSvgId, { ...anchor, sourceSvgId })
-    }
-
-    const syntheticDots = assistance?.syntheticDots ?? []
-    const normalizedSyntheticDots = new Map<string, SvgMapSyntheticDot>()
-    for (const dot of syntheticDots) {
-      const sourceSvgId = dot.sourceSvgId.trim()
-      if (!sourceSvgId) continue
-      if (!this.countries.has(sourceSvgId)) {
-        unknownIds.push(sourceSvgId)
-        continue
-      }
-      if (normalizedSyntheticDots.has(sourceSvgId)) {
-        throw new Error(`Duplicate task synthetic dot for ${sourceSvgId}`)
-      }
-      this.validateTaskSyntheticDot({ ...dot, sourceSvgId })
-      normalizedSyntheticDots.set(sourceSvgId, { ...dot, sourceSvgId })
-    }
-
-    this.taskAnswerSelection = new Set(knownIds)
-    this.taskAnswerSelectionConfigured = assistance?.answerSelectionIds !== undefined
-    this.taskTargetId = taskTargetUnknown.length ? null : requestedTarget
-    for (const countryId of this.taskRepresentativeTargets.keys()) this.removeTaskRepresentativeTarget(countryId)
-    for (const pointId of this.taskInteractionPoints.keys()) this.removeTaskInteractionPoint(pointId)
-    this.removeTaskTargetLayers()
-    this.taskPointerIntent = null
-    this.taskAnchorDefinitions = normalizedAnchors
-    this.taskSyntheticDotDefinitions = normalizedSyntheticDots
-    this.render()
-    return { activeIds: [...this.taskAnswerSelection], unknownIds: uniqueStrings([...unknownIds, ...taskTargetUnknown]) }
+    return this.taskAssistance.configure(assistance)
   }
 
   /** Clear task-only hover state when the pointer leaves the map surface. */
   clearTaskHover(): void {
     this.assertUsable()
-    this.setTaskPointerIntent(null)
+    this.taskAssistance.clearHover()
   }
 
   toggleNames(ids: Iterable<string>): SvgMapMutationResult {
@@ -912,8 +782,8 @@ export class SvgMapController {
       const click: EventListener = () => {
         // Answer-selection clicks are resolved once by the map-level task
         // pointer resolver. Source paths remain the generic-map seam only.
-        if (this.taskAnswerSelectionConfigured) return
-        if (this.isSelectableForTask(country.id)) this.countryClickHandler?.(country.id)
+        if (this.taskAssistance.isAnswerSelectionConfigured()) return
+        if (this.isSelectable(country.id)) this.countryClickHandler?.(country.id)
       }
       country.path.addEventListener('pointerenter', enter)
       country.path.addEventListener('pointerleave', leave)
@@ -993,15 +863,6 @@ export class SvgMapController {
         : this.selectableCountries.has(id))
   }
 
-  private isSelectableForTask(id: string): boolean {
-    if (!this.isSelectable(id)) return false
-    return !this.taskAnswerSelectionConfigured || this.taskAnswerSelection.has(id)
-  }
-
-  private isTaskCandidate(id: string): boolean {
-    return this.taskAnswerSelectionConfigured && this.taskAnswerSelection.has(id) && this.isSelectable(id)
-  }
-
   private resolveOutlineIds(ids: Iterable<string>): { knownIds: string[]; unknownIds: string[] } {
     const knownIds: string[] = []
     const unknownIds: string[] = []
@@ -1034,11 +895,11 @@ export class SvgMapController {
       ? 'none'
       : `fill ${this.settings.transitionMs}ms ease, stroke ${this.settings.transitionMs}ms ease, stroke-width ${this.settings.transitionMs}ms ease`
 
-    this.syncTaskAssistance()
+    this.taskAssistance.sync()
 
     for (const country of this.countries.values()) {
       const hovered = this.hoveredIds.has(country.id)
-      const taskHovered = this.taskPointerIntent?.countryId === country.id
+      const taskHovered = this.taskAssistance.getHoveredCountryId() === country.id
       const hasSemanticColor = this.countryColors.has(country.id)
       const baseFill = taskHovered
         ? this.settings.hoverFill
@@ -1086,687 +947,14 @@ export class SvgMapController {
       for (const paint of country.labelPaint) {
         setOverride(paint.element, 'fill', this.settings.labelFill, paint.originalFill)
       }
-      const taskTarget = this.taskRepresentativeTargets.get(country.id)
-      if (taskTarget) this.renderTaskRepresentativeTarget(country, taskTarget, fill, hidden, reducedMotion)
-      for (const interactionPoint of this.taskInteractionPoints.values()) {
-        if (interactionPoint.countryId !== country.id) continue
-        this.renderTaskInteractionPoint(country, interactionPoint, fill, hidden, reducedMotion)
-      }
+      this.taskAssistance.renderCountryTaskState(country, fill, hidden, reducedMotion)
     }
     this.renderGroupOutlines()
-  }
-
-  private syncTaskAssistance(): void {
-    if (this.taskPointerIntent
-      && (!this.isTaskCandidate(this.taskPointerIntent.countryId)
-        || (this.taskPointerIntent.interactionPointId !== null
-          && !this.taskInteractionPoints.has(this.taskPointerIntent.interactionPointId)))) {
-      this.taskPointerIntent = null
-    }
-    if (!this.svg || (!this.taskAnswerSelectionConfigured && this.taskTargetId === null)) {
-      for (const countryId of this.taskRepresentativeTargets.keys()) this.removeTaskRepresentativeTarget(countryId)
-      for (const pointId of this.taskInteractionPoints.keys()) this.removeTaskInteractionPoint(pointId)
-      this.removeTaskTargetLayers()
-      return
-    }
-
-    const activeTargetIds = new Set<string>()
-    const activePointIds = new Set<string>()
-    const requestedIds = new Set(this.taskAnswerSelection)
-    if (this.taskTargetId !== null) requestedIds.add(this.taskTargetId)
-
-    for (const sourceSvgId of requestedIds) {
-      const country = this.countries.get(sourceSvgId)
-      if (!country) continue
-      const answerSelectable = this.isTaskCandidate(sourceSvgId)
-      const taskTarget = this.taskTargetId === sourceSvgId && !this.hiddenCountries.has(sourceSvgId)
-      if (!answerSelectable && !taskTarget) continue
-
-      if (answerSelectable) {
-        const interactionPoints = this.resolveTaskInteractionPoints(sourceSvgId, country)
-        const syntheticDot = this.taskSyntheticDotDefinitions.has(sourceSvgId)
-        for (let index = 0; index < interactionPoints.length; index += 1) {
-          const sourcePoint = interactionPoints[index]
-          const point = this.transformSourcePointToLayer(country.path, sourcePoint, this.svg)
-          if (!point) continue
-          const scale = this.getRenderedScale(this.svg)
-          const smallestScale = Math.min(scale.x, scale.y)
-          if (!Number.isFinite(smallestScale) || smallestScale <= 0) continue
-          const pointId = `${sourceSvgId}:${index}`
-          activePointIds.add(pointId)
-          this.upsertTaskInteractionPoint(
-            pointId,
-            sourceSvgId,
-            this.svg,
-            point,
-            TASK_MARKER_TARGET_RADIUS_PX / smallestScale,
-            TASK_HIT_RADIUS_PX / smallestScale,
-            syntheticDot ? 'synthetic' : 'derived',
-          )
-        }
-      }
-
-      if (taskTarget) {
-        const anchor = this.resolveTaskAnchor(sourceSvgId, country)
-        const point = anchor ? this.transformSourcePointToLayer(country.path, anchor.point, this.svg) : null
-        const scale = this.getRenderedScale(this.svg)
-        const smallestScale = Math.min(scale.x, scale.y)
-        if (point && Number.isFinite(smallestScale) && smallestScale > 0) {
-          activeTargetIds.add(sourceSvgId)
-          this.upsertTaskRepresentativeTarget(
-            sourceSvgId,
-            this.svg,
-            point,
-            TASK_MARKER_TARGET_RADIUS_PX / smallestScale,
-          )
-        }
-      }
-    }
-
-    for (const countryId of this.taskRepresentativeTargets.keys()) {
-      if (!activeTargetIds.has(countryId)) this.removeTaskRepresentativeTarget(countryId)
-    }
-    for (const pointId of this.taskInteractionPoints.keys()) {
-      if (!activePointIds.has(pointId)) this.removeTaskInteractionPoint(pointId)
-    }
-    if (this.taskRepresentativeTargets.size === 0 && this.taskInteractionPoints.size === 0) {
-      this.removeTaskTargetLayers()
-    }
-  }
-
-  private resolveTaskInteractionPoints(sourceSvgId: string, country: InternalCountry): readonly SvgPoint[] {
-    const syntheticDot = this.taskSyntheticDotDefinitions.get(sourceSvgId)
-    if (syntheticDot) return [syntheticDot.point]
-
-    const sourceFingerprint = country.path.getAttribute('d') ?? ''
-    const bounds = this.readGeometryBounds(country.path)
-    if (!bounds) return []
-
-    if (this.isCompactUnambiguousGeometry(country.path, bounds)) {
-      return [{ x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }]
-    }
-
-    const cached = this.automaticTaskInteractionPoints.get(sourceSvgId)
-    if (cached?.sourceFingerprint === sourceFingerprint) return cached.points
-
-    const components = readPathComponents(sourceFingerprint)
-    if (components.length < 2) return []
-    const points = components.map(component => component.start)
-    this.automaticTaskInteractionPoints.set(sourceSvgId, { sourceFingerprint, points })
-    return points
-  }
-
-  private attachTaskPointerListeners(svg: SVGSVGElement): void {
-    this.detachTaskPointerListeners()
-    const update = (event: Event) => this.updateTaskPointerIntent(event)
-    const leave = () => this.setTaskPointerIntent(null)
-    const click = (event: Event) => this.handleTaskPointerClick(event)
-    svg.addEventListener('pointermove', update)
-    svg.addEventListener('pointerover', update)
-    svg.addEventListener('pointerleave', leave)
-    svg.addEventListener('pointercancel', leave)
-    svg.addEventListener('click', click)
-    this.taskPointerListeners = { svg, move: update, over: update, leave, cancel: leave, click }
-  }
-
-  private detachTaskPointerListeners(): void {
-    const listeners = this.taskPointerListeners
-    if (!listeners) return
-    listeners.svg.removeEventListener('pointermove', listeners.move)
-    listeners.svg.removeEventListener('pointerover', listeners.over)
-    listeners.svg.removeEventListener('pointerleave', listeners.leave)
-    listeners.svg.removeEventListener('pointercancel', listeners.cancel)
-    listeners.svg.removeEventListener('click', listeners.click)
-    this.taskPointerListeners = null
-  }
-
-  private resolveTaskAnchor(sourceSvgId: string, country: InternalCountry): { kind: SvgMapLearningAnchor['kind']; point: SvgPoint } | null {
-    const explicit = this.taskAnchorDefinitions.get(sourceSvgId)
-    if (explicit) {
-      const point = explicit.kind === 'multi-dot-representative'
-        ? explicit.point
-        : this.readGeometryCenter(country.path)
-      return point ? { kind: explicit.kind, point } : null
-    }
-
-    const syntheticDot = this.taskSyntheticDotDefinitions.get(sourceSvgId)
-    if (syntheticDot) return { kind: 'single-dot', point: syntheticDot.point }
-
-    const sourceFingerprint = country.path.getAttribute('d') ?? ''
-    if (this.automaticTaskAnchors.has(sourceSvgId)) {
-      const cached = this.automaticTaskAnchors.get(sourceSvgId)
-      if (cached === null || cached?.sourceFingerprint === sourceFingerprint) {
-        return cached ? { kind: 'single-dot', point: cached.point } : null
-      }
-    }
-
-    const bounds = this.readGeometryBounds(country.path)
-    const point = bounds && this.isCompactUnambiguousGeometry(country.path, bounds)
-      ? { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }
-      : null
-    this.automaticTaskAnchors.set(sourceSvgId, point ? { sourceFingerprint, point } : null)
-    return point ? { kind: 'single-dot', point } : null
-  }
-
-  private readGeometryCenter(path: SVGPathElement): SvgPoint | null {
-    const bounds = this.readGeometryBounds(path)
-    return bounds
-      ? { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }
-      : null
-  }
-
-  private isCompactUnambiguousGeometry(
-    path: SVGPathElement,
-    bounds: { width: number; height: number },
-  ): boolean {
-    if (bounds.width <= 0 || bounds.height <= 0) return false
-    if (Math.max(bounds.width, bounds.height) > COMPACT_GEOMETRY_MAX_DIMENSION
-      || bounds.width * bounds.height > COMPACT_GEOMETRY_MAX_AREA) return false
-    return countDrawnPathComponents(path.getAttribute('d') ?? '') <= 1
-  }
-
-  private getRenderedScale(svg: SVGSVGElement): { x: number; y: number } {
-
-    try {
-      const transform = svg.getScreenCTM?.()
-      if (transform) {
-        const x = Math.hypot(transform.a, transform.b)
-        const y = Math.hypot(transform.c, transform.d)
-        if (Number.isFinite(x) && Number.isFinite(y) && x > 0 && y > 0) return { x, y }
-      }
-    } catch {
-      // Fall back to the rendered SVG box for test DOMs and partial SVG APIs.
-    }
-
-    const viewBox = this.parseViewBox(svg.getAttribute('viewBox') ?? '')
-    const rect = svg.getBoundingClientRect()
-    if (!viewBox || rect.width <= 0 || rect.height <= 0) return { x: 1, y: 1 }
-
-    const preserveAspectRatio = svg.getAttribute('preserveAspectRatio')?.trim().toLowerCase() ?? ''
-    if (preserveAspectRatio.startsWith('none')) {
-      return {
-        x: rect.width / viewBox.width,
-        y: rect.height / viewBox.height,
-      }
-    }
-
-    const scale = Math.min(rect.width / viewBox.width, rect.height / viewBox.height)
-    return { x: scale, y: scale }
-  }
-
-  private readGeometryBounds(path: SVGPathElement): { x: number; y: number; width: number; height: number } | null {
-    if (typeof path.getBBox !== 'function') return null
-    try {
-      const bounds = path.getBBox()
-      const values = [bounds.x, bounds.y, bounds.width, bounds.height]
-      if (values.some(value => !Number.isFinite(value)) || bounds.width < 0 || bounds.height < 0) return null
-      return bounds
-    } catch {
-      return null
-    }
-  }
-
-  private readElementTransform(element: SVGGraphicsElement, screen = false): SvgAffineTransform | null {
-    try {
-      const matrix = screen ? element.getScreenCTM?.() : element.getCTM?.()
-      if (matrix) {
-        const values = [matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f]
-        if (values.every(value => Number.isFinite(value))) {
-          return { a: matrix.a, b: matrix.b, c: matrix.c, d: matrix.d, e: matrix.e, f: matrix.f }
-        }
-      }
-      if (screen) return null
-
-      const ownerSvg = element.ownerSVGElement
-      let current: Element | null = element
-      let result = IDENTITY_TRANSFORM
-      let found = false
-      while (current && current !== ownerSvg) {
-        const transform = parseSvgTransform(current.getAttribute('transform'))
-        if (transform) {
-          result = multiplyTransforms(transform, result)
-          found = true
-        }
-        current = current.parentElement
-      }
-      return found ? result : null
-    } catch {
-      return null
-    }
-  }
-
-  private transformSourcePointToLayer(
-    path: SVGPathElement,
-    point: SvgPoint,
-    layerSvg: SVGSVGElement,
-  ): SvgPoint | null {
-    const localTransform = this.readElementTransform(path)
-    if (path.ownerSVGElement === layerSvg) {
-      return transformPoint(localTransform ?? IDENTITY_TRANSFORM, point)
-    }
-
-    const sourceScreen = this.getScreenPointFromPath(path, point)
-    const layerScreen = this.readElementTransform(layerSvg, true)
-    if (sourceScreen && layerScreen) {
-      const inverse = invertTransform(layerScreen)
-      if (inverse) return transformPoint(inverse, sourceScreen)
-    }
-
-    // In DOM/test environments without screen CTMs, bundled nested map SVGs
-    // share the root map coordinate system; ancestor group transforms are
-    // already included in the local transform above.
-    return transformPoint(localTransform ?? IDENTITY_TRANSFORM, point)
-  }
-
-  private getScreenPointFromPath(path: SVGPathElement, point: SvgPoint): SvgPoint | null {
-    const screenTransform = this.readElementTransform(path, true)
-    if (screenTransform) return transformPoint(screenTransform, point)
-
-    const layerSvg = path.ownerSVGElement
-    if (!layerSvg) return null
-    const localTransform = this.readElementTransform(path)
-    return this.getScreenPointFromSvg(layerSvg, localTransform ? transformPoint(localTransform, point) : point)
-  }
-
-  private getScreenPointFromSvg(svg: SVGSVGElement, point: SvgPoint): SvgPoint | null {
-    const screenTransform = this.readElementTransform(svg, true)
-    if (screenTransform) return transformPoint(screenTransform, point)
-
-    const viewBox = this.parseViewBox(svg.getAttribute('viewBox') ?? '')
-    const rect = svg.getBoundingClientRect()
-    if (!viewBox || rect.width <= 0 || rect.height <= 0) return null
-    const preserveAspectRatio = svg.getAttribute('preserveAspectRatio')?.trim().toLowerCase() ?? ''
-    if (preserveAspectRatio.startsWith('none')) {
-      return {
-        x: rect.left + (point.x - viewBox.x) * rect.width / viewBox.width,
-        y: rect.top + (point.y - viewBox.y) * rect.height / viewBox.height,
-      }
-    }
-
-    const scale = Math.min(rect.width / viewBox.width, rect.height / viewBox.height)
-    const offsetX = (rect.width - viewBox.width * scale) / 2
-    const offsetY = (rect.height - viewBox.height * scale) / 2
-    return {
-      x: rect.left + offsetX + (point.x - viewBox.x) * scale,
-      y: rect.top + offsetY + (point.y - viewBox.y) * scale,
-    }
-  }
-
-  private getSvgPointFromClient(svg: SVGSVGElement, client: SvgPoint): SvgPoint | null {
-    const screenTransform = this.readElementTransform(svg, true)
-    if (screenTransform) {
-      const inverse = invertTransform(screenTransform)
-      return inverse ? transformPoint(inverse, client) : null
-    }
-
-    const rect = svg.getBoundingClientRect()
-    const viewBox = this.parseViewBox(svg.getAttribute('viewBox') ?? '')
-    if (!viewBox || rect.width <= 0 || rect.height <= 0) return null
-    let x = client.x - rect.left
-    let y = client.y - rect.top
-    const preserveAspectRatio = svg.getAttribute('preserveAspectRatio')?.trim().toLowerCase() ?? ''
-    if (!preserveAspectRatio.startsWith('none')) {
-      const scale = Math.min(rect.width / viewBox.width, rect.height / viewBox.height)
-      const contentWidth = viewBox.width * scale
-      const contentHeight = viewBox.height * scale
-      const offsetX = (rect.width - contentWidth) / 2
-      const offsetY = (rect.height - contentHeight) / 2
-      if (x < offsetX || x > offsetX + contentWidth || y < offsetY || y > offsetY + contentHeight) return null
-      x = (x - offsetX) / scale
-      y = (y - offsetY) / scale
-    } else {
-      x /= rect.width / viewBox.width
-      y /= rect.height / viewBox.height
-    }
-    return { x: viewBox.x + x, y: viewBox.y + y }
-  }
-
-  private getLocalPointFromClient(path: SVGPathElement, client: SvgPoint): SvgPoint | null {
-    const screenTransform = this.readElementTransform(path, true)
-    if (screenTransform) {
-      const inverse = invertTransform(screenTransform)
-      return inverse ? transformPoint(inverse, client) : null
-    }
-
-    const layerSvg = path.ownerSVGElement
-    if (!layerSvg) return null
-    const layerPoint = this.getSvgPointFromClient(layerSvg, client)
-    if (!layerPoint) return null
-    const localTransform = this.readElementTransform(path)
-    if (!localTransform) return layerPoint
-    const inverse = invertTransform(localTransform)
-    return inverse ? transformPoint(inverse, layerPoint) : null
-  }
-
-  private getTaskTargetLayer(layerSvg: SVGSVGElement): SVGGElement {
-    const existing = this.taskTargetLayers.get(layerSvg)
-    if (existing) return existing
-    const layer = layerSvg.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'g')
-    layer.setAttribute('data-svg-map-task-targets', '')
-    layerSvg.append(layer)
-    this.taskTargetLayers.set(layerSvg, layer)
-    return layer
-  }
-
-  private removeTaskTargetLayers(): void {
-    for (const layer of this.taskTargetLayers.values()) layer.remove()
-    this.taskTargetLayers.clear()
-  }
-
-  private upsertTaskInteractionPoint(
-    pointId: string,
-    countryId: string,
-    layerSvg: SVGSVGElement,
-    point: SvgPoint,
-    markerRadius: number,
-    hitRadius: number,
-    origin: TaskInteractionPoint['origin'],
-  ): void {
-    let interactionPoint = this.taskInteractionPoints.get(pointId)
-    if (interactionPoint && interactionPoint.layerSvg !== layerSvg) {
-      this.removeTaskInteractionPoint(pointId)
-      interactionPoint = undefined
-    }
-    if (interactionPoint) {
-      interactionPoint.centerX = point.x
-      interactionPoint.centerY = point.y
-      interactionPoint.markerRadius = markerRadius
-      interactionPoint.hitRadius = hitRadius
-      interactionPoint.hitRadiusPx = TASK_HIT_RADIUS_PX
-      interactionPoint.origin = origin
-      interactionPoint.group.setAttribute('data-svg-map-task-interaction-source', origin)
-      this.positionTaskInteractionPoint(interactionPoint)
-      return
-    }
-
-    const { group, marker, ring, hit } = createTaskInteractionMarkerElements(layerSvg.ownerDocument, countryId, pointId, origin)
-    this.getTaskTargetLayer(layerSvg).append(group)
-    const created: TaskInteractionPoint = {
-      id: pointId,
-      countryId,
-      layerSvg,
-      centerX: point.x,
-      centerY: point.y,
-      screenCenterX: point.x,
-      screenCenterY: point.y,
-      hitRadius,
-      hitRadiusPx: TASK_HIT_RADIUS_PX,
-      markerRadius,
-      group,
-      marker,
-      ring,
-      hit,
-      origin,
-    }
-    this.taskInteractionPoints.set(pointId, created)
-    this.positionTaskInteractionPoint(created)
-  }
-
-  private upsertTaskRepresentativeTarget(
-    countryId: string,
-    layerSvg: SVGSVGElement,
-    point: SvgPoint,
-    markerRadius: number,
-  ): void {
-    let target = this.taskRepresentativeTargets.get(countryId)
-    if (target && target.layerSvg !== layerSvg) {
-      this.removeTaskRepresentativeTarget(countryId)
-      target = undefined
-    }
-    if (target) {
-      target.centerX = point.x
-      target.centerY = point.y
-      target.markerRadius = markerRadius
-      this.positionTaskRepresentativeTarget(target)
-      return
-    }
-
-    const { group, marker, ring } = createTaskRepresentativeMarkerElements(layerSvg.ownerDocument, countryId)
-    this.getTaskTargetLayer(layerSvg).append(group)
-    target = { countryId, layerSvg, centerX: point.x, centerY: point.y, markerRadius, group, marker, ring }
-    this.taskRepresentativeTargets.set(countryId, target)
-    this.positionTaskRepresentativeTarget(target)
-  }
-
-  private positionTaskInteractionPoint(point: TaskInteractionPoint): void {
-    for (const element of [point.marker, point.ring, point.hit]) {
-      element.setAttribute('cx', String(point.centerX))
-      element.setAttribute('cy', String(point.centerY))
-    }
-    point.hit.setAttribute('r', String(point.hitRadius))
-    const screenPoint = this.getScreenPointFromSvg(point.layerSvg, { x: point.centerX, y: point.centerY })
-    if (screenPoint) {
-      point.screenCenterX = screenPoint.x
-      point.screenCenterY = screenPoint.y
-    }
-  }
-
-  private positionTaskRepresentativeTarget(target: TaskRepresentativeTarget): void {
-    for (const element of [target.marker, target.ring]) {
-      element.setAttribute('cx', String(target.centerX))
-      element.setAttribute('cy', String(target.centerY))
-    }
-  }
-
-  private removeTaskInteractionPoint(pointId: string): void {
-    const point = this.taskInteractionPoints.get(pointId)
-    if (!point) return
-    point.group.remove()
-    this.taskInteractionPoints.delete(pointId)
-    const layer = this.taskTargetLayers.get(point.layerSvg)
-    if (layer && layer.children.length === 0) {
-      layer.remove()
-      this.taskTargetLayers.delete(point.layerSvg)
-    }
-  }
-
-  private removeTaskRepresentativeTarget(countryId: string): void {
-    const target = this.taskRepresentativeTargets.get(countryId)
-    if (!target) return
-    target.group.remove()
-    this.taskRepresentativeTargets.delete(countryId)
-    const layer = this.taskTargetLayers.get(target.layerSvg)
-    if (layer && layer.children.length === 0) {
-      layer.remove()
-      this.taskTargetLayers.delete(target.layerSvg)
-    }
-  }
-
-  private renderTaskInteractionPoint(
-    country: InternalCountry,
-    point: TaskInteractionPoint,
-    fill: string | null,
-    hidden: boolean,
-    reducedMotion: boolean,
-  ): void {
-    const sourceFill = country.path.style.getPropertyValue('fill')
-      || country.path.getAttribute('fill')
-      || country.originalFill.value
-      || this.settings.countryFill
-      || '#52525b'
-    const hovered = this.taskPointerIntent?.interactionPointId === point.id
-    const visible = !hidden
-    const markerRadius = hovered ? point.markerRadius * TASK_MARKER_HOVER_SCALE : point.markerRadius
-    const markerFill = fill ?? sourceFill
-    point.marker.setAttribute('r', String(markerRadius))
-    point.marker.setAttribute('fill', markerFill)
-    point.marker.style.setProperty('transition', reducedMotion ? 'none' : `r ${this.settings.transitionMs}ms ease`)
-    point.ring.setAttribute('r', String(hovered ? markerRadius * 1.45 : markerRadius))
-    point.ring.setAttribute('fill', 'none')
-    point.ring.setAttribute('stroke', this.settings.hoverStroke ?? '#d4d4d8')
-    point.ring.setAttribute('stroke-width', this.settings.hoverStrokeWidth ?? '1.5')
-    point.ring.setAttribute('opacity', hovered ? '0.85' : '0')
-    point.ring.style.setProperty('transition', reducedMotion ? 'none' : `r ${this.settings.transitionMs}ms ease, opacity ${this.settings.transitionMs}ms ease`)
-    point.group.setAttribute('visibility', visible ? 'visible' : 'hidden')
-  }
-
-  private renderTaskRepresentativeTarget(
-    country: InternalCountry,
-    target: TaskRepresentativeTarget,
-    fill: string | null,
-    hidden: boolean,
-    reducedMotion: boolean,
-  ): void {
-    const sourceFill = country.path.style.getPropertyValue('fill')
-      || country.path.getAttribute('fill')
-      || country.originalFill.value
-      || this.settings.countryFill
-      || '#52525b'
-    target.marker.setAttribute('r', String(target.markerRadius))
-    target.marker.setAttribute('fill', fill ?? sourceFill)
-    target.marker.style.setProperty('transition', reducedMotion ? 'none' : `r ${this.settings.transitionMs}ms ease`)
-    target.ring.setAttribute('r', String(target.markerRadius))
-    target.ring.setAttribute('fill', 'none')
-    target.ring.setAttribute('stroke', this.settings.hoverStroke ?? '#d4d4d8')
-    target.ring.setAttribute('stroke-width', this.settings.hoverStrokeWidth ?? '1.5')
-    target.ring.setAttribute('opacity', '0')
-    target.group.setAttribute('visibility', !hidden && this.taskTargetId === country.id ? 'visible' : 'hidden')
   }
 
   private setHoveredCountryAndNotify(id: string | null): void {
     this.setHoveredCountry(id)
     this.countryHoverHandler?.(this.hoveredCountryId === id ? id : null)
-  }
-
-  private setTaskPointerIntent(intent: TaskPointerIntent | null): void {
-    const nextIntent = intent && this.isTaskCandidate(intent.countryId) ? intent : null
-    if (this.taskPointerIntent?.countryId === nextIntent?.countryId
-      && this.taskPointerIntent?.interactionPointId === nextIntent?.interactionPointId) return
-    this.taskPointerIntent = nextIntent
-    this.render()
-  }
-
-  private validateTaskLearningAnchor(anchor: SvgMapLearningAnchor): void {
-    const country = this.countries.get(anchor.sourceSvgId)
-    if (!country || !this.svg) return
-    const sourceFingerprint = country.path.getAttribute('d') ?? ''
-    if (sourceFingerprint !== anchor.sourceFingerprint) {
-      throw new Error(`Stale task learning anchor source for ${anchor.sourceSvgId}`)
-    }
-    if (anchor.kind === 'multi-dot-representative' && anchor.point === undefined) {
-      throw new Error(`Representative task learning anchor ${anchor.sourceSvgId} has no point`)
-    }
-    if (anchor.kind === 'single-dot' && anchor.point !== undefined) {
-      throw new Error(`Single-dot task learning anchor ${anchor.sourceSvgId} must resolve from source geometry`)
-    }
-    if (!anchor.point) return
-    const viewBox = this.parseViewBox(
-      country.path.ownerSVGElement?.getAttribute('viewBox') ?? this.svg.getAttribute('viewBox') ?? '',
-    )
-    const { x, y } = anchor.point
-    if (!viewBox || !Number.isFinite(x) || !Number.isFinite(y)
-      || x < viewBox.x || y < viewBox.y
-      || x > viewBox.x + viewBox.width || y > viewBox.y + viewBox.height) {
-      throw new Error(`Task learning anchor ${anchor.sourceSvgId} is outside the map viewBox`)
-    }
-  }
-
-  private validateTaskSyntheticDot(dot: SvgMapSyntheticDot): void {
-    const country = this.countries.get(dot.sourceSvgId)
-    if (!country || !this.svg) return
-    const sourceFingerprint = country.path.getAttribute('d') ?? ''
-    if (getSyntheticDotSourceFingerprint(sourceFingerprint) !== dot.sourceFingerprint) {
-      throw new Error(`Stale task synthetic dot source for ${dot.sourceSvgId}`)
-    }
-    const viewBox = this.parseViewBox(
-      country.path.ownerSVGElement?.getAttribute('viewBox') ?? this.svg.getAttribute('viewBox') ?? '',
-    )
-    const { x, y } = dot.point
-    if (!viewBox || !Number.isFinite(x) || !Number.isFinite(y)
-      || x < viewBox.x || y < viewBox.y
-      || x > viewBox.x + viewBox.width || y > viewBox.y + viewBox.height) {
-      throw new Error(`Task synthetic dot ${dot.sourceSvgId} is outside the map viewBox`)
-    }
-  }
-
-  private updateTaskPointerIntent(event: Event): void {
-    if (!this.taskAnswerSelectionConfigured) return
-    const point = this.getClientPoint(event)
-    this.setTaskPointerIntent(point ? this.resolveTaskPointerIntent(point) : null)
-  }
-
-  private handleTaskPointerClick(event: Event): void {
-    if (!this.taskAnswerSelectionConfigured) return
-    const point = this.getClientPoint(event)
-    const intent = point ? this.resolveTaskPointerIntent(point) : this.taskPointerIntent
-    if (intent && this.isSelectableForTask(intent.countryId)) {
-      this.setTaskPointerIntent(intent)
-      this.countryClickHandler?.(intent.countryId)
-    }
-  }
-
-  /** Resolve both task hover and task click from the same client coordinate. */
-  private resolveTaskPointerIntent(point: SvgPoint): TaskPointerIntent | null {
-    const sourceCountryId = this.resolveSourceCountryAtPoint(point)
-    if (sourceCountryId) {
-      const localPoint = this.findNearestInteractionPoint(point, sourceCountryId, false)
-      if (localPoint) return { countryId: sourceCountryId, interactionPointId: localPoint.id }
-    }
-
-    // Forgiving interaction regions are bounded task intent, so they are
-    // evaluated before an enclosing ordinary source Country once exact
-    // assisted geometry has had its chance to identify its local point.
-    const localPoint = this.findNearestInteractionPoint(point, null, true)
-    if (localPoint) return { countryId: localPoint.countryId, interactionPointId: localPoint.id }
-    if (sourceCountryId) return { countryId: sourceCountryId, interactionPointId: null }
-    return null
-  }
-
-  private findNearestInteractionPoint(
-    point: SvgPoint,
-    countryId: string | null,
-    bounded: boolean,
-  ): TaskInteractionPoint | null {
-    let nearest: { point: TaskInteractionPoint; distance: number } | null = null
-    for (const interactionPoint of this.taskInteractionPoints.values()) {
-      if (!this.isTaskCandidate(interactionPoint.countryId)) continue
-      if (countryId !== null && interactionPoint.countryId !== countryId) continue
-      const distance = Math.hypot(
-        point.x - interactionPoint.screenCenterX,
-        point.y - interactionPoint.screenCenterY,
-      )
-      if (bounded && distance > interactionPoint.hitRadiusPx) continue
-      if (!nearest || distance < nearest.distance
-        || (distance === nearest.distance && interactionPoint.id.localeCompare(nearest.point.id) < 0)) {
-        nearest = { point: interactionPoint, distance }
-      }
-    }
-    return nearest?.point ?? null
-  }
-
-  private resolveSourceCountryAtPoint(point: SvgPoint): string | null {
-    const matches: Array<{ id: string; area: number }> = []
-    for (const country of this.countries.values()) {
-      if (!this.isTaskCandidate(country.id)) continue
-      const localPoint = this.getLocalPointFromClient(country.path, point)
-      const bounds = this.readGeometryBounds(country.path)
-      if (!localPoint) continue
-      if (!bounds) continue
-      const geometry = country.path as SVGGeometryElement & {
-        isPointInFill?: (candidate: { x: number; y: number }) => boolean
-      }
-      let contains = localPoint.x >= bounds.x
-        && localPoint.x <= bounds.x + bounds.width
-        && localPoint.y >= bounds.y
-        && localPoint.y <= bounds.y + bounds.height
-      if (typeof geometry.isPointInFill === 'function') {
-        try {
-          contains = geometry.isPointInFill(localPoint)
-        } catch {
-          // Keep the conservative bounding-box fallback for test DOMs and
-          // browsers that cannot evaluate the path at this moment.
-        }
-      }
-      if (contains) matches.push({ id: country.id, area: bounds.width * bounds.height })
-    }
-    return matches.sort((left, right) => left.area - right.area || left.id.localeCompare(right.id))[0]?.id ?? null
-  }
-
-  private getClientPoint(event: Event): SvgPoint | null {
-    const pointer = event as MouseEvent
-    return Number.isFinite(pointer.clientX) && Number.isFinite(pointer.clientY)
-      ? { x: pointer.clientX, y: pointer.clientY }
-      : null
   }
 
   private renderCountryLabel(country: InternalCountry, override: string | null): void {
@@ -1956,11 +1144,8 @@ export class SvgMapController {
   private resetMap(): void {
     this.resizeObserver?.disconnect()
     this.resizeObserver = null
-    this.detachTaskPointerListeners()
+    this.taskAssistance.reset()
     this.detachHoverListeners()
-    for (const countryId of this.taskRepresentativeTargets.keys()) this.removeTaskRepresentativeTarget(countryId)
-    for (const pointId of this.taskInteractionPoints.keys()) this.removeTaskInteractionPoint(pointId)
-    this.removeTaskTargetLayers()
     this.countries.clear()
     this.highlighted.clear()
     this.countryColors.clear()
@@ -1968,14 +1153,6 @@ export class SvgMapController {
     this.hiddenCountries.clear()
     this.hoverableCountries = null
     this.selectableCountries = null
-    this.taskAnswerSelection.clear()
-    this.taskAnswerSelectionConfigured = false
-    this.taskTargetId = null
-    this.taskPointerIntent = null
-    this.taskAnchorDefinitions.clear()
-    this.taskSyntheticDotDefinitions.clear()
-    this.automaticTaskAnchors.clear()
-    this.automaticTaskInteractionPoints.clear()
     this.named.clear()
     this.countryLabelOverrides.clear()
     this.hoverGroups = []
