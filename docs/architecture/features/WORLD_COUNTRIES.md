@@ -32,9 +32,11 @@ that lets contextual authoring affect subsequent Learning presentation.
   geopolitical classification, and bundled reference data. `Country.capital`
   is the canonical Capital answer.
 - `geography/` owns active-population queries, effective World -> Continent ->
-  Subregion -> Country ordering, order metadata, the semantic order-saving
-  seam used by contextual editors, and the feature-owned refresh signal used
-  by mounted setup views after successful order writes.
+  Subregion -> Country ordering, the shared pure World-wide Subregion-scope
+  normalization/toggling/count/label/effective-membership seam, order metadata,
+  the semantic order-saving seam used by contextual editors, and the
+  feature-owned refresh signal used by mounted setup views after successful
+  order writes.
 - `learning/` owns recall skills, answer matching, evidence adapters,
   raw per-target history, Today introduction and review scheduling,
   proficiency, pure session mechanics, durable Subregion learning facts,
@@ -66,6 +68,7 @@ that lets contextual authoring affect subsequent Learning presentation.
   and opt-in Country click-sequence presentation, shared active map-task,
   task-context, and session-progress presentation, map-surface/dock
   presentation, task-dock status/action styling,
+  the reusable World/Continent Geography selection rail and its common copy,
   the shared typed-answer lifecycle for primary World Countries recall, shared
   reusable answer-kind semantics across active workflows, and draft movement
   without persistence policy. Workflows provide the active answer kind from
@@ -138,13 +141,16 @@ The summary is non-persisted presentation state. It is independent of Drill
 purpose and mode, while activity-specific map progress, Learning Readiness, and
 Recite outcomes remain separate concepts.
 
-Drill Geography is a World-wide selection of stable `SubregionId` values.
+Drill and Recite consume the same feature-local geography seam for a World-wide
+selection of stable `SubregionId` values.
 `WorldCountriesDrill.tsx` keeps `setupContinent` as transient setup navigation:
 opening a Continent, returning to World, and opening a different Continent do
 not change the selected scope. World setup derives each Continent's unchecked,
 mixed, or checked state from the selected Subregions; full-Continent actions
 are bulk operations over those IDs. The World rail and summary are the
-authoritative selection surfaces, while the World map remains navigation.
+authoritative selection surfaces, while the World map remains navigation. The
+same reusable selection rail/copy is used by Recite; Drill persists its
+configured selection while Recite keeps its setup selection transient.
 
 Geography-backed Drill, non-recording Practice, Learn Countries, and Learn
 Capitals may span multiple Continents. Ordered Country membership follows the
@@ -207,13 +213,16 @@ Learn Capitals is runnable before Countries learning and recommends, but does
 not require, Countries first.
 
 Recite is a sibling activity with exactly three ordered modes: Countries,
-Countries + Capitals, and Countries from Capitals. It resolves selected
-Subregions and Countries through `geography/`, snapshots that effective order
-when a run starts, and keeps retries, reveals, and completion outcomes inside
-`recite/`. Recite uses typed free recall and never writes Drill evidence,
-Learning milestones, Learning Readiness, or Maintenance evidence. Its setup
-retains only transient per-Continent Subregion selections, mode, and map
-assistance; incomplete sessions are discarded without persistence.
+Countries + Capitals, and Countries from Capitals. It resolves the same
+World-wide selected Subregions and Countries through `geography/`, snapshots
+that effective order when a run starts, and keeps retries, reveals, and
+completion outcomes inside `recite/`. Recite uses typed free recall and never
+writes Drill evidence, Learning milestones, Learning Readiness, or Maintenance
+evidence. Its setup retains only a transient global Subregion selection, mode,
+and map assistance; it may span multiple Continents and incomplete sessions
+are discarded without persistence. During an active multi-Continent run the
+map and read-only Geography rail follow the current prompt Country's
+Continent, while the rail remains grouped in effective World/Subregion order.
 
 Recite progress remains stored independently by mode. Countries setup derives
 its displayed status from the stronger of the latest Countries and Countries +
@@ -517,6 +526,7 @@ flowchart TD
 - `src/features/world-countries/drill/DrillSetup.tsx`
 - `src/features/world-countries/ui/WorldMasterySummary.tsx`
 - `src/features/world-countries/geography/effectiveOrder.ts`
+- `src/features/world-countries/geography/subregionScope.ts`
 - `src/features/world-countries/today/WorldCountriesToday.tsx`
 - `src/features/world-countries/today/TodayReviewSession.tsx`
 - `src/features/world-countries/today/todayPlan.ts`
@@ -524,6 +534,7 @@ flowchart TD
 - `src/features/world-countries/learning/todayIntroduction.ts`
 - `src/features/world-countries/learning/reviewSchedule.ts`
 - `src/features/world-countries/drill/DrillSetupRails.tsx`
+- `src/features/world-countries/ui/GeographySelectionRail.tsx`
 - `src/features/world-countries/drill/drillProficiencyScope.ts`
 - `src/features/world-countries/drill/drillProgressPresentation.ts`
 - `src/features/world-countries/recite/WorldCountriesRecite.tsx`

@@ -4,19 +4,20 @@ import { useRails } from '@/app/layout/PageLayoutContext'
 import { useSettings } from '@/app/settings/SettingsContext'
 import type { Continent, Country, CountryId } from '@/features/world-countries/data/countries'
 import type { SubregionId } from '@/features/world-countries/data/subregions'
-import { getSubregionDefinition } from '@/features/world-countries/data/subregions'
+import { getSubregionDefinition, type SubregionDefinition } from '@/features/world-countries/data/subregions'
 import { useWorldCountriesPopulation } from '@/features/world-countries/WorldCountriesPopulationContext'
 import { useWorldCountriesGeographyRevision } from '@/features/world-countries/geography/geographyRefresh'
 import { getContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
+import { getAllContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
 import { getAllSubregionMetadata } from '@/features/world-countries/geography/subregionMetadataStore'
-import { getContinentsInEffectiveOrder, getCountriesForSubregion } from '@/features/world-countries/geography/queries'
+import { getContinentsInEffectiveOrder, getSubregionsForContinentInEffectiveOrder } from '@/features/world-countries/geography/queries'
+import { clearSubregionScope, getCountriesForSubregionScopeInEffectiveOrder, getSubregionScopeLabel, normalizeSubregionScope, selectAllSubregions, toggleContinentInScope, toggleSubregionInScope, type WorldCountriesSubregionScopeMetadata } from '@/features/world-countries/geography/subregionScope'
 import { getWorldMetadata } from '@/features/world-countries/geography/worldMetadataStore'
 import { classifyRecallAnswer } from '@/features/world-countries/learning/recallAnswerMatching'
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
 import type { SvgMapLoadState } from '@/features/world-countries/maps/SvgMapView'
 import { getContinentHoverGroupId, getSubregionHoverGroupId } from '@/features/world-countries/maps/geographyMapAdapter'
-import { GeographyBreadcrumbs } from '@/features/world-countries/ui/GeographyBreadcrumbs'
-import { GeographyHierarchyRow } from '@/features/world-countries/ui/GeographyHierarchyRow'
+import { GeographySelectionRail } from '@/features/world-countries/ui/GeographySelectionRail'
 import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
 import { WorldCountriesMapActivitySurface, type WorldCountriesActivityTask } from '@/features/world-countries/ui/WorldCountriesActivity'
 import { getWorldCountriesTaskHighlightFill } from '@/features/world-countries/ui/WorldCountriesAnswerSemantics'
@@ -25,14 +26,6 @@ import {
   WorldCountriesTypedAnswer,
   type WorldCountriesTypedAnswerEvaluation,
 } from '@/features/world-countries/ui/WorldCountriesTypedAnswer'
-import {
-  createWorldCountriesReciteScope,
-  getCountriesForReciteSelectionInEffectiveOrder,
-  getReciteSubregionsInEffectiveOrder,
-  isEntireContinentReciteSelection,
-  toggleEntireContinentReciteSelection,
-  toggleReciteSubregionSelection,
-} from './reciteScope'
 import {
   continueReciteSession,
   createReciteSession,
@@ -64,8 +57,8 @@ type RecitePhase = 'setup' | 'session' | 'complete'
 type ReciteMapAssistance = 'visible' | 'reveal'
 
 interface ActiveReciteRun {
-  continent: Continent
   subregionIds: readonly SubregionId[]
+  scopeLabel: string
   mode: ReciteMode
   assistance: ReciteMapAssistance
   population: readonly Country[]
@@ -98,7 +91,7 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
   const geographyRevision = useWorldCountriesGeographyRevision()
   const [phase, setPhase] = useState<RecitePhase>('setup')
   const [selectedContinent, setSelectedContinent] = useState<Continent | null>(null)
-  const [selectedSubregionsByContinent, setSelectedSubregionsByContinent] = useState<Partial<Record<Continent, readonly SubregionId[]>>>({})
+  const [selectedSubregionIds, setSelectedSubregionIds] = useState<readonly SubregionId[]>([])
   const [mode, setMode] = useState<ReciteMode>('countries')
   const [assistance, setAssistance] = useState<ReciteMapAssistance>('visible')
   const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null)
@@ -111,46 +104,46 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
     () => getContinentsInEffectiveOrder(activeCountries, getWorldMetadata()),
     [activeCountries, geographyRevision],
   )
-  const selectedSubregionIds = selectedContinent
-    ? selectedSubregionsByContinent[selectedContinent] ?? []
-    : []
-  const continentMetadata = selectedContinent ? getContinentMetadata(selectedContinent) : null
-  const subregionMetadata = useMemo(
-    () => getAllSubregionMetadata(),
-    [activeCountries, geographyRevision, selectedContinent],
+  const selectionMetadata = useMemo<WorldCountriesSubregionScopeMetadata>(() => ({
+    world: getWorldMetadata(),
+    continents: getAllContinentMetadata(),
+    subregions: getAllSubregionMetadata(),
+  }), [activeCountries, geographyRevision])
+  const normalizedSelection = useMemo(
+    () => normalizeSubregionScope({ subregionIds: selectedSubregionIds }, activeCountries, selectionMetadata),
+    [activeCountries, selectedSubregionIds, selectionMetadata],
+  )
+  const selectedScopeSubregionIds = normalizedSelection.subregionIds
+  const continentMetadata = useMemo(
+    () => selectedContinent ? getContinentMetadata(selectedContinent) : null,
+    [geographyRevision, selectedContinent],
   )
   const subregions = selectedContinent
-    ? getReciteSubregionsInEffectiveOrder(selectedContinent, activeCountries, continentMetadata)
+    ? getSubregionsForContinentInEffectiveOrder(selectedContinent, activeCountries, continentMetadata)
     : []
   const setupScopeCountries = useMemo(
-    () => selectedContinent
-      ? getCountriesForReciteSelectionInEffectiveOrder(selectedContinent, selectedSubregionIds, activeCountries, continentMetadata, subregionMetadata)
-      : [],
-    [activeCountries, continentMetadata, selectedContinent, selectedSubregionIds, subregionMetadata],
-  )
-  const setupScope = useMemo(
-    () => createWorldCountriesReciteScope(setupScopeCountries),
-    [setupScopeCountries],
+    () => getCountriesForSubregionScopeInEffectiveOrder(normalizedSelection, activeCountries, selectionMetadata),
+    [activeCountries, normalizedSelection, selectionMetadata],
   )
   const mapKey = selectedContinent ?? 'world'
   const mapReady = readyMapKey === mapKey && mapState === 'ready'
   const setupColors = useMemo(
     () => createReciteSetupCountryColors(
       selectedContinent ? activeCountries.filter(country => country.continent === selectedContinent) : activeCountries,
-      selectedContinent ? setupScope.countryIds : undefined,
+      selectedContinent ? setupScopeCountries.map(country => country.id) : undefined,
       mode,
       progress,
     ),
-    [activeCountries, mode, progress, selectedContinent, setupScope.countryIds],
+    [activeCountries, mode, progress, selectedContinent, setupScopeCountries],
   )
   const setupDescriptions = useMemo(
     () => createReciteSetupCountryDescriptions(
       selectedContinent ? activeCountries.filter(country => country.continent === selectedContinent) : activeCountries,
-      selectedContinent ? setupScope.countryIds : undefined,
+      selectedContinent ? setupScopeCountries.map(country => country.id) : undefined,
       mode,
       progress,
     ),
-    [activeCountries, mode, progress, selectedContinent, setupScope.countryIds],
+    [activeCountries, mode, progress, selectedContinent, setupScopeCountries],
   )
 
   const handleMapStateChange = (nextState: SvgMapLoadState) => {
@@ -171,29 +164,36 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
 
   const toggleSubregion = (subregionId: SubregionId) => {
     if (!selectedContinent) return
-    const next = toggleReciteSubregionSelection(selectedContinent, selectedSubregionIds, subregionId, activeCountries, continentMetadata)
-    setSelectedSubregionsByContinent(current => ({ ...current, [selectedContinent]: next }))
+    setSelectedSubregionIds(toggleSubregionInScope(normalizedSelection, subregionId, activeCountries, selectionMetadata).subregionIds)
   }
 
   const toggleEntireContinent = () => {
     if (!selectedContinent) return
-    const next = toggleEntireContinentReciteSelection(selectedContinent, selectedSubregionIds, activeCountries, continentMetadata)
-    setSelectedSubregionsByContinent(current => ({ ...current, [selectedContinent]: next }))
+    setSelectedSubregionIds(toggleContinentInScope(normalizedSelection, selectedContinent, activeCountries, selectionMetadata).subregionIds)
+  }
+
+  const toggleWorldContinent = (continent: Continent) => {
+    setSelectedSubregionIds(toggleContinentInScope(normalizedSelection, continent, activeCountries, selectionMetadata).subregionIds)
+  }
+
+  const selectAllWorld = () => {
+    setSelectedSubregionIds(selectAllSubregions(activeCountries, selectionMetadata).subregionIds)
+  }
+
+  const clearWorld = () => {
+    setSelectedSubregionIds(clearSubregionScope().subregionIds)
   }
 
   const startRecite = () => {
-    if (!selectedContinent || setupScopeCountries.length === 0 || !mapReady) return
+    if (setupScopeCountries.length === 0 || !mapReady) return
     const sessionCountries = setupScopeCountries.map(country => ({
       id: country.id,
       country: country.country,
       capital: country.capital,
     }))
-    const orderedSubregionIds = subregions
-      .map(subregion => subregion.id)
-      .filter(subregionId => selectedSubregionIds.includes(subregionId))
     setRun({
-      continent: selectedContinent,
-      subregionIds: orderedSubregionIds,
+      subregionIds: selectedScopeSubregionIds,
+      scopeLabel: getSubregionScopeLabel(normalizedSelection, activeCountries, selectionMetadata),
       mode,
       assistance,
       population: [...activeCountries],
@@ -243,20 +243,23 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
     setPhase('session')
   }
 
+  const currentPrompt = run && phase === 'session' ? getCurrentRecitePrompt(run.session) : null
+  const currentCountry = currentPrompt ? run?.scopeCountries.find(country => country.id === currentPrompt.countryId) : undefined
+  const runContinents = run ? [...new Set(run.scopeCountries.map(country => country.continent))] : []
+  const activeContinent = currentCountry?.continent ?? (phase === 'complete' && runContinents.length === 1 ? runContinents[0] : undefined)
   const activeCountryColors = run
     ? createReciteActiveCountryColors(
-      run.population.filter(country => country.continent === run.continent),
+      activeContinent ? run.population.filter(country => country.continent === activeContinent) : run.population,
       run.session.countries.map(country => country.id),
       new Map(run.session.countries.map((country, index) => [country.id, getReciteCountryOutcomes(run.session)[index] ?? null] as const)),
     )
     : new Map<CountryId, string>()
   const hiddenCountryIds = run && run.assistance === 'reveal' && phase === 'session'
     ? run.session.countries
+      .filter(country => !activeContinent || run.scopeCountries.find(entry => entry.id === country.id)?.continent === activeContinent)
       .filter(country => !getReciteResolvedCountryIds(run.session).includes(country.id))
       .map(country => country.id)
     : []
-  const currentPrompt = run && phase === 'session' ? getCurrentRecitePrompt(run.session) : null
-  const currentCountry = currentPrompt ? run?.scopeCountries.find(country => country.id === currentPrompt.countryId) : undefined
   const currentAnswerKind = currentPrompt
     ? currentPrompt.kind === 'capital' ? 'capital' : 'country'
     : undefined
@@ -268,7 +271,7 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
     <GeographyOverviewMap
       level={selectedContinent ? 'continent' : 'world'}
       continent={selectedContinent ?? undefined}
-      selectedSubregionIds={selectedContinent ? selectedSubregionIds : undefined}
+      selectedSubregionIds={selectedContinent ? selectedScopeSubregionIds : undefined}
       countryColorsById={setupColors}
       countryAccessibleDescriptionsById={setupDescriptions}
       hoveredGroupId={hoveredGroupId}
@@ -279,16 +282,16 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
     />
   ) : run ? (
     <GeographyOverviewMap
-      level="continent"
-      continent={run.continent}
-      selectedSubregionIds={run.subregionIds}
+      level={activeContinent ? 'continent' : 'world'}
+      continent={activeContinent}
+      selectedSubregionIds={activeContinent ? run.subregionIds : undefined}
       countryColorsById={activeCountryColors}
       countryPopulation={run.population}
       highlightedCountryIds={highlightedCountryIds}
       highlightFill={currentAnswerKind ? getWorldCountriesTaskHighlightFill(currentAnswerKind) : undefined}
       hiddenCountryIds={hiddenCountryIds}
       interactive={false}
-      ariaLabel={`${run.continent} map for active Recite session`}
+      ariaLabel={`${activeContinent ?? 'World'} map for active Recite session`}
     />
   ) : null
 
@@ -296,19 +299,25 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
     phase === 'setup'
       ? {
         left: (
-          <ReciteSetupGeographyRail
-            worldOrder={worldOrder}
-            selectedContinent={selectedContinent}
-            subregions={subregions}
-            selectedSubregionIds={selectedSubregionIds}
-            activeCountries={activeCountries}
-            hoveredGroupId={hoveredGroupId}
-            onHoverGroup={setHoveredGroupId}
-            onWorld={goToWorld}
-            onSelectContinent={selectContinent}
-            onToggleSubregion={toggleSubregion}
-            onToggleEntireContinent={toggleEntireContinent}
-          />
+            <GeographySelectionRail
+              level={selectedContinent ? 'continent' : 'world'}
+              setupContinent={selectedContinent}
+              selection={normalizedSelection}
+              selectionMetadata={selectionMetadata}
+              worldOrder={worldOrder}
+              subregionOrder={subregions}
+              entries={activeCountries}
+              hoveredGroupId={hoveredGroupId}
+              onHoverGroup={setHoveredGroupId}
+              onWorld={goToWorld}
+              onSelectContinent={selectContinent}
+              onToggleContinent={toggleWorldContinent}
+              onSelectAllWorld={selectAllWorld}
+              onClearWorld={clearWorld}
+              onToggleSubregion={toggleSubregion}
+              onSelectEntireContinent={toggleEntireContinent}
+              headingId="world-countries-recite-geography-heading"
+            />
         ),
         right: (
           <ReciteSetupControls
@@ -316,10 +325,9 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
             assistance={assistance}
             onModeChange={setMode}
             onAssistanceChange={setAssistance}
-            canStart={Boolean(selectedContinent && setupScopeCountries.length > 0 && mapReady)}
+            canStart={Boolean(setupScopeCountries.length > 0 && mapReady)}
             mapState={mapState}
-            selectedContinent={selectedContinent}
-            selectedCount={selectedSubregionIds.length}
+            selectedCount={selectedScopeSubregionIds.length}
             onStart={startRecite}
             progress={progress}
           />
@@ -335,7 +343,7 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
       },
     [
       activeCountries, assistance, hoveredGroupId, mapReady, mapState, mode, phase, progress,
-      run, selectedContinent, selectedSubregionIds, setupScopeCountries.length, subregions, worldOrder,
+      normalizedSelection, run, selectedContinent, selectedScopeSubregionIds, setupScopeCountries.length, subregions, worldOrder,
     ],
   )
 
@@ -347,11 +355,11 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
             <div className="px-1 text-center">
               <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World Countries · Recite</p>
               <h1 id="world-countries-recite-heading" className="mt-1 text-2xl font-black text-zinc-100">Ordered recall</h1>
-              <p className="mt-1 text-sm text-zinc-500">Choose a Continent and Subregion scope, then recall it in authored order.</p>
+              <p className="mt-1 text-sm text-zinc-500">Choose a World-wide Subregion scope, then recall it in authored order.</p>
             </div>
           )}
           map={map}
-          mapMeta={<span>{selectedContinent ? `${setupScope.totalCountries} Countries in current scope` : 'Choose a Continent to begin'}</span>}
+          mapMeta={<span>{setupScopeCountries.length > 0 ? `${setupScopeCountries.length} Countries in current scope` : 'Select a Subregion to begin'}</span>}
         />
       </section>
     )
@@ -368,7 +376,7 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
             <div className="px-1 text-center">
               <p className="text-xs font-semibold uppercase tracking-wider text-green-400">World Countries · Recite</p>
               <h1 id="world-countries-recite-complete-heading" className="mt-1 text-2xl font-black text-zinc-100">Recite complete</h1>
-              <p className="mt-1 text-sm text-zinc-500">{run.continent} · {run.session.countries.length} Countries</p>
+              <p className="mt-1 text-sm text-zinc-500">{run.scopeLabel} · {run.session.countries.length} Countries</p>
             </div>
           )}
           map={map}
@@ -395,14 +403,14 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
       direction: 'Capital → Country',
       cue: currentCountry.capital,
       answerKind: 'country',
-      sessionContext: <><span className="text-zinc-300">{run.continent}</span> · {modeLabel(run.mode)}</>,
+      sessionContext: <><span className="text-zinc-300">{currentCountry.continent}</span> · {modeLabel(run.mode)}</>,
       progress: { label: 'Country', current: currentPrompt.countryIndex + 1, total: run.session.countries.length },
     }
     : {
       direction: currentPrompt.kind === 'capital' ? 'Country → Capital' : 'Ordered Country recall',
       cue: currentPrompt.kind === 'capital' ? `Capital of ${currentCountry.country}` : 'Next country',
       answerKind: currentAnswerKind,
-      sessionContext: <><span className="text-zinc-300">{run.continent}</span> · {modeLabel(run.mode)}</>,
+      sessionContext: <><span className="text-zinc-300">{currentCountry.continent}</span> · {modeLabel(run.mode)}</>,
       progress: { label: 'Country', current: currentPrompt.countryIndex + 1, total: run.session.countries.length },
     }
   return (
@@ -428,52 +436,13 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
   )
 }
 
-function ReciteSetupGeographyRail({
-  worldOrder, selectedContinent, subregions, selectedSubregionIds, activeCountries, hoveredGroupId,
-  onHoverGroup, onWorld, onSelectContinent, onToggleSubregion, onToggleEntireContinent,
-}: {
-  worldOrder: readonly Continent[]
-  selectedContinent: Continent | null
-  subregions: readonly { id: SubregionId; label: string }[]
-  selectedSubregionIds: readonly SubregionId[]
-  activeCountries: readonly Country[]
-  hoveredGroupId: string | null
-  onHoverGroup: (groupId: string | null) => void
-  onWorld: () => void
-  onSelectContinent: (continent: Continent) => void
-  onToggleSubregion: (subregionId: SubregionId) => void
-  onToggleEntireContinent: () => void
-}) {
-  if (!selectedContinent) {
-    return (
-      <WorldCountriesPanel className="space-y-4" aria-labelledby="world-countries-recite-geography-heading">
-        <div><p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World</p><h2 id="world-countries-recite-geography-heading" className="mt-1 text-lg font-bold text-zinc-100">Geography</h2></div>
-        <p className="text-sm leading-relaxed text-zinc-400">Choose a Continent to enter its Recite setup.</p>
-        <nav aria-label="Recite Continents"><ol className="space-y-1.5">{worldOrder.map((continent, index) => <GeographyHierarchyRow key={continent} label={continent} sequenceNumber={index + 1} secondary={`${activeCountries.filter(country => country.continent === continent).length} Countries`} groupId={getContinentHoverGroupId(continent)} hoveredGroupId={hoveredGroupId} onClick={() => onSelectContinent(continent)} onHoverGroup={onHoverGroup} />)}</ol></nav>
-      </WorldCountriesPanel>
-    )
-  }
-
-  const entireContinent = isEntireContinentReciteSelection(selectedContinent, selectedSubregionIds, activeCountries, getContinentMetadata(selectedContinent))
-  return (
-    <WorldCountriesPanel className="space-y-4" aria-labelledby="world-countries-recite-geography-heading">
-      <GeographyBreadcrumbs items={[{ label: 'World', onSelect: onWorld }, { label: selectedContinent, current: true }]} />
-      <div><p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">{selectedContinent}</p><h2 id="world-countries-recite-geography-heading" className="mt-1 text-lg font-bold text-zinc-100">Geography</h2><p className="mt-1 text-sm text-zinc-400">Select one or more Subregions in the rail or map.</p></div>
-      <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3"><div className="flex items-baseline justify-between gap-3 text-sm"><span className="text-zinc-500">Scope</span><span className="font-semibold text-zinc-200">{selectedSubregionIds.length} {selectedSubregionIds.length === 1 ? 'Subregion' : 'Subregions'} selected</span></div><button type="button" aria-pressed={entireContinent} onClick={onToggleEntireContinent} className={`mt-3 w-full rounded-lg border px-3 py-2.5 text-left text-sm ${entireContinent ? 'border-cyan-500 bg-cyan-500/15 text-cyan-100' : 'border-zinc-700 bg-zinc-800 text-zinc-300 hover:border-cyan-600'}`}><span className="block font-semibold">Entire Continent</span><span className="mt-1 block text-xs text-zinc-500">All currently active Subregions</span></button></div>
-      <nav aria-label={`${selectedContinent} Recite Subregions`}><ol className="space-y-1.5">{subregions.map((subregion, index) => <GeographyHierarchyRow key={subregion.id} label={subregion.label} sequenceNumber={index + 1} secondary={`${getCountriesForSubregion(selectedContinent, subregion.id, activeCountries).length} Countries`} groupId={getSubregionHoverGroupId(subregion.label)} hoveredGroupId={hoveredGroupId} onClick={() => onToggleSubregion(subregion.id)} onHoverGroup={onHoverGroup} selected={selectedSubregionIds.includes(subregion.id)} />)}</ol></nav>
-      {selectedSubregionIds.length === 0 && <p className="text-sm text-amber-300" role="alert">Select at least one Subregion to start.</p>}
-    </WorldCountriesPanel>
-  )
-}
-
-function ReciteSetupControls({ mode, assistance, onModeChange, onAssistanceChange, canStart, mapState, selectedContinent, selectedCount, onStart, progress }: {
+function ReciteSetupControls({ mode, assistance, onModeChange, onAssistanceChange, canStart, mapState, selectedCount, onStart, progress }: {
   mode: ReciteMode
   assistance: ReciteMapAssistance
   onModeChange: (mode: ReciteMode) => void
   onAssistanceChange: (assistance: ReciteMapAssistance) => void
   canStart: boolean
   mapState: SvgMapLoadState
-  selectedContinent: Continent | null
   selectedCount: number
   onStart: () => void
   progress: WorldCountriesReciteProgress
@@ -486,8 +455,7 @@ function ReciteSetupControls({ mode, assistance, onModeChange, onAssistanceChang
       <fieldset className="space-y-2"><legend className="sr-only">Recite mode</legend>{RECITE_MODE_DEFINITIONS.map(candidate => <label key={candidate.id} className={`flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2.5 text-sm ${mode === candidate.id ? 'border-cyan-500 bg-cyan-500/10 text-cyan-100' : 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-cyan-600'}`}><input type="radio" name={modeGroup} value={candidate.id} checked={mode === candidate.id} onChange={() => onModeChange(candidate.id)} className="mt-1 accent-cyan-500" /><span><span className="block font-semibold">{candidate.label}</span><span className="mt-0.5 block text-xs text-zinc-500">{candidate.description}</span></span></label>)}</fieldset>
       <fieldset className="space-y-2 border-t border-zinc-800 pt-4"><legend className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Map assistance</legend>{RECITE_ASSISTANCE_DEFINITIONS.map(candidate => <label key={candidate.id} className={`flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2.5 text-sm ${assistance === candidate.id ? 'border-cyan-500 bg-cyan-500/10 text-cyan-100' : 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-cyan-600'}`}><input type="radio" name={assistanceGroup} value={candidate.id} checked={assistance === candidate.id} onChange={() => onAssistanceChange(candidate.id)} className="mt-1 accent-cyan-500" /><span><span className="block font-semibold">{candidate.label}</span><span className="mt-0.5 block text-xs text-zinc-500">{candidate.description}</span></span></label>)}</fieldset>
       <ReciteStatusLegend mode={mode} progress={progress} />
-      {!selectedContinent && <p className="text-sm text-amber-300" role="alert">Choose a Continent first.</p>}
-      {selectedContinent && selectedCount === 0 && <p className="text-sm text-amber-300" role="alert">Select at least one Subregion.</p>}
+      {selectedCount === 0 && <p className="text-sm text-amber-300" role="alert">Select at least one Subregion.</p>}
       {mapState === 'loading' && <p className="text-xs text-zinc-500" role="status">Loading map…</p>}
       {mapState === 'error' && <p className="text-sm text-red-300" role="alert">Recite will be available when the map loads successfully.</p>}
       <button type="button" disabled={!canStart} onClick={onStart} className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40">{canStart ? 'Start Recite' : 'Choose a ready Country scope'}</button>
@@ -501,8 +469,23 @@ function ReciteStatusLegend({ mode, progress }: { mode: ReciteMode; progress: Wo
 }
 
 function ReciteSessionGeographyRail({ run, onExit }: { run: ActiveReciteRun; onExit: () => void }) {
-  const subregions = run.subregionIds.map(getSubregionDefinition)
-  return <WorldCountriesPanel className="space-y-4" aria-labelledby="world-countries-recite-session-geography-heading"><GeographyBreadcrumbs items={[{ label: 'World' }, { label: run.continent, current: true }]} /><div><p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Selected geography</p><h2 id="world-countries-recite-session-geography-heading" className="mt-1 text-lg font-bold text-zinc-100">Recite context</h2></div><div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3"><p className="text-xs uppercase tracking-wider text-zinc-500">Subregions</p><ul className="mt-2 space-y-1 text-sm text-zinc-300">{subregions.filter(subregion => run.subregionIds.includes(subregion.id)).map(subregion => <li key={subregion.id}>{subregion.label}</li>)}</ul><p className="mt-2 text-xs text-zinc-500">{run.session.countries.length} Countries in this ordered snapshot</p></div><p className="text-xs leading-relaxed text-zinc-500">The map is a geographic scaffold. Answer through the Recite prompt.</p><button type="button" onClick={onExit} className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2.5 text-sm font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100">Back to setup</button></WorldCountriesPanel>
+  const currentPrompt = getCurrentRecitePrompt(run.session)
+  const currentContinent = currentPrompt
+    ? run.scopeCountries.find(country => country.id === currentPrompt.countryId)?.continent
+    : undefined
+  const groups = groupReciteSubregionsByContinent(run)
+  return <WorldCountriesPanel className="space-y-4" aria-labelledby="world-countries-recite-session-geography-heading"><div><p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Selected geography</p><h2 id="world-countries-recite-session-geography-heading" className="mt-1 text-lg font-bold text-zinc-100">Recite context</h2></div><div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3"><p className="text-xs uppercase tracking-wider text-zinc-500">{run.scopeLabel} scope</p><ul className="mt-2 space-y-3 text-sm text-zinc-300">{groups.map(group => <li key={group.continent} aria-current={group.continent === currentContinent ? 'location' : undefined} data-current-continent={group.continent === currentContinent ? 'true' : undefined}><p className={`font-semibold ${group.continent === currentContinent ? 'text-cyan-200' : 'text-zinc-200'}`}>{group.continent}</p><ul className="mt-1 space-y-1 pl-3 text-zinc-400">{group.subregions.map(subregion => <li key={subregion.id}>{subregion.label}</li>)}</ul></li>)}</ul><p className="mt-3 text-xs text-zinc-500">{run.session.countries.length} Countries in this ordered snapshot</p></div><p className="text-xs leading-relaxed text-zinc-500">The map is a geographic scaffold. Answer through the Recite prompt.</p><button type="button" onClick={onExit} className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2.5 text-sm font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100">Back to setup</button></WorldCountriesPanel>
+}
+
+function groupReciteSubregionsByContinent(run: ActiveReciteRun): readonly { continent: Continent; subregions: readonly SubregionDefinition[] }[] {
+  const groups: Array<{ continent: Continent; subregions: SubregionDefinition[] }> = []
+  for (const subregionId of run.subregionIds) {
+    const subregion = getSubregionDefinition(subregionId)
+    const group = groups.find(candidate => candidate.continent === subregion.continent)
+    if (group) group.subregions.push(subregion)
+    else groups.push({ continent: subregion.continent, subregions: [subregion] })
+  }
+  return groups
 }
 
 function ReciteSessionControls({ run, phase, onExit }: { run: ActiveReciteRun; phase: RecitePhase; onExit: () => void }) {

@@ -280,6 +280,8 @@ describe('DrillSetup activity boundary', () => {
     act(() => checkboxes[1].click())
     expect(onProficiencySelectionChange).toHaveBeenLastCalledWith(['weak', 'developing'])
 
+    expect(mount.querySelector('[aria-labelledby="world-countries-drill-scope-heading"] [role="alert"]')).toBeNull()
+
     const subregion = [...mount.querySelectorAll('button')].find(button => button.textContent?.includes('Northern Europe'))
     act(() => subregion?.click())
     expect(onProficiencySelectionChange).toHaveBeenLastCalledWith([])

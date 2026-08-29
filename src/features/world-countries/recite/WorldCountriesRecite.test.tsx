@@ -69,6 +69,25 @@ function buttonContaining(mount: HTMLElement, text: string): HTMLButtonElement {
   return button
 }
 
+function openContinent(mount: HTMLElement, continent: string): void {
+  const button = mount.querySelector<HTMLButtonElement>(`[aria-label="Open ${continent} setup"]`)
+  if (!button) throw new Error(`Missing navigation button for ${continent}`)
+  button.click()
+}
+
+function goToWorld(mount: HTMLElement): void {
+  const button = mount.querySelector<HTMLButtonElement>('[aria-label="World Countries hierarchy"] button')
+  if (!button) throw new Error('Missing World breadcrumb')
+  button.click()
+}
+
+function activeMapProps(): Record<string, unknown> {
+  const activeMaps = mapRender.mock.calls
+    .map(([props]) => props as Record<string, unknown>)
+    .filter(props => props.interactive === false)
+  return activeMaps[activeMaps.length - 1] ?? {}
+}
+
 function typeInto(input: HTMLInputElement, value: string): void {
   const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
   setter?.call(input, value)
@@ -85,15 +104,13 @@ describe('World Countries Recite workflow', () => {
   it('opens at World setup, enters a Continent, and gates Start on scope and map readiness', async () => {
     const mount = await renderRecite()
 
-    expect(mount.textContent).toContain('Choose a Continent to enter its Recite setup.')
     expect(mount.textContent).toContain('Countries + Capitals')
     expect(mount.textContent).toContain('Countries from Capitals')
     expect(mount.textContent).toContain('Countries setup may use a stronger Countries + Capitals result.')
     expect(mount.textContent).toContain('Visible')
     expect(mount.querySelector<HTMLButtonElement>('button:disabled')?.textContent).toContain('Choose a ready Country scope')
 
-    await act(async () => buttonContaining(mount, 'Europe').click())
-    expect(mount.textContent).toContain('Select one or more Subregions')
+    await act(async () => openContinent(mount, 'Europe'))
     expect(mount.querySelector<HTMLButtonElement>('button:disabled')?.textContent).toContain('Choose a ready Country scope')
 
     await act(async () => buttonContaining(mount, 'Northern Europe').click())
@@ -103,7 +120,7 @@ describe('World Countries Recite workflow', () => {
   it('keeps a wrong typed answer active, then completes and persists only Recite progress', async () => {
     vi.useFakeTimers()
     const mount = await renderRecite()
-    await act(async () => buttonContaining(mount, 'Europe').click())
+    await act(async () => openContinent(mount, 'Europe'))
     await act(async () => buttonContaining(mount, 'Northern Europe').click())
     await act(async () => buttonContaining(mount, 'Start Recite').click())
 
@@ -158,7 +175,7 @@ describe('World Countries Recite workflow', () => {
     const setupMap = mapRender.mock.calls[mapRender.mock.calls.length - 1]?.[0] as Record<string, unknown>
     expect(setupMap.highlightFill).toBeUndefined()
     await act(async () => selectRadio(mount, 1))
-    await act(async () => buttonContaining(mount, 'Europe').click())
+    await act(async () => openContinent(mount, 'Europe'))
     await act(async () => buttonContaining(mount, 'Northern Europe').click())
     await act(async () => buttonContaining(mount, 'Start Recite').click())
 
@@ -203,7 +220,7 @@ describe('World Countries Recite workflow', () => {
   it('wires Reveal as you go to hidden Country IDs and reveals the Country after Skip', async () => {
     const mount = await renderRecite()
     await act(async () => selectRadio(mount, 4))
-    await act(async () => buttonContaining(mount, 'Europe').click())
+    await act(async () => openContinent(mount, 'Europe'))
     await act(async () => buttonContaining(mount, 'Northern Europe').click())
     await act(async () => buttonContaining(mount, 'Start Recite').click())
 
@@ -225,7 +242,7 @@ describe('World Countries Recite workflow', () => {
   it('keeps Countries from Capitals on the Country-answer color', async () => {
     const mount = await renderRecite()
     await act(async () => selectRadio(mount, 2))
-    await act(async () => buttonContaining(mount, 'Europe').click())
+    await act(async () => openContinent(mount, 'Europe'))
     await act(async () => buttonContaining(mount, 'Northern Europe').click())
     await act(async () => buttonContaining(mount, 'Start Recite').click())
 
@@ -239,7 +256,7 @@ describe('World Countries Recite workflow', () => {
     const entries = countries.filter(country => country.id === 'NO' || country.id === 'FR')
     localStorage.setItem(CONTINENT_METADATA_STORAGE_KEY, JSON.stringify([{ continentId: 'europe', subregionOrder: ['northern-europe', 'western-europe'], updatedAt: 9 }]))
     const mount = await renderRecite(entries)
-    await act(async () => buttonContaining(mount, 'Europe').click())
+    await act(async () => openContinent(mount, 'Europe'))
     await act(async () => buttonContaining(mount, 'Northern Europe').click())
     await act(async () => buttonContaining(mount, 'Western Europe').click())
     await act(async () => buttonContaining(mount, 'Start Recite').click())
@@ -255,5 +272,139 @@ describe('World Countries Recite workflow', () => {
 
     const afterImport = rail().textContent ?? ''
     expect(afterImport.indexOf('Northern Europe')).toBeLessThan(afterImport.indexOf('Western Europe'))
+  })
+
+  it('retains Europe while selecting Asia and runs one continuous World-ordered session', async () => {
+    vi.useFakeTimers()
+    const entries = countries.filter(country => ['NO', 'IN', 'JP'].includes(country.id))
+    const mount = await renderRecite(entries)
+
+    await act(async () => mount.querySelector<HTMLButtonElement>('[aria-label="Select Europe"]')?.click())
+    await act(async () => openContinent(mount, 'Asia'))
+    await act(async () => buttonContaining(mount, 'South Asia').click())
+    await act(async () => goToWorld(mount))
+
+    expect(mount.querySelector<HTMLButtonElement>('[aria-label="Select Europe"]')?.getAttribute('aria-checked')).toBe('true')
+    expect(mount.querySelector<HTMLButtonElement>('[aria-label="Select Asia"]')?.getAttribute('aria-checked')).toBe('mixed')
+    expect(mount.textContent).toContain('2 Continents · 2 Subregions · 2 Countries selected')
+
+    await act(async () => buttonContaining(mount, 'Start Recite').click())
+    const activeRail = () => mount.querySelector('[aria-labelledby="world-countries-recite-session-geography-heading"]') as HTMLElement
+    expect(activeMapProps()).toMatchObject({ continent: 'Europe', highlightedCountryIds: ['NO'] })
+    expect(activeRail().textContent).toContain('Europe')
+    expect(activeRail().textContent).toContain('Northern Europe')
+    expect(activeRail().textContent).toContain('Asia')
+    expect(activeRail().textContent).toContain('South Asia')
+    expect(activeRail().querySelectorAll('[data-current-continent="true"]')).toHaveLength(1)
+    expect(activeRail().querySelector('[data-current-continent="true"]')?.textContent).toContain('Europe')
+
+    const norwayInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the country name"]')!
+    await act(async () => {
+      typeInto(norwayInput, 'Norway')
+      norwayInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+      await Promise.resolve()
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(500)
+      await Promise.resolve()
+    })
+    expect(activeMapProps()).toMatchObject({ continent: 'Asia', highlightedCountryIds: ['IN'] })
+    expect(mount.querySelector('[data-current-continent="true"]')?.textContent).toContain('Asia')
+
+    const indiaInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the country name"]')!
+    await act(async () => {
+      typeInto(indiaInput, 'India')
+      indiaInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+      await Promise.resolve()
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(500)
+      await Promise.resolve()
+    })
+    expect(mount.textContent).toContain('Recite complete')
+    expect(mount.textContent).toContain('World · 2 Countries')
+    expect(JSON.parse(localStorage.getItem(RECITE_PROGRESS_STORAGE_KEY) ?? '{}')).toMatchObject({
+      outcomes: { countries: { NO: { outcome: 'recalled' }, IN: { outcome: 'recalled' } } },
+    })
+    await act(async () => buttonContaining(mount, 'Recite again').click())
+    expect(activeMapProps()).toMatchObject({ continent: 'Europe', highlightedCountryIds: ['NO'] })
+  })
+
+  it('supports World select-all, clear, and semantic none/all Continent state', async () => {
+    const entries = countries.filter(country => ['NO', 'IN'].includes(country.id))
+    const mount = await renderRecite(entries)
+
+    expect(mount.querySelector<HTMLButtonElement>('[aria-label="Select Europe"]')?.getAttribute('aria-checked')).toBe('false')
+    await act(async () => buttonContaining(mount, 'Select all World').click())
+    expect(mount.querySelector<HTMLButtonElement>('[aria-label="Select Europe"]')?.getAttribute('aria-checked')).toBe('true')
+    expect(mount.querySelector<HTMLButtonElement>('[aria-label="Select Asia"]')?.getAttribute('aria-checked')).toBe('true')
+    expect(mount.textContent).toContain('2 Continents')
+
+    await act(async () => buttonContaining(mount, 'Clear').click())
+    expect(mount.querySelector<HTMLButtonElement>('[aria-label="Select Europe"]')?.getAttribute('aria-checked')).toBe('false')
+    expect(mount.querySelector<HTMLButtonElement>('[aria-label="Select Asia"]')?.getAttribute('aria-checked')).toBe('false')
+    expect(mount.textContent).toContain('0 Continents')
+    expect(buttonContaining(mount, 'Choose a ready Country scope').disabled).toBe(true)
+  })
+
+  it('starts from World or a Continent with the same combined Country snapshot', async () => {
+    vi.useFakeTimers()
+    const entries = countries.filter(country => ['NO', 'IN'].includes(country.id))
+    const mount = await renderRecite(entries)
+    await act(async () => mount.querySelector<HTMLButtonElement>('[aria-label="Select Europe"]')?.click())
+    await act(async () => openContinent(mount, 'Asia'))
+    await act(async () => buttonContaining(mount, 'South Asia').click())
+    await act(async () => goToWorld(mount))
+
+    await act(async () => buttonContaining(mount, 'Start Recite').click())
+    const fromWorldSequence = [activeMapProps().highlightedCountryIds]
+    const worldInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the country name"]')!
+    await act(async () => {
+      typeInto(worldInput, 'Norway')
+      worldInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(500)
+      await Promise.resolve()
+    })
+    fromWorldSequence.push(activeMapProps().highlightedCountryIds)
+    await act(async () => buttonContaining(mount, 'Back to setup').click())
+    await act(async () => openContinent(mount, 'Europe'))
+    await act(async () => buttonContaining(mount, 'Start Recite').click())
+    const fromContinentSequence = [activeMapProps().highlightedCountryIds]
+    const continentInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the country name"]')!
+    await act(async () => {
+      typeInto(continentInput, 'Norway')
+      continentInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(500)
+      await Promise.resolve()
+    })
+    fromContinentSequence.push(activeMapProps().highlightedCountryIds)
+
+    expect(fromWorldSequence).toEqual([['NO'], ['IN']])
+    expect(fromContinentSequence).toEqual(fromWorldSequence)
+  })
+
+  it('keeps Reveal as you go scoped to the continuous run across a Continent boundary', async () => {
+    vi.useFakeTimers()
+    const entries = countries.filter(country => ['NO', 'IN'].includes(country.id))
+    const mount = await renderRecite(entries)
+    await act(async () => selectRadio(mount, 4))
+    await act(async () => mount.querySelector<HTMLButtonElement>('[aria-label="Select Europe"]')?.click())
+    await act(async () => openContinent(mount, 'Asia'))
+    await act(async () => buttonContaining(mount, 'South Asia').click())
+    await act(async () => goToWorld(mount))
+    await act(async () => buttonContaining(mount, 'Start Recite').click())
+
+    expect(activeMapProps()).toMatchObject({ continent: 'Europe', hiddenCountryIds: ['NO'] })
+    await act(async () => buttonContaining(mount, 'Reveal / Skip').click())
+    expect(activeMapProps()).toMatchObject({ hiddenCountryIds: [] })
+    await act(async () => {
+      vi.advanceTimersByTime(1800)
+      await Promise.resolve()
+    })
+    expect(activeMapProps()).toMatchObject({ continent: 'Asia', hiddenCountryIds: ['IN'] })
   })
 })
