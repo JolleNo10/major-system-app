@@ -3,6 +3,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { findRuntimeWorldCountriesImports } from '@/architecture/dependencyRules'
 import { DEFAULT_SETTINGS, loadSettings, saveSettings } from './settings'
 
 describe('default settings', () => {
@@ -33,11 +34,11 @@ describe('default settings', () => {
     expect(DEFAULT_SETTINGS.worldCountriesIncludedEntityGroups).toEqual([])
   })
 
-  it('discards unknown or malformed persisted country-set groups', () => {
+  it('normalizes persisted country-set structure without validating feature-owned IDs', () => {
     localStorage.setItem('major-settings', JSON.stringify({
       worldCountriesIncludedEntityGroups: ['territories', 'territories', 'unknown'],
     }))
-    expect(loadSettings().worldCountriesIncludedEntityGroups).toEqual(['territories'])
+    expect(loadSettings().worldCountriesIncludedEntityGroups).toEqual(['territories', 'unknown'])
 
     localStorage.setItem('major-settings', JSON.stringify({
       worldCountriesIncludedEntityGroups: 'territories',
@@ -46,7 +47,37 @@ describe('default settings', () => {
   })
 
   it('keeps low-level settings persistence independent of the World Countries runtime tree', () => {
-    const source = readFileSync(resolve(process.cwd(), 'src/app/settings/settings.ts'), 'utf8')
-    expect(source).not.toContain('@/features/world-countries')
+    const sourcePath = 'src/app/settings/settings.ts'
+    const source = readFileSync(resolve(process.cwd(), sourcePath), 'utf8')
+    expect(findRuntimeWorldCountriesImports(sourcePath, source)).toEqual([])
+  })
+
+  it('rejects World Countries runtime imports regardless of alias or relative spelling', () => {
+    const sourcePath = 'src/app/settings/settings.ts'
+
+    expect(findRuntimeWorldCountriesImports(
+      sourcePath,
+      "import type { WorldCountriesEntityGroupId } from '@/features/world-countries'",
+    )).toEqual([])
+    expect(findRuntimeWorldCountriesImports(
+      sourcePath,
+      "import { normalizeWorldCountriesIncludedEntityGroups } from '@/features/world-countries'",
+    )).toHaveLength(1)
+    expect(findRuntimeWorldCountriesImports(
+      sourcePath,
+      "import { normalizeWorldCountriesIncludedEntityGroups } from '../../features/world-countries'",
+    )).toHaveLength(1)
+    expect(findRuntimeWorldCountriesImports(
+      sourcePath,
+      "import { normalizeWorldCountriesIncludedEntityGroups } from '@/features/world-countries/geography/countrySet'",
+    )).toHaveLength(1)
+    expect(findRuntimeWorldCountriesImports(
+      sourcePath,
+      "import { normalizeWorldCountriesIncludedEntityGroups } from '../../features/world-countries/geography/countrySet'",
+    )).toHaveLength(1)
+    expect(findRuntimeWorldCountriesImports(
+      sourcePath,
+      "import type { WorldCountriesEntityGroupId } from '../../features/world-countries/geography/countrySet'",
+    )).toHaveLength(1)
   })
 })

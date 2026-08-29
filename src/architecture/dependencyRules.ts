@@ -13,10 +13,20 @@ export interface DependencyViolation {
   specifier: string
 }
 
-const importPatterns = [
-  /\b(?:from|import)\s*['"]([^'"]+)['"]/g,
-  /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
-]
+export interface RuntimeWorldCountriesImportViolation {
+  source: string
+  target: string
+  specifier: string
+}
+
+interface ImportReference {
+  specifier: string
+  typeOnly: boolean
+}
+
+const importDeclarationPattern = /\bimport\s+(type\s+)?([\s\S]*?)\sfrom\s*['"]([^'"]+)['"]/g
+const sideEffectImportPattern = /\bimport\s*['"]([^'"]+)['"]/g
+const dynamicImportPattern = /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g
 
 /** Scan runtime TypeScript source for the repository's documented boundaries. */
 export function scanSourceDependencies(sourceRoot: string): DependencyViolation[] {
@@ -65,12 +75,55 @@ export function findDependencyViolations(files: readonly DependencySourceFile[])
   return violations
 }
 
+/** Find World Countries imports that would create a runtime dependency from a source file. */
+export function findRuntimeWorldCountriesImports(
+  sourcePath: string,
+  source: string,
+): RuntimeWorldCountriesImportViolation[] {
+  const normalizedSourcePath = normalizeSourcePath(sourcePath)
+  return extractImportReferences(source)
+    .map(reference => ({
+      ...reference,
+      target: resolveImportPath(normalizedSourcePath, reference.specifier),
+    }))
+    .filter(({ target, typeOnly }) =>
+      target.startsWith('src/features/world-countries/') ||
+      (target === 'src/features/world-countries' && !typeOnly),
+    )
+    .filter(({ target, typeOnly }) => !(typeOnly && target === 'src/features/world-countries'))
+    .map(({ specifier, target }) => ({
+      source: normalizedSourcePath,
+      target,
+      specifier,
+    }))
+}
+
 function extractImportSpecifiers(source: string): string[] {
-  const specifiers: string[] = []
-  for (const pattern of importPatterns) {
-    for (const match of source.matchAll(pattern)) specifiers.push(match[1])
+  return extractImportReferences(source).map(reference => reference.specifier)
+}
+
+function extractImportReferences(source: string): ImportReference[] {
+  const references: ImportReference[] = []
+  for (const match of source.matchAll(importDeclarationPattern)) {
+    references.push({
+      specifier: match[3],
+      typeOnly: Boolean(match[1]) || isTypeOnlyImportClause(match[2]),
+    })
   }
-  return specifiers
+  for (const match of source.matchAll(sideEffectImportPattern)) {
+    references.push({ specifier: match[1], typeOnly: false })
+  }
+  for (const match of source.matchAll(dynamicImportPattern)) {
+    references.push({ specifier: match[1], typeOnly: false })
+  }
+  return references
+}
+
+function isTypeOnlyImportClause(clause: string): boolean {
+  const trimmedClause = clause.trim()
+  if (!trimmedClause.startsWith('{') || !trimmedClause.endsWith('}')) return false
+  const specifiers = trimmedClause.slice(1, -1).split(',').map(specifier => specifier.trim())
+  return specifiers.length > 0 && specifiers.every(specifier => specifier.startsWith('type '))
 }
 
 function resolveImportPath(sourcePath: string, specifier: string): string {

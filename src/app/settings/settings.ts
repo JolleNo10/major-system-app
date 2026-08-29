@@ -1,8 +1,10 @@
 // User-adjustable settings (localStorage).
 
 import { readJSON, readString, safeSet } from '@/core/storage'
-
-export type WorldCountriesNewItemsPerSet = 3 | 4 | 5 | 'all'
+import type {
+  LearningSetMaximum,
+  WorldCountriesEntityGroupId,
+} from '@/features/world-countries'
 
 export interface Settings {
   // Multiplier on RECALL_FAST_MS for the mastery "fast enough" bar. 1 = strict
@@ -29,21 +31,13 @@ export interface Settings {
   // small spelling error after basic normalization has failed.
   worldCountriesFuzzyAnswerMatching: boolean
   // Maximum number of new items introduced in each World Countries Learning Set.
-  worldCountriesNewItemsPerSet: WorldCountriesNewItemsPerSet
+  worldCountriesNewItemsPerSet: LearningSetMaximum
   // Optional canonical geopolitical groups added to the default UN Member State set.
-  worldCountriesIncludedEntityGroups: string[]
+  worldCountriesIncludedEntityGroups: WorldCountriesEntityGroupId[]
 }
 
 const KEY = 'major-settings'
 const LEGACY_PAIRS_KEY = 'major-pi-answer-size'
-// Keep storage validation structural here; the World Countries feature owns
-// the meaning of each group and resolves these IDs at its boundary.
-const WORLD_COUNTRIES_ENTITY_GROUP_IDS = new Set([
-  'observer-states',
-  'partially-recognized-sovereign-states',
-  'special-political-status',
-  'territories',
-])
 
 export const DEFAULT_SETTINGS: Settings = {
   masteryLatencyFactor: 1.4, // ~1.7s recall — lenient enough that "not slow" counts
@@ -72,17 +66,18 @@ export const MASTERY_FACTOR_STEP = 0.1
 export const MAX_PI_DIGITS_MIN  = 20
 export const MAX_PI_DIGITS_STEP = 20
 
-export const WORLD_COUNTRIES_NEW_ITEMS_PER_SET_OPTIONS: WorldCountriesNewItemsPerSet[] = [3, 4, 5, 'all']
+export const WORLD_COUNTRIES_NEW_ITEMS_PER_SET_OPTIONS: LearningSetMaximum[] = [3, 4, 5, 'all']
 
-function normalizeWorldCountriesNewItemsPerSet(value: unknown): WorldCountriesNewItemsPerSet {
-  return WORLD_COUNTRIES_NEW_ITEMS_PER_SET_OPTIONS.includes(value as WorldCountriesNewItemsPerSet)
-    ? value as WorldCountriesNewItemsPerSet
+function normalizeWorldCountriesNewItemsPerSet(value: unknown): LearningSetMaximum {
+  return WORLD_COUNTRIES_NEW_ITEMS_PER_SET_OPTIONS.includes(value as LearningSetMaximum)
+    ? value as LearningSetMaximum
     : DEFAULT_SETTINGS.worldCountriesNewItemsPerSet
 }
 
-function normalizePersistedEntityGroupIds(value: unknown): string[] {
+// Keep persistence normalization structural; World Countries validates these IDs at its domain boundary.
+function normalizePersistedEntityGroupIds(value: unknown): WorldCountriesEntityGroupId[] {
   if (!Array.isArray(value)) return []
-  return [...new Set(value.filter((candidate): candidate is string => typeof candidate === 'string' && WORLD_COUNTRIES_ENTITY_GROUP_IDS.has(candidate)))]
+  return [...new Set(value.filter((candidate): candidate is WorldCountriesEntityGroupId => typeof candidate === 'string'))]
 }
 
 export function loadSettings(): Settings {
