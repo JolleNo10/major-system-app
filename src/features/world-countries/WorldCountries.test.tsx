@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, createElement } from 'react'
+import { act, createElement, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { PageLayout } from '@/app/layout/PageLayout'
@@ -21,7 +21,13 @@ vi.mock('./today/WorldCountriesToday', () => ({
 }))
 
 vi.mock('./practice/WorldCountriesQuiz', () => ({
-  WorldCountriesQuiz: () => createElement('div', { 'data-testid': 'quiz-workflow' }, 'Quiz workflow'),
+  WorldCountriesQuiz: () => {
+    const [label, setLabel] = useState('Quiz initial state')
+    return createElement('div', { 'data-testid': 'quiz-workflow' },
+      createElement('span', { 'data-testid': 'quiz-local-state' }, label),
+      createElement('button', { type: 'button', onClick: () => setLabel('Quiz mutated state') }, 'Mutate Quiz'),
+    )
+  },
 }))
 
 let root: Root | null = null
@@ -102,5 +108,21 @@ describe('World Countries compact activity header', () => {
 
     expect(tabs[3]?.getAttribute('aria-selected')).toBe('true')
     expect(mount.querySelector('[data-testid="quiz-workflow"]')).not.toBeNull()
+  })
+
+  it('unmounts Quiz so leaving and re-entering resets its transient state', async () => {
+    const mount = await renderShell()
+    const tabs = [...mount.querySelectorAll<HTMLButtonElement>('[role="tab"]')]
+
+    await act(async () => tabs[3]?.click())
+    expect(mount.querySelector('[data-testid="quiz-local-state"]')?.textContent).toBe('Quiz initial state')
+
+    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Mutate Quiz')?.click())
+    expect(mount.querySelector('[data-testid="quiz-local-state"]')?.textContent).toBe('Quiz mutated state')
+
+    await act(async () => tabs[0]?.click())
+    expect(mount.querySelector('[data-testid="quiz-workflow"]')).toBeNull()
+    await act(async () => tabs[3]?.click())
+    expect(mount.querySelector('[data-testid="quiz-local-state"]')?.textContent).toBe('Quiz initial state')
   })
 })

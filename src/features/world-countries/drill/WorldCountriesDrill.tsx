@@ -9,7 +9,7 @@ import { readWorldCountriesGeography } from '@/features/world-countries/geograph
 import { getAllSubregionLearningStates, useWorldCountriesSubregionLearningRevision } from '@/features/world-countries/learning/subregionLearningStore'
 import { CountryLearningFlow } from '@/features/world-countries/learning/flows/CountryLearningFlow'
 import { CapitalLearningFlow } from '@/features/world-countries/learning/flows/CapitalLearningFlow'
-import { isWorldCountriesLearningMode, type WorldCountriesLearnPracticeMode, type WorldCountriesLearningMode } from '@/features/world-countries/learning/learnPracticeModes'
+import { isWorldCountriesLearningMode, type WorldCountriesLearningMode } from '@/features/world-countries/learning/learnPracticeModes'
 import type { WorldCountriesPracticeMode } from '@/features/world-countries/practice/practiceModes'
 import { recordWorldCountriesAttempt } from '@/features/world-countries/learning/recallProgress'
 import { DrillResults } from './DrillResults'
@@ -31,6 +31,7 @@ import { loadDrillPreferences, saveDrillPreferences, type WorldCountriesDrillPre
 import type { WorldCountriesProficiencySelection } from './drillProficiencyScope'
 import { getRetryableFailedDrillCountryIds } from './drillResultSummary'
 import { resolveDrillSessionLaunch, type WorldCountriesDrillSessionLaunch } from './drillSessionLaunch'
+import type { WorldCountriesLearnPracticeMode } from './learnPracticeSetupModes'
 import {
   advanceDrillLearningRun,
   deriveDrillLearningScope,

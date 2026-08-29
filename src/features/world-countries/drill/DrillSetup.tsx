@@ -20,7 +20,7 @@ import { createDrillProgressColors, createDrillProgressDescriptions } from './dr
 import { DrillProgressLegend } from './DrillProgressLegend'
 import { DrillSetupRails } from './DrillSetupRails'
 import { WorldMasterySummary } from '@/features/world-countries/ui/WorldMasterySummary'
-import type { WorldCountriesLearnPracticeMode } from '@/features/world-countries/learning/learnPracticeModes'
+import type { WorldCountriesLearnPracticeMode } from './learnPracticeSetupModes'
 import { resolveDrillProficiencyScope, type WorldCountriesProficiencyActivity, type WorldCountriesProficiencyScope, type WorldCountriesProficiencySelection } from './drillProficiencyScope'
 
 const EMPTY_PROFICIENCY_SCOPE: WorldCountriesProficiencyScope = {

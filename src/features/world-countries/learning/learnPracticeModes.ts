@@ -1,7 +1,4 @@
-import type { WorldCountriesPracticeMode } from '@/features/world-countries/practice/practiceModes'
-
 export type WorldCountriesLearningMode = 'learn-countries' | 'learn-capitals'
-export type WorldCountriesLearnPracticeMode = WorldCountriesLearningMode | WorldCountriesPracticeMode
 
 export const WORLD_COUNTRIES_LEARNING_MODES: readonly {
   id: WorldCountriesLearningMode

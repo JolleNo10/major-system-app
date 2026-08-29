@@ -106,11 +106,14 @@ export function WorldCountriesQuiz({ answerMode: _answerMode }: { answerMode: An
   const advanceQuiz = useCallback((_result: WorldCountriesTypedAnswerResult) => {
     setActiveRun(current => {
       if (!current || current.session.phase === 'complete') return current
-      const next = advanceRecallStep(current.session).state
-      if (next.phase === 'complete') setPhase('results')
-      return { ...current, session: next }
+      return { ...current, session: advanceRecallStep(current.session).state }
     })
   }, [])
+
+  useEffect(() => {
+    if (phase !== 'session' || activeRun?.session.phase !== 'complete') return
+    setPhase('results')
+  }, [activeRun?.session.phase, phase])
 
   const retryMissed = useCallback(() => {
     if (!activeRun) return
