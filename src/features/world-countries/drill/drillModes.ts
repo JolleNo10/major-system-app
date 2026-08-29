@@ -1,4 +1,5 @@
 import type { WorldCountriesRecallSkill } from '@/features/world-countries/learning/recallTargets'
+import { getRecallSkillLabel } from '@/features/world-countries/learning/recallLabels'
 
 export type WorldCountriesDrillMode =
   | 'countries'
@@ -57,8 +58,5 @@ export function getSkillsForDrillMode(mode: WorldCountriesDrillMode): readonly W
 }
 
 export function getDrillSkillLabel(skill: WorldCountriesRecallSkill): string {
-  if (skill === 'location-to-country') return 'Location → Country'
-  if (skill === 'shape-to-country') return 'Shape → Country'
-  if (skill === 'country-to-capital') return 'Country → Capital'
-  return 'Capital → Country'
+  return getRecallSkillLabel(skill)
 }

@@ -8,11 +8,9 @@ import { getSubregionDefinition, type SubregionDefinition } from '@/features/wor
 import { useWorldCountriesPopulation } from '@/features/world-countries/WorldCountriesPopulationContext'
 import { useWorldCountriesGeographyRevision } from '@/features/world-countries/geography/geographyRefresh'
 import { getContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
-import { getAllContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
-import { getAllSubregionMetadata } from '@/features/world-countries/geography/subregionMetadataStore'
-import { getContinentsInEffectiveOrder, getSubregionsForContinentInEffectiveOrder } from '@/features/world-countries/geography/queries'
-import { clearSubregionScope, getCountriesForSubregionScopeInEffectiveOrder, getSubregionScopeLabel, normalizeSubregionScope, selectAllSubregions, toggleContinentInScope, toggleSubregionInScope, type WorldCountriesSubregionScopeMetadata } from '@/features/world-countries/geography/subregionScope'
-import { getWorldMetadata } from '@/features/world-countries/geography/worldMetadataStore'
+import { getSubregionsForContinentInEffectiveOrder } from '@/features/world-countries/geography/queries'
+import { readWorldCountriesGeography } from '@/features/world-countries/geography/worldScope'
+import { clearSubregionScope, getCountriesForSubregionScopeInEffectiveOrder, getSubregionScopeLabel, normalizeSubregionScope, selectAllSubregions, toggleContinentInScope, toggleSubregionInScope } from '@/features/world-countries/geography/subregionScope'
 import { classifyRecallAnswer } from '@/features/world-countries/learning/recallAnswerMatching'
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
 import type { SvgMapLoadState } from '@/features/world-countries/maps/SvgMapView'
@@ -100,18 +98,11 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
   const [progress, setProgress] = useState<WorldCountriesReciteProgress>(() => loadWorldCountriesReciteProgress())
   const [run, setRun] = useState<ActiveReciteRun | null>(null)
 
-  const worldOrder = useMemo(() => {
+  const geography = useMemo(() => {
     void geographyRevision
-    return getContinentsInEffectiveOrder(activeCountries, getWorldMetadata())
+    return readWorldCountriesGeography(activeCountries)
   }, [activeCountries, geographyRevision])
-  const selectionMetadata = useMemo<WorldCountriesSubregionScopeMetadata>(() => {
-    void geographyRevision
-    return {
-      world: getWorldMetadata(),
-      continents: getAllContinentMetadata(),
-      subregions: getAllSubregionMetadata(),
-    }
-  }, [geographyRevision])
+  const { worldOrder, metadata: selectionMetadata } = geography
   const normalizedSelection = useMemo(
     () => normalizeSubregionScope({ subregionIds: selectedSubregionIds }, activeCountries, selectionMetadata),
     [activeCountries, selectedSubregionIds, selectionMetadata],

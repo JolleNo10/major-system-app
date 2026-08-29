@@ -1,6 +1,14 @@
 import type { CountryId } from '@/features/world-countries/data/countries'
 import type { AttemptEvidenceKind } from '@/core/learning'
 import type { WorldCountriesRecallSkill } from '@/features/world-countries/learning/recallTargets'
+import {
+  advanceRecallStep,
+  createRecallSession,
+  getCurrentRecallStep,
+  getRecallSessionTotalSteps,
+  type WorldCountriesRecallSessionState,
+  type WorldCountriesRecallStep,
+} from '@/features/world-countries/learning/recallSession'
 import { getSkillsForDrillMode, type WorldCountriesDrillMode } from './drillModes'
 
 export interface DrillAnswerRecord {
@@ -25,20 +33,11 @@ export interface DrillSessionConfig {
   countryOrder?: readonly CountryId[]
 }
 
-export interface DrillSessionState {
+export interface DrillSessionState extends WorldCountriesRecallSessionState {
   mode: WorldCountriesDrillMode
-  skills?: readonly WorldCountriesRecallSkill[]
-  countryIds: readonly CountryId[]
-  countryOrder: readonly CountryId[]
-  countryIndex: number
-  stepIndex: number
-  phase: 'active' | 'complete'
 }
 
-export interface DrillSessionStep {
-  countryId: CountryId
-  skill: WorldCountriesRecallSkill
-}
+export type DrillSessionStep = WorldCountriesRecallStep
 
 export interface DrillSessionResult {
   state: DrillSessionState
@@ -49,33 +48,22 @@ export interface DrillSessionResult {
 }
 
 export function createDrillSession(config: DrillSessionConfig): DrillSessionState {
-  const countryIds = [...new Set(config.countryIds)]
-  const allowed = new Set(countryIds)
-  const proposedOrder = [...new Set(config.countryOrder ?? countryIds)]
-  const countryOrder = [
-    ...proposedOrder.filter(countryId => allowed.has(countryId)),
-    ...countryIds.filter(countryId => !proposedOrder.includes(countryId)),
-  ]
   return {
     mode: config.mode,
-    ...(config.skills ? { skills: [...config.skills] } : {}),
-    countryIds,
-    countryOrder,
-    countryIndex: 0,
-    stepIndex: 0,
-    phase: countryOrder.length === 0 ? 'complete' : 'active',
+    ...createRecallSession({
+      countryIds: config.countryIds,
+      skills: config.skills ?? getSkillsForDrillMode(config.mode),
+      countryOrder: config.countryOrder,
+    }),
   }
 }
 
 export function getDrillSessionSkills(state: DrillSessionState): readonly WorldCountriesRecallSkill[] {
-  return state.skills ?? getSkillsForDrillMode(state.mode)
+  return state.skills
 }
 
 export function getCurrentDrillStep(state: DrillSessionState): DrillSessionStep | null {
-  if (state.phase === 'complete') return null
-  const countryId = state.countryOrder[state.countryIndex]
-  const skill = getDrillSessionSkills(state)[state.stepIndex]
-  return countryId === undefined || skill === undefined ? null : { countryId, skill }
+  return getCurrentRecallStep(state)
 }
 
 /** A live settings change must not leave a session targeting inactive Countries. */
@@ -88,7 +76,7 @@ export function isDrillSessionCompatible(
 }
 
 export function getDrillSessionTotalSteps(state: DrillSessionState): number {
-  return state.countryOrder.length * getDrillSessionSkills(state).length
+  return getRecallSessionTotalSteps(state)
 }
 
 /** Advance only the visible workflow; evidence is recorded by the caller. */
@@ -96,43 +84,12 @@ export function submitDrillStep(
   state: DrillSessionState,
   correct: boolean,
 ): DrillSessionResult {
-  const step = getCurrentDrillStep(state)
-  if (!step) {
-    return {
-      state,
-      step: null,
-      correct: true,
-      completedCountryNow: false,
-      completedNow: false,
-    }
-  }
-
-  const skills = getDrillSessionSkills(state)
-  const lastStep = state.stepIndex === skills.length - 1
-  const lastCountry = state.countryIndex === state.countryOrder.length - 1
-  if (!lastStep) {
-    return {
-      state: { ...state, stepIndex: state.stepIndex + 1 },
-      step,
-      correct,
-      completedCountryNow: false,
-      completedNow: false,
-    }
-  }
-  if (!lastCountry) {
-    return {
-      state: { ...state, countryIndex: state.countryIndex + 1, stepIndex: 0 },
-      step,
-      correct,
-      completedCountryNow: true,
-      completedNow: false,
-    }
-  }
+  const result = advanceRecallStep(state)
   return {
-    state: { ...state, phase: 'complete' },
-    step,
+    state: { ...result.state, mode: state.mode },
+    step: result.step,
     correct,
-    completedCountryNow: true,
-    completedNow: true,
+    completedCountryNow: result.completedCountryNow,
+    completedNow: result.completedNow,
   }
 }

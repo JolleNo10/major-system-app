@@ -4,19 +4,19 @@ import { getAllContinentMetadata } from '@/features/world-countries/geography/co
 import { getWorldMetadata } from '@/features/world-countries/geography/worldMetadataStore'
 import { loadWorldCountriesRecallProgress } from '@/features/world-countries/learning/recallProgress'
 import type { WorldCountriesRecallSkill } from '@/features/world-countries/learning/recallTargets'
-import type { WorldCountriesPracticeMode } from '@/features/world-countries/learning/learnPracticeModes'
+import type { WorldCountriesPracticeMode } from '@/features/world-countries/practice/practiceModes'
 import { createDrillCountryOrder, getWorldCountriesSessionOrder } from './drillOrder'
 import { getSkillsForDrillMode } from './drillModes'
 import { getCountriesForDrillSelectionInEffectiveOrder, getDrillSelectionScopeLabel, normalizeDrillSelection, type DrillSelectionMetadata, type WorldCountriesDrillSelection } from './drillSelection'
 import { resolveDrillProficiencyScope, type WorldCountriesProficiencySelection } from './drillProficiencyScope'
-import type { DrillSessionInteraction } from './DrillSession'
+import type { PracticeSessionInteraction } from '@/features/world-countries/practice/PracticeSession'
 import type { WorldCountriesDrillPreferences } from './drillPreferences'
 
 export interface ResolveDrillSessionLaunchOptions {
   startPreferences: WorldCountriesDrillPreferences
   activeCountries: readonly Country[]
   proficiencySelection: WorldCountriesProficiencySelection
-  interaction?: DrillSessionInteraction
+  interaction?: PracticeSessionInteraction
   activity?: 'drill' | 'practice'
   skills?: readonly WorldCountriesRecallSkill[]
   practiceMode?: WorldCountriesPracticeMode
@@ -35,7 +35,7 @@ export interface WorldCountriesDrillSessionLaunch {
   countryIds: readonly CountryId[]
   countryOrder: readonly CountryId[]
   skills?: readonly WorldCountriesRecallSkill[]
-  interaction: DrillSessionInteraction
+  interaction: PracticeSessionInteraction
   activity: 'drill' | 'practice'
 }
 

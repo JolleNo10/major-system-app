@@ -4,18 +4,18 @@ import { useSettings } from '@/app/settings/SettingsContext'
 import type { Continent, CountryId } from '@/features/world-countries/data/countries'
 import type { SubregionId } from '@/features/world-countries/data/subregions'
 import { useWorldCountriesPopulation } from '@/features/world-countries/WorldCountriesPopulationContext'
-import { getAllSubregionMetadata } from '@/features/world-countries/geography/subregionMetadataStore'
-import { getAllContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
-import { getWorldMetadata } from '@/features/world-countries/geography/worldMetadataStore'
 import { useWorldCountriesGeographyRevision } from '@/features/world-countries/geography/geographyRefresh'
+import { readWorldCountriesGeography } from '@/features/world-countries/geography/worldScope'
 import { getAllSubregionLearningStates, useWorldCountriesSubregionLearningRevision } from '@/features/world-countries/learning/subregionLearningStore'
 import { CountryLearningFlow } from '@/features/world-countries/learning/flows/CountryLearningFlow'
 import { CapitalLearningFlow } from '@/features/world-countries/learning/flows/CapitalLearningFlow'
-import { isWorldCountriesLearningMode, type WorldCountriesLearnPracticeMode, type WorldCountriesLearningMode, type WorldCountriesPracticeMode } from '@/features/world-countries/learning/learnPracticeModes'
+import { isWorldCountriesLearningMode, type WorldCountriesLearnPracticeMode, type WorldCountriesLearningMode } from '@/features/world-countries/learning/learnPracticeModes'
+import type { WorldCountriesPracticeMode } from '@/features/world-countries/practice/practiceModes'
 import { recordWorldCountriesAttempt } from '@/features/world-countries/learning/recallProgress'
 import { DrillResults } from './DrillResults'
-import { PracticeResults } from './PracticeResults'
-import { DrillSession, type DrillSessionInteraction } from './DrillSession'
+import { PracticeResults } from '@/features/world-countries/practice/PracticeResults'
+import { PracticeSession, type PracticeSessionAnswer, type PracticeSessionInteraction } from '@/features/world-countries/practice/PracticeSession'
+import { DrillSession } from './DrillSession'
 import { DrillSetup } from './DrillSetup'
 import type { WorldCountriesDrillMode } from './drillModes'
 import type { WorldCountriesDrillOrder } from './drillOrder'
@@ -43,7 +43,7 @@ type DrillPhase = 'setup' | 'learning' | 'practice' | 'recall' | 'results'
 type ActivityPurpose = 'drill' | 'learn-practise'
 type StartSessionOptions = {
   persistPreferences?: boolean
-  interaction?: DrillSessionInteraction
+  interaction?: PracticeSessionInteraction
   activity?: 'drill' | 'practice'
   skills?: DrillAnswerRecord['skill'][]
   practiceMode?: WorldCountriesPracticeMode
@@ -67,18 +67,14 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
   const [sessionSelection, setSessionSelection] = useState<WorldCountriesDrillSelection | null>(null)
   const [sessionScopeLabel, setSessionScopeLabel] = useState<string | null>(null)
   const [sessionActivity, setSessionActivity] = useState<'drill' | 'practice'>('drill')
-  const [sessionInteraction, setSessionInteraction] = useState<DrillSessionInteraction>('recall')
+  const [sessionInteraction, setSessionInteraction] = useState<PracticeSessionInteraction>('recall')
   const [answers, setAnswers] = useState<DrillAnswerRecord[]>([])
   const geographyRevision = useWorldCountriesGeographyRevision()
   const learningRevision = useWorldCountriesSubregionLearningRevision()
   const selectionMetadata = useMemo<DrillSelectionMetadata>(() => {
     void geographyRevision
-    return {
-      world: getWorldMetadata(),
-      continents: getAllContinentMetadata(),
-      subregions: getAllSubregionMetadata(),
-    }
-  }, [geographyRevision])
+    return readWorldCountriesGeography(activeCountries).metadata
+  }, [activeCountries, geographyRevision])
   const effectivePreferences = useMemo(
     () => ({ ...normalizeDrillSelection(preferences, activeCountries, selectionMetadata), mode: preferences.mode, order: preferences.order }),
     [activeCountries, preferences, selectionMetadata],
@@ -241,6 +237,15 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
     void recordWorldCountriesAttempt(record.countryId, record.skill, { at: record.at, ok: record.correct, ms: record.ms, evidenceKind: record.evidenceKind })
   }, [sessionActivity])
 
+  const answerPractice = useCallback((record: PracticeSessionAnswer) => {
+    answer({
+      ...record,
+      at: Date.now(),
+      ms: 0,
+      evidenceKind: sessionInteraction === 'location-click' ? 'recognition' : 'recall',
+    })
+  }, [answer, sessionInteraction])
+
   const continueSession = useCallback((correct: boolean) => {
     if (!session) return
     const result = submitDrillStep(session, correct)
@@ -295,7 +300,10 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
   }
 
   if ((phase === 'recall' || phase === 'practice') && session && sessionMatchesActivePopulation) {
-    return <DrillSession answerMode={answerMode} fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching} state={session} interaction={sessionInteraction} activity={sessionActivity} learningStates={learningStates} proficiencySelection={proficiencySelection} selection={sessionSelection ?? effectivePreferences} scopeLabel={sessionScopeLabel ?? undefined} entries={sessionEntries} activeCountries={activeCountries} onAnswer={answer} onContinue={continueSession} onExit={exitToSetup} />
+    if (sessionActivity === 'practice') {
+      return <PracticeSession answerMode={answerMode} fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching} state={session} interaction={sessionInteraction} learningStates={learningStates} proficiencySelection={proficiencySelection} selection={sessionSelection ?? effectivePreferences} scopeLabel={sessionScopeLabel ?? undefined} entries={sessionEntries} onAnswer={answerPractice} onContinue={continueSession} onExit={exitToSetup} />
+    }
+    return <DrillSession answerMode={answerMode} fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching} state={session} selection={sessionSelection ?? effectivePreferences} scopeLabel={sessionScopeLabel ?? undefined} entries={sessionEntries} proficiencySelection={proficiencySelection} activeCountries={activeCountries} onAnswer={answer} onContinue={continueSession} onExit={exitToSetup} />
   }
 
   if (phase === 'results') {

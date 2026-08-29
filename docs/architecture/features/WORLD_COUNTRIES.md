@@ -10,8 +10,8 @@ persisted state, identifiers, migrations, reset, or backup; and load
 
 ## Purpose and entry points
 
-World Countries has three user-directed activities: **Today**, **Drill**, and
-**Recite**. Today is the default map-centered plan for due core review and the
+World Countries has four user-facing areas: **Today**, **Drill**, **Recite**, and
+**Quiz**. Today is the default map-centered plan for due core review and the
 next guided Learning flow. Structural authoring is contextual rather than a
 separate workflow:
 
@@ -21,7 +21,7 @@ separate workflow:
   Subregion mnemonic.
 
 `WorldCountries.tsx` resolves the Settings country-set policy once, provides
-the active population, and composes Today, Drill, and Recite.
+the active population, and composes Today, Drill, Recite, and Quiz.
 `WorldCountriesDrill.tsx` owns the Drill setup coordinator, Drill and Learn &
 Practise purpose selection, active sessions, and results. Geography metadata
 changes reach mounted consumers through the feature-owned geography subscription
@@ -43,6 +43,12 @@ signal rather than coordinator-owned refresh counters.
   proficiency, pure session mechanics, durable Subregion learning facts and
   their feature-local subscription signal, Learning Readiness, and reusable
   guided Learning flows.
+- `practice/` owns non-recording Practice execution and presentation reusable
+  outside the Drill entry point, including the map-backed Learn & Practise
+  path, transient Practice results, and the top-level Capitals Quiz. Quiz is a
+  Practice-semantic user-facing area with transient randomized runs, scoring,
+  miss review, and retry; it owns no evidence, milestones, preferences,
+  scheduling, or other durable learner state.
 - `today/` owns the derived Today plan, bounded due-review queue and retry
   state, Today setup/checkpoint states, and delegation into existing Learning
   flows. It consumes learning, geography, maps, and feature-local UI but not
@@ -62,11 +68,12 @@ signal rather than coordinator-owned refresh counters.
   Subregion mnemonic editor, and the feature-local mnemonic subscription over
   shared core mnemonic persistence.
 - `drill/` owns Drill selection, preferences, four Drill modes,
-  Learn & Practise purpose selection, shared session mechanics, Drill and
-  Practice presentation, results, and World/Continent order authoring in the
-  existing Geography rails. It also owns the feature-local, mutually exclusive
+  Learn & Practise purpose selection, recorded Drill sessions, Drill results,
+  and World/Continent order authoring in the existing Geography rails. It also
+  owns the feature-local, mutually exclusive
   Geography/proficiency setup scope. It does not expose a Drill Subregion
-  detail or Country-order editor.
+  detail or Country-order editor; it delegates non-recording Practice
+  execution and presentation to `practice/`.
 - `ui/` owns feature-local panels, breadcrumbs, hierarchy rows, inline reorder
   and opt-in Country click-sequence presentation, shared active map-task,
   task-context, and session-progress presentation, map-surface/dock
@@ -93,6 +100,17 @@ signal rather than coordinator-owned refresh counters.
 
 There is no broad feature `domain/`, `persistence/`, or `common/` layer and no
 compatibility wrapper for the removed authoring workflow.
+
+There is no `quiz/` package. `practice/` owns the user-facing Quiz
+orchestration, while Practice and Quiz consume the purpose-neutral finite
+`learning/recallSession.ts` Country/skill cursor. That cursor owns unique
+Country membership, supplied order, skill stepping, advancement, and
+completion only; it owns no workflow identity, score policy, evidence,
+persistence, rails, or maps.
+
+The user-facing areas are Today, Drill, Recite, and Quiz. The activity
+semantics remain exactly Drill, Learning, and Practice; Quiz is Practice and
+does not introduce an Assessment semantic.
 
 Mounted World Countries consumers subscribe directly to the external state they
 derive: geography metadata, durable Subregion learning, and World Countries
@@ -121,7 +139,7 @@ is not persisted and clears after two clean recall days. Today presents the
 resulting reason as concise `Why today` summary counts and a per-prompt `Why
 now` explanation, including repeated difficulty and useful overdue wording.
 
-The shell exposes `[ Today ] [ Drill ] [ Recite ]`, with Today selected by
+The shell exposes `[ Today ] [ Drill ] [ Recite ] [ Quiz ]`, with Today selected by
 default. Drill has a non-persisted Purpose selector:
 
 - **Drill**: `Countries`, `Countries + Capitals`, `Countries from Capitals`,
@@ -135,6 +153,14 @@ default. Drill has a non-persisted Purpose selector:
   non-recording Practice (`Locate Countries`, `Locate Capitals`, `Capitals`). Learning writes
   only the durable milestone owned by its active mode. Practice retains only
   transient answers, accuracy, progress, and results.
+
+- **Quiz**: a top-level non-recording Practice experience. Version 1 is the
+  randomized Capitals quiz: it uses the shared World-wide Subregion scope,
+  snapshots a unique randomized Country set and Country records at launch,
+  asks text-only Country → Capital questions, and keeps score, missed review,
+  Retry missed, New quiz, and Change setup transient. It does not use Drill
+  preferences or presentation, and active-run membership/order is unaffected
+  by later Settings or geography changes.
 
 ### World mastery overview
 
@@ -443,6 +469,10 @@ flowchart TD
   Drill --> Learning
   Drill --> Maps
   Drill --> UI["ui/"]
+  Practice["practice/"] --> Learning
+  Practice --> Geography
+  Practice --> Maps
+  Practice --> UI
   Today["today/"] --> Learning
   Today --> LearningFlows
   Today --> Maps
@@ -450,6 +480,7 @@ flowchart TD
   Shell["WorldCountries.tsx"] --> Today
   Shell --> Drill
   Shell --> Recite["recite/"]
+  Shell --> Practice
 ```
 
 ## Persistence
@@ -485,6 +516,11 @@ flowchart TD
   Learning milestones.
 - Atomic Drill and Today review evidence continue to use the existing attempts
   store and `world-countries:<skill>:<CountryId>` IDs. Practice never writes it.
+- Capitals Quiz is transient Practice: it writes no attempts, Drill
+  preferences/proficiency, Learning milestones/readiness, Today state, Recite
+  progress, Quiz history, or other durable learner signal. Its setup, active
+  Country snapshot, question order, outcomes, results, and missed retries live
+  only for the mounted Quiz area.
 - Today reads raw core evidence through `learning/recallHistory.ts` and writes
   ordinary `recall` evidence through the existing feature adapter. It owns no
   schedule, plan, queue, retry, or checkpoint persistence.
@@ -525,6 +561,8 @@ flowchart TD
 - Final recall is mandatory for Learning completion; skipped temporary scopes
   cannot fabricate Ready state or completion evidence.
 - Workflow folders do not depend on sibling workflow internals.
+- Quiz run membership, Country records, and question order are snapshots;
+  live Settings/geography changes affect only a later run.
 - World Countries persistence does not modify unrelated feature state.
 
 ## Source anchors
@@ -546,6 +584,11 @@ flowchart TD
 - `src/features/world-countries/drill/drillProficiencyScope.ts`
 - `src/features/world-countries/drill/drillProgressPresentation.ts`
 - `src/features/world-countries/recite/WorldCountriesRecite.tsx`
+- `src/features/world-countries/practice/WorldCountriesQuiz.tsx`
+- `src/features/world-countries/practice/CapitalQuizSession.tsx`
+- `src/features/world-countries/practice/practiceRun.ts`
+- `src/features/world-countries/learning/recallSession.ts`
+- `src/features/world-countries/geography/worldScope.ts`
 - `src/features/world-countries/ui/WorldCountriesTypedAnswer.tsx`
 - `src/features/world-countries/recite/reciteSession.ts`
 - `src/features/world-countries/recite/reciteProgress.ts`

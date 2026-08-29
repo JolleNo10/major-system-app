@@ -34,6 +34,7 @@ vi.mock('@/features/world-countries/mnemonics/CountryCapitalMnemonicPanel', () =
 }))
 
 import { DrillSession } from './DrillSession'
+import { PracticeSession } from '@/features/world-countries/practice/PracticeSession'
 
 const norway: Country = {
   id: 'NO',
@@ -147,8 +148,7 @@ describe('DrillSession map presentation', () => {
   it.each([
     ['typed recall', 'typing', 'recall'],
     ['multiple choice', 'multiple-choice', 'recall'],
-    ['map click', 'multiple-choice', 'location-click'],
-  ] as const)('keeps the %s task usable below the expanded header', async (_label, answerMode, interaction) => {
+  ] as const)('keeps the %s task usable below the expanded header', async (_label, answerMode, _interaction) => {
     const mount = document.createElement('div')
     document.body.append(mount)
     const onAnswer = vi.fn()
@@ -157,7 +157,6 @@ describe('DrillSession map presentation', () => {
       root = createRoot(mount)
       root.render(createElement(DrillSession, {
         answerMode,
-        interaction,
         fuzzyMatching: false,
         state: createDrillSession({ mode: 'countries', countryIds: ['NO', 'SE'] }),
         selection: createDrillSelection(['northern-europe']),
@@ -189,19 +188,13 @@ describe('DrillSession map presentation', () => {
     expect(mount.querySelector('[data-world-countries-task][data-world-countries-task-presentation="standard"]')).not.toBeNull()
     if (draft !== undefined) expect(mount.querySelector<HTMLInputElement>('input')?.value).toBe(draft)
 
-    if (interaction === 'recall' && answerMode === 'multiple-choice') {
+    if (answerMode === 'multiple-choice') {
       const choice = mount.querySelector<HTMLButtonElement>('[data-task-dock] button')
       expect(choice).not.toBeNull()
       await act(async () => choice?.click())
       expect(onAnswer).toHaveBeenCalled()
     }
 
-    if (interaction === 'location-click') {
-      const mapProps = learningMapMock.mock.calls[learningMapMock.mock.calls.length - 1]?.[0] as Record<string, unknown>
-      expect(mapProps.onCountryClick).toBeTypeOf('function')
-      await act(async () => (mapProps.onCountryClick as (countryId: string) => void)('SE'))
-      expect(onAnswer).toHaveBeenCalled()
-    }
   })
 
   it('uses one direction and cue without an answer-kind badge', async () => {
@@ -437,7 +430,6 @@ describe('DrillSession map presentation', () => {
       highlightedCountryId: null,
       namedCountryId: null,
       taskTargetCountryId: null,
-      answerSelectionCountryIds: undefined,
     })
     expect(mount.textContent).toContain('Name this country')
 
@@ -521,7 +513,7 @@ describe('DrillSession map presentation', () => {
 
     await act(async () => {
       root = createRoot(mount)
-      root.render(createElement(DrillSession, {
+      root.render(createElement(PracticeSession, {
         answerMode: 'multiple-choice',
         fuzzyMatching: false,
         interaction: 'location-click',
@@ -531,6 +523,7 @@ describe('DrillSession map presentation', () => {
         onAnswer,
         onContinue: vi.fn(),
         onExit: vi.fn(),
+        learningStates: [],
       }))
     })
 
@@ -549,7 +542,6 @@ describe('DrillSession map presentation', () => {
       countryId: 'NO',
       answer: 'Sweden',
       correct: false,
-      evidenceKind: 'recognition',
     }))
     const feedbackMapProps = learningMapMock.mock.calls[learningMapMock.mock.calls.length - 1][0] as Record<string, unknown>
     expect(feedbackMapProps.highlightedCountryId).toBe('NO')
@@ -565,17 +557,17 @@ describe('DrillSession map presentation', () => {
 
     await act(async () => {
       root = createRoot(mount)
-      root.render(createElement(DrillSession, {
+      root.render(createElement(PracticeSession, {
         answerMode: 'multiple-choice',
         fuzzyMatching: false,
         interaction: 'location-click',
-        activity: 'practice',
         state: createDrillSession({ mode: 'countries-from-capitals', countryIds: ['NO', 'SE'] }),
         selection: createDrillSelection(['northern-europe']),
         entries: [norway, sweden],
         onAnswer,
         onContinue: vi.fn(),
         onExit: vi.fn(),
+        learningStates: [],
       }))
     })
 
@@ -597,7 +589,6 @@ describe('DrillSession map presentation', () => {
       skill: 'capital-to-country',
       answer: 'Sweden',
       correct: false,
-      evidenceKind: 'recognition',
     }))
     const feedbackMapProps = learningMapMock.mock.calls[learningMapMock.mock.calls.length - 1][0] as Record<string, unknown>
     expect(feedbackMapProps.highlightedCountryId).toBe('NO')
@@ -695,7 +686,7 @@ describe('DrillSession map presentation', () => {
 
     await act(async () => {
       root = createRoot(mount)
-      root.render(createElement(DrillSession, {
+      root.render(createElement(PracticeSession, {
         answerMode: 'typing',
         fuzzyMatching: true,
         state: createDrillSession({ mode: 'countries', skills: ['country-to-capital'], countryIds: ['SE'] }),
@@ -704,7 +695,7 @@ describe('DrillSession map presentation', () => {
         onAnswer: vi.fn(),
         onContinue,
         onExit: vi.fn(),
-        activity: 'practice',
+        learningStates: [],
       }))
     })
 
@@ -743,7 +734,7 @@ describe('DrillSession map presentation', () => {
 
     await act(async () => {
       root = createRoot(mount)
-      root.render(createElement(DrillSession, {
+      root.render(createElement(PracticeSession, {
         answerMode: 'typing',
         fuzzyMatching: true,
         state: createDrillSession({ mode: 'countries', skills: ['country-to-capital'], countryIds: ['SE'] }),
@@ -752,7 +743,7 @@ describe('DrillSession map presentation', () => {
         onAnswer: vi.fn(),
         onContinue,
         onExit: vi.fn(),
-        activity: 'practice',
+        learningStates: [],
       }))
     })
 
@@ -833,7 +824,7 @@ describe('DrillSession map presentation', () => {
 
     await act(async () => {
       root = createRoot(mount)
-      root.render(createElement(DrillSession, {
+      root.render(createElement(PracticeSession, {
         answerMode: 'typing',
         fuzzyMatching: false,
         state: createDrillSession({ mode: 'countries', skills: ['country-to-capital'], countryIds: ['NO'] }),
@@ -842,7 +833,7 @@ describe('DrillSession map presentation', () => {
         onAnswer: vi.fn(),
         onContinue,
         onExit: vi.fn(),
-        activity: 'practice',
+        learningStates: [],
       }))
     })
 

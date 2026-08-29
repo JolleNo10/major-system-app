@@ -40,6 +40,13 @@ vi.mock('./DrillSession', () => ({
   },
 }))
 
+vi.mock('@/features/world-countries/practice/PracticeSession', () => ({
+  PracticeSession: (props: Record<string, unknown>) => {
+    drillSessionProps.current = props
+    return createElement('div', { 'data-testid': 'practice-session' })
+  },
+}))
+
 vi.mock('./DrillResults', () => ({
   DrillResults: (props: Record<string, unknown>) => {
     drillResultsProps.current = props
@@ -158,7 +165,7 @@ describe('WorldCountriesDrill learning integration', () => {
     act(() => mount.querySelector<HTMLButtonElement>('[data-testid="start-locate-capitals"]')!.click())
 
     expect(mount.querySelector('[data-testid="practice-session"]')).not.toBeNull()
-    expect(drillSessionProps.current?.activity).toBe('practice')
+    expect(drillSessionProps.current?.activity).toBeUndefined()
     expect(drillSessionProps.current?.interaction).toBe('location-click')
     expect((drillSessionProps.current?.state as { skills?: readonly string[] }).skills).toEqual(['capital-to-country'])
   })
@@ -235,7 +242,7 @@ describe('WorldCountriesDrill learning integration', () => {
     })
 
     expect((drillSessionProps.current?.state as DrillSessionState).countryIds).toEqual(['AL'])
-    expect(drillSessionProps.current?.activity).toBe('drill')
+    expect(drillSessionProps.current?.activity).toBeUndefined()
     expect(JSON.parse(localStorage.getItem('world-countries-drill-preferences')!)).toEqual({ subregionIds: [], mode: 'countries', order: 'ordered' })
   })
 
@@ -262,7 +269,7 @@ describe('WorldCountriesDrill learning integration', () => {
     })
 
     expect((drillSessionProps.current?.state as DrillSessionState).countryIds).toEqual(['AL'])
-    expect(drillSessionProps.current?.activity).toBe('practice')
+    expect(drillSessionProps.current?.activity).toBeUndefined()
     expect(drillSessionProps.current?.interaction).toBe('location-click')
     expect((drillSessionProps.current?.state as DrillSessionState).skills).toEqual(['capital-to-country'])
   })

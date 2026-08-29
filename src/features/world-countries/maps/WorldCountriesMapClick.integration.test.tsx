@@ -12,7 +12,7 @@ import { SchedulerLocationPracticeStep } from '@/features/world-countries/learni
 import { LearningMapSurface } from '@/features/world-countries/learning/flows/LearningMapSurface'
 import { createDrillSelection } from '@/features/world-countries/drill/drillSelection'
 import { createDrillSession } from '@/features/world-countries/drill/drillSessionState'
-import { DrillSession } from '@/features/world-countries/drill/DrillSession'
+import { PracticeSession } from '@/features/world-countries/practice/PracticeSession'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import { InlineOrderEditor, type InlineOrderClickState } from '@/features/world-countries/ui/InlineOrderEditor'
 
@@ -107,17 +107,17 @@ async function renderAndorraDrill(skill: 'location-to-country' | 'capital-to-cou
   document.body.append(mount)
   await act(async () => {
     root = createRoot(mount)
-    root.render(createElement(PageLayoutProvider, null, createElement(DrillSession, {
+    root.render(createElement(PageLayoutProvider, null, createElement(PracticeSession, {
       answerMode: 'multiple-choice',
       fuzzyMatching: false,
       interaction: 'location-click',
-      activity: 'practice',
       state,
       selection: createDrillSelection(['southern-europe']),
       entries: [andorra],
       onAnswer,
       onContinue: vi.fn(),
       onExit: vi.fn(),
+      learningStates: [],
     })))
     await Promise.resolve()
     await Promise.resolve()
@@ -363,7 +363,6 @@ describe('real bundled-map tiny Country selection', () => {
       countryId: 'AD',
       skill: 'location-to-country',
       answer: 'Andorra',
-      evidenceKind: 'recognition',
     }))
     expect(mount.querySelector('[data-svg-map-task-representative-target="Andorra"]')?.getAttribute('visibility')).toBe('visible')
     expect(Number(marker.getAttribute('r'))).toBeGreaterThan(0)
@@ -381,7 +380,6 @@ describe('real bundled-map tiny Country selection', () => {
       countryId: 'AD',
       skill: 'capital-to-country',
       answer: 'Andorra',
-      evidenceKind: 'recognition',
     }))
   })
 

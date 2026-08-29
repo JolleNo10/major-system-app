@@ -32,9 +32,9 @@ async function renderShell() {
 }
 
 describe('World Countries activity boundary', () => {
-  it('defaults to Today and keeps Drill and Recite available', async () => {
+  it('defaults to Today and keeps Drill, Recite, and Quiz available', async () => {
     const mount = await renderShell()
-    expect([...mount.querySelectorAll('[role="tab"]')].map(tab => tab.textContent)).toEqual(['Today', 'Drill', 'Recite'])
+    expect([...mount.querySelectorAll('[role="tab"]')].map(tab => tab.textContent)).toEqual(['Today', 'Drill', 'Recite', 'Quiz'])
     expect(mount.textContent).toContain('World Countries')
     expect(mount.textContent).toContain('Today')
     expect(mount.textContent).toContain('Due reviews')

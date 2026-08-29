@@ -1,8 +1,8 @@
 import type { Country } from '@/features/world-countries/data/countries'
-import type { WorldCountriesRecallSkill } from '@/features/world-countries/learning/recallTargets'
+import type { WorldCountriesRecallSkill } from './recallTargets'
 import { getWorldCountriesAnswerKind, type WorldCountriesAnswerKind } from '@/features/world-countries/ui/WorldCountriesAnswerSemantics'
 
-export interface DrillTaskPresentation {
+export interface WorldCountriesRecallTaskPresentation {
   direction: string
   cue: string
   typedPlaceholder: string
@@ -10,11 +10,11 @@ export interface DrillTaskPresentation {
   answerKind: WorldCountriesAnswerKind
 }
 
-/** Derive the active question's copy and visual answer-domain cue. */
-export function deriveDrillTaskPresentation(
+/** Derive neutral copy for an active Country recall task. */
+export function deriveRecallTaskPresentation(
   skill: WorldCountriesRecallSkill,
   country: Country,
-): DrillTaskPresentation {
+): WorldCountriesRecallTaskPresentation {
   const answerKind = getWorldCountriesAnswerKind(skill)
   switch (skill) {
     case 'location-to-country':

@@ -15,7 +15,8 @@ import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountrie
 import { WORLD_COUNTRIES_DRILL_MODES, type WorldCountriesDrillMode } from './drillModes'
 import { getDrillSelectionCounts, type DrillSelectionMetadata, type WorldCountriesDrillSelection } from './drillSelection'
 import type { WorldCountriesDrillOrder } from './drillOrder'
-import { isWorldCountriesLearningMode, WORLD_COUNTRIES_LEARNING_MODES, WORLD_COUNTRIES_PRACTICE_MODES, type WorldCountriesLearnPracticeMode } from '@/features/world-countries/learning/learnPracticeModes'
+import { isWorldCountriesLearningMode, WORLD_COUNTRIES_LEARNING_MODES, type WorldCountriesLearnPracticeMode } from '@/features/world-countries/learning/learnPracticeModes'
+import { WORLD_COUNTRIES_PRACTICE_MODES } from '@/features/world-countries/practice/practiceModes'
 import type { WorldCountriesProficiencyScope, WorldCountriesProficiencySelection, WorldCountriesProficiencyFilter } from './drillProficiencyScope'
 
 const PURPOSES = [

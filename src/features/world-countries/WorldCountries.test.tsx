@@ -20,6 +20,10 @@ vi.mock('./today/WorldCountriesToday', () => ({
   WorldCountriesToday: () => createElement('div', { 'data-testid': 'today-workflow' }, 'Today workflow'),
 }))
 
+vi.mock('./practice/WorldCountriesQuiz', () => ({
+  WorldCountriesQuiz: () => createElement('div', { 'data-testid': 'quiz-workflow' }, 'Quiz workflow'),
+}))
+
 let root: Root | null = null
 
 afterEach(() => {
@@ -57,11 +61,11 @@ describe('World Countries compact activity header', () => {
     expect(header?.textContent).toContain('World Countries')
     expect(header?.textContent).not.toContain('Learn, practise and retain')
     expect(header?.className).toContain('py-2')
-    expect(tablist?.className).toContain('grid-cols-3')
     expect([...tablist?.querySelectorAll('[role="tab"]') ?? []].map(tab => tab.textContent)).toEqual([
       'Today',
       'Drill',
       'Recite',
+      'Quiz',
     ])
     expect(tablist?.querySelector('[role="button"]')).toBeNull()
     expect(mount.querySelector('[data-testid="today-workflow"]')).not.toBeNull()
@@ -87,5 +91,16 @@ describe('World Countries compact activity header', () => {
     await act(async () => tabs[0]?.click())
     expect(tabs[0]?.getAttribute('aria-selected')).toBe('true')
     expect(mount.querySelector('[data-testid="today-workflow"]')).not.toBeNull()
+  })
+
+  it('opens Quiz without changing the Today default', async () => {
+    const mount = await renderShell()
+    const tabs = [...mount.querySelectorAll<HTMLButtonElement>('[role="tab"]')]
+
+    expect(tabs[0]?.getAttribute('aria-selected')).toBe('true')
+    await act(async () => tabs[3]?.click())
+
+    expect(tabs[3]?.getAttribute('aria-selected')).toBe('true')
+    expect(mount.querySelector('[data-testid="quiz-workflow"]')).not.toBeNull()
   })
 })

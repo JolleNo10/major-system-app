@@ -6,7 +6,6 @@ import { shuffle } from '@/core/scoring/quiz'
 import type { Country } from '@/features/world-countries/data/countries'
 import { classifyRecallAnswer } from '@/features/world-countries/learning/recallAnswerMatching'
 import type { WorldCountriesRecallSkill } from '@/features/world-countries/learning/recallTargets'
-import type { LearningStates } from '@/features/world-countries/learning/learningProgress'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import { TaskDock } from '@/features/world-countries/ui/MapSurface'
 import { WorldCountriesMapActivitySurface, type WorldCountriesActivityTask } from '@/features/world-countries/ui/WorldCountriesActivity'
@@ -14,11 +13,10 @@ import { getWorldCountriesTaskHighlightFill, type WorldCountriesAnswerKind } fro
 import { WorldCountriesTypedAnswer } from '@/features/world-countries/ui/WorldCountriesTypedAnswer'
 import { getDrillSelectionScopeLabel, type WorldCountriesDrillSelection } from './drillSelection'
 import { DrillSessionRails } from './DrillSessionRails'
-import { PracticeSessionRails } from './PracticeSessionRails'
 import { getDrillModeDefinition } from './drillModes'
 import type { WorldCountriesProficiencySelection } from './drillProficiencyScope'
 import { deriveDrillSessionProgress } from './drillSessionProgress'
-import { deriveDrillTaskPresentation, type DrillTaskPresentation } from './drillTaskPresentation'
+import { deriveRecallTaskPresentation, type WorldCountriesRecallTaskPresentation } from '@/features/world-countries/learning/recallTaskPresentation'
 import {
   getCurrentDrillStep,
   type DrillAnswerRecord,
@@ -35,8 +33,6 @@ interface StepFeedback {
   expectedAnswer: string
   answerKind: WorldCountriesAnswerKind
 }
-
-export type DrillSessionInteraction = 'recall' | 'location-click'
 
 function answerValues(skill: WorldCountriesRecallSkill, entries: readonly Country[]): string[] {
   return entries.map(entry => skill === 'country-to-capital' ? entry.capital : entry.country)
@@ -57,9 +53,6 @@ export function DrillSession({
   onAnswer,
   onContinue,
   onExit,
-  interaction = 'recall',
-  activity = 'drill',
-  learningStates = [],
   proficiencySelection = [],
   activeCountries,
 }: {
@@ -74,9 +67,6 @@ export function DrillSession({
   onAnswer: (record: DrillAnswerRecord) => void
   onContinue: (correct: boolean) => void
   onExit: () => void
-  interaction?: DrillSessionInteraction
-  activity?: 'drill' | 'practice'
-  learningStates?: LearningStates
   proficiencySelection?: WorldCountriesProficiencySelection
 }) {
   const step = getCurrentDrillStep(state)
@@ -115,15 +105,12 @@ export function DrillSession({
   if (!step || !country) return null
 
   const expectedAnswer = step.skill === 'country-to-capital' ? country.capital : country.country
-  const task = deriveDrillTaskPresentation(step.skill, country)
+  const task: WorldCountriesRecallTaskPresentation = deriveRecallTaskPresentation(step.skill, country)
   const answerKind = task.answerKind
   const isLocationQuestion = step.skill === 'location-to-country'
   const isShapeQuestion = step.skill === 'shape-to-country'
   const isCapitalQuestion = step.skill === 'capital-to-country'
-  const isLocationPractice = interaction === 'location-click' && isLocationQuestion
-  const isCapitalLocationPractice = interaction === 'location-click' && isCapitalQuestion
-  const isMapClickPractice = isLocationPractice || isCapitalLocationPractice
-  const isTypedRecall = answerMode === 'typing' && !isMapClickPractice
+  const isTypedRecall = answerMode === 'typing'
   const scopeCountries = state.countryIds
     .map(countryId => countryById.get(countryId))
     .filter((entry): entry is Country => entry !== undefined)
@@ -160,25 +147,6 @@ export function DrillSession({
     })
   }
 
-  const submitLocation = (countryId: string) => {
-    if (feedback) return
-    const selectedCountry = scopeCountries.find(entry => entry.id === countryId)
-    if (!selectedCountry) return
-    const correct = selectedCountry.id === country.id
-    const elapsed = Math.max(0, now() - startedAtRef.current)
-    setFeedback({ answer: selectedCountry.country, correct, match: 'exact', expectedAnswer: country.country, answerKind })
-    onAnswer({
-      countryId: country.id,
-      skill: isCapitalLocationPractice ? 'capital-to-country' : 'location-to-country',
-      answer: selectedCountry.country,
-      correct,
-      at: Date.now(),
-      ms: elapsed,
-      evidenceKind: 'recognition',
-      ...(assisted ? { assisted: true } : {}),
-    })
-  }
-
   const feedbackText = feedback
     ? feedback.correct
       ? feedback.match === 'fuzzy'
@@ -189,28 +157,20 @@ export function DrillSession({
   const displayedFeedback = feedback
   const highlightedCountryId = isShapeQuestion
     ? feedback ? country.id : null
-    : isMapClickPractice
-    ? feedback ? country.id : null
     : isCapitalQuestion ? (feedback ? country.id : null) : country.id
   const namedCountryId = isShapeQuestion
     ? feedback ? country.id : null
     : isLocationQuestion || isCapitalQuestion
     ? feedback ? country.id : null
     : country.id
-  const practiceNamedCountryId = isMapClickPractice ? (feedback ? country.id : null) : namedCountryId
   const resolvedScopeLabel = scopeLabel ?? getDrillSelectionScopeLabel(selection, entries)
-  const practiceFeedbackText = displayedFeedback
-    ? displayedFeedback.correct
-      ? 'Correct location.'
-      : `That was ${displayedFeedback.answer} — ${country.country} is highlighted.`
-    : null
   const progress = deriveDrillSessionProgress(state)
   const activityTask: WorldCountriesActivityTask = {
     direction: task.direction,
     cue: task.cue,
     sessionContext: (
       <>
-        <span className="text-zinc-300">{resolvedScopeLabel}</span> · {activity === 'practice' ? 'Practice' : getDrillModeDefinition(state.mode).label}
+        <span className="text-zinc-300">{resolvedScopeLabel}</span> · {getDrillModeDefinition(state.mode).label}
       </>
     ),
     answerKind,
@@ -222,25 +182,21 @@ export function DrillSession({
     },
   }
 
-  const rails = activity === 'practice' ? (
-    <PracticeSessionRails selection={selection} scopeLabel={resolvedScopeLabel} proficiencySelection={proficiencySelection} state={state} onExit={onExit} entries={entries} learningStates={learningStates} />
-  ) : (
-    <DrillSessionRails
-      selection={selection}
-      scopeLabel={resolvedScopeLabel}
-      proficiencySelection={proficiencySelection}
-      mode={state.mode}
-      state={state}
-      entries={entries}
-      mnemonicOpen={mnemonicOpen}
-      onOpenMnemonic={() => {
-        if (!stepKey) return
-        setMnemonicOpenFor(stepKey)
-        setAssistedFor(stepKey)
-      }}
-      onCloseMnemonic={() => setMnemonicOpenFor(null)}
-    />
-  )
+  const rails = <DrillSessionRails
+    selection={selection}
+    scopeLabel={resolvedScopeLabel}
+    proficiencySelection={proficiencySelection}
+    mode={state.mode}
+    state={state}
+    entries={entries}
+    mnemonicOpen={mnemonicOpen}
+    onOpenMnemonic={() => {
+      if (!stepKey) return
+      setMnemonicOpenFor(stepKey)
+      setAssistedFor(stepKey)
+    }}
+    onCloseMnemonic={() => setMnemonicOpenFor(null)}
+  />
 
   if (isTypedRecall) {
     return (
@@ -249,7 +205,7 @@ export function DrillSession({
         answerLabel={task.typedAnswerLabel}
         placeholder={task.typedPlaceholder}
         correctAnswer={expectedAnswer}
-        allowIncorrectSpellingPractice={activity === 'practice'}
+        allowIncorrectSpellingPractice={false}
         evaluate={answer => {
           const match = classifyRecallAnswer(step.skill, answer, country, {
             fuzzy: fuzzyMatching,
@@ -309,7 +265,7 @@ export function DrillSession({
                     ? 'Map showing the selected location for recall without the Country name revealed'
                     : isCapitalQuestion && !typed.outcome
                       ? 'Map of the selected geographic scope without the target Country revealed'
-                      : `Map with ${country.country} highlighted for ${activity === 'practice' ? 'Practice' : 'Drill'} recall`}
+                      : `Map with ${country.country} highlighted for Drill recall`}
                 />
               )}
               feedbackOverlay={typed.feedbackOverlay}
@@ -330,24 +286,7 @@ export function DrillSession({
 
   return (
     <>
-      {activity === 'practice' ? (
-        <PracticeSessionRails selection={selection} proficiencySelection={proficiencySelection} state={state} onExit={onExit} entries={entries} learningStates={learningStates} />
-      ) : (
-        <DrillSessionRails
-          selection={selection}
-          proficiencySelection={proficiencySelection}
-          mode={state.mode}
-          state={state}
-          entries={entries}
-          mnemonicOpen={mnemonicOpen}
-          onOpenMnemonic={() => {
-            if (!stepKey) return
-            setMnemonicOpenFor(stepKey)
-            setAssistedFor(stepKey)
-          }}
-          onCloseMnemonic={() => setMnemonicOpenFor(null)}
-        />
-      )}
+      {rails}
             <WorldCountriesMapActivitySurface
               task={activityTask}
               map={(
@@ -356,34 +295,26 @@ export function DrillSession({
                     continent={country.continent}
                     scopeCountries={currentContinentMapCountries}
                     highlightFill={getWorldCountriesTaskHighlightFill(answerKind)}
-                    answerSelectionCountryIds={isMapClickPractice ? scopeCountries.map(entry => entry.id) : undefined}
-                    taskTargetCountryId={(!isMapClickPractice && isLocationQuestion) || (isMapClickPractice && feedback) ? country.id : null}
+                    taskTargetCountryId={isLocationQuestion ? country.id : null}
                     highlightedCountryId={isShapeQuestion ? feedback ? country.id : null : highlightedCountryId}
-                    namedCountryId={isShapeQuestion ? feedback ? country.id : null : isMapClickPractice ? practiceNamedCountryId : namedCountryId}
-                    showHighlightedNames={isShapeQuestion ? Boolean(feedback) : isMapClickPractice ? Boolean(practiceNamedCountryId) : Boolean(namedCountryId)}
+                    namedCountryId={isShapeQuestion ? feedback ? country.id : null : namedCountryId}
+                    showHighlightedNames={isShapeQuestion ? Boolean(feedback) : Boolean(namedCountryId)}
                     visibleCountryIds={getShapeMapCountryIds(feedback ? (feedback.correct ? 'correct' : 'incorrect') : null)}
                     zoomCountryIds={getShapeMapCountryIds(feedback ? (feedback.correct ? 'correct' : 'incorrect') : null)}
-                    onCountryClick={isMapClickPractice ? submitLocation : undefined}
                     ariaLabel={isShapeQuestion && !feedback
                       ? 'Map showing the isolated Country shape without the Country name revealed'
-                      : isMapClickPractice && !feedback
-                      ? isCapitalLocationPractice
-                        ? 'Map for clicking the Country whose Capital is shown'
-                        : 'Map for clicking the target Country'
                       : isLocationQuestion && !feedback
                         ? 'Map showing the selected location for recall without the Country name revealed'
                       : isCapitalQuestion && !feedback
                         ? 'Map of the selected geographic scope without the target Country revealed'
-                      : `Map with ${country.country} highlighted for ${activity === 'practice' ? 'Practice' : 'Drill'} recall`}
+                      : `Map with ${country.country} highlighted for Drill recall`}
                   />
-                  {displayedFeedback && <RecallFeedback correct={displayedFeedback.correct} message={isMapClickPractice ? practiceFeedbackText : feedbackText} />}
+                  {displayedFeedback && <RecallFeedback correct={displayedFeedback.correct} message={feedbackText} />}
                 </div>
               )}
-              dockPlacement={answerMode === 'typing' && !isMapClickPractice ? 'stacked' : 'attached'}
-              dock={isMapClickPractice ? (
-                <p className="sr-only">Click a Country on the map to answer.</p>
-              ) : (
-          <TaskDock variant={answerMode === 'typing' ? 'form' : 'navigation'}>
+              dockPlacement="attached"
+              dock={(
+          <TaskDock variant="navigation">
             <section className="space-y-3">
             {answerMode === 'multiple-choice' ? (
               <MultipleChoice

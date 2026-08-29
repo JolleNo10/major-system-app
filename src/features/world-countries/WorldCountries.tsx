@@ -8,14 +8,16 @@ import { normalizeWorldCountriesIncludedEntityGroups, resolveCountrySet } from '
 import { WorldCountriesDrill } from '@/features/world-countries/drill/WorldCountriesDrill'
 import { WorldCountriesRecite } from '@/features/world-countries/recite/WorldCountriesRecite'
 import { WorldCountriesToday } from '@/features/world-countries/today/WorldCountriesToday'
+import { WorldCountriesQuiz } from '@/features/world-countries/practice/WorldCountriesQuiz'
 import { WorldCountriesPopulationProvider } from './WorldCountriesPopulationContext'
 
-type WorldCountriesArea = 'today' | 'drill' | 'recite'
+type WorldCountriesArea = 'today' | 'drill' | 'recite' | 'quiz'
 
 const AREAS: readonly { id: WorldCountriesArea; label: string }[] = [
   { id: 'today', label: 'Today' },
   { id: 'drill', label: 'Drill' },
   { id: 'recite', label: 'Recite' },
+  { id: 'quiz', label: 'Quiz' },
 ]
 
 /** World Countries application shell; workflows own their behavior and state. */
@@ -44,7 +46,7 @@ export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
         <div
           role="tablist"
           aria-label="World Countries activities"
-          className="grid min-w-0 flex-1 grid-cols-3 gap-1 rounded-xl border border-zinc-800 bg-zinc-900/80 p-1"
+          className="grid min-w-0 flex-1 grid-cols-4 gap-1 rounded-xl border border-zinc-800 bg-zinc-900/80 p-1"
         >
           {AREAS.map(candidate => (
             <button
@@ -73,6 +75,7 @@ export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
       {area === 'today' && <WorldCountriesToday answerMode={answerMode} onNavigate={setArea} />}
       {area === 'drill' && <WorldCountriesDrill answerMode={answerMode} />}
       {area === 'recite' && <WorldCountriesRecite answerMode={answerMode} />}
+      {area === 'quiz' && <WorldCountriesQuiz answerMode={answerMode} />}
     </WorldCountriesPopulationProvider>
   )
 }

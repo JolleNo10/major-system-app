@@ -9,7 +9,7 @@ import type { RecallProgress } from '@/features/world-countries/learning/recallP
 import type { WorldCountriesProgressState } from '@/features/world-countries/learning/progressPresentation'
 import type { WorldCountriesRecallSkill } from '@/features/world-countries/learning/recallTargets'
 import type { WorldCountriesDrillMode } from './drillModes'
-import type { WorldCountriesPracticeMode } from '@/features/world-countries/learning/learnPracticeModes'
+import type { WorldCountriesPracticeMode } from '@/features/world-countries/practice/practiceModes'
 import type { SubregionMetadata } from '@/features/world-countries/geography/subregionMetadata'
 
 export type WorldCountriesProficiencyFilter = 'weak' | 'developing'
