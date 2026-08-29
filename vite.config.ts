@@ -39,6 +39,10 @@ function readGitCommit(): string {
 const buildTime = new Date().toISOString()
 const commit = readGitCommit()
 const usePolling = process.env.VITE_USE_POLLING === 'true'
+const configuredPollingInterval = Number.parseInt(process.env.VITE_POLLING_INTERVAL ?? '5000', 10)
+const pollingInterval = Number.isFinite(configuredPollingInterval) && configuredPollingInterval > 0
+  ? configuredPollingInterval
+  : 5000
 
 // A production service worker can keep serving an old build after switching the
 // same origin back to Vite development. Vite normally serves index.html for
@@ -122,7 +126,7 @@ export default defineConfig({
     ...(usePolling ? {
       watch: {
         usePolling: true,
-        interval: 2000,
+        interval: pollingInterval,
         ignored: ['**/node_modules/**', '**/dist/**', '**/.git/**'],
       },
     } : {}),
