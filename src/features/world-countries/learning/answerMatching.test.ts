@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { countries } from '@/features/world-countries/data/countries'
-import { classifyPlaceName, matchesCountryName, matchesPlaceName, normalizePlaceName } from './answerMatching'
+import { countries, type Country } from '@/features/world-countries/data/countries'
+import { classifyPlaceName, matchesCountryName, matchesPlaceName, normalizePlaceName, resolveCountryName } from './answerMatching'
 
 describe('World Countries answer matching', () => {
   it('normalizes case, whitespace, punctuation, accents, and aliases', () => {
@@ -57,5 +57,24 @@ describe('World Countries answer matching', () => {
     expect(classifyPlaceName('Norway', 'Norway', { fuzzy: true })).toBe('exact')
     expect(classifyPlaceName('Noreway', 'Norway', { fuzzy: true, candidates: ['Norway', 'Sweden'] })).toBe('fuzzy')
     expect(classifyPlaceName('Noreway', 'Norway')).toBe('none')
+  })
+
+  it('resolves one Country from exact aliases and unique controlled fuzzy matches', () => {
+    const candidates = countries.filter(country => ['CZ', 'DE', 'AT'].includes(country.id))
+    expect(resolveCountryName('Czech Republic', candidates)).toMatchObject({ kind: 'exact', country: { id: 'CZ' } })
+    expect(resolveCountryName('Germnay', candidates, { fuzzy: true })).toMatchObject({ kind: 'fuzzy', country: { id: 'DE' } })
+    expect(resolveCountryName('Germnay', candidates)).toEqual({ kind: 'none' })
+  })
+
+  it('does not choose arbitrarily when exact Country names are ambiguous', () => {
+    const duplicateName = (id: string): Country => ({
+      id,
+      country: 'Example Land',
+      capital: 'Example City',
+      continent: 'Europe',
+      subregionId: 'northern-europe',
+      subregion: 'Northern Europe',
+    })
+    expect(resolveCountryName('Example Land', [duplicateName('AA'), duplicateName('BB')])).toEqual({ kind: 'ambiguous' })
   })
 })

@@ -24,6 +24,16 @@ export function resolveCountriesToSvgIds(
   return [...new Set(entries.flatMap(entry => resolveCountryToSvgIds(entry, discoveredSvgIds)))]
 }
 
+/** Resolve a caller-owned Country-ID set through the canonical map adapter. */
+export function resolveCountryIdsToSvgIds(
+  countryIds: readonly CountryId[],
+  entries: readonly Country[],
+  discoveredSvgIds: ReadonlySet<string> | readonly string[],
+): string[] {
+  const selected = new Set(countryIds)
+  return resolveCountriesToSvgIds(entries.filter(entry => selected.has(entry.id)), discoveredSvgIds)
+}
+
 /** Derive temporary SVG labels from the supplied effective Country order. */
 export function createCountryOrderLabels(
   entries: readonly Country[],

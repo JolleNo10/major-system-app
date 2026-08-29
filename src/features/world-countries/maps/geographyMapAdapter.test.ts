@@ -8,6 +8,7 @@ import {
   findUnresolvedCountries,
   getContinentHoverGroupId,
   getSubregionHoverGroupId,
+  resolveCountryIdsToSvgIds,
   resolveCountryToSvgIds,
   sortCountriesByMapPosition,
   sortSubregionsByMapPosition,
@@ -26,6 +27,7 @@ describe('World Countries geography map adapter', () => {
     expect(resolveCountryToSvgIds(unitedKingdom, ['England', 'Scotland', 'Wales'])).toEqual([
       'England', 'Scotland', 'Wales',
     ])
+    expect(resolveCountryIdsToSvgIds(['NO', 'SE'], [norway, sweden], ['Norway', 'Sweden'])).toEqual(['Norway', 'Sweden'])
   })
 
   it('derives hover groups and learned colors from domain records', () => {

@@ -114,6 +114,25 @@ describe('GeographyOverviewMap', () => {
     expect(mount.textContent).not.toContain('Norway: Hidden answer')
   })
 
+  it('fits an explicit Country zoom set even when a member Country is hidden', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g><g><path id="Sweden"/><text id="Sweden_label">Sweden</text></g></svg>' })))
+    const svgElementPrototype = SVGElement.prototype as typeof SVGElement.prototype & { getBBox?: () => { x: number; y: number; width: number; height: number } }
+    const previousGetBBox = svgElementPrototype.getBBox
+    Object.defineProperty(svgElementPrototype, 'getBBox', {
+      configurable: true,
+      value(this: SVGElement) {
+        return this.id === 'Norway'
+          ? { x: 10, y: 20, width: 10, height: 10 }
+          : { x: 100, y: 20, width: 10, height: 10 }
+      },
+    })
+    const mount = document.createElement('div'); document.body.append(mount)
+    await act(async () => { root = createRoot(mount); root.render(createElement(GeographyOverviewMap, { level: 'world', countryPopulation: [countries.find(country => country.id === 'NO')!, countries.find(country => country.id === 'SE')!], hiddenCountryIds: ['SE'], zoomCountryIds: ['NO', 'SE'], ariaLabel: 'World map' })); await Promise.resolve(); await Promise.resolve() })
+    expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('-30 -20 180 90')
+    expect((mount.querySelector('path#Sweden') as SVGPathElement | null)?.style.visibility).toBe('hidden')
+    Object.defineProperty(svgElementPrototype, 'getBBox', { configurable: true, value: previousGetBBox })
+  })
+
   it('can keep the map mounted as a non-interactive geographic scaffold', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g></svg>' })))
     const onHoverGroup = vi.fn(); const onCountryClick = vi.fn(); const mount = document.createElement('div'); document.body.append(mount)

@@ -8,6 +8,13 @@ export interface PlaceMatchOptions {
 
 export type PlaceMatchKind = 'none' | 'exact' | 'fuzzy'
 
+export type CountryNameResolutionKind = PlaceMatchKind | 'ambiguous'
+
+export interface CountryNameResolution {
+  country?: Country
+  kind: CountryNameResolutionKind
+}
+
 export function normalizePlaceName(value: string): string {
   return value
     .normalize('NFD')
@@ -112,6 +119,31 @@ export function classifyCountryName(
     ...options,
     aliases: country.countryAliases,
   })
+}
+
+/**
+ * Resolve one typed Country name without choosing arbitrarily between close
+ * candidates. Exact names and aliases are checked first; controlled fuzzy
+ * matching is enabled only when requested and must resolve to one Country.
+ */
+export function resolveCountryName(
+  value: string,
+  candidates: readonly Country[],
+  options: { fuzzy?: boolean } = {},
+): CountryNameResolution {
+  const uniqueCandidates = [...new Map(candidates.map(country => [country.id, country])).values()]
+  const answerCandidates = uniqueCandidates.flatMap(country => [country.country, ...(country.countryAliases ?? [])])
+  const exactMatches = uniqueCandidates.filter(country => classifyCountryName(value, country) === 'exact')
+  if (exactMatches.length === 1) return { country: exactMatches[0], kind: 'exact' }
+  if (exactMatches.length > 1) return { kind: 'ambiguous' }
+  if (!options.fuzzy) return { kind: 'none' }
+
+  const fuzzyMatches = uniqueCandidates.filter(country => classifyCountryName(value, country, {
+    fuzzy: true,
+    candidates: answerCandidates,
+  }) === 'fuzzy')
+  if (fuzzyMatches.length === 1) return { country: fuzzyMatches[0], kind: 'fuzzy' }
+  return { kind: fuzzyMatches.length > 1 ? 'ambiguous' : 'none' }
 }
 
 export { editDistance }

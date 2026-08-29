@@ -9,6 +9,7 @@ import {
   createCountryColorsById,
   createSubregionHoverGroups,
   getCountryForSvgId,
+  resolveCountryIdsToSvgIds,
   resolveCountriesToSvgIds,
 } from './geographyMapAdapter'
 import { getMemoMapDefinition, MEMO_MAP_DEFINITIONS } from './mapDefinitions'
@@ -37,6 +38,10 @@ export interface GeographyOverviewMapProps {
   highlightedCountryIds?: readonly CountryId[]
   /** Caller-controlled fill for highlighted Country geometry. */
   highlightFill?: string
+  /** Caller-owned Country IDs whose labels should be visible. */
+  namedCountryIds?: readonly CountryId[]
+  /** Caller-controlled Country IDs used for explicit map fitting. */
+  zoomCountryIds?: readonly CountryId[]
   /** Optional non-color descriptions for the mapped Countries. */
   countryAccessibleDescriptionsById?: ReadonlyMap<CountryId, string>
   /** Optional caller-owned population snapshot; defaults to the active context population. */
@@ -70,6 +75,8 @@ export function GeographyOverviewMap({
   countryColorsById,
   highlightedCountryIds = [],
   highlightFill,
+  namedCountryIds = [],
+  zoomCountryIds,
   countryAccessibleDescriptionsById,
   countryPopulation,
   hiddenCountryIds = [],
@@ -136,6 +143,14 @@ export function GeographyOverviewMap({
       mapCountryIds,
     ),
     [highlightedCountryIdSet, mapCountryIds, visibleCountries],
+  )
+  const namedCountryIdSet = useMemo(() => new Set(namedCountryIds), [namedCountryIds])
+  const namedSvgIds = useMemo(
+    () => resolveCountriesToSvgIds(
+      visibleCountries.filter(country => namedCountryIdSet.has(country.id)),
+      mapCountryIds,
+    ),
+    [mapCountryIds, namedCountryIdSet, visibleCountries],
   )
   const hiddenCountryIdSet = useMemo(() => new Set(hiddenCountryIds), [hiddenCountryIds])
   const hiddenSvgIds = useMemo(
@@ -216,9 +231,17 @@ export function GeographyOverviewMap({
     })),
     [activeHoveredGroupId, hoverGroups],
   )
-  const zoomIds = level === 'continent' && continent && (focusedSubregionId || definition.domainContinents.length > 1)
-    ? (focusedSubregionId ? focusSvgIds : visibleSvgIds)
-    : []
+  const explicitZoomSvgIds = useMemo(
+    () => zoomCountryIds === undefined
+      ? []
+      : resolveCountryIdsToSvgIds(zoomCountryIds, visibleCountries, mapCountryIds),
+    [mapCountryIds, visibleCountries, zoomCountryIds],
+  )
+  const zoomIds = zoomCountryIds !== undefined
+    ? explicitZoomSvgIds
+    : level === 'continent' && continent && (focusedSubregionId || definition.domainContinents.length > 1)
+      ? (focusedSubregionId ? focusSvgIds : visibleSvgIds)
+      : []
 
   const title = level === 'world' ? 'World' : continent ?? 'Continent'
   const descriptionId = `geography-map-descriptions-${useId().replace(/:/g, '')}`
@@ -256,6 +279,7 @@ export function GeographyOverviewMap({
         hoveredId={hoveredCountryId}
         mutedIds={mutedSvgIds}
         countryColors={countryColors}
+        namedIds={namedSvgIds}
         zoomIds={zoomIds}
         zoomPadding={definition.zoomPadding}
         onCountriesLoaded={setMapCountries}

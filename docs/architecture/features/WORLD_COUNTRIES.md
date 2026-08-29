@@ -31,7 +31,8 @@ signal rather than coordinator-owned refresh counters.
 
 - `data/` owns canonical Country, Continent, Subregion identity, membership,
   geopolitical classification, and bundled reference data. `Country.capital`
-  is the canonical Capital answer.
+  is the canonical Capital answer; `landBorders.ts` owns the reviewed static
+  land-border pair graph and its effective active-population filtering queries.
 - `geography/` owns active-population queries, effective World -> Continent ->
   Subregion -> Country ordering, the shared pure World-wide Subregion-scope
   normalization/toggling/count/label/effective-membership seam, order metadata,
@@ -45,10 +46,10 @@ signal rather than coordinator-owned refresh counters.
   guided Learning flows.
 - `practice/` owns non-recording Practice execution and presentation reusable
   outside the Drill entry point, including the map-backed Learn & Practise
-  path, transient Practice results, and the top-level Capitals Quiz. Quiz is a
-  Practice-semantic user-facing area with transient randomized runs, scoring,
-  miss review, and retry; it owns no evidence, milestones, preferences,
-  scheduling, or other durable learner state.
+  path, transient Practice results, and the top-level Capitals and Neighbours
+  Quizzes. Quiz is a Practice-semantic user-facing area with transient
+  randomized runs, scoring, miss review, and retry; it owns no evidence,
+  milestones, preferences, scheduling, or other durable learner state.
 - `today/` owns the derived Today plan, bounded due-review queue and retry
   state, Today setup/checkpoint states, and delegation into existing Learning
   flows. It consumes learning, geography, maps, and feature-local UI but not
@@ -102,11 +103,10 @@ There is no broad feature `domain/`, `persistence/`, or `common/` layer and no
 compatibility wrapper for the removed authoring workflow.
 
 There is no `quiz/` package. `practice/` owns the user-facing Quiz
-orchestration, while Practice and Quiz consume the purpose-neutral finite
-`learning/recallSession.ts` Country/skill cursor. That cursor owns unique
-Country membership, supplied order, skill stepping, advancement, and
-completion only; it owns no workflow identity, score policy, evidence,
-persistence, rails, or maps.
+orchestration. Capitals uses the purpose-neutral finite
+`learning/recallSession.ts` Country/skill cursor; Neighbours uses a separate
+Practice-owned multi-answer run/session because one target accepts several
+Country answers. Neither model owns evidence, persistence, rails, or maps.
 
 The user-facing areas are Today, Drill, Recite, and Quiz. The activity
 semantics remain exactly Drill, Learning, and Practice; Quiz is Practice and
@@ -154,13 +154,16 @@ default. Drill has a non-persisted Purpose selector:
   only the durable milestone owned by its active mode. Practice retains only
   transient answers, accuracy, progress, and results.
 
-- **Quiz**: a top-level non-recording Practice experience. Version 1 is the
-  randomized Capitals quiz: it uses the shared World-wide Subregion scope,
-  snapshots a unique randomized Country set and Country records at launch,
-  asks text-only Country → Capital questions, and keeps score, missed review,
-  Retry missed, New quiz, and Change setup transient. It does not use Drill
-  preferences or presentation, and active-run membership/order is unaffected
-  by later Settings or geography changes.
+- **Quiz**: a top-level non-recording Practice experience with Capitals and
+  Neighbours types. Capitals keeps its randomized Country → Capital flow.
+  Neighbours uses the shared World-wide Subregion scope for target candidates,
+  resolves required land-border neighbours from the canonical `data/` graph
+  filtered to the active Country population, and snapshots unique targets,
+  Country records, and effective neighbours at launch. Both types keep score,
+  miss review, Retry missed, New quiz, and Change setup transient. Neighbours'
+  multi-answer state is Practice-owned and does not use Drill preferences or
+  presentation; active-run membership/order and effective neighbours are
+  unaffected by later Settings or geography changes.
 
 ### World mastery overview
 
@@ -516,11 +519,12 @@ flowchart TD
   Learning milestones.
 - Atomic Drill and Today review evidence continue to use the existing attempts
   store and `world-countries:<skill>:<CountryId>` IDs. Practice never writes it.
-- Capitals Quiz is transient Practice: it writes no attempts, Drill
-  preferences/proficiency, Learning milestones/readiness, Today state, Recite
-  progress, Quiz history, or other durable learner signal. Its setup, active
-  Country snapshot, question order, outcomes, results, and missed retries live
-  only for the mounted Quiz area.
+- Capitals and Neighbours Quiz are transient Practice: they write no attempts,
+  Drill preferences/proficiency, Learning milestones/readiness, Today state,
+  Recite progress, Quiz history, or other durable learner signal. Their setup,
+  active Country snapshots, question order, outcomes, results, and missed
+  retries live only for the mounted Quiz area. Neighbours keeps its
+  multi-answer target state separate from the single-answer Capitals records.
 - Today reads raw core evidence through `learning/recallHistory.ts` and writes
   ordinary `recall` evidence through the existing feature adapter. It owns no
   schedule, plan, queue, retry, or checkpoint persistence.

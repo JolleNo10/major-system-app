@@ -112,6 +112,38 @@ describe('World Countries Capitals Quiz', () => {
     expect(mount.textContent).toContain('2 Countries in current scope')
   })
 
+  it('offers Neighbours with eligible-target counts and routes to its multi-answer session', () => {
+    vi.useFakeTimers()
+    const activeCountries = ['DE', 'PL', 'AT'].map(id => countries.find(country => country.id === id)!)
+    const mount = renderQuiz(activeCountries)
+
+    act(() => mount.querySelector<HTMLInputElement>('input[name="world-countries-quiz-type"][value="neighbours"]')?.click())
+    expect(mount.textContent).toContain('Neighbours quiz')
+    expect(mount.textContent).toContain('3 eligible target Countries')
+    expect((mount.querySelector('input[value="10"]') as HTMLInputElement).disabled).toBe(true)
+
+    startQuiz(mount)
+    expect(mount.querySelector('#world-countries-neighbours-quiz-question')).not.toBeNull()
+    expect(mount.textContent).toContain('Show number')
+    expect(mount.textContent).toContain('Reveal map')
+    expect(mount.textContent).not.toContain('What is the capital of')
+  })
+
+  it('keeps an active Neighbours run snapshot when live geography changes', () => {
+    vi.useFakeTimers()
+    const activeCountries = ['DE', 'PL', 'AT'].map(id => countries.find(country => country.id === id)!)
+    const rendered = renderRerenderableQuiz(activeCountries)
+    act(() => rendered.mount.querySelector<HTMLInputElement>('input[name="world-countries-quiz-type"][value="neighbours"]')?.click())
+    startQuiz(rendered.mount)
+    const question = rendered.mount.querySelector('#world-countries-neighbours-quiz-question')?.textContent
+    expect(question).toBeTruthy()
+
+    rendered.rerender([activeCountries[0]!])
+
+    expect(rendered.mount.querySelector('#world-countries-neighbours-quiz-question')?.textContent).toBe(question)
+    expect(rendered.mount.textContent).toContain('Reveal map')
+  })
+
   it('keeps a combined Subregion selection across Continent navigation and starts that scope', () => {
     vi.useFakeTimers()
     const activeCountries = [countries.find(country => country.id === 'NO')!, countries.find(country => country.id === 'JP')!]
