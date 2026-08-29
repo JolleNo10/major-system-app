@@ -64,7 +64,7 @@ describe('Settings World Countries geography order', () => {
 
   it('reports invalid JSON without changing saved order', async () => {
     renderSettings()
-    await chooseFile('{not json')
+    await chooseFile('{not json', 'error')
 
     expect(mount.querySelector('[role="alert"]')?.textContent).toContain('JSON')
     expect((await readExportedOrder()).world).toBeNull()
@@ -78,7 +78,7 @@ describe('Settings World Countries geography order', () => {
       subregions: [],
       continents: [],
       world: { continentOrder: ['asia'], updatedAt: 4 },
-    }))
+    }), 'confirmation')
 
     expect(mount.textContent).toContain('This replaces your current Continent, Subregion and Country ordering.')
     expect((await readExportedOrder()).world).toBeNull()
@@ -93,8 +93,8 @@ describe('Settings World Countries geography order', () => {
       subregions: [],
       continents: [],
       world: { continentOrder: ['asia'], updatedAt: 4 },
-    }))
-    act(() => getButtons('Import order')[getButtons('Import order').length - 1]?.click())
+    }), 'confirmation')
+    act(() => getConfirmationButton('geography-order-confirm-heading', 'Import order').click())
 
     expect(await readExportedOrder()).toMatchObject({ world: { continentOrder: ['asia'], updatedAt: 4 } })
     expect(mount.querySelector('[role="status"]')?.textContent).toContain('Geography order imported')
@@ -109,8 +109,8 @@ describe('Settings World Countries geography order', () => {
       subregions: [{ subregionId: 'northern-europe', countryOrder: ['NO'], updatedAt: 1 }],
       continents: [{ continentId: 'europe', subregionOrder: ['northern-europe'], updatedAt: 2 }],
       world: { continentOrder: ['europe'], updatedAt: 3 },
-    }))
-    act(() => getButtons('Import order')[getButtons('Import order').length - 1]?.click())
+    }), 'confirmation')
+    act(() => getConfirmationButton('geography-order-confirm-heading', 'Import order').click())
 
     expect((await readExportedOrder()).world).toMatchObject({ continentOrder: ['europe'] })
 
@@ -118,7 +118,7 @@ describe('Settings World Countries geography order', () => {
     expect(mount.textContent).toContain('This removes all custom World, Continent, Subregion and Country ordering')
     expect((await readExportedOrder()).world).toMatchObject({ continentOrder: ['europe'] })
 
-    act(() => getButtons('Reset Geography order')[getButtons('Reset Geography order').length - 1]?.click())
+    act(() => getConfirmationButton('geography-order-reset-heading', 'Reset Geography order').click())
 
     await expect(readExportedOrder()).resolves.toMatchObject({ world: null, continents: [], subregions: [] })
     expect(mount.querySelector('[role="status"]')?.textContent).toContain('Geography order reset')
@@ -133,10 +133,10 @@ describe('Settings World Countries geography order', () => {
       subregions: [],
       continents: [],
       world: { continentOrder: ['asia'], updatedAt: 4 },
-    }))
+    }), 'confirmation')
     vi.spyOn(Storage.prototype, 'setItem').mockImplementationOnce(() => { throw new Error('quota') })
 
-    act(() => getButtons('Import order')[getButtons('Import order').length - 1]?.click())
+    act(() => getConfirmationButton('geography-order-confirm-heading', 'Import order').click())
 
     expect(mount.querySelector('[role="alert"]')?.textContent).toContain('could not be saved')
     expect(mount.querySelector('[aria-label="Settings"]')).not.toBeNull()
@@ -154,18 +154,35 @@ function renderSettings(pwaOverrides: Partial<PwaUpdate> = {}): void {
   })
 }
 
-async function chooseFile(contents: string): Promise<void> {
+async function chooseFile(contents: string, expectedState: 'confirmation' | 'error'): Promise<void> {
   if (!root) renderSettings()
   const input = mount.querySelector('input[type="file"]') as HTMLInputElement
   Object.defineProperty(input, 'files', {
     configurable: true,
     value: [new File([contents], 'order.json', { type: 'application/json' })],
   })
-  await act(async () => {
+  act(() => {
     input.dispatchEvent(new Event('change', { bubbles: true }))
-    await new Promise(resolve => setTimeout(resolve, 0))
   })
+  await waitForGeographyOrderState(expectedState)
   expect(input.value).toBe('')
+}
+
+async function waitForGeographyOrderState(expectedState: 'confirmation' | 'error'): Promise<void> {
+  const description = expectedState === 'confirmation' ? 'import confirmation' : 'import error'
+  const isReady = () => expectedState === 'confirmation'
+    ? mount.querySelector('[role="group"][aria-labelledby="geography-order-confirm-heading"]') !== null
+    : mount.querySelector('[role="alert"]') !== null
+  const deadline = performance.now() + 2_000
+
+  while (!isReady()) {
+    if (performance.now() >= deadline) {
+      throw new Error(`Timed out waiting for ${description}. Current UI: ${mount.textContent ?? ''}`)
+    }
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 0))
+    })
+  }
 }
 
 function getButton(label: string): HTMLButtonElement {
@@ -176,6 +193,14 @@ function getButton(label: string): HTMLButtonElement {
 
 function getButtons(label: string): HTMLButtonElement[] {
   return [...mount.querySelectorAll('button')].filter(button => button.textContent?.trim() === label) as HTMLButtonElement[]
+}
+
+function getConfirmationButton(headingId: string, label: string): HTMLButtonElement {
+  const group = mount.querySelector<HTMLElement>(`[role="group"][aria-labelledby="${headingId}"]`)
+  if (!group) throw new Error(`Missing confirmation group: ${headingId}`)
+  const button = [...group.querySelectorAll('button')].find(candidate => candidate.textContent?.trim() === label)
+  if (!button) throw new Error(`Missing confirmation button: ${label}`)
+  return button
 }
 
 async function readExportedOrder(): Promise<Record<string, unknown>> {
