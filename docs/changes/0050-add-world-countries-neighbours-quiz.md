@@ -1,6 +1,6 @@
 # Change Spec 0050 - Add World Countries Neighbours Quiz
 
-- **Status:** Ready
+- **Status:** Implemented
 - **Date:** 2026-08-29
 - **Issue:** None.
 - **Related ADRs:** `../adr/0032-model-world-countries-quiz-as-practice.md`
@@ -552,54 +552,54 @@ established by ADR 0032 and the current World Countries ownership document.
 
 ## Acceptance criteria
 
-- [ ] Quiz setup exposes Capitals and Neighbours without changing Capitals behavior.
-- [ ] Neighbours uses the existing World-wide Subregion selection to choose target
+- [x] Quiz setup exposes Capitals and Neighbours without changing Capitals behavior.
+- [x] Neighbours uses the existing World-wide Subregion selection to choose target
       candidates while required answers may fall outside the selected geography.
-- [ ] Question-count options are based on effective eligible target count.
-- [ ] The delivered canonical border graph uses the supplied 315-pair reviewed
+- [x] Question-count options are based on effective eligible target count.
+- [x] The delivered canonical border graph uses the supplied 315-pair reviewed
       input, contains no self-edges/duplicates, and references only canonical
       World Countries IDs.
-- [ ] Effective neighbours are canonical edges filtered to the active Country
+- [x] Effective neighbours are canonical edges filtered to the active Country
       population; disabled entities are never contracted or reassigned.
-- [ ] With Kosovo active, Serbia requires Kosovo and does not require Albania;
+- [x] With Kosovo active, Serbia requires Kosovo and does not require Albania;
       Kosovo requires Albania, Montenegro, North Macedonia, and Serbia.
-- [ ] With Kosovo inactive, Serbia does not require Kosovo **and does not gain
+- [x] With Kosovo inactive, Serbia does not require Kosovo **and does not gain
       Albania**.
-- [ ] Palestine/Vatican/other optional entities follow the same active-population
+- [x] Palestine/Vatican/other optional entities follow the same active-population
       filtering rule.
-- [ ] Spain ↔ Morocco is represented; France does not gain Brazil/Suriname from
+- [x] Spain ↔ Morocco is represented; France does not gain Brazil/Suriname from
       French Guiana; Morocco does not gain Mauritania through Western Sahara;
       Canada ↔ Greenland is absent in this data revision.
-- [ ] Neighbours snapshots randomized unique targets and required effective
+- [x] Neighbours snapshots randomized unique targets and required effective
       neighbours at launch.
-- [ ] Each correct Country answer reveals that Country on the map without
+- [x] Each correct Country answer reveals that Country on the map without
       transitioning away from the target.
-- [ ] Exact aliases and enabled controlled-fuzzy Country matching use the shared
+- [x] Exact aliases and enabled controlled-fuzzy Country matching use the shared
       answer-matching responsibility.
-- [ ] Duplicate answers show feedback without score penalty.
-- [ ] Incorrect Country guesses reveal nothing, are recorded for the target, and
+- [x] Duplicate answers show feedback without score penalty.
+- [x] Incorrect Country guesses reveal nothing, are recorded for the target, and
       leave the prompt active.
-- [ ] Show number reveals only the count/progress and does not change score.
-- [ ] Reveal map shows unlabeled non-interactive local geography without
+- [x] Show number reveals only the count/progress and does not change score.
+- [x] Reveal map shows unlabeled non-interactive local geography without
       identifying unrecalled neighbours and does not change score.
-- [ ] Reveal remaining exposes all unresolved answers for review and lets the
+- [x] Reveal remaining exposes all unresolved answers for review and lets the
       learner continue explicitly.
-- [ ] The world map explicitly fits target + required neighbours even when the
+- [x] The world map explicitly fits target + required neighbours even when the
       neighbour geometry is hidden.
-- [ ] Disabled optional Country geometry may remain neutral on Reveal map but is
+- [x] Disabled optional Country geometry may remain neutral on Reveal map but is
       never an answer and is never merged into another Country.
-- [ ] Results report neighbour recall, perfect targets, and incorrect guesses;
+- [x] Results report neighbour recall, perfect targets, and incorrect guesses;
       Retry missed retries each imperfect target once in reshuffled order.
-- [ ] Neighbours creates no evidence, milestones, proficiency, preferences,
+- [x] Neighbours creates no evidence, milestones, proficiency, preferences,
       scheduling state, or persistent Quiz history.
-- [ ] No Neighbours-specific concept is added to `maps/`, no `quiz/` package is
+- [x] No Neighbours-specific concept is added to `maps/`, no `quiz/` package is
       created, and `WorldCountriesTypedAnswer` is not weakened into a
       multi-answer mega-component.
-- [ ] Existing Capitals Quiz tests remain green.
-- [ ] Relevant data, map, matching, run, UI, and retry behavior is covered by
+- [x] Existing Capitals Quiz tests remain green.
+- [x] Relevant data, map, matching, run, UI, and retry behavior is covered by
       focused tests.
-- [ ] `npx vitest run src/features/world-countries` passes.
-- [ ] `npm run typecheck` passes.
+- [x] `npx vitest run src/features/world-countries` passes.
+- [x] `npm run typecheck` passes.
 
 ## Source anchors
 
@@ -630,3 +630,14 @@ constraints. Report that deviation instead of silently inventing a new design.
 ## Verification
 
 Complete this section when setting the status to `Implemented`.
+
+- **Implemented:** 2026-08-30.
+- **Affected automated tests:** Land-border graph/query invariants, shared
+  Country-name resolution, explicit map fitting, Neighbours run/session/results
+  behavior, active-run snapshot stability, and existing Capitals regression
+  coverage.
+- **World Countries feature tests:** `npx vitest run src/features/world-countries`
+  — 111 test files, 582 tests passed.
+- **TypeScript:** `npm run typecheck` — passed.
+- **Lint:** `npm run lint` — passed.
+- **Architecture:** `WORLD_COUNTRIES.md` updated; no new ADR was required.
