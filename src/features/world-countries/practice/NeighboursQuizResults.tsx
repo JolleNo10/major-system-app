@@ -64,12 +64,17 @@ function ResultStat({ label, value }: { label: string; value: string }) {
 function NeighboursReview({ target, targetName, countryById }: { target: NeighboursTargetState; targetName: string; countryById: ReadonlyMap<CountryId, { country: string }> }) {
   const progress = deriveNeighboursTargetProgress(target)
   const names = (ids: readonly CountryId[]) => ids.map(countryId => countryById.get(countryId)?.country ?? countryId)
+  const assistance = [
+    target.showNumberUsed ? 'Show number' : null,
+    target.revealMapUsed ? 'Show map' : null,
+  ].filter((value): value is string => value !== null)
   return <li className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
     <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"><span className="font-semibold text-zinc-100">{targetName}</span><span className="text-sm text-zinc-500">{progress.foundCount} / {progress.totalCount} named</span></div>
     {!isNeighboursTargetPerfect(target) && <div className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
       <ReviewList label="Named" values={names(progress.foundIds)} />
       <ReviewList label="Revealed / missed" values={names([...progress.revealedIds, ...progress.remainingIds])} />
       <ReviewList label="Wrong guesses" values={target.incorrectGuesses} />
+      {assistance.length > 0 && <ReviewList label="Assistance" values={assistance} />}
     </div>}
   </li>
 }

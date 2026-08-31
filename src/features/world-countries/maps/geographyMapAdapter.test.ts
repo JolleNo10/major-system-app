@@ -10,6 +10,7 @@ import {
   getSubregionHoverGroupId,
   resolveCountryIdsToSvgIds,
   resolveCountryToSvgIds,
+  resolveSvgIdsOutsideCountryPopulation,
   sortCountriesByMapPosition,
   sortSubregionsByMapPosition,
 } from './geographyMapAdapter'
@@ -28,6 +29,13 @@ describe('World Countries geography map adapter', () => {
       'England', 'Scotland', 'Wales',
     ])
     expect(resolveCountryIdsToSvgIds(['NO', 'SE'], [norway, sweden], ['Norway', 'Sweden'])).toEqual(['Norway', 'Sweden'])
+  })
+
+  it('identifies canonical and map-only SVG geometry outside a Country population', () => {
+    expect(resolveSvgIdsOutsideCountryPopulation(
+      [norway],
+      ['Norway', 'France', 'MapOnly_Territory'],
+    )).toEqual(['France', 'MapOnly_Territory'])
   })
 
   it('derives hover groups and learned colors from domain records', () => {

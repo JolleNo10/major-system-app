@@ -24,6 +24,18 @@ export function resolveCountriesToSvgIds(
   return [...new Set(entries.flatMap(entry => resolveCountryToSvgIds(entry, discoveredSvgIds)))]
 }
 
+/** Hide discovered SVG geometry that is not represented by the supplied Country population. */
+export function resolveSvgIdsOutsideCountryPopulation(
+  entries: readonly Country[],
+  discoveredSvgIds: ReadonlySet<string> | readonly string[],
+): string[] {
+  const discovered = discoveredSvgIds instanceof Set
+    ? [...discoveredSvgIds]
+    : [...new Set(discoveredSvgIds)]
+  const represented = new Set(resolveCountriesToSvgIds(entries, discovered))
+  return discovered.filter(id => !represented.has(id))
+}
+
 /** Resolve a caller-owned Country-ID set through the canonical map adapter. */
 export function resolveCountryIdsToSvgIds(
   countryIds: readonly CountryId[],

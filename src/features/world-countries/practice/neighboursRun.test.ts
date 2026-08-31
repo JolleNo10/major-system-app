@@ -62,7 +62,7 @@ describe('World Countries Neighbours Practice runs', () => {
     expect(result.state.targets[0]?.incorrectGuesses).toEqual(['United States'])
   })
 
-  it('keeps hints score-neutral and moves to explicit review for Reveal remaining', () => {
+  it('records hint use, preserves neighbour counts, and moves to explicit review for Reveal remaining', () => {
     const run = createNeighboursQuizRun({ scopeCountries: [country('DE')], activeCountries: countries, questionCount: 'all' })!
     let session = createNeighboursQuizSession(run)
     session = showNeighboursNumber(session)

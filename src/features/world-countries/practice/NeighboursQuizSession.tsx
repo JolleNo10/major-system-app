@@ -65,13 +65,11 @@ export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance
       target={target}
       countryById={countryById}
       mapState={mapState}
-      nextTargetLabel={nextTargetLabel}
       onShowNumber={showNumber}
       onShowMap={showMap}
       onRevealRemaining={revealRemaining}
-      onAdvance={advanceTarget}
     />
-  ) : null, [advanceTarget, countryById, mapState, nextTargetLabel, revealRemaining, showMap, showNumber, target])
+  ) : null, [countryById, mapState, revealRemaining, showMap, showNumber, target])
   const rails = useMemo(() => target && session.phase === 'active' ? {
     right: sessionTools,
     rightLabel: 'Session',
@@ -171,6 +169,7 @@ export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance
             highlightFill={getWorldCountriesTaskHighlightFill('country')}
             countryColorsById={countryColorsById}
             hiddenCountryIds={hiddenCountryIds}
+            hideCountriesOutsidePopulation
             namedCountryIds={namedCountryIds}
             zoomCountryIds={[target.targetId, ...target.requiredNeighbourIds]}
             interactive={false}
@@ -183,7 +182,7 @@ export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance
       }
       mapMeta={<div className="space-y-1"><p>Question {session.targetIndex + 1} / {run.questions.length}</p><p>Type every Country that shares a land border with the target.</p></div>}
       dock={isCheckpoint ? checkpointDock : answerDock}
-      expandedCompanion={target ? <NeighboursQuizSessionTools target={target} countryById={countryById} mapState={mapState} nextTargetLabel={nextTargetLabel} onShowNumber={showNumber} onShowMap={showMap} onRevealRemaining={revealRemaining} onAdvance={advanceTarget} compact /> : undefined}
+      expandedCompanion={target ? <NeighboursQuizSessionTools target={target} countryById={countryById} mapState={mapState} onShowNumber={showNumber} onShowMap={showMap} onRevealRemaining={revealRemaining} compact /> : undefined}
       dockPlacement="stacked"
     />
   )

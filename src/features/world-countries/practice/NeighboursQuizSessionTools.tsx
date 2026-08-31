@@ -11,21 +11,17 @@ export function NeighboursQuizSessionTools({
   target,
   countryById,
   mapState,
-  nextTargetLabel,
   onShowNumber,
   onShowMap,
   onRevealRemaining,
-  onAdvance,
   compact = false,
 }: {
   target: NeighboursTargetState
   countryById: ReadonlyMap<CountryId, { country: string }>
   mapState: NeighboursQuizMapState
-  nextTargetLabel: string
   onShowNumber: () => void
   onShowMap: () => void
   onRevealRemaining: () => void
-  onAdvance: () => void
   compact?: boolean
 }) {
   const progress = deriveNeighboursTargetProgress(target)
@@ -111,24 +107,6 @@ export function NeighboursQuizSessionTools({
       </section>
 
       <p className="text-xs text-zinc-500">{target.incorrectGuesses.length} incorrect guess{target.incorrectGuesses.length === 1 ? '' : 'es'}</p>
-
-      {resolved && (
-        <section className="space-y-3 rounded-lg border border-cyan-500/30 bg-cyan-500/5 p-3" aria-label="Checkpoint continuation">
-          <div>
-            <p className="text-xs uppercase tracking-wider text-cyan-300">Checkpoint</p>
-            <p className="mt-1 text-sm font-semibold text-zinc-200">{target.phase === 'complete' ? 'All neighbours found.' : 'Review the named and revealed neighbours.'}</p>
-            <p className="mt-1 text-xs text-zinc-400">{progress.foundCount} / {progress.totalCount} named · {progress.hintUses} hint{progress.hintUses === 1 ? '' : 's'} used</p>
-          </div>
-          <button
-            type="button"
-            data-primary-action
-            onClick={onAdvance}
-            className="w-full rounded-xl bg-cyan-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-cyan-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
-          >
-            {nextTargetLabel}
-          </button>
-        </section>
-      )}
     </section>
   )
 }
