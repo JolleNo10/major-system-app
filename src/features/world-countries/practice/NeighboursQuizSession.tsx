@@ -65,13 +65,11 @@ export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance
       target={target}
       countryById={countryById}
       mapState={mapState}
-      nextTargetLabel={nextTargetLabel}
       onShowNumber={showNumber}
       onShowMap={showMap}
       onRevealRemaining={revealRemaining}
-      onAdvance={advanceTarget}
     />
-  ) : null, [advanceTarget, countryById, mapState, nextTargetLabel, revealRemaining, showMap, showNumber, target])
+  ) : null, [countryById, mapState, revealRemaining, showMap, showNumber, target])
   const rails = useMemo(() => target && session.phase === 'active' ? {
     right: sessionTools,
     rightLabel: 'Session',
@@ -130,7 +128,7 @@ export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance
       <div className="space-y-3">
         <div>
           <p className="text-sm font-semibold text-zinc-100">{target.phase === 'complete' ? 'All neighbours found.' : 'Review this target.'}</p>
-          <p className="mt-1 text-xs text-zinc-400">{progress.foundCount} / {progress.totalCount} named · {progress.revealedCount} revealed · {target.incorrectGuesses.length} incorrect guess{target.incorrectGuesses.length === 1 ? '' : 'es'}</p>
+          <p className="mt-1 text-xs text-zinc-400">{progress.foundCount} / {progress.totalCount} named · {progress.revealedCount} revealed · {target.incorrectGuesses.length} incorrect guess{target.incorrectGuesses.length === 1 ? '' : 'es'}{progress.hintUses > 0 ? ` · ${progress.hintUses} hint${progress.hintUses === 1 ? '' : 's'} used` : ''}</p>
           {feedback && <p role="status" className="mt-2 text-sm font-semibold text-zinc-300">{feedback}</p>}
         </div>
         <ul className="grid gap-2 sm:grid-cols-2" aria-label="Resolved neighbours">
@@ -171,6 +169,7 @@ export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance
             highlightFill={getWorldCountriesTaskHighlightFill('country')}
             countryColorsById={countryColorsById}
             hiddenCountryIds={hiddenCountryIds}
+            hideCountriesOutsidePopulation
             namedCountryIds={namedCountryIds}
             zoomCountryIds={[target.targetId, ...target.requiredNeighbourIds]}
             interactive={false}
@@ -183,7 +182,7 @@ export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance
       }
       mapMeta={<div className="space-y-1"><p>Question {session.targetIndex + 1} / {run.questions.length}</p><p>Type every Country that shares a land border with the target.</p></div>}
       dock={isCheckpoint ? checkpointDock : answerDock}
-      expandedCompanion={target ? <NeighboursQuizSessionTools target={target} countryById={countryById} mapState={mapState} nextTargetLabel={nextTargetLabel} onShowNumber={showNumber} onShowMap={showMap} onRevealRemaining={revealRemaining} onAdvance={advanceTarget} compact /> : undefined}
+      expandedCompanion={target ? <NeighboursQuizSessionTools target={target} countryById={countryById} mapState={mapState} onShowNumber={showNumber} onShowMap={showMap} onRevealRemaining={revealRemaining} compact /> : undefined}
       dockPlacement="stacked"
     />
   )

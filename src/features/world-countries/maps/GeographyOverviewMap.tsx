@@ -11,6 +11,7 @@ import {
   getCountryForSvgId,
   resolveCountryIdsToSvgIds,
   resolveCountriesToSvgIds,
+  resolveSvgIdsOutsideCountryPopulation,
 } from './geographyMapAdapter'
 import { getMemoMapDefinition, MEMO_MAP_DEFINITIONS } from './mapDefinitions'
 import type { SvgMapGroupOutline } from './SvgMapController'
@@ -48,6 +49,8 @@ export interface GeographyOverviewMapProps {
   countryPopulation?: readonly Country[]
   /** Caller-controlled Country IDs whose geometry and interaction are hidden. */
   hiddenCountryIds?: readonly CountryId[]
+  /** When enabled, hide discovered SVG geometry not represented by the active Country population. */
+  hideCountriesOutsidePopulation?: boolean
   /** Disable caller-facing Country hover/click interaction while keeping the map mounted. */
   interactive?: boolean
   hoveredGroupId?: string | null
@@ -80,6 +83,7 @@ export function GeographyOverviewMap({
   countryAccessibleDescriptionsById,
   countryPopulation,
   hiddenCountryIds = [],
+  hideCountriesOutsidePopulation = false,
   interactive = true,
   hoveredGroupId = null,
   onHoverGroup,
@@ -153,12 +157,22 @@ export function GeographyOverviewMap({
     [mapCountryIds, namedCountryIdSet, visibleCountries],
   )
   const hiddenCountryIdSet = useMemo(() => new Set(hiddenCountryIds), [hiddenCountryIds])
-  const hiddenSvgIds = useMemo(
+  const explicitlyHiddenSvgIds = useMemo(
     () => resolveCountriesToSvgIds(
       visibleCountries.filter(country => hiddenCountryIdSet.has(country.id)),
       mapCountryIds,
     ),
     [hiddenCountryIdSet, mapCountryIds, visibleCountries],
+  )
+  const hiddenOutsidePopulationSvgIds = useMemo(
+    () => hideCountriesOutsidePopulation
+      ? resolveSvgIdsOutsideCountryPopulation(visibleCountries, mapCountryIds)
+      : [],
+    [hideCountriesOutsidePopulation, mapCountryIds, visibleCountries],
+  )
+  const hiddenSvgIds = useMemo(
+    () => [...new Set([...explicitlyHiddenSvgIds, ...hiddenOutsidePopulationSvgIds])],
+    [explicitlyHiddenSvgIds, hiddenOutsidePopulationSvgIds],
   )
   const [mapHoveredGroupId, setMapHoveredGroupId] = useState<string | null>(null)
   const activeHoveredGroupId = interactive ? hoveredGroupId ?? mapHoveredGroupId : null

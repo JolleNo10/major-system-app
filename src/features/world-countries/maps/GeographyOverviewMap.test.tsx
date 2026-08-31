@@ -114,6 +114,30 @@ describe('GeographyOverviewMap', () => {
     expect(mount.textContent).not.toContain('Norway: Hidden answer')
   })
 
+  it('hides discovered geometry outside an explicitly restricted Country population', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g><g><path id="France"/><text id="France_label">France</text></g><g><path id="MapOnly_Territory"/><text id="MapOnly_Territory_label">Map-only territory</text></g></svg>' })))
+    const norway = countries.find(country => country.id === 'NO')!
+    const mount = document.createElement('div'); document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(GeographyOverviewMap, {
+        level: 'world',
+        countryPopulation: [norway],
+        hideCountriesOutsidePopulation: true,
+        interactive: false,
+        ariaLabel: 'World map',
+      }))
+      await Promise.resolve(); await Promise.resolve()
+    })
+
+    expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.visibility).toBe('')
+    for (const id of ['France', 'MapOnly_Territory']) {
+      expect((mount.querySelector(`path#${id}`) as SVGPathElement | null)?.style.visibility).toBe('hidden')
+      expect((mount.querySelector(`path#${id}`) as SVGPathElement | null)?.style.pointerEvents).toBe('none')
+    }
+  })
+
   it('fits an explicit Country zoom set even when a member Country is hidden', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g><g><path id="Sweden"/><text id="Sweden_label">Sweden</text></g></svg>' })))
     const svgElementPrototype = SVGElement.prototype as typeof SVGElement.prototype & { getBBox?: () => { x: number; y: number; width: number; height: number } }

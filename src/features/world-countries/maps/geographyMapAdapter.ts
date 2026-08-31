@@ -7,13 +7,17 @@ import { getCountriesForContinent } from '@/features/world-countries/geography/q
 /** Return possible IDs without asserting that a given asset contains them. */
 export const getCountrySvgIdCandidates = countryToSvgIds
 
+function normalizeDiscoveredSvgIds(
+  discoveredSvgIds: ReadonlySet<string> | readonly string[],
+): ReadonlySet<string> {
+  return discoveredSvgIds instanceof Set ? discoveredSvgIds : new Set(discoveredSvgIds)
+}
+
 export function resolveCountryToSvgIds(
   country: Country,
   discoveredSvgIds: ReadonlySet<string> | readonly string[],
 ): string[] {
-  const discovered = discoveredSvgIds instanceof Set
-    ? discoveredSvgIds
-    : new Set(discoveredSvgIds)
+  const discovered = normalizeDiscoveredSvgIds(discoveredSvgIds)
   return countryToSvgIds(country).filter(id => discovered.has(id))
 }
 
@@ -22,6 +26,16 @@ export function resolveCountriesToSvgIds(
   discoveredSvgIds: ReadonlySet<string> | readonly string[],
 ): string[] {
   return [...new Set(entries.flatMap(entry => resolveCountryToSvgIds(entry, discoveredSvgIds)))]
+}
+
+/** Hide discovered SVG geometry that is not represented by the supplied Country population. */
+export function resolveSvgIdsOutsideCountryPopulation(
+  entries: readonly Country[],
+  discoveredSvgIds: ReadonlySet<string> | readonly string[],
+): string[] {
+  const discovered = [...normalizeDiscoveredSvgIds(discoveredSvgIds)]
+  const represented = new Set(resolveCountriesToSvgIds(entries, discovered))
+  return discovered.filter(id => !represented.has(id))
 }
 
 /** Resolve a caller-owned Country-ID set through the canonical map adapter. */

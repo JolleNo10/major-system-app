@@ -165,9 +165,11 @@ default. Drill has a non-persisted Purpose selector:
   presentation; active-run membership/order and effective neighbours are
   unaffected by later Settings or geography changes. During an active
   Neighbours run, session tools own found progress, hints, reveal, and
-  checkpoint actions in the PageLayout right rail and expanded map companion;
-  each resolved target waits at an explicit checkpoint for the Quiz coordinator
-  to advance it, and no completion timer advances the run.
+  secondary review state in the PageLayout right rail and expanded map
+  companion; the center checkpoint dock owns the complete resolved-neighbour
+  summary and sole explicit continuation. Each resolved target waits at an
+  explicit checkpoint for the Quiz coordinator to advance it, and no
+  completion timer advances the run.
 
 ### World mastery overview
 

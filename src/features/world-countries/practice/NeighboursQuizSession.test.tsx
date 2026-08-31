@@ -11,7 +11,7 @@ import { createNeighboursQuizRun, createNeighboursQuizSession, type NeighboursQu
 import { NeighboursQuizSession } from './NeighboursQuizSession'
 
 vi.mock('@/features/world-countries/maps/GeographyOverviewMap', () => ({
-  GeographyOverviewMap: ({ countryPopulation, hiddenCountryIds, highlightedCountryIds, namedCountryIds, zoomCountryIds, interactive, onMapStateChange, highlightFill }: { countryPopulation?: readonly { id: string }[]; hiddenCountryIds?: readonly string[]; highlightedCountryIds?: readonly string[]; namedCountryIds?: readonly string[]; zoomCountryIds?: readonly string[]; interactive?: boolean; onMapStateChange?: (state: 'loading' | 'ready' | 'error') => void; highlightFill?: string }) => {
+  GeographyOverviewMap: ({ countryPopulation, hiddenCountryIds, highlightedCountryIds, namedCountryIds, zoomCountryIds, hideCountriesOutsidePopulation, interactive, onMapStateChange, highlightFill }: { countryPopulation?: readonly { id: string }[]; hiddenCountryIds?: readonly string[]; highlightedCountryIds?: readonly string[]; namedCountryIds?: readonly string[]; zoomCountryIds?: readonly string[]; hideCountriesOutsidePopulation?: boolean; interactive?: boolean; onMapStateChange?: (state: 'loading' | 'ready' | 'error') => void; highlightFill?: string }) => {
     useEffect(() => {
       if (mockedMapState !== 'loading') onMapStateChange?.(mockedMapState)
     }, [onMapStateChange])
@@ -22,6 +22,7 @@ vi.mock('@/features/world-countries/maps/GeographyOverviewMap', () => ({
       'data-highlighted': highlightedCountryIds?.join(',') ?? '',
       'data-named': namedCountryIds?.join(',') ?? '',
       'data-zoom': zoomCountryIds?.join(',') ?? '',
+      'data-hide-outside-population': String(hideCountriesOutsidePopulation),
       'data-interactive': String(interactive),
       'data-highlight-fill': highlightFill ?? '',
     })
@@ -133,8 +134,11 @@ describe('Neighbours Quiz session', () => {
     const run = createNeighboursQuizRun({ scopeCountries: [norway], activeCountries: [norway, sweden], questionCount: 'all' })!
     const { mount, onAdvance } = renderSession(run)
 
+    act(() => toolButton(mount, 'Show number').click())
     submit(mount, sweden.country)
     expect(mount.textContent).toContain('All neighbours found.')
+    expect(mount.textContent).toContain('1 hint used')
+    expect(mount.querySelectorAll<HTMLButtonElement>('button[data-primary-action]')).toHaveLength(1)
     expect(mount.textContent).toContain('See results →')
     expect(mount.querySelector<HTMLInputElement>('#world-countries-neighbours-answer')).toBeNull()
     act(() => vi.advanceTimersByTime(500))
@@ -186,12 +190,21 @@ describe('Neighbours Quiz session', () => {
   })
 
   it('uses the active run Country snapshot as the map population', () => {
-    const norway = countries.find(country => country.id === 'NO')!
-    const sweden = countries.find(country => country.id === 'SE')!
-    const run = createNeighboursQuizRun({ scopeCountries: [norway], activeCountries: [norway, sweden], questionCount: 'all' })!
+    const germany = countries.find(country => country.id === 'DE')!
+    const poland = countries.find(country => country.id === 'PL')!
+    const austria = countries.find(country => country.id === 'AT')!
+    const run = createNeighboursQuizRun({ scopeCountries: [germany], activeCountries: [germany, poland, austria], questionCount: 'all' })!
     const { mount } = renderSession(run)
 
-    expect(mount.querySelector('[data-testid="neighbours-map"]')?.getAttribute('data-population')).toBe('NO,SE')
+    const map = mount.querySelector('[data-testid="neighbours-map"]')
+    expect(map?.getAttribute('data-population')).toBe('DE,PL,AT')
+    expect(map?.getAttribute('data-hide-outside-population')).toBe('true')
+    expect(map?.getAttribute('data-hidden')).toContain('PL')
+    expect(map?.getAttribute('data-hidden')).toContain('AT')
+
+    act(() => toolButton(mount, 'Show map').click())
+    expect(map?.getAttribute('data-hidden')).toBe('')
+    expect(map?.getAttribute('data-hide-outside-population')).toBe('true')
   })
 
   it('keeps the same session tools available in the expanded map companion', () => {

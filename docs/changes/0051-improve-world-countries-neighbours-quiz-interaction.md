@@ -375,4 +375,4 @@ When implementation is verified, mark this Change Spec `Implemented` and complet
 Complete this section when setting the status to `Implemented`.
 
 - Implemented and verified on 2026-08-31.
-- Evidence: focused Neighbours run/session/results/coordinator tests passed (40 tests across 5 files); the full `src/features/world-countries` Vitest run passed 112 files and 595 tests, and `npm run typecheck` passed. Expanded companion and setup/session rail ownership are covered by component/coordinator tests.
+- Evidence: focused Neighbours run/session/results/coordinator plus map adapter/presentation tests passed (60 tests across 6 files); the full `src/features/world-countries` Vitest run passed 112 files and 598 tests, and `npm run typecheck` passed. Expanded companion and setup/session rail ownership are covered by component/coordinator tests.
