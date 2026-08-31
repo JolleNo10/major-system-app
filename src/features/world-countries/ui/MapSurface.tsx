@@ -3,6 +3,7 @@ import { usePageLayoutPresentation } from '@/app/layout/PageLayoutContext'
 
 export type MapSurfaceDockPlacement = 'overlay' | 'attached' | 'stacked'
 export type TaskDockVariant = 'navigation' | 'checkpoint' | 'form' | 'hint' | 'completion'
+export type TaskDockContentSizing = 'intrinsic' | 'contained'
 export type MapSurfacePresentation = 'standard' | 'expanded'
 
 interface MapSurfaceFeedbackContextValue {
@@ -131,6 +132,7 @@ export function TaskDock({
   status,
   tone = 'neutral',
   variant = 'form',
+  contentSizing = 'intrinsic',
   focusPrimary = false,
   enableEnterPrimary = false,
 }: {
@@ -138,6 +140,7 @@ export function TaskDock({
   status?: ReactNode
   tone?: 'neutral' | 'ready'
   variant?: TaskDockVariant
+  contentSizing?: TaskDockContentSizing
   focusPrimary?: boolean
   enableEnterPrimary?: boolean
 }) {
@@ -155,6 +158,9 @@ export function TaskDock({
   const statusClass = tone === 'ready' ? 'text-green-300' : 'text-zinc-300'
   const shellClass = 'pointer-events-auto'
   const horizontal = variant === 'checkpoint' || variant === 'completion'
+  const contentClass = contentSizing === 'contained'
+    ? 'min-w-0 max-w-full w-full xl:flex-1'
+    : 'w-full shrink-0 xl:w-auto'
 
   useLayoutEffect(() => {
     if (!focusPrimary) return
@@ -184,7 +190,7 @@ export function TaskDock({
       {horizontal ? (
         <div className="flex flex-col items-stretch gap-3 xl:flex-row xl:items-center xl:justify-between">
           {status && <div role="status" aria-live="polite" className={`min-w-0 flex-1 text-sm ${statusClass}`}>{status}</div>}
-          {children && <div className="w-full shrink-0 xl:w-auto">{children}</div>}
+          {children && <div data-task-dock-content className={contentClass}>{children}</div>}
         </div>
       ) : (
         <>

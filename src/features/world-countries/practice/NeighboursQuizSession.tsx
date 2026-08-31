@@ -141,23 +141,23 @@ export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance
     },
   }
   const checkpointDock = (
-    <TaskDock variant="checkpoint" tone={target.phase === 'complete' ? 'ready' : 'neutral'}>
-      <div className="space-y-3">
+    <TaskDock variant="checkpoint" tone={target.phase === 'complete' ? 'ready' : 'neutral'} contentSizing="contained">
+      <div data-neighbours-checkpoint-content className="min-w-0 w-full max-w-full space-y-3">
         <div>
           <p className="text-sm font-semibold text-zinc-100">{target.phase === 'complete' ? 'All neighbours found.' : 'Review this target.'}</p>
           <p className="mt-1 text-xs text-zinc-400">{progress.foundCount} / {progress.totalCount} named · {progress.revealedCount} revealed · {target.incorrectGuesses.length} incorrect guess{target.incorrectGuesses.length === 1 ? '' : 'es'}{progress.hintUses > 0 ? ` · ${progress.hintUses} hint${progress.hintUses === 1 ? '' : 's'} used` : ''}</p>
           {feedback && <p role="status" className="mt-2 text-sm font-semibold text-zinc-300">{feedback}</p>}
         </div>
-        <ul className="flex flex-wrap gap-2" aria-label="Resolved neighbours">
+        <ul className="flex min-w-0 max-w-full flex-wrap gap-2" aria-label="Resolved neighbours">
           {target.requiredNeighbourIds.map(countryId => {
             const named = progress.foundIds.includes(countryId)
-            return <li key={countryId} className={`min-w-0 rounded-lg border px-2.5 py-1.5 text-xs ${named ? 'border-green-500/30 bg-green-500/10 text-green-100' : 'border-amber-500/30 bg-amber-500/10 text-amber-100'}`}>
+            return <li key={countryId} className={`min-w-0 max-w-full break-words rounded-lg border px-2.5 py-1.5 text-xs ${named ? 'border-green-500/30 bg-green-500/10 text-green-100' : 'border-amber-500/30 bg-amber-500/10 text-amber-100'}`}>
               <span className="font-medium">{countryById.get(countryId)?.country ?? countryId}</span>
               <span className="ml-1.5 opacity-75">{named ? 'Named' : 'Revealed / missed'}</span>
             </li>
           })}
         </ul>
-        <button type="button" data-primary-action autoFocus onClick={advanceTarget} className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">{nextTargetLabel}</button>
+        <button type="button" data-primary-action autoFocus onClick={advanceTarget} className="w-full max-w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">{nextTargetLabel}</button>
       </div>
     </TaskDock>
   )

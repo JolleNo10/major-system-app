@@ -5,7 +5,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it } from 'vitest'
 import { PageLayout } from '@/app/layout/PageLayout'
 import { PageLayoutProvider } from '@/app/layout/PageLayoutContext'
-import { MapSurface } from './MapSurface'
+import { MapSurface, TaskDock } from './MapSurface'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -132,6 +132,26 @@ describe('MapSurface expanded presentation', () => {
       await Promise.resolve()
     })
     expect(mount.querySelector('[data-page-layout]')?.getAttribute('data-page-layout-presentation')).toBe('standard')
+  })
+})
+
+describe('TaskDock content sizing', () => {
+  it('allows complex checkpoint content to shrink inside its parent', () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement(TaskDock, {
+        variant: 'checkpoint',
+        contentSizing: 'contained',
+        children: createElement('div', { 'data-complex-checkpoint': true }, 'checkpoint content'),
+      }))
+    })
+
+    const content = mount.querySelector('[data-task-dock] > div > div')
+    expect(content?.className).toContain('min-w-0')
+    expect(content?.className).toContain('max-w-full')
+    expect(content?.className).not.toContain('shrink-0')
   })
 })
 

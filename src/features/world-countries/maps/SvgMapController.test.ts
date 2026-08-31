@@ -43,6 +43,19 @@ function setBBox(mount: HTMLElement, id: string, bounds: { x: number; y: number;
   })
 }
 
+function setPathGeometry(mount: HTMLElement, id: string, bounds: { x: number; y: number; width: number; height: number }, points: readonly { x: number; y: number }[]): void {
+  setBBox(mount, id, bounds)
+  const element = path(mount, id)
+  Object.defineProperty(element, 'getTotalLength', {
+    configurable: true,
+    value: () => Math.max(1, points.length - 1),
+  })
+  Object.defineProperty(element, 'getPointAtLength', {
+    configurable: true,
+    value: (distance: number) => points[Math.min(points.length - 1, Math.max(0, Math.round(distance)))] ?? points[0],
+  })
+}
+
 function setSvgRect(mount: HTMLElement, dimensions: { width: number; height: number }): void {
   const svg = mount.querySelector<SVGSVGElement>('svg')
   if (!svg) throw new Error('Missing test map SVG')
@@ -238,6 +251,55 @@ describe('SvgMapController persistent state', () => {
     expect(viewBox.y + viewBox.height).toBeGreaterThanOrEqual(29)
   })
 
+  it('frames an asymmetric cluster around actual local path points instead of the target center', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    setBBox(mount, 'Alpha', { x: 50, y: 24, width: 4, height: 4 })
+    setPathGeometry(mount, 'Beta', { x: 20, y: 24, width: 4, height: 4 }, [{ x: 22, y: 26 }])
+    setPathGeometry(mount, 'Gamma', { x: 50, y: 8, width: 4, height: 4 }, [{ x: 52, y: 10 }])
+    setPathGeometry(mount, 'Delta', { x: 64, y: 24, width: 4, height: 4 }, [{ x: 66, y: 26 }])
+
+    controller.setTargetCentricZoom(['Alpha'], ['Beta', 'Gamma', 'Delta'])
+
+    const viewBox = readViewBox(mount)
+    expect(viewBox.x).toBeLessThanOrEqual(22)
+    expect(viewBox.x + viewBox.width).toBeGreaterThanOrEqual(66)
+    expect(viewBox.y).toBeLessThanOrEqual(10)
+    expect(viewBox.y + viewBox.height).toBeGreaterThanOrEqual(28)
+    expect(viewBox.width).toBeLessThan(50)
+    expect(viewBox.x + viewBox.width / 2).toBeLessThan(52)
+  })
+
+  it('keeps a Sudan-like asymmetric local cluster tight while retaining the target', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 60">
+        <g><path id="Sudan" d="M 50 25 h 5 v 5 h -5 z"/><text id="Sudan_label">SUDAN</text></g>
+        <g><path id="Libya" d="M 30 10 h 4 v 4 h -4 z"/><text id="Libya_label">LIBYA</text></g>
+        <g><path id="Egypt" d="M 65 11 h 4 v 4 h -4 z"/><text id="Egypt_label">EGYPT</text></g>
+        <g><path id="Chad" d="M 20 28 h 4 v 4 h -4 z"/><text id="Chad_label">CHAD</text></g>
+        <g><path id="Ethiopia" d="M 70 32 h 4 v 4 h -4 z"/><text id="Ethiopia_label">ETHIOPIA</text></g>
+        <g><path id="SouthSudan" d="M 56 42 h 4 v 4 h -4 z"/><text id="SouthSudan_label">SOUTH SUDAN</text></g>
+      </svg>` })
+    setBBox(mount, 'Sudan', { x: 50, y: 25, width: 5, height: 5 })
+    setPathGeometry(mount, 'Libya', { x: -300, y: -200, width: 800, height: 500 }, [{ x: 31, y: 12 }])
+    setPathGeometry(mount, 'Egypt', { x: -200, y: -100, width: 500, height: 350 }, [{ x: 66, y: 13 }])
+    setPathGeometry(mount, 'Chad', { x: -250, y: -100, width: 600, height: 300 }, [{ x: 21, y: 30 }])
+    setPathGeometry(mount, 'Ethiopia', { x: -100, y: -100, width: 500, height: 400 }, [{ x: 71, y: 34 }])
+    setPathGeometry(mount, 'SouthSudan', { x: -100, y: -100, width: 500, height: 400 }, [{ x: 57, y: 44 }])
+
+    controller.setTargetCentricZoom(['Sudan'], ['Libya', 'Egypt', 'Chad', 'Ethiopia', 'SouthSudan'])
+
+    const viewBox = readViewBox(mount)
+    expect(viewBox.x).toBeLessThanOrEqual(21)
+    expect(viewBox.x + viewBox.width).toBeGreaterThanOrEqual(71)
+    expect(viewBox.y).toBeLessThanOrEqual(12)
+    expect(viewBox.y + viewBox.height).toBeGreaterThanOrEqual(44)
+    expect(viewBox.width).toBeLessThan(60)
+    expect(viewBox.height).toBeLessThan(45)
+    expect(viewBox.x + viewBox.width / 2).toBeLessThan(52.5)
+  })
+
   it('gives a tiny target a minimum local window', async () => {
     const { mount, controller } = makeController()
     await controller.load({ markup: TEST_MAP })
@@ -289,6 +351,36 @@ describe('SvgMapController persistent state', () => {
     expect(viewBox.x + viewBox.width).toBeGreaterThanOrEqual(40)
     expect(viewBox.y).toBeLessThanOrEqual(10)
     expect(viewBox.y + viewBox.height).toBeGreaterThanOrEqual(20)
+  })
+
+  it('retains one target-centric neighbourhood intent across standard and expanded aspect changes', async () => {
+    const viewport = document.createElement('div')
+    const mount = document.createElement('div')
+    viewport.append(mount)
+    document.body.append(viewport)
+    const controller = new SvgMapController(mount, {}, viewport)
+    controllers.push(controller)
+    await controller.load({ markup: TEST_MAP })
+    setBBox(mount, 'Alpha', { x: 30, y: 10, width: 10, height: 10 })
+    setBBox(mount, 'Beta', { x: 45, y: 13, width: 6, height: 6 })
+    setMountRect(viewport, { width: 200, height: 100 })
+
+    controller.setTargetCentricZoom(['Alpha'], ['Beta'])
+    const standard = readViewBox(mount)
+    controller.setPresentation('expanded')
+    const wide = readViewBox(mount)
+    expect(wide.width / wide.height).toBeCloseTo(2)
+    expect(wide.x).toBeLessThanOrEqual(30)
+    expect(wide.x + wide.width).toBeGreaterThanOrEqual(51)
+
+    setMountRect(viewport, { width: 100, height: 200 })
+    controller.setPresentation('expanded')
+    const tall = readViewBox(mount)
+    expect(tall.width / tall.height).toBeCloseTo(0.5)
+    expect(tall.x).toBeLessThanOrEqual(30)
+    expect(tall.x + tall.width).toBeGreaterThanOrEqual(51)
+    controller.setPresentation('standard')
+    expect(readViewBox(mount)).toEqual(standard)
   })
 
   it('fits the retained zoom intent to the expanded map slot and refits after a slot change', async () => {

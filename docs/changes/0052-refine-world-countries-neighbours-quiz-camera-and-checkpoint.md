@@ -247,9 +247,9 @@ Set this Change Spec to `Implemented` only after the camera behavior and both st
 
 Implementation completed on 2026-09-01; the status remains `Ready` until the required manual browser verification is completed.
 
-- Evidence: focused camera/map/session/presentation tests passed (72/72), including duplicate expanded-progress and stale-camera fallback regressions.
-- Evidence: full World Countries feature suite passed (607/607 tests).
+- Evidence: focused camera/map/session/presentation tests passed (80/80), including duplicate expanded-progress, stale-camera fallback, contained checkpoint, asymmetric-cluster, and standard/expanded aspect regressions.
+- Evidence: full World Countries feature suite passed (612/612 tests).
 - Evidence: `npm run typecheck`, `npm run lint`, and `git diff --check` passed.
-- Automated coverage includes a synthetic dramatically oversized neighbour, compact-neighbour, tiny-target, multipart-target, stable camera intent, standard checkpoint rail, and expanded no-companion presentation.
+- Automated coverage includes a synthetic dramatically oversized neighbour, compact-neighbour, tiny-target, multipart-target, sampled local path geometry, asymmetric/Sudan-like clusters, stable camera intent, contained checkpoint content, standard checkpoint rail, and expanded no-companion presentation.
 - Manual verification pending: a live North-Korea-like large-neighbour target and standard plus expanded checkpoint layouts could not be checked because no in-app browser session was available.
 - After that manual check, set the status to `Implemented` and replace this note with the final manual evidence.

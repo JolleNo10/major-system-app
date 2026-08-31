@@ -2,6 +2,7 @@ import {
   SvgTaskAssistanceRuntime,
   type SvgMapTaskAssistance,
 } from './svgTaskAssistance'
+import type { SvgPoint } from './svgGeometry'
 import { fitViewBoxToAspect, type SvgViewBoxRect } from './viewBoxFit'
 
 export type {
@@ -139,6 +140,10 @@ interface HoverListeners {
 
 const FORBIDDEN_ELEMENTS = 'script, foreignObject, iframe, object, embed, image, style'
 const XLINK_NS = 'http://www.w3.org/1999/xlink'
+const TARGET_CENTRIC_CONTEXT_SAMPLE_COUNT = 32
+const TARGET_CENTRIC_PADDING_RATIO = 0.3
+const TARGET_CENTRIC_MIN_WINDOW_RATIO = 0.16
+const TARGET_CENTRIC_MAX_WINDOW_RATIO = 0.85
 
 function captureStyle(element: SVGElement, property: string): OriginalStyle {
   return {
@@ -1122,15 +1127,7 @@ export class SvgMapController {
     return { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
   }
 
-  /**
-   * Derive a target-centred frame with enough room for nearby border context.
-   *
-   * The frame grows from the target and the closest point of each context
-   * bbox, then caps context-driven growth relative to the source map. This
-   * deliberately treats context bboxes as local hints rather than selected
-   * geometry to fit in full. Target geometry is always retained, including
-   * when it is multipart or larger than the local cap.
-   */
+  /** Derive one stable, padded frame around the target and local context points. */
   private getTargetCentricCountryBounds(
     targetIds: readonly string[],
     contextIds: readonly string[],
@@ -1141,31 +1138,132 @@ export class SvgMapController {
     const sourceBounds = this.originalViewBox ? this.parseViewBox(this.originalViewBox) : null
     const sourceWidth = sourceBounds?.width ?? Math.max(targetBounds.width, targetBounds.height)
     const sourceHeight = sourceBounds?.height ?? Math.max(targetBounds.width, targetBounds.height)
-    const targetSpan = Math.max(targetBounds.width, targetBounds.height)
-    const localPadding = Math.max(targetSpan * 1.25, Math.min(sourceWidth, sourceHeight) * 0.06)
-    const centerX = targetBounds.x + targetBounds.width / 2
-    const centerY = targetBounds.y + targetBounds.height / 2
-    const minimumWidth = sourceWidth * 0.16
-    const minimumHeight = sourceHeight * 0.16
-
-    let width = Math.max(targetBounds.width + localPadding * 2, minimumWidth)
-    let height = Math.max(targetBounds.height + localPadding * 2, minimumHeight)
-    for (const box of this.getCountryBoxes(contextIds)) {
-      const nearestX = Math.min(Math.max(centerX, box.x), box.x + box.width)
-      const nearestY = Math.min(Math.max(centerY, box.y), box.y + box.height)
-      width = Math.max(width, Math.abs(nearestX - centerX) * 2 + localPadding * 2)
-      height = Math.max(height, Math.abs(nearestY - centerY) * 2 + localPadding * 2)
-    }
-
-    const maximumWidth = sourceWidth * 0.85
-    const maximumHeight = sourceHeight * 0.85
-    width = Math.max(targetBounds.width, Math.min(width, maximumWidth))
-    height = Math.max(targetBounds.height, Math.min(height, maximumHeight))
+    const contextBounds = contextIds.flatMap(id => {
+      const country = this.countries.get(id)
+      const bounds = country
+        ? this.getLocalContextBounds(country.path, targetBounds, sourceWidth, sourceHeight)
+        : null
+      return bounds ? [bounds] : []
+    })
+    const cluster = this.getBoundsAroundRects(targetBounds, contextBounds)
+    const minimumPadding = Math.min(sourceWidth, sourceHeight) * 0.02
+    const paddingX = Math.max(targetBounds.width * TARGET_CENTRIC_PADDING_RATIO, minimumPadding)
+    const paddingY = Math.max(targetBounds.height * TARGET_CENTRIC_PADDING_RATIO, minimumPadding)
+    const horizontal = this.fitTargetClusterAxis(
+      cluster.x,
+      cluster.x + cluster.width,
+      targetBounds.x,
+      targetBounds.x + targetBounds.width,
+      paddingX,
+      sourceWidth * TARGET_CENTRIC_MIN_WINDOW_RATIO,
+      sourceWidth * TARGET_CENTRIC_MAX_WINDOW_RATIO,
+    )
+    const vertical = this.fitTargetClusterAxis(
+      cluster.y,
+      cluster.y + cluster.height,
+      targetBounds.y,
+      targetBounds.y + targetBounds.height,
+      paddingY,
+      sourceHeight * TARGET_CENTRIC_MIN_WINDOW_RATIO,
+      sourceHeight * TARGET_CENTRIC_MAX_WINDOW_RATIO,
+    )
     return {
-      x: centerX - width / 2,
-      y: centerY - height / 2,
-      width,
-      height,
+      x: horizontal.center - horizontal.size / 2,
+      y: vertical.center - vertical.size / 2,
+      width: horizontal.size,
+      height: vertical.size,
+    }
+  }
+
+  private getLocalContextBounds(
+    path: SVGPathElement,
+    targetBounds: SvgViewBoxRect,
+    sourceWidth: number,
+    sourceHeight: number,
+  ): SvgViewBoxRect | null {
+    const samples = this.samplePathPoints(path)
+    if (samples.length > 0) {
+      const point = samples.reduce((nearest, candidate) => this.distanceToBounds(candidate, targetBounds) < this.distanceToBounds(nearest, targetBounds) ? candidate : nearest)
+      return { x: point.x, y: point.y, width: 0, height: 0 }
+    }
+    const box = this.getCountryBox(path)[0]
+    if (!box) return null
+    const maximumFallbackContextSize = Math.min(sourceWidth, sourceHeight) * 0.2
+    if (box.width <= maximumFallbackContextSize && box.height <= maximumFallbackContextSize) return box
+    const targetCenterX = targetBounds.x + targetBounds.width / 2
+    const targetCenterY = targetBounds.y + targetBounds.height / 2
+    return {
+      x: Math.min(Math.max(targetCenterX, box.x), box.x + box.width),
+      y: Math.min(Math.max(targetCenterY, box.y), box.y + box.height),
+      width: 0,
+      height: 0,
+    }
+  }
+
+  private samplePathPoints(path: SVGPathElement): SvgPoint[] {
+    const geometry = path as SVGPathElement & {
+      getTotalLength?: () => number
+      getPointAtLength?: (distance: number) => { x: number; y: number }
+    }
+    if (typeof geometry.getTotalLength !== 'function' || typeof geometry.getPointAtLength !== 'function') return []
+    let totalLength: number
+    try {
+      totalLength = geometry.getTotalLength()
+    } catch {
+      return []
+    }
+    if (!Number.isFinite(totalLength) || totalLength <= 0) return []
+
+    const points: SvgPoint[] = []
+    for (let index = 0; index < TARGET_CENTRIC_CONTEXT_SAMPLE_COUNT; index += 1) {
+      try {
+        const point = geometry.getPointAtLength(totalLength * index / (TARGET_CENTRIC_CONTEXT_SAMPLE_COUNT - 1))
+        if (Number.isFinite(point.x) && Number.isFinite(point.y)) points.push({ x: point.x, y: point.y })
+      } catch {
+        return []
+      }
+    }
+    return points
+  }
+
+  private distanceToBounds(point: SvgPoint, bounds: SvgViewBoxRect): number {
+    const dx = Math.max(bounds.x - point.x, 0, point.x - (bounds.x + bounds.width))
+    const dy = Math.max(bounds.y - point.y, 0, point.y - (bounds.y + bounds.height))
+    return dx * dx + dy * dy
+  }
+
+  private getBoundsAroundRects(targetBounds: SvgViewBoxRect, rects: readonly SvgViewBoxRect[]): SvgViewBoxRect {
+    let minX = targetBounds.x
+    let minY = targetBounds.y
+    let maxX = targetBounds.x + targetBounds.width
+    let maxY = targetBounds.y + targetBounds.height
+    for (const rect of rects) {
+      minX = Math.min(minX, rect.x)
+      minY = Math.min(minY, rect.y)
+      maxX = Math.max(maxX, rect.x + rect.width)
+      maxY = Math.max(maxY, rect.y + rect.height)
+    }
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
+  }
+
+  private fitTargetClusterAxis(
+    clusterMin: number,
+    clusterMax: number,
+    targetMin: number,
+    targetMax: number,
+    padding: number,
+    minimumSize: number,
+    maximumSize: number,
+  ): { center: number; size: number } {
+    const targetSize = targetMax - targetMin
+    const size = Math.max(clusterMax - clusterMin + padding * 2, targetSize, minimumSize)
+    const cappedSize = Math.max(targetSize, Math.min(size, maximumSize))
+    const clusterCenter = (clusterMin + clusterMax) / 2
+    const targetCenterMin = targetMax - cappedSize / 2
+    const targetCenterMax = targetMin + cappedSize / 2
+    return {
+      center: Math.min(targetCenterMax, Math.max(targetCenterMin, clusterCenter)),
+      size: cappedSize,
     }
   }
 

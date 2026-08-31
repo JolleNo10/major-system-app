@@ -177,6 +177,22 @@ describe('Neighbours Quiz session', () => {
     expect(mount.querySelector<HTMLElement>('[data-testid="neighbours-map"]')?.dataset.neighbourhoodTarget).toBe('DE')
   })
 
+  it('keeps checkpoint content contained within the center dock', () => {
+    const germany = countries.find(country => country.id === 'DE')!
+    const run = createNeighboursQuizRun({ scopeCountries: [germany], activeCountries: countries, questionCount: 'all' })!
+    const { mount } = renderSession(run)
+
+    act(() => toolButton(mount, 'Reveal remaining').click())
+
+    const dock = mount.querySelector('[data-map-surface-dock]')
+    const content = dock?.querySelector('[data-neighbours-checkpoint-content]')
+    expect(content).not.toBeNull()
+    expect(content?.className).toContain('min-w-0')
+    expect(content?.className).toContain('max-w-full')
+    expect(dock?.querySelectorAll('[data-primary-action]')).toHaveLength(1)
+    expect(mount.querySelector('[data-map-surface-companion]')).toBeNull()
+  })
+
   it('keeps non-map controls usable when the map is loading or fails', () => {
     mockedMapState = 'loading'
     const germany = countries.find(country => country.id === 'DE')!
