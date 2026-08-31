@@ -3,6 +3,7 @@ import { countries } from '@/features/world-countries/data/countries'
 import { resolveCountryName } from '@/features/world-countries/learning/answerMatching'
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
 import { TaskDock } from '@/features/world-countries/ui/MapSurface'
+import { getWorldCountriesTaskHighlightFill } from '@/features/world-countries/ui/WorldCountriesAnswerSemantics'
 import { WorldCountriesMapActivitySurface, type WorldCountriesActivityTask } from '@/features/world-countries/ui/WorldCountriesActivity'
 import {
   advanceNeighboursTarget,
@@ -20,16 +21,15 @@ const FEEDBACK_DWELL_MS = 1800
 
 type MapState = 'loading' | 'ready' | 'error'
 
-export function NeighboursQuizSession({ run, session, fuzzyMatching, onSessionChange, onAdvance }: {
+export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance }: {
   run: NeighboursQuizRun
   session: NeighboursQuizSessionState
-  fuzzyMatching: boolean
   onSessionChange: (session: NeighboursQuizSessionState) => void
   onAdvance: () => void
 }) {
   const target = getCurrentNeighboursTarget(session)
-  const targetCountry = target ? run.countries.find(country => country.id === target.targetId) : undefined
   const countryById = useMemo(() => new Map(run.countries.map(country => [country.id, country])), [run.countries])
+  const targetCountry = target ? countryById.get(target.targetId) : undefined
   const [answer, setAnswer] = useState('')
   const [feedback, setFeedback] = useState<string | null>(null)
   const [mapState, setMapState] = useState<MapState>('loading')
@@ -77,7 +77,7 @@ export function NeighboursQuizSession({ run, session, fuzzyMatching, onSessionCh
     event.preventDefault()
     const submittedAnswer = answer.trim()
     if (!submittedAnswer || isReview || isComplete) return
-    const resolution = resolveCountryName(submittedAnswer, run.countries, { fuzzy: fuzzyMatching })
+    const resolution = resolveCountryName(submittedAnswer, run.countries, { fuzzy: run.fuzzyMatching })
     const result = applyNeighboursGuess(session, {
       countryId: resolution.country?.id,
       submittedAnswer,
@@ -101,6 +101,7 @@ export function NeighboursQuizSession({ run, session, fuzzyMatching, onSessionCh
     direction: 'World Countries / Neighbours Quiz',
     cue: <span id="world-countries-neighbours-quiz-question">Name the countries that border {targetCountry.country}</span>,
     sessionContext: `Question ${session.targetIndex + 1} / ${run.questions.length}`,
+    answerKind: 'country',
     progress: {
       label: 'Target',
       current: session.targetIndex + 1,
@@ -129,7 +130,7 @@ export function NeighboursQuizSession({ run, session, fuzzyMatching, onSessionCh
         {isComplete && <p role="status" className="text-sm font-semibold text-green-300">All neighbours found.</p>}
         <div className="flex flex-wrap gap-2 text-sm">
           <button type="button" disabled={target.showNumberUsed || isComplete} onClick={() => onSessionChange(showNeighboursNumber(session))} className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-semibold text-zinc-300 hover:border-zinc-500 disabled:cursor-not-allowed disabled:opacity-40">{target.showNumberUsed ? `Neighbours found: ${target.foundNeighbourIds.length} / ${target.requiredNeighbourIds.length}` : 'Show number'}</button>
-          <button type="button" disabled={target.revealMapUsed || isComplete} onClick={() => onSessionChange(revealNeighboursMap(session))} className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-semibold text-zinc-300 hover:border-zinc-500 disabled:cursor-not-allowed disabled:opacity-40">{target.revealMapUsed ? 'Map revealed' : 'Reveal map'}</button>
+          <button type="button" disabled={mapState !== 'ready' || target.revealMapUsed || isComplete} onClick={() => onSessionChange(revealNeighboursMap(session))} className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-semibold text-zinc-300 hover:border-zinc-500 disabled:cursor-not-allowed disabled:opacity-40">{target.revealMapUsed ? 'Map revealed' : 'Reveal map'}</button>
         </div>
         <button type="button" disabled={unresolvedCount <= 0 || isComplete} onClick={revealRemaining} className="w-full rounded-xl border border-amber-500/50 bg-amber-500/10 px-4 py-3 text-sm font-semibold text-amber-200 hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-40">Reveal remaining</button>
         <p className="text-xs text-zinc-500">{target.showNumberUsed ? `Neighbours found: ${target.foundNeighbourIds.length} / ${target.requiredNeighbourIds.length}` : 'The total neighbour count is hidden.'} · {target.incorrectGuesses.length} incorrect guess{target.incorrectGuesses.length === 1 ? '' : 'es'}</p>
@@ -146,7 +147,7 @@ export function NeighboursQuizSession({ run, session, fuzzyMatching, onSessionCh
             level="world"
             countryPopulation={countries}
             highlightedCountryIds={[target.targetId]}
-            highlightFill="#0891b2"
+            highlightFill={getWorldCountriesTaskHighlightFill('country')}
             countryColorsById={countryColorsById}
             hiddenCountryIds={hiddenCountryIds}
             namedCountryIds={namedCountryIds}
@@ -159,7 +160,7 @@ export function NeighboursQuizSession({ run, session, fuzzyMatching, onSessionCh
           <div className="sr-only" aria-live="polite">{foundIds.size} neighbours named. {revealedIds.size} neighbours revealed.</div>
         </>
       }
-      mapMeta={<p>Type every Country that shares a land border with the target.</p>}
+      mapMeta={<div className="space-y-1"><p>Question {session.targetIndex + 1} / {run.questions.length}</p><p>Type every Country that shares a land border with the target.</p></div>}
       dock={taskDock}
       dockPlacement="stacked"
     />

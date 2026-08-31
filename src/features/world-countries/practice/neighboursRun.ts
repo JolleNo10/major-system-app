@@ -4,6 +4,7 @@ import {
   hasEffectiveLandBorderNeighbours,
 } from '@/features/world-countries/data/landBorders'
 import type { PracticeQuestionCount } from './practiceRun'
+import { snapshotPracticeCountries, shufflePracticeItems } from './practiceRunUtils'
 
 export interface NeighboursQuizQuestion {
   targetId: CountryId
@@ -92,7 +93,7 @@ export function createNeighboursQuizRun({
   fuzzyMatching?: boolean
   random?: () => number
 }): NeighboursQuizRun | null {
-  const countries = snapshotCountries(activeCountries)
+  const countries = snapshotPracticeCountries(activeCountries)
   const activeIds = countries.map(country => country.id)
   const eligibleIds = getEligibleNeighboursTargetCountries(scopeCountries, countries).map(country => country.id)
   const eligibleIdSet = new Set(eligibleIds)
@@ -101,7 +102,7 @@ export function createNeighboursQuizRun({
     : eligibleIds
   if (requestedIds.length === 0) return null
 
-  const selectedIds = shuffle(requestedIds, random).slice(
+  const selectedIds = shufflePracticeItems(requestedIds, random).slice(
     0,
     targetIds ? requestedIds.length : questionCount === 'all' ? requestedIds.length : Math.min(questionCount, requestedIds.length),
   )
@@ -126,7 +127,7 @@ export function createNeighboursRetryRun(
   random: () => number = Math.random,
 ): NeighboursQuizRun | null {
   const requested = new Set(targetIds)
-  const questions = shuffle(
+  const questions = shufflePracticeItems(
     run.questions.filter(question => requested.has(question.targetId)),
     random,
   )
@@ -134,7 +135,7 @@ export function createNeighboursRetryRun(
   const selectedIds = questions.map(question => question.targetId)
   return {
     ...run,
-    countries: snapshotCountries(run.countries),
+    countries: snapshotPracticeCountries(run.countries),
     targetIds: selectedIds,
     questionCount: 'all',
     questions,
@@ -265,27 +266,4 @@ function replaceCurrentTarget(
     ...session,
     targets: session.targets.map((candidate, index) => index === session.targetIndex ? target : candidate),
   }
-}
-
-function snapshotCountries(entries: readonly Country[]): Country[] {
-  const seen = new Set<CountryId>()
-  return entries.flatMap(country => {
-    if (seen.has(country.id)) return []
-    seen.add(country.id)
-    return [{
-      ...country,
-      ...(country.countryAliases ? { countryAliases: [...country.countryAliases] } : {}),
-      ...(country.capitalAliases ? { capitalAliases: [...country.capitalAliases] } : {}),
-    }]
-  })
-}
-
-function shuffle<T>(values: readonly T[], random: () => number): T[] {
-  const result = [...values]
-  for (let index = result.length - 1; index > 0; index -= 1) {
-    const value = Math.max(0, Math.min(0.999999999, random()))
-    const swapWith = Math.floor(value * (index + 1))
-    ;[result[index], result[swapWith]] = [result[swapWith], result[index]]
-  }
-  return result
 }

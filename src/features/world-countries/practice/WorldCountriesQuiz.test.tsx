@@ -1,24 +1,30 @@
 // @vitest-environment jsdom
 
-import { act, createElement } from 'react'
+import { act, createElement, useEffect } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { PageLayout } from '@/app/layout/PageLayout'
 import { PageLayoutProvider } from '@/app/layout/PageLayoutContext'
-import { SettingsProvider } from '@/app/settings/SettingsContext'
+import { SettingsProvider, useSettings } from '@/app/settings/SettingsContext'
 import { countries, type Country } from '@/features/world-countries/data/countries'
 import { WorldCountriesPopulationProvider } from '@/features/world-countries/WorldCountriesPopulationContext'
 import { WorldCountriesQuiz } from './WorldCountriesQuiz'
 
 vi.mock('@/features/world-countries/maps/GeographyOverviewMap', () => ({
-  GeographyOverviewMap: ({ level, onCountryClick }: { level: string; onCountryClick?: (country: Country) => void }) => createElement('button', {
-    type: 'button',
-    'data-testid': `quiz-map-${level}`,
-    onClick: () => onCountryClick?.({ continent: 'Europe', subregionId: 'northern-europe' } as Country),
-  }, `map-${level}`),
+  GeographyOverviewMap: ({ level, onCountryClick, onMapStateChange }: { level: string; onCountryClick?: (country: Country) => void; onMapStateChange?: (state: 'loading' | 'ready' | 'error') => void }) => {
+    useEffect(() => {
+      if (level === 'world') onMapStateChange?.(mockedWorldMapState)
+    }, [level, onMapStateChange])
+    return createElement('button', {
+      type: 'button',
+      'data-testid': `quiz-map-${level}`,
+      onClick: () => onCountryClick?.({ continent: 'Europe', subregionId: 'northern-europe' } as Country),
+    }, `map-${level}`)
+  },
 }))
 
 let root: Root | null = null
+let mockedWorldMapState: 'loading' | 'ready' | 'error' = 'ready'
 
 afterEach(() => {
   act(() => root?.unmount())
@@ -27,6 +33,7 @@ afterEach(() => {
   vi.useRealTimers()
   vi.restoreAllMocks()
   localStorage.clear()
+  mockedWorldMapState = 'ready'
 })
 
 function quizTree(activeCountries: readonly Country[]) {
@@ -62,6 +69,37 @@ function renderRerenderableQuiz(activeCountries: readonly Country[]) {
   }
 }
 
+function settingsQuizTree(activeCountries: readonly Country[]) {
+  return createElement(SettingsProvider, null,
+    createElement(SettingsControlAndQuiz, { activeCountries }),
+  )
+}
+
+function SettingsControlAndQuiz({ activeCountries }: { activeCountries: readonly Country[] }) {
+  const { update } = useSettings()
+  return createElement('div', null,
+    createElement('button', { type: 'button', onClick: () => update({ worldCountriesFuzzyAnswerMatching: false }) }, 'Disable fuzzy matching'),
+    createElement(PageLayoutProvider, null,
+      createElement(PageLayout, null,
+        createElement(WorldCountriesPopulationProvider, { countries: activeCountries, children: createElement(WorldCountriesQuiz, { answerMode: 'typing' }) }),
+      ),
+    ),
+  )
+}
+
+function renderSettingsRerenderableQuiz(activeCountries: readonly Country[]) {
+  const mount = document.createElement('div')
+  document.body.append(mount)
+  act(() => {
+    root = createRoot(mount)
+    root.render(settingsQuizTree(activeCountries))
+  })
+  return {
+    mount,
+    rerender: (nextCountries: readonly Country[]) => act(() => root?.render(settingsQuizTree(nextCountries))),
+  }
+}
+
 function clickButton(mount: HTMLElement, text: string): void {
   const button = [...mount.querySelectorAll<HTMLButtonElement>('button')].find(candidate => candidate.textContent?.includes(text))
   if (!button) throw new Error(`Button not found: ${text}`)
@@ -79,6 +117,18 @@ function currentQuestionCountry(mount: HTMLElement, activeCountries: readonly Co
   const country = activeCountries.find(candidate => prompt.includes(candidate.country))
   if (!country) throw new Error(`Could not resolve the current Country from: ${prompt}`)
   return country
+}
+
+function currentNeighboursTarget(mount: HTMLElement, activeCountries: readonly Country[]): Country {
+  const prompt = mount.querySelector('#world-countries-neighbours-quiz-question')?.textContent ?? ''
+  const country = activeCountries.find(candidate => prompt.includes(candidate.country))
+  if (!country) throw new Error(`Could not resolve the current Neighbours target from: ${prompt}`)
+  return country
+}
+
+function answerNeighboursQuestion(mount: HTMLElement, answer: string): void {
+  act(() => typeInto(mount.querySelector<HTMLInputElement>('#world-countries-neighbours-answer')!, answer))
+  clickButton(mount, 'Check')
 }
 
 function answerCurrentQuestion(mount: HTMLElement, activeCountries: readonly Country[], answer: string, waitMs: number): Country {
@@ -142,6 +192,69 @@ describe('World Countries Capitals Quiz', () => {
 
     expect(rendered.mount.querySelector('#world-countries-neighbours-quiz-question')?.textContent).toBe(question)
     expect(rendered.mount.textContent).toContain('Reveal map')
+  })
+
+  it('keeps Neighbours fuzzy matching from the run snapshot after Settings changes', () => {
+    vi.useFakeTimers()
+    const activeCountries = ['NO', 'SE'].map(id => countries.find(country => country.id === id)!)
+    const rendered = renderSettingsRerenderableQuiz(activeCountries)
+    act(() => rendered.mount.querySelector<HTMLInputElement>('input[name="world-countries-quiz-type"][value="neighbours"]')?.click())
+    startQuiz(rendered.mount)
+
+    const target = currentNeighboursTarget(rendered.mount, activeCountries)
+    const neighbour = activeCountries.find(country => country.id !== target.id)!
+    clickButton(rendered.mount, 'Disable fuzzy matching')
+    answerNeighboursQuestion(rendered.mount, neighbour.country.slice(0, -1))
+
+    expect(rendered.mount.textContent).toContain('Correct.')
+    act(() => vi.advanceTimersByTime(500))
+    expect(rendered.mount.textContent).toContain('Question 2 / 2')
+  })
+
+  it('drives Neighbours completion, Retry missed, and New quiz through the coordinator', () => {
+    vi.useFakeTimers()
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+    mockedWorldMapState = 'error'
+    const activeCountries = ['NO', 'SE'].map(id => countries.find(country => country.id === id)!)
+    const rendered = renderRerenderableQuiz(activeCountries)
+    const mount = rendered.mount
+
+    act(() => mount.querySelector<HTMLInputElement>('input[name="world-countries-quiz-type"][value="neighbours"]')?.click())
+    startQuiz(mount)
+    expect(mount.textContent).toContain('The map is unavailable')
+
+    const firstTarget = currentNeighboursTarget(mount, activeCountries)
+    const firstNeighbour = activeCountries.find(country => country.id !== firstTarget.id)!
+    answerNeighboursQuestion(mount, 'Japan')
+    expect(mount.textContent).toContain('Country not recognized')
+    answerNeighboursQuestion(mount, firstNeighbour.country)
+    act(() => vi.advanceTimersByTime(500))
+
+    const secondTarget = currentNeighboursTarget(mount, activeCountries)
+    const secondNeighbour = activeCountries.find(country => country.id !== secondTarget.id)!
+    answerNeighboursQuestion(mount, secondNeighbour.country)
+    act(() => vi.advanceTimersByTime(500))
+
+    expect(mount.querySelector('#world-countries-neighbours-quiz-results-heading')).not.toBeNull()
+    expect(mount.textContent).toContain('2 / 2')
+    expect(mount.textContent).toContain('Perfect Countries')
+    expect(mount.textContent).toContain('Wrong guesses')
+    const retryButton = [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Retry missed')
+    expect(retryButton?.hidden).toBe(false)
+
+    rendered.rerender([firstTarget])
+    clickButton(mount, 'Retry missed')
+    expect(mount.textContent).toContain('Question 1 / 1')
+    expect(currentNeighboursTarget(mount, activeCountries).id).toBe(firstTarget.id)
+    answerNeighboursQuestion(mount, firstNeighbour.country)
+    act(() => vi.advanceTimersByTime(500))
+
+    expect(mount.textContent).toContain('1 / 1')
+    expect([...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Retry missed')?.hidden).toBe(true)
+
+    rendered.rerender(activeCountries)
+    clickButton(mount, 'New quiz')
+    expect(mount.textContent).toContain('Question 1 / 2')
   })
 
   it('keeps a combined Subregion selection across Continent navigation and starts that scope', () => {

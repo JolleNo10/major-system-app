@@ -2,6 +2,7 @@ import type { Country, CountryId } from '@/features/world-countries/data/countri
 import { createRecallSession, type WorldCountriesRecallSessionState } from '@/features/world-countries/learning/recallSession'
 import { summarizeRecallAnswers, type RecallResultSummary } from '@/features/world-countries/learning/recallSummary'
 import type { WorldCountriesRecallSkill } from '@/features/world-countries/learning/recallTargets'
+import { snapshotPracticeCountries, shufflePracticeItems } from './practiceRunUtils'
 
 export type PracticeRecallOutcome = 'exact' | 'fuzzy' | 'incorrect' | 'revealed'
 
@@ -67,22 +68,14 @@ export function createPracticeQuizRun({
   countryIds?: readonly CountryId[]
   random?: () => number
 }): PracticeQuizRun | null {
-  const countriesById = new Map<CountryId, Country>()
-  for (const country of scopeCountries) {
-    if (countriesById.has(country.id)) continue
-    countriesById.set(country.id, {
-      ...country,
-      ...(country.countryAliases ? { countryAliases: [...country.countryAliases] } : {}),
-      ...(country.capitalAliases ? { capitalAliases: [...country.capitalAliases] } : {}),
-    })
-  }
+  const countriesById = new Map(snapshotPracticeCountries(scopeCountries).map(country => [country.id, country]))
 
   const eligibleIds = countryIds
     ? [...new Set(countryIds)].filter(id => countriesById.has(id))
     : [...countriesById.keys()]
   if (eligibleIds.length === 0) return null
 
-  const randomizedIds = shuffle(eligibleIds, random)
+  const randomizedIds = shufflePracticeItems(eligibleIds, random)
   const selectedIds = countryIds
     ? randomizedIds
     : randomizedIds.slice(0, questionCount === 'all' ? randomizedIds.length : Math.min(questionCount, randomizedIds.length))
@@ -128,14 +121,4 @@ export function summarizePracticeResultAnswers(
   answers: readonly PracticeResultAnswer[],
 ): RecallResultSummary {
   return summarizeRecallAnswers(answers)
-}
-
-function shuffle<T>(values: readonly T[], random: () => number): T[] {
-  const result = [...values]
-  for (let index = result.length - 1; index > 0; index -= 1) {
-    const value = Math.max(0, Math.min(0.999999999, random()))
-    const swapWith = Math.floor(value * (index + 1))
-    ;[result[index], result[swapWith]] = [result[swapWith], result[index]]
-  }
-  return result
 }
