@@ -290,6 +290,7 @@ describe('World Countries Capitals Quiz', () => {
     expect((mount.querySelector('input[value="10"]') as HTMLInputElement).disabled).toBe(true)
 
     clickAriaButton(mount, 'Select Europe')
+    expect(mount.textContent).toContain('1 Countries in current scope')
     clickAriaButton(mount, 'Select Asia')
     expect(mount.querySelector('[aria-label="World selection summary"]')?.textContent).toContain('2 Continents')
     expect(mount.querySelector('[aria-label="World selection summary"]')?.textContent).toContain('2 Subregions')

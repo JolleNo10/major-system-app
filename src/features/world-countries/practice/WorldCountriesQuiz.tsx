@@ -182,6 +182,7 @@ export function WorldCountriesQuiz({ answerMode: _answerMode }: { answerMode: An
     hoveredGroupId={hoveredGroupId}
     normalizedQuestionCount={normalizedQuestionCount}
     setupQuestionTargetCount={setupQuestionTargetCount}
+    setupScopeCountryCount={setupScopeCountries.length}
     onQuizTypeChange={setQuizType}
     onQuestionCountChange={setQuestionCount}
     onStart={startQuiz}
@@ -213,6 +214,7 @@ function QuizSetupPhase({
   hoveredGroupId,
   normalizedQuestionCount,
   setupQuestionTargetCount,
+  setupScopeCountryCount,
   onQuizTypeChange,
   onQuestionCountChange,
   onStart,
@@ -235,6 +237,7 @@ function QuizSetupPhase({
   hoveredGroupId: string | null
   normalizedQuestionCount: PracticeQuestionCount
   setupQuestionTargetCount: number
+  setupScopeCountryCount: number
   onQuizTypeChange: (value: QuizType) => void
   onQuestionCountChange: (value: PracticeQuestionCount) => void
   onStart: () => void
@@ -258,7 +261,7 @@ function QuizSetupPhase({
   return <section className="space-y-3 animate-fade-in" aria-labelledby="world-countries-quiz-heading">
     <div className="space-y-1 text-center"><p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World Countries / Quiz</p><h1 id="world-countries-quiz-heading" className="text-2xl font-black text-zinc-100">{quizType === 'capitals' ? 'Capitals quiz' : 'Neighbours quiz'}</h1><p className="text-sm text-zinc-500">{quizType === 'capitals' ? 'Given a Country, type its Capital.' : 'Given a Country, name every Country that shares a land border with it.'}</p></div>
     <GeographyOverviewMap level={setupContinent ? 'continent' : 'world'} continent={setupContinent ?? undefined} selectedSubregionIds={setupContinent ? normalizedSelection.subregionIds : undefined} hoveredGroupId={hoveredGroupId} onHoverGroup={onHoverGroup} onCountryClick={country => setupContinent ? onToggleSubregion(country.subregionId) : onSelectContinent(country.continent)} ariaLabel={setupContinent ? `${setupContinent} map for ${quizType === 'capitals' ? 'Capitals' : 'Neighbours'} Quiz setup` : `World map for ${quizType === 'capitals' ? 'Capitals' : 'Neighbours'} Quiz setup`} />
-    <p className="px-1 text-xs text-zinc-500">{quizType === 'neighbours' ? setupQuestionTargetCount > 0 ? `${setupQuestionTargetCount} eligible target Countries` : 'No selected target Country has an active land-border neighbour' : activeCountries.length > 0 ? `${activeCountries.length} Countries in current scope` : 'Select at least one Subregion to begin'}</p>
+     <p className="px-1 text-xs text-zinc-500">{quizType === 'neighbours' ? setupQuestionTargetCount > 0 ? `${setupQuestionTargetCount} eligible target Countries` : 'No selected target Country has an active land-border neighbour' : setupScopeCountryCount > 0 ? `${setupScopeCountryCount} Countries in current scope` : 'Select at least one Subregion to begin'}</p>
   </section>
 }
 
