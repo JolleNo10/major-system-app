@@ -351,11 +351,15 @@ export class SvgMapController {
     const activeIds = uniqueStrings([...target.knownIds, ...context.knownIds])
     const unknownIds = uniqueStrings([...target.unknownIds, ...context.unknownIds])
     if (target.knownIds.length === 0 || !this.svg || !this.originalViewBox) {
+      this.resetZoom()
       return { activeIds: [], unknownIds }
     }
 
     const targetBounds = this.getTargetCentricCountryBounds(target.knownIds, context.knownIds)
-    if (!targetBounds) return { activeIds, unknownIds }
+    if (!targetBounds) {
+      this.resetZoom()
+      return { activeIds, unknownIds }
+    }
     this.zoomIntent = {
       kind: 'target-centric-neighbourhood',
       targetIds: target.knownIds,

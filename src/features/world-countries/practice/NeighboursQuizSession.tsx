@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import { useRails } from '@/app/layout/PageLayoutContext'
 import { resolveCountryName } from '@/features/world-countries/learning/answerMatching'
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
-import { TaskDock } from '@/features/world-countries/ui/MapSurface'
+import { TaskDock, useMapSurfacePresentation } from '@/features/world-countries/ui/MapSurface'
 import { getWorldCountriesTaskHighlightFill } from '@/features/world-countries/ui/WorldCountriesAnswerSemantics'
 import { WorldCountriesMapActivitySurface, type WorldCountriesActivityTask } from '@/features/world-countries/ui/WorldCountriesActivity'
 import {
@@ -18,6 +18,19 @@ import {
 import { NeighboursQuizCheckpointRail, NeighboursQuizSessionTools, type NeighboursQuizMapState } from './NeighboursQuizSessionTools'
 
 const FEEDBACK_DWELL_MS = 1800
+
+function NeighboursQuizMapMeta({ targetIndex, totalTargets }: {
+  targetIndex: number
+  totalTargets: number
+}) {
+  const presentation = useMapSurfacePresentation()
+  return (
+    <div data-neighbours-map-meta className="space-y-1">
+      {presentation === 'standard' && <p>Question {targetIndex + 1} / {totalTargets}</p>}
+      <p>Type every Country that shares a land border with the target.</p>
+    </div>
+  )
+}
 
 export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance }: {
   run: NeighboursQuizRun
@@ -120,7 +133,6 @@ export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance
   const task: WorldCountriesActivityTask = {
     direction: 'World Countries / Neighbours Quiz',
     cue: <span id="world-countries-neighbours-quiz-question">Name the countries that border {targetCountry.country}</span>,
-    sessionContext: `Question ${session.targetIndex + 1} / ${run.questions.length}`,
     answerKind: 'country',
     progress: {
       label: 'Target',
@@ -185,7 +197,7 @@ export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance
           <div className="sr-only" aria-live="polite">{progress.foundCount} neighbours named. {progress.revealedCount} neighbours revealed.</div>
         </>
       }
-      mapMeta={<div className="space-y-1"><p>Question {session.targetIndex + 1} / {run.questions.length}</p><p>Type every Country that shares a land border with the target.</p></div>}
+      mapMeta={<NeighboursQuizMapMeta targetIndex={session.targetIndex} totalTargets={run.questions.length} />}
       dock={isCheckpoint ? checkpointDock : answerDock}
       dockPlacement="stacked"
     />

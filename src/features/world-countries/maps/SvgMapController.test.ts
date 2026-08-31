@@ -193,6 +193,36 @@ describe('SvgMapController persistent state', () => {
     expect(viewBox.x + viewBox.width).toBeGreaterThanOrEqual(46)
   })
 
+  it('clears the previous target-centric camera when the next target is unknown', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    setBBox(mount, 'Alpha', { x: 42, y: 20, width: 4, height: 4 })
+
+    controller.setTargetCentricZoom(['Alpha'])
+    expect(readViewBox(mount)).not.toEqual({ x: 0, y: 0, width: 100, height: 50 })
+
+    expect(controller.setTargetCentricZoom(['Missing'])).toEqual({
+      activeIds: [],
+      unknownIds: ['Missing'],
+    })
+    expect(readViewBox(mount)).toEqual({ x: 0, y: 0, width: 100, height: 50 })
+  })
+
+  it('clears the previous target-centric camera when the target bbox is unusable', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    setBBox(mount, 'Alpha', { x: 42, y: 20, width: 4, height: 4 })
+
+    controller.setTargetCentricZoom(['Alpha'])
+    setBBox(mount, 'Alpha', { x: 42, y: 20, width: 0, height: 0 })
+
+    expect(controller.setTargetCentricZoom(['Alpha'])).toEqual({
+      activeIds: ['Alpha'],
+      unknownIds: [],
+    })
+    expect(readViewBox(mount)).toEqual({ x: 0, y: 0, width: 100, height: 50 })
+  })
+
   it('retains ordinary compact neighbour context in the target-centric frame', async () => {
     const { mount, controller } = makeController()
     await controller.load({ markup: TEST_MAP })
