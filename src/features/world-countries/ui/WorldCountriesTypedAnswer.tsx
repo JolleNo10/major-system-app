@@ -1,11 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { TypingInput } from '@/core/ui/TypingInput'
 import { useMapSurfaceFeedbackOverlay } from './MapSurface'
-import { WorldCountriesAnswerFeedback } from './WorldCountriesAnswerFeedback'
+import { useWorldCountriesAnswerFeedback } from './WorldCountriesAnswerFeedback'
 import type { WorldCountriesAnswerKind } from './WorldCountriesAnswerSemantics'
-
-const SUCCESS_FEEDBACK_DURATION_MS = 500
-const CORRECTION_FEEDBACK_DURATION_MS = 1800
 
 export type WorldCountriesTypedAnswerOutcome = 'exact' | 'fuzzy' | 'incorrect' | 'revealed'
 
@@ -99,26 +96,6 @@ export function WorldCountriesTypedAnswer({
     )
   }, [])
 
-  useEffect(() => {
-    const spellingPracticeAvailable = activeResult?.outcome === 'fuzzy'
-      || (allowIncorrectSpellingPractice && activeResult?.outcome === 'incorrect')
-    if (!activeResult || spellingPracticeAvailable) return
-
-    const duration = activeResult.outcome === 'exact'
-      ? SUCCESS_FEEDBACK_DURATION_MS
-      : CORRECTION_FEEDBACK_DURATION_MS
-    const timer = window.setTimeout(() => {
-      const completedResult = activeResult
-      if (completedResult.outcome === 'incorrect' && retryOnIncorrect) {
-        answeredRef.current = false
-        setResult(null)
-        return
-      }
-      completeTransition(completedResult)
-    }, duration)
-    return () => window.clearTimeout(timer)
-  }, [activeResult, allowIncorrectSpellingPractice, completeTransition, retryOnIncorrect])
-
   const submit = (answer: string) => {
     if (activeResult || answeredRef.current) return
     answeredRef.current = true
@@ -149,13 +126,19 @@ export function WorldCountriesTypedAnswer({
       compact
     />
   )
-  const feedbackOverlay = useMemo(() => activeResult && (
-    <WorldCountriesAnswerFeedback
-      result={activeResult}
-      allowIncorrectSpellingPractice={allowIncorrectSpellingPractice}
-      onContinue={() => completeTransition(activeResult)}
-    />
-  ), [activeResult, allowIncorrectSpellingPractice, completeTransition])
+  const handleFeedbackContinue = useCallback(() => {
+    if (activeResult?.outcome === 'incorrect' && retryOnIncorrect) {
+      answeredRef.current = false
+      setResult(null)
+      return
+    }
+    if (activeResult) completeTransition(activeResult)
+  }, [activeResult, completeTransition, retryOnIncorrect])
+  const { feedbackOverlay, feedbackActive } = useWorldCountriesAnswerFeedback({
+    result: activeResult,
+    allowIncorrectSpellingPractice,
+    onContinue: handleFeedbackContinue,
+  })
 
   useMapSurfaceFeedbackOverlay(feedbackOverlay)
 
@@ -163,7 +146,7 @@ export function WorldCountriesTypedAnswer({
     input,
     feedbackOverlay,
     isAnswerable: activeResult === null,
-    feedbackActive: activeResult !== null,
+    feedbackActive,
     outcome: activeResult?.outcome ?? null,
     reveal: revealAnswer,
   })

@@ -1,6 +1,58 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { WorldCountriesTypedAnswerResult } from './WorldCountriesTypedAnswer'
 import { SpellingPracticeControls } from './MiniSpellingPractice'
+
+export const SUCCESS_FEEDBACK_DURATION_MS = 500
+export const CORRECTION_FEEDBACK_DURATION_MS = 1800
+
+export function useWorldCountriesAnswerFeedback({
+  result,
+  onContinue,
+  allowIncorrectSpellingPractice = false,
+  allowFuzzySpellingPractice = true,
+}: {
+  result: WorldCountriesTypedAnswerResult | null
+  onContinue: () => void
+  allowIncorrectSpellingPractice?: boolean
+  allowFuzzySpellingPractice?: boolean
+}): {
+  feedbackOverlay: ReactNode | null
+  feedbackActive: boolean
+} {
+  const spellingPracticeAvailable = result !== null && isSpellingPracticeAvailable(result, allowIncorrectSpellingPractice, allowFuzzySpellingPractice)
+
+  useEffect(() => {
+    if (!result || spellingPracticeAvailable) return
+    const timer = window.setTimeout(onContinue, getFeedbackDuration(result))
+    return () => window.clearTimeout(timer)
+  }, [onContinue, result, spellingPracticeAvailable])
+
+  const feedbackOverlay = useMemo(() => result && (
+    <WorldCountriesAnswerFeedback
+      result={result}
+      allowIncorrectSpellingPractice={allowIncorrectSpellingPractice}
+      allowFuzzySpellingPractice={allowFuzzySpellingPractice}
+      onContinue={onContinue}
+    />
+  ), [allowFuzzySpellingPractice, allowIncorrectSpellingPractice, onContinue, result])
+
+  return { feedbackOverlay, feedbackActive: result !== null }
+}
+
+function isSpellingPracticeAvailable(
+  result: WorldCountriesTypedAnswerResult,
+  allowIncorrectSpellingPractice: boolean,
+  allowFuzzySpellingPractice: boolean,
+): boolean {
+  return (allowFuzzySpellingPractice && result.outcome === 'fuzzy')
+    || (allowIncorrectSpellingPractice && result.outcome === 'incorrect')
+}
+
+function getFeedbackDuration(result: WorldCountriesTypedAnswerResult): number {
+  return result.outcome === 'exact' || result.outcome === 'fuzzy'
+    ? SUCCESS_FEEDBACK_DURATION_MS
+    : CORRECTION_FEEDBACK_DURATION_MS
+}
 
 const feedbackShellClass = `
   w-full max-w-[420px]
@@ -60,14 +112,15 @@ const iconClass = {
   revealed: 'border-amber-300/30 bg-amber-400/10 text-amber-200',
 } as const
 
-export function WorldCountriesAnswerFeedback({ result, onContinue, allowIncorrectSpellingPractice = false }: {
+export function WorldCountriesAnswerFeedback({ result, onContinue, allowIncorrectSpellingPractice = false, allowFuzzySpellingPractice = true }: {
   result: WorldCountriesTypedAnswerResult
   onContinue: () => void
   allowIncorrectSpellingPractice?: boolean
+  allowFuzzySpellingPractice?: boolean
 }) {
   const { outcome } = result
   const [practiceOpen, setPracticeOpen] = useState(false)
-  const spellingPracticeAvailable = outcome === 'fuzzy' || (outcome === 'incorrect' && allowIncorrectSpellingPractice)
+  const spellingPracticeAvailable = isSpellingPracticeAvailable(result, allowIncorrectSpellingPractice, allowFuzzySpellingPractice)
   const interactive = spellingPracticeAvailable
   const title = outcome === 'exact' || outcome === 'fuzzy'
     ? 'Correct'

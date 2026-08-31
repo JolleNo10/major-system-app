@@ -50,7 +50,7 @@ When the Neighbours map is expanded:
 
 - PageLayout's existing expanded-center presentation remains the owner of page width and rail suppression;
 - keep the expanded task header/cue;
-- keep the existing top-right target progress, for example `Target 1 / 10` with its progress bar;
+- keep the existing top-right current-target neighbour progress, for example `Neighbours 2 / 7` with its progress bar; this is named-neighbour progress, not quiz question position;
 - keep the map as the dominant surface;
 - keep the typed answer dock below the map at its normal intrinsic height;
 - do **not** render a Neighbours expanded companion;
@@ -59,7 +59,7 @@ When the Neighbours map is expanded:
 
 The learner may collapse back to standard presentation to use those secondary actions. Their state is transient run state and must remain unchanged across expansion/collapse.
 
-Expanded presentation therefore has one progress surface only: the existing task progress in the expanded header.
+Expanded presentation therefore has one progress surface only: the current-target named-neighbour progress in the expanded header. The quiz question position remains useful standard map metadata and is not duplicated in expanded mode.
 
 ### Resolved target checkpoint
 
@@ -201,7 +201,7 @@ Existing fallback behavior remains unchanged:
 - [ ] Existing 0051 population masking remains intact: out-of-run/map-only geometry does not leak merely because the new camera changes.
 - [ ] In expanded Neighbours presentation there is no `data-map-surface-companion`/Neighbours companion content.
 - [ ] Expanded Neighbours presentation does not show `Show number`, `Show map`, `Reveal remaining`, a duplicate Found panel, or a second progress block.
-- [ ] Expanded Neighbours presentation retains the existing top task progress (`Target N / total`) and progress bar.
+- [ ] Expanded Neighbours presentation retains the current-target named-neighbour progress (`Neighbours X / Y`) and progress bar, with `0 / Y` rendered as true zero fill.
 - [ ] Expanded active presentation retains the typed answer dock at normal intrinsic height below the map.
 - [ ] Collapsing back to standard presentation restores the standard session tools without mutating hint/found/run state.
 - [ ] Standard active presentation continues to show the 0051 Found/progress/hint rail.
@@ -248,8 +248,9 @@ Set this Change Spec to `Implemented` only after the camera behavior and both st
 Implementation completed on 2026-09-01; the status remains `Ready` until the required manual browser verification is completed.
 
 - Evidence: focused camera/map/session/presentation tests passed (80/80), including duplicate expanded-progress, stale-camera fallback, contained checkpoint, asymmetric-cluster, and standard/expanded aspect regressions.
-- Evidence: full World Countries feature suite passed (612/612 tests).
+- Evidence: follow-up feedback/progress/session tests passed (50/50 related tests and 20/20 direct Neighbours/activity/feedback/MapSurface tests), covering shared exact/fuzzy/correction overlays, neutral duplicate feedback, feedback dwell/final-checkpoint behavior, named-neighbour progress, hint/reveal neutrality, and zero-percent rendering.
+- Evidence: full World Countries feature suite passed (616/616 tests).
 - Evidence: `npm run typecheck`, `npm run lint`, and `git diff --check` passed.
-- Automated coverage includes a synthetic dramatically oversized neighbour, compact-neighbour, tiny-target, multipart-target, sampled local path geometry, asymmetric/Sudan-like clusters, stable camera intent, contained checkpoint content, standard checkpoint rail, and expanded no-companion presentation.
-- Manual verification pending: a live North-Korea-like large-neighbour target and standard plus expanded checkpoint layouts could not be checked because no in-app browser session was available.
+- Automated coverage includes a synthetic dramatically oversized neighbour, compact-neighbour, tiny-target, multipart-target, sampled local path geometry, asymmetric/Sudan-like clusters, stable camera intent, contained checkpoint content, standard checkpoint rail, expanded no-companion presentation, shared World Countries answer-feedback reuse for exact/fuzzy/incorrect/unknown/ambiguous outcomes, duplicate-answer neutrality, current-target named-neighbour progress, and a true zero-fill progress bar.
+- Manual verification pending: live North-Korea-like camera framing, standard plus expanded checkpoint containment, and standard plus expanded feedback/progress behavior could not be checked because no in-app browser session was available.
 - After that manual check, set the status to `Implemented` and replace this note with the final manual evidence.

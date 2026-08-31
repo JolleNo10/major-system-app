@@ -87,8 +87,10 @@ signal rather than coordinator-owned refresh counters.
   their task or skill. The typed-answer seam owns native
   submit handling, blank prevention, map-relative answer-feedback overlay,
   feedback state, focus/reset, and the shared 500 ms / 1800 ms lifecycle;
-  workflow owners provide classification, disclosure copy, evidence, and
-  transitions. The form dock owns answer entry and does not repeat result copy.
+  multi-answer Practice workflows reuse that feedback presentation/lifecycle
+  while retaining their own repeated-answer state and transitions. Workflow
+  owners provide classification, disclosure copy, evidence, and transitions.
+  The form dock owns answer entry and does not repeat result copy.
   Fuzzy is the interactive feedback exception by default: its overlay owns
   Continue and transient mini spelling practice, initially focuses Mini
   practise spelling, and creates no evidence. Drill-launched Learn & Practise

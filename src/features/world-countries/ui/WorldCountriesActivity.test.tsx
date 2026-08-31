@@ -5,7 +5,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it } from 'vitest'
 import { PageLayout } from '@/app/layout/PageLayout'
 import { PageLayoutProvider } from '@/app/layout/PageLayoutContext'
-import { WorldCountriesMapActivitySurface } from './WorldCountriesActivity'
+import { WorldCountriesMapActivitySurface, WorldCountriesSessionProgressBar } from './WorldCountriesActivity'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -18,6 +18,23 @@ afterEach(() => {
 })
 
 describe('World Countries active map-task presentation', () => {
+  it('renders zero progress with no fill while keeping positive progress visible', () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement('div', null,
+        createElement(WorldCountriesSessionProgressBar, { progressPercent: 0, label: 'Neighbours' }),
+        createElement(WorldCountriesSessionProgressBar, { progressPercent: 1, label: 'Neighbours' }),
+      ))
+    })
+
+    const fills = mount.querySelectorAll<HTMLElement>('[role="progressbar"] > div')
+    expect(fills[0]?.style.width).toBe('0%')
+    expect(fills[1]?.style.width).toBe('2%')
+  })
+
   it('uses one semantic task input for standard and expanded composition', async () => {
     const mount = document.createElement('div')
     document.body.append(mount)

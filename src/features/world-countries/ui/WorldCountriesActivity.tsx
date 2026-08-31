@@ -48,7 +48,7 @@ export function WorldCountriesSessionProgressBar({ progressPercent, label }: {
       aria-valuenow={Math.round(percent)}
       className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-800"
     >
-      <div className="h-full rounded-full bg-cyan-500" style={{ width: `${Math.max(2, percent)}%` }} />
+      <div className="h-full rounded-full bg-cyan-500" style={{ width: `${percent === 0 ? 0 : Math.max(2, percent)}%` }} />
     </div>
   )
 }

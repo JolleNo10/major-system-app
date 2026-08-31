@@ -83,6 +83,7 @@ function toolButton(mount: HTMLElement, text: string): HTMLButtonElement {
 
 describe('Neighbours Quiz session', () => {
   it('keeps found names on the map and accumulates one Found row per Country', () => {
+    vi.useFakeTimers()
     const germany = countries.find(country => country.id === 'DE')!
     const run = createNeighboursQuizRun({ scopeCountries: [germany], activeCountries: countries, questionCount: 'all', fuzzyMatching: true })!
     const { mount } = renderSession(run)
@@ -108,13 +109,88 @@ describe('Neighbours Quiz session', () => {
     expect(mount.querySelectorAll('[aria-label="Found neighbours"] li')).toHaveLength(1)
     expect(mount.textContent).toContain('Poland')
 
+    act(() => vi.advanceTimersByTime(500))
     submit(mount, 'Poland')
-    expect(mount.textContent).toContain('Already found.')
+    expect(mount.querySelector('[data-world-answer-feedback]')).toBeNull()
+    expect(mount.querySelector('[data-neighbours-informational-feedback]')?.textContent).toBe('Already found Poland.')
     expect(mount.querySelectorAll('[aria-label="Found neighbours"] li')).toHaveLength(1)
 
+    act(() => vi.advanceTimersByTime(1))
     submit(mount, 'Czech Republic')
     expect(mount.querySelectorAll('[aria-label="Found neighbours"] li')).toHaveLength(2)
     expect(mount.querySelector('[data-neighbours-progress]')?.textContent).toBe('2 found')
+  })
+
+  it('uses shared positive feedback for exact and fuzzy neighbours without leaving inline result copy', () => {
+    vi.useFakeTimers()
+    const germany = countries.find(country => country.id === 'DE')!
+    const run = createNeighboursQuizRun({ scopeCountries: [germany], activeCountries: countries, questionCount: 'all', fuzzyMatching: true })!
+    const { mount } = renderSession(run)
+
+    submit(mount, 'Poland')
+    expect(mount.querySelector('[data-world-answer-outcome="exact"]')).not.toBeNull()
+    expect(mount.querySelector('[data-world-answer-feedback]')?.textContent).toContain('Poland')
+    expect(mount.querySelector('[data-neighbours-informational-feedback]')).toBeNull()
+    expect(mount.querySelector('[data-map-surface-dock] [role="status"]')).toBeNull()
+    expect(mount.querySelector('[data-neighbours-session-tools]')).not.toBeNull()
+
+    act(() => vi.advanceTimersByTime(500))
+    expect(mount.querySelector('[data-world-answer-feedback]')).toBeNull()
+    expect(document.activeElement).toBe(mount.querySelector('#world-countries-neighbours-answer'))
+
+    submit(mount, 'Czech Republic')
+    act(() => vi.advanceTimersByTime(500))
+    act(() => root?.unmount())
+    root = null
+    document.body.replaceChildren()
+    const sweden = countries.find(country => country.id === 'SE')!
+    const fuzzyRun = createNeighboursQuizRun({ scopeCountries: [sweden], activeCountries: [sweden, countries.find(country => country.id === 'NO')!], questionCount: 'all', fuzzyMatching: true })!
+    const fuzzy = renderSession(fuzzyRun)
+    submit(fuzzy.mount, 'Noreway')
+    expect(fuzzy.mount.querySelector('[data-world-answer-outcome="fuzzy"]')).not.toBeNull()
+    expect(fuzzy.mount.querySelector('[data-fuzzy-answer-comparison]')?.textContent).toContain('Norway')
+    expect(fuzzy.mount.querySelector('[data-fuzzy-spelling-action="practice"]')).toBeNull()
+    expect(fuzzy.mount.querySelector('[data-neighbours-informational-feedback]')).toBeNull()
+    act(() => vi.advanceTimersByTime(500))
+    expect(fuzzy.mount.querySelector('[data-world-answer-feedback]')).toBeNull()
+  })
+
+  it('uses shared correction feedback for incorrect, unknown, and ambiguous answers', () => {
+    vi.useFakeTimers()
+    const germany = countries.find(country => country.id === 'DE')!
+    const spain = countries.find(country => country.id === 'ES')!
+    const run = createNeighboursQuizRun({ scopeCountries: [germany], activeCountries: countries, questionCount: 'all' })!
+    const { mount } = renderSession(run)
+
+    submit(mount, spain.country)
+    expect(mount.querySelector('[data-world-answer-outcome="incorrect"]')).not.toBeNull()
+    expect(mount.querySelector('[data-world-answer-feedback]')?.textContent).toContain('Spain is not a neighbour.')
+    expect(mount.querySelectorAll('[aria-label="Found neighbours"] li')).toHaveLength(0)
+    expect(mount.querySelector('[data-neighbours-progress]')?.textContent).toBe('0 found')
+    act(() => vi.advanceTimersByTime(1800))
+    expect(mount.querySelector('[data-world-answer-feedback]')).toBeNull()
+
+    submit(mount, 'Atlantis')
+    expect(mount.querySelector('[data-world-answer-outcome="incorrect"]')).not.toBeNull()
+    expect(mount.querySelector('[data-world-answer-feedback]')?.textContent).toContain('Country not recognized.')
+    act(() => vi.advanceTimersByTime(1800))
+
+    const duplicatePoland = { ...countries.find(country => country.id === 'PL')!, id: 'PL-copy' }
+    const ambiguousRun: NeighboursQuizRun = {
+      type: 'neighbours',
+      countries: [germany, countries.find(country => country.id === 'PL')!, duplicatePoland],
+      targetIds: ['DE'],
+      questionCount: 'all',
+      fuzzyMatching: false,
+      questions: [{ targetId: 'DE', requiredNeighbourIds: ['PL'] }],
+    }
+    act(() => root?.unmount())
+    root = null
+    document.body.replaceChildren()
+    const ambiguous = renderSession(ambiguousRun)
+    submit(ambiguous.mount, 'Poland')
+    expect(ambiguous.mount.querySelector('[data-world-answer-outcome="incorrect"]')).not.toBeNull()
+    expect(ambiguous.mount.querySelector('[data-world-answer-feedback]')?.textContent).toContain('That Country answer is ambiguous.')
   })
 
   it('keeps Show number, Show map, and Reveal remaining in session tools', () => {
@@ -141,6 +217,7 @@ describe('Neighbours Quiz session', () => {
 
     act(() => toolButton(mount, 'Show number').click())
     submit(mount, sweden.country)
+    expect(mount.querySelector('[data-world-answer-outcome="exact"]')).not.toBeNull()
     expect(mount.textContent).toContain('All neighbours found.')
     expect(mount.textContent).toContain('1 hint used')
     expect(mount.querySelectorAll<HTMLButtonElement>('button[data-primary-action]')).toHaveLength(1)
@@ -150,6 +227,10 @@ describe('Neighbours Quiz session', () => {
     expect(mount.querySelector('[data-neighbours-checkpoint-rail]')).not.toBeNull()
     expect(mount.querySelector('[data-neighbours-checkpoint-rail] button')).toBeNull()
     expect(mount.querySelector<HTMLElement>('[data-testid="neighbours-map"]')?.dataset.neighbourhoodTarget).toBe('NO')
+    act(() => vi.advanceTimersByTime(499))
+    expect(mount.querySelector('[data-world-answer-feedback]')).not.toBeNull()
+    act(() => vi.advanceTimersByTime(1))
+    expect(mount.querySelector('[data-world-answer-feedback]')).toBeNull()
     act(() => vi.advanceTimersByTime(500))
     expect(onAdvance).not.toHaveBeenCalled()
 
@@ -175,6 +256,39 @@ describe('Neighbours Quiz session', () => {
     const named = mount.querySelector<HTMLElement>('[data-testid="neighbours-map"]')?.dataset.named ?? ''
     for (const neighbourId of run.questions[0]!.requiredNeighbourIds) expect(named).toContain(neighbourId)
     expect(mount.querySelector<HTMLElement>('[data-testid="neighbours-map"]')?.dataset.neighbourhoodTarget).toBe('DE')
+  })
+
+  it('keeps expanded progress tied to named neighbours rather than hints or resolved answers', () => {
+    vi.useFakeTimers()
+    const germany = countries.find(country => country.id === 'DE')!
+    const spain = countries.find(country => country.id === 'ES')!
+    const run = createNeighboursQuizRun({ scopeCountries: [germany], activeCountries: countries, questionCount: 'all' })!
+    const { mount } = renderSession(run)
+
+    act(() => toolButton(mount, 'Show number').click())
+    act(() => toolButton(mount, 'Show map').click())
+
+    act(() => mount.querySelector<HTMLButtonElement>('[aria-label="Expand map"]')?.click())
+    const taskProgress = () => mount.querySelector('[data-world-countries-task-progress]')?.textContent ?? ''
+    expect(taskProgress()).toContain('Neighbours 0 / 9')
+    expect(taskProgress()).toContain('0%')
+
+    submit(mount, spain.country)
+    expect(taskProgress()).toContain('Neighbours 0 / 9')
+    act(() => vi.advanceTimersByTime(1800))
+
+    submit(mount, 'Poland')
+    expect(taskProgress()).toContain('Neighbours 1 / 9')
+    expect(taskProgress()).toContain('11%')
+    expect(mount.querySelector('[data-map-surface-map] [data-world-answer-outcome="exact"]')).not.toBeNull()
+    act(() => vi.advanceTimersByTime(500))
+    expect(mount.querySelector('[data-world-answer-feedback]')).toBeNull()
+
+    act(() => mount.querySelector<HTMLButtonElement>('[aria-label="Collapse map"]')?.click())
+    act(() => toolButton(mount, 'Reveal remaining').click())
+    act(() => mount.querySelector<HTMLButtonElement>('[aria-label="Expand map"]')?.click())
+    expect(taskProgress()).toContain('Neighbours 1 / 9')
+    expect(taskProgress()).toContain('11%')
   })
 
   it('keeps checkpoint content contained within the center dock', () => {
@@ -236,6 +350,7 @@ describe('Neighbours Quiz session', () => {
   })
 
   it('uses focused expanded presentation and restores standard tools on collapse', () => {
+    vi.useFakeTimers()
     const germany = countries.find(country => country.id === 'DE')!
     const run = createNeighboursQuizRun({ scopeCountries: [germany], activeCountries: countries, questionCount: 'all' })!
     const { mount } = renderSession(run)
@@ -243,7 +358,10 @@ describe('Neighbours Quiz session', () => {
     act(() => mount.querySelector<HTMLButtonElement>('[aria-label="Expand map"]')?.click())
     expect(mount.querySelector('[data-map-surface-companion]')).toBeNull()
     expect(mount.querySelector('[data-map-surface-presentation="expanded"]')).not.toBeNull()
-    expect(mount.querySelector('[data-world-countries-task-progress]')?.textContent).toContain('Target 1 /')
+    expect(mount.querySelector('[data-world-countries-task-progress]')?.textContent).toContain('Neighbours 0 / 9')
+    expect(mount.querySelector('[data-world-countries-task-progress]')?.textContent).toContain('0%')
+    expect(mount.querySelector('[data-world-countries-task-progress]')?.textContent).not.toContain('Target 1 / 10')
+    expect(mount.querySelector('[data-world-countries-task-progress] [role="progressbar"] > div')?.getAttribute('style')).toContain('width: 0%')
     expect(mount.querySelectorAll('[data-world-countries-task-progress]')).toHaveLength(1)
     expect(mount.querySelector('[data-world-countries-task-context]')).toBeNull()
     expect(mount.textContent).not.toContain('Question 1 / 1')
@@ -251,6 +369,11 @@ describe('Neighbours Quiz session', () => {
     expect(mount.querySelector('[data-map-surface-dock]')?.textContent).not.toContain('Show number')
     expect(mount.querySelector('[data-map-surface-dock]')?.textContent).not.toContain('Show map')
     expect(mount.querySelector('[data-map-surface-dock]')?.textContent).not.toContain('Reveal remaining')
+
+    submit(mount, 'Poland')
+    expect(mount.querySelector('[data-world-countries-task-progress]')?.textContent).toContain('Neighbours 1 / 9')
+    expect(mount.querySelector('[data-world-countries-task-progress]')?.textContent).toContain('11%')
+    act(() => vi.advanceTimersByTime(500))
 
     act(() => mount.querySelector<HTMLButtonElement>('[aria-label="Collapse map"]')?.click())
     expect(mount.querySelector('[data-map-surface-companion]')).toBeNull()
@@ -271,7 +394,7 @@ describe('Neighbours Quiz session', () => {
     act(() => mount.querySelector<HTMLButtonElement>('[aria-label="Expand map"]')?.click())
 
     expect(mount.querySelector('[data-map-surface-companion]')).toBeNull()
-    expect(mount.querySelector('[data-world-countries-task-progress]')?.textContent).toContain('Target 1 / 1')
+    expect(mount.querySelector('[data-world-countries-task-progress]')?.textContent).toContain('Neighbours 1 / 1')
     expect(mount.querySelectorAll<HTMLButtonElement>('[data-primary-action]')).toHaveLength(1)
     expect([...mount.querySelectorAll<HTMLButtonElement>('[data-primary-action]')].some(button => button.textContent?.includes('See results'))).toBe(true)
     expect(mount.querySelector('[data-map-surface-dock]')?.textContent).not.toContain('Show number')

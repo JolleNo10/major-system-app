@@ -241,6 +241,7 @@ describe('World Countries Capitals Quiz', () => {
     const firstNeighbour = activeCountries.find(country => country.id !== firstTarget.id)!
     answerNeighboursQuestion(mount, 'Japan')
     expect(mount.textContent).toContain('Country not recognized')
+    act(() => vi.advanceTimersByTime(1800))
     answerNeighboursQuestion(mount, firstNeighbour.country)
     act(() => vi.advanceTimersByTime(500))
     expect(mount.textContent).toContain('Next Country →')

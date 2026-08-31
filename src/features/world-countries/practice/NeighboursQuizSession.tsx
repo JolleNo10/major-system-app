@@ -4,7 +4,9 @@ import { resolveCountryName } from '@/features/world-countries/learning/answerMa
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
 import { TaskDock, useMapSurfacePresentation } from '@/features/world-countries/ui/MapSurface'
 import { getWorldCountriesTaskHighlightFill } from '@/features/world-countries/ui/WorldCountriesAnswerSemantics'
+import { useWorldCountriesAnswerFeedback } from '@/features/world-countries/ui/WorldCountriesAnswerFeedback'
 import { WorldCountriesMapActivitySurface, type WorldCountriesActivityTask } from '@/features/world-countries/ui/WorldCountriesActivity'
+import type { WorldCountriesTypedAnswerResult } from '@/features/world-countries/ui/WorldCountriesTypedAnswer'
 import {
   applyNeighboursGuess,
   deriveNeighboursTargetProgress,
@@ -17,7 +19,10 @@ import {
 } from './neighboursRun'
 import { NeighboursQuizCheckpointRail, NeighboursQuizSessionTools, type NeighboursQuizMapState } from './NeighboursQuizSessionTools'
 
-const FEEDBACK_DWELL_MS = 1800
+type NeighboursFeedback = WorldCountriesTypedAnswerResult | {
+  outcome: 'already-found'
+  countryName?: string
+}
 
 function NeighboursQuizMapMeta({ targetIndex, totalTargets }: {
   targetIndex: number
@@ -42,7 +47,7 @@ export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance
   const countryById = useMemo(() => new Map(run.countries.map(country => [country.id, country])), [run.countries])
   const targetCountry = target ? countryById.get(target.targetId) : undefined
   const [answer, setAnswer] = useState('')
-  const [feedback, setFeedback] = useState<string | null>(null)
+  const [feedback, setFeedback] = useState<NeighboursFeedback | null>(null)
   const [mapState, setMapState] = useState<NeighboursQuizMapState>('loading')
   const inputRef = useRef<HTMLInputElement>(null)
   const targetKey = target ? `${session.targetIndex}-${target.targetId}` : null
@@ -53,11 +58,16 @@ export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance
     inputRef.current?.focus()
   }, [targetKey])
 
-  useEffect(() => {
-    if (!feedback) return
-    const timer = window.setTimeout(() => setFeedback(null), FEEDBACK_DWELL_MS)
-    return () => window.clearTimeout(timer)
-  }, [feedback])
+  const clearFeedback = useCallback(() => {
+    setFeedback(null)
+    inputRef.current?.focus()
+  }, [])
+  const answerFeedback = feedback && feedback.outcome !== 'already-found' ? feedback : null
+  const { feedbackOverlay, feedbackActive } = useWorldCountriesAnswerFeedback({
+    result: answerFeedback,
+    onContinue: clearFeedback,
+    allowFuzzySpellingPractice: false,
+  })
 
   const showNumber = useCallback(() => {
     onSessionChange(showNeighboursNumber(session))
@@ -111,20 +121,33 @@ export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const submittedAnswer = answer.trim()
-    if (!submittedAnswer || isCheckpoint || session.phase === 'complete') return
+    if (!submittedAnswer || isCheckpoint || session.phase === 'complete' || feedbackActive) return
     const resolution = resolveCountryName(submittedAnswer, run.countries, { fuzzy: run.fuzzyMatching })
     const result = applyNeighboursGuess(session, {
       countryId: resolution.country?.id,
       submittedAnswer,
     })
-    const message = result.outcome === 'found'
-      ? resolution.kind === 'fuzzy' ? `Correct. The canonical name is ${resolution.country?.country}.` : 'Correct.'
-      : result.outcome === 'already-found'
-        ? 'Already found.'
-        : resolution.country
-          ? `Incorrect. ${resolution.country.country} is not a neighbour.`
-          : resolution.kind === 'ambiguous' ? 'That Country answer is ambiguous.' : 'Country not recognized.'
-    setFeedback(message)
+    if (result.outcome === 'already-found') {
+      setFeedback({ outcome: 'already-found', countryName: resolution.country?.country })
+    } else {
+      setFeedback({
+        outcome: result.outcome === 'found'
+          ? resolution.kind === 'fuzzy' ? 'fuzzy' : 'exact'
+          : 'incorrect',
+        canonicalAnswer: resolution.country?.country ?? submittedAnswer,
+        answerKind: 'country',
+        message: result.outcome === 'found'
+          ? result.outcome === 'found' && resolution.kind === 'fuzzy'
+            ? `Spelling: ${resolution.country?.country}. You typed: ${submittedAnswer}`
+            : 'Correct.'
+          : resolution.country
+            ? `${resolution.country.country} is not a neighbour.`
+            : resolution.kind === 'ambiguous' ? 'That Country answer is ambiguous.' : 'Country not recognized.',
+        submittedAnswer,
+        promptKey: targetKey ?? `${session.targetIndex}-${target.targetId}`,
+        latencyMs: 0,
+      })
+    }
     setAnswer('')
     onSessionChange(result.state)
     inputRef.current?.focus()
@@ -135,9 +158,9 @@ export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance
     cue: <span id="world-countries-neighbours-quiz-question">Name the countries that border {targetCountry.country}</span>,
     answerKind: 'country',
     progress: {
-      label: 'Target',
-      current: session.targetIndex + 1,
-      total: run.questions.length,
+      label: 'Neighbours',
+      current: progress.foundCount,
+      total: progress.totalCount,
     },
   }
   const checkpointDock = (
@@ -146,7 +169,6 @@ export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance
         <div>
           <p className="text-sm font-semibold text-zinc-100">{target.phase === 'complete' ? 'All neighbours found.' : 'Review this target.'}</p>
           <p className="mt-1 text-xs text-zinc-400">{progress.foundCount} / {progress.totalCount} named · {progress.revealedCount} revealed · {target.incorrectGuesses.length} incorrect guess{target.incorrectGuesses.length === 1 ? '' : 'es'}{progress.hintUses > 0 ? ` · ${progress.hintUses} hint${progress.hintUses === 1 ? '' : 's'} used` : ''}</p>
-          {feedback && <p role="status" className="mt-2 text-sm font-semibold text-zinc-300">{feedback}</p>}
         </div>
         <ul className="flex min-w-0 max-w-full flex-wrap gap-2" aria-label="Resolved neighbours">
           {target.requiredNeighbourIds.map(countryId => {
@@ -169,7 +191,7 @@ export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance
           <input ref={inputRef} id="world-countries-neighbours-answer" value={answer} onChange={event => setAnswer(event.target.value)} autoComplete="off" placeholder="Type a Country..." disabled={isCheckpoint} className="min-w-0 flex-1 rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-base text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/30 disabled:opacity-50" />
           <button type="submit" disabled={!answer.trim() || isCheckpoint} className="rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40">Check</button>
         </form>
-        {feedback && <p role="status" className="text-sm font-semibold text-zinc-300">{feedback}</p>}
+        {feedback?.outcome === 'already-found' && <p data-neighbours-informational-feedback role="status" className="text-sm font-semibold text-zinc-300">Already found{feedback.countryName ? ` ${feedback.countryName}` : ''}.</p>}
       </div>
     </TaskDock>
   )
@@ -198,6 +220,7 @@ export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance
         </>
       }
       mapMeta={<NeighboursQuizMapMeta targetIndex={session.targetIndex} totalTargets={run.questions.length} />}
+      feedbackOverlay={feedbackOverlay}
       dock={isCheckpoint ? checkpointDock : answerDock}
       dockPlacement="stacked"
     />
