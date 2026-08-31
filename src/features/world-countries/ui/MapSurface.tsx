@@ -1,5 +1,6 @@
-import { createContext, useContext, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { usePageLayoutPresentation } from '@/app/layout/PageLayoutContext'
+import { isOverlayOpen } from '@/core/ui/overlayGuard'
 
 export type MapSurfaceDockPlacement = 'overlay' | 'attached' | 'stacked'
 export type TaskDockVariant = 'navigation' | 'checkpoint' | 'form' | 'hint' | 'completion'
@@ -62,6 +63,20 @@ export function MapSurface({ context, expandedContext, map, mapMeta, feedbackOve
   const presentation: MapSurfacePresentation = expanded ? 'expanded' : 'standard'
   const visibleContext = expanded && expandedContext !== undefined ? expandedContext : context
   usePageLayoutPresentation(expanded ? 'expanded-center' : 'standard')
+
+  useEffect(() => {
+    if (!expanded) return
+
+    const collapseOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented || isOverlayOpen()) return
+      event.preventDefault()
+      event.stopImmediatePropagation()
+      setExpanded(false)
+    }
+
+    window.addEventListener('keydown', collapseOnEscape, { capture: true })
+    return () => window.removeEventListener('keydown', collapseOnEscape, { capture: true })
+  }, [expanded])
 
   useLayoutEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return

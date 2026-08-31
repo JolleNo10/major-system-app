@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import type { Mode } from '@/core/types'
 import { MODES, HOME_TITLE } from '@/app/modes'
 import { useAnswerMode } from '@/core/ui/useAnswerMode'
@@ -34,14 +34,6 @@ export default function App() {
   const closeSettings = useCallback(() => setShowSettings(false), [])
   const closeStats = useCallback(() => setShowStats(false), [])
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && mode !== 'home' && !showReference && !showSettings && !showStats) goHome()
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [mode, showReference, showSettings, showStats, goHome])
-
   return (
     <div className="min-h-dvh bg-zinc-950 flex flex-col">
       {/* Header */}
@@ -51,7 +43,7 @@ export default function App() {
             <button
               onClick={goHome}
               className="flex items-center justify-center min-h-[40px] min-w-[40px] -ml-2 text-zinc-400 hover:text-zinc-100 transition-colors shrink-0"
-              title="Back (Esc)"
+              title="Back"
               aria-label="Back"
             >
               <span className="text-xl">←</span>

@@ -91,7 +91,7 @@ describe('ModeSelector card application grouping', () => {
     expect(document.body.textContent).not.toContain('PAO Deck')
   })
 
-  it('keeps the Deck of Cards submenu when leaving a drill with Back or Escape', async () => {
+  it('keeps the active drill mounted when Escape is pressed', async () => {
     mount(createElement(AppHarness))
 
     act(() => findButton('Deck of Cards').click())
@@ -103,12 +103,13 @@ describe('ModeSelector card application grouping', () => {
     expect(document.body.textContent).toContain('PAO Deck')
 
     act(() => findButton('Themed Deck').click())
+    const backButton = document.querySelector<HTMLButtonElement>('[aria-label="Back"]')
+    expect(backButton?.title).toBe('Back')
     await act(async () => {
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
       await Promise.resolve()
     })
-    expect(document.body.textContent).toContain('← Applications')
-    expect(document.body.textContent).toContain('PAO Deck')
+    expect(document.querySelector('[aria-label="Back"]')).toBe(backButton)
   })
 
   it('selects the existing Themed and PAO mode IDs from the submenu', () => {

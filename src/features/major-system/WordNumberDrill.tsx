@@ -192,8 +192,8 @@ export function WordNumberDrill({ config, answerMode, pool: customPool }: Props)
 
   const [sessionPhase, setSessionPhase] = useState<'drilling' | 'summary'>('drilling')
 
-  // Intercept Escape before App.tsx's handler: show session summary when ≥5 answers recorded.
-  // Uses capture phase so it fires before the bubble-phase goHome handler in App.tsx.
+  // Use Escape for the session summary when ≥5 answers have been recorded.
+  // Capture phase lets this local session command run before other window handlers.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || isOverlayOpen()) return
