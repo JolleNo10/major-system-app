@@ -59,7 +59,8 @@ signal rather than coordinator-owned refresh counters.
   implementation detail.
 - `maps/` owns SVG loading, Country-to-SVG translation, overview and learning
   map presentation, generic caller-controlled Country visibility and explicit
-  Country zoom, task-scoped answer-selection interaction points,
+  Country zoom, target-centric local-neighbourhood zoom, task-scoped
+  answer-selection interaction points,
   map-owned synthetic dot metadata for visually weak source geography,
   representative learning anchors, map-owned pointer-intent resolution,
   existing Country sequence annotations, and workflow-neutral geographic
@@ -165,8 +166,9 @@ default. Drill has a non-persisted Purpose selector:
   presentation; active-run membership/order and effective neighbours are
   unaffected by later Settings or geography changes. During an active
   Neighbours run, session tools own found progress, hints, reveal, and
-  secondary review state in the PageLayout right rail and expanded map
-  companion; the center checkpoint dock owns the complete resolved-neighbour
+  secondary review state in the standard PageLayout right rail; expanded mode
+  keeps the task progress, map, and answer/checkpoint dock without a workflow
+  companion. The center checkpoint dock owns the complete resolved-neighbour
   summary and sole explicit continuation. Each resolved target waits at an
   explicit checkpoint for the Quiz coordinator to advance it, and no
   completion timer advances the run.
@@ -358,8 +360,11 @@ advances automatically after the correction dwell.
   viewBox, derives the expanded viewBox from that intent plus the measured slot
   aspect ratio, and recomputes it through the existing resize lifecycle without
   accumulating camera drift. Standard presentation keeps the source or normal
-  semantic zoom framing. Expansion resets when the owning surface unmounts or the
-  viewport leaves `xl`.
+  semantic zoom framing. The map controller's target-centric neighbourhood
+  intent keeps target geometry and bounded nearest context points in view
+  without fitting complete context-Country bounds; generic Country zoom keeps
+  its full selected-bounds contract. Expansion resets when the owning surface
+  unmounts or the viewport leaves `xl`.
   `MapSurface` may also compose an expanded-only generic companion beside the
   primary dock for callers that need it. Drill promotes its Country-position
   and step-progress semantics into a compact expanded header summary instead

@@ -73,6 +73,13 @@ function setMountRect(mount: HTMLElement, dimensions: { width: number; height: n
   })
 }
 
+function readViewBox(mount: HTMLElement): { x: number; y: number; width: number; height: number } {
+  const values = mount.querySelector('svg')?.getAttribute('viewBox')?.split(' ').map(Number) ?? []
+  if (values.length !== 4 || values.some(value => !Number.isFinite(value))) throw new Error('Missing viewBox')
+  const [x, y, width, height] = values
+  return { x, y, width, height }
+}
+
 afterEach(() => {
   while (controllers.length) controllers.pop()?.destroy()
   document.body.replaceChildren()
@@ -166,6 +173,92 @@ describe('SvgMapController persistent state', () => {
       unknownIds: [],
     })
     expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('10 75 30 35')
+  })
+
+  it('keeps a dramatically larger neighbour from controlling a target-centric neighbourhood', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    setBBox(mount, 'Alpha', { x: 42, y: 20, width: 4, height: 4 })
+    setBBox(mount, 'Beta', { x: -400, y: -200, width: 900, height: 700 })
+
+    expect(controller.setTargetCentricZoom(['Alpha'], ['Beta'])).toEqual({
+      activeIds: ['Alpha', 'Beta'],
+      unknownIds: [],
+    })
+
+    const viewBox = readViewBox(mount)
+    expect(viewBox.width).toBeLessThan(200)
+    expect(viewBox.height).toBeLessThan(100)
+    expect(viewBox.x).toBeLessThanOrEqual(42)
+    expect(viewBox.x + viewBox.width).toBeGreaterThanOrEqual(46)
+  })
+
+  it('retains ordinary compact neighbour context in the target-centric frame', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    setBBox(mount, 'Alpha', { x: 30, y: 20, width: 5, height: 5 })
+    setBBox(mount, 'Beta', { x: 45, y: 23, width: 6, height: 6 })
+
+    controller.setTargetCentricZoom(['Alpha'], ['Beta'])
+
+    const viewBox = readViewBox(mount)
+    expect(viewBox.x).toBeLessThanOrEqual(45)
+    expect(viewBox.x + viewBox.width).toBeGreaterThanOrEqual(51)
+    expect(viewBox.y).toBeLessThanOrEqual(23)
+    expect(viewBox.y + viewBox.height).toBeGreaterThanOrEqual(29)
+  })
+
+  it('gives a tiny target a minimum local window', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    setBBox(mount, 'Alpha', { x: 10, y: 10, width: 0.2, height: 0.2 })
+
+    controller.setTargetCentricZoom(['Alpha'])
+
+    const viewBox = readViewBox(mount)
+    expect(viewBox.width).toBeGreaterThanOrEqual(16)
+    expect(viewBox.height).toBeGreaterThanOrEqual(8)
+    expect(viewBox.x).toBeLessThanOrEqual(10)
+    expect(viewBox.x + viewBox.width).toBeGreaterThanOrEqual(10.2)
+  })
+
+  it('keeps all meaningful geometry of a fragmented target path in view', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
+        <g><path id="Alpha" d="M 10 10 h 4 v 4 h -4 z M 70 30 h 4 v 8 h -4 z"/><text id="Alpha_label">ALPHA</text></g>
+      </svg>` })
+    setBBox(mount, 'Alpha', { x: 10, y: 10, width: 64, height: 28 })
+
+    controller.setTargetCentricZoom(['Alpha'])
+
+    const viewBox = readViewBox(mount)
+    expect(viewBox.x).toBeLessThanOrEqual(10)
+    expect(viewBox.x + viewBox.width).toBeGreaterThanOrEqual(74)
+    expect(viewBox.y).toBeLessThanOrEqual(10)
+    expect(viewBox.y + viewBox.height).toBeGreaterThanOrEqual(38)
+  })
+
+  it('fits a target-centric frame to the expanded slot without losing the target', async () => {
+    const viewport = document.createElement('div')
+    const mount = document.createElement('div')
+    viewport.append(mount)
+    document.body.append(viewport)
+    const controller = new SvgMapController(mount, {}, viewport)
+    controllers.push(controller)
+    await controller.load({ markup: TEST_MAP })
+    setBBox(mount, 'Alpha', { x: 30, y: 10, width: 10, height: 10 })
+    setMountRect(viewport, { width: 200, height: 100 })
+
+    controller.setTargetCentricZoom(['Alpha'])
+    controller.setPresentation('expanded')
+
+    const viewBox = readViewBox(mount)
+    expect(viewBox.width / viewBox.height).toBeCloseTo(2)
+    expect(viewBox.x).toBeLessThanOrEqual(30)
+    expect(viewBox.x + viewBox.width).toBeGreaterThanOrEqual(40)
+    expect(viewBox.y).toBeLessThanOrEqual(10)
+    expect(viewBox.y + viewBox.height).toBeGreaterThanOrEqual(20)
   })
 
   it('fits the retained zoom intent to the expanded map slot and refits after a slot change', async () => {

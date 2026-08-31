@@ -14,7 +14,6 @@ export function NeighboursQuizSessionTools({
   onShowNumber,
   onShowMap,
   onRevealRemaining,
-  compact = false,
 }: {
   target: NeighboursTargetState
   countryById: ReadonlyMap<CountryId, { country: string }>
@@ -22,7 +21,6 @@ export function NeighboursQuizSessionTools({
   onShowNumber: () => void
   onShowMap: () => void
   onRevealRemaining: () => void
-  compact?: boolean
 }) {
   const progress = deriveNeighboursTargetProgress(target)
   const resolved = target.phase !== 'active'
@@ -36,8 +34,8 @@ export function NeighboursQuizSessionTools({
   return (
     <section
       data-neighbours-session-tools
-      data-neighbours-session-tools-variant={compact ? 'compact' : 'rail'}
-      className={compact ? 'w-full space-y-3' : 'space-y-4'}
+      data-neighbours-session-tools-variant="rail"
+      className="space-y-4"
       aria-labelledby={toolsHeadingId}
     >
       <div>
@@ -107,6 +105,23 @@ export function NeighboursQuizSessionTools({
       </section>
 
       <p className="text-xs text-zinc-500">{target.incorrectGuesses.length} incorrect guess{target.incorrectGuesses.length === 1 ? '' : 'es'}</p>
+    </section>
+  )
+}
+
+export function NeighboursQuizCheckpointRail({ targetIndex, totalTargets }: {
+  targetIndex: number
+  totalTargets: number
+}) {
+  return (
+    <section data-neighbours-checkpoint-rail className="space-y-3" aria-label="Neighbours Quiz checkpoint">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wider text-violet-400">Neighbours Quiz</p>
+        <h2 className="mt-1 text-lg font-bold text-zinc-100">Checkpoint</h2>
+      </div>
+      <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3 text-sm text-zinc-300">
+        <p className="font-semibold text-zinc-100">Target {targetIndex + 1} / {totalTargets}</p>
+      </div>
     </section>
   )
 }

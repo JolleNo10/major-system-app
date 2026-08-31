@@ -7,6 +7,7 @@ import {
   type SvgMapHoverGroup,
   type SvgMapTaskAssistance,
   type SvgMapSettings,
+  type SvgMapTargetCentricZoomIntent,
 } from './SvgMapController'
 import { useMapSurfacePresentation } from '@/features/world-countries/ui/MapSurface'
 
@@ -31,6 +32,7 @@ export interface SvgMapViewProps {
   namedIds?: readonly string[]
   countryLabels?: Readonly<Record<string, string>>
   zoomIds?: readonly string[]
+  targetCentricZoom?: SvgMapTargetCentricZoomIntent
   zoomPadding?: number
   settings?: Partial<SvgMapSettings>
   taskAssistance?: SvgMapTaskAssistance | null
@@ -58,6 +60,7 @@ export function SvgMapView({
   namedIds = [],
   countryLabels = EMPTY_COUNTRY_LABELS,
   zoomIds = [],
+  targetCentricZoom,
   zoomPadding = 32,
   settings = {},
   taskAssistance = null,
@@ -160,9 +163,10 @@ export function SvgMapView({
     const previouslyNamed = controller.getNamedIds()
     if (previouslyNamed.length) controller.setNamesVisible(previouslyNamed, false)
     if (namedIds.length) controller.setNamesVisible(namedIds, true)
-    if (zoomIds.length) controller.setZoomArea(zoomIds, zoomPadding)
+    if (targetCentricZoom) controller.setTargetCentricZoom(targetCentricZoom.targetIds, targetCentricZoom.contextIds)
+    else if (zoomIds.length) controller.setZoomArea(zoomIds, zoomPadding)
     else controller.resetZoom()
-  }, [countries, countryColors, countryLabels, groupOutlines, hiddenIds, highlightedIds, hoverGroups, hoverableIds, mutedIds, namedIds, selectableIds, settings, taskAssistance, zoomIds, zoomPadding])
+  }, [countries, countryColors, countryLabels, groupOutlines, hiddenIds, highlightedIds, hoverGroups, hoverableIds, mutedIds, namedIds, selectableIds, settings, targetCentricZoom, taskAssistance, zoomIds, zoomPadding])
 
   useEffect(() => {
     const controller = controllerRef.current

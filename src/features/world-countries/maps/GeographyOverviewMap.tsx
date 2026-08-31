@@ -43,6 +43,11 @@ export interface GeographyOverviewMapProps {
   namedCountryIds?: readonly CountryId[]
   /** Caller-controlled Country IDs used for explicit map fitting. */
   zoomCountryIds?: readonly CountryId[]
+  /** Fit a target-centred local neighbourhood without fitting full context bboxes. */
+  neighbourhoodZoom?: {
+    targetCountryId: CountryId
+    contextCountryIds?: readonly CountryId[]
+  }
   /** Optional non-color descriptions for the mapped Countries. */
   countryAccessibleDescriptionsById?: ReadonlyMap<CountryId, string>
   /** Optional caller-owned population snapshot; defaults to the active context population. */
@@ -80,6 +85,7 @@ export function GeographyOverviewMap({
   highlightFill,
   namedCountryIds = [],
   zoomCountryIds,
+  neighbourhoodZoom,
   countryAccessibleDescriptionsById,
   countryPopulation,
   hiddenCountryIds = [],
@@ -251,6 +257,15 @@ export function GeographyOverviewMap({
       : resolveCountryIdsToSvgIds(zoomCountryIds, visibleCountries, mapCountryIds),
     [mapCountryIds, visibleCountries, zoomCountryIds],
   )
+  const neighbourhoodTargetCountryId = neighbourhoodZoom?.targetCountryId
+  const neighbourhoodContextCountryIds = neighbourhoodZoom?.contextCountryIds
+  const targetCentricZoom = useMemo(() => neighbourhoodTargetCountryId
+    ? {
+      targetIds: resolveCountryIdsToSvgIds([neighbourhoodTargetCountryId], visibleCountries, mapCountryIds),
+      contextIds: resolveCountryIdsToSvgIds(neighbourhoodContextCountryIds ?? [], visibleCountries, mapCountryIds),
+    }
+    : undefined,
+  [mapCountryIds, neighbourhoodContextCountryIds, neighbourhoodTargetCountryId, visibleCountries])
   const zoomIds = zoomCountryIds !== undefined
     ? explicitZoomSvgIds
     : level === 'continent' && continent && (focusedSubregionId || definition.domainContinents.length > 1)
@@ -294,7 +309,8 @@ export function GeographyOverviewMap({
         mutedIds={mutedSvgIds}
         countryColors={countryColors}
         namedIds={namedSvgIds}
-        zoomIds={zoomIds}
+        zoomIds={targetCentricZoom ? [] : zoomIds}
+        targetCentricZoom={targetCentricZoom}
         zoomPadding={definition.zoomPadding}
         onCountriesLoaded={setMapCountries}
         onLoadStateChange={onMapStateChange}

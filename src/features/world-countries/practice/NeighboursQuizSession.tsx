@@ -15,7 +15,7 @@ import {
   type NeighboursQuizRun,
   type NeighboursQuizSessionState,
 } from './neighboursRun'
-import { NeighboursQuizSessionTools, type NeighboursQuizMapState } from './NeighboursQuizSessionTools'
+import { NeighboursQuizCheckpointRail, NeighboursQuizSessionTools, type NeighboursQuizMapState } from './NeighboursQuizSessionTools'
 
 const FEEDBACK_DWELL_MS = 1800
 
@@ -70,10 +70,15 @@ export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance
       onRevealRemaining={revealRemaining}
     />
   ) : null, [countryById, mapState, revealRemaining, showMap, showNumber, target])
-  const rails = useMemo(() => target && session.phase === 'active' ? {
-    right: sessionTools,
-    rightLabel: 'Session',
-  } : {}, [session.phase, sessionTools, target])
+  const checkpointRail = useMemo(() => target && target.phase !== 'active' ? (
+    <NeighboursQuizCheckpointRail targetIndex={session.targetIndex} totalTargets={run.questions.length} />
+  ) : null, [run.questions.length, session.targetIndex, target])
+  const rails = useMemo(() => {
+    if (!target) return {}
+    return target.phase === 'active'
+      ? { right: sessionTools, rightLabel: 'Session' }
+      : { right: checkpointRail, rightLabel: 'Checkpoint' }
+  }, [checkpointRail, sessionTools, target])
   useRails(rails)
 
   if (!target || !targetCountry) return null
@@ -131,12 +136,12 @@ export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance
           <p className="mt-1 text-xs text-zinc-400">{progress.foundCount} / {progress.totalCount} named · {progress.revealedCount} revealed · {target.incorrectGuesses.length} incorrect guess{target.incorrectGuesses.length === 1 ? '' : 'es'}{progress.hintUses > 0 ? ` · ${progress.hintUses} hint${progress.hintUses === 1 ? '' : 's'} used` : ''}</p>
           {feedback && <p role="status" className="mt-2 text-sm font-semibold text-zinc-300">{feedback}</p>}
         </div>
-        <ul className="grid gap-2 sm:grid-cols-2" aria-label="Resolved neighbours">
+        <ul className="flex flex-wrap gap-2" aria-label="Resolved neighbours">
           {target.requiredNeighbourIds.map(countryId => {
             const named = progress.foundIds.includes(countryId)
-            return <li key={countryId} className={`rounded-lg border px-3 py-2 text-sm ${named ? 'border-green-500/30 bg-green-500/10 text-green-100' : 'border-amber-500/30 bg-amber-500/10 text-amber-100'}`}>
-              <span className="block">{countryById.get(countryId)?.country ?? countryId}</span>
-              <span className="text-xs opacity-75">{named ? 'Named' : 'Revealed / missed'}</span>
+            return <li key={countryId} className={`min-w-0 rounded-lg border px-2.5 py-1.5 text-xs ${named ? 'border-green-500/30 bg-green-500/10 text-green-100' : 'border-amber-500/30 bg-amber-500/10 text-amber-100'}`}>
+              <span className="font-medium">{countryById.get(countryId)?.country ?? countryId}</span>
+              <span className="ml-1.5 opacity-75">{named ? 'Named' : 'Revealed / missed'}</span>
             </li>
           })}
         </ul>
@@ -171,7 +176,7 @@ export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance
             hiddenCountryIds={hiddenCountryIds}
             hideCountriesOutsidePopulation
             namedCountryIds={namedCountryIds}
-            zoomCountryIds={[target.targetId, ...target.requiredNeighbourIds]}
+            neighbourhoodZoom={{ targetCountryId: target.targetId, contextCountryIds: target.requiredNeighbourIds }}
             interactive={false}
             onMapStateChange={setMapState}
             ariaLabel={`World map with ${targetCountry.country} highlighted for Neighbours Quiz`}
@@ -182,7 +187,6 @@ export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance
       }
       mapMeta={<div className="space-y-1"><p>Question {session.targetIndex + 1} / {run.questions.length}</p><p>Type every Country that shares a land border with the target.</p></div>}
       dock={isCheckpoint ? checkpointDock : answerDock}
-      expandedCompanion={target ? <NeighboursQuizSessionTools target={target} countryById={countryById} mapState={mapState} onShowNumber={showNumber} onShowMap={showMap} onRevealRemaining={revealRemaining} compact /> : undefined}
       dockPlacement="stacked"
     />
   )

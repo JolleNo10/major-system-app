@@ -42,6 +42,12 @@ export interface SvgMapZoomArea {
   padding?: number
 }
 
+/** SVG-level target and local context for a bounded neighbourhood camera. */
+export interface SvgMapTargetCentricZoomIntent {
+  targetIds: readonly string[]
+  contextIds?: readonly string[]
+}
+
 export interface SvgMapSettings {
   countryFill: string | null
   mutedFill: string
@@ -211,7 +217,15 @@ export class SvgMapController {
   private svg: SVGSVGElement | null = null
   private originalViewBox: string | null = null
   private presentation: SvgMapPresentation = 'standard'
-  private zoomIntent: { countryIds: readonly string[]; padding: number } | null = null
+  private zoomIntent: {
+    kind: 'country-bounds'
+    countryIds: readonly string[]
+    padding: number
+  } | {
+    kind: 'target-centric-neighbourhood'
+    targetIds: readonly string[]
+    contextIds: readonly string[]
+  } | null = null
   private loadVersion = 0
   private abortController: AbortController | null = null
   private destroyed = false
@@ -315,9 +329,40 @@ export class SvgMapController {
     const safePadding = Number.isFinite(padding) ? Math.max(0, padding) : 0
     const target = this.getPaddedCountryBounds(knownIds, safePadding)
     if (!target) return { activeIds: knownIds, unknownIds }
-    this.zoomIntent = { countryIds: knownIds, padding: safePadding }
+    this.zoomIntent = { kind: 'country-bounds', countryIds: knownIds, padding: safePadding }
     this.recomputeViewBox(target)
     return { activeIds: knownIds, unknownIds }
+  }
+
+  /**
+   * Fit a stable local neighbourhood around the target geometry.
+   *
+   * Context paths are used only to identify nearby local portions. Their full
+   * bounding boxes never become the camera bounds, so a large Country such as
+   * Russia or China cannot pull a small target out to a world-scale view.
+   */
+  setTargetCentricZoom(
+    targetIds: Iterable<string>,
+    contextIds: Iterable<string> = [],
+  ): SvgMapMutationResult {
+    this.assertUsable()
+    const target = this.resolveKnown(targetIds)
+    const context = this.resolveKnown(contextIds)
+    const activeIds = uniqueStrings([...target.knownIds, ...context.knownIds])
+    const unknownIds = uniqueStrings([...target.unknownIds, ...context.unknownIds])
+    if (target.knownIds.length === 0 || !this.svg || !this.originalViewBox) {
+      return { activeIds: [], unknownIds }
+    }
+
+    const targetBounds = this.getTargetCentricCountryBounds(target.knownIds, context.knownIds)
+    if (!targetBounds) return { activeIds, unknownIds }
+    this.zoomIntent = {
+      kind: 'target-centric-neighbourhood',
+      targetIds: target.knownIds,
+      contextIds: context.knownIds,
+    }
+    this.recomputeViewBox(targetBounds)
+    return { activeIds, unknownIds }
   }
 
   resetZoom(): void {
@@ -1059,20 +1104,7 @@ export class SvgMapController {
   }
 
   private getPaddedCountryBounds(countryIds: readonly string[], padding: number): SvgViewBoxRect | null {
-    const boxes = countryIds.flatMap(id => {
-      const country = this.countries.get(id)
-      if (!country) return []
-      try {
-        const box = country.path.getBBox()
-        return Number.isFinite(box.x) && Number.isFinite(box.y)
-          && Number.isFinite(box.width) && Number.isFinite(box.height)
-          && box.width > 0 && box.height > 0
-          ? [box]
-          : []
-      } catch {
-        return []
-      }
-    })
+    const boxes = this.getCountryBoxes(countryIds)
     if (boxes.length === 0) return null
 
     // Keep the requested breathing room even when the target is near an edge
@@ -1082,6 +1114,83 @@ export class SvgMapController {
     const minY = Math.min(...boxes.map(box => box.y)) - padding
     const maxX = Math.max(...boxes.map(box => box.x + box.width)) + padding
     const maxY = Math.max(...boxes.map(box => box.y + box.height)) + padding
+    if (maxX <= minX || maxY <= minY) return null
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
+  }
+
+  /**
+   * Derive a target-centred frame with enough room for nearby border context.
+   *
+   * The frame grows from the target and the closest point of each context
+   * bbox, then caps context-driven growth relative to the source map. This
+   * deliberately treats context bboxes as local hints rather than selected
+   * geometry to fit in full. Target geometry is always retained, including
+   * when it is multipart or larger than the local cap.
+   */
+  private getTargetCentricCountryBounds(
+    targetIds: readonly string[],
+    contextIds: readonly string[],
+  ): SvgViewBoxRect | null {
+    const targetBounds = this.getBoundsUnion(this.getCountryBoxes(targetIds))
+    if (!targetBounds) return null
+
+    const sourceBounds = this.originalViewBox ? this.parseViewBox(this.originalViewBox) : null
+    const sourceWidth = sourceBounds?.width ?? Math.max(targetBounds.width, targetBounds.height)
+    const sourceHeight = sourceBounds?.height ?? Math.max(targetBounds.width, targetBounds.height)
+    const targetSpan = Math.max(targetBounds.width, targetBounds.height)
+    const localPadding = Math.max(targetSpan * 1.25, Math.min(sourceWidth, sourceHeight) * 0.06)
+    const centerX = targetBounds.x + targetBounds.width / 2
+    const centerY = targetBounds.y + targetBounds.height / 2
+    const minimumWidth = sourceWidth * 0.16
+    const minimumHeight = sourceHeight * 0.16
+
+    let width = Math.max(targetBounds.width + localPadding * 2, minimumWidth)
+    let height = Math.max(targetBounds.height + localPadding * 2, minimumHeight)
+    for (const box of this.getCountryBoxes(contextIds)) {
+      const nearestX = Math.min(Math.max(centerX, box.x), box.x + box.width)
+      const nearestY = Math.min(Math.max(centerY, box.y), box.y + box.height)
+      width = Math.max(width, Math.abs(nearestX - centerX) * 2 + localPadding * 2)
+      height = Math.max(height, Math.abs(nearestY - centerY) * 2 + localPadding * 2)
+    }
+
+    const maximumWidth = sourceWidth * 0.85
+    const maximumHeight = sourceHeight * 0.85
+    width = Math.max(targetBounds.width, Math.min(width, maximumWidth))
+    height = Math.max(targetBounds.height, Math.min(height, maximumHeight))
+    return {
+      x: centerX - width / 2,
+      y: centerY - height / 2,
+      width,
+      height,
+    }
+  }
+
+  private getCountryBoxes(countryIds: readonly string[]): SvgViewBoxRect[] {
+    return countryIds.flatMap(id => {
+      const country = this.countries.get(id)
+      if (!country) return []
+      return this.getCountryBox(country.path)
+    })
+  }
+
+  private getCountryBox(path: SVGPathElement): SvgViewBoxRect[] {
+    let box: DOMRect
+    try {
+      box = path.getBBox()
+    } catch {
+      return []
+    }
+    if (![box.x, box.y, box.width, box.height].every(Number.isFinite)) return []
+    if (box.width <= 0 || box.height <= 0) return []
+    return [{ x: box.x, y: box.y, width: box.width, height: box.height }]
+  }
+
+  private getBoundsUnion(boxes: readonly SvgViewBoxRect[]): SvgViewBoxRect | null {
+    if (boxes.length === 0) return null
+    const minX = Math.min(...boxes.map(box => box.x))
+    const minY = Math.min(...boxes.map(box => box.y))
+    const maxX = Math.max(...boxes.map(box => box.x + box.width))
+    const maxY = Math.max(...boxes.map(box => box.y + box.height))
     if (maxX <= minX || maxY <= minY) return null
     return { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
   }
@@ -1098,9 +1207,7 @@ export class SvgMapController {
 
   private recomputeViewBox(explicitTarget?: SvgViewBoxRect): void {
     if (!this.svg) return
-    const target = explicitTarget ?? (this.zoomIntent
-      ? this.getPaddedCountryBounds(this.zoomIntent.countryIds, this.zoomIntent.padding)
-      : this.originalViewBox ? this.parseViewBox(this.originalViewBox) : null)
+    const target = explicitTarget ?? this.getRetainedZoomBounds()
     if (!target) return
     const fitted = this.presentation === 'expanded' ? fitViewBoxToAspect(target, this.getMapSlotAspect()) : target
     const value = `${fitted.x} ${fitted.y} ${fitted.width} ${fitted.height}`
@@ -1110,6 +1217,13 @@ export class SvgMapController {
       return
     }
     this.setViewBox(value)
+  }
+
+  private getRetainedZoomBounds(): SvgViewBoxRect | null {
+    if (!this.zoomIntent) return this.originalViewBox ? this.parseViewBox(this.originalViewBox) : null
+    return this.zoomIntent.kind === 'country-bounds'
+      ? this.getPaddedCountryBounds(this.zoomIntent.countryIds, this.zoomIntent.padding)
+      : this.getTargetCentricCountryBounds(this.zoomIntent.targetIds, this.zoomIntent.contextIds)
   }
 
   private setViewBox(value: string): void {

@@ -157,6 +157,40 @@ describe('GeographyOverviewMap', () => {
     Object.defineProperty(svgElementPrototype, 'getBBox', { configurable: true, value: previousGetBBox })
   })
 
+  it('translates a Country-identity neighbourhood intent into a target-centric map camera', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g><g><path id="Sweden"/><text id="Sweden_label">Sweden</text></g></svg>' })))
+    const svgElementPrototype = SVGElement.prototype as typeof SVGElement.prototype & { getBBox?: () => { x: number; y: number; width: number; height: number } }
+    const previousGetBBox = svgElementPrototype.getBBox
+    Object.defineProperty(svgElementPrototype, 'getBBox', {
+      configurable: true,
+      value(this: SVGElement) {
+        return this.id === 'Norway'
+          ? { x: 80, y: 40, width: 8, height: 8 }
+          : { x: -300, y: -100, width: 900, height: 500 }
+      },
+    })
+    const norway = countries.find(country => country.id === 'NO')!
+    const sweden = countries.find(country => country.id === 'SE')!
+    const mount = document.createElement('div'); document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(GeographyOverviewMap, {
+        level: 'world',
+        countryPopulation: [norway, sweden],
+        neighbourhoodZoom: { targetCountryId: norway.id, contextCountryIds: [sweden.id] },
+        ariaLabel: 'World map',
+      }))
+      await Promise.resolve(); await Promise.resolve()
+    })
+
+    const viewBox = mount.querySelector('svg')?.getAttribute('viewBox')?.split(' ').map(Number) ?? []
+    expect(viewBox[2]).toBeLessThan(200)
+    expect(viewBox[0]).toBeLessThanOrEqual(80)
+    expect((mount.querySelector('path#Sweden') as SVGPathElement | null)?.style.visibility).toBe('')
+    Object.defineProperty(svgElementPrototype, 'getBBox', { configurable: true, value: previousGetBBox })
+  })
+
   it('can keep the map mounted as a non-interactive geographic scaffold', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g></svg>' })))
     const onHoverGroup = vi.fn(); const onCountryClick = vi.fn(); const mount = document.createElement('div'); document.body.append(mount)
