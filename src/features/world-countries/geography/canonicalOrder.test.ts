@@ -31,7 +31,7 @@ const expectedCountries = {
   micronesia: ['PW', 'FM', 'NR', 'MH', 'KI'],
   melanesia: ['PG', 'SB', 'VU', 'FJ'],
   polynesia: ['CK', 'NU', 'TV', 'WS', 'TO'],
-  'north-africa': ['MA', 'DZ', 'EG', 'LY', 'SD', 'TN'],
+  'north-africa': ['MA', 'DZ', 'TN', 'LY', 'EG', 'SD'],
   'west-africa': ['MR', 'ML', 'BF', 'NE', 'NG', 'BJ', 'TG', 'GH', 'CI', 'LR', 'SL', 'GN', 'GW', 'SN', 'GM', 'CV'],
   'central-africa': ['TD', 'CF', 'CD', 'CG', 'GA', 'GQ', 'CM', 'ST'],
   'east-africa': ['ER', 'DJ', 'SO', 'KE', 'ET', 'SS', 'UG', 'RW', 'BI', 'TZ'],
