@@ -6,6 +6,7 @@ import {
   createNeighboursQuizRun,
   createNeighboursQuizSession,
   createNeighboursRetryRun,
+  deriveNeighboursTargetProgress,
   getCurrentNeighboursTarget,
   getEligibleNeighboursTargetCountries,
   isNeighboursTargetPerfect,
@@ -71,6 +72,13 @@ describe('World Countries Neighbours Practice runs', () => {
     const target = getCurrentNeighboursTarget(revealed)!
     expect(target.phase).toBe('review')
     expect(target.revealedNeighbourIds).toHaveLength(target.requiredNeighbourIds.length)
+    expect(deriveNeighboursTargetProgress(target)).toMatchObject({
+      foundCount: 0,
+      revealedCount: target.requiredNeighbourIds.length,
+      resolvedCount: target.requiredNeighbourIds.length,
+      remainingCount: 0,
+      hintUses: 2,
+    })
     expect(summarizeNeighboursRun(run, revealed)).toMatchObject({ named: 0, revealed: target.requiredNeighbourIds.length, perfectTargets: 0 })
     const continued = advanceNeighboursTarget(revealed)
     expect(continued.phase).toBe('complete')
@@ -87,6 +95,32 @@ describe('World Countries Neighbours Practice runs', () => {
     expect(isNeighboursTargetPerfect(target)).toBe(true)
     expect(summarizeNeighboursRun(run, session)).toMatchObject({ named: target.requiredNeighbourIds.length, perfectTargets: 1, incorrectGuesses: 0 })
     expect(advanceNeighboursTarget(session).phase).toBe('complete')
+  })
+
+  it('requires an unaided and error-free target for Perfect Countries', () => {
+    const run = createNeighboursQuizRun({ scopeCountries: [country('DE')], activeCountries: countries, questionCount: 'all' })!
+    const required = run.questions[0]!.requiredNeighbourIds
+    const completeWith = (prepare: (session: ReturnType<typeof createNeighboursQuizSession>) => ReturnType<typeof createNeighboursQuizSession>) => {
+      let session = prepare(createNeighboursQuizSession(run))
+      for (const neighbourId of required) {
+        session = applyNeighboursGuess(session, { countryId: neighbourId, submittedAnswer: country(neighbourId).country }).state
+      }
+      return getCurrentNeighboursTarget(session)!
+    }
+
+    expect(isNeighboursTargetPerfect(completeWith(session => session))).toBe(true)
+    expect(isNeighboursTargetPerfect(completeWith(session => {
+      const firstNeighbour = required[0]!
+      const withFirst = applyNeighboursGuess(session, { countryId: firstNeighbour, submittedAnswer: country(firstNeighbour).country }).state
+      const withDuplicate = applyNeighboursGuess(withFirst, { countryId: firstNeighbour, submittedAnswer: country(firstNeighbour).country }).state
+      return {
+        ...withDuplicate,
+        targets: withDuplicate.targets.map(target => ({ ...target, foundNeighbourIds: target.foundNeighbourIds.filter((id, index, ids) => ids.indexOf(id) === index) })),
+      }
+    }))).toBe(true)
+    expect(isNeighboursTargetPerfect(completeWith(showNeighboursNumber))).toBe(false)
+    expect(isNeighboursTargetPerfect(completeWith(revealNeighboursMap))).toBe(false)
+    expect(isNeighboursTargetPerfect(completeWith(session => applyNeighboursGuess(session, { submittedAnswer: 'Japan' }).state))).toBe(false)
   })
 
   it('retries each imperfect target from the completed run once, reshuffled', () => {

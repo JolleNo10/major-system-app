@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { AnswerMode } from '@/core/types'
 import { useRails } from '@/app/layout/PageLayoutContext'
 import { useSettings } from '@/app/settings/SettingsContext'
-import type { Continent } from '@/features/world-countries/data/countries'
+import type { Continent, Country } from '@/features/world-countries/data/countries'
 import type { SubregionId } from '@/features/world-countries/data/subregions'
 import { useWorldCountriesPopulation } from '@/features/world-countries/WorldCountriesPopulationContext'
 import { useWorldCountriesGeographyRevision } from '@/features/world-countries/geography/geographyRefresh'
@@ -171,20 +171,95 @@ export function WorldCountriesQuiz({ answerMode: _answerMode }: { answerMode: An
     setHoveredGroupId(null)
   }, [])
 
-  const setupMap = phase === 'setup' ? <GeographyOverviewMap level={setupContinent ? 'continent' : 'world'} continent={setupContinent ?? undefined} selectedSubregionIds={setupContinent ? normalizedSelection.subregionIds : undefined} hoveredGroupId={hoveredGroupId} onHoverGroup={setHoveredGroupId} onCountryClick={country => setupContinent ? toggleSubregion(country.subregionId) : selectContinent(country.continent)} ariaLabel={setupContinent ? `${setupContinent} map for ${quizType === 'capitals' ? 'Capitals' : 'Neighbours'} Quiz setup` : `World map for ${quizType === 'capitals' ? 'Capitals' : 'Neighbours'} Quiz setup`} /> : null
-  const rails = useMemo(() => phase === 'setup' ? {
-    left: <GeographySelectionRail level={setupContinent ? 'continent' : 'world'} setupContinent={setupContinent} selection={normalizedSelection} selectionMetadata={selectionMetadata} worldOrder={worldOrder} subregionOrder={subregionOrder} entries={activeCountries} hoveredGroupId={hoveredGroupId} onHoverGroup={setHoveredGroupId} onWorld={goToWorld} onSelectContinent={selectContinent} onToggleContinent={toggleContinent} onSelectAllWorld={selectAllWorld} onClearWorld={clearWorld} onToggleSubregion={toggleSubregion} onSelectEntireContinent={() => { if (setupContinent) setSelectedSubregionIds(toggleContinentInScope(normalizedSelection, setupContinent, activeCountries, selectionMetadata).subregionIds) }} headingId="world-countries-quiz-geography-heading" />,
-    right: <QuizSetupControls quizType={quizType} onQuizTypeChange={setQuizType} questionCount={normalizedQuestionCount} targetCount={setupQuestionTargetCount} onQuestionCountChange={setQuestionCount} canStart={setupQuestionTargetCount > 0} onStart={startQuiz} />,
-    leftLabel: 'Geography',
-    rightLabel: 'Quiz',
-  } : {}, [activeCountries, clearWorld, goToWorld, hoveredGroupId, normalizedQuestionCount, normalizedSelection, phase, quizType, selectAllWorld, selectContinent, selectionMetadata, setupContinent, setupQuestionTargetCount, startQuiz, subregionOrder, toggleContinent, toggleSubregion, worldOrder])
-  useRails(rails)
+  if (phase === 'setup') return <QuizSetupPhase
+    activeCountries={activeCountries}
+    normalizedSelection={normalizedSelection}
+    selectionMetadata={selectionMetadata}
+    worldOrder={worldOrder}
+    subregionOrder={subregionOrder}
+    setupContinent={setupContinent}
+    quizType={quizType}
+    hoveredGroupId={hoveredGroupId}
+    normalizedQuestionCount={normalizedQuestionCount}
+    setupQuestionTargetCount={setupQuestionTargetCount}
+    onQuizTypeChange={setQuizType}
+    onQuestionCountChange={setQuestionCount}
+    onStart={startQuiz}
+    onHoverGroup={setHoveredGroupId}
+    onWorld={goToWorld}
+    onSelectContinent={selectContinent}
+    onToggleContinent={toggleContinent}
+    onSelectAllWorld={selectAllWorld}
+    onClearWorld={clearWorld}
+    onToggleSubregion={toggleSubregion}
+    onSelectEntireContinent={() => { if (setupContinent) setSelectedSubregionIds(toggleContinentInScope(normalizedSelection, setupContinent, activeCountries, selectionMetadata).subregionIds) }}
+  />
 
   if (phase === 'session' && activeRun?.type === 'capitals') return <CapitalQuizSession run={activeRun.run} session={activeRun.session} fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching} correctCount={activeRun.answers.filter(answer => answer.outcome === 'exact' || answer.outcome === 'fuzzy').length} onAnswer={submitAnswer} onAdvance={advanceQuiz} />
   if (phase === 'session' && activeRun?.type === 'neighbours') return <NeighboursQuizSession run={activeRun.run} session={activeRun.session} onSessionChange={updateNeighboursSession} onAdvance={advanceNeighbours} />
   if (phase === 'results' && activeRun?.type === 'capitals') return <QuizResults run={activeRun.run} answers={activeRun.answers} onRetryMissed={retryMissed} onNewQuiz={startQuiz} onChangeSetup={changeSetup} />
   if (phase === 'results' && activeRun?.type === 'neighbours') return <NeighboursQuizResults run={activeRun.run} session={activeRun.session} onRetryMissed={retryMissed} onNewQuiz={startQuiz} onChangeSetup={changeSetup} />
-  return <section className="space-y-3 animate-fade-in" aria-labelledby="world-countries-quiz-heading"><div className="space-y-1 text-center"><p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World Countries · Quiz</p><h1 id="world-countries-quiz-heading" className="text-2xl font-black text-zinc-100">{quizType === 'capitals' ? 'Capitals quiz' : 'Neighbours quiz'}</h1><p className="text-sm text-zinc-500">{quizType === 'capitals' ? 'Given a Country, type its Capital.' : 'Given a Country, name every Country that shares a land border with it.'}</p></div>{setupMap}<p className="px-1 text-xs text-zinc-500">{quizType === 'neighbours' ? setupQuestionTargetCount > 0 ? `${setupQuestionTargetCount} eligible target Countries` : 'No selected target Country has an active land-border neighbour' : setupScopeCountries.length > 0 ? `${setupScopeCountries.length} Countries in current scope` : 'Select at least one Subregion to begin'}</p></section>
+  return null
+}
+
+function QuizSetupPhase({
+  activeCountries,
+  normalizedSelection,
+  selectionMetadata,
+  worldOrder,
+  subregionOrder,
+  setupContinent,
+  quizType,
+  hoveredGroupId,
+  normalizedQuestionCount,
+  setupQuestionTargetCount,
+  onQuizTypeChange,
+  onQuestionCountChange,
+  onStart,
+  onHoverGroup,
+  onWorld,
+  onSelectContinent,
+  onToggleContinent,
+  onSelectAllWorld,
+  onClearWorld,
+  onToggleSubregion,
+  onSelectEntireContinent,
+}: {
+  activeCountries: readonly Country[]
+  normalizedSelection: WorldCountriesSubregionScope
+  selectionMetadata: ReturnType<typeof readWorldCountriesGeography>['metadata']
+  worldOrder: readonly Continent[]
+  subregionOrder: ReturnType<typeof getSubregionsForContinentInEffectiveOrder>
+  setupContinent: Continent | null
+  quizType: QuizType
+  hoveredGroupId: string | null
+  normalizedQuestionCount: PracticeQuestionCount
+  setupQuestionTargetCount: number
+  onQuizTypeChange: (value: QuizType) => void
+  onQuestionCountChange: (value: PracticeQuestionCount) => void
+  onStart: () => void
+  onHoverGroup: (groupId: string | null) => void
+  onWorld: () => void
+  onSelectContinent: (continent: Continent) => void
+  onToggleContinent: (continent: Continent) => void
+  onSelectAllWorld: () => void
+  onClearWorld: () => void
+  onToggleSubregion: (subregionId: SubregionId) => void
+  onSelectEntireContinent: () => void
+}) {
+  const rails = useMemo(() => ({
+    left: <GeographySelectionRail level={setupContinent ? 'continent' : 'world'} setupContinent={setupContinent} selection={normalizedSelection} selectionMetadata={selectionMetadata} worldOrder={worldOrder} subregionOrder={subregionOrder} entries={activeCountries} hoveredGroupId={hoveredGroupId} onHoverGroup={onHoverGroup} onWorld={onWorld} onSelectContinent={onSelectContinent} onToggleContinent={onToggleContinent} onSelectAllWorld={onSelectAllWorld} onClearWorld={onClearWorld} onToggleSubregion={onToggleSubregion} onSelectEntireContinent={onSelectEntireContinent} headingId="world-countries-quiz-geography-heading" />,
+    right: <QuizSetupControls quizType={quizType} onQuizTypeChange={onQuizTypeChange} questionCount={normalizedQuestionCount} targetCount={setupQuestionTargetCount} onQuestionCountChange={onQuestionCountChange} canStart={setupQuestionTargetCount > 0} onStart={onStart} />,
+    leftLabel: 'Geography',
+    rightLabel: 'Quiz',
+  }), [activeCountries, hoveredGroupId, normalizedQuestionCount, normalizedSelection, onClearWorld, onHoverGroup, onQuestionCountChange, onQuizTypeChange, onSelectContinent, onSelectEntireContinent, onSelectAllWorld, onStart, onToggleContinent, onToggleSubregion, onWorld, quizType, selectionMetadata, setupContinent, setupQuestionTargetCount, subregionOrder, worldOrder])
+  useRails(rails)
+
+  return <section className="space-y-3 animate-fade-in" aria-labelledby="world-countries-quiz-heading">
+    <div className="space-y-1 text-center"><p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World Countries / Quiz</p><h1 id="world-countries-quiz-heading" className="text-2xl font-black text-zinc-100">{quizType === 'capitals' ? 'Capitals quiz' : 'Neighbours quiz'}</h1><p className="text-sm text-zinc-500">{quizType === 'capitals' ? 'Given a Country, type its Capital.' : 'Given a Country, name every Country that shares a land border with it.'}</p></div>
+    <GeographyOverviewMap level={setupContinent ? 'continent' : 'world'} continent={setupContinent ?? undefined} selectedSubregionIds={setupContinent ? normalizedSelection.subregionIds : undefined} hoveredGroupId={hoveredGroupId} onHoverGroup={onHoverGroup} onCountryClick={country => setupContinent ? onToggleSubregion(country.subregionId) : onSelectContinent(country.continent)} ariaLabel={setupContinent ? `${setupContinent} map for ${quizType === 'capitals' ? 'Capitals' : 'Neighbours'} Quiz setup` : `World map for ${quizType === 'capitals' ? 'Capitals' : 'Neighbours'} Quiz setup`} />
+    <p className="px-1 text-xs text-zinc-500">{quizType === 'neighbours' ? setupQuestionTargetCount > 0 ? `${setupQuestionTargetCount} eligible target Countries` : 'No selected target Country has an active land-border neighbour' : activeCountries.length > 0 ? `${activeCountries.length} Countries in current scope` : 'Select at least one Subregion to begin'}</p>
+  </section>
 }
 
 function QuizSetupControls({ quizType, onQuizTypeChange, questionCount, targetCount, onQuestionCountChange, canStart, onStart }: { quizType: QuizType; onQuizTypeChange: (value: QuizType) => void; questionCount: PracticeQuestionCount; targetCount: number; onQuestionCountChange: (value: PracticeQuestionCount) => void; canStart: boolean; onStart: () => void }) {

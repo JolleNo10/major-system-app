@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import type { CountryId } from '@/features/world-countries/data/countries'
 import {
+  deriveNeighboursTargetProgress,
   isNeighboursTargetPerfect,
   summarizeNeighboursRun,
   type NeighboursQuizRun,
@@ -25,10 +26,11 @@ export function NeighboursQuizResults({ run, session, onRetryMissed, onNewQuiz, 
         <p className="text-xs font-semibold uppercase tracking-wider text-green-400">Neighbours quiz complete</p>
         <h1 id="world-countries-neighbours-quiz-results-heading" className="text-3xl font-black text-zinc-100">Neighbours results</h1>
       </div>
-      <div className="grid gap-3 sm:grid-cols-3" aria-label="Neighbours quiz score">
+      <div className="grid gap-3 sm:grid-cols-4" aria-label="Neighbours quiz score">
         <ResultStat label="Neighbours named" value={`${summary.named} / ${summary.totalRequired}`} />
         <ResultStat label="Perfect Countries" value={`${summary.perfectTargets} / ${summary.totalTargets}`} />
         <ResultStat label="Wrong guesses" value={String(summary.incorrectGuesses)} />
+        <ResultStat label="Hint uses" value={String(summary.hintUses)} />
       </div>
       {summary.imperfectTargetIds.length > 0 && (
         <section className="space-y-3" aria-labelledby="world-countries-neighbours-quiz-review-heading">
@@ -60,14 +62,13 @@ function ResultStat({ label, value }: { label: string; value: string }) {
 }
 
 function NeighboursReview({ target, targetName, countryById }: { target: NeighboursTargetState; targetName: string; countryById: ReadonlyMap<CountryId, { country: string }> }) {
-  const resolved = new Set([...target.foundNeighbourIds, ...target.revealedNeighbourIds])
-  const missing = target.requiredNeighbourIds.filter(countryId => !resolved.has(countryId))
+  const progress = deriveNeighboursTargetProgress(target)
   const names = (ids: readonly CountryId[]) => ids.map(countryId => countryById.get(countryId)?.country ?? countryId)
   return <li className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"><span className="font-semibold text-zinc-100">{targetName}</span><span className="text-sm text-zinc-500">{target.foundNeighbourIds.length} / {target.requiredNeighbourIds.length} named</span></div>
+    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"><span className="font-semibold text-zinc-100">{targetName}</span><span className="text-sm text-zinc-500">{progress.foundCount} / {progress.totalCount} named</span></div>
     {!isNeighboursTargetPerfect(target) && <div className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
-      <ReviewList label="Named" values={names(target.foundNeighbourIds)} />
-      <ReviewList label="Revealed / missed" values={names([...target.revealedNeighbourIds, ...missing])} />
+      <ReviewList label="Named" values={names(progress.foundIds)} />
+      <ReviewList label="Revealed / missed" values={names([...progress.revealedIds, ...progress.remainingIds])} />
       <ReviewList label="Wrong guesses" values={target.incorrectGuesses} />
     </div>}
   </li>

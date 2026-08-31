@@ -171,12 +171,24 @@ describe('World Countries Capitals Quiz', () => {
     expect(mount.textContent).toContain('Neighbours quiz')
     expect(mount.textContent).toContain('3 eligible target Countries')
     expect((mount.querySelector('input[value="10"]') as HTMLInputElement).disabled).toBe(true)
+    expect(mount.querySelector('[aria-labelledby="world-countries-quiz-controls-heading"]')).not.toBeNull()
 
     startQuiz(mount)
     expect(mount.querySelector('#world-countries-neighbours-quiz-question')).not.toBeNull()
     expect(mount.textContent).toContain('Show number')
-    expect(mount.textContent).toContain('Reveal map')
+    expect(mount.textContent).toContain('Show map')
+    expect(mount.querySelector('[data-neighbours-session-tools]')).not.toBeNull()
+    expect(mount.querySelector('[aria-labelledby="world-countries-quiz-controls-heading"]')).toBeNull()
     expect(mount.textContent).not.toContain('What is the capital of')
+  })
+
+  it('clears setup rails when Capitals becomes the active phase', () => {
+    const norway = countries.find(country => country.id === 'NO')!
+    const mount = renderQuiz([norway])
+
+    expect(mount.querySelector('[aria-labelledby="world-countries-quiz-controls-heading"]')).not.toBeNull()
+    startQuiz(mount)
+    expect(mount.querySelector('[aria-labelledby="world-countries-quiz-controls-heading"]')).toBeNull()
   })
 
   it('keeps an active Neighbours run snapshot when live geography changes', () => {
@@ -191,7 +203,7 @@ describe('World Countries Capitals Quiz', () => {
     rendered.rerender([activeCountries[0]!])
 
     expect(rendered.mount.querySelector('#world-countries-neighbours-quiz-question')?.textContent).toBe(question)
-    expect(rendered.mount.textContent).toContain('Reveal map')
+    expect(rendered.mount.textContent).toContain('Show map')
   })
 
   it('keeps Neighbours fuzzy matching from the run snapshot after Settings changes', () => {
@@ -208,6 +220,8 @@ describe('World Countries Capitals Quiz', () => {
 
     expect(rendered.mount.textContent).toContain('Correct.')
     act(() => vi.advanceTimersByTime(500))
+    expect(rendered.mount.textContent).toContain('Next Country →')
+    clickButton(rendered.mount, 'Next Country')
     expect(rendered.mount.textContent).toContain('Question 2 / 2')
   })
 
@@ -229,11 +243,15 @@ describe('World Countries Capitals Quiz', () => {
     expect(mount.textContent).toContain('Country not recognized')
     answerNeighboursQuestion(mount, firstNeighbour.country)
     act(() => vi.advanceTimersByTime(500))
+    expect(mount.textContent).toContain('Next Country →')
+    clickButton(mount, 'Next Country')
 
     const secondTarget = currentNeighboursTarget(mount, activeCountries)
     const secondNeighbour = activeCountries.find(country => country.id !== secondTarget.id)!
     answerNeighboursQuestion(mount, secondNeighbour.country)
     act(() => vi.advanceTimersByTime(500))
+    expect(mount.textContent).toContain('See results →')
+    clickButton(mount, 'See results')
 
     expect(mount.querySelector('#world-countries-neighbours-quiz-results-heading')).not.toBeNull()
     expect(mount.textContent).toContain('2 / 2')
@@ -248,6 +266,8 @@ describe('World Countries Capitals Quiz', () => {
     expect(currentNeighboursTarget(mount, activeCountries).id).toBe(firstTarget.id)
     answerNeighboursQuestion(mount, firstNeighbour.country)
     act(() => vi.advanceTimersByTime(500))
+    expect(mount.textContent).toContain('See results →')
+    clickButton(mount, 'See results')
 
     expect(mount.textContent).toContain('1 / 1')
     expect([...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Retry missed')?.hidden).toBe(true)

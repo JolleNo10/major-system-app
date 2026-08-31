@@ -37,6 +37,7 @@ describe('World Countries active map-task presentation', () => {
             },
             map: createElement('span', { 'data-map-content': true }, 'map'),
             dock: createElement('span', { 'data-dock-content': true }, 'answer'),
+            expandedCompanion: createElement('span', { 'data-expanded-companion': true }, 'session tools'),
           }),
         ),
       ))
@@ -61,6 +62,7 @@ describe('World Countries active map-task presentation', () => {
     expect(mount.querySelector('[data-world-countries-task-reason]')?.textContent).toContain('Spaced review')
     expect(mount.querySelector('[data-world-countries-task-progress]')?.textContent).toContain('Country 2 / 5')
     expect(mount.querySelector('[data-world-countries-task-progress]')?.textContent).toContain('40%')
+    expect(mount.querySelector('[data-expanded-companion]')?.textContent).toBe('session tools')
     expect(mount.querySelector('[data-map-surface-map]')).toBe(map)
     expect(mount.querySelectorAll('[data-world-countries-task-cue]')).toHaveLength(1)
 

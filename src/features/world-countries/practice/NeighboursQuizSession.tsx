@@ -1,13 +1,13 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { countries } from '@/features/world-countries/data/countries'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useRails } from '@/app/layout/PageLayoutContext'
 import { resolveCountryName } from '@/features/world-countries/learning/answerMatching'
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
 import { TaskDock } from '@/features/world-countries/ui/MapSurface'
 import { getWorldCountriesTaskHighlightFill } from '@/features/world-countries/ui/WorldCountriesAnswerSemantics'
 import { WorldCountriesMapActivitySurface, type WorldCountriesActivityTask } from '@/features/world-countries/ui/WorldCountriesActivity'
 import {
-  advanceNeighboursTarget,
   applyNeighboursGuess,
+  deriveNeighboursTargetProgress,
   getCurrentNeighboursTarget,
   revealNeighboursRemaining,
   revealNeighboursMap,
@@ -15,11 +15,9 @@ import {
   type NeighboursQuizRun,
   type NeighboursQuizSessionState,
 } from './neighboursRun'
+import { NeighboursQuizSessionTools, type NeighboursQuizMapState } from './NeighboursQuizSessionTools'
 
-const COMPLETION_DWELL_MS = 500
 const FEEDBACK_DWELL_MS = 1800
-
-type MapState = 'loading' | 'ready' | 'error'
 
 export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance }: {
   run: NeighboursQuizRun
@@ -32,7 +30,7 @@ export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance
   const targetCountry = target ? countryById.get(target.targetId) : undefined
   const [answer, setAnswer] = useState('')
   const [feedback, setFeedback] = useState<string | null>(null)
-  const [mapState, setMapState] = useState<MapState>('loading')
+  const [mapState, setMapState] = useState<NeighboursQuizMapState>('loading')
   const inputRef = useRef<HTMLInputElement>(null)
   const targetKey = target ? `${session.targetIndex}-${target.targetId}` : null
 
@@ -48,35 +46,56 @@ export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance
     return () => window.clearTimeout(timer)
   }, [feedback])
 
-  useEffect(() => {
-    if (!target || target.phase !== 'complete') return
-    const timer = window.setTimeout(onAdvance, COMPLETION_DWELL_MS)
-    return () => window.clearTimeout(timer)
-  }, [onAdvance, target])
+  const showNumber = useCallback(() => {
+    onSessionChange(showNeighboursNumber(session))
+  }, [onSessionChange, session])
+  const showMap = useCallback(() => {
+    onSessionChange(revealNeighboursMap(session))
+  }, [onSessionChange, session])
+  const revealRemaining = useCallback(() => {
+    onSessionChange(revealNeighboursRemaining(session))
+  }, [onSessionChange, session])
+  const advanceTarget = useCallback(() => {
+    onAdvance()
+  }, [onAdvance])
+
+  const nextTargetLabel = session.targetIndex + 1 >= run.questions.length ? 'See results →' : 'Next Country →'
+  const sessionTools = useMemo(() => target ? (
+    <NeighboursQuizSessionTools
+      target={target}
+      countryById={countryById}
+      mapState={mapState}
+      nextTargetLabel={nextTargetLabel}
+      onShowNumber={showNumber}
+      onShowMap={showMap}
+      onRevealRemaining={revealRemaining}
+      onAdvance={advanceTarget}
+    />
+  ) : null, [advanceTarget, countryById, mapState, nextTargetLabel, revealRemaining, showMap, showNumber, target])
+  const rails = useMemo(() => target && session.phase === 'active' ? {
+    right: sessionTools,
+    rightLabel: 'Session',
+  } : {}, [session.phase, sessionTools, target])
+  useRails(rails)
 
   if (!target || !targetCountry) return null
 
-  const foundIds = new Set(target.foundNeighbourIds)
-  const revealedIds = new Set(target.revealedNeighbourIds)
-  const visibleIds = new Set([target.targetId, ...target.foundNeighbourIds, ...target.revealedNeighbourIds])
+  const progress = deriveNeighboursTargetProgress(target)
+  const visibleIds = new Set([target.targetId, ...progress.resolvedIds])
   const hiddenCountryIds = target.revealMapUsed
     ? []
-    : countries.map(country => country.id).filter(countryId => !visibleIds.has(countryId))
+    : run.countries.map(country => country.id).filter(countryId => !visibleIds.has(countryId))
   const countryColorsById = new Map([
-    ...target.foundNeighbourIds.map(countryId => [countryId, '#22c55e'] as const),
-    ...target.revealedNeighbourIds.map(countryId => [countryId, '#f97316'] as const),
+    ...progress.foundIds.map(countryId => [countryId, '#22c55e'] as const),
+    ...progress.revealedIds.map(countryId => [countryId, '#f97316'] as const),
   ])
-  const namedCountryIds = target.phase === 'review'
-    ? [...new Set([...target.foundNeighbourIds, ...target.revealedNeighbourIds])]
-    : []
-  const unresolvedCount = target.requiredNeighbourIds.length - target.foundNeighbourIds.length - target.revealedNeighbourIds.length
-  const isReview = target.phase === 'review'
-  const isComplete = target.phase === 'complete'
+  const namedCountryIds = [...new Set([target.targetId, ...progress.resolvedIds])]
+  const isCheckpoint = target.phase !== 'active'
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const submittedAnswer = answer.trim()
-    if (!submittedAnswer || isReview || isComplete) return
+    if (!submittedAnswer || isCheckpoint || session.phase === 'complete') return
     const resolution = resolveCountryName(submittedAnswer, run.countries, { fuzzy: run.fuzzyMatching })
     const result = applyNeighboursGuess(session, {
       countryId: resolution.country?.id,
@@ -95,8 +114,6 @@ export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance
     inputRef.current?.focus()
   }
 
-  const revealRemaining = () => onSessionChange(revealNeighboursRemaining(session))
-  const continueReview = () => onSessionChange(advanceNeighboursTarget(session))
   const task: WorldCountriesActivityTask = {
     direction: 'World Countries / Neighbours Quiz',
     cue: <span id="world-countries-neighbours-quiz-question">Name the countries that border {targetCountry.country}</span>,
@@ -108,32 +125,36 @@ export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance
       total: run.questions.length,
     },
   }
-  const taskDock = isReview ? (
-    <TaskDock variant="completion">
+  const checkpointDock = (
+    <TaskDock variant="checkpoint" tone={target.phase === 'complete' ? 'ready' : 'neutral'}>
       <div className="space-y-3">
-        <p className="text-sm font-semibold text-amber-200">Review the revealed neighbours, then continue.</p>
-        <ul className="grid gap-2 sm:grid-cols-2" aria-label="Revealed neighbours">
-          {target.revealedNeighbourIds.map(countryId => <li key={countryId} className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-200">{countryById.get(countryId)?.country ?? countryId}</li>)}
+        <div>
+          <p className="text-sm font-semibold text-zinc-100">{target.phase === 'complete' ? 'All neighbours found.' : 'Review this target.'}</p>
+          <p className="mt-1 text-xs text-zinc-400">{progress.foundCount} / {progress.totalCount} named · {progress.revealedCount} revealed · {target.incorrectGuesses.length} incorrect guess{target.incorrectGuesses.length === 1 ? '' : 'es'}</p>
+          {feedback && <p role="status" className="mt-2 text-sm font-semibold text-zinc-300">{feedback}</p>}
+        </div>
+        <ul className="grid gap-2 sm:grid-cols-2" aria-label="Resolved neighbours">
+          {target.requiredNeighbourIds.map(countryId => {
+            const named = progress.foundIds.includes(countryId)
+            return <li key={countryId} className={`rounded-lg border px-3 py-2 text-sm ${named ? 'border-green-500/30 bg-green-500/10 text-green-100' : 'border-amber-500/30 bg-amber-500/10 text-amber-100'}`}>
+              <span className="block">{countryById.get(countryId)?.country ?? countryId}</span>
+              <span className="text-xs opacity-75">{named ? 'Named' : 'Revealed / missed'}</span>
+            </li>
+          })}
         </ul>
-        <button type="button" autoFocus onClick={continueReview} className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500">Continue</button>
+        <button type="button" data-primary-action autoFocus onClick={advanceTarget} className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">{nextTargetLabel}</button>
       </div>
     </TaskDock>
-  ) : (
+  )
+  const answerDock = (
     <TaskDock variant="form">
       <div className="space-y-3">
         <form onSubmit={submit} className="flex gap-2">
           <label className="sr-only" htmlFor="world-countries-neighbours-answer">Type a neighbouring Country</label>
-          <input ref={inputRef} id="world-countries-neighbours-answer" value={answer} onChange={event => setAnswer(event.target.value)} autoComplete="off" placeholder="Type a Country..." disabled={isComplete} className="min-w-0 flex-1 rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-base text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/30 disabled:opacity-50" />
-          <button type="submit" disabled={!answer.trim() || isComplete} className="rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40">Check</button>
+          <input ref={inputRef} id="world-countries-neighbours-answer" value={answer} onChange={event => setAnswer(event.target.value)} autoComplete="off" placeholder="Type a Country..." disabled={isCheckpoint} className="min-w-0 flex-1 rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-base text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/30 disabled:opacity-50" />
+          <button type="submit" disabled={!answer.trim() || isCheckpoint} className="rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40">Check</button>
         </form>
         {feedback && <p role="status" className="text-sm font-semibold text-zinc-300">{feedback}</p>}
-        {isComplete && <p role="status" className="text-sm font-semibold text-green-300">All neighbours found.</p>}
-        <div className="flex flex-wrap gap-2 text-sm">
-          <button type="button" disabled={target.showNumberUsed || isComplete} onClick={() => onSessionChange(showNeighboursNumber(session))} className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-semibold text-zinc-300 hover:border-zinc-500 disabled:cursor-not-allowed disabled:opacity-40">{target.showNumberUsed ? `Neighbours found: ${target.foundNeighbourIds.length} / ${target.requiredNeighbourIds.length}` : 'Show number'}</button>
-          <button type="button" disabled={mapState !== 'ready' || target.revealMapUsed || isComplete} onClick={() => onSessionChange(revealNeighboursMap(session))} className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-semibold text-zinc-300 hover:border-zinc-500 disabled:cursor-not-allowed disabled:opacity-40">{target.revealMapUsed ? 'Map revealed' : 'Reveal map'}</button>
-        </div>
-        <button type="button" disabled={unresolvedCount <= 0 || isComplete} onClick={revealRemaining} className="w-full rounded-xl border border-amber-500/50 bg-amber-500/10 px-4 py-3 text-sm font-semibold text-amber-200 hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-40">Reveal remaining</button>
-        <p className="text-xs text-zinc-500">{target.showNumberUsed ? `Neighbours found: ${target.foundNeighbourIds.length} / ${target.requiredNeighbourIds.length}` : 'The total neighbour count is hidden.'} · {target.incorrectGuesses.length} incorrect guess{target.incorrectGuesses.length === 1 ? '' : 'es'}</p>
       </div>
     </TaskDock>
   )
@@ -145,7 +166,7 @@ export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance
         <>
           <GeographyOverviewMap
             level="world"
-            countryPopulation={countries}
+            countryPopulation={run.countries}
             highlightedCountryIds={[target.targetId]}
             highlightFill={getWorldCountriesTaskHighlightFill('country')}
             countryColorsById={countryColorsById}
@@ -157,11 +178,12 @@ export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance
             ariaLabel={`World map with ${targetCountry.country} highlighted for Neighbours Quiz`}
           />
           {mapState === 'error' && <p className="mt-2 text-center text-xs text-amber-300">The map is unavailable; continue with the typed Country prompt.</p>}
-          <div className="sr-only" aria-live="polite">{foundIds.size} neighbours named. {revealedIds.size} neighbours revealed.</div>
+          <div className="sr-only" aria-live="polite">{progress.foundCount} neighbours named. {progress.revealedCount} neighbours revealed.</div>
         </>
       }
       mapMeta={<div className="space-y-1"><p>Question {session.targetIndex + 1} / {run.questions.length}</p><p>Type every Country that shares a land border with the target.</p></div>}
-      dock={taskDock}
+      dock={isCheckpoint ? checkpointDock : answerDock}
+      expandedCompanion={target ? <NeighboursQuizSessionTools target={target} countryById={countryById} mapState={mapState} nextTargetLabel={nextTargetLabel} onShowNumber={showNumber} onShowMap={showMap} onRevealRemaining={revealRemaining} onAdvance={advanceTarget} compact /> : undefined}
       dockPlacement="stacked"
     />
   )

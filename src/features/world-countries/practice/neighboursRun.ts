@@ -56,9 +56,23 @@ export interface NeighboursQuizSummary {
   named: number
   revealed: number
   incorrectGuesses: number
+  hintUses: number
   perfectTargets: number
   totalTargets: number
   imperfectTargetIds: readonly CountryId[]
+}
+
+export interface NeighboursTargetProgress {
+  foundIds: readonly CountryId[]
+  revealedIds: readonly CountryId[]
+  resolvedIds: readonly CountryId[]
+  remainingIds: readonly CountryId[]
+  foundCount: number
+  revealedCount: number
+  resolvedCount: number
+  remainingCount: number
+  totalCount: number
+  hintUses: number
 }
 
 /** Return target candidates with at least one active canonical neighbour. */
@@ -234,10 +248,35 @@ export function advanceNeighboursTarget(session: NeighboursQuizSessionState): Ne
   return { ...session, targetIndex: nextIndex }
 }
 
+/** Derive the target-local sets used by session tools, checkpoints, and results. */
+export function deriveNeighboursTargetProgress(target: NeighboursTargetState): NeighboursTargetProgress {
+  const foundIds = [...new Set(target.foundNeighbourIds)]
+  const revealedIds = [...new Set(target.revealedNeighbourIds)]
+  const foundSet = new Set(foundIds)
+  const revealedSet = new Set(revealedIds)
+  const resolvedIds = target.requiredNeighbourIds.filter(id => foundSet.has(id) || revealedSet.has(id))
+  const remainingIds = target.requiredNeighbourIds.filter(id => !foundSet.has(id) && !revealedSet.has(id))
+  return {
+    foundIds,
+    revealedIds,
+    resolvedIds,
+    remainingIds,
+    foundCount: foundIds.length,
+    revealedCount: revealedIds.length,
+    resolvedCount: resolvedIds.length,
+    remainingCount: remainingIds.length,
+    totalCount: target.requiredNeighbourIds.length,
+    hintUses: Number(target.showNumberUsed) + Number(target.revealMapUsed),
+  }
+}
+
 export function isNeighboursTargetPerfect(target: NeighboursTargetState): boolean {
-  return target.revealedNeighbourIds.length === 0
-    && target.foundNeighbourIds.length === target.requiredNeighbourIds.length
+  const progress = deriveNeighboursTargetProgress(target)
+  return progress.revealedCount === 0
+    && progress.foundCount === progress.totalCount
     && target.incorrectGuesses.length === 0
+    && !target.showNumberUsed
+    && !target.revealMapUsed
 }
 
 export function summarizeNeighboursRun(
@@ -248,10 +287,11 @@ export function summarizeNeighboursRun(
   const targets = run.questions.map(question => byId.get(question.targetId)).filter((target): target is NeighboursTargetState => target !== undefined)
   const imperfectTargetIds = targets.filter(target => !isNeighboursTargetPerfect(target)).map(target => target.targetId)
   return {
-    totalRequired: targets.reduce((total, target) => total + target.requiredNeighbourIds.length, 0),
-    named: targets.reduce((total, target) => total + target.foundNeighbourIds.length, 0),
-    revealed: targets.reduce((total, target) => total + target.revealedNeighbourIds.length, 0),
+    totalRequired: targets.reduce((total, target) => total + deriveNeighboursTargetProgress(target).totalCount, 0),
+    named: targets.reduce((total, target) => total + deriveNeighboursTargetProgress(target).foundCount, 0),
+    revealed: targets.reduce((total, target) => total + deriveNeighboursTargetProgress(target).revealedCount, 0),
     incorrectGuesses: targets.reduce((total, target) => total + target.incorrectGuesses.length, 0),
+    hintUses: targets.reduce((total, target) => total + deriveNeighboursTargetProgress(target).hintUses, 0),
     perfectTargets: targets.filter(isNeighboursTargetPerfect).length,
     totalTargets: targets.length,
     imperfectTargetIds,
