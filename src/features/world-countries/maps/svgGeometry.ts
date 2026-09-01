@@ -1,3 +1,5 @@
+import { parseViewBox, type SvgViewBoxRect } from './viewBoxFit'
+
 export interface SvgPoint {
   x: number
   y: number
@@ -10,6 +12,32 @@ export interface SvgAffineTransform {
   d: number
   e: number
   f: number
+}
+
+export interface SvgClientRect {
+  left: number
+  top: number
+  width: number
+  height: number
+}
+
+export interface SvgScale {
+  x: number
+  y: number
+}
+
+function isValidViewBoxRect(rect: SvgViewBoxRect | null): rect is SvgViewBoxRect {
+  return rect !== null
+    && [rect.x, rect.y, rect.width, rect.height].every(Number.isFinite)
+    && rect.width > 0
+    && rect.height > 0
+}
+
+function getSvgTransformScale(transform: SvgAffineTransform | null): SvgScale | null {
+  if (!transform) return null
+  const x = Math.hypot(transform.a, transform.b)
+  const y = Math.hypot(transform.c, transform.d)
+  return Number.isFinite(x) && Number.isFinite(y) && x > 0 && y > 0 ? { x, y } : null
 }
 
 export interface TaskPathComponent {
@@ -70,6 +98,254 @@ export function invertTransform(matrix: SvgAffineTransform): SvgAffineTransform 
     e: (matrix.c * matrix.f - matrix.d * matrix.e) / determinant,
     f: (matrix.b * matrix.e - matrix.a * matrix.f) / determinant,
   }
+}
+
+/** Calculate rendered SVG units per source unit, preserving the CTM fallback order. */
+export function calculateRenderedSvgScale(
+  screenTransform: SvgAffineTransform | null,
+  viewBox: SvgViewBoxRect | null,
+  rect: SvgClientRect | null,
+  preserveAspectRatio: string | null,
+): SvgScale {
+  const transformScale = getSvgTransformScale(screenTransform)
+  if (transformScale) return transformScale
+
+  if (!isValidViewBoxRect(viewBox) || !rect
+    || ![rect.width, rect.height].every(Number.isFinite)
+    || rect.width <= 0 || rect.height <= 0) return { x: 1, y: 1 }
+
+  if (preserveAspectRatio?.trim().toLowerCase().startsWith('none')) {
+    return {
+      x: rect.width / viewBox.width,
+      y: rect.height / viewBox.height,
+    }
+  }
+
+  const scale = Math.min(rect.width / viewBox.width, rect.height / viewBox.height)
+  return { x: scale, y: scale }
+}
+
+/** Project a source SVG point into client/screen coordinates using SVG presentation rules. */
+export function projectSvgPointToClient(
+  point: SvgPoint,
+  viewBox: SvgViewBoxRect | null,
+  rect: SvgClientRect | null,
+  preserveAspectRatio: string | null,
+): SvgPoint | null {
+  if (!isValidViewBoxRect(viewBox) || !rect || ![point.x, point.y, rect.left, rect.top, rect.width, rect.height].every(Number.isFinite)
+    || rect.width <= 0 || rect.height <= 0) return null
+
+  if (preserveAspectRatio?.trim().toLowerCase().startsWith('none')) {
+    return {
+      x: rect.left + (point.x - viewBox.x) * rect.width / viewBox.width,
+      y: rect.top + (point.y - viewBox.y) * rect.height / viewBox.height,
+    }
+  }
+
+  const scale = Math.min(rect.width / viewBox.width, rect.height / viewBox.height)
+  const offsetX = (rect.width - viewBox.width * scale) / 2
+  const offsetY = (rect.height - viewBox.height * scale) / 2
+  return {
+    x: rect.left + offsetX + (point.x - viewBox.x) * scale,
+    y: rect.top + offsetY + (point.y - viewBox.y) * scale,
+  }
+}
+
+/** Invert SVG presentation mapping from client/screen coordinates to source SVG coordinates. */
+export function projectClientPointToSvg(
+  client: SvgPoint,
+  viewBox: SvgViewBoxRect | null,
+  rect: SvgClientRect | null,
+  preserveAspectRatio: string | null,
+): SvgPoint | null {
+  if (!isValidViewBoxRect(viewBox) || !rect || ![client.x, client.y, rect.left, rect.top, rect.width, rect.height].every(Number.isFinite)
+    || rect.width <= 0 || rect.height <= 0) return null
+
+  let x = client.x - rect.left
+  let y = client.y - rect.top
+  if (!preserveAspectRatio?.trim().toLowerCase().startsWith('none')) {
+    const scale = Math.min(rect.width / viewBox.width, rect.height / viewBox.height)
+    const contentWidth = viewBox.width * scale
+    const contentHeight = viewBox.height * scale
+    const offsetX = (rect.width - contentWidth) / 2
+    const offsetY = (rect.height - contentHeight) / 2
+    if (x < offsetX || x > offsetX + contentWidth || y < offsetY || y > offsetY + contentHeight) return null
+    x = (x - offsetX) / scale
+    y = (y - offsetY) / scale
+  } else {
+    x /= rect.width / viewBox.width
+    y /= rect.height / viewBox.height
+  }
+  return { x: viewBox.x + x, y: viewBox.y + y }
+}
+
+/** Read a finite SVG transformation matrix, falling back to authored ancestor transforms. */
+export function readSvgElementTransform(element: SVGGraphicsElement, screen = false): SvgAffineTransform | null {
+  try {
+    const matrix = screen ? element.getScreenCTM?.() : element.getCTM?.()
+    if (matrix) {
+      const values = [matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f]
+      if (values.every(value => Number.isFinite(value))) {
+        return { a: matrix.a, b: matrix.b, c: matrix.c, d: matrix.d, e: matrix.e, f: matrix.f }
+      }
+    }
+    if (screen) return null
+
+    const ownerSvg = element.ownerSVGElement
+    let current: Element | null = element
+    let result = IDENTITY_TRANSFORM
+    let found = false
+    while (current && current !== ownerSvg) {
+      const transform = parseSvgTransform(current.getAttribute('transform'))
+      if (transform) {
+        result = multiplyTransforms(transform, result)
+        found = true
+      }
+      current = current.parentElement
+    }
+    return found ? result : null
+  } catch {
+    return null
+  }
+}
+
+export function readSvgClientRect(svg: SVGSVGElement): SvgClientRect | null {
+  try {
+    const rect = svg.getBoundingClientRect()
+    const values = [rect.left, rect.top, rect.width, rect.height]
+    return values.every(Number.isFinite)
+      ? { left: rect.left, top: rect.top, width: rect.width, height: rect.height }
+      : null
+  } catch {
+    return null
+  }
+}
+
+/** Read the rendered scale used for screen-sized task markers. */
+export function getRenderedSvgScale(svg: SVGSVGElement): SvgScale {
+  const screenTransform = readSvgElementTransform(svg, true)
+  const transformScale = getSvgTransformScale(screenTransform)
+  if (transformScale) return transformScale
+  return calculateRenderedSvgScale(
+    null,
+    parseViewBox(svg.getAttribute('viewBox') ?? ''),
+    readSvgClientRect(svg),
+    svg.getAttribute('preserveAspectRatio'),
+  )
+}
+
+/** Convert a point from a source path into the coordinate system of a map layer. */
+export function transformSourcePointToLayer(
+  path: SVGPathElement,
+  point: SvgPoint,
+  layerSvg: SVGSVGElement,
+): SvgPoint | null {
+  const localTransform = readSvgElementTransform(path)
+  if (path.ownerSVGElement === layerSvg) {
+    return transformPoint(localTransform ?? IDENTITY_TRANSFORM, point)
+  }
+
+  const sourceScreen = getScreenPointFromPath(path, point)
+  const layerScreen = readSvgElementTransform(layerSvg, true)
+  if (sourceScreen && layerScreen) {
+    const inverse = invertTransform(layerScreen)
+    if (inverse) return transformPoint(inverse, sourceScreen)
+  }
+
+  // In DOM/test environments without screen CTMs, bundled nested map SVGs
+  // share the root map coordinate system; ancestor group transforms are
+  // already included in the local transform above.
+  return transformPoint(localTransform ?? IDENTITY_TRANSFORM, point)
+}
+
+export function getScreenPointFromPath(path: SVGPathElement, point: SvgPoint): SvgPoint | null {
+  const screenTransform = readSvgElementTransform(path, true)
+  if (screenTransform) return transformPoint(screenTransform, point)
+
+  const layerSvg = path.ownerSVGElement
+  if (!layerSvg) return null
+  const localTransform = readSvgElementTransform(path)
+  return getScreenPointFromSvg(layerSvg, localTransform ? transformPoint(localTransform, point) : point)
+}
+
+export function getScreenPointFromSvg(svg: SVGSVGElement, point: SvgPoint): SvgPoint | null {
+  const screenTransform = readSvgElementTransform(svg, true)
+  if (screenTransform) return transformPoint(screenTransform, point)
+
+  return projectSvgPointToClient(
+    point,
+    parseViewBox(svg.getAttribute('viewBox') ?? ''),
+    readSvgClientRect(svg),
+    svg.getAttribute('preserveAspectRatio'),
+  )
+}
+
+export function getSvgPointFromClient(svg: SVGSVGElement, client: SvgPoint): SvgPoint | null {
+  const screenTransform = readSvgElementTransform(svg, true)
+  if (screenTransform) {
+    const inverse = invertTransform(screenTransform)
+    return inverse ? transformPoint(inverse, client) : null
+  }
+
+  return projectClientPointToSvg(
+    client,
+    parseViewBox(svg.getAttribute('viewBox') ?? ''),
+    readSvgClientRect(svg),
+    svg.getAttribute('preserveAspectRatio'),
+  )
+}
+
+export function getLocalPointFromClient(path: SVGPathElement, client: SvgPoint): SvgPoint | null {
+  const screenTransform = readSvgElementTransform(path, true)
+  if (screenTransform) {
+    const inverse = invertTransform(screenTransform)
+    return inverse ? transformPoint(inverse, client) : null
+  }
+
+  const layerSvg = path.ownerSVGElement
+  if (!layerSvg) return null
+  const layerPoint = getSvgPointFromClient(layerSvg, client)
+  if (!layerPoint) return null
+  const localTransform = readSvgElementTransform(path)
+  if (!localTransform) return layerPoint
+  const inverse = invertTransform(localTransform)
+  return inverse ? transformPoint(inverse, layerPoint) : null
+}
+
+export function readSvgGeometryBounds(element: SVGGraphicsElement): SvgViewBoxRect | null {
+  if (typeof element.getBBox !== 'function') return null
+  try {
+    const bounds = element.getBBox()
+    const values = [bounds.x, bounds.y, bounds.width, bounds.height]
+    if (values.some(value => !Number.isFinite(value)) || bounds.width < 0 || bounds.height < 0) return null
+    return { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height }
+  } catch {
+    return null
+  }
+}
+
+export function getSvgBoundsCenter(bounds: SvgViewBoxRect | null): SvgPoint | null {
+  return bounds
+    ? { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }
+    : null
+}
+
+export function isSvgPointWithinViewBox(point: SvgPoint, viewBox: SvgViewBoxRect | null): boolean {
+  return isValidViewBoxRect(viewBox)
+    && [point.x, point.y].every(Number.isFinite)
+    && point.x >= viewBox.x
+    && point.y >= viewBox.y
+    && point.x <= viewBox.x + viewBox.width
+    && point.y <= viewBox.y + viewBox.height
+}
+
+/** Identify compact, single-component source geometry suitable for one center point. */
+export function isCompactUnambiguousSvgGeometry(pathData: string, bounds: SvgViewBoxRect): boolean {
+  const maxDimension = 12
+  if (bounds.width <= 0 || bounds.height <= 0) return false
+  if (Math.max(bounds.width, bounds.height) > maxDimension
+    || bounds.width * bounds.height > maxDimension ** 2) return false
+  return countDrawnPathComponents(pathData) <= 1
 }
 
 /** Count drawn subpaths while treating circle-style `M … m … a …` data as one component. */

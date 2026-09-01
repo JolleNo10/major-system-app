@@ -1,4 +1,5 @@
 import { countries, type CountryId } from '@/features/world-countries/data/countries'
+import { parseViewBox } from './viewBoxFit'
 
 export type MapLearningAnchorKind = 'single-dot' | 'multi-dot-representative'
 
@@ -45,14 +46,6 @@ export function getMapLearningAnchors(
 ): readonly MapLearningAnchorDefinition[] {
   const ids = new Set(countryIds)
   return MAP_LEARNING_ANCHORS.filter(anchor => anchor.mapId === mapId && ids.has(anchor.countryId))
-}
-
-function parseViewBox(value: string): { x: number; y: number; width: number; height: number } | null {
-  const values = value.trim().split(/[\s,]+/).map(Number)
-  if (values.length !== 4 || values.some(number => !Number.isFinite(number))) return null
-  const [x, y, width, height] = values
-  if (width <= 0 || height <= 0) return null
-  return { x, y, width, height }
 }
 
 /** Validate static decisions against the source metadata supplied by a map asset. */

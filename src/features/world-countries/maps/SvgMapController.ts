@@ -3,7 +3,7 @@ import {
   type SvgMapTaskAssistance,
 } from './svgTaskAssistance'
 import type { SvgPoint } from './svgGeometry'
-import { fitViewBoxToAspect, type SvgViewBoxRect } from './viewBoxFit'
+import { fitViewBoxToAspect, parseViewBox, type SvgViewBoxRect } from './viewBoxFit'
 
 export type {
   SvgMapLearningAnchor,
@@ -1104,14 +1104,6 @@ export class SvgMapController {
     return Object.entries(colors)
   }
 
-  private parseViewBox(value: string): { x: number; y: number; width: number; height: number } | null {
-    const values = value.trim().split(/[\s,]+/).map(Number)
-    if (values.length !== 4 || values.some(number => !Number.isFinite(number))) return null
-    const [x, y, width, height] = values
-    if (width <= 0 || height <= 0) return null
-    return { x, y, width, height }
-  }
-
   private getPaddedCountryBounds(countryIds: readonly string[], padding: number): SvgViewBoxRect | null {
     const boxes = this.getCountryBoxes(countryIds)
     if (boxes.length === 0) return null
@@ -1135,7 +1127,7 @@ export class SvgMapController {
     const targetBounds = this.getBoundsUnion(this.getCountryBoxes(targetIds))
     if (!targetBounds) return null
 
-    const sourceBounds = this.originalViewBox ? this.parseViewBox(this.originalViewBox) : null
+    const sourceBounds = this.originalViewBox ? parseViewBox(this.originalViewBox) : null
     const sourceWidth = sourceBounds?.width ?? Math.max(targetBounds.width, targetBounds.height)
     const sourceHeight = sourceBounds?.height ?? Math.max(targetBounds.width, targetBounds.height)
     const contextBounds = contextIds.flatMap(id => {
@@ -1322,7 +1314,7 @@ export class SvgMapController {
   }
 
   private getRetainedZoomBounds(): SvgViewBoxRect | null {
-    if (!this.zoomIntent) return this.originalViewBox ? this.parseViewBox(this.originalViewBox) : null
+    if (!this.zoomIntent) return this.originalViewBox ? parseViewBox(this.originalViewBox) : null
     return this.zoomIntent.kind === 'country-bounds'
       ? this.getPaddedCountryBounds(this.zoomIntent.countryIds, this.zoomIntent.padding)
       : this.getTargetCentricCountryBounds(this.zoomIntent.targetIds, this.zoomIntent.contextIds)
@@ -1353,7 +1345,7 @@ export class SvgMapController {
   /** Keep auto-height SVG surfaces in step with a focused viewBox. */
   private syncAspectRatio(viewBox: string | null): void {
     if (!this.svg || !viewBox) return
-    const bounds = this.parseViewBox(viewBox)
+    const bounds = parseViewBox(viewBox)
     if (bounds) this.svg.style.aspectRatio = `${bounds.width} / ${bounds.height}`
   }
 

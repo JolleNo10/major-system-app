@@ -1,15 +1,17 @@
 import { getSyntheticDotSourceFingerprint } from './syntheticDots'
 import {
-  countDrawnPathComponents,
-  IDENTITY_TRANSFORM,
-  invertTransform,
-  multiplyTransforms,
-  parseSvgTransform,
+  getLocalPointFromClient,
+  getRenderedSvgScale,
+  getScreenPointFromSvg,
+  getSvgBoundsCenter,
+  isCompactUnambiguousSvgGeometry,
+  isSvgPointWithinViewBox,
   readPathComponents,
-  transformPoint,
-  type SvgAffineTransform,
+  readSvgGeometryBounds,
+  transformSourcePointToLayer,
   type SvgPoint,
 } from './svgGeometry'
+import { parseViewBox } from './viewBoxFit'
 import { createTaskInteractionMarkerElements, createTaskRepresentativeMarkerElements } from './svgTaskMarkers'
 
 export interface SvgMapLearningAnchor {
@@ -105,8 +107,6 @@ interface TaskRepresentativeTarget {
 const TASK_MARKER_TARGET_RADIUS_PX = 5.5
 const TASK_MARKER_HOVER_SCALE = 1.25
 const TASK_HIT_RADIUS_PX = 12
-const COMPACT_GEOMETRY_MAX_DIMENSION = 12
-const COMPACT_GEOMETRY_MAX_AREA = COMPACT_GEOMETRY_MAX_DIMENSION ** 2
 
 /** Stateful, Maps-owned runtime for task-only SVG assistance and answer selection. */
 export class SvgTaskAssistanceRuntime {
@@ -251,9 +251,9 @@ export class SvgTaskAssistanceRuntime {
         const syntheticDot = this.taskSyntheticDotDefinitions.has(sourceSvgId)
         for (let index = 0; index < interactionPoints.length; index += 1) {
           const sourcePoint = interactionPoints[index]
-          const point = this.transformSourcePointToLayer(country.path, sourcePoint, this.svg)
+          const point = transformSourcePointToLayer(country.path, sourcePoint, this.svg)
           if (!point) continue
-          const scale = this.getRenderedScale(this.svg)
+          const scale = getRenderedSvgScale(this.svg)
           const smallestScale = Math.min(scale.x, scale.y)
           if (!Number.isFinite(smallestScale) || smallestScale <= 0) continue
           const pointId = `${sourceSvgId}:${index}`
@@ -272,8 +272,8 @@ export class SvgTaskAssistanceRuntime {
 
       if (taskTarget) {
         const anchor = this.resolveTaskAnchor(sourceSvgId, country)
-        const point = anchor ? this.transformSourcePointToLayer(country.path, anchor.point, this.svg) : null
-        const scale = this.getRenderedScale(this.svg)
+        const point = anchor ? transformSourcePointToLayer(country.path, anchor.point, this.svg) : null
+        const scale = getRenderedSvgScale(this.svg)
         const smallestScale = Math.min(scale.x, scale.y)
         if (point && Number.isFinite(smallestScale) && smallestScale > 0) {
           activeTargetIds.add(sourceSvgId)
@@ -361,11 +361,12 @@ export class SvgTaskAssistanceRuntime {
     if (syntheticDot) return [syntheticDot.point]
 
     const sourceFingerprint = country.path.getAttribute('d') ?? ''
-    const bounds = this.readGeometryBounds(country.path)
+    const bounds = readSvgGeometryBounds(country.path)
     if (!bounds) return []
 
-    if (this.isCompactUnambiguousGeometry(country.path, bounds)) {
-      return [{ x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }]
+    if (isCompactUnambiguousSvgGeometry(country.path.getAttribute('d') ?? '', bounds)) {
+      const center = getSvgBoundsCenter(bounds)
+      return center ? [center] : []
     }
 
     const cached = this.automaticTaskInteractionPoints.get(sourceSvgId)
@@ -383,7 +384,7 @@ export class SvgTaskAssistanceRuntime {
     if (explicit) {
       const point = explicit.kind === 'multi-dot-representative'
         ? explicit.point
-        : this.readGeometryCenter(country.path)
+        : getSvgBoundsCenter(readSvgGeometryBounds(country.path))
       return point ? { kind: explicit.kind, point } : null
     }
 
@@ -398,9 +399,9 @@ export class SvgTaskAssistanceRuntime {
       }
     }
 
-    const bounds = this.readGeometryBounds(country.path)
-    const point = bounds && this.isCompactUnambiguousGeometry(country.path, bounds)
-      ? { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }
+    const bounds = readSvgGeometryBounds(country.path)
+    const point = bounds && isCompactUnambiguousSvgGeometry(country.path.getAttribute('d') ?? '', bounds)
+      ? getSvgBoundsCenter(bounds)
       : null
     this.automaticTaskAnchors.set(sourceSvgId, point ? { sourceFingerprint, point } : null)
     return point ? { kind: 'single-dot', point } : null
@@ -415,195 +416,6 @@ export class SvgTaskAssistanceRuntime {
     listeners.svg.removeEventListener('pointercancel', listeners.cancel)
     listeners.svg.removeEventListener('click', listeners.click)
     this.taskPointerListeners = null
-  }
-
-  private readGeometryCenter(path: SVGPathElement): SvgPoint | null {
-    const bounds = this.readGeometryBounds(path)
-    return bounds
-      ? { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }
-      : null
-  }
-
-  private isCompactUnambiguousGeometry(
-    path: SVGPathElement,
-    bounds: { width: number; height: number },
-  ): boolean {
-    if (bounds.width <= 0 || bounds.height <= 0) return false
-    if (Math.max(bounds.width, bounds.height) > COMPACT_GEOMETRY_MAX_DIMENSION
-      || bounds.width * bounds.height > COMPACT_GEOMETRY_MAX_AREA) return false
-    return countDrawnPathComponents(path.getAttribute('d') ?? '') <= 1
-  }
-
-  private getRenderedScale(svg: SVGSVGElement): { x: number; y: number } {
-    try {
-      const transform = svg.getScreenCTM?.()
-      if (transform) {
-        const x = Math.hypot(transform.a, transform.b)
-        const y = Math.hypot(transform.c, transform.d)
-        if (Number.isFinite(x) && Number.isFinite(y) && x > 0 && y > 0) return { x, y }
-      }
-    } catch {
-      // Fall back to the rendered SVG box for test DOMs and partial SVG APIs.
-    }
-
-    const viewBox = this.parseViewBox(svg.getAttribute('viewBox') ?? '')
-    const rect = svg.getBoundingClientRect()
-    if (!viewBox || rect.width <= 0 || rect.height <= 0) return { x: 1, y: 1 }
-
-    const preserveAspectRatio = svg.getAttribute('preserveAspectRatio')?.trim().toLowerCase() ?? ''
-    if (preserveAspectRatio.startsWith('none')) {
-      return {
-        x: rect.width / viewBox.width,
-        y: rect.height / viewBox.height,
-      }
-    }
-
-    const scale = Math.min(rect.width / viewBox.width, rect.height / viewBox.height)
-    return { x: scale, y: scale }
-  }
-
-  private readGeometryBounds(path: SVGPathElement): { x: number; y: number; width: number; height: number } | null {
-    if (typeof path.getBBox !== 'function') return null
-    try {
-      const bounds = path.getBBox()
-      const values = [bounds.x, bounds.y, bounds.width, bounds.height]
-      if (values.some(value => !Number.isFinite(value)) || bounds.width < 0 || bounds.height < 0) return null
-      return bounds
-    } catch {
-      return null
-    }
-  }
-
-  private readElementTransform(element: SVGGraphicsElement, screen = false): SvgAffineTransform | null {
-    try {
-      const matrix = screen ? element.getScreenCTM?.() : element.getCTM?.()
-      if (matrix) {
-        const values = [matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f]
-        if (values.every(value => Number.isFinite(value))) {
-          return { a: matrix.a, b: matrix.b, c: matrix.c, d: matrix.d, e: matrix.e, f: matrix.f }
-        }
-      }
-      if (screen) return null
-
-      const ownerSvg = element.ownerSVGElement
-      let current: Element | null = element
-      let result = IDENTITY_TRANSFORM
-      let found = false
-      while (current && current !== ownerSvg) {
-        const transform = parseSvgTransform(current.getAttribute('transform'))
-        if (transform) {
-          result = multiplyTransforms(transform, result)
-          found = true
-        }
-        current = current.parentElement
-      }
-      return found ? result : null
-    } catch {
-      return null
-    }
-  }
-
-  private transformSourcePointToLayer(
-    path: SVGPathElement,
-    point: SvgPoint,
-    layerSvg: SVGSVGElement,
-  ): SvgPoint | null {
-    const localTransform = this.readElementTransform(path)
-    if (path.ownerSVGElement === layerSvg) {
-      return transformPoint(localTransform ?? IDENTITY_TRANSFORM, point)
-    }
-
-    const sourceScreen = this.getScreenPointFromPath(path, point)
-    const layerScreen = this.readElementTransform(layerSvg, true)
-    if (sourceScreen && layerScreen) {
-      const inverse = invertTransform(layerScreen)
-      if (inverse) return transformPoint(inverse, sourceScreen)
-    }
-
-    // In DOM/test environments without screen CTMs, bundled nested map SVGs
-    // share the root map coordinate system; ancestor group transforms are
-    // already included in the local transform above.
-    return transformPoint(localTransform ?? IDENTITY_TRANSFORM, point)
-  }
-
-  private getScreenPointFromPath(path: SVGPathElement, point: SvgPoint): SvgPoint | null {
-    const screenTransform = this.readElementTransform(path, true)
-    if (screenTransform) return transformPoint(screenTransform, point)
-
-    const layerSvg = path.ownerSVGElement
-    if (!layerSvg) return null
-    const localTransform = this.readElementTransform(path)
-    return this.getScreenPointFromSvg(layerSvg, localTransform ? transformPoint(localTransform, point) : point)
-  }
-
-  private getScreenPointFromSvg(svg: SVGSVGElement, point: SvgPoint): SvgPoint | null {
-    const screenTransform = this.readElementTransform(svg, true)
-    if (screenTransform) return transformPoint(screenTransform, point)
-
-    const viewBox = this.parseViewBox(svg.getAttribute('viewBox') ?? '')
-    const rect = svg.getBoundingClientRect()
-    if (!viewBox || rect.width <= 0 || rect.height <= 0) return null
-    const preserveAspectRatio = svg.getAttribute('preserveAspectRatio')?.trim().toLowerCase() ?? ''
-    if (preserveAspectRatio.startsWith('none')) {
-      return {
-        x: rect.left + (point.x - viewBox.x) * rect.width / viewBox.width,
-        y: rect.top + (point.y - viewBox.y) * rect.height / viewBox.height,
-      }
-    }
-
-    const scale = Math.min(rect.width / viewBox.width, rect.height / viewBox.height)
-    const offsetX = (rect.width - viewBox.width * scale) / 2
-    const offsetY = (rect.height - viewBox.height * scale) / 2
-    return {
-      x: rect.left + offsetX + (point.x - viewBox.x) * scale,
-      y: rect.top + offsetY + (point.y - viewBox.y) * scale,
-    }
-  }
-
-  private getSvgPointFromClient(svg: SVGSVGElement, client: SvgPoint): SvgPoint | null {
-    const screenTransform = this.readElementTransform(svg, true)
-    if (screenTransform) {
-      const inverse = invertTransform(screenTransform)
-      return inverse ? transformPoint(inverse, client) : null
-    }
-
-    const rect = svg.getBoundingClientRect()
-    const viewBox = this.parseViewBox(svg.getAttribute('viewBox') ?? '')
-    if (!viewBox || rect.width <= 0 || rect.height <= 0) return null
-    let x = client.x - rect.left
-    let y = client.y - rect.top
-    const preserveAspectRatio = svg.getAttribute('preserveAspectRatio')?.trim().toLowerCase() ?? ''
-    if (!preserveAspectRatio.startsWith('none')) {
-      const scale = Math.min(rect.width / viewBox.width, rect.height / viewBox.height)
-      const contentWidth = viewBox.width * scale
-      const contentHeight = viewBox.height * scale
-      const offsetX = (rect.width - contentWidth) / 2
-      const offsetY = (rect.height - contentHeight) / 2
-      if (x < offsetX || x > offsetX + contentWidth || y < offsetY || y > offsetY + contentHeight) return null
-      x = (x - offsetX) / scale
-      y = (y - offsetY) / scale
-    } else {
-      x /= rect.width / viewBox.width
-      y /= rect.height / viewBox.height
-    }
-    return { x: viewBox.x + x, y: viewBox.y + y }
-  }
-
-  private getLocalPointFromClient(path: SVGPathElement, client: SvgPoint): SvgPoint | null {
-    const screenTransform = this.readElementTransform(path, true)
-    if (screenTransform) {
-      const inverse = invertTransform(screenTransform)
-      return inverse ? transformPoint(inverse, client) : null
-    }
-
-    const layerSvg = path.ownerSVGElement
-    if (!layerSvg) return null
-    const layerPoint = this.getSvgPointFromClient(layerSvg, client)
-    if (!layerPoint) return null
-    const localTransform = this.readElementTransform(path)
-    if (!localTransform) return layerPoint
-    const inverse = invertTransform(localTransform)
-    return inverse ? transformPoint(inverse, layerPoint) : null
   }
 
   private getTaskTargetLayer(layerSvg: SVGSVGElement): SVGGElement {
@@ -702,7 +514,7 @@ export class SvgTaskAssistanceRuntime {
       element.setAttribute('cy', String(point.centerY))
     }
     point.hit.setAttribute('r', String(point.hitRadius))
-    const screenPoint = this.getScreenPointFromSvg(point.layerSvg, { x: point.centerX, y: point.centerY })
+    const screenPoint = getScreenPointFromSvg(point.layerSvg, { x: point.centerX, y: point.centerY })
     if (screenPoint) {
       point.screenCenterX = screenPoint.x
       point.screenCenterY = screenPoint.y
@@ -814,13 +626,11 @@ export class SvgTaskAssistanceRuntime {
       throw new Error(`Single-dot task learning anchor ${anchor.sourceSvgId} must resolve from source geometry`)
     }
     if (!anchor.point) return
-    const viewBox = this.parseViewBox(
+    const viewBox = parseViewBox(
       country.path.ownerSVGElement?.getAttribute('viewBox') ?? this.svg.getAttribute('viewBox') ?? '',
     )
     const { x, y } = anchor.point
-    if (!viewBox || !Number.isFinite(x) || !Number.isFinite(y)
-      || x < viewBox.x || y < viewBox.y
-      || x > viewBox.x + viewBox.width || y > viewBox.y + viewBox.height) {
+    if (!isSvgPointWithinViewBox({ x, y }, viewBox)) {
       throw new Error(`Task learning anchor ${anchor.sourceSvgId} is outside the map viewBox`)
     }
   }
@@ -831,13 +641,11 @@ export class SvgTaskAssistanceRuntime {
     if (getSyntheticDotSourceFingerprint(sourceFingerprint) !== dot.sourceFingerprint) {
       throw new Error(`Stale task synthetic dot source for ${dot.sourceSvgId}`)
     }
-    const viewBox = this.parseViewBox(
+    const viewBox = parseViewBox(
       country.path.ownerSVGElement?.getAttribute('viewBox') ?? this.svg.getAttribute('viewBox') ?? '',
     )
     const { x, y } = dot.point
-    if (!viewBox || !Number.isFinite(x) || !Number.isFinite(y)
-      || x < viewBox.x || y < viewBox.y
-      || x > viewBox.x + viewBox.width || y > viewBox.y + viewBox.height) {
+    if (!isSvgPointWithinViewBox({ x, y }, viewBox)) {
       throw new Error(`Task synthetic dot ${dot.sourceSvgId} is outside the map viewBox`)
     }
   }
@@ -901,8 +709,8 @@ export class SvgTaskAssistanceRuntime {
     const matches: Array<{ id: string; area: number }> = []
     for (const country of this.options.getCountries()) {
       if (!this.isTaskCandidate(country.id)) continue
-      const localPoint = this.getLocalPointFromClient(country.path, point)
-      const bounds = this.readGeometryBounds(country.path)
+      const localPoint = getLocalPointFromClient(country.path, point)
+      const bounds = readSvgGeometryBounds(country.path)
       if (!localPoint) continue
       if (!bounds) continue
       const geometry = country.path as SVGGeometryElement & {
@@ -932,13 +740,6 @@ export class SvgTaskAssistanceRuntime {
       : null
   }
 
-  private parseViewBox(value: string): { x: number; y: number; width: number; height: number } | null {
-    const values = value.trim().split(/[\s,]+/).map(Number)
-    if (values.length !== 4 || values.some(number => !Number.isFinite(number))) return null
-    const [x, y, width, height] = values
-    if (width <= 0 || height <= 0) return null
-    return { x, y, width, height }
-  }
 }
 
 function uniqueStrings(values: Iterable<string>): string[] {

@@ -1,4 +1,5 @@
 import { countries, type CountryId } from '@/features/world-countries/data/countries'
+import { parseViewBox } from './viewBoxFit'
 
 export interface MapSyntheticDotDefinition {
   mapId: string
@@ -66,14 +67,6 @@ export function getMapSyntheticDots(
 ): readonly MapSyntheticDotDefinition[] {
   const ids = new Set(countryIds)
   return MAP_SYNTHETIC_DOTS.filter(dot => dot.mapId === mapId && ids.has(dot.countryId))
-}
-
-function parseViewBox(value: string): { x: number; y: number; width: number; height: number } | null {
-  const values = value.trim().split(/[\s,]+/).map(Number)
-  if (values.length !== 4 || values.some(number => !Number.isFinite(number))) return null
-  const [x, y, width, height] = values
-  if (width <= 0 || height <= 0) return null
-  return { x, y, width, height }
 }
 
 /** Validate authored synthetic points against the current bundled source. */

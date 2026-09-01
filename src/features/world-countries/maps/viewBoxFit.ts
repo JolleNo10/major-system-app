@@ -5,6 +5,14 @@ export interface SvgViewBoxRect {
   height: number
 }
 
+export function parseViewBox(value: string): SvgViewBoxRect | null {
+  const values = value.trim().split(/[\s,]+/).map(Number)
+  if (values.length !== 4 || values.some(number => !Number.isFinite(number))) return null
+  const [x, y, width, height] = values
+  if (width <= 0 || height <= 0) return null
+  return { x, y, width, height }
+}
+
 /** Expand a source viewBox around its center so it exactly matches a slot ratio. */
 export function fitViewBoxToAspect(rect: SvgViewBoxRect, slotAspect: number | null | undefined): SvgViewBoxRect {
   if (!slotAspect || !Number.isFinite(slotAspect) || slotAspect <= 0) return rect
