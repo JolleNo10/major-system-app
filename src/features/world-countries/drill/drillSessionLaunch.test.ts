@@ -75,4 +75,31 @@ describe('World Countries Drill session launch resolution', () => {
     if (!ordered || ordered instanceof Promise || !random || random instanceof Promise) throw new Error('Expected synchronous launches')
     expect(new Set(ordered.entries.map(country => country.id))).toEqual(new Set(random.entries.map(country => country.id)))
   })
+
+  it('carries the explicit Practice mode through the launch snapshot', () => {
+    const launch = resolveDrillSessionLaunch({
+      startPreferences: preferences,
+      activeCountries: countries,
+      proficiencySelection: [],
+      activity: 'practice',
+      practiceMode: 'locate-capitals',
+      skills: ['capital-to-country'],
+      interaction: 'location-click',
+    })
+
+    if (!launch || launch instanceof Promise) throw new Error('Expected a synchronous launch')
+    expect(launch.activity).toBe('practice')
+    expect(launch.practiceMode).toBe('locate-capitals')
+  })
+
+  it('rejects a Practice launch without an explicit Practice mode', () => {
+    const launch = resolveDrillSessionLaunch({
+      startPreferences: preferences,
+      activeCountries: countries,
+      proficiencySelection: [],
+      activity: 'practice',
+    })
+
+    expect(launch).toBeNull()
+  })
 })

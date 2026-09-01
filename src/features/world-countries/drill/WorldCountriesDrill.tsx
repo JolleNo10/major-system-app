@@ -52,6 +52,16 @@ type StartSessionOptions = {
   countryIds?: readonly CountryId[]
 }
 
+type ActiveDrillRun = {
+  session: DrillSessionState
+  selection: WorldCountriesDrillSelection
+  scopeLabel: string
+  activity: 'drill' | 'practice'
+  interaction: PracticeSessionInteraction
+  practiceMode?: WorldCountriesPracticeMode
+  answers: DrillAnswerRecord[]
+}
+
 /** Coordinator for setup, the four Drill modes, durable Learning, and non-recording Practice. */
 export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) {
   const { settings } = useSettings()
@@ -64,12 +74,7 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
   const [learningRun, setLearningRun] = useState<DrillLearningRun | null>(null)
   const [setupContinent, setSetupContinent] = useState<Continent | null>(null)
   const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null)
-  const [session, setSession] = useState<DrillSessionState | null>(null)
-  const [sessionSelection, setSessionSelection] = useState<WorldCountriesDrillSelection | null>(null)
-  const [sessionScopeLabel, setSessionScopeLabel] = useState<string | null>(null)
-  const [sessionActivity, setSessionActivity] = useState<'drill' | 'practice'>('drill')
-  const [sessionInteraction, setSessionInteraction] = useState<PracticeSessionInteraction>('recall')
-  const [answers, setAnswers] = useState<DrillAnswerRecord[]>([])
+  const [activeRun, setActiveRun] = useState<ActiveDrillRun | null>(null)
   const geographyRevision = useWorldCountriesGeographyRevision()
   const learningRevision = useWorldCountriesSubregionLearningRevision()
   const selectionMetadata = useMemo<DrillSelectionMetadata>(() => {
@@ -90,12 +95,17 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
     [activeCountries, effectivePreferences, selectionMetadata],
   )
   const sessionEntries = useMemo(
-    () => session
-      ? session.countryIds.map(countryId => activeCountries.find(country => country.id === countryId)).filter((country): country is typeof activeCountries[number] => country !== undefined)
+    () => activeRun
+      ? activeRun.session.countryIds.map(countryId => activeCountries.find(country => country.id === countryId)).filter((country): country is typeof activeCountries[number] => country !== undefined)
       : geographicEntries,
-    [activeCountries, geographicEntries, session],
+    [activeCountries, activeRun, geographicEntries],
   )
-  const sessionMatchesActivePopulation = session ? isDrillSessionCompatible(session, activeCountries) : false
+  const activeRunMatchesPopulation = activeRun ? isDrillSessionCompatible(activeRun.session, activeCountries) : false
+  const activeSession = activeRun?.session
+  const activeRunActivity = activeRun?.activity
+  const activeRunInteraction = activeRun?.interaction
+  const activeRunMode = activeRun?.session.mode
+  const activePracticeMode = activeRun?.practiceMode
   const learningStates = useMemo(() => {
     void learningRevision
     return getAllSubregionLearningStates(activeCountries)
@@ -106,13 +116,10 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
   )
 
   useEffect(() => {
-    if (phase !== 'recall' && phase !== 'practice' || !session || sessionMatchesActivePopulation) return
-    setSession(null)
-    setSessionSelection(null)
-    setSessionScopeLabel(null)
-    setAnswers([])
+    if (phase !== 'recall' && phase !== 'practice' || !activeRun || activeRunMatchesPopulation) return
+    setActiveRun(null)
     setPhase('setup')
-  }, [phase, session, sessionMatchesActivePopulation])
+  }, [activeRun, activeRunMatchesPopulation, phase])
 
   const updatePreferences = useCallback((next: WorldCountriesDrillPreferences) => {
     const normalized = {
@@ -126,21 +133,24 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
 
   const startSession = useCallback((startPreferences: WorldCountriesDrillPreferences, { persistPreferences = true, interaction = 'recall', activity = 'drill', skills, practiceMode, countryIds }: StartSessionOptions = {}) => {
     const applyLaunch = (launch: WorldCountriesDrillSessionLaunch | null) => {
-      if (!launch) return
+      if (!launch || launch.activity === 'practice' && !launch.practiceMode) return
       if (persistPreferences) saveDrillPreferences(startPreferences)
-      setAnswers([])
-      setSessionActivity(launch.activity)
-      setSessionInteraction(launch.interaction)
-      setSessionSelection(launch.selection)
-      setSessionScopeLabel(launch.scopeLabel)
-      setSession(createDrillSession({
-        mode: startPreferences.mode,
-        ...(launch.skills ? { skills: launch.skills } : {}),
-        countryIds: launch.countryIds,
-        countryOrder: launch.countryOrder,
-      }))
+      setActiveRun({
+        session: createDrillSession({
+          mode: startPreferences.mode,
+          ...(launch.skills ? { skills: launch.skills } : {}),
+          countryIds: launch.countryIds,
+          countryOrder: launch.countryOrder,
+        }),
+        selection: launch.selection,
+        scopeLabel: launch.scopeLabel,
+        activity: launch.activity,
+        interaction: launch.interaction,
+        ...(launch.practiceMode ? { practiceMode: launch.practiceMode } : {}),
+        answers: [],
+      })
       setLearningRun(null)
-      setPhase(activity === 'practice' ? 'practice' : 'recall')
+      setPhase(launch.activity === 'practice' ? 'practice' : 'recall')
     }
 
     const launch = resolveDrillSessionLaunch({
@@ -210,56 +220,51 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
   }, [learningRun])
 
   const restart = useCallback(() => {
-    if (!session) return
-    if (sessionActivity === 'practice') {
-      const mode: WorldCountriesPracticeMode = sessionInteraction === 'location-click'
-        ? session.skills?.[0] === 'capital-to-country' ? 'locate-capitals' : 'locate-countries'
-        : 'capitals'
-      startPractice(mode)
+    if (!activeRunActivity) return
+    if (activeRunActivity === 'practice') {
+      if (!activePracticeMode) return
+      startPractice(activePracticeMode)
     } else startDrill()
-  }, [session, sessionActivity, sessionInteraction, startDrill, startPractice])
+  }, [activePracticeMode, activeRunActivity, startDrill, startPractice])
 
   const retryFailedCountryIds = useMemo(() => {
-    if (phase !== 'results' || sessionActivity !== 'drill' || !session) return []
-    return getRetryableFailedDrillCountryIds(answers, session.countryIds, activeCountries.map(country => country.id))
-  }, [activeCountries, answers, phase, session, sessionActivity])
+    if (phase !== 'results' || activeRunActivity !== 'drill' || !activeRun) return []
+    return getRetryableFailedDrillCountryIds(activeRun.answers, activeRun.session.countryIds, activeCountries.map(country => country.id))
+  }, [activeCountries, activeRun, activeRunActivity, phase])
 
   const retryFailedCountries = useCallback(() => {
-    if (!session || retryFailedCountryIds.length === 0) return
+    if (!activeRunMode || retryFailedCountryIds.length === 0) return
     void startSession(
-      { ...effectivePreferences, mode: session.mode },
+      { ...effectivePreferences, mode: activeRunMode },
       { persistPreferences: false, countryIds: retryFailedCountryIds },
     )
-  }, [effectivePreferences, retryFailedCountryIds, session, startSession])
+  }, [activeRunMode, effectivePreferences, retryFailedCountryIds, startSession])
 
   const answer = useCallback((record: DrillAnswerRecord) => {
-    setAnswers(previous => [...previous, record])
-    if (sessionActivity === 'practice' || record.assisted) return
+    setActiveRun(previous => previous ? { ...previous, answers: [...previous.answers, record] } : previous)
+    if (!activeRunActivity || activeRunActivity === 'practice' || record.assisted) return
     void recordWorldCountriesAttempt(record.countryId, record.skill, { at: record.at, ok: record.correct, ms: record.ms, evidenceKind: record.evidenceKind })
-  }, [sessionActivity])
+  }, [activeRunActivity])
 
   const answerPractice = useCallback((record: PracticeSessionAnswer) => {
     answer({
       ...record,
       at: Date.now(),
       ms: 0,
-      evidenceKind: sessionInteraction === 'location-click' ? 'recognition' : 'recall',
+      evidenceKind: activeRunInteraction === 'location-click' ? 'recognition' : 'recall',
     })
-  }, [answer, sessionInteraction])
+  }, [activeRunInteraction, answer])
 
   const continueSession = useCallback((correct: boolean) => {
-    if (!session) return
-    const result = submitDrillStep(session, correct)
-    setSession(result.state)
+    if (!activeSession) return
+    const result = submitDrillStep(activeSession, correct)
+    setActiveRun(previous => previous ? { ...previous, session: result.state } : previous)
     if (result.completedNow) setPhase('results')
-  }, [session])
+  }, [activeSession])
 
   const exitToSetup = useCallback(() => {
-    setSession(null)
-    setSessionSelection(null)
-    setSessionScopeLabel(null)
+    setActiveRun(null)
     setLearningRun(null)
-    setSessionInteraction('recall')
     setPhase('setup')
     setSetupContinent(null)
     setHoveredGroupId(null)
@@ -300,16 +305,16 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
     return <CapitalLearningFlow key={learningScope.subregionId ?? learningRun.countryIds?.join(',')} continent={learningContinent} subregion={learningScope.subregionId ?? undefined} scopeLabel={learningRun.scopeLabel} entries={learningScope.entries} activeCountries={activeCountries} newItemsPerSet={learningRun.newItemsPerSet} schedulerSettings={{ masteryLatencyFactor: settings.masteryLatencyFactor, sessionUnmasteredShare: settings.sessionUnmasteredShare }} countriesLearned={Boolean(learningScope.state?.countriesLearnedAt)} fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching} allowIncorrectSpellingPractice recordCompletion={learningRun.recordCompletion} onPhaseChange={() => undefined} onExit={exitToSetup} onDone={onDone} doneLabel={doneLabel} />
   }
 
-  if ((phase === 'recall' || phase === 'practice') && session && sessionMatchesActivePopulation) {
-    if (sessionActivity === 'practice') {
-      return <PracticeSession answerMode={answerMode} fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching} state={session} interaction={sessionInteraction} learningStates={learningStates} proficiencySelection={proficiencySelection} selection={sessionSelection ?? effectivePreferences} scopeLabel={sessionScopeLabel ?? undefined} entries={sessionEntries} onAnswer={answerPractice} onContinue={continueSession} onExit={exitToSetup} />
+  if ((phase === 'recall' || phase === 'practice') && activeRun && activeRunMatchesPopulation) {
+    if (activeRun.activity === 'practice') {
+      return <PracticeSession answerMode={answerMode} fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching} state={activeRun.session} interaction={activeRun.interaction} learningStates={learningStates} proficiencySelection={proficiencySelection} selection={activeRun.selection} scopeLabel={activeRun.scopeLabel} entries={sessionEntries} onAnswer={answerPractice} onContinue={continueSession} onExit={exitToSetup} />
     }
-    return <DrillSession answerMode={answerMode} fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching} state={session} selection={sessionSelection ?? effectivePreferences} scopeLabel={sessionScopeLabel ?? undefined} entries={sessionEntries} proficiencySelection={proficiencySelection} activeCountries={activeCountries} onAnswer={answer} onContinue={continueSession} onExit={exitToSetup} />
+    return <DrillSession answerMode={answerMode} fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching} state={activeRun.session} selection={activeRun.selection} scopeLabel={activeRun.scopeLabel} entries={sessionEntries} proficiencySelection={proficiencySelection} activeCountries={activeCountries} onAnswer={answer} onContinue={continueSession} onExit={exitToSetup} />
   }
 
-  if (phase === 'results') {
-    if (sessionActivity === 'practice') return <PracticeResults scopeCountries={sessionEntries} answers={answers} onAgain={restart} onChangeSetup={exitToSetup} />
-    return <DrillResults mode={session?.mode ?? effectivePreferences.mode} scopeCountries={sessionEntries} answers={answers} retryFailedCountryCount={retryFailedCountryIds.length} onRetryFailedCountries={retryFailedCountries} onAgain={restart} onChangeSetup={exitToSetup} />
+  if (phase === 'results' && activeRun) {
+    if (activeRun.activity === 'practice') return <PracticeResults scopeCountries={sessionEntries} answers={activeRun.answers} onAgain={restart} onChangeSetup={exitToSetup} />
+    return <DrillResults mode={activeRun.session.mode} scopeCountries={sessionEntries} answers={activeRun.answers} retryFailedCountryCount={retryFailedCountryIds.length} onRetryFailedCountries={retryFailedCountries} onAgain={restart} onChangeSetup={exitToSetup} />
   }
 
   return <DrillSetup

@@ -37,6 +37,7 @@ export interface WorldCountriesDrillSessionLaunch {
   skills?: readonly WorldCountriesRecallSkill[]
   interaction: PracticeSessionInteraction
   activity: 'drill' | 'practice'
+  practiceMode?: WorldCountriesPracticeMode
 }
 
 /** Resolve the complete, session-scoped launch snapshot without React state. */
@@ -56,6 +57,8 @@ export function resolveDrillSessionLaunch({
     subregions: getAllSubregionMetadata(),
   },
 }: ResolveDrillSessionLaunchOptions): WorldCountriesDrillSessionLaunch | null | Promise<WorldCountriesDrillSessionLaunch | null> {
+  if (activity === 'practice' && !practiceMode) return null
+
   const normalizedStartSelection = normalizeDrillSelection(startPreferences, activeCountries, selectionMetadata)
   const selection: WorldCountriesDrillSelection = normalizedStartSelection
 
@@ -87,6 +90,7 @@ export function resolveDrillSessionLaunch({
       ...(skills ? { skills: [...skills] } : {}),
       interaction,
       activity,
+      ...(practiceMode ? { practiceMode } : {}),
     }
   }
 
