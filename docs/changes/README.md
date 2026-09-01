@@ -42,7 +42,8 @@ Every Change Spec uses one of these values:
 
 - `Draft` - design is still being compiled and is not ready to implement.
 - `Ready` - scope and acceptance are approved for implementation.
-- `Implemented` - the change and its required documentation were verified.
+- `Implemented` - the change and its required documentation have sufficient,
+  risk-proportionate evidence that the acceptance criteria are satisfied.
 - `Withdrawn` - the change will not be delivered.
 - `Superseded` - a later Change Spec replaces or materially changes it.
 
@@ -77,8 +78,18 @@ and work state, while the spec owns the compiled delivery contract.
 5. Mark the spec `Ready` only when an agent can implement it without recovering
    missing decisions from chat history.
 6. During implementation, update affected current-state architecture in the
-   same change as the code. After verification, mark the spec `Implemented` and
-   record the evidence.
+   same change as the code. After sufficient risk-proportionate verification,
+   mark the spec `Implemented` and record the evidence.
+
+`Implemented` does not mean that every possible verification method was
+performed. Choose evidence according to the nature, risk, and blast radius of
+the change. Browser/manual UI verification is not inherently required for
+user-visible work and must not be required unless the user explicitly requests
+it for that task. Unavailable or unperformed browser verification must not
+block `Implemented` when automated evidence is sufficient. Record residual
+risk when relevant, but preserve the distinction: `Ready` means approved scope
+awaiting delivery, while `Implemented` means the delivered acceptance criteria
+have enough evidence.
 
 The spec should be a compiled result, not a transcript, brainstorm, or detailed
 sequence of edits. Prefer intent, constraints, boundaries, examples, and

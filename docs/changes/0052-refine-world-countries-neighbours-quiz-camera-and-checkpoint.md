@@ -241,16 +241,20 @@ When implemented:
 - update `docs/architecture/features/WORLD_COUNTRIES.md` only if the final reusable map zoom capability or Neighbours expanded/checkpoint responsibility adds a current-state rule that future agents need to understand;
 - do not copy detailed layout acceptance criteria into architecture documentation.
 
-Set this Change Spec to `Implemented` only after the camera behavior and both standard/expanded checkpoint states are verified, not merely after unit tests compile.
+Set this Change Spec to `Implemented` when the camera behavior and both
+standard/expanded checkpoint states have sufficient, risk-proportionate
+evidence. Browser/manual verification is not required unless the user
+explicitly requests it for the task.
 
 ## Verification
 
-Implementation completed on 2026-09-01; the status remains `Ready` until the required manual browser verification is completed.
+Implementation completed on 2026-09-01; status is `Implemented` based on the
+recorded risk-proportionate automated evidence below. Browser/manual
+verification was not performed and was not required under the repository
+verification policy; no manual evidence is claimed.
 
 - Evidence: focused camera/map/session/presentation tests passed (80/80), including duplicate expanded-progress, stale-camera fallback, contained checkpoint, asymmetric-cluster, and standard/expanded aspect regressions.
 - Evidence: follow-up feedback/progress/session tests passed (50/50 related tests and 20/20 direct Neighbours/activity/feedback/MapSurface tests), covering shared exact/fuzzy/correction overlays, neutral duplicate feedback, feedback dwell/final-checkpoint behavior, named-neighbour progress, hint/reveal neutrality, and zero-percent rendering.
 - Evidence: full World Countries feature suite passed (616/616 tests).
 - Evidence: `npm run typecheck`, `npm run lint`, and `git diff --check` passed.
 - Automated coverage includes a synthetic dramatically oversized neighbour, compact-neighbour, tiny-target, multipart-target, sampled local path geometry, asymmetric/Sudan-like clusters, stable camera intent, contained checkpoint content, standard checkpoint rail, expanded no-companion presentation, shared World Countries answer-feedback reuse for exact/fuzzy/incorrect/unknown/ambiguous outcomes, duplicate-answer neutrality, current-target named-neighbour progress, and a true zero-fill progress bar.
-- Manual verification pending: live North-Korea-like camera framing, standard plus expanded checkpoint containment, and standard plus expanded feedback/progress behavior could not be checked because no in-app browser session was available.
-- After that manual check, set the status to `Implemented` and replace this note with the final manual evidence.

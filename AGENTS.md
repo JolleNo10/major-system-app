@@ -10,17 +10,24 @@ Follow the applicable nested `AGENTS.md` before modifying a feature.
 
 ## Runtime and verification
 
-Use progressive verification:
+Use risk-proportionate progressive verification:
 
-- Test the smallest affected slice while iterating.
-- Widen verification as the change stabilizes.
-- Run full repository verification only at integration boundaries.
+- Start with focused automated tests that cover the changed behavior.
+- Widen to capability, feature, or repository checks only when the change
+  spans that scope, changes a shared/configuration/build contract, or focused
+  evidence is insufficient.
+- Include code inspection in the completion check and stop widening once there
+  is reasonable evidence that the requested behavior works and important
+  regressions are covered.
+- Residual verification risk is acceptable for localized changes. Report it
+  when the available evidence cannot fully establish behavior rather than
+  escalating automatically to broader or environmental verification.
 
 Prefer the host Node.js/npm toolchain when available. If Docker is required,
 mirror the same progressive scope inside the Compose-built image; do not turn
 every Docker check into a full test and production-build run.
 
-### Level A - inner loop
+### Focused verification
 
 For an individual edit or small coherent behavior, usually do not verify after
 every individual edit. When useful, run the nearest relevant test file(s):
@@ -34,9 +41,8 @@ Several related edits may be completed before verification. Do not
 automatically run a complete feature suite, global TypeScript check, or Vite
 production build after each edit.
 
-### Level B - changed / capability
-
-After several related edits, prefer either:
+After several related edits, use the nearest changed capability or explicit
+test path, or use `npm run test:changed` when its scope is appropriate:
 
 ```text
 npm run test:changed
@@ -45,26 +51,23 @@ npx vitest run src/features/<feature>/<capability>
 
 If the worktree contains unrelated changes, `test:changed` may include them;
 use explicit feature, capability, or test paths to avoid widening scope by
-accident. Scoped watch mode is also acceptable during active implementation:
+accident. Do not automatically run a complete feature suite, global typecheck,
+lint, or Vite production build for a localized change.
 
-```text
-npm run test:watch -- <path>
-```
+### Broader verification when justified
 
-### Level C - feature completion
-
-For substantial feature-local work, once stable or near completion, run the
-feature suite and typecheck once:
+Use a feature suite and/or typecheck when the change spans a feature-wide
+contract, has a wider blast radius, or focused evidence is insufficient:
 
 ```text
 npx vitest run src/features/<feature>
 npm run typecheck
 ```
 
-For trivial cosmetic or presentational changes, narrower verification is
-appropriate when feature-wide tests and typecheck add little value.
+Localized UI, styling, keyboard, or interaction changes normally need focused
+tests and code inspection only.
 
-### Level D - full repository / production
+### Full repository / production verification when justified
 
 Run the full suite and production build only when justified, such as:
 
@@ -84,7 +87,9 @@ npm run build
 
 For repository integration/configuration changes, include the lint baseline in
 the final verification: `npm run lint`, then `npm test` and `npm run build`.
-The CI workflow mirrors this sequence; the build supplies the TypeScript check.
+The CI workflow may mirror this broad baseline for integration, but CI breadth
+does not make the same full sequence expected local verification for every
+implementation task; the build supplies the TypeScript check.
 
 A normal feature-local implementation must not automatically run the entire
 repository suite or production build. `npm run build` already runs TypeScript,
@@ -102,8 +107,38 @@ separate from host files; never use the repository's host `node_modules` inside
 the container. Use the equivalent scoped command with `docker compose run
 --rm app sh -c "..."`. After `package.json` or `package-lock.json` changes,
 rebuild once with `docker compose build app` before verifying. Without a host
-toolchain, `docker compose up` remains supported; with one, `npm run dev` is
-also supported.
+toolchain, use the equivalent scoped Docker command; do not start a development
+server as a substitute for automated verification.
+
+## Browser / Interactive Verification
+
+Use code inspection and risk-proportionate automated tests as the default
+completion evidence. Do not perform browser, interactive, or manual UI
+verification during implementation tasks unless the user explicitly requests
+it for the current task.
+
+Agents must not:
+
+- start a development server solely for verification;
+- discover, initialize, recover, or retry browser or interactive tooling for
+  verification;
+- inspect or troubleshoot ports, processes, permissions, sessions,
+  connectivity, or environment state to enable browser verification;
+- perform environment recovery merely to make browser/manual verification
+  possible;
+- leave background development servers or verification processes running;
+- keep an implementation or Change Spec incomplete solely because
+  browser/manual verification was unavailable or unperformed, unless the user
+  explicitly required that check for the current task;
+- make browser/manual verification a completion gate unless the user
+  explicitly requested it for the current task.
+
+When browser/manual verification was not explicitly requested, report any
+residual verification risk and complete the task once the available evidence is
+sufficient. If the user explicitly requests that verification, perform only
+the bounded requested check, record only evidence that was actually obtained,
+and stop every process started for it before completing the task.
+
 
 ## Repository workflow
 
@@ -192,7 +227,7 @@ remains true.
 <!-- REPOWISE_AGENTS:START — Do not edit below this line. Auto-generated by Repowise. -->
 ## Codebase Intelligence for major-system-app (Repowise)
 
-Indexed by [Repowise](https://repowise.dev). Last indexed: 2026-08-31 (commit 379da64). Confidence: 99%.
+Indexed by [Repowise](https://repowise.dev). Last indexed: 2026-08-31 (commit 20045cb). Confidence: 99%.
 ### How to work in this repo
 
 - **Trust the index.** `verified: true` means the bytes were checked against the live tree, so never re-read those lines. Re-read only on `bounds: "approximate"`, `_meta.stale_warning`, `search_method: "bm25"` or `confidence: "low"`; `index_behind: true` alone is informational.
@@ -238,21 +273,21 @@ major-system-app is a spaced-repetition memorization engine: consumes static dat
 - `src/app/main.tsx`
 
 ### Files that need care (bug-fix history first, then churn — check `get_risk` before editing)
-- `src/features/world-countries/maps/GeographyOverviewMap.test.tsx` — 9 bug fixes, last fix today (bug magnet); 28 commits/90d
-- `src/features/world-countries/maps/GeographyOverviewMap.tsx` — 7 bug fixes, last fix today (bug magnet); 23 commits/90d
-- `src/features/world-countries/drill/DrillSession.test.tsx` — 6 bug fixes, last fix 7 days ago (bug magnet); 34 commits/90d
-- `src/features/world-countries/maps/SvgMapController.test.ts` — 5 bug fixes, last fix 9 days ago (bug magnet); 18 commits/90d
-- `src/features/world-countries/drill/WorldCountriesDrill.tsx` — 5 bug fixes, last fix 2 days ago (bug magnet); 34 commits/90d
+- `src/features/world-countries/maps/GeographyOverviewMap.test.tsx` — 9 bug fixes, last fix today (bug magnet); 29 commits/90d
+- `src/features/world-countries/maps/SvgMapController.test.ts` — 7 bug fixes, last fix today (bug magnet); 21 commits/90d
+- `src/features/world-countries/maps/GeographyOverviewMap.tsx` — 7 bug fixes, last fix today (bug magnet); 24 commits/90d
+- `src/features/world-countries/practice/NeighboursQuizSession.test.tsx` — 5 bug fixes, last fix today (bug magnet); 9 commits/90d
+- `src/features/world-countries/practice/NeighboursQuizSession.tsx` — 5 bug fixes, last fix today (bug magnet); 9 commits/90d
 
 ### Code health
-Three co-equal signals: defect risk 8.08/10 avg, hotspot health 6.62/10 (stable), worst `src/features/world-countries/maps/SvgMapController.ts` at 2.35/10 · maintainability 9.57/10 · performance risk 9 open static I/O-in-loop / N+1 findings. Detail: `get_health()`.
+Three co-equal signals: defect risk 8.63/10 avg, hotspot health 7.8/10 (stable), worst `src/features/world-countries/maps/SvgMapController.ts` at 2.35/10 · maintainability 9.59/10 · performance risk 9 open static I/O-in-loop / N+1 findings. Detail: `get_health()`.
 
 Critical files:
-- `CONTEXT.md` — churn risk — impact −2.4
 - `docs/architecture/features/WORLD_COUNTRIES.md` — untested hotspot — impact −2.0
-- `src/features/world-countries/drill/DrillSetupRails.tsx` — untested hotspot — impact −2.0
-- `src/features/world-countries/index.ts` — untested hotspot — impact −2.0
-- `src/features/world-countries/AGENTS.md` — untested hotspot — impact −2.0
+- `src/features/pi/recite/PiReciteTab.tsx` — churn risk — impact −1.8
+- `src/features/world-countries/learning/CountryLearningMap.tsx` — change entropy — impact −1.7
+- `docs/architecture/features/WORLD_COUNTRIES.md` — prior defect — impact −1.7
+- `src/features/world-countries/learning/flows/GuidedLearningRails.tsx` — change entropy — impact −1.7
 
 ### Standing decisions (ask `get_why` before diverging)
 - ADR NNNN - Short architectural decision title

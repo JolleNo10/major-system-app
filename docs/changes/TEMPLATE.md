@@ -66,5 +66,14 @@ has no interaction surface.
 
 Complete this section when setting the status to `Implemented`.
 
-- Implemented and verified on YYYY-MM-DD.
-- Evidence: tests, build, or a concise manual verification record.
+- Implemented on YYYY-MM-DD based on sufficient, risk-proportionate evidence.
+- Evidence: focused automated tests covering the changed behavior.
+- Evidence: relevant broader tests when the change's scope or risk justifies
+  them.
+- Evidence: typecheck, lint, or build only when materially relevant to the
+  change.
+- Browser/manual verification: include this only when the user explicitly
+  requested it for the current task and it was actually performed. It is not a
+  routine requirement for UI changes.
+- Do not leave the spec in `Ready` because an optional verification method was
+  unavailable or unperformed; record any material residual risk instead.

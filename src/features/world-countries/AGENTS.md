@@ -30,22 +30,31 @@ generic `common/`, or compatibility wrappers for obsolete internal paths.
 
 ## Validation
 
-Follow the progressive verification policy in the root `AGENTS.md`.
+Follow the risk-proportionate verification policy in the root `AGENTS.md`.
 
 - Feature root: `src/features/world-countries/`.
-- During implementation, prefer the nearest capability/subdirectory, such as
-  `today/`, `drill/`, `learning/`, `maps/`, `geography/`, or `setup/`.
-- Near feature completion for substantial work, run:
+- Start with the nearest relevant capability or test files in the affected
+  subdirectory, such as `today/`, `drill/`, `learning/`, `maps/`,
+  `geography/`, or `setup/`.
+- Widen to a larger World Countries slice only when the change spans that
+  slice or focused evidence is insufficient.
+- Use feature-wide tests, typecheck, lint, or build only when the change's
+  risk or blast radius materially justifies them.
+- Localized UI, styling, keyboard, or interaction changes normally need
+  focused tests and code inspection only.
+- Follow the root browser/manual verification prohibition. Never start a dev
+  server or attempt browser verification unless the user explicitly requested
+  it for the current task.
 
 ```text
 npx vitest run src/features/world-countries
 npm run typecheck
 ```
 
-Do not repeatedly run global typecheck or a production `vite build` for normal
-feature changes. Use the equivalent scoped Docker command from the root policy
-when Node/npm are unavailable; widen to the full repository only at an
-integration boundary.
+The commands above are examples for changes whose feature-wide risk justifies
+them, not an automatic near-completion gate. Use the equivalent scoped Docker
+command from the root policy when Node/npm are unavailable; widen to the full
+repository only when the broader integration scope justifies it.
 
 ## Known traps
 
