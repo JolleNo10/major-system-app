@@ -11,6 +11,7 @@ import {
   projectClientPointToSvg,
   projectSvgPointToClient,
   readPathComponents,
+  readSvgPathGeometryComponents,
   transformPoint,
 } from './svgGeometry'
 
@@ -47,6 +48,19 @@ describe('SVG geometry utilities', () => {
     expect(isCompactUnambiguousSvgGeometry(pathData, { x: 9, y: 9, width: 33, height: 13 })).toBe(false)
     expect(readPathComponents(pathData)).toEqual([
       { start: { x: 10, y: 10 }, commands: ['m', 'a', 'a'] },
+    ])
+  })
+
+  it('extracts bounded polygon components from one distributed path', () => {
+    expect(readSvgPathGeometryComponents('M 10 10 h 4 v 4 h -4 z M 70 30 h 4 v 8 h -4 z')).toMatchObject([
+      { bounds: { x: 10, y: 10, width: 4, height: 4 } },
+      { bounds: { x: 70, y: 30, width: 4, height: 8 } },
+    ])
+  })
+
+  it('retains finite bounds for compact arc geometry', () => {
+    expect(readSvgPathGeometryComponents('M 10 10 m -1 0 a 1 1 0 1 0 2 0 a 1 1 0 1 0 -2 0')).toMatchObject([
+      { bounds: { x: 8, y: 9, width: 4, height: 2 } },
     ])
   })
 

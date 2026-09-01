@@ -169,7 +169,7 @@ Existing fallback behavior remains unchanged:
 
 - **Large neighbour:** a Country such as Russia/China must not make a small target's neighbourhood unusably wide merely because the whole neighbour path has a large bounding box.
 - **Large target:** the target itself must remain meaningfully represented; a local zoom algorithm must not crop the prompted Country so aggressively that its identity/shape is lost.
-- **Multipart target:** Malaysia and other multipart/fragmented target geometry must retain the meaningful target components needed to understand its border context. Do not assume a target is one compact path rectangle.
+- **Multipart target:** Keep all target geometry components required to represent the current local relationship set. Remote components unrelated to any required neighbour relationship must not expand the neighbourhood camera; do not assume a target is one compact path rectangle or simply choose its largest component.
 - **Tiny target:** a very small target must receive a sensible minimum neighbourhood window so there is enough surrounding geography to recall neighbours.
 - **Cross-Continent/transcontinental border:** continue using the world map and run-snapshotted effective neighbours.
 - **Show map after expansion/collapse:** expanding does not itself mark `Show map` used or invalidate perfection. Collapsing restores the standard tools with prior hint state intact.
@@ -248,13 +248,31 @@ explicitly requests it for the task.
 
 ## Verification
 
-Implementation completed on 2026-09-01; status is `Implemented` based on the
-recorded risk-proportionate automated evidence below. Browser/manual
-verification was not performed and was not required under the repository
-verification policy; no manual evidence is claimed.
+The component-aware camera follow-up was implemented on 2026-09-01, but this
+Change Spec remains `Ready` until the requested real-SVG browser cases have
+been manually verified.
 
-- Evidence: focused camera/map/session/presentation tests passed (80/80), including duplicate expanded-progress, stale-camera fallback, contained checkpoint, asymmetric-cluster, and standard/expanded aspect regressions.
-- Evidence: follow-up feedback/progress/session tests passed (50/50 related tests and 20/20 direct Neighbours/activity/feedback/MapSurface tests), covering shared exact/fuzzy/correction overlays, neutral duplicate feedback, feedback dwell/final-checkpoint behavior, named-neighbour progress, hint/reveal neutrality, and zero-percent rendering.
-- Evidence: full World Countries feature suite passed (616/616 tests).
-- Evidence: `npm run typecheck`, `npm run lint`, and `git diff --check` passed.
-- Automated coverage includes a synthetic dramatically oversized neighbour, compact-neighbour, tiny-target, multipart-target, sampled local path geometry, asymmetric/Sudan-like clusters, stable camera intent, contained checkpoint content, standard checkpoint rail, expanded no-companion presentation, shared World Countries answer-feedback reuse for exact/fuzzy/incorrect/unknown/ambiguous outcomes, duplicate-answer neutrality, current-target named-neighbour progress, and a true zero-fill progress bar.
+- Confirmed cause: target-centric framing previously used the complete target
+  Country `getBBox()`, so remote subpaths expanded the camera even though
+  neighbour Country bboxes were locally sampled.
+- Implementation: `svgGeometry.ts` now reads deterministic bounded path
+  components; `SvgMapController` associates each required neighbour with its
+  nearest target component, selects the smallest stable covering set, adds
+  local neighbour context, and retains the semantic intent through aspect-fit
+  refits. Generic `zoomCountryIds` remains unchanged.
+- Regression coverage includes Netherlands-like split targets, Malaysia-like
+  multi-component relationships, redundant remote components, a required
+  remote component, transformed geometry, incomplete-component fallback,
+  oversized neighbours, asymmetric/Sudan-like clusters, tiny targets, and
+  standard/expanded retained intent.
+- Evidence: focused map/session validation passed (95/95 tests across the four
+  requested files).
+- Evidence: the full World Countries feature suite passed (633/633 tests
+  across 112 files).
+- Evidence: the full repository suite passed (844/844 tests across 147 files).
+- Evidence: `npm.cmd run typecheck`, `npm.cmd run lint`, and `git diff --check`
+  passed.
+- Manual browser verification was attempted on the local app, but the browser
+  runtime reported no available browser surfaces. Netherlands, Malaysia, North
+  Korea, Sudan, and Germany, in standard and expanded presentation, therefore
+  remain unchecked and no manual pass is claimed.

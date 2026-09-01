@@ -188,6 +188,16 @@ describe('SvgMapController persistent state', () => {
     expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('10 75 30 35')
   })
 
+  it('keeps generic country zoom unchanged for zero-area geometry', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    setBBox(mount, 'Alpha', { x: 20, y: 20, width: 0, height: 0 })
+
+    controller.setZoomArea(['Alpha'], 10)
+
+    expect(readViewBox(mount)).toEqual({ x: 0, y: 0, width: 100, height: 50 })
+  })
+
   it('keeps a dramatically larger neighbour from controlling a target-centric neighbourhood', async () => {
     const { mount, controller } = makeController()
     await controller.load({ markup: TEST_MAP })
@@ -231,6 +241,21 @@ describe('SvgMapController persistent state', () => {
 
     expect(controller.setTargetCentricZoom(['Alpha'])).toEqual({
       activeIds: ['Alpha'],
+      unknownIds: [],
+    })
+    expect(readViewBox(mount)).toEqual({ x: 0, y: 0, width: 100, height: 50 })
+  })
+
+  it('clears the target camera when required neighbour geometry is unavailable', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    setBBox(mount, 'Alpha', { x: 42, y: 20, width: 4, height: 4 })
+
+    controller.setTargetCentricZoom(['Alpha'])
+    expect(readViewBox(mount)).not.toEqual({ x: 0, y: 0, width: 100, height: 50 })
+
+    expect(controller.setTargetCentricZoom(['Alpha'], ['Beta'])).toEqual({
+      activeIds: ['Alpha', 'Beta'],
       unknownIds: [],
     })
     expect(readViewBox(mount)).toEqual({ x: 0, y: 0, width: 100, height: 50 })
@@ -314,21 +339,122 @@ describe('SvgMapController persistent state', () => {
     expect(viewBox.x + viewBox.width).toBeGreaterThanOrEqual(10.2)
   })
 
-  it('keeps all meaningful geometry of a fragmented target path in view', async () => {
+  it('frames only the fragmented target components relevant to its neighbours', async () => {
     const { mount, controller } = makeController()
     await controller.load({ markup: `
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
         <g><path id="Alpha" d="M 10 10 h 4 v 4 h -4 z M 70 30 h 4 v 8 h -4 z"/><text id="Alpha_label">ALPHA</text></g>
+        <g><path id="Beta" d="M 16 11 h 4 v 4 h -4 z"/><text id="Beta_label">BETA</text></g>
+        <g><path id="Gamma" d="M 24 11 h 4 v 4 h -4 z"/><text id="Gamma_label">GAMMA</text></g>
       </svg>` })
     setBBox(mount, 'Alpha', { x: 10, y: 10, width: 64, height: 28 })
+    setBBox(mount, 'Beta', { x: 16, y: 11, width: 4, height: 4 })
+    setBBox(mount, 'Gamma', { x: 24, y: 11, width: 4, height: 4 })
 
-    controller.setTargetCentricZoom(['Alpha'])
+    controller.setTargetCentricZoom(['Alpha'], ['Beta', 'Gamma'])
+
+    const viewBox = readViewBox(mount)
+    expect(viewBox.x).toBeLessThanOrEqual(10)
+    expect(viewBox.x + viewBox.width).toBeGreaterThanOrEqual(28)
+    expect(viewBox.y).toBeLessThanOrEqual(10)
+    expect(viewBox.y + viewBox.height).toBeGreaterThanOrEqual(15)
+    expect(viewBox.x + viewBox.width).toBeLessThan(50)
+  })
+
+  it('retains separate target components when different neighbours require each one', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
+        <g><path id="Alpha" d="M 10 10 h 10 v 6 h -10 z M 60 30 h 10 v 6 h -10 z"/><text id="Alpha_label">ALPHA</text></g>
+        <g><path id="Beta" d="M 16 12 h 4 v 4 h -4 z"/><text id="Beta_label">BETA</text></g>
+        <g><path id="Gamma" d="M 66 32 h 4 v 4 h -4 z"/><text id="Gamma_label">GAMMA</text></g>
+        <g><path id="Delta" d="M 70 34 h 4 v 4 h -4 z"/><text id="Delta_label">DELTA</text></g>
+      </svg>` })
+    setBBox(mount, 'Alpha', { x: 10, y: 10, width: 60, height: 26 })
+    setBBox(mount, 'Beta', { x: 16, y: 12, width: 4, height: 4 })
+    setBBox(mount, 'Gamma', { x: 66, y: 32, width: 4, height: 4 })
+    setBBox(mount, 'Delta', { x: 70, y: 34, width: 4, height: 4 })
+
+    controller.setTargetCentricZoom(['Alpha'], ['Beta', 'Gamma', 'Delta'])
 
     const viewBox = readViewBox(mount)
     expect(viewBox.x).toBeLessThanOrEqual(10)
     expect(viewBox.x + viewBox.width).toBeGreaterThanOrEqual(74)
     expect(viewBox.y).toBeLessThanOrEqual(10)
     expect(viewBox.y + viewBox.height).toBeGreaterThanOrEqual(38)
+  })
+
+  it('does not select a redundant remote target component on a stable proximity tie', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
+        <g><path id="Alpha" d="M 10 10 h 20 v 6 h -20 z M 70 30 h 4 v 4 h -4 z"/><text id="Alpha_label">ALPHA</text></g>
+        <g><path id="Beta" d="M 26 13 L 71 32"/><text id="Beta_label">BETA</text></g>
+      </svg>` })
+    setBBox(mount, 'Alpha', { x: 10, y: 10, width: 64, height: 24 })
+    setPathGeometry(mount, 'Beta', { x: 26, y: 13, width: 45, height: 19 }, [{ x: 26, y: 13 }, { x: 71, y: 32 }])
+
+    controller.setTargetCentricZoom(['Alpha'], ['Beta'])
+
+    const viewBox = readViewBox(mount)
+    expect(viewBox.x).toBeLessThanOrEqual(10)
+    expect(viewBox.x + viewBox.width).toBeLessThan(50)
+  })
+
+  it('retains a remote target component when it is the only useful relationship location', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
+        <g><path id="Alpha" d="M 10 10 h 4 v 4 h -4 z M 70 30 h 4 v 4 h -4 z"/><text id="Alpha_label">ALPHA</text></g>
+        <g><path id="Beta" d="M 72 32 h 4 v 4 h -4 z"/><text id="Beta_label">BETA</text></g>
+      </svg>` })
+    setBBox(mount, 'Alpha', { x: 10, y: 10, width: 64, height: 24 })
+    setBBox(mount, 'Beta', { x: 72, y: 32, width: 4, height: 4 })
+
+    controller.setTargetCentricZoom(['Alpha'], ['Beta'])
+
+    const viewBox = readViewBox(mount)
+    expect(viewBox.x).toBeGreaterThan(50)
+    expect(viewBox.x + viewBox.width).toBeGreaterThanOrEqual(74)
+  })
+
+  it('applies authored target and neighbour transforms before selecting components', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
+        <g transform="translate(10 5) scale(2)">
+          <g><path id="Alpha" d="M 10 10 h 4 v 4 h -4 z"/><text id="Alpha_label">ALPHA</text></g>
+          <g><path id="Beta" d="M 18 11 h 4 v 4 h -4 z"/><text id="Beta_label">BETA</text></g>
+        </g>
+      </svg>` })
+    setBBox(mount, 'Alpha', { x: 10, y: 10, width: 4, height: 4 })
+    setBBox(mount, 'Beta', { x: 18, y: 11, width: 4, height: 4 })
+
+    controller.setTargetCentricZoom(['Alpha'], ['Beta'])
+
+    const viewBox = readViewBox(mount)
+    expect(viewBox.x).toBeLessThanOrEqual(30)
+    expect(viewBox.x + viewBox.width).toBeGreaterThanOrEqual(54)
+    expect(viewBox.y).toBeLessThanOrEqual(25)
+    expect(viewBox.y + viewBox.height).toBeGreaterThanOrEqual(35)
+  })
+
+  it('clears a retained target camera when fragmented geometry cannot be fully read', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
+        <g><path id="Alpha" d="M 10 10 h 4 v 4 h -4 z"/><text id="Alpha_label">ALPHA</text></g>
+      </svg>` })
+    setBBox(mount, 'Alpha', { x: 10, y: 10, width: 4, height: 4 })
+    controller.setTargetCentricZoom(['Alpha'])
+    expect(readViewBox(mount)).not.toEqual({ x: 0, y: 0, width: 100, height: 50 })
+
+    path(mount, 'Alpha').setAttribute('d', 'M 10 10 h 4 v 4 h -4 z M 70 30 r 4 4')
+    expect(controller.setTargetCentricZoom(['Alpha'])).toEqual({
+      activeIds: ['Alpha'],
+      unknownIds: [],
+    })
+    expect(readViewBox(mount)).toEqual({ x: 0, y: 0, width: 100, height: 50 })
   })
 
   it('fits a target-centric frame to the expanded slot without losing the target', async () => {

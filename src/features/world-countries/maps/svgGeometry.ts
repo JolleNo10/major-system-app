@@ -45,6 +45,10 @@ export interface TaskPathComponent {
   commands: string[]
 }
 
+export interface SvgGeometryComponent {
+  bounds: SvgViewBoxRect
+}
+
 export const IDENTITY_TRANSFORM: SvgAffineTransform = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }
 
 export function transformPoint(matrix: SvgAffineTransform, point: SvgPoint): SvgPoint {
@@ -339,6 +343,244 @@ export function isSvgPointWithinViewBox(point: SvgPoint, viewBox: SvgViewBoxRect
     && point.y <= viewBox.y + viewBox.height
 }
 
+const PATH_DATA_TOKEN_PATTERN = /[a-zA-Z]|[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/g
+const PATH_COMMAND_ARITY: Readonly<Record<string, number>> = {
+  m: 2,
+  l: 2,
+  h: 1,
+  v: 1,
+  c: 6,
+  s: 4,
+  q: 4,
+  t: 2,
+  a: 7,
+}
+
+function tokenizeSvgPathData(pathData: string): string[] {
+  return [...pathData.matchAll(PATH_DATA_TOKEN_PATTERN)].map(match => match[0])
+}
+
+interface WorkingGeometryComponent {
+  minX: number
+  minY: number
+  maxX: number
+  maxY: number
+  hasDrawing: boolean
+}
+
+interface PathGeometryParserState {
+  active: WorkingGeometryComponent | null
+  currentPoint: SvgPoint
+  startPoint: SvgPoint
+}
+
+function addGeometryPoint(component: WorkingGeometryComponent, point: SvgPoint): void {
+  if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) return
+  component.minX = Math.min(component.minX, point.x)
+  component.minY = Math.min(component.minY, point.y)
+  component.maxX = Math.max(component.maxX, point.x)
+  component.maxY = Math.max(component.maxY, point.y)
+}
+
+function resolvePathPoint(current: SvgPoint, x: number, y: number, relative: boolean): SvgPoint {
+  return relative ? { x: current.x + x, y: current.y + y } : { x, y }
+}
+
+function isUsableGeometryComponent(component: WorkingGeometryComponent | null): component is WorkingGeometryComponent {
+  return component !== null
+    && component.hasDrawing
+    && component.maxX > component.minX
+    && component.maxY > component.minY
+}
+
+function finishGeometryComponent(
+  state: PathGeometryParserState,
+  components: SvgGeometryComponent[],
+): void {
+  const active = state.active
+  state.active = null
+  if (!isUsableGeometryComponent(active)) return
+  components.push({
+    bounds: {
+      x: active.minX,
+      y: active.minY,
+      width: active.maxX - active.minX,
+      height: active.maxY - active.minY,
+    },
+  })
+}
+
+function beginGeometryComponent(
+  state: PathGeometryParserState,
+  components: SvgGeometryComponent[],
+  point: SvgPoint,
+): void {
+  finishGeometryComponent(state, components)
+  state.active = {
+    minX: point.x,
+    minY: point.y,
+    maxX: point.x,
+    maxY: point.y,
+    hasDrawing: false,
+  }
+  addGeometryPoint(state.active, point)
+  state.startPoint = point
+}
+
+function readPathCommandValues(tokens: readonly string[], tokenIndex: number, arity: number): number[] | null {
+  const values: number[] = []
+  for (let offset = 0; offset < arity; offset += 1) {
+    const value = tokens[tokenIndex + offset]
+    if (value === undefined || /^[a-zA-Z]$/.test(value)) return null
+    const number = Number(value)
+    if (!Number.isFinite(number)) return null
+    values.push(number)
+  }
+  return values
+}
+
+function applyMoveCommand(
+  state: PathGeometryParserState,
+  components: SvgGeometryComponent[],
+  command: string,
+  values: readonly number[],
+): string {
+  const relative = command === command.toLowerCase()
+  const point = resolvePathPoint(state.currentPoint, values[0], values[1], relative)
+  const active = state.active
+  if (!active || active.hasDrawing || command === 'M') beginGeometryComponent(state, components, point)
+  else addGeometryPoint(active, point)
+  state.currentPoint = point
+  return relative ? 'l' : 'L'
+}
+
+function ensureActiveGeometryComponent(
+  state: PathGeometryParserState,
+  components: SvgGeometryComponent[],
+): WorkingGeometryComponent {
+  if (!state.active) beginGeometryComponent(state, components, state.currentPoint)
+  return state.active as WorkingGeometryComponent
+}
+
+function applyArcCommand(
+  state: PathGeometryParserState,
+  active: WorkingGeometryComponent,
+  values: readonly number[],
+  relative: boolean,
+): void {
+  const radiusX = Math.abs(values[0])
+  const radiusY = Math.abs(values[1])
+  addGeometryPoint(active, { x: state.currentPoint.x - radiusX, y: state.currentPoint.y - radiusY })
+  addGeometryPoint(active, { x: state.currentPoint.x + radiusX, y: state.currentPoint.y + radiusY })
+  state.currentPoint = resolvePathPoint(state.currentPoint, values[5], values[6], relative)
+  addGeometryPoint(active, { x: state.currentPoint.x - radiusX, y: state.currentPoint.y - radiusY })
+  addGeometryPoint(active, { x: state.currentPoint.x + radiusX, y: state.currentPoint.y + radiusY })
+  addGeometryPoint(active, state.currentPoint)
+}
+
+function applyPathGeometryCommand(
+  state: PathGeometryParserState,
+  components: SvgGeometryComponent[],
+  command: string,
+  values: readonly number[],
+): string {
+  const lowerCommand = command.toLowerCase()
+  const relative = command === lowerCommand
+  if (lowerCommand === 'm') return applyMoveCommand(state, components, command, values)
+  const active = ensureActiveGeometryComponent(state, components)
+  active.hasDrawing = true
+
+  switch (lowerCommand) {
+    case 'l':
+    case 't':
+      state.currentPoint = resolvePathPoint(state.currentPoint, values[0], values[1], relative)
+      addGeometryPoint(active, state.currentPoint)
+      break
+    case 'h':
+      state.currentPoint = { x: relative ? state.currentPoint.x + values[0] : values[0], y: state.currentPoint.y }
+      addGeometryPoint(active, state.currentPoint)
+      break
+    case 'v':
+      state.currentPoint = { x: state.currentPoint.x, y: relative ? state.currentPoint.y + values[0] : values[0] }
+      addGeometryPoint(active, state.currentPoint)
+      break
+    case 'c':
+      addGeometryPoint(active, resolvePathPoint(state.currentPoint, values[0], values[1], relative))
+      addGeometryPoint(active, resolvePathPoint(state.currentPoint, values[2], values[3], relative))
+      state.currentPoint = resolvePathPoint(state.currentPoint, values[4], values[5], relative)
+      addGeometryPoint(active, state.currentPoint)
+      break
+    case 's':
+    case 'q':
+      addGeometryPoint(active, resolvePathPoint(state.currentPoint, values[0], values[1], relative))
+      if (lowerCommand === 'q') addGeometryPoint(active, resolvePathPoint(state.currentPoint, values[2], values[3], relative))
+      state.currentPoint = resolvePathPoint(state.currentPoint, values[2], values[3], relative)
+      addGeometryPoint(active, state.currentPoint)
+      break
+    case 'a':
+      applyArcCommand(state, active, values, relative)
+      break
+  }
+  return command
+}
+
+function closePathGeometry(state: PathGeometryParserState): void {
+  const active = state.active
+  if (active?.hasDrawing) addGeometryPoint(active, state.startPoint)
+  state.currentPoint = state.startPoint
+}
+
+/**
+ * Read spatially disconnected subpaths without requiring SVG DOM geometry APIs.
+ * The bounds include authored vertices and curve controls, which is a bounded
+ * conservative approximation for camera selection and remains usable in jsdom.
+ */
+export function readSvgPathGeometryComponents(pathData: string): SvgGeometryComponent[] {
+  const tokens = tokenizeSvgPathData(pathData)
+  const components: SvgGeometryComponent[] = []
+  const state: PathGeometryParserState = {
+    active: null,
+    currentPoint: { x: 0, y: 0 },
+    startPoint: { x: 0, y: 0 },
+  }
+  let command: string | null = null
+  let tokenIndex = 0
+
+  while (tokenIndex < tokens.length) {
+    const token = tokens[tokenIndex]
+    if (/^[a-zA-Z]$/.test(token)) {
+      command = token
+      tokenIndex += 1
+      if (token.toLowerCase() === 'z') {
+        closePathGeometry(state)
+        command = null
+      }
+      continue
+    }
+
+    if (!command) {
+      tokenIndex += 1
+      continue
+    }
+    const lowerCommand = command.toLowerCase()
+    const arity = PATH_COMMAND_ARITY[lowerCommand]
+    if (arity === undefined) {
+      command = null
+      continue
+    }
+    const values = readPathCommandValues(tokens, tokenIndex, arity)
+    if (!values) {
+      command = null
+      continue
+    }
+    tokenIndex += arity
+    command = applyPathGeometryCommand(state, components, command, values)
+  }
+
+  finishGeometryComponent(state, components)
+  return components
+}
+
 /** Identify compact, single-component source geometry suitable for one center point. */
 export function isCompactUnambiguousSvgGeometry(pathData: string, bounds: SvgViewBoxRect): boolean {
   const maxDimension = 12
@@ -350,7 +592,7 @@ export function isCompactUnambiguousSvgGeometry(pathData: string, bounds: SvgVie
 
 /** Count drawn subpaths while treating circle-style `M … m … a …` data as one component. */
 export function countDrawnPathComponents(pathData: string): number {
-  const tokens = pathData.match(/[a-zA-Z]|[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/g) ?? []
+  const tokens = tokenizeSvgPathData(pathData)
   let current: { command: string; numericCount: number; draws: boolean } | null = null
   let components = 0
 
@@ -383,7 +625,7 @@ export function countDrawnPathComponents(pathData: string): number {
  * mainland or ordinary polygon remains authoritative source geometry.
  */
 export function readPathComponents(pathData: string): TaskPathComponent[] {
-  const tokens = pathData.match(/[a-zA-Z]|[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/g) ?? []
+  const tokens = tokenizeSvgPathData(pathData)
   const components: TaskPathComponent[] = []
   let current: { start: SvgPoint | null; commands: string[]; command: string | null; numbers: number[]; hasDrawing: boolean } | null = null
   let lastPoint: SvgPoint = { x: 0, y: 0 }

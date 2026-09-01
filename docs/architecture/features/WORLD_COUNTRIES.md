@@ -363,9 +363,11 @@ advances automatically after the correction dwell.
   aspect ratio, and recomputes it through the existing resize lifecycle without
   accumulating camera drift. Standard presentation keeps the source or normal
   semantic zoom framing. The map controller's target-centric neighbourhood
-  intent keeps target geometry and bounded nearest local path samples (with a
-  conservative bbox fallback) in view without fitting complete context-Country
-  bounds; generic Country zoom keeps
+  intent resolves target geometry components against required context-Country
+  geometry, keeps the smallest stable component set that covers those
+  relationships, and adds bounded nearest local path samples (with a
+  conservative bbox fallback) without fitting complete context-Country bounds;
+  generic Country zoom keeps
   its full selected-bounds contract. Expansion resets when the owning surface
   unmounts or the viewport leaves `xl`.
   `MapSurface` may also compose an expanded-only generic companion beside the

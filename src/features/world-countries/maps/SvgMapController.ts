@@ -2,7 +2,13 @@ import {
   SvgTaskAssistanceRuntime,
   type SvgMapTaskAssistance,
 } from './svgTaskAssistance'
-import type { SvgPoint } from './svgGeometry'
+import {
+  countDrawnPathComponents,
+  readSvgGeometryBounds,
+  readSvgPathGeometryComponents,
+  transformSourcePointToLayer,
+  type SvgPoint,
+} from './svgGeometry'
 import { fitViewBoxToAspect, parseViewBox, type SvgViewBoxRect } from './viewBoxFit'
 
 export type {
@@ -136,6 +142,21 @@ interface HoverListeners {
   enter: EventListener
   leave: EventListener
   click: EventListener
+}
+
+interface TargetGeometryComponent {
+  key: string
+  bounds: SvgViewBoxRect
+}
+
+interface TargetContextAssociation {
+  path: SVGPathElement
+  component: TargetGeometryComponent
+}
+
+interface TargetComponentSelection {
+  targetBounds: SvgViewBoxRect
+  contextAssociations: readonly TargetContextAssociation[]
 }
 
 const FORBIDDEN_ELEMENTS = 'script, foreignObject, iframe, object, embed, image, style'
@@ -1124,19 +1145,18 @@ export class SvgMapController {
     targetIds: readonly string[],
     contextIds: readonly string[],
   ): SvgViewBoxRect | null {
-    const targetBounds = this.getBoundsUnion(this.getCountryBoxes(targetIds))
-    if (!targetBounds) return null
+    const selection = this.selectTargetGeometryComponents(targetIds, contextIds)
+    if (!selection) return null
 
     const sourceBounds = this.originalViewBox ? parseViewBox(this.originalViewBox) : null
-    const sourceWidth = sourceBounds?.width ?? Math.max(targetBounds.width, targetBounds.height)
-    const sourceHeight = sourceBounds?.height ?? Math.max(targetBounds.width, targetBounds.height)
-    const contextBounds = contextIds.flatMap(id => {
-      const country = this.countries.get(id)
-      const bounds = country
-        ? this.getLocalContextBounds(country.path, targetBounds, sourceWidth, sourceHeight)
-        : null
+    const fallbackSourceSize = Math.max(selection.targetBounds.width, selection.targetBounds.height)
+    const sourceWidth = sourceBounds?.width ?? fallbackSourceSize
+    const sourceHeight = sourceBounds?.height ?? fallbackSourceSize
+    const contextBounds = selection.contextAssociations.flatMap(({ path, component }) => {
+      const bounds = this.getLocalContextBounds(path, component.bounds, sourceWidth, sourceHeight)
       return bounds ? [bounds] : []
     })
+    const targetBounds = selection.targetBounds
     const cluster = this.getBoundsAroundRects(targetBounds, contextBounds)
     const minimumPadding = Math.min(sourceWidth, sourceHeight) * 0.02
     const paddingX = Math.max(targetBounds.width * TARGET_CENTRIC_PADDING_RATIO, minimumPadding)
@@ -1167,6 +1187,81 @@ export class SvgMapController {
     }
   }
 
+  private selectTargetGeometryComponents(
+    targetIds: readonly string[],
+    contextIds: readonly string[],
+  ): TargetComponentSelection | null {
+    const targetComponents = this.getTargetGeometryComponents(targetIds)
+    if (targetComponents.length === 0) return null
+
+    const contextAssociations = contextIds.flatMap(id => {
+      const country = this.countries.get(id)
+      if (!country) return []
+      const component = this.findClosestTargetComponent(targetComponents, country.path)
+      return component ? [{ path: country.path, component }] : []
+    })
+    // One closest component is the deterministic representative for each
+    // required neighbour ID. Adding every nearby component would retain
+    // redundant remote geometry instead of the smallest useful target set.
+    const selectedKeys = new Set(contextAssociations.map(association => association.component.key))
+    if (selectedKeys.size === 0) {
+      if (contextIds.length > 0) return null
+      const largest = targetComponents.reduce((current, candidate) => {
+        const currentArea = current.bounds.width * current.bounds.height
+        const candidateArea = candidate.bounds.width * candidate.bounds.height
+        return candidateArea > currentArea ? candidate : current
+      })
+      selectedKeys.add(largest.key)
+    }
+    const selectedComponents = targetComponents.filter(component => selectedKeys.has(component.key))
+    const targetBounds = this.getBoundsUnion(selectedComponents.map(component => component.bounds))
+    return targetBounds ? { targetBounds, contextAssociations } : null
+  }
+
+  private getTargetGeometryComponents(targetIds: readonly string[]): TargetGeometryComponent[] {
+    return targetIds.flatMap(countryId => {
+      const country = this.countries.get(countryId)
+      if (!country) return []
+      const pathData = country.path.getAttribute('d') ?? ''
+      const sourceComponents = readSvgPathGeometryComponents(pathData)
+      const expectedComponents = countDrawnPathComponents(pathData)
+      if (expectedComponents > sourceComponents.length) return []
+      const components = sourceComponents.flatMap((component, index) => {
+        const bounds = this.transformBoundsToMap(country.path, component.bounds)
+        if (!bounds) return []
+        return [{
+          key: `${countryId}:${index}`,
+          bounds,
+        }]
+      })
+      if (components.length > 0) return components
+
+      const bounds = this.getCountryBoxInLayer(country.path)
+      return bounds
+        ? [{ key: `${countryId}:fallback`, bounds }]
+        : []
+    })
+  }
+
+  private findClosestTargetComponent(
+    components: readonly TargetGeometryComponent[],
+    contextPath: SVGPathElement,
+  ): TargetGeometryComponent | null {
+    const samples = this.samplePathPoints(contextPath)
+    const contextBounds = this.getCountryBoxInLayer(contextPath)
+    if (samples.length === 0 && !contextBounds) return null
+
+    return components.reduce((closest, candidate) => {
+      const candidateDistance = samples.length > 0
+        ? Math.min(...samples.map(point => this.distanceToBounds(point, candidate.bounds)))
+        : this.distanceBetweenBounds(contextBounds!, candidate.bounds)
+      if (!closest) return { component: candidate, distance: candidateDistance }
+      return candidateDistance < closest.distance
+        ? { component: candidate, distance: candidateDistance }
+        : closest
+    }, null as { component: TargetGeometryComponent; distance: number } | null)?.component ?? null
+  }
+
   private getLocalContextBounds(
     path: SVGPathElement,
     targetBounds: SvgViewBoxRect,
@@ -1178,7 +1273,7 @@ export class SvgMapController {
       const point = samples.reduce((nearest, candidate) => this.distanceToBounds(candidate, targetBounds) < this.distanceToBounds(nearest, targetBounds) ? candidate : nearest)
       return { x: point.x, y: point.y, width: 0, height: 0 }
     }
-    const box = this.getCountryBox(path)[0]
+    const box = this.getCountryBoxInLayer(path)
     if (!box) return null
     const maximumFallbackContextSize = Math.min(sourceWidth, sourceHeight) * 0.2
     if (box.width <= maximumFallbackContextSize && box.height <= maximumFallbackContextSize) return box
@@ -1210,7 +1305,7 @@ export class SvgMapController {
     for (let index = 0; index < TARGET_CENTRIC_CONTEXT_SAMPLE_COUNT; index += 1) {
       try {
         const point = geometry.getPointAtLength(totalLength * index / (TARGET_CENTRIC_CONTEXT_SAMPLE_COUNT - 1))
-        if (Number.isFinite(point.x) && Number.isFinite(point.y)) points.push({ x: point.x, y: point.y })
+        if (Number.isFinite(point.x) && Number.isFinite(point.y)) points.push(this.transformPointToMap(path, { x: point.x, y: point.y }))
       } catch {
         return []
       }
@@ -1222,6 +1317,41 @@ export class SvgMapController {
     const dx = Math.max(bounds.x - point.x, 0, point.x - (bounds.x + bounds.width))
     const dy = Math.max(bounds.y - point.y, 0, point.y - (bounds.y + bounds.height))
     return dx * dx + dy * dy
+  }
+
+  private distanceBetweenBounds(left: SvgViewBoxRect, right: SvgViewBoxRect): number {
+    const dx = Math.max(left.x - (right.x + right.width), 0, right.x - (left.x + left.width))
+    const dy = Math.max(left.y - (right.y + right.height), 0, right.y - (left.y + left.height))
+    return dx * dx + dy * dy
+  }
+
+  private transformPointToMap(path: SVGPathElement, point: SvgPoint): SvgPoint {
+    return this.svg ? transformSourcePointToLayer(path, point, this.svg) ?? point : point
+  }
+
+  private transformBoundsToMap(path: SVGPathElement, bounds: SvgViewBoxRect): SvgViewBoxRect | null {
+    const corners = [
+      { x: bounds.x, y: bounds.y },
+      { x: bounds.x + bounds.width, y: bounds.y },
+      { x: bounds.x, y: bounds.y + bounds.height },
+      { x: bounds.x + bounds.width, y: bounds.y + bounds.height },
+    ].map(point => this.transformPointToMap(path, point))
+    return this.getBoundsAroundPoints(corners)
+  }
+
+  private getBoundsAroundPoints(points: readonly SvgPoint[]): SvgViewBoxRect | null {
+    if (points.length === 0) return null
+    const minX = Math.min(...points.map(point => point.x))
+    const minY = Math.min(...points.map(point => point.y))
+    const maxX = Math.max(...points.map(point => point.x))
+    const maxY = Math.max(...points.map(point => point.y))
+    if (![minX, minY, maxX, maxY].every(Number.isFinite) || maxX <= minX || maxY <= minY) return null
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
+  }
+
+  private getCountryBoxInLayer(path: SVGPathElement): SvgViewBoxRect | null {
+    const box = this.getCountryBox(path)[0]
+    return box ? this.transformBoundsToMap(path, box) ?? box : null
   }
 
   private getBoundsAroundRects(targetBounds: SvgViewBoxRect, rects: readonly SvgViewBoxRect[]): SvgViewBoxRect {
@@ -1268,15 +1398,8 @@ export class SvgMapController {
   }
 
   private getCountryBox(path: SVGPathElement): SvgViewBoxRect[] {
-    let box: DOMRect
-    try {
-      box = path.getBBox()
-    } catch {
-      return []
-    }
-    if (![box.x, box.y, box.width, box.height].every(Number.isFinite)) return []
-    if (box.width <= 0 || box.height <= 0) return []
-    return [{ x: box.x, y: box.y, width: box.width, height: box.height }]
+    const box = readSvgGeometryBounds(path)
+    return box && box.width > 0 && box.height > 0 ? [box] : []
   }
 
   private getBoundsUnion(boxes: readonly SvgViewBoxRect[]): SvgViewBoxRect | null {
