@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { AnswerMode } from '@/core/types'
 import { useSettings } from '@/app/settings/SettingsContext'
 import type { Continent, CountryId } from '@/features/world-countries/data/countries'
@@ -75,6 +75,7 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
   const [setupContinent, setSetupContinent] = useState<Continent | null>(null)
   const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null)
   const [activeRun, setActiveRun] = useState<ActiveDrillRun | null>(null)
+  const launchGeneration = useRef(0)
   const geographyRevision = useWorldCountriesGeographyRevision()
   const learningRevision = useWorldCountriesSubregionLearningRevision()
   const selectionMetadata = useMemo<DrillSelectionMetadata>(() => {
@@ -122,6 +123,7 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
   }, [activeRun, activeRunMatchesPopulation, phase])
 
   const updatePreferences = useCallback((next: WorldCountriesDrillPreferences) => {
+    launchGeneration.current += 1
     const normalized = {
       ...normalizeDrillSelection(next, activeCountries, selectionMetadata),
       mode: next.mode,
@@ -132,7 +134,9 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
   }, [activeCountries, selectionMetadata])
 
   const startSession = useCallback((startPreferences: WorldCountriesDrillPreferences, { persistPreferences = true, interaction = 'recall', activity = 'drill', skills, practiceMode, countryIds }: StartSessionOptions = {}) => {
+    const generation = ++launchGeneration.current
     const applyLaunch = (launch: WorldCountriesDrillSessionLaunch | null) => {
+      if (launchGeneration.current !== generation) return
       if (!launch || launch.activity === 'practice' && !launch.practiceMode) return
       if (persistPreferences) saveDrillPreferences(startPreferences)
       setActiveRun({
@@ -187,6 +191,7 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
   }, [effectivePreferences, startSession])
 
   const startLearning = useCallback((mode: WorldCountriesLearningMode) => {
+    const generation = ++launchGeneration.current
     const launch = resolveDrillLearningRunLaunch({
       mode,
       selectedSubregionIds: effectivePreferences.subregionIds,
@@ -198,6 +203,7 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
       subregionMetadata: selectionMetadata.subregions ?? [],
     })
     const applyLaunch = (run: DrillLearningRun | null) => {
+      if (launchGeneration.current !== generation) return
       if (!run) return
       setLearningRun(run)
       setPurpose('learn-practise')
@@ -216,6 +222,7 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
     }
     setLearningRun(null)
     setSetupContinent(null)
+    launchGeneration.current += 1
     setPhase('setup')
   }, [learningRun])
 
@@ -263,6 +270,7 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
   }, [activeSession])
 
   const exitToSetup = useCallback(() => {
+    launchGeneration.current += 1
     setActiveRun(null)
     setLearningRun(null)
     setPhase('setup')
@@ -271,11 +279,16 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
   }, [])
 
   const selectContinent = useCallback((continent: Continent) => {
+    launchGeneration.current += 1
     setSetupContinent(continent)
     setHoveredGroupId(null)
   }, [])
 
-  const goToWorld = useCallback(() => { setSetupContinent(null); setHoveredGroupId(null) }, [])
+  const goToWorld = useCallback(() => {
+    launchGeneration.current += 1
+    setSetupContinent(null)
+    setHoveredGroupId(null)
+  }, [])
   const handleSelectionChange = useCallback((selection: WorldCountriesDrillSelection) => {
     setProficiencySelection([])
     updatePreferences({ ...selection, mode: preferences.mode, order: preferences.order })
@@ -289,11 +302,20 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
     updatePreferences({ ...clearDrillSelection(), mode: preferences.mode, order: preferences.order })
   }, [preferences.mode, preferences.order, updatePreferences])
   const handleProficiencySelectionChange = useCallback((selection: WorldCountriesProficiencySelection) => {
+    launchGeneration.current += 1
     setProficiencySelection(selection)
     if (selection.length > 0) updatePreferences({ ...clearDrillSelection(), mode: preferences.mode, order: preferences.order })
   }, [preferences.mode, preferences.order, updatePreferences])
   const handleModeChange = useCallback((mode: WorldCountriesDrillMode) => updatePreferences({ ...preferences, mode }), [preferences, updatePreferences])
   const handleOrderChange = useCallback((order: WorldCountriesDrillOrder) => updatePreferences({ ...preferences, order }), [preferences, updatePreferences])
+  const handlePurposeChange = useCallback((nextPurpose: ActivityPurpose) => {
+    launchGeneration.current += 1
+    setPurpose(nextPurpose)
+  }, [])
+  const handleLearnPracticeModeChange = useCallback((mode: WorldCountriesLearnPracticeMode) => {
+    launchGeneration.current += 1
+    setLearnPracticeMode(mode)
+  }, [])
   const learningContinent = learningScope.continent ?? setupContinent ?? null
 
   if (phase === 'learning' && learningRun && learningScope.entries.length > 0 && learningContinent) {
@@ -334,8 +356,8 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
     onProficiencySelectionChange={handleProficiencySelectionChange}
     onModeChange={handleModeChange}
     onOrderChange={handleOrderChange}
-    onPurposeChange={setPurpose}
-    onLearnPracticeModeChange={setLearnPracticeMode}
+    onPurposeChange={handlePurposeChange}
+    onLearnPracticeModeChange={handleLearnPracticeModeChange}
     onStart={startDrill}
     onLearnPracticeStart={mode => isWorldCountriesLearningMode(mode) ? startLearning(mode) : startPractice(mode)}
     onWorld={goToWorld}

@@ -78,6 +78,26 @@ vi.mock('@/features/world-countries/learning/flows/CapitalLearningFlow', () => (
 
 let root: Root | null = null
 
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  const promise = new Promise<T>(resolvePromise => {
+    resolve = resolvePromise
+  })
+  return { promise, resolve }
+}
+
+function renderDrill() {
+  const mount = document.createElement('div')
+  document.body.append(mount)
+  act(() => {
+    root = createRoot(mount)
+    root.render(createElement(SettingsProvider, null,
+      createElement(WorldCountriesDrill, { answerMode: 'typing' }),
+    ))
+  })
+  return mount
+}
+
 afterEach(() => {
   act(() => root?.unmount())
   root = null
@@ -281,6 +301,118 @@ describe('WorldCountriesDrill learning integration', () => {
     expect(drillSessionProps.current?.activity).toBeUndefined()
     expect(drillSessionProps.current?.interaction).toBe('location-click')
     expect((drillSessionProps.current?.state as DrillSessionState).skills).toEqual(['capital-to-country'])
+  })
+
+  it('does not let an older proficiency Drill replace a newer Practice launch', async () => {
+    const olderProgress = createDeferred<Map<string, never>>()
+    const newerProgress = createDeferred<Map<string, never>>()
+    loadRecallProgressMock
+      .mockImplementationOnce(() => olderProgress.promise)
+      .mockImplementationOnce(() => newerProgress.promise)
+    resolveProficiencyScopeMock
+      .mockReturnValueOnce({ counts: { weak: 1, developing: 0 }, countryIds: ['BE'], countries: [{ id: 'BE' }] } as never)
+      .mockReturnValueOnce({ counts: { weak: 1, developing: 0 }, countryIds: ['AL'], countries: [{ id: 'AL' }] } as never)
+
+    const mount = renderDrill()
+    act(() => (drillSetupProps.current?.onSelectContinent as (continent: string) => void)('Europe'))
+    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="select-proficiency"]')!.click())
+    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="start-drill"]')!.click())
+    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="start-locate-capitals"]')!.click())
+
+    await act(async () => {
+      newerProgress.resolve(new Map<string, never>())
+      await newerProgress.promise
+    })
+    expect(drillSessionProps.current?.interaction).toBe('location-click')
+    expect((drillSessionProps.current?.state as DrillSessionState).countryIds).toEqual(['BE'])
+
+    await act(async () => {
+      olderProgress.resolve(new Map<string, never>())
+      await olderProgress.promise
+    })
+    expect(drillSessionProps.current?.interaction).toBe('location-click')
+    expect((drillSessionProps.current?.state as DrillSessionState).countryIds).toEqual(['BE'])
+  })
+
+  it('keeps the newest of two out-of-order proficiency Drill launches', async () => {
+    const olderProgress = createDeferred<Map<string, never>>()
+    const newerProgress = createDeferred<Map<string, never>>()
+    loadRecallProgressMock
+      .mockImplementationOnce(() => olderProgress.promise)
+      .mockImplementationOnce(() => newerProgress.promise)
+    resolveProficiencyScopeMock
+      .mockReturnValueOnce({ counts: { weak: 1, developing: 0 }, countryIds: ['BE'], countries: [{ id: 'BE' }] } as never)
+      .mockReturnValueOnce({ counts: { weak: 1, developing: 0 }, countryIds: ['AL'], countries: [{ id: 'AL' }] } as never)
+
+    const mount = renderDrill()
+    act(() => (drillSetupProps.current?.onSelectContinent as (continent: string) => void)('Europe'))
+    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="select-proficiency"]')!.click())
+    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="start-drill"]')!.click())
+    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="start-drill"]')!.click())
+
+    await act(async () => {
+      newerProgress.resolve(new Map<string, never>())
+      await newerProgress.promise
+    })
+    expect((drillSessionProps.current?.state as DrillSessionState).countryIds).toEqual(['BE'])
+
+    await act(async () => {
+      olderProgress.resolve(new Map<string, never>())
+      await olderProgress.promise
+    })
+    expect((drillSessionProps.current?.state as DrillSessionState).countryIds).toEqual(['BE'])
+  })
+
+  it('does not let an older proficiency Drill replace a newer Learning launch', async () => {
+    const olderProgress = createDeferred<Map<string, never>>()
+    const newerProgress = createDeferred<Map<string, never>>()
+    loadRecallProgressMock
+      .mockImplementationOnce(() => olderProgress.promise)
+      .mockImplementationOnce(() => newerProgress.promise)
+    resolveProficiencyScopeMock
+      .mockReturnValueOnce({ counts: { weak: 1, developing: 0 }, countryIds: ['BE'], countries: [{ id: 'BE' }] } as never)
+      .mockReturnValueOnce({ counts: { weak: 1, developing: 0 }, countryIds: ['AL'], countries: [{ id: 'AL' }] } as never)
+
+    const mount = renderDrill()
+    act(() => (drillSetupProps.current?.onSelectContinent as (continent: string) => void)('Europe'))
+    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="select-proficiency"]')!.click())
+    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="start-drill"]')!.click())
+    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="start-capital-learning"]')!.click())
+
+    await act(async () => {
+      newerProgress.resolve(new Map<string, never>())
+      await newerProgress.promise
+    })
+    expect(mount.querySelector('[data-testid="capital-learning"]')).not.toBeNull()
+    expect((capitalFlowProps.current?.entries as readonly { id: string }[]).map(entry => entry.id)).toEqual(['BE'])
+
+    await act(async () => {
+      olderProgress.resolve(new Map<string, never>())
+      await olderProgress.promise
+    })
+    expect(mount.querySelector('[data-testid="capital-learning"]')).not.toBeNull()
+    expect((capitalFlowProps.current?.entries as readonly { id: string }[]).map(entry => entry.id)).toEqual(['BE'])
+    expect(mount.querySelector('[data-testid="practice-session"]')).toBeNull()
+  })
+
+  it('does not resurrect an abandoned proficiency launch after returning to World setup', async () => {
+    const pendingProgress = createDeferred<Map<string, never>>()
+    loadRecallProgressMock.mockImplementationOnce(() => pendingProgress.promise)
+    resolveProficiencyScopeMock.mockReturnValue({ counts: { weak: 1, developing: 0 }, countryIds: ['AL'], countries: [{ id: 'AL' }] } as never)
+
+    const mount = renderDrill()
+    act(() => (drillSetupProps.current?.onSelectContinent as (continent: string) => void)('Europe'))
+    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="select-proficiency"]')!.click())
+    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="start-drill"]')!.click())
+    act(() => (drillSetupProps.current?.onWorld as () => void)())
+
+    await act(async () => {
+      pendingProgress.resolve(new Map<string, never>())
+      await pendingProgress.promise
+    })
+    expect(mount.querySelector('[data-testid="start-drill"]')).not.toBeNull()
+    expect(mount.querySelector('[data-testid="practice-session"]')).toBeNull()
+    expect(mount.querySelector('[data-testid="capital-learning"]')).toBeNull()
   })
 
   it('keeps a World-wide selection while navigating and advances Learning across Continents', () => {
