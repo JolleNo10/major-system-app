@@ -2,6 +2,30 @@ import type { Country, CountryId } from '@/features/world-countries/data/countri
 import { getReciteProgressOutcome, type WorldCountriesReciteProgress } from './reciteProgress'
 import type { ReciteCountryOutcome, ReciteMode } from './reciteSession'
 
+export type ReciteMapAssistance = 'visible' | 'reveal'
+
+export function getReciteModeLabel(mode: ReciteMode): string {
+  switch (mode) {
+    case 'countries':
+      return 'Countries'
+    case 'countries-capitals':
+      return 'Countries + Capitals'
+    case 'countries-from-capitals':
+      return 'Countries from Capitals'
+  }
+  return mode
+}
+
+export function getReciteAssistanceLabel(assistance: ReciteMapAssistance): string {
+  switch (assistance) {
+    case 'visible':
+      return 'Visible'
+    case 'reveal':
+      return 'Reveal as you go'
+  }
+  return assistance
+}
+
 export const RECITE_CONTEXT_GREY = '#303036'
 
 export const RECITE_STATUS_COLORS = {

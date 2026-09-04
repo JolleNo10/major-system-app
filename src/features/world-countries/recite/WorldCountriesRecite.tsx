@@ -27,7 +27,8 @@ import {
 } from './reciteProgress'
 import { ReciteSession, type ActiveReciteRun } from './ReciteSessionView'
 import { ReciteSessionRails } from './ReciteSessionRails'
-import { ReciteSetup, type ReciteMapAssistance } from './ReciteSetup'
+import { ReciteSetup } from './ReciteSetup'
+import type { ReciteMapAssistance } from './recitePresentation'
 
 type RecitePhase = 'setup' | 'session' | 'complete'
 

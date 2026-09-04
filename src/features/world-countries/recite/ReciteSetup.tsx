@@ -9,10 +9,8 @@ import { GeographySelectionRail } from '@/features/world-countries/ui/GeographyS
 import { MapSurface } from '@/features/world-countries/ui/MapSurface'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
 import type { WorldCountriesReciteProgress } from './reciteProgress'
-import { createReciteSetupCountryColors, createReciteSetupCountryDescriptions, getReciteStatusDescription, RECITE_STATUS_COLORS, type ReciteStatus } from './recitePresentation'
+import { createReciteSetupCountryColors, createReciteSetupCountryDescriptions, getReciteModeLabel, getReciteStatusDescription, RECITE_STATUS_COLORS, type ReciteMapAssistance, type ReciteStatus } from './recitePresentation'
 import type { ReciteMode } from './reciteSession'
-
-export type ReciteMapAssistance = 'visible' | 'reveal'
 
 export const RECITE_MODE_DEFINITIONS: readonly {
   id: ReciteMode
@@ -32,14 +30,6 @@ export const RECITE_ASSISTANCE_DEFINITIONS: readonly {
   { id: 'visible', label: 'Visible', description: 'Keep Country geography visible without names or status history.' },
   { id: 'reveal', label: 'Reveal as you go', description: 'Reveal each Country only after its Country prompt is resolved.' },
 ]
-
-export function getReciteModeLabel(mode: ReciteMode): string {
-  return RECITE_MODE_DEFINITIONS.find(candidate => candidate.id === mode)?.label ?? mode
-}
-
-export function getReciteAssistanceLabel(assistance: ReciteMapAssistance): string {
-  return RECITE_ASSISTANCE_DEFINITIONS.find(candidate => candidate.id === assistance)?.label ?? assistance
-}
 
 export interface ReciteSetupProps {
   activeCountries: readonly Country[]

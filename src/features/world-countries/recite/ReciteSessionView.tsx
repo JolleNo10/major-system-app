@@ -15,8 +15,7 @@ import {
   type RecitePromptView,
   type ReciteSessionState,
 } from './reciteSession'
-import { createReciteActiveCountryColors } from './recitePresentation'
-import { getReciteModeLabel, type ReciteMapAssistance } from './ReciteSetup'
+import { createReciteActiveCountryColors, getReciteModeLabel, type ReciteMapAssistance } from './recitePresentation'
 
 export interface ActiveReciteRun {
   subregionIds: readonly SubregionId[]

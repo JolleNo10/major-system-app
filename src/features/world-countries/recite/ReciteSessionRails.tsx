@@ -4,7 +4,7 @@ import type { Continent } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition, type SubregionDefinition } from '@/features/world-countries/data/subregions'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
 import type { ActiveReciteRun, ReciteSessionPhase } from './ReciteSessionView'
-import { getReciteAssistanceLabel, getReciteModeLabel } from './ReciteSetup'
+import { getReciteAssistanceLabel, getReciteModeLabel } from './recitePresentation'
 import { getCurrentRecitePrompt } from './reciteSession'
 
 export function ReciteSessionRails({ run, phase, onExit }: { run: ActiveReciteRun; phase: ReciteSessionPhase; onExit: () => void }) {
