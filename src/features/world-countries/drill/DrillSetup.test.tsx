@@ -266,7 +266,9 @@ describe('DrillSetup activity boundary', () => {
     const loadingMount = renderSetup({ entries: scopeEntries, selection: createDrillSelection([], scopeEntries), proficiencySelection: ['weak'] })
     renderLatestRight()
     expect(loadingMount.querySelector('[aria-label="Drill scope"]')).toBeNull()
-    expect([...loadingMount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Choose at least one Subregion')?.disabled).toBe(true)
+    const start = [...loadingMount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Loading proficiency…')
+    expect(start?.disabled).toBe(true)
+    expect(loadingMount.textContent).not.toContain('Choose at least one Subregion')
     await act(async () => { resolveLoad?.(new Map()); await Promise.resolve() })
   })
 
@@ -278,6 +280,9 @@ describe('DrillSetup activity boundary', () => {
     renderLatestRight()
     expect(noMatchMount.querySelector('[aria-label="Drill scope"]')).toBeNull()
     expect(noMatchMount.textContent).toContain('No Countries currently match the selected proficiency.')
+    const start = [...noMatchMount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'No matching Countries')
+    expect(start?.disabled).toBe(true)
+    expect(noMatchMount.textContent).not.toContain('Choose at least one Subregion')
   })
 
   it('updates the scope confirmation when geographic selection changes', async () => {
