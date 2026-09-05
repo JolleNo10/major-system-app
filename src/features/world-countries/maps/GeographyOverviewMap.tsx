@@ -19,6 +19,7 @@ import { SvgMapView, type SvgMapCountry, type SvgMapLoadState } from './SvgMapVi
 
 const GEOGRAPHY_OVERVIEW_HOVER_FILL = '#0f766e'
 const GEOGRAPHY_OVERVIEW_HOVER_STROKE = '#d4d4d8'
+const GEOGRAPHY_OVERVIEW_SELECTION_STROKE = '#22d3ee'
 const GEOGRAPHY_OVERVIEW_HOVER_STROKE_WIDTH = '2px'
 
 export interface GeographyOverviewMapProps {
@@ -157,10 +158,15 @@ export function GeographyOverviewMap({
   const namedCountryIdSet = useMemo(() => new Set(namedCountryIds), [namedCountryIds])
   const namedSvgIds = useMemo(
     () => resolveCountriesToSvgIds(
-      visibleCountries.filter(country => namedCountryIdSet.has(country.id)),
+      [
+        ...visibleCountries.filter(country => namedCountryIdSet.has(country.id)),
+        ...(level === 'continent' && selectedCountryIds === undefined && selectedSubregionIds?.length === 1
+          ? selectedCountries
+          : []),
+      ],
       mapCountryIds,
     ),
-    [mapCountryIds, namedCountryIdSet, visibleCountries],
+    [level, mapCountryIds, namedCountryIdSet, selectedCountryIds, selectedCountries, selectedSubregionIds, visibleCountries],
   )
   const hiddenCountryIdSet = useMemo(() => new Set(hiddenCountryIds), [hiddenCountryIds])
   const explicitlyHiddenSvgIds = useMemo(
@@ -189,6 +195,7 @@ export function GeographyOverviewMap({
   const hasContinentScope = level === 'continent'
   const hasSelectedCountries = selectedCountryIds !== undefined
   const hasSelectedSubregions = selectedSubregionIds !== undefined && selectedSubregionIds.length > 0
+  const hasGeographicSelection = hasContinentScope && selectedCountryIds === undefined && selectedSubregionIds !== undefined
   const hasHoveredSubregionScope = level === 'continent' && Boolean(activeHoveredGroupId)
   const scopedSvgIds = useMemo(() => focusedSubregionId
     ? focusSvgIds
@@ -241,15 +248,27 @@ export function GeographyOverviewMap({
     () => hoveredGroupSvgIds[0] ?? null,
     [hoveredGroupSvgIds],
   )
+  const selectedGroupIds = useMemo(() => {
+    if (!hasGeographicSelection) return new Set<string>()
+    const selectedIds = new Set(selectedSvgIds)
+    return new Set(
+      hoverGroups
+        .filter(group => group.countryIds.some(countryId => selectedIds.has(countryId)))
+        .map(group => group.id),
+    )
+  }, [hasGeographicSelection, hoverGroups, selectedSvgIds])
   const groupOutlines = useMemo<readonly SvgMapGroupOutline[]>(
-    () => hoverGroups.map(group => ({
-      id: group.id,
-      countryIds: group.countryIds,
-      stroke: GEOGRAPHY_OVERVIEW_HOVER_STROKE,
-      strokeWidth: GEOGRAPHY_OVERVIEW_HOVER_STROKE_WIDTH,
-      visible: group.id === activeHoveredGroupId,
-    })),
-    [activeHoveredGroupId, hoverGroups],
+    () => hoverGroups.map(group => {
+      const selected = selectedGroupIds.has(group.id)
+      return {
+        id: group.id,
+        countryIds: group.countryIds,
+        stroke: selected ? GEOGRAPHY_OVERVIEW_SELECTION_STROKE : GEOGRAPHY_OVERVIEW_HOVER_STROKE,
+        strokeWidth: GEOGRAPHY_OVERVIEW_HOVER_STROKE_WIDTH,
+        visible: selected || group.id === activeHoveredGroupId,
+      }
+    }),
+    [activeHoveredGroupId, hoverGroups, selectedGroupIds],
   )
   const explicitZoomSvgIds = useMemo(
     () => zoomCountryIds === undefined
