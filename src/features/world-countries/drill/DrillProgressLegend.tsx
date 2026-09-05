@@ -9,10 +9,11 @@ import {
 export function DrillProgressLegend({ mode }: { mode: WorldCountriesDrillMode }) {
   return (
     <ProgressMapLegend
-      title="Progress"
+      title="Map status"
       entries={getDrillProgressLegendEntries(mode)}
       explanation={getDrillProgressExplanation(mode)}
-      mapCues="Map cues: a neutral outline is temporary hover or recall focus, not progress; Countries outside the selected scope use context grey."
+      summary="Learning Readiness is used until a Country has relevant evidence for this Drill mode."
+      mapCues="Map cues: semantic fill is status; on Continent maps, a cyan outline marks selected Subregions; temporary hover treatment and Country names support geographic exploration; Countries outside the selected scope use context grey."
       groups={[
         {
           title: 'No Drill evidence',
@@ -20,7 +21,7 @@ export function DrillProgressLegend({ mode }: { mode: WorldCountriesDrillMode })
           explanation: 'Learning Readiness is shown only until the selected Drill perspective has relevant evidence.',
         },
         {
-          title: 'Drill proficiency',
+          title: 'With Drill evidence',
           entries: getDrillProgressLegendEntries(mode),
           explanation: getDrillProgressExplanation(mode),
         },

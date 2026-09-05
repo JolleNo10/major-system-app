@@ -1,7 +1,7 @@
 import { useId, useMemo, type ReactNode } from 'react'
 import { useRails } from '@/app/layout/PageLayoutContext'
 import { countries, type Continent, type Country } from '@/features/world-countries/data/countries'
-import type { SubregionDefinition, SubregionId } from '@/features/world-countries/data/subregions'
+import { getSubregionDefinition, type SubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
 import { getContinents, getSubregionDefinitionsForContinent } from '@/features/world-countries/geography/queries'
 import { getContinentSubregionScopeCounts } from '@/features/world-countries/geography/subregionScope'
 import { deriveWorldCountriesLearningReadiness, getWorldCountriesLearningStateList, type WorldCountriesLearningReadiness } from '@/features/world-countries/learning/learningReadiness'
@@ -13,7 +13,7 @@ import { GeographySelectionRail } from '@/features/world-countries/ui/GeographyS
 import { InlineOrderEditor } from '@/features/world-countries/ui/InlineOrderEditor'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
 import { WORLD_COUNTRIES_DRILL_MODES, type WorldCountriesDrillMode } from './drillModes'
-import { getDrillSelectionCounts, type DrillSelectionMetadata, type WorldCountriesDrillSelection } from './drillSelection'
+import { getContinentSelectionState, getDrillSelectionCounts, type DrillSelectionMetadata, type WorldCountriesDrillSelection, type WorldCountriesDrillSelectionCounts } from './drillSelection'
 import type { WorldCountriesDrillOrder } from './drillOrder'
 import { isWorldCountriesLearningMode, WORLD_COUNTRIES_LEARNING_MODES } from '@/features/world-countries/learning/learnPracticeModes'
 import { WORLD_COUNTRIES_PRACTICE_MODES } from '@/features/world-countries/practice/practiceModes'
@@ -117,6 +117,13 @@ export function DrillSetupRails({
   const selectedCount = level === 'continent' && continent
     ? getContinentSubregionScopeCounts(selection, continent, entries, selectionMetadata).selectedSubregions
     : selectionCounts.subregions
+  const scopeSummary = proficiencySelection.length > 0
+    ? !proficiencyLoading && proficiencyScope.countries.length > 0
+      ? formatProficiencyScopeSummary(proficiencySelection, proficiencyScope.countries.length)
+      : undefined
+    : selectionCounts.countries > 0
+      ? formatGeographyScopeSummary(selection, selectionCounts, entries, selectionMetadata, worldOrder)
+      : undefined
 
   const rails = useMemo(() => ({
     left: (
@@ -148,10 +155,10 @@ export function DrillSetupRails({
         {level === 'continent' && <ProficiencyScopePanel selection={proficiencySelection} scope={proficiencyScope} loading={proficiencyLoading} onChange={onProficiencySelectionChange} />}
       </section>
     ),
-    right: <ActivityPurposePanel purpose={purpose} groupName={purposeGroupName} onChange={onPurposeChange}>{purpose === 'drill' ? <CurrentDrillPanel level={level} mode={mode} order={order} groupName={modeGroupName} onModeChange={onModeChange} onOrderChange={onOrderChange} canStart={proficiencySelection.length > 0 ? !proficiencyLoading && proficiencyScope.countries.length > 0 : selectionCounts.countries > 0} noMatching={proficiencySelection.length > 0 && !proficiencyLoading && proficiencyScope.countries.length === 0} onStart={onStart} /> : purpose === 'learn-practise' ? <LearnPracticePanel selectedCount={selectedCount} selectedCountryCount={selectionCounts.countries} level={level} selectedStates={selectedStates} countriesIncomplete={countriesIncomplete} mode={learnPracticeMode} proficiencySelected={proficiencySelection.length > 0} proficiencyLoading={proficiencyLoading} proficiencyCountryCount={proficiencyScope.countries.length} onModeChange={onLearnPracticeModeChange} onStart={onLearnPracticeStart} /> : null}</ActivityPurposePanel>,
+    right: <ActivityPurposePanel purpose={purpose} groupName={purposeGroupName} onChange={onPurposeChange}>{purpose === 'drill' ? <CurrentDrillPanel level={level} mode={mode} order={order} groupName={modeGroupName} onModeChange={onModeChange} onOrderChange={onOrderChange} scopeSummary={scopeSummary} canStart={proficiencySelection.length > 0 ? !proficiencyLoading && proficiencyScope.countries.length > 0 : selectionCounts.countries > 0} noMatching={proficiencySelection.length > 0 && !proficiencyLoading && proficiencyScope.countries.length === 0} onStart={onStart} /> : purpose === 'learn-practise' ? <LearnPracticePanel selectedCount={selectedCount} selectedCountryCount={selectionCounts.countries} level={level} selectedStates={selectedStates} countriesIncomplete={countriesIncomplete} mode={learnPracticeMode} proficiencySelected={proficiencySelection.length > 0} proficiencyLoading={proficiencyLoading} proficiencyCountryCount={proficiencyScope.countries.length} onModeChange={onLearnPracticeModeChange} onStart={onLearnPracticeStart} /> : null}</ActivityPurposePanel>,
     leftLabel: 'Geography',
     rightLabel: purpose === 'drill' ? 'Drill' : purpose === 'learn-practise' ? 'Learn & Practise' : 'Choose activity',
-  }), [continent, countriesIncomplete, editingOrder, entries, hoveredGroupId, learnPracticeMode, level, mode, modeGroupName, onBeginOrderEdit, onCancelOrderEdit, onClearWorld, onDraftSubregionOrder, onDraftWorldOrder, onHoverGroup, onLearnPracticeModeChange, onLearnPracticeStart, onModeChange, onOrderChange, onProficiencySelectionChange, onPurposeChange, onSaveSubregionOrder, onSaveWorldOrder, onSelectAllWorld, onSelectContinent, onSelectEntireContinent, onStart, onToggleContinent, onToggleSubregion, onWorld, order, purpose, purposeGroupName, proficiencyLoading, proficiencyScope, proficiencySelection, selectedCount, selectedStates, selection, selectionCounts, selectionMetadata, subregions, worldOrder])
+  }), [continent, countriesIncomplete, editingOrder, entries, hoveredGroupId, learnPracticeMode, level, mode, modeGroupName, onBeginOrderEdit, onCancelOrderEdit, onClearWorld, onDraftSubregionOrder, onDraftWorldOrder, onHoverGroup, onLearnPracticeModeChange, onLearnPracticeStart, onModeChange, onOrderChange, onProficiencySelectionChange, onPurposeChange, onSaveSubregionOrder, onSaveWorldOrder, onSelectAllWorld, onSelectContinent, onSelectEntireContinent, onStart, onToggleContinent, onToggleSubregion, onWorld, order, purpose, purposeGroupName, proficiencyLoading, proficiencyScope, proficiencySelection, scopeSummary, selectedCount, selectedStates, selection, selectionCounts, selectionMetadata, subregions, worldOrder])
   useRails(rails)
   return null
 }
@@ -166,8 +173,28 @@ function PurposeOption({ candidate, selected, compact, onSelect, groupName }: { 
   return <label title={candidate.description} className={`${compact ? 'flex min-h-[42px] items-center justify-center text-center' : 'flex min-h-[92px] flex-col items-start text-left'} w-full cursor-pointer rounded-lg border px-3 py-2.5 text-sm transition-colors focus-within:ring-2 focus-within:ring-cyan-400/70 ${selected ? 'border-cyan-500 bg-cyan-500/15 text-cyan-100' : 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-cyan-600 hover:text-zinc-100'}`}><input type="radio" name={groupName} value={candidate.id} checked={selected} onChange={() => onSelect(candidate.id)} aria-describedby={descriptionId} className="sr-only" /><span className="flex items-center gap-2 font-semibold">{selected && <span aria-hidden="true" className="text-cyan-400">✓</span>}{candidate.label}</span><span id={descriptionId} className={compact ? 'sr-only' : 'mt-1 text-xs leading-relaxed text-zinc-500'}>{candidate.description}</span></label>
 }
 
-function CurrentDrillPanel({ level, mode, order, groupName, onModeChange, onOrderChange, canStart, noMatching, onStart }: { level: 'world' | 'continent'; mode: WorldCountriesDrillMode; order: WorldCountriesDrillOrder; groupName: string; onModeChange: (mode: WorldCountriesDrillMode) => void; onOrderChange: (order: WorldCountriesDrillOrder) => void; canStart: boolean; noMatching: boolean; onStart: () => void }) {
-  return <section className="space-y-4" aria-labelledby="world-countries-current-drill-heading"><h2 id="world-countries-current-drill-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Drill mode</h2><div><fieldset className="space-y-2">{WORLD_COUNTRIES_DRILL_MODES.map(candidate => <ModeOption key={candidate.id} candidate={candidate} selected={candidate.id === mode} onSelect={onModeChange} groupName={groupName} />)}</fieldset></div><div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-3"><div className="flex items-center justify-between gap-3"><h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Drill order</h3><div className="inline-flex rounded-md border border-zinc-800 bg-zinc-950/60 p-0.5" role="radiogroup" aria-label="Drill order"><OrderOption order="ordered" selected={order === 'ordered'} onSelect={onOrderChange}>In order</OrderOption><OrderOption order="random" selected={order === 'random'} onSelect={onOrderChange}>Random</OrderOption></div></div></div>{noMatching && <p className="text-sm text-amber-300" role="alert">No Countries currently match the selected proficiency.</p>}<button type="button" disabled={!canStart} onClick={() => onStart()} className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40">{canStart ? 'Start Drill' : getSelectionPrompt(level)}</button></section>
+function CurrentDrillPanel({ level, mode, order, groupName, onModeChange, onOrderChange, scopeSummary, canStart, noMatching, onStart }: { level: 'world' | 'continent'; mode: WorldCountriesDrillMode; order: WorldCountriesDrillOrder; groupName: string; onModeChange: (mode: WorldCountriesDrillMode) => void; onOrderChange: (order: WorldCountriesDrillOrder) => void; scopeSummary?: string; canStart: boolean; noMatching: boolean; onStart: () => void }) {
+  return <section className="space-y-4" aria-labelledby="world-countries-current-drill-heading"><h2 id="world-countries-current-drill-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Drill mode</h2><div><fieldset className="space-y-2">{WORLD_COUNTRIES_DRILL_MODES.map(candidate => <ModeOption key={candidate.id} candidate={candidate} selected={candidate.id === mode} onSelect={onModeChange} groupName={groupName} />)}</fieldset></div><div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-3"><div className="flex items-center justify-between gap-3"><h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Drill order</h3><div className="inline-flex rounded-md border border-zinc-800 bg-zinc-950/60 p-0.5" role="radiogroup" aria-label="Drill order"><OrderOption order="ordered" selected={order === 'ordered'} onSelect={onOrderChange}>In order</OrderOption><OrderOption order="random" selected={order === 'random'} onSelect={onOrderChange}>Random</OrderOption></div></div></div>{noMatching && <p className="text-sm text-amber-300" role="alert">No Countries currently match the selected proficiency.</p>}{scopeSummary && <div role="group" aria-label="Drill scope" className="rounded-lg border border-zinc-800 bg-zinc-950/30 px-3 py-2"><h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Scope</h3><p className="mt-1 text-sm font-semibold text-zinc-200">{scopeSummary}</p></div>}<button type="button" disabled={!canStart} onClick={() => onStart()} className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40">{canStart ? 'Start Drill' : getSelectionPrompt(level)}</button></section>
+}
+
+function formatGeographyScopeSummary(selection: WorldCountriesDrillSelection, counts: WorldCountriesDrillSelectionCounts, entries: readonly Country[], metadata: DrillSelectionMetadata, worldOrder: readonly Continent[]): string {
+  const entireContinent = counts.continents === 1
+    ? worldOrder.find(continent => getContinentSelectionState(selection, continent, entries, metadata) === 'all')
+    : undefined
+  if (entireContinent) return `${entireContinent} · ${formatCountryCount(counts.countries)}`
+  if (counts.subregions === 1) return `${getSubregionDefinition(selection.subregionIds[0]!).label} · ${formatCountryCount(counts.countries)}`
+  return `${counts.subregions} Subregions · ${formatCountryCount(counts.countries)}`
+}
+
+function formatProficiencyScopeSummary(selection: WorldCountriesProficiencySelection, countryCount: number): string {
+  const labels = (['weak', 'developing'] as const)
+    .filter(filter => selection.includes(filter))
+    .map(filter => filter === 'weak' ? 'Weak' : 'Developing')
+  return `${labels.join(' + ')} · ${formatCountryCount(countryCount)}`
+}
+
+function formatCountryCount(count: number): string {
+  return `${count} ${count === 1 ? 'Country' : 'Countries'}`
 }
 
 function LearnPracticePanel({ level, selectedCount, selectedCountryCount, selectedStates, countriesIncomplete, mode, proficiencySelected, proficiencyLoading, proficiencyCountryCount, onModeChange, onStart }: { level: 'world' | 'continent'; selectedCount: number; selectedCountryCount: number; selectedStates: readonly (SubregionLearningState | undefined)[]; countriesIncomplete: boolean; mode: WorldCountriesLearnPracticeMode; proficiencySelected: boolean; proficiencyLoading: boolean; proficiencyCountryCount: number; onModeChange: (mode: WorldCountriesLearnPracticeMode) => void; onStart: (mode: WorldCountriesLearnPracticeMode) => void }) {

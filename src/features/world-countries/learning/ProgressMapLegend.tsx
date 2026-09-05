@@ -15,6 +15,7 @@ export function ProgressMapLegend({
   entries,
   explanation,
   mapCues,
+  summary,
   groups,
   ariaLabel = 'Progress map legend',
   collapsibleDetails = false,
@@ -23,6 +24,7 @@ export function ProgressMapLegend({
   entries: readonly ProgressMapLegendEntry[]
   explanation: string
   mapCues: string
+  summary?: string
   groups?: readonly ProgressMapLegendGroup[]
   ariaLabel?: string
   collapsibleDetails?: boolean
@@ -75,6 +77,7 @@ export function ProgressMapLegend({
           </div>
         ))}
       </div>
+      {summary && <p className="text-zinc-400" data-progress-summary>{summary}</p>}
       {collapsibleDetails ? (
         <details className="border-t border-zinc-800 pt-2">
           <summary className="cursor-pointer select-none font-medium text-zinc-400 transition-colors hover:text-zinc-200">
