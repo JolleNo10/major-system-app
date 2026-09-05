@@ -107,17 +107,18 @@ describe('GeographyOverviewMap', () => {
     expect(selectedOutline()).not.toBeNull()
   })
 
-  it('reveals member Country names for one selected Subregion only', async () => {
+  it('uses the selected outline without persistently revealing member Country names', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g><g><path id="Sweden"/><text id="Sweden_label">Sweden</text></g><g><path id="France"/><text id="France_label">France</text></g></svg>' })))
     const mount = document.createElement('div'); document.body.append(mount)
     await act(async () => { root = createRoot(mount); root.render(createElement(GeographyOverviewMap, { level: 'continent', continent: 'Europe', selectedSubregionIds: ['northern-europe'], ariaLabel: 'Europe map' })); await Promise.resolve(); await Promise.resolve() })
 
-    expect((mount.querySelector('text#Norway_label') as SVGTextElement | null)?.style.display).toBe('inline')
-    expect((mount.querySelector('text#Sweden_label') as SVGTextElement | null)?.style.display).toBe('inline')
+    expect(mount.querySelector('[data-svg-map-group-outline="subregion-northern-europe"]')).not.toBeNull()
+    expect((mount.querySelector('text#Norway_label') as SVGTextElement | null)?.style.display).toBe('none')
+    expect((mount.querySelector('text#Sweden_label') as SVGTextElement | null)?.style.display).toBe('none')
     expect((mount.querySelector('text#France_label') as SVGTextElement | null)?.style.display).toBe('none')
   })
 
-  it('does not auto-reveal all selected Country names for zero or multiple Subregions', async () => {
+  it('keeps Country label semantics independent of selection count', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g><g><path id="France"/><text id="France_label">France</text></g></svg>' })))
     const mount = document.createElement('div'); document.body.append(mount)
     await act(async () => { root = createRoot(mount); root.render(createElement(GeographyOverviewMap, { level: 'continent', continent: 'Europe', selectedSubregionIds: [], ariaLabel: 'Europe map' })); await Promise.resolve(); await Promise.resolve() })
@@ -134,19 +135,71 @@ describe('GeographyOverviewMap', () => {
     expect(mount.querySelector('[data-svg-map-group-outline="subregion-western-europe"]')).not.toBeNull()
   })
 
-  it('preserves explicit Country names alongside and after automatic names', async () => {
+  it('preserves explicit Country names independently of geographic selection', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g><g><path id="France"/><text id="France_label">France</text></g></svg>' })))
     const mount = document.createElement('div'); document.body.append(mount)
     await act(async () => { root = createRoot(mount); root.render(createElement(GeographyOverviewMap, { level: 'continent', continent: 'Europe', selectedSubregionIds: ['northern-europe'], namedCountryIds: ['FR'], ariaLabel: 'Europe map' })); await Promise.resolve(); await Promise.resolve() })
 
     const norway = mount.querySelector('text#Norway_label') as SVGTextElement | null
     const france = mount.querySelector('text#France_label') as SVGTextElement | null
-    expect(norway?.style.display).toBe('inline')
+    expect(norway?.style.display).toBe('none')
+    expect(france?.style.display).toBe('inline')
+
+    await act(async () => { root?.render(createElement(GeographyOverviewMap, { level: 'continent', continent: 'Europe', selectedSubregionIds: ['northern-europe', 'western-europe'], namedCountryIds: ['FR'], ariaLabel: 'Europe map' })) })
+    expect(norway?.style.display).toBe('none')
     expect(france?.style.display).toBe('inline')
 
     await act(async () => { root?.render(createElement(GeographyOverviewMap, { level: 'continent', continent: 'Europe', selectedSubregionIds: [], namedCountryIds: ['FR'], ariaLabel: 'Europe map' })) })
     expect(norway?.style.display).toBe('none')
     expect(france?.style.display).toBe('inline')
+  })
+
+  it('reveals a hovered Subregion temporarily and hides its names after pointer leave', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g><g><path id="Sweden"/><text id="Sweden_label">Sweden</text></g><g><path id="France"/><text id="France_label">France</text></g></svg>' })))
+    const mount = document.createElement('div'); document.body.append(mount)
+    await act(async () => { root = createRoot(mount); root.render(createElement(GeographyOverviewMap, { level: 'continent', continent: 'Europe', selectedSubregionIds: ['northern-europe'], ariaLabel: 'Europe map' })); await Promise.resolve(); await Promise.resolve() })
+
+    const norway = mount.querySelector('path#Norway')
+    const label = (id: string) => (mount.querySelector(`text#${id}_label`) as SVGTextElement | null)?.style.display
+    expect(label('Norway')).toBe('none')
+    expect(label('Sweden')).toBe('none')
+
+    await act(async () => { norway?.dispatchEvent(new Event('pointerenter', { bubbles: true })) })
+    expect(label('Norway')).toBe('inline')
+    expect(label('Sweden')).toBe('inline')
+    expect(label('France')).toBe('none')
+
+    await act(async () => { norway?.dispatchEvent(new Event('pointerleave', { bubbles: true })) })
+    expect(label('Norway')).toBe('none')
+    expect(label('Sweden')).toBe('none')
+  })
+
+  it('uses caller-provided grouped hover for the same temporary names', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g><g><path id="France"/><text id="France_label">France</text></g></svg>' })))
+    const mount = document.createElement('div'); document.body.append(mount)
+    await act(async () => { root = createRoot(mount); root.render(createElement(GeographyOverviewMap, { level: 'continent', continent: 'Europe', selectedSubregionIds: ['northern-europe'], hoveredGroupId: 'subregion-western-europe', ariaLabel: 'Europe map' })); await Promise.resolve(); await Promise.resolve() })
+
+    expect((mount.querySelector('text#Norway_label') as SVGTextElement | null)?.style.display).toBe('none')
+    expect((mount.querySelector('text#France_label') as SVGTextElement | null)?.style.display).toBe('inline')
+
+    await act(async () => { root?.render(createElement(GeographyOverviewMap, { level: 'continent', continent: 'Europe', selectedSubregionIds: ['northern-europe'], hoveredGroupId: null, ariaLabel: 'Europe map' })) })
+    expect((mount.querySelector('text#France_label') as SVGTextElement | null)?.style.display).toBe('none')
+  })
+
+  it('temporarily unmutes an unselected hovered Subregion while preserving semantic fills', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g><g><path id="France"/><text id="France_label">France</text></g></svg>' })))
+    const mount = document.createElement('div'); document.body.append(mount)
+    await act(async () => { root = createRoot(mount); root.render(createElement(GeographyOverviewMap, { level: 'continent', continent: 'Europe', selectedSubregionIds: ['northern-europe'], countryColorsById: new Map([['FR', '#71717a']]), ariaLabel: 'Europe map' })); await Promise.resolve(); await Promise.resolve() })
+
+    const france = mount.querySelector('path#France') as SVGPathElement | null
+    const mutedFill = france?.style.fill
+    expect(mutedFill).not.toBe('#71717a')
+
+    await act(async () => { france?.dispatchEvent(new Event('pointerenter', { bubbles: true })) })
+    expect(france?.style.fill).toBe('#71717a')
+
+    await act(async () => { france?.dispatchEvent(new Event('pointerleave', { bubbles: true })) })
+    expect(france?.style.fill).toBe(mutedFill)
   })
 
   it('keeps readiness color separate from geographic selection', async () => {

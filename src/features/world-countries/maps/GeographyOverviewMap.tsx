@@ -158,15 +158,10 @@ export function GeographyOverviewMap({
   const namedCountryIdSet = useMemo(() => new Set(namedCountryIds), [namedCountryIds])
   const namedSvgIds = useMemo(
     () => resolveCountriesToSvgIds(
-      [
-        ...visibleCountries.filter(country => namedCountryIdSet.has(country.id)),
-        ...(level === 'continent' && selectedCountryIds === undefined && selectedSubregionIds?.length === 1
-          ? selectedCountries
-          : []),
-      ],
+      visibleCountries.filter(country => namedCountryIdSet.has(country.id)),
       mapCountryIds,
     ),
-    [level, mapCountryIds, namedCountryIdSet, selectedCountryIds, selectedCountries, selectedSubregionIds, visibleCountries],
+    [mapCountryIds, namedCountryIdSet, visibleCountries],
   )
   const hiddenCountryIdSet = useMemo(() => new Set(hiddenCountryIds), [hiddenCountryIds])
   const explicitlyHiddenSvgIds = useMemo(
@@ -231,9 +226,13 @@ export function GeographyOverviewMap({
   }, [interactive, onCountryClick, restrictCountryClicks, scopedSvgIds, visibleCountries])
   const mutedSvgIds = useMemo(() => {
     if (!hasScopedCountries) return []
-    const activeIds = new Set(scopedSvgIds)
+    const activeIds = new Set(
+      hasGeographicSelection
+        ? [...scopedSvgIds, ...hoveredGroupSvgIds]
+        : scopedSvgIds,
+    )
     return mapCountryIds.filter(id => !activeIds.has(id))
-  }, [hasScopedCountries, mapCountryIds, scopedSvgIds])
+  }, [hasGeographicSelection, hasScopedCountries, hoveredGroupSvgIds, mapCountryIds, scopedSvgIds])
   const countryColors = useMemo(() => {
     const colors: Array<readonly [string, string]> = []
     const colorableCountries = highlightedCountryIdSet.size
