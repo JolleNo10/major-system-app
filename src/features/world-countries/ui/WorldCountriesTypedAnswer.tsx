@@ -70,31 +70,47 @@ export function WorldCountriesTypedAnswer({
   const startedAtRef = useRef(now())
   const answeredRef = useRef(false)
   const transitionStartedRef = useRef<WorldCountriesTypedAnswerResult | null>(null)
+  const resultRef = useRef<WorldCountriesTypedAnswerResult | null>(null)
+  const promptKeyRef = useRef(promptKey)
+  resultRef.current = result
+  promptKeyRef.current = promptKey
   const transitionRef = useRef(onTransition)
   transitionRef.current = onTransition
 
-  useEffect(() => {
+  const resetAttempt = useCallback(() => {
     startedAtRef.current = now()
     answeredRef.current = false
+  }, [])
+
+  useEffect(() => {
+    resultRef.current = null
+    resetAttempt()
     transitionStartedRef.current = null
     setResult(null)
-  }, [promptKey])
+  }, [promptKey, resetAttempt])
 
   const activeResult = result?.promptKey === promptKey ? result : null
+
+  const clearCompletedResult = useCallback((completedResult: WorldCountriesTypedAnswerResult) => {
+    if (promptKeyRef.current !== completedResult.promptKey || resultRef.current !== completedResult) return
+    resultRef.current = null
+    setResult(current => current === completedResult ? null : current)
+    resetAttempt()
+  }, [resetAttempt])
 
   const completeTransition = useCallback((completedResult: WorldCountriesTypedAnswerResult) => {
     if (transitionStartedRef.current === completedResult) return
     transitionStartedRef.current = completedResult
     const transition = transitionRef.current(completedResult)
     if (!transition || typeof (transition as Promise<void>).then !== 'function') {
-      setResult(null)
+      clearCompletedResult(completedResult)
       return
     }
     void Promise.resolve(transition).then(
-      () => setResult(current => current === completedResult ? null : current),
-      () => setResult(current => current === completedResult ? null : current),
+      () => clearCompletedResult(completedResult),
+      () => clearCompletedResult(completedResult),
     )
-  }, [])
+  }, [clearCompletedResult])
 
   const submit = (answer: string) => {
     if (activeResult || answeredRef.current) return
@@ -128,12 +144,11 @@ export function WorldCountriesTypedAnswer({
   )
   const handleFeedbackContinue = useCallback(() => {
     if (activeResult?.outcome === 'incorrect' && retryOnIncorrect) {
-      answeredRef.current = false
-      setResult(null)
+      clearCompletedResult(activeResult)
       return
     }
     if (activeResult) completeTransition(activeResult)
-  }, [activeResult, completeTransition, retryOnIncorrect])
+  }, [activeResult, clearCompletedResult, completeTransition, retryOnIncorrect])
   const { feedbackOverlay, feedbackActive } = useWorldCountriesAnswerFeedback({
     result: activeResult,
     allowIncorrectSpellingPractice,

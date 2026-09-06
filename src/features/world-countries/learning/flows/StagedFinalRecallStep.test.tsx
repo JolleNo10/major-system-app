@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 
-import { act, createElement } from 'react'
+import { act, createElement, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Country } from '@/features/world-countries/data/countries'
 import { PageLayoutProvider } from '@/app/layout/PageLayoutContext'
-import { createOrderedRecallSession } from '@/features/world-countries/learning/orderedRecallSession'
+import { createOrderedRecallSession, submitOrderedRecall, type OrderedRecallState } from '@/features/world-countries/learning/orderedRecallSession'
 import { StagedFinalRecallStep } from './StagedFinalRecallStep'
 import { LearningMapSurface } from './LearningMapSurface'
 
@@ -15,6 +15,10 @@ vi.mock('@/features/world-countries/learning/CountryLearningMap', () => ({
 
 const country: Country = {
   id: 'NO', country: 'Norway', capital: 'Oslo', continent: 'Europe',
+  subregionId: 'northern-europe', subregion: 'Northern Europe',
+}
+const secondCountry: Country = {
+  id: 'SE', country: 'Sweden', capital: 'Stockholm', continent: 'Europe',
   subregionId: 'northern-europe', subregion: 'Northern Europe',
 }
 let root: Root | null = null
@@ -82,5 +86,81 @@ describe('StagedFinalRecallStep', () => {
     expect(onSubmit).not.toHaveBeenCalled()
     act(() => mount.querySelector<HTMLButtonElement>('[data-fuzzy-spelling-action="continue"]')?.click())
     expect(onSubmit).toHaveBeenCalledWith(true)
+  })
+
+  it('re-asks the rewound first country and advances the ordered session after correction', () => {
+    vi.useFakeTimers()
+    const mount = document.createElement('div')
+    const submitted = vi.fn()
+    document.body.append(mount)
+
+    function OrderedRecallHarness() {
+      const entries = [country, secondCountry]
+      const [ordered, setOrdered] = useState<OrderedRecallState<string>>(() => createOrderedRecallSession({
+        order: entries.map(entry => entry.id),
+        rewindOnError: 1,
+      }))
+
+      return createElement('div', null,
+        createElement('output', { 'data-testid': 'ordered-state' }, `${ordered.currentIndex}:${ordered.mode}`),
+        createElement(StagedFinalRecallStep, {
+          continent: 'Europe',
+          entries,
+          ordered,
+          stepLabel: 'Final recall',
+          answerLabel: 'Country → Capital',
+          answerKind: 'capital',
+          placeholder: 'Type the capital…',
+          showCountryName: true,
+          evaluateAnswer: (answer, entry) => ({
+            correct: answer === entry.capital,
+            fuzzyMatch: false,
+            canonicalAnswer: entry.capital,
+          }),
+          formatFeedback: evaluation => evaluation.correct ? 'Correct.' : `The correct capital is ${evaluation.canonicalAnswer}.`,
+          onSubmit: correct => {
+            submitted(correct)
+            setOrdered(current => submitOrderedRecall(current, correct).state)
+          },
+          onBack: vi.fn(),
+          onExit: vi.fn(),
+          surface: true,
+        }),
+      )
+    }
+
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement(PageLayoutProvider, null, createElement(LearningMapSurface, {
+        continent: 'Europe',
+        scopeCountries: [country, secondCountry],
+        presentation: { ariaLabel: 'Final recall map' },
+        presentationKey: 'final',
+        context: createElement('h1', null, 'Final recall'),
+        task: { direction: 'Country → Capital', cue: 'Norway', progress: { label: 'Country', current: 1, total: 2 } },
+        children: createElement(OrderedRecallHarness),
+      })))
+    })
+
+    expect(mount.querySelector('[data-testid="ordered-state"]')?.textContent).toBe('0:clean')
+
+    let input = mount.querySelector<HTMLInputElement>('input')!
+    act(() => typeInto(input, 'Stockholm'))
+    act(() => input.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
+    expect(input.disabled).toBe(true)
+
+    act(() => vi.advanceTimersByTime(1800))
+    expect(submitted).toHaveBeenCalledWith(false)
+    expect(mount.querySelector('[data-testid="ordered-state"]')?.textContent).toBe('0:repair')
+    input = mount.querySelector<HTMLInputElement>('input')!
+    expect(input.value).toBe('')
+    expect(input.disabled).toBe(false)
+
+    act(() => typeInto(input, 'Oslo'))
+    act(() => input.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
+    act(() => vi.advanceTimersByTime(500))
+
+    expect(submitted).toHaveBeenLastCalledWith(true)
+    expect(mount.querySelector('[data-testid="ordered-state"]')?.textContent).toBe('1:repair')
   })
 })

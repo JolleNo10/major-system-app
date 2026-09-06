@@ -15,6 +15,7 @@ afterEach(() => {
   act(() => root?.unmount())
   root = null
   document.body.replaceChildren()
+  vi.restoreAllMocks()
   vi.useRealTimers()
 })
 
@@ -168,6 +169,90 @@ describe('WorldCountriesTypedAnswer', () => {
     expect(retryInput.value).toBe('')
     expect(retryInput.disabled).toBe(false)
     expect(document.activeElement).toBe(retryInput)
+  })
+
+  it('starts a fresh answer attempt when completed feedback leaves the prompt key unchanged', () => {
+    vi.useFakeTimers()
+    let timestamp = 1000
+    vi.spyOn(performance, 'now').mockImplementation(() => timestamp)
+    const mount = document.createElement('div')
+    document.body.append(mount)
+    const { onAnswer, onTransition } = renderAnswer(mount)
+    const input = mount.querySelector<HTMLInputElement>('input')!
+
+    timestamp = 1400
+    typeInto(input, 'Sweden')
+    act(() => input.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
+    expect(onAnswer).toHaveBeenCalledTimes(1)
+    expect(onAnswer.mock.calls[0]?.[2]).toBe(400)
+
+    timestamp = 3200
+    act(() => vi.advanceTimersByTime(1800))
+
+    expect(onTransition).toHaveBeenCalledTimes(1)
+    const retryInput = mount.querySelector<HTMLInputElement>('input')!
+    expect(retryInput.value).toBe('')
+    expect(retryInput.disabled).toBe(false)
+
+    timestamp = 3475
+    typeInto(retryInput, 'Norway')
+    act(() => retryInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
+
+    expect(onAnswer).toHaveBeenCalledTimes(2)
+    expect(onAnswer).toHaveBeenLastCalledWith(
+      'Norway',
+      expect.objectContaining({ outcome: 'exact' }),
+      275,
+    )
+  })
+
+  it('does not let a stale async transition unlock a newer answered prompt', async () => {
+    vi.useFakeTimers()
+    const mount = document.createElement('div')
+    document.body.append(mount)
+    let resolveFirstTransition!: () => void
+    const firstTransition = vi.fn(() => new Promise<void>(resolve => {
+      resolveFirstTransition = resolve
+    }))
+    const firstAnswer = vi.fn()
+    renderAnswer(mount, {}, firstAnswer, firstTransition)
+    const firstInput = mount.querySelector<HTMLInputElement>('input')!
+
+    typeInto(firstInput, 'Norway')
+    act(() => firstInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
+    act(() => vi.advanceTimersByTime(500))
+    expect(firstTransition).toHaveBeenCalledTimes(1)
+
+    const secondAnswer = vi.fn()
+    act(() => root?.render(createElement(WorldCountriesTypedAnswer, {
+      promptKey: 'SE-country',
+      answerLabel: 'Type the country name',
+      placeholder: 'Type the countryâ€¦',
+      correctAnswer: 'Sweden',
+      evaluate: answer => ({
+        outcome: answer === 'Sweden' ? 'exact' : 'incorrect',
+        canonicalAnswer: 'Sweden',
+        answerKind: 'country',
+        message: 'Correct.',
+      }),
+      onAnswer: secondAnswer,
+      onTransition: vi.fn(),
+      children: (state: WorldCountriesTypedAnswerRenderState): ReactNode => createElement('div', null, state.input),
+    })))
+
+    const secondInput = mount.querySelector<HTMLInputElement>('input')!
+    typeInto(secondInput, 'Sweden')
+    act(() => secondInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
+    expect(secondAnswer).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      resolveFirstTransition()
+      await Promise.resolve()
+    })
+
+    expect(secondInput.disabled).toBe(true)
+    act(() => secondInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
+    expect(secondAnswer).toHaveBeenCalledTimes(1)
   })
 
   it('clears answer state when the owner changes the prompt key', () => {
