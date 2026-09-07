@@ -239,14 +239,16 @@ describe('World Countries Recite workflow', () => {
     await act(async () => buttonContaining(mount, 'Northern Europe').click())
     await act(async () => buttonContaining(mount, 'Start Recite').click())
 
-    expect(activeMapProps()).toMatchObject({
+    const initialMap = activeMapProps()
+    const initialFrame = initialMap.zoomCountryIds
+    expect(initialMap).toMatchObject({
       selectedCountryIds: ['SE', 'NO'],
       hiddenCountryIds: [],
       highlightedCountryIds: ['SE'],
       highlightFill: '#0891b2',
-      neighbourhoodZoom: { targetCountryId: 'SE', contextCountryIds: ['NO'] },
+      zoomCountryIds: ['NO', 'SE'],
     })
-    expect(activeMapProps().selectedSubregionIds).toBeUndefined()
+    expect(initialMap.selectedSubregionIds).toBeUndefined()
     expect(mount.querySelector('[data-world-countries-task-direction]')?.textContent).toBe('Random Country recall')
     expect(mount.querySelector('[data-world-countries-task-cue]')?.textContent).toBe('Identify the highlighted Country')
 
@@ -255,6 +257,8 @@ describe('World Countries Recite workflow', () => {
       typeInto(firstCountryInput, 'Sweden')
       firstCountryInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
     })
+    expect(mount.textContent).toContain('Correct')
+    expect(activeMapProps().zoomCountryIds).toBe(initialFrame)
     await act(async () => {
       vi.advanceTimersByTime(500)
       await Promise.resolve()
@@ -265,14 +269,17 @@ describe('World Countries Recite workflow', () => {
     expect(activeMapProps()).toMatchObject({
       highlightedCountryIds: ['SE'],
       highlightFill: '#8b5cf6',
-      neighbourhoodZoom: { targetCountryId: 'SE', contextCountryIds: ['NO'] },
+      zoomCountryIds: ['NO', 'SE'],
     })
+    expect(activeMapProps().zoomCountryIds).toBe(initialFrame)
 
     const firstCapitalInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the capital"]')!
     await act(async () => {
       typeInto(firstCapitalInput, 'Stockholm')
       firstCapitalInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
     })
+    expect(mount.textContent).toContain('Correct')
+    expect(activeMapProps().zoomCountryIds).toBe(initialFrame)
     await act(async () => {
       vi.advanceTimersByTime(500)
       await Promise.resolve()
@@ -287,8 +294,9 @@ describe('World Countries Recite workflow', () => {
     expect(activeMapProps()).toMatchObject({
       highlightedCountryIds: ['NO'],
       highlightFill: '#0891b2',
-      neighbourhoodZoom: { targetCountryId: 'NO', contextCountryIds: ['SE'] },
+      zoomCountryIds: ['NO', 'SE'],
     })
+    expect(activeMapProps().zoomCountryIds).toBe(initialFrame)
     const activeColors = activeMapProps().countryColorsById as ReadonlyMap<string, string>
     expect(activeColors.get('SE')).toBe('#15803d')
 
@@ -310,6 +318,61 @@ describe('World Countries Recite workflow', () => {
       await Promise.resolve()
     })
     expect(mount.textContent).toContain('Recite complete')
+  })
+
+  it('frames a random target with the run population in its whole Subregion', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+    const entries = countries.filter(country => ['NO', 'SE', 'FI'].includes(country.id))
+    const mount = await renderRecite(entries)
+
+    await act(async () => mount.querySelector<HTMLInputElement>('input[type="radio"][value="random"]')?.click())
+    await act(async () => openContinent(mount, 'Europe'))
+    await act(async () => buttonContaining(mount, 'Northern Europe').click())
+    await act(async () => buttonContaining(mount, 'Start Recite').click())
+
+    expect(activeMapProps().zoomCountryIds).toEqual(['NO', 'SE', 'FI'])
+    expect(activeMapProps().zoomCountryIds).not.toEqual(['NO', 'SE'])
+  })
+
+  it('updates the Random Countries + Capitals frame when the next Country changes Subregion', async () => {
+    vi.useFakeTimers()
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+    const entries = countries.filter(country => ['NO', 'FR'].includes(country.id))
+    const mount = await renderRecite(entries)
+
+    await act(async () => selectRadio(mount, 1))
+    await act(async () => mount.querySelector<HTMLInputElement>('input[type="radio"][value="random"]')?.click())
+    await act(async () => openContinent(mount, 'Europe'))
+    await act(async () => buttonContaining(mount, 'Northern Europe').click())
+    await act(async () => buttonContaining(mount, 'Western Europe').click())
+    await act(async () => buttonContaining(mount, 'Start Recite').click())
+
+    expect(activeMapProps().highlightedCountryIds).toEqual(['FR'])
+    expect(activeMapProps().zoomCountryIds).toEqual(['FR'])
+
+    const countryInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the country name"]')!
+    await act(async () => {
+      typeInto(countryInput, 'France')
+      countryInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(500)
+      await Promise.resolve()
+    })
+    const capitalInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the capital"]')!
+    expect(activeMapProps().zoomCountryIds).toEqual(['FR'])
+
+    await act(async () => {
+      typeInto(capitalInput, 'Paris')
+      capitalInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(500)
+      await Promise.resolve()
+    })
+
+    expect(activeMapProps().highlightedCountryIds).toEqual(['NO'])
+    expect(activeMapProps().zoomCountryIds).toEqual(['NO'])
   })
 
   it('wires Reveal as you go to hidden Country IDs and reveals the Country after Skip', async () => {

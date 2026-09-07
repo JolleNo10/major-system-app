@@ -7,6 +7,7 @@ import { countries } from '@/features/world-countries/data/countries'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import europeSvg from '@/features/world-countries/maps/assets/MapChart_Map_Europe.svg?raw'
 import { GeographyOverviewMap } from './GeographyOverviewMap'
+import { SvgMapController } from './SvgMapController'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 let root: Root | null = null
@@ -282,6 +283,57 @@ describe('GeographyOverviewMap', () => {
     await act(async () => { root = createRoot(mount); root.render(createElement(GeographyOverviewMap, { level: 'world', countryPopulation: [countries.find(country => country.id === 'NO')!, countries.find(country => country.id === 'SE')!], hiddenCountryIds: ['SE'], zoomCountryIds: ['NO', 'SE'], ariaLabel: 'World map' })); await Promise.resolve(); await Promise.resolve() })
     expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('-30 -20 180 90')
     expect((mount.querySelector('path#Sweden') as SVGPathElement | null)?.style.visibility).toBe('hidden')
+    Object.defineProperty(svgElementPrototype, 'getBBox', { configurable: true, value: previousGetBBox })
+  })
+
+  it('does not recompute explicit zoom when only semantic Country colors change', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g><g><path id="Sweden"/><text id="Sweden_label">Sweden</text></g></svg>' })))
+    const norway = countries.find(country => country.id === 'NO')!
+    const sweden = countries.find(country => country.id === 'SE')!
+    const population = [norway, sweden]
+    const zoomCountryIds = [norway.id, sweden.id]
+    const svgElementPrototype = SVGElement.prototype as typeof SVGElement.prototype & { getBBox?: () => { x: number; y: number; width: number; height: number } }
+    const previousGetBBox = svgElementPrototype.getBBox
+    Object.defineProperty(svgElementPrototype, 'getBBox', {
+      configurable: true,
+      value(this: SVGElement) {
+        return this.id === 'Norway'
+          ? { x: 10, y: 20, width: 10, height: 10 }
+          : { x: 100, y: 20, width: 10, height: 10 }
+      },
+    })
+    const setZoomArea = vi.spyOn(SvgMapController.prototype, 'setZoomArea')
+    const setCountryColors = vi.spyOn(SvgMapController.prototype, 'setCountryColors')
+    const mount = document.createElement('div'); document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(GeographyOverviewMap, {
+        level: 'world',
+        countryPopulation: population,
+        countryColorsById: new Map([['NO', '#15803d']]),
+        zoomCountryIds,
+        ariaLabel: 'World map',
+      }))
+      await Promise.resolve(); await Promise.resolve()
+    })
+    const callsAfterLoad = setZoomArea.mock.calls.length
+    const colorCallsAfterLoad = setCountryColors.mock.calls.length
+    expect(callsAfterLoad).toBeGreaterThan(0)
+
+    await act(async () => {
+      root?.render(createElement(GeographyOverviewMap, {
+        level: 'world',
+        countryPopulation: population,
+        countryColorsById: new Map([['NO', '#15803d']]),
+        zoomCountryIds,
+        ariaLabel: 'World map',
+      }))
+      await Promise.resolve()
+    })
+
+    expect(setZoomArea).toHaveBeenCalledTimes(callsAfterLoad)
+    expect(setCountryColors).toHaveBeenCalledTimes(colorCallsAfterLoad)
     Object.defineProperty(svgElementPrototype, 'getBBox', { configurable: true, value: previousGetBBox })
   })
 

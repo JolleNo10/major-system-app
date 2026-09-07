@@ -21,6 +21,7 @@ const GEOGRAPHY_OVERVIEW_HOVER_FILL = '#0f766e'
 const GEOGRAPHY_OVERVIEW_HOVER_STROKE = '#d4d4d8'
 const GEOGRAPHY_OVERVIEW_SELECTION_STROKE = '#22d3ee'
 const GEOGRAPHY_OVERVIEW_HOVER_STROKE_WIDTH = '2px'
+const EMPTY_COUNTRY_IDS: readonly CountryId[] = []
 
 export interface GeographyOverviewMapProps {
   level: 'world' | 'continent'
@@ -79,17 +80,17 @@ export function GeographyOverviewMap({
   focusedSubregionId = null,
   selectedSubregionIds,
   selectedCountryIds,
-  coloredCountryIds = [],
+  coloredCountryIds = EMPTY_COUNTRY_IDS,
   countryColor = '#16a34a',
   countryColorsById,
-  highlightedCountryIds = [],
+  highlightedCountryIds = EMPTY_COUNTRY_IDS,
   highlightFill,
-  namedCountryIds = [],
+  namedCountryIds = EMPTY_COUNTRY_IDS,
   zoomCountryIds,
   neighbourhoodZoom,
   countryAccessibleDescriptionsById,
   countryPopulation,
-  hiddenCountryIds = [],
+  hiddenCountryIds = EMPTY_COUNTRY_IDS,
   hideCountriesOutsidePopulation = false,
   interactive = true,
   hoveredGroupId = null,
@@ -208,12 +209,14 @@ export function GeographyOverviewMap({
   )
   // Selection controls presentation, not which Countries can be chosen next.
   // A focused Subregion is the sole intentional interaction restriction.
-  const hoverableSvgIds = interactive
-    ? focusedSubregionId ? focusSvgIds : visibleSvgIds
-    : []
-  const selectableSvgIds = interactive
-    ? focusedSubregionId ? focusSvgIds : visibleSvgIds
-    : []
+  const hoverableSvgIds = useMemo(
+    () => interactive ? focusedSubregionId ? focusSvgIds : visibleSvgIds : EMPTY_COUNTRY_IDS,
+    [focusedSubregionId, focusSvgIds, interactive, visibleSvgIds],
+  )
+  const selectableSvgIds = useMemo(
+    () => interactive ? focusedSubregionId ? focusSvgIds : visibleSvgIds : EMPTY_COUNTRY_IDS,
+    [focusedSubregionId, focusSvgIds, interactive, visibleSvgIds],
+  )
   const restrictCountryClicks = Boolean(
     focusedSubregionId || (selectedSubregionIds === undefined && hasHoveredSubregionScope),
   )
@@ -271,7 +274,7 @@ export function GeographyOverviewMap({
   )
   const explicitZoomSvgIds = useMemo(
     () => zoomCountryIds === undefined
-      ? []
+      ? EMPTY_COUNTRY_IDS
       : resolveCountryIdsToSvgIds(zoomCountryIds, visibleCountries, mapCountryIds),
     [mapCountryIds, visibleCountries, zoomCountryIds],
   )
@@ -288,7 +291,7 @@ export function GeographyOverviewMap({
     ? explicitZoomSvgIds
     : level === 'continent' && continent && (focusedSubregionId || definition.domainContinents.length > 1)
       ? (focusedSubregionId ? focusSvgIds : visibleSvgIds)
-      : []
+      : EMPTY_COUNTRY_IDS
 
   const title = level === 'world' ? 'World' : continent ?? 'Continent'
   const descriptionId = `geography-map-descriptions-${useId().replace(/:/g, '')}`
@@ -301,6 +304,15 @@ export function GeographyOverviewMap({
     [countryAccessibleDescriptionsById, hiddenCountryIdSet, visibleCountries],
   )
   const descriptions = countryDescriptions
+  const mapSettings = useMemo(() => ({
+    countryFill: '#52525b',
+    hoverHighlight: true,
+    hoverShowName: level !== 'world',
+    hoverScope: 'group' as const,
+    hoverFill: GEOGRAPHY_OVERVIEW_HOVER_FILL,
+    showHighlightedNames: false,
+    ...(highlightFill ? { highlightFill } : {}),
+  }), [highlightFill, level])
 
   return (
     <div className="space-y-2">
@@ -308,15 +320,7 @@ export function GeographyOverviewMap({
         svgUrl={definition.svgUrl}
         ariaLabel={ariaLabel ?? `Geography map of ${title}`}
         ariaDescribedBy={descriptions.length ? descriptionId : undefined}
-        settings={{
-          countryFill: '#52525b',
-          hoverHighlight: true,
-          hoverShowName: level !== 'world',
-          hoverScope: 'group',
-          hoverFill: GEOGRAPHY_OVERVIEW_HOVER_FILL,
-          showHighlightedNames: false,
-          ...(highlightFill ? { highlightFill } : {}),
-        }}
+        settings={mapSettings}
         hoverGroups={hoverGroups}
         groupOutlines={groupOutlines}
         highlightedIds={highlightedSvgIds}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   SvgMapController,
   type SvgMapCountryColors,
@@ -16,6 +16,10 @@ export type { SvgMapCountry } from './SvgMapController'
 export type SvgMapLoadState = 'loading' | 'ready' | 'error'
 
 const EMPTY_COUNTRY_LABELS: Readonly<Record<string, string>> = {}
+const EMPTY_IDS: readonly string[] = []
+const EMPTY_GROUP_OUTLINES: readonly SvgMapGroupOutline[] = []
+const EMPTY_COUNTRY_COLORS: readonly (readonly [string, string | null])[] = []
+const EMPTY_SETTINGS: Partial<SvgMapSettings> = {}
 const EMBEDDED_MAPCHART_CREDIT_ID = 'credit-text-svg'
 
 export interface SvgMapViewProps {
@@ -48,21 +52,21 @@ export interface SvgMapViewProps {
 /** Declarative React lifecycle adapter for the imperative SVG map controller. */
 export function SvgMapView({
   svgUrl,
-  highlightedIds = [],
-  hiddenIds = [],
-  mutedIds = [],
+  highlightedIds = EMPTY_IDS,
+  hiddenIds = EMPTY_IDS,
+  mutedIds = EMPTY_IDS,
   hoverableIds,
   selectableIds,
   hoverGroups,
-  groupOutlines = [],
+  groupOutlines = EMPTY_GROUP_OUTLINES,
   hoveredId = null,
-  countryColors = [],
-  namedIds = [],
+  countryColors = EMPTY_COUNTRY_COLORS,
+  namedIds = EMPTY_IDS,
   countryLabels = EMPTY_COUNTRY_LABELS,
-  zoomIds = [],
+  zoomIds = EMPTY_IDS,
   targetCentricZoom,
   zoomPadding = 32,
-  settings = {},
+  settings = EMPTY_SETTINGS,
   taskAssistance = null,
   className = '',
   ariaLabel,
@@ -82,6 +86,10 @@ export function SvgMapView({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const presentation = useMapSurfacePresentation()
+  const countryColorsSignature = getCountryColorsSignature(countryColors)
+  // Country color presentation is keyed by semantic entries, not the caller's container identity.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const stableCountryColors = useMemo(() => countryColors, [countryColorsSignature])
 
   clickRef.current = onCountryClick
   hoverRef.current = onCountryHover
@@ -146,6 +154,11 @@ export function SvgMapView({
     const controller = controllerRef.current
     if (!controller || countries.length === 0) return
     controller.updateSettings(settings)
+  }, [countries, settings])
+
+  useEffect(() => {
+    const controller = controllerRef.current
+    if (!controller || countries.length === 0) return
     if (hoverGroups !== undefined) controller.setHoverGroups(hoverGroups)
     controller.setGroupOutlines(groupOutlines)
     controller.setHiddenCountries(hiddenIds)
@@ -156,17 +169,27 @@ export function SvgMapView({
     controller.setTaskAssistance(taskAssistance)
     controller.setHighlighted(highlightedIds)
     controller.setMutedCountries(mutedIds)
-    controller.clearColors()
-    controller.setCountryColors(countryColors)
     controller.clearCountryLabels()
     if (Object.keys(countryLabels).length) controller.setCountryLabels(countryLabels)
     const previouslyNamed = controller.getNamedIds()
     if (previouslyNamed.length) controller.setNamesVisible(previouslyNamed, false)
     if (namedIds.length) controller.setNamesVisible(namedIds, true)
+  }, [countries, countryLabels, groupOutlines, hiddenIds, highlightedIds, hoverGroups, hoverableIds, mutedIds, namedIds, selectableIds, taskAssistance])
+
+  useEffect(() => {
+    const controller = controllerRef.current
+    if (!controller || countries.length === 0) return
+    controller.clearColors()
+    controller.setCountryColors(stableCountryColors)
+  }, [countries, stableCountryColors])
+
+  useEffect(() => {
+    const controller = controllerRef.current
+    if (!controller || countries.length === 0) return
     if (targetCentricZoom) controller.setTargetCentricZoom(targetCentricZoom.targetIds, targetCentricZoom.contextIds)
     else if (zoomIds.length) controller.setZoomArea(zoomIds, zoomPadding)
     else controller.resetZoom()
-  }, [countries, countryColors, countryLabels, groupOutlines, hiddenIds, highlightedIds, hoverGroups, hoverableIds, mutedIds, namedIds, selectableIds, settings, targetCentricZoom, taskAssistance, zoomIds, zoomPadding])
+  }, [countries, targetCentricZoom, zoomIds, zoomPadding])
 
   useEffect(() => {
     const controller = controllerRef.current
@@ -204,4 +227,14 @@ export function SvgMapView({
       ) : null}
     </div>
   )
+}
+
+function getCountryColorsSignature(colors: SvgMapCountryColors): string {
+  const entries = Symbol.iterator in Object(colors)
+    ? [...colors as Iterable<readonly [string, string | null]>]
+    : Object.entries(colors)
+  return entries
+    .map(([id, color]) => `${id}\u0000${color ?? 'null'}`)
+    .sort()
+    .join('\u0001')
 }

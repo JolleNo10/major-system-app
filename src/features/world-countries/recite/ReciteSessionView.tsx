@@ -1,4 +1,5 @@
-import type { Continent, Country } from '@/features/world-countries/data/countries'
+import { useMemo } from 'react'
+import type { Continent, Country, CountryId } from '@/features/world-countries/data/countries'
 import type { SubregionId } from '@/features/world-countries/data/subregions'
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
 import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
@@ -29,6 +30,8 @@ export interface ActiveReciteRun {
 
 export type ReciteSessionPhase = 'session' | 'complete'
 
+const EMPTY_COUNTRY_IDS: readonly CountryId[] = []
+
 export function ReciteSession({ run, phase, fuzzyMatching, onSubmit, onReveal, onContinue, onReciteAgain, onBackToSetup }: {
   run: ActiveReciteRun
   phase: ReciteSessionPhase
@@ -43,49 +46,75 @@ export function ReciteSession({ run, phase, fuzzyMatching, onSubmit, onReveal, o
   const currentCountry = currentPrompt ? run.scopeCountries.find(country => country.id === currentPrompt.countryId) : undefined
   const runContinents = [...new Set(run.scopeCountries.map(country => country.continent))]
   const activeContinent = currentCountry?.continent ?? (phase === 'complete' && runContinents.length === 1 ? runContinents[0] : undefined)
-  const outcomes = getReciteCountryOutcomes(run.session)
-  const activeCountryColors = createReciteActiveCountryColors(
-    activeContinent ? run.population.filter(country => country.continent === activeContinent) : run.population,
-    run.session.countries.map(country => country.id),
-    new Map(run.session.countries.map((country, index) => [country.id, outcomes[index] ?? null] as const)),
+  // Answer feedback replaces the session object; the snapshot arrays are the semantic inputs here.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const outcomes = useMemo(() => getReciteCountryOutcomes(run.session), [run.session.countries, run.session.prompts])
+  const outcomeSignature = outcomes.join('|')
+  // Keep the color map stable when a prompt's feedback changes without changing Country outcomes.
+  const outcomesByCountryId = useMemo(
+    () => new Map(run.session.countries.map((country, index) => [country.id, outcomes[index] ?? null] as const)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [outcomeSignature, run.session.countries],
   )
-  const hiddenCountryIds = run.assistance === 'reveal' && phase === 'session'
-    ? run.session.countries
+  const activeMapCountries = useMemo(
+    () => activeContinent ? run.population.filter(country => country.continent === activeContinent) : run.population,
+    [activeContinent, run.population],
+  )
+  const selectedCountryIds = useMemo(
+    () => run.session.countries.map(country => country.id),
+    [run.session.countries],
+  )
+  const activeCountryColors = useMemo(
+    () => createReciteActiveCountryColors(activeMapCountries, selectedCountryIds, outcomesByCountryId),
+    [activeMapCountries, outcomesByCountryId, selectedCountryIds],
+  )
+  const resolvedCountryIds = useMemo(
+    () => getReciteResolvedCountryIds(run.session),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [run.session.countries, run.session.prompts],
+  )
+  const hiddenCountryIdsForReveal = useMemo(() => {
+    const resolved = new Set(resolvedCountryIds)
+    return run.session.countries
       .filter(country => !activeContinent || run.scopeCountries.find(entry => entry.id === country.id)?.continent === activeContinent)
-      .filter(country => !getReciteResolvedCountryIds(run.session).includes(country.id))
+      .filter(country => !resolved.has(country.id))
       .map(country => country.id)
-    : []
+  }, [activeContinent, resolvedCountryIds, run.scopeCountries, run.session.countries])
+  const hiddenCountryIds = run.assistance === 'reveal' && phase === 'session'
+    ? hiddenCountryIdsForReveal
+    : EMPTY_COUNTRY_IDS
   const currentAnswerKind = currentPrompt
     ? currentPrompt.kind === 'capital' ? 'capital' : 'country'
     : undefined
-  const highlightedCountryIds = run.assistance !== 'reveal' && currentPrompt
-    ? [currentPrompt.countryId]
-    : []
-  const neighbourhoodZoom = run.assistance === 'random' && currentPrompt && currentCountry
-    ? {
-      targetCountryId: currentCountry.id,
-      contextCountryIds: run.scopeCountries
-        .filter(country => country.id !== currentCountry.id
-          && country.continent === currentCountry.continent
-          && country.subregionId === currentCountry.subregionId)
-        .map(country => country.id),
-    }
-    : undefined
-  const map = (
+  const currentPromptCountryId = currentPrompt?.countryId
+  const highlightedCountryIds = useMemo(
+    () => run.assistance !== 'reveal' && currentPromptCountryId ? [currentPromptCountryId] : EMPTY_COUNTRY_IDS,
+    [currentPromptCountryId, run.assistance],
+  )
+  const currentContinent = currentCountry?.continent
+  const currentSubregionId = currentCountry?.subregionId
+  const randomZoomCountryIds = useMemo(() => {
+    if (run.assistance !== 'random' || !currentContinent || !currentSubregionId) return undefined
+    return run.population
+      .filter(country => country.continent === currentContinent && country.subregionId === currentSubregionId)
+      .map(country => country.id)
+  }, [currentContinent, currentSubregionId, run.assistance, run.population])
+  const highlightFill = currentAnswerKind ? getWorldCountriesTaskHighlightFill(currentAnswerKind) : undefined
+  const map = useMemo(() => (
     <GeographyOverviewMap
       level={activeContinent ? 'continent' : 'world'}
       continent={activeContinent}
-      selectedCountryIds={run.session.countries.map(country => country.id)}
+      selectedCountryIds={selectedCountryIds}
       countryColorsById={activeCountryColors}
       countryPopulation={run.population}
       highlightedCountryIds={highlightedCountryIds}
-      highlightFill={currentAnswerKind ? getWorldCountriesTaskHighlightFill(currentAnswerKind) : undefined}
-      neighbourhoodZoom={neighbourhoodZoom}
+      highlightFill={highlightFill}
+      zoomCountryIds={randomZoomCountryIds}
       hiddenCountryIds={hiddenCountryIds}
       interactive={false}
       ariaLabel={`${activeContinent ?? 'World'} map for active Recite session`}
     />
-  )
+  ), [activeContinent, activeCountryColors, highlightedCountryIds, hiddenCountryIds, highlightFill, randomZoomCountryIds, run.population, selectedCountryIds])
 
   if (phase === 'complete') {
     const count = (outcome: ReciteCountryOutcome) => outcomes.filter(candidate => candidate === outcome).length

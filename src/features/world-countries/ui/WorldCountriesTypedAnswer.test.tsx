@@ -83,6 +83,27 @@ describe('WorldCountriesTypedAnswer', () => {
     expect(onTransition).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'exact' }))
   })
 
+  it.each(['Enter', 'Check'] as const)('uses the same immediate evaluation path for %s submission', submission => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+    const { onAnswer } = renderAnswer(mount)
+    const input = mount.querySelector<HTMLInputElement>('input')!
+
+    typeInto(input, 'Norway')
+    act(() => {
+      if (submission === 'Enter') {
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+        input.form?.requestSubmit()
+      } else {
+        mount.querySelector<HTMLButtonElement>('button[type="submit"]')?.click()
+      }
+    })
+
+    expect(onAnswer).toHaveBeenCalledTimes(1)
+    expect(mount.querySelector('[data-world-answer-feedback]')).not.toBeNull()
+    expect(mount.textContent).toContain('Correct')
+  })
+
   it('holds incorrect feedback for the correction dwell before transition', () => {
     vi.useFakeTimers()
     const mount = document.createElement('div')
