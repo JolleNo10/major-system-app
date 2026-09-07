@@ -5,7 +5,7 @@ import { getSubregionDefinition, type SubregionDefinition } from '@/features/wor
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
 import type { ActiveReciteRun, ReciteSessionPhase } from './ReciteSessionView'
 import { getReciteAssistanceLabel, getReciteModeLabel } from './recitePresentation'
-import { getCurrentRecitePrompt } from './reciteSession'
+import { getCurrentRecitePrompt, getReciteResolvedPromptCount } from './reciteSession'
 
 export function ReciteSessionRails({ run, phase, onExit }: { run: ActiveReciteRun; phase: ReciteSessionPhase; onExit: () => void }) {
   const rails = useMemo(() => ({
@@ -43,7 +43,7 @@ function ReciteSessionGeographyRail({ run, onExit }: { run: ActiveReciteRun; onE
             </li>
           ))}
         </ul>
-        <p className="mt-3 text-xs text-zinc-500">{run.session.countries.length} Countries in this ordered snapshot</p>
+        <p className="mt-3 text-xs text-zinc-500">{run.session.countries.length} Countries in this {run.assistance === 'random' ? 'randomized run' : 'ordered snapshot'}</p>
       </div>
       <p className="text-xs leading-relaxed text-zinc-500">The map is a geographic scaffold. Answer through the Recite prompt.</p>
       <button type="button" onClick={onExit} className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2.5 text-sm font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100">Back to setup</button>
@@ -64,6 +64,16 @@ function groupReciteSubregionsByContinent(run: ActiveReciteRun): readonly { cont
 
 function ReciteSessionControls({ run, phase, onExit }: { run: ActiveReciteRun; phase: ReciteSessionPhase; onExit: () => void }) {
   const current = getCurrentRecitePrompt(run.session)
+  const interleavedRandom = run.mode === 'countries-capitals' && run.assistance === 'random'
+  const total = interleavedRandom ? run.session.prompts.length : run.session.countries.length
+  const currentProgress = interleavedRandom
+    ? getReciteResolvedPromptCount(run.session)
+    : phase === 'complete' ? run.session.countries.length : (current?.countryIndex ?? run.session.countries.length) + 1
+  const progressPercent = interleavedRandom
+    ? total > 0 ? (currentProgress / total) * 100 : 0
+    : phase === 'complete'
+      ? 100
+      : current ? ((current.countryIndex + (current.kind === 'capital' ? 0.5 : 0)) / run.session.countries.length) * 100 : 100
   return (
     <WorldCountriesPanel className="space-y-4" aria-labelledby="world-countries-recite-session-controls-heading">
       <div>
@@ -74,8 +84,8 @@ function ReciteSessionControls({ run, phase, onExit }: { run: ActiveReciteRun; p
         <p className="text-xs uppercase tracking-wider text-zinc-500">Mode</p>
         <p className="mt-1 text-sm font-semibold text-zinc-200">{getReciteModeLabel(run.mode)}</p>
         <p className="mt-1 text-xs text-zinc-500">{getReciteAssistanceLabel(run.assistance)}</p>
-        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-zinc-800"><div className="h-full rounded-full bg-cyan-500" style={{ width: `${Math.max(2, current ? ((current.countryIndex + (current.kind === 'capital' ? 0.5 : 0)) / run.session.countries.length) * 100 : 100)}%` }} /></div>
-        <p className="mt-2 text-xs tabular-nums text-zinc-500">{phase === 'complete' ? run.session.countries.length : (current?.countryIndex ?? run.session.countries.length) + 1} / {run.session.countries.length} Countries</p>
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-zinc-800"><div className="h-full rounded-full bg-cyan-500" style={{ width: `${Math.max(2, progressPercent)}%` }} /></div>
+        <p className="mt-2 text-xs tabular-nums text-zinc-500">{currentProgress} / {total} {interleavedRandom ? 'Prompts' : 'Countries'}</p>
       </div>
       <button type="button" onClick={onExit} className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2.5 text-sm font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100">Back to setup</button>
     </WorldCountriesPanel>

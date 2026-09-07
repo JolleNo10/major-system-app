@@ -29,7 +29,7 @@ export const RECITE_ASSISTANCE_DEFINITIONS: readonly {
 }[] = [
   { id: 'visible', label: 'Visible', description: 'Keep Country geography visible without names or status history.' },
   { id: 'reveal', label: 'Reveal as you go', description: 'Reveal each Country only after its Country prompt is resolved.' },
-  { id: 'random', label: 'Random', description: 'Shuffle the Country order once when the run starts.' },
+  { id: 'random', label: 'Random', description: 'Randomize recall once when the run starts.' },
 ]
 
 export interface ReciteSetupProps {
@@ -155,7 +155,6 @@ export function ReciteSetup({
     onToggleContinent,
     onToggleSubregion,
     onWorld,
-    progress,
     selectedContinent,
     selectedScopeSubregionIds.length,
     selection,
@@ -171,8 +170,8 @@ export function ReciteSetup({
         context={(
           <div className="px-1 text-center">
             <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World Countries · Recite</p>
-            <h1 id="world-countries-recite-heading" className="mt-1 text-2xl font-black text-zinc-100">Ordered recall</h1>
-            <p className="mt-1 text-sm text-zinc-500">Choose a World-wide Subregion scope, then recall it in authored order.</p>
+            <h1 id="world-countries-recite-heading" className="mt-1 text-2xl font-black text-zinc-100">{assistance === 'random' ? 'Random recall' : 'Ordered recall'}</h1>
+            <p className="mt-1 text-sm text-zinc-500">{assistance === 'random' ? 'Choose a World-wide Subregion scope, then follow its randomized recall sequence.' : 'Choose a World-wide Subregion scope, then recall it in authored order.'}</p>
           </div>
         )}
         map={(
@@ -211,8 +210,8 @@ function ReciteSetupControls({ mode, assistance, onModeChange, onAssistanceChang
   return (
     <WorldCountriesPanel className="space-y-4" aria-labelledby="world-countries-recite-controls-heading">
       <div><p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Recite</p><h2 id="world-countries-recite-controls-heading" className="mt-1 text-lg font-bold text-zinc-100">Mode</h2></div>
-      <fieldset className="space-y-2"><legend className="sr-only">Recite mode</legend>{RECITE_MODE_DEFINITIONS.map(candidate => <label key={candidate.id} className={`flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2.5 text-sm ${mode === candidate.id ? 'border-cyan-500 bg-cyan-500/10 text-cyan-100' : 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-cyan-600'}`}><input type="radio" name={modeGroup} value={candidate.id} checked={mode === candidate.id} onChange={() => onModeChange(candidate.id)} className="mt-1 accent-cyan-500" /><span><span className="block font-semibold">{candidate.label}</span><span className="mt-0.5 block text-xs text-zinc-500">{candidate.description}</span></span></label>)}</fieldset>
-      <fieldset className="space-y-2 border-t border-zinc-800 pt-4"><legend className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Map assistance</legend>{RECITE_ASSISTANCE_DEFINITIONS.map(candidate => <label key={candidate.id} className={`flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2.5 text-sm ${assistance === candidate.id ? 'border-cyan-500 bg-cyan-500/10 text-cyan-100' : 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-cyan-600'}`}><input type="radio" name={assistanceGroup} value={candidate.id} checked={assistance === candidate.id} onChange={() => onAssistanceChange(candidate.id)} className="mt-1 accent-cyan-500" /><span><span className="block font-semibold">{candidate.label}</span><span className="mt-0.5 block text-xs text-zinc-500">{candidate.description}</span></span></label>)}</fieldset>
+      <fieldset className="space-y-2"><legend className="sr-only">Recite mode</legend>{RECITE_MODE_DEFINITIONS.map(candidate => <label key={candidate.id} className={`flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2.5 text-sm ${mode === candidate.id ? 'border-cyan-500 bg-cyan-500/10 text-cyan-100' : 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-cyan-600'}`}><input type="radio" name={modeGroup} value={candidate.id} checked={mode === candidate.id} onChange={() => onModeChange(candidate.id)} className="mt-1 accent-cyan-500" /><span><span className="block font-semibold">{candidate.label}</span><span className="mt-0.5 block text-xs text-zinc-500">{getReciteModeDescription(candidate.id, assistance, candidate.description)}</span></span></label>)}</fieldset>
+      <fieldset className="space-y-2 border-t border-zinc-800 pt-4"><legend className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Map assistance</legend>{RECITE_ASSISTANCE_DEFINITIONS.map(candidate => <label key={candidate.id} className={`flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2.5 text-sm ${assistance === candidate.id ? 'border-cyan-500 bg-cyan-500/10 text-cyan-100' : 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-cyan-600'}`}><input type="radio" name={assistanceGroup} value={candidate.id} checked={assistance === candidate.id} onChange={() => onAssistanceChange(candidate.id)} className="mt-1 accent-cyan-500" /><span><span className="block font-semibold">{candidate.label}</span><span className="mt-0.5 block text-xs text-zinc-500">{getReciteAssistanceDescription(candidate.id, mode, candidate.description)}</span></span></label>)}</fieldset>
       {selectedCount === 0 && <p className="text-sm text-amber-300" role="alert">Select at least one Subregion.</p>}
       {mapState === 'loading' && <p className="text-xs text-zinc-500" role="status">Loading map…</p>}
       {mapState === 'error' && <p className="text-sm text-red-300" role="alert">Recite will be available when the map loads successfully.</p>}
@@ -228,4 +227,22 @@ function ReciteStatusLegend({ mode, progress }: { mode: ReciteMode; progress: Wo
 
 function statusLabel(status: ReciteStatus): string {
   return status.charAt(0).toUpperCase() + status.slice(1)
+}
+
+function getReciteModeDescription(mode: ReciteMode, assistance: ReciteMapAssistance, fallback: string): string {
+  if (assistance !== 'random') return fallback
+  switch (mode) {
+    case 'countries':
+      return 'Recall each Country in a randomized sequence.'
+    case 'countries-capitals':
+      return 'Mix Country and Capital recall independently.'
+    case 'countries-from-capitals':
+      return 'Recall each Country from Capital cues in a randomized sequence.'
+  }
+}
+
+function getReciteAssistanceDescription(assistance: ReciteMapAssistance, mode: ReciteMode, fallback: string): string {
+  return assistance === 'random' && mode === 'countries-capitals'
+    ? 'Mix Country and Capital recall independently.'
+    : fallback
 }

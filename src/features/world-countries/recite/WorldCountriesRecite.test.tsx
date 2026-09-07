@@ -109,6 +109,7 @@ describe('World Countries Recite workflow', () => {
     expect(mount.textContent).toContain('Countries setup may use a stronger Countries + Capitals result.')
     expect(mount.textContent).toContain('Visible')
     expect(mount.textContent).toContain('Random')
+    expect(mount.querySelector('#world-countries-recite-heading')?.textContent).toBe('Ordered recall')
     const controls = mount.querySelector('[aria-labelledby="world-countries-recite-controls-heading"]')
     expect(controls).not.toBeNull()
     expect(controls?.textContent).not.toContain('status legend')
@@ -119,6 +120,12 @@ describe('World Countries Recite workflow', () => {
     expect(mapSurface!.compareDocumentPosition(legend!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     expect(legend?.closest('[data-map-surface]')).toBeNull()
     expect(mount.querySelector<HTMLButtonElement>('button:disabled')?.textContent).toContain('Choose a ready Country scope')
+
+    await act(async () => selectRadio(mount, 1))
+    await act(async () => mount.querySelector<HTMLInputElement>('input[type="radio"][value="random"]')?.click())
+    expect(mount.querySelector('#world-countries-recite-heading')?.textContent).toBe('Random recall')
+    expect(mount.textContent).toContain('Mix Country and Capital recall independently.')
+    expect(mount.textContent).not.toContain('recall it in authored order')
 
     await act(async () => openContinent(mount, 'Europe'))
     expect(mount.querySelector<HTMLButtonElement>('button:disabled')?.textContent).toContain('Choose a ready Country scope')
@@ -227,7 +234,7 @@ describe('World Countries Recite workflow', () => {
     expect(mount.textContent).toContain('Recite complete')
   })
 
-  it('keeps a randomized Countries + Capitals pair explicit, focused, and ready for the next Country', async () => {
+  it('interleaves randomized Countries + Capitals prompts and preserves Country outcomes', async () => {
     vi.useFakeTimers()
     vi.spyOn(Math, 'random').mockReturnValue(0)
     const entries = countries.filter(country => ['NO', 'SE'].includes(country.id))
@@ -251,6 +258,8 @@ describe('World Countries Recite workflow', () => {
     expect(initialMap.selectedSubregionIds).toBeUndefined()
     expect(mount.querySelector('[data-world-countries-task-direction]')?.textContent).toBe('Random Country recall')
     expect(mount.querySelector('[data-world-countries-task-cue]')?.textContent).toBe('Identify the highlighted Country')
+    const sessionControls = () => mount.querySelector('[aria-labelledby="world-countries-recite-session-controls-heading"]')!
+    expect(sessionControls().textContent).toContain('0 / 4 Prompts')
 
     const firstCountryInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the country name"]')!
     await act(async () => {
@@ -259,36 +268,12 @@ describe('World Countries Recite workflow', () => {
     })
     expect(mount.textContent).toContain('Correct')
     expect(activeMapProps().zoomCountryIds).toBe(initialFrame)
+    expect(sessionControls().textContent).toContain('1 / 4 Prompts')
     await act(async () => {
       vi.advanceTimersByTime(500)
       await Promise.resolve()
     })
 
-    expect(mount.querySelector('[data-world-countries-task-direction]')?.textContent).toBe('Country → Capital')
-    expect(mount.querySelector('[data-world-countries-task-cue]')?.textContent).toBe('Capital of Sweden')
-    expect(activeMapProps()).toMatchObject({
-      highlightedCountryIds: ['SE'],
-      highlightFill: '#8b5cf6',
-      zoomCountryIds: ['NO', 'SE'],
-    })
-    expect(activeMapProps().zoomCountryIds).toBe(initialFrame)
-
-    const firstCapitalInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the capital"]')!
-    await act(async () => {
-      typeInto(firstCapitalInput, 'Stockholm')
-      firstCapitalInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
-    })
-    expect(mount.textContent).toContain('Correct')
-    expect(activeMapProps().zoomCountryIds).toBe(initialFrame)
-    await act(async () => {
-      vi.advanceTimersByTime(500)
-      await Promise.resolve()
-    })
-
-    const secondCountryInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the country name"]')!
-    expect(secondCountryInput.disabled).toBe(false)
-    expect(secondCountryInput.value).toBe('')
-    expect(document.activeElement).toBe(secondCountryInput)
     expect(mount.querySelector('[data-world-countries-task-direction]')?.textContent).toBe('Random Country recall')
     expect(mount.querySelector('[data-world-countries-task-cue]')?.textContent).toBe('Identify the highlighted Country')
     expect(activeMapProps()).toMatchObject({
@@ -297,27 +282,67 @@ describe('World Countries Recite workflow', () => {
       zoomCountryIds: ['NO', 'SE'],
     })
     expect(activeMapProps().zoomCountryIds).toBe(initialFrame)
-    const activeColors = activeMapProps().countryColorsById as ReadonlyMap<string, string>
-    expect(activeColors.get('SE')).toBe('#15803d')
 
+    const secondCountryInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the country name"]')!
     await act(async () => {
       typeInto(secondCountryInput, 'Norway')
       secondCountryInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
     })
+    expect(mount.textContent).toContain('Correct')
+    expect(activeMapProps().zoomCountryIds).toBe(initialFrame)
+    expect(sessionControls().textContent).toContain('2 / 4 Prompts')
     await act(async () => {
       vi.advanceTimersByTime(500)
       await Promise.resolve()
     })
-    const secondCapitalInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the capital"]')!
+
+    expect(mount.querySelector('[data-world-countries-task-cue]')?.textContent).toBe('Capital of Sweden')
+    expect(activeMapProps()).toMatchObject({
+      highlightedCountryIds: ['SE'],
+      highlightFill: '#8b5cf6',
+      zoomCountryIds: ['NO', 'SE'],
+    })
+    expect(activeMapProps().zoomCountryIds).toBe(initialFrame)
+    const activeColors = activeMapProps().countryColorsById as ReadonlyMap<string, string>
+    expect(activeColors.get('SE')).toBe('#52525b')
+
     await act(async () => {
+      const firstCapitalInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the capital"]')!
+      typeInto(firstCapitalInput, 'Stockholm')
+      firstCapitalInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    })
+    expect(mount.textContent).toContain('Correct')
+    expect(sessionControls().textContent).toContain('3 / 4 Prompts')
+    await act(async () => {
+      vi.advanceTimersByTime(500)
+      await Promise.resolve()
+    })
+
+    expect(mount.querySelector('[data-world-countries-task-cue]')?.textContent).toBe('Capital of Norway')
+    expect(activeMapProps()).toMatchObject({
+      highlightedCountryIds: ['NO'],
+      highlightFill: '#8b5cf6',
+      zoomCountryIds: ['NO', 'SE'],
+    })
+    expect(activeMapProps().zoomCountryIds).toBe(initialFrame)
+    const afterFirstCountry = activeMapProps().countryColorsById as ReadonlyMap<string, string>
+    expect(afterFirstCountry.get('SE')).toBe('#15803d')
+
+    await act(async () => {
+      const secondCapitalInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the capital"]')!
       typeInto(secondCapitalInput, 'Oslo')
       secondCapitalInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
     })
+    expect(mount.textContent).toContain('Correct')
+    expect(sessionControls().textContent).toContain('4 / 4 Prompts')
     await act(async () => {
       vi.advanceTimersByTime(500)
       await Promise.resolve()
     })
     expect(mount.textContent).toContain('Recite complete')
+    expect(JSON.parse(localStorage.getItem(RECITE_PROGRESS_STORAGE_KEY) ?? '{}')).toMatchObject({
+      outcomes: { 'countries-capitals': { SE: { outcome: 'recalled' }, NO: { outcome: 'recalled' } } },
+    })
   })
 
   it('frames a random target with the run population in its whole Subregion', async () => {
@@ -347,32 +372,60 @@ describe('World Countries Recite workflow', () => {
     await act(async () => buttonContaining(mount, 'Western Europe').click())
     await act(async () => buttonContaining(mount, 'Start Recite').click())
 
-    expect(activeMapProps().highlightedCountryIds).toEqual(['FR'])
-    expect(activeMapProps().zoomCountryIds).toEqual(['FR'])
+    const firstTargetId = (activeMapProps().highlightedCountryIds as string[])[0]
+    const firstCountry = entries.find(country => country.id === firstTargetId)!
+    expect(activeMapProps()).toMatchObject({ highlightedCountryIds: [firstTargetId], highlightFill: '#0891b2', zoomCountryIds: [firstTargetId] })
 
     const countryInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the country name"]')!
     await act(async () => {
-      typeInto(countryInput, 'France')
+      typeInto(countryInput, firstCountry.country)
       countryInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
     })
     await act(async () => {
       vi.advanceTimersByTime(500)
       await Promise.resolve()
     })
-    const capitalInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the capital"]')!
-    expect(activeMapProps().zoomCountryIds).toEqual(['FR'])
+    const secondTargetId = (activeMapProps().highlightedCountryIds as string[])[0]
+    const secondCountry = entries.find(country => country.id === secondTargetId)!
+    expect(secondTargetId).not.toBe(firstTargetId)
+    expect(activeMapProps()).toMatchObject({ highlightedCountryIds: [secondTargetId], highlightFill: '#0891b2', zoomCountryIds: [secondTargetId] })
 
     await act(async () => {
-      typeInto(capitalInput, 'Paris')
-      capitalInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+      const secondCountryInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the country name"]')!
+      typeInto(secondCountryInput, secondCountry.country)
+      secondCountryInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
     })
     await act(async () => {
       vi.advanceTimersByTime(500)
       await Promise.resolve()
     })
 
-    expect(activeMapProps().highlightedCountryIds).toEqual(['NO'])
-    expect(activeMapProps().zoomCountryIds).toEqual(['NO'])
+    expect(mount.querySelector('[data-world-countries-task-cue]')?.textContent).toBe(`Capital of ${firstCountry.country}`)
+    expect(activeMapProps()).toMatchObject({ highlightedCountryIds: [firstTargetId], highlightFill: '#8b5cf6', zoomCountryIds: [firstTargetId] })
+
+    await act(async () => {
+      const firstCapitalInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the capital"]')!
+      typeInto(firstCapitalInput, firstCountry.capital)
+      firstCapitalInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(500)
+      await Promise.resolve()
+    })
+
+    expect(mount.querySelector('[data-world-countries-task-cue]')?.textContent).toBe(`Capital of ${secondCountry.country}`)
+    expect(activeMapProps()).toMatchObject({ highlightedCountryIds: [secondTargetId], highlightFill: '#8b5cf6', zoomCountryIds: [secondTargetId] })
+
+    await act(async () => {
+      const secondCapitalInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the capital"]')!
+      typeInto(secondCapitalInput, secondCountry.capital)
+      secondCapitalInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(500)
+      await Promise.resolve()
+    })
+    expect(mount.textContent).toContain('Recite complete')
   })
 
   it('wires Reveal as you go to hidden Country IDs and reveals the Country after Skip', async () => {

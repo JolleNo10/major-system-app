@@ -30,18 +30,64 @@ describe('World Countries Recite session', () => {
     expect(getCurrentRecitePrompt(session)).toMatchObject({ countryId: 'NO', kind: 'country' })
   })
 
-  it('randomizes the Country snapshot once while keeping Countries + Capitals pairs together', () => {
+  it('randomizes Countries + Capitals as one constrained prompt sequence', () => {
     const session = createReciteSession('countries-capitals', randomCountries, { randomize: true, random: () => 0 })
     const countryIds = session.countries.map(country => country.id)
+    const prompts = session.prompts.map(prompt => ({
+      countryId: session.countries[prompt.countryIndex]?.id,
+      kind: prompt.kind,
+    }))
 
     expect(new Set(countryIds)).toEqual(new Set(randomCountries.map(country => country.id)))
     expect(countryIds).toHaveLength(randomCountries.length)
     expect(countryIds).not.toEqual(randomCountries.map(country => country.id))
-    expect(session.prompts.map(prompt => [session.countries[prompt.countryIndex]?.id, prompt.kind]))
-      .toEqual(countryIds.flatMap(countryId => [[countryId, 'country'], [countryId, 'capital']]))
+    expect(prompts).toHaveLength(randomCountries.length * 2)
+    for (const countryId of countryIds) {
+      expect(prompts.filter(prompt => prompt.countryId === countryId && prompt.kind === 'country')).toHaveLength(1)
+      expect(prompts.filter(prompt => prompt.countryId === countryId && prompt.kind === 'capital')).toHaveLength(1)
+    }
+    expect(prompts.some((prompt, index) => index > 0 && prompt.countryId === prompts[index - 1]?.countryId)).toBe(false)
+    let longestKindStreak = 0
+    let currentKindStreak = 0
+    let previousKind: string | undefined
+    for (const prompt of prompts) {
+      currentKindStreak = prompt.kind === previousKind ? currentKindStreak + 1 : 1
+      longestKindStreak = Math.max(longestKindStreak, currentKindStreak)
+      previousKind = prompt.kind
+    }
+    expect(longestKindStreak).toBeLessThanOrEqual(2)
+    expect(prompts.map(prompt => `${prompt.countryId}:${prompt.kind}`)).not.toEqual(
+      countryIds.flatMap(countryId => [`${countryId}:country`, `${countryId}:capital`]),
+    )
 
     const afterFeedback = submitReciteAnswer(session, false)
     expect(afterFeedback.countries.map(country => country.id)).toEqual(countryIds)
+    expect(afterFeedback.prompts.map(prompt => [prompt.countryIndex, prompt.kind])).toEqual(
+      session.prompts.map(prompt => [prompt.countryIndex, prompt.kind]),
+    )
+    const afterRetry = submitReciteAnswer(afterFeedback, true)
+    expect(afterRetry.prompts.map(prompt => [prompt.countryIndex, prompt.kind])).toEqual(
+      session.prompts.map(prompt => [prompt.countryIndex, prompt.kind]),
+    )
+  })
+
+  it('can create a fresh randomized prompt sequence for a later run', () => {
+    const first = createReciteSession('countries-capitals', randomCountries, { randomize: true, random: () => 0 })
+    const second = createReciteSession('countries-capitals', randomCountries, { randomize: true, random: () => 0.99 })
+
+    expect(second.prompts.map(prompt => [prompt.countryIndex, prompt.kind])).not.toEqual(
+      first.prompts.map(prompt => [prompt.countryIndex, prompt.kind]),
+    )
+  })
+
+  it.each(['countries', 'countries-from-capitals'] as const)('keeps Random %s at one prompt per Country', mode => {
+    const session = createReciteSession(mode, randomCountries, { randomize: true, random: () => 0.5 })
+
+    expect(session.prompts).toHaveLength(randomCountries.length)
+    expect(new Set(session.prompts.map(prompt => session.countries[prompt.countryIndex]?.id))).toEqual(
+      new Set(randomCountries.map(country => country.id)),
+    )
+    expect(new Set(session.prompts.map(prompt => prompt.kind))).toEqual(new Set(['country']))
   })
 
   it('keeps an incorrect prompt active until a later correct answer', () => {

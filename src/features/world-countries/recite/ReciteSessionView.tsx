@@ -10,6 +10,7 @@ import { classifyRecallAnswer } from '@/features/world-countries/learning/recall
 import {
   getCurrentRecitePrompt,
   getReciteCountryOutcomes,
+  getReciteResolvedPromptCount,
   getReciteResolvedCountryIds,
   type ReciteCountryOutcome,
   type ReciteMode,
@@ -147,13 +148,24 @@ export function ReciteSession({ run, phase, fuzzyMatching, onSubmit, onReveal, o
   }
 
   if (!currentPrompt || !currentCountry) return null
+  const activityProgress = run.mode === 'countries-capitals' && run.assistance === 'random'
+    ? {
+      label: 'Prompts',
+      current: getReciteResolvedPromptCount(run.session),
+      total: run.session.prompts.length,
+    }
+    : {
+      label: 'Country',
+      current: currentPrompt.countryIndex + 1,
+      total: run.session.countries.length,
+    }
   const activeTask: WorldCountriesActivityTask = run.mode === 'countries-from-capitals' && currentPrompt.kind === 'country'
     ? {
       direction: 'Capital → Country',
       cue: currentCountry.capital,
       answerKind: 'country',
       sessionContext: <><span className="text-zinc-300">{currentCountry.continent}</span> · {getReciteModeLabel(run.mode)}</>,
-      progress: { label: 'Country', current: currentPrompt.countryIndex + 1, total: run.session.countries.length },
+      progress: activityProgress,
     }
     : {
       direction: currentPrompt.kind === 'capital'
@@ -164,7 +176,7 @@ export function ReciteSession({ run, phase, fuzzyMatching, onSubmit, onReveal, o
         : run.assistance === 'random' ? 'Identify the highlighted Country' : 'Next country',
       answerKind: currentAnswerKind,
       sessionContext: <><span className="text-zinc-300">{currentCountry.continent}</span> · {getReciteModeLabel(run.mode)}</>,
-      progress: { label: 'Country', current: currentPrompt.countryIndex + 1, total: run.session.countries.length },
+      progress: activityProgress,
     }
 
   return (

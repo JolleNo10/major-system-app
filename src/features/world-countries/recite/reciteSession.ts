@@ -24,6 +24,11 @@ interface RecitePromptState {
   outcome: ReciteCountryOutcome | null
 }
 
+interface RecitePromptSeed {
+  countryIndex: number
+  kind: RecitePromptKind
+}
+
 export interface ReciteSessionState {
   mode: ReciteMode
   countries: readonly ReciteSessionCountry[]
@@ -67,13 +72,17 @@ export function createReciteSession(
   countries: readonly ReciteSessionCountry[],
   options: CreateReciteSessionOptions = {},
 ): ReciteSessionState {
+  const random = options.random ?? Math.random
   const snapshot = options.randomize
-    ? shuffleReciteCountries(countries, options.random ?? Math.random)
+    ? shuffleReciteCountries(countries, random)
     : countries.map(country => ({ ...country }))
-  const prompts = snapshot.flatMap((_, countryIndex) => [
-    createPrompt(countryIndex, 'country'),
-    ...(mode === 'countries-capitals' ? [createPrompt(countryIndex, 'capital')] : []),
-  ])
+  const promptSeeds = options.randomize && mode === 'countries-capitals'
+    ? shuffleRecitePromptSeeds(snapshot.length, random)
+    : snapshot.flatMap((_, countryIndex) => [
+      { countryIndex, kind: 'country' as const },
+      ...(mode === 'countries-capitals' ? [{ countryIndex, kind: 'capital' as const }] : []),
+    ])
+  const prompts = promptSeeds.map(prompt => createPrompt(prompt.countryIndex, prompt.kind))
   return {
     mode,
     countries: snapshot,
@@ -92,6 +101,55 @@ function shuffleReciteCountries(countries: readonly ReciteSessionCountry[], rand
     ;[result[index], result[swapWith]] = [result[swapWith]!, result[index]!]
   }
   return result
+}
+
+function shuffleRecitePromptSeeds(countryCount: number, random: () => number): RecitePromptSeed[] {
+  const remaining: RecitePromptSeed[] = Array.from({ length: countryCount }, (_, countryIndex): RecitePromptSeed[] => [
+    { countryIndex, kind: 'country' },
+    { countryIndex, kind: 'capital' },
+  ]).flat()
+  const sequence: RecitePromptSeed[] = []
+  let previous: RecitePromptSeed | undefined
+  let sameKindStreak = 0
+
+  while (remaining.length > 0) {
+    const previousCountryIndex = previous?.countryIndex
+    const nonAdjacent = previousCountryIndex === undefined
+      ? remaining
+      : remaining.filter(candidate => candidate.countryIndex !== previousCountryIndex)
+    const preservesCountrySpacing = nonAdjacent.filter(candidate => canPreserveCountrySpacing(remaining, candidate))
+    const withoutLongKindStreak = nonAdjacent.filter(candidate => candidate.kind !== previous?.kind || sameKindStreak < 2)
+    const preferredCandidates = withoutLongKindStreak.filter(candidate => canPreserveCountrySpacing(remaining, candidate))
+    const candidates = preferredCandidates.length > 0
+      ? preferredCandidates
+      : preservesCountrySpacing.length > 0
+        ? preservesCountrySpacing
+        : withoutLongKindStreak.length > 0
+          ? withoutLongKindStreak
+          : nonAdjacent.length > 0
+            ? nonAdjacent
+            : remaining
+    const selectedIndex = Math.floor(clampRandom(random()) * candidates.length)
+    const selected = candidates[selectedIndex]!
+    const remainingIndex = remaining.indexOf(selected)
+    remaining.splice(remainingIndex, 1)
+    sequence.push(selected)
+    sameKindStreak = selected.kind === previous?.kind ? sameKindStreak + 1 : 1
+    previous = selected
+  }
+
+  return sequence
+}
+
+function canPreserveCountrySpacing(remaining: readonly RecitePromptSeed[], candidate: RecitePromptSeed): boolean {
+  const after = remaining.filter(prompt => prompt !== candidate)
+  if (after.length === 0) return true
+  if (after.length === 1) return after[0]?.countryIndex !== candidate.countryIndex
+  return new Set(after.map(prompt => prompt.countryIndex)).size > 1
+}
+
+function clampRandom(value: number): number {
+  return Number.isFinite(value) ? Math.max(0, Math.min(0.999999999, value)) : 0
 }
 
 export function getCurrentRecitePrompt(state: ReciteSessionState): RecitePromptView | null {
@@ -164,6 +222,10 @@ export function getReciteCountryOutcomes(
     if (outcomes.some(outcome => outcome === 'recovered')) return 'recovered'
     return 'recalled'
   })
+}
+
+export function getReciteResolvedPromptCount(state: ReciteSessionState): number {
+  return state.prompts.filter(prompt => prompt.outcome !== null).length
 }
 
 /** Return Countries whose Country-name prompt has been resolved in the run. */
