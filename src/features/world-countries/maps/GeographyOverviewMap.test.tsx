@@ -92,6 +92,69 @@ describe('GeographyOverviewMap', () => {
     }
   })
 
+  it('frames the real Micronesia representative target in a bounded Oceania neighbourhood', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => oceaniaSvg })))
+    const micronesia = countries.find(country => country.id === 'FM')!
+    const contextCountries = countries.filter(country => (
+      country.continent === 'Oceania' && country.subregionId === micronesia.subregionId
+    ))
+    const svgElementPrototype = SVGElement.prototype as typeof SVGElement.prototype & { getBBox?: () => { x: number; y: number; width: number; height: number } }
+    const previousGetBBox = svgElementPrototype.getBBox
+    const boxes: Record<string, { x: number; y: number; width: number; height: number }> = {
+      Palau: { x: 780, y: 266, width: 6, height: 6 },
+      Micronesia: { x: 790, y: 260, width: 70, height: 20 },
+      Nauru: { x: 860, y: 288, width: 6, height: 6 },
+      Marshall_Islands: { x: 870, y: 266, width: 6, height: 6 },
+      Kiribati: { x: 876, y: 283, width: 80, height: 18 },
+    }
+    Object.defineProperty(svgElementPrototype, 'getBBox', {
+      configurable: true,
+      value(this: SVGElement) {
+        return boxes[this.id] ?? { x: 0, y: 0, width: 1, height: 1 }
+      },
+    })
+    const mount = document.createElement('div'); document.body.append(mount)
+
+    try {
+      await act(async () => {
+        root = createRoot(mount)
+        root.render(createElement(GeographyOverviewMap, {
+          level: 'continent',
+          continent: 'Oceania',
+          countryPopulation: contextCountries,
+          neighbourhoodZoom: {
+            targetCountryId: micronesia.id,
+            contextCountryIds: contextCountries.map(country => country.id),
+            adaptive: true,
+          },
+          taskTargetCountryId: micronesia.id,
+          interactive: false,
+          ariaLabel: 'Random Recite Micronesia map',
+        }))
+        await Promise.resolve(); await Promise.resolve()
+      })
+
+      const svg = mount.querySelector<SVGSVGElement>('svg')
+      const marker = mount.querySelector<SVGCircleElement>('[data-svg-map-task-representative-target="Micronesia"] [data-svg-map-task-marker="Micronesia"]')
+      if (!svg || !marker) throw new Error('Missing real Micronesia representative target')
+      const sourceViewBox = oceaniaSvg.match(/\bviewBox="([^"]+)"/)?.[1]?.split(/[ ,]+/).map(Number)
+      const viewBox = svg.getAttribute('viewBox')?.split(/[ ,]+/).map(Number)
+      if (!sourceViewBox || sourceViewBox.length !== 4 || !viewBox || viewBox.length !== 4) {
+        throw new Error('Missing Micronesia camera viewBox')
+      }
+      const markerX = Number(marker.getAttribute('cx'))
+      const markerY = Number(marker.getAttribute('cy'))
+      expect(marker.parentElement?.getAttribute('visibility')).toBe('visible')
+      expect(viewBox[2]).toBeLessThan(sourceViewBox[2] * 0.65)
+      expect(viewBox[0]).toBeLessThanOrEqual(markerX)
+      expect(viewBox[1]).toBeLessThanOrEqual(markerY)
+      expect(viewBox[0] + viewBox[2]).toBeGreaterThanOrEqual(markerX)
+      expect(viewBox[1] + viewBox[3]).toBeGreaterThanOrEqual(markerY)
+    } finally {
+      Object.defineProperty(svgElementPrototype, 'getBBox', { configurable: true, value: previousGetBBox })
+    }
+  })
+
   it('reports grouped map hover and Country clicks through workflow-neutral callbacks', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g></svg>' })))
     const onHoverGroup = vi.fn(); const onCountryClick = vi.fn(); const mount = document.createElement('div'); document.body.append(mount)

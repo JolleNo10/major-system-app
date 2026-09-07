@@ -1712,11 +1712,15 @@ export class SvgMapController {
     const targetCentricBounds = targetSelection
       ? this.getTargetCentricCountryBoundsFromSelection(targetSelection, ADAPTIVE_TARGET_MIN_WINDOW_RATIO)
       : null
-    const targetBounds = this.getTargetFramingBounds(targetIds)
+    // Keep the regional scale check aligned with the target-centric candidate.
+    // A representative task point may deliberately select one small component
+    // of a dispersed Country; the full Country bbox must not make it appear
+    // legible in a broad regional frame.
+    const targetBounds = targetSelection?.targetBounds ?? this.getTargetFramingBounds(targetIds)
     const regionalTargetScale = regionalBounds && targetBounds
       ? this.getTargetFrameScale(targetBounds, regionalBounds)
       : null
-    const targetCentricTargetBounds = targetSelection?.targetBounds ?? targetBounds
+    const targetCentricTargetBounds = targetBounds
     const targetCentricScale = targetCentricBounds && targetCentricTargetBounds
       ? this.getTargetFrameScale(targetCentricTargetBounds, targetCentricBounds)
       : null

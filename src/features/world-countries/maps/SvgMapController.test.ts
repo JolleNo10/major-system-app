@@ -339,6 +339,35 @@ describe('SvgMapController persistent state', () => {
     expect(viewBox.x + viewBox.width).toBeGreaterThanOrEqual(501)
   })
 
+  it('uses the representative task component for adaptive scale instead of full dispersed Country bounds', async () => {
+    const { mount, controller } = makeController()
+    const targetPath = 'M 8 10 h 40 v 20 h -40 z M 82 18 h 1 v 1 h -1 z'
+    await controller.load({ markup: `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
+        <g><path id="Target" d="${targetPath}"/><text id="Target_label">TARGET</text></g>
+        <g><path id="Context" d="M 84 17 h 4 v 4 h -4 z"/><text id="Context_label">CONTEXT</text></g>
+      </svg>` })
+    setBBox(mount, 'Target', { x: 8, y: 10, width: 75, height: 20 })
+    setPathGeometry(mount, 'Context', { x: 84, y: 17, width: 4, height: 4 }, [{ x: 85, y: 18 }])
+    controller.setTaskAssistance({
+      taskTargetId: 'Target',
+      learningAnchors: [{
+        sourceSvgId: 'Target',
+        kind: 'multi-dot-representative',
+        sourceFingerprint: targetPath,
+        point: { x: 82.5, y: 18.5 },
+      }],
+    })
+
+    controller.setAdaptiveTargetCentricZoom(['Target'], ['Context'])
+
+    const viewBox = readViewBox(mount)
+    expect(viewBox.width).toBeLessThan(40)
+    expect(viewBox.width).toBeGreaterThanOrEqual(4)
+    expect(viewBox.x).toBeLessThanOrEqual(82.5)
+    expect(viewBox.x + viewBox.width).toBeGreaterThanOrEqual(85)
+  })
+
   it('keeps a task representative anchor in an adaptive multi-dot frame', async () => {
     const { mount, controller } = makeController()
     const targetPath = 'M 10 10 h 4 v 4 h -4 z M 80 35 h 4 v 4 h -4 z'
