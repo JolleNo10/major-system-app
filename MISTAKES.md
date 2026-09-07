@@ -26,3 +26,4 @@ about what was outside the request.
 - Evidence has a short shelf life here. Other agents and RepoWise edit the worktree mid-session, so re-check load-bearing claims against the current worktree before reporting, and check `git status` and file mtimes before trusting a test failure.
 - `Test-Path 'src/features/*/index.ts'` returns `True` through glob expansion and cannot show that a literal path exists. Use it only on concrete paths.
 - Prefer encoding a checkable claim as a test over asserting it in prose. `src/architecture/docCitations.test.ts` re-verifies every source path cited by current-state documentation on every run.
+- Do not recursively list `.repowise/` during configuration discovery; it contains large generated databases and vector-index trees. Read known small configuration files such as `.repowise/config.yaml`, or list only the directory's immediate children.
