@@ -252,6 +252,22 @@ describe('World Countries Recite workflow', () => {
     expect(activeMaps[activeMaps.length - 1]).toMatchObject({ highlightFill: '#0891b2' })
   })
 
+  it('uses the snapshotted Country scope for the active map without geographic selection styling', async () => {
+    const entries = countries.filter(country => ['NO', 'FR'].includes(country.id))
+    const mount = await renderRecite(entries)
+    await act(async () => openContinent(mount, 'Europe'))
+    await act(async () => buttonContaining(mount, 'Northern Europe').click())
+    await act(async () => buttonContaining(mount, 'Start Recite').click())
+
+    expect(activeMapProps()).toMatchObject({
+      continent: 'Europe',
+      selectedCountryIds: ['NO'],
+      highlightedCountryIds: ['NO'],
+      highlightFill: '#0891b2',
+    })
+    expect(activeMapProps().selectedSubregionIds).toBeUndefined()
+  })
+
   it('keeps the active Recite geography rail on its start-time order snapshot', async () => {
     const entries = countries.filter(country => country.id === 'NO' || country.id === 'FR')
     localStorage.setItem(CONTINENT_METADATA_STORAGE_KEY, JSON.stringify([{ continentId: 'europe', subregionOrder: ['northern-europe', 'western-europe'], updatedAt: 9 }]))
@@ -290,7 +306,8 @@ describe('World Countries Recite workflow', () => {
 
     await act(async () => buttonContaining(mount, 'Start Recite').click())
     const activeRail = () => mount.querySelector('[aria-labelledby="world-countries-recite-session-geography-heading"]') as HTMLElement
-    expect(activeMapProps()).toMatchObject({ continent: 'Europe', highlightedCountryIds: ['NO'] })
+    expect(activeMapProps()).toMatchObject({ continent: 'Europe', selectedCountryIds: ['NO', 'IN'], highlightedCountryIds: ['NO'] })
+    expect(activeMapProps().selectedSubregionIds).toBeUndefined()
     expect(activeRail().textContent).toContain('Europe')
     expect(activeRail().textContent).toContain('Northern Europe')
     expect(activeRail().textContent).toContain('Asia')
@@ -308,7 +325,7 @@ describe('World Countries Recite workflow', () => {
       vi.advanceTimersByTime(500)
       await Promise.resolve()
     })
-    expect(activeMapProps()).toMatchObject({ continent: 'Asia', highlightedCountryIds: ['IN'] })
+    expect(activeMapProps()).toMatchObject({ continent: 'Asia', selectedCountryIds: ['NO', 'IN'], highlightedCountryIds: ['IN'] })
     expect(mount.querySelector('[data-current-continent="true"]')?.textContent).toContain('Asia')
 
     const indiaInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the country name"]')!

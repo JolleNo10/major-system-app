@@ -65,7 +65,7 @@ export function ReciteSession({ run, phase, fuzzyMatching, onSubmit, onReveal, o
     <GeographyOverviewMap
       level={activeContinent ? 'continent' : 'world'}
       continent={activeContinent}
-      selectedSubregionIds={activeContinent ? run.subregionIds : undefined}
+      selectedCountryIds={run.session.countries.map(country => country.id)}
       countryColorsById={activeCountryColors}
       countryPopulation={run.population}
       highlightedCountryIds={highlightedCountryIds}
