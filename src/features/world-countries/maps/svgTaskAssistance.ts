@@ -318,6 +318,15 @@ export class SvgTaskAssistanceRuntime {
     return this.taskPointerIntent?.countryId ?? null
   }
 
+  /** Return the map-space point used by the active representative task target. */
+  getTaskTargetPoint(sourceSvgId: string): SvgPoint | null {
+    if (!this.svg || this.taskTargetId !== sourceSvgId) return null
+    const country = this.getCountryMap().get(sourceSvgId)
+    if (!country) return null
+    const anchor = this.resolveTaskAnchor(sourceSvgId, country)
+    return anchor ? transformSourcePointToLayer(country.path, anchor.point, this.svg) : null
+  }
+
   renderCountryTaskState(
     country: SvgTaskAssistanceCountry,
     fill: string | null,
