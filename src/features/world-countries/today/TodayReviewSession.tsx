@@ -120,6 +120,7 @@ export function TodayReviewSession({
       />
       <WorldCountriesTypedAnswer
         promptKey={`${country.id}-${skill}-${prompt.kind}`}
+        answerKind={answerKind}
         answerLabel={isLocationQuestion ? 'Type the Country name' : 'Type the capital'}
         placeholder={isLocationQuestion ? 'Type the Country…' : 'Type the capital…'}
         correctAnswer={expectedAnswer}
@@ -179,7 +180,7 @@ export function TodayReviewSession({
             </div>
           )
           const dock = (
-            <TaskDock variant="form">
+            <TaskDock variant="form" answerKind={typed.feedbackActive ? undefined : answerKind}>
               {typed.input}
               {typed.isAnswerable && prompt.kind === 'retry' && <button type="button" disabled={advancing} onClick={() => { void finishOrAdvance('skip') }} className="rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-300 hover:border-cyan-500 hover:text-zinc-100 disabled:opacity-40">Skip for now</button>}
             </TaskDock>

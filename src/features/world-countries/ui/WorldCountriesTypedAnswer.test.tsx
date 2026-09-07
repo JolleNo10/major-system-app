@@ -39,9 +39,10 @@ function renderAnswer(
   onAnswer = vi.fn(),
   onTransition = vi.fn(),
 ) {
-  root = createRoot(mount)
-  act(() => root?.render(createElement(WorldCountriesTypedAnswer, {
+    root = createRoot(mount)
+    act(() => root?.render(createElement(WorldCountriesTypedAnswer, {
       promptKey: 'NO-country',
+      answerKind: 'country',
       answerLabel: 'Type the country name',
       placeholder: 'Type the country…',
       correctAnswer: 'Norway',
@@ -59,6 +60,64 @@ function renderAnswer(
 }
 
 describe('WorldCountriesTypedAnswer', () => {
+  it.each([
+    ['country', 'border-cyan-500/60', 'focus-within:border-cyan-400', 'bg-cyan-600', 'hover:bg-cyan-500'],
+    ['capital', 'border-violet-500/60', 'focus-within:border-violet-400', 'bg-violet-600', 'hover:bg-violet-500'],
+  ] as const)('uses the %s answer accent for the input and Check action', (answerKind, borderClass, focusClass, buttonClass, hoverClass) => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+    renderAnswer(mount, { answerKind })
+
+    const input = mount.querySelector<HTMLInputElement>('input')!
+    const check = mount.querySelector<HTMLButtonElement>('button[type="submit"]')!
+    expect(input.parentElement?.className).toContain(borderClass)
+    expect(input.parentElement?.className).toContain(focusClass)
+    expect(check.className).toContain(buttonClass)
+    expect(check.className).toContain(hoverClass)
+  })
+
+  it('updates the answer accent when the prompt kind changes', () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+    renderAnswer(mount)
+    expect(mount.querySelector<HTMLInputElement>('input')?.parentElement?.className).toContain('border-cyan-500/60')
+
+    act(() => root?.render(createElement(WorldCountriesTypedAnswer, {
+      promptKey: 'NO-capital',
+      answerKind: 'capital',
+      answerLabel: 'Type the capital',
+      placeholder: 'Type the capital…',
+      correctAnswer: 'Oslo',
+      evaluate: answer => ({
+        outcome: answer === 'Oslo' ? 'exact' : 'incorrect',
+        canonicalAnswer: 'Oslo',
+        answerKind: 'capital',
+        message: 'Correct.',
+      }),
+      onAnswer: vi.fn(),
+      onTransition: vi.fn(),
+      children: (state: WorldCountriesTypedAnswerRenderState): ReactNode => createElement('div', null, state.input),
+    })))
+
+    expect(mount.querySelector<HTMLInputElement>('input')?.parentElement?.className).toContain('border-violet-500/60')
+    expect(mount.querySelector<HTMLButtonElement>('button[type="submit"]')?.className).toContain('bg-violet-600')
+  })
+
+  it.each([
+    ['Norway', 'border-green-500'],
+    ['Sweden', 'border-red-500'],
+  ] as const)('keeps %s feedback styling ahead of the answer accent', (answer, feedbackClass) => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+    renderAnswer(mount)
+    const input = mount.querySelector<HTMLInputElement>('input')!
+    typeInto(input, answer)
+    act(() => input.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
+
+    expect(input.parentElement?.className).toContain(feedbackClass)
+    expect(input.parentElement?.className).not.toContain('border-cyan-500/60')
+  })
+
   it('submits through the native form once and auto-transitions after exact feedback', () => {
     vi.useFakeTimers()
     const mount = document.createElement('div')
@@ -247,6 +306,7 @@ describe('WorldCountriesTypedAnswer', () => {
     const secondAnswer = vi.fn()
     act(() => root?.render(createElement(WorldCountriesTypedAnswer, {
       promptKey: 'SE-country',
+      answerKind: 'country',
       answerLabel: 'Type the country name',
       placeholder: 'Type the countryâ€¦',
       correctAnswer: 'Sweden',
@@ -285,6 +345,7 @@ describe('WorldCountriesTypedAnswer', () => {
 
     act(() => root?.render(createElement(WorldCountriesTypedAnswer, {
         promptKey: 'SE-country',
+        answerKind: 'country',
         answerLabel: 'Type the country name',
         placeholder: 'Type the country…',
         correctAnswer: 'Sweden',

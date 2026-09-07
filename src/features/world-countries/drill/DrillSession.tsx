@@ -202,6 +202,7 @@ export function DrillSession({
     return (
       <WorldCountriesTypedAnswer
         promptKey={`${step.countryId}-${step.skill}`}
+        answerKind={answerKind}
         answerLabel={task.typedAnswerLabel}
         placeholder={task.typedPlaceholder}
         correctAnswer={expectedAnswer}
@@ -271,7 +272,7 @@ export function DrillSession({
               feedbackOverlay={typed.feedbackOverlay}
               dockPlacement="stacked"
               dock={(
-                <TaskDock variant="form">
+                <TaskDock variant="form" answerKind={typed.feedbackActive ? undefined : answerKind}>
                   <section className="space-y-3">
                     {typed.input}
                   </section>

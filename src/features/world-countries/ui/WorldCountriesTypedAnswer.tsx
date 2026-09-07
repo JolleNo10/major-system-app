@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { TypingInput } from '@/core/ui/TypingInput'
 import { useMapSurfaceFeedbackOverlay } from './MapSurface'
 import { useWorldCountriesAnswerFeedback } from './WorldCountriesAnswerFeedback'
-import type { WorldCountriesAnswerKind } from './WorldCountriesAnswerSemantics'
+import { getWorldCountriesAnswerAccent, type WorldCountriesAnswerKind } from './WorldCountriesAnswerSemantics'
 
 export type WorldCountriesTypedAnswerOutcome = 'exact' | 'fuzzy' | 'incorrect' | 'revealed'
 
@@ -43,6 +43,7 @@ export interface WorldCountriesTypedAnswerRenderState {
 
 export function WorldCountriesTypedAnswer({
   promptKey,
+  answerKind,
   answerLabel,
   placeholder,
   correctAnswer,
@@ -55,6 +56,7 @@ export function WorldCountriesTypedAnswer({
   children,
 }: {
   promptKey: string
+  answerKind: WorldCountriesAnswerKind
   answerLabel: string
   placeholder: string
   correctAnswer: string
@@ -130,6 +132,7 @@ export function WorldCountriesTypedAnswer({
   }
 
   const isPositive = activeResult?.outcome === 'exact' || activeResult?.outcome === 'fuzzy'
+  const answerAccent = getWorldCountriesAnswerAccent(answerKind)
   const input = (
     <TypingInput
       resetKey={promptKey}
@@ -140,6 +143,7 @@ export function WorldCountriesTypedAnswer({
       placeholder={placeholder}
       showCorrectAnswer={false}
       compact
+      accent={answerAccent.typingInput}
     />
   )
   const handleFeedbackContinue = useCallback(() => {

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { usePageLayoutPresentation } from '@/app/layout/PageLayoutContext'
 import { isOverlayOpen } from '@/core/ui/overlayGuard'
+import { getWorldCountriesAnswerAccent, type WorldCountriesAnswerKind } from './WorldCountriesAnswerSemantics'
 
 export type MapSurfaceDockPlacement = 'overlay' | 'attached' | 'stacked'
 export type TaskDockVariant = 'navigation' | 'checkpoint' | 'form' | 'hint' | 'completion'
@@ -150,6 +151,7 @@ export function TaskDock({
   contentSizing = 'intrinsic',
   focusPrimary = false,
   enableEnterPrimary = false,
+  answerKind,
 }: {
   children?: ReactNode
   status?: ReactNode
@@ -158,14 +160,16 @@ export function TaskDock({
   contentSizing?: TaskDockContentSizing
   focusPrimary?: boolean
   enableEnterPrimary?: boolean
+  answerKind?: WorldCountriesAnswerKind
 }) {
   const dockRef = useRef<HTMLDivElement>(null)
+  const formBorderClass = answerKind ? getWorldCountriesAnswerAccent(answerKind).dockBorderClassName : 'border-white/[0.11]'
   const variantClass = {
     navigation: 'rounded-[12px] border border-zinc-700/70 bg-zinc-950/80 p-2 shadow-[0_14px_40px_rgba(0,0,0,0.35)] backdrop-blur-xl',
     checkpoint: tone === 'ready'
       ? 'rounded-[14px] border border-green-500/40 bg-[linear-gradient(90deg,rgba(5,46,22,0.92),rgba(9,9,11,0.94))] px-4 py-3.5 shadow-[0_18px_55px_rgba(0,0,0,0.45)] backdrop-blur-[14px]'
       : 'rounded-[14px] border border-zinc-700/80 bg-zinc-950/90 px-4 py-3.5 shadow-[0_18px_55px_rgba(0,0,0,0.42)] backdrop-blur-[14px]',
-    form: 'rounded-[18px] border border-white/[0.11] bg-[linear-gradient(180deg,rgba(20,22,28,0.54),rgba(11,12,16,0.72))] px-4 py-3.5 shadow-[0_20px_60px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-[18px] backdrop-saturate-125',
+    form: `rounded-[18px] border ${formBorderClass} bg-[linear-gradient(180deg,rgba(20,22,28,0.54),rgba(11,12,16,0.72))] px-4 py-3.5 shadow-[0_20px_60px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-[18px] backdrop-saturate-125`,
     hint: 'rounded-lg border border-zinc-700/50 bg-zinc-950/75 px-3 py-2 shadow-lg backdrop-blur-md',
     completion: 'rounded-[14px] border border-green-500/30 bg-zinc-950/90 px-4 py-3.5 shadow-[0_18px_55px_rgba(0,0,0,0.45)] backdrop-blur-[14px]',
   }[variant]

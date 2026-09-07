@@ -203,12 +203,14 @@ export function ReciteSession({ run, phase, fuzzyMatching, onSubmit, onReveal, o
 }
 
 function RecitePromptDock({ prompt, country, scopeCountries, fuzzyMatching, onSubmit, onReveal, onContinue }: { prompt: RecitePromptView; country: Country; scopeCountries: readonly Country[]; fuzzyMatching: boolean; onSubmit: (evaluation: WorldCountriesTypedAnswerEvaluation) => void; onReveal: () => void; onContinue: () => void }) {
+  const answerKind = prompt.kind === 'capital' ? 'capital' : 'country'
   const expected = prompt.kind === 'capital' ? country.capital : country.country
   const placeholder = prompt.kind === 'capital' ? 'Type the capital…' : 'Type the country…'
 
   return (
     <WorldCountriesTypedAnswer
       promptKey={`${prompt.countryId}-${prompt.kind}`}
+      answerKind={answerKind}
       answerLabel={prompt.kind === 'capital' ? 'Type the capital' : 'Type the country name'}
       placeholder={placeholder}
       correctAnswer={expected}
@@ -237,7 +239,7 @@ function RecitePromptDock({ prompt, country, scopeCountries, fuzzyMatching, onSu
       onTransition={onContinue}
     >
       {typed => (
-        <TaskDock variant="form">
+        <TaskDock variant="form" answerKind={typed.feedbackActive ? undefined : answerKind}>
           <div className="space-y-3">
             {typed.input}
             {typed.isAnswerable && <button type="button" onClick={() => { if (typed.reveal()) onReveal() }} className="rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-300 hover:border-orange-500 hover:text-zinc-100">Reveal / Skip</button>}

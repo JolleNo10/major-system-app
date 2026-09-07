@@ -15,9 +15,14 @@ interface Props {
   numeric?: boolean
   showCorrectAnswer?: boolean
   compact?: boolean
+  accent?: {
+    borderClassName: string
+    focusBorderClassName: string
+    submitButtonClassName: string
+  }
 }
 
-export function TypingInput({ onAnswer, answeredCorrect, correctAnswer, placeholder = 'Type the answer...', ariaLabel = placeholder, resetKey, numeric = false, showCorrectAnswer = true, compact = false }: Props) {
+export function TypingInput({ onAnswer, answeredCorrect, correctAnswer, placeholder = 'Type the answer...', ariaLabel = placeholder, resetKey, numeric = false, showCorrectAnswer = true, compact = false, accent }: Props) {
   const [value, setValue] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const submittedRef = useRef(false)
@@ -53,7 +58,7 @@ export function TypingInput({ onAnswer, answeredCorrect, correctAnswer, placehol
 
   const borderCls =
     answeredCorrect === null
-      ? 'border-zinc-700 focus-within:border-violet-500'
+      ? `${accent?.borderClassName ?? 'border-zinc-700'} ${accent?.focusBorderClassName ?? 'focus-within:border-violet-500'}`
       : answeredCorrect
       ? 'border-green-500 bg-green-500/10'
       : 'border-red-500 bg-red-500/10'
@@ -92,7 +97,7 @@ export function TypingInput({ onAnswer, answeredCorrect, correctAnswer, placehol
           <button
             type="submit"
             disabled={!canSubmit}
-            className={`${compact ? 'bg-cyan-600 px-3.5 hover:bg-cyan-500' : 'bg-zinc-700 px-5 hover:bg-violet-600'} text-sm font-medium text-zinc-300 transition-colors hover:text-white disabled:cursor-not-allowed disabled:opacity-40`}
+            className={`${accent?.submitButtonClassName ?? (compact ? 'bg-cyan-600 px-3.5 hover:bg-cyan-500' : 'bg-zinc-700 px-5 hover:bg-violet-600')} ${compact ? 'px-3.5' : 'px-5'} text-sm font-medium text-zinc-300 transition-colors hover:text-white disabled:cursor-not-allowed disabled:opacity-40`}
           >
             {compact ? <>Check <span aria-label="Enter" className="ml-2 inline-flex min-w-[22px] items-center justify-center rounded-[5px] border border-white/25 border-b-2 px-1.5 py-px text-[11px]">↵</span></> : '↵'}
           </button>

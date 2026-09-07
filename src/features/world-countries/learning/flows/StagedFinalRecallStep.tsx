@@ -65,6 +65,7 @@ export function StagedFinalRecallStep({
   return (
     <WorldCountriesTypedAnswer
       promptKey={`${ordered.currentIndex}-${current.id}`}
+      answerKind={answerKind}
       answerLabel={answerLabel}
       placeholder={placeholder}
       correctAnswer={showCountryName ? current.capital : current.country}
@@ -84,7 +85,7 @@ export function StagedFinalRecallStep({
     >
       {typed => {
         const dock = (
-          <TaskDock variant="form" status={(
+          <TaskDock variant="form" answerKind={typed.feedbackActive ? undefined : answerKind} status={(
             <span className="sr-only">{answerLabel}</span>
           )}>
             {typed.input}

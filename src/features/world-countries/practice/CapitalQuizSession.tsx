@@ -25,6 +25,7 @@ export function CapitalQuizSession({ run, session, fuzzyMatching, correctCount, 
   return (
     <WorldCountriesTypedAnswer
       promptKey={`${step.countryId}-${step.skill}`}
+      answerKind="capital"
       answerLabel="Type the capital"
       placeholder="Type the capital…"
       correctAnswer={country.capital}

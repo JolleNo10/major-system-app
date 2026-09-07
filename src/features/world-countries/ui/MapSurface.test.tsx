@@ -235,6 +235,24 @@ describe('TaskDock content sizing', () => {
     expect(content?.className).toContain('max-w-full')
     expect(content?.className).not.toContain('shrink-0')
   })
+
+  it.each([
+    ['country', 'border-cyan-500/45'],
+    ['capital', 'border-violet-500/45'],
+  ] as const)('uses the %s answer accent for a form dock', (answerKind, borderClass) => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement(TaskDock, {
+        variant: 'form',
+        answerKind,
+        children: createElement('span', null, 'answer input'),
+      }))
+    })
+
+    expect(mount.querySelector('[data-task-dock]')?.className).toContain(borderClass)
+  })
 })
 
 function SurfaceMountHarness() {

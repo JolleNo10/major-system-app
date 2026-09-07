@@ -82,6 +82,7 @@ export function SchedulerPracticeStep({
   return (
     <WorldCountriesTypedAnswer
       promptKey={current.id}
+      answerKind={answerKind}
       answerLabel={answerLabel}
       placeholder={placeholder}
       correctAnswer={showCountryName ? current.capital : current.country}
@@ -100,7 +101,7 @@ export function SchedulerPracticeStep({
     >
       {typed => {
         const dock = (
-          <TaskDock variant="form" status={(
+          <TaskDock variant="form" answerKind={typed.feedbackActive ? undefined : answerKind} status={(
             <span className="sr-only">{questionLabel}</span>
           )}>
             {typed.input}
