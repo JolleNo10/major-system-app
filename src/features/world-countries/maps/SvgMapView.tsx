@@ -186,7 +186,8 @@ export function SvgMapView({
   useEffect(() => {
     const controller = controllerRef.current
     if (!controller || countries.length === 0) return
-    if (targetCentricZoom) controller.setTargetCentricZoom(targetCentricZoom.targetIds, targetCentricZoom.contextIds)
+    if (targetCentricZoom?.adaptive) controller.setAdaptiveTargetCentricZoom(targetCentricZoom.targetIds, targetCentricZoom.contextIds, zoomPadding)
+    else if (targetCentricZoom) controller.setTargetCentricZoom(targetCentricZoom.targetIds, targetCentricZoom.contextIds)
     else if (zoomIds.length) controller.setZoomArea(zoomIds, zoomPadding)
     else controller.resetZoom()
   }, [countries, targetCentricZoom, zoomIds, zoomPadding])

@@ -6,6 +6,8 @@ import {
 } from './answerMatching'
 import type { WorldCountriesRecallSkill } from './recallTargets'
 
+export type RecallAnswerMatchKind = PlaceMatchKind | 'wrong-kind'
+
 export interface RecallAnswerOptions {
   fuzzy?: boolean
   countryCandidates?: readonly Country[]
@@ -19,17 +21,33 @@ export function classifyRecallAnswer(
   value: string,
   country: Country,
   options: RecallAnswerOptions = {},
-): PlaceMatchKind {
+): RecallAnswerMatchKind {
   if (skill === 'country-to-capital') {
-    return classifyPlaceName(value, country.capital, {
+    const match = classifyPlaceName(value, country.capital, {
       fuzzy: options.fuzzy,
       candidates: options.capitalCandidates,
       aliases: country.capitalAliases,
     })
+    if (match !== 'none') return match
+
+    return classifyCountryName(value, country, { fuzzy: options.fuzzy }) === 'none' ? 'none' : 'wrong-kind'
   }
 
-  return classifyCountryName(value, country, {
+  const match = classifyCountryName(value, country, {
     fuzzy: options.fuzzy,
     candidates: options.countryCandidates?.map(candidate => candidate.country),
   })
+  if (match !== 'none') return match
+
+  return classifyPlaceName(value, country.capital, {
+    fuzzy: options.fuzzy,
+    aliases: country.capitalAliases,
+  }) === 'none' ? 'none' : 'wrong-kind'
+}
+
+/** Describe the neutral retry shown when the opposite side of the pair is entered. */
+export function getRecallAnswerKindMistakeMessage(skill: WorldCountriesRecallSkill): string {
+  return skill === 'country-to-capital'
+    ? "That's the Country — enter its Capital."
+    : "That's the Capital — enter the Country."
 }

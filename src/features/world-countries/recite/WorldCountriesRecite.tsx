@@ -129,8 +129,8 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
   }, [activeCountries, assistance, mapReady, mode, normalizedSelection, selectedScopeSubregionIds, selectionMetadata, setupScopeCountries])
 
   const submitAnswer = useCallback((evaluation: WorldCountriesTypedAnswerEvaluation) => {
-    if (!run) return
-    setRun({ ...run, session: submitReciteAnswer(run.session, evaluation.outcome !== 'incorrect') })
+    if (!run || evaluation.outcome === 'wrong-kind') return
+    setRun({ ...run, session: submitReciteAnswer(run.session, evaluation.outcome === 'exact' || evaluation.outcome === 'fuzzy') })
   }, [run])
 
   const revealAnswer = useCallback(() => {

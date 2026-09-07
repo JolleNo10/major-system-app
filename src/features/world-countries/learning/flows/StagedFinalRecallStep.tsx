@@ -8,6 +8,7 @@ import {
   type WorldCountriesTypedAnswerEvaluation,
 } from '@/features/world-countries/ui/WorldCountriesTypedAnswer'
 import { getWorldCountriesTaskHighlightFill, type WorldCountriesAnswerKind } from '@/features/world-countries/ui/WorldCountriesAnswerSemantics'
+import { getRecallAnswerKindMistakeMessage } from '@/features/world-countries/learning/recallAnswerMatching'
 import { useLearningMapPresentation } from './LearningMapSurface'
 import type { SchedulerAnswerEvaluation } from './SchedulerPracticeStep'
 
@@ -73,11 +74,15 @@ export function StagedFinalRecallStep({
       evaluate={answer => {
         const evaluation = evaluateAnswer(answer, current)
         return {
-          outcome: evaluation.fuzzyMatch ? 'fuzzy' : evaluation.correct ? 'exact' : 'incorrect',
+          outcome: evaluation.wrongAnswerKind ? 'wrong-kind' : evaluation.fuzzyMatch ? 'fuzzy' : evaluation.correct ? 'exact' : 'incorrect',
           canonicalAnswer: evaluation.canonicalAnswer,
           answerKind,
-          message: formatFeedback(evaluation, current),
-          detail: evaluation.correct ? undefined : 'The ordered repair traversal rewinds before the next clean pass.',
+          message: evaluation.wrongAnswerKind
+            ? getRecallAnswerKindMistakeMessage(answerKind === 'capital' ? 'country-to-capital' : 'capital-to-country')
+            : formatFeedback(evaluation, current),
+          detail: evaluation.wrongAnswerKind
+            ? undefined
+            : evaluation.correct ? undefined : 'The ordered repair traversal rewinds before the next clean pass.',
         } satisfies WorldCountriesTypedAnswerEvaluation
       }}
       onAnswer={() => undefined}

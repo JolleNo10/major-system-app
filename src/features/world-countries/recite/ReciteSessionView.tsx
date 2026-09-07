@@ -6,7 +6,7 @@ import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
 import { WorldCountriesMapActivitySurface, type WorldCountriesActivityTask } from '@/features/world-countries/ui/WorldCountriesActivity'
 import { getWorldCountriesTaskHighlightFill } from '@/features/world-countries/ui/WorldCountriesAnswerSemantics'
 import { WorldCountriesTypedAnswer, type WorldCountriesTypedAnswerEvaluation } from '@/features/world-countries/ui/WorldCountriesTypedAnswer'
-import { classifyRecallAnswer } from '@/features/world-countries/learning/recallAnswerMatching'
+import { classifyRecallAnswer, getRecallAnswerKindMistakeMessage } from '@/features/world-countries/learning/recallAnswerMatching'
 import {
   getCurrentRecitePrompt,
   getReciteCountryOutcomes,
@@ -94,12 +94,17 @@ export function ReciteSession({ run, phase, fuzzyMatching, onSubmit, onReveal, o
   )
   const currentContinent = currentCountry?.continent
   const currentSubregionId = currentCountry?.subregionId
-  const randomZoomCountryIds = useMemo(() => {
-    if (run.assistance !== 'random' || !currentContinent || !currentSubregionId) return undefined
-    return run.population
+  const randomNeighbourhoodZoom = useMemo(() => {
+    if (run.assistance !== 'random' || !currentPromptCountryId || !currentContinent || !currentSubregionId) return undefined
+    const contextCountryIds = run.population
       .filter(country => country.continent === currentContinent && country.subregionId === currentSubregionId)
       .map(country => country.id)
-  }, [currentContinent, currentSubregionId, run.assistance, run.population])
+    return {
+      targetCountryId: currentPromptCountryId,
+      contextCountryIds,
+      adaptive: true,
+    }
+  }, [currentContinent, currentPromptCountryId, currentSubregionId, run.assistance, run.population])
   const highlightFill = currentAnswerKind ? getWorldCountriesTaskHighlightFill(currentAnswerKind) : undefined
   const map = useMemo(() => (
     <GeographyOverviewMap
@@ -110,12 +115,13 @@ export function ReciteSession({ run, phase, fuzzyMatching, onSubmit, onReveal, o
       countryPopulation={run.population}
       highlightedCountryIds={highlightedCountryIds}
       highlightFill={highlightFill}
-      zoomCountryIds={randomZoomCountryIds}
+      neighbourhoodZoom={randomNeighbourhoodZoom}
+      taskTargetCountryId={run.assistance === 'random' ? currentPromptCountryId : null}
       hiddenCountryIds={hiddenCountryIds}
       interactive={false}
       ariaLabel={`${activeContinent ?? 'World'} map for active Recite session`}
     />
-  ), [activeContinent, activeCountryColors, highlightedCountryIds, hiddenCountryIds, highlightFill, randomZoomCountryIds, run.population, selectedCountryIds])
+  ), [activeContinent, activeCountryColors, currentPromptCountryId, highlightedCountryIds, hiddenCountryIds, highlightFill, randomNeighbourhoodZoom, run.assistance, run.population, selectedCountryIds])
 
   if (phase === 'complete') {
     const count = (outcome: ReciteCountryOutcome) => outcomes.filter(candidate => candidate === outcome).length
@@ -172,7 +178,7 @@ export function ReciteSession({ run, phase, fuzzyMatching, onSubmit, onReveal, o
         ? 'Country → Capital'
         : run.assistance === 'random' ? 'Random Country recall' : 'Ordered Country recall',
       cue: currentPrompt.kind === 'capital'
-        ? `Capital of ${currentCountry.country}`
+        ? 'Name the capital'
         : run.assistance === 'random' ? 'Identify the highlighted Country' : 'Next country',
       answerKind: currentAnswerKind,
       sessionContext: <><span className="text-zinc-300">{currentCountry.continent}</span> · {getReciteModeLabel(run.mode)}</>,
@@ -223,12 +229,14 @@ function RecitePromptDock({ prompt, country, scopeCountries, fuzzyMatching, onSu
           countryCandidates: scopeCountries,
           capitalCandidates: scopeCountries.map(entry => entry.capital),
         })
-        const outcome = match === 'fuzzy' ? 'fuzzy' : match === 'exact' ? 'exact' : 'incorrect'
+        const outcome = match === 'wrong-kind' ? 'wrong-kind' : match === 'fuzzy' ? 'fuzzy' : match === 'exact' ? 'exact' : 'incorrect'
         return {
           outcome,
           canonicalAnswer: expected,
-          answerKind: prompt.kind === 'capital' ? 'capital' : 'country',
-          message: outcome === 'incorrect'
+          answerKind,
+          message: outcome === 'wrong-kind'
+            ? getRecallAnswerKindMistakeMessage(skill)
+            : outcome === 'incorrect'
             ? 'Not quite. Try again; the answer stays hidden.'
             : outcome === 'fuzzy'
               ? `Correct. The canonical answer is ${expected}.`

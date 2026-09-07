@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { countries } from '@/features/world-countries/data/countries'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import europeSvg from '@/features/world-countries/maps/assets/MapChart_Map_Europe.svg?raw'
+import oceaniaSvg from '@/features/world-countries/maps/assets/MapChart_Map_Oceania.svg?raw'
 import { GeographyOverviewMap } from './GeographyOverviewMap'
 import { SvgMapController } from './SvgMapController'
 
@@ -33,6 +34,62 @@ describe('GeographyOverviewMap', () => {
 
     expect(mount.querySelector('[data-svg-map-task-target]')).toBeNull()
     expect(mount.querySelector('[data-svg-map-tiny-marker]')).toBeNull()
+  })
+
+  it('resolves a semantic island task target through map-owned task assistance', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => oceaniaSvg })))
+    const palau = countries.find(country => country.id === 'PW')!
+    const micronesia = countries.filter(country => country.continent === 'Oceania' && country.subregionId === palau.subregionId)
+    const svgElementPrototype = SVGElement.prototype as typeof SVGElement.prototype & { getBBox?: () => { x: number; y: number; width: number; height: number } }
+    const previousGetBBox = svgElementPrototype.getBBox
+    const boxes: Record<string, { x: number; y: number; width: number; height: number }> = {
+      Palau: { x: 780, y: 266, width: 6, height: 6 },
+      Micronesia: { x: 790, y: 260, width: 70, height: 20 },
+      Nauru: { x: 860, y: 288, width: 6, height: 6 },
+      Marshall_Islands: { x: 870, y: 266, width: 6, height: 6 },
+      Kiribati: { x: 876, y: 283, width: 80, height: 18 },
+    }
+    Object.defineProperty(svgElementPrototype, 'getBBox', {
+      configurable: true,
+      value(this: SVGElement) {
+        return boxes[this.id] ?? { x: 0, y: 0, width: 1, height: 1 }
+      },
+    })
+    const mount = document.createElement('div'); document.body.append(mount)
+    const adaptiveZoom = vi.spyOn(SvgMapController.prototype, 'setAdaptiveTargetCentricZoom')
+    const taskAssistance = vi.spyOn(SvgMapController.prototype, 'setTaskAssistance')
+
+    try {
+      await act(async () => {
+        root = createRoot(mount)
+        root.render(createElement(GeographyOverviewMap, {
+          level: 'continent',
+          continent: 'Oceania',
+          countryPopulation: micronesia,
+          highlightedCountryIds: [palau.id],
+          highlightFill: '#0891b2',
+          neighbourhoodZoom: {
+            targetCountryId: palau.id,
+            contextCountryIds: micronesia.map(country => country.id),
+            adaptive: true,
+          },
+          taskTargetCountryId: palau.id,
+          interactive: false,
+          ariaLabel: 'Random Recite map',
+        }))
+        await Promise.resolve(); await Promise.resolve()
+      })
+
+      expect(mount.querySelector('[data-svg-map-task-representative-target="Palau"]')).not.toBeNull()
+      expect((mount.querySelector('text#Palau_label') as SVGTextElement | null)?.style.display).toBe('none')
+      const viewBox = mount.querySelector('svg')?.getAttribute('viewBox') ?? ''
+      expect(viewBox).not.toBe('0 0 1100 720')
+      expect(Number(viewBox.split(' ')[2])).toBeLessThan(500)
+      expect(adaptiveZoom).toHaveBeenCalledWith(['Palau'], expect.arrayContaining(['Micronesia', 'Palau']), 32)
+      expect(taskAssistance).toHaveBeenCalledWith(expect.objectContaining({ taskTargetId: 'Palau' }))
+    } finally {
+      Object.defineProperty(svgElementPrototype, 'getBBox', { configurable: true, value: previousGetBBox })
+    }
   })
 
   it('reports grouped map hover and Country clicks through workflow-neutral callbacks', async () => {

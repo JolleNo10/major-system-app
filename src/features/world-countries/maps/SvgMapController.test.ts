@@ -216,6 +216,46 @@ describe('SvgMapController persistent state', () => {
     expect(viewBox.x + viewBox.width).toBeGreaterThanOrEqual(46)
   })
 
+  it('keeps compact adaptive regions on their existing broader regional frame', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
+        <g><path id="Alpha" d="M 10 10 h 10 v 10 h -10 z"/><text id="Alpha_label">ALPHA</text></g>
+        <g><path id="Beta" d="M 40 20 h 10 v 10 h -10 z"/><text id="Beta_label">BETA</text></g>
+        <g><path id="Gamma" d="M 60 15 h 10 v 10 h -10 z"/><text id="Gamma_label">GAMMA</text></g>
+      </svg>` })
+    setBBox(mount, 'Alpha', { x: 10, y: 10, width: 10, height: 10 })
+    setBBox(mount, 'Beta', { x: 40, y: 20, width: 10, height: 10 })
+    setBBox(mount, 'Gamma', { x: 60, y: 15, width: 10, height: 10 })
+
+    const result = controller.setAdaptiveTargetCentricZoom(['Beta'], ['Alpha', 'Beta', 'Gamma'], 5)
+
+    expect(result).toEqual({ activeIds: ['Beta', 'Alpha', 'Gamma'], unknownIds: [] })
+    expect(readViewBox(mount)).toEqual({ x: 5, y: 5, width: 70, height: 30 })
+  })
+
+  it('uses bounded target-centric framing when a region is spatially sparse', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
+        <g><path id="Alpha" d="M 42 20 h 4 v 4 h -4 z"/><text id="Alpha_label">ALPHA</text></g>
+        <g><path id="Beta" d="M 44 22 h 4 v 4 h -4 z"/><text id="Beta_label">BETA</text></g>
+        <g><path id="Gamma" d="M 48 24 h 4 v 4 h -4 z"/><text id="Gamma_label">GAMMA</text></g>
+      </svg>` })
+    setBBox(mount, 'Alpha', { x: 42, y: 20, width: 4, height: 4 })
+    setPathGeometry(mount, 'Beta', { x: -400, y: -200, width: 900, height: 700 }, [{ x: 46, y: 24 }])
+    setPathGeometry(mount, 'Gamma', { x: -350, y: -150, width: 800, height: 600 }, [{ x: 50, y: 26 }])
+
+    const result = controller.setAdaptiveTargetCentricZoom(['Alpha'], ['Alpha', 'Beta', 'Gamma'])
+
+    expect(result).toEqual({ activeIds: ['Alpha', 'Beta', 'Gamma'], unknownIds: [] })
+    const viewBox = readViewBox(mount)
+    expect(viewBox.width).toBeLessThan(100)
+    expect(viewBox.height).toBeLessThan(50)
+    expect(viewBox.x).toBeLessThanOrEqual(42)
+    expect(viewBox.x + viewBox.width).toBeGreaterThanOrEqual(46)
+  })
+
   it('clears the previous target-centric camera when the next target is unknown', async () => {
     const { mount, controller } = makeController()
     await controller.load({ markup: TEST_MAP })

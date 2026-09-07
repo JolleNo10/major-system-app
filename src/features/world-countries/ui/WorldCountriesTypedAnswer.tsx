@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { TypingInput } from '@/core/ui/TypingInput'
 import { useMapSurfaceFeedbackOverlay } from './MapSurface'
-import { useWorldCountriesAnswerFeedback } from './WorldCountriesAnswerFeedback'
+import { WorldCountriesAnswerFeedback, useWorldCountriesAnswerFeedback } from './WorldCountriesAnswerFeedback'
 import { getWorldCountriesAnswerAccent, type WorldCountriesAnswerKind } from './WorldCountriesAnswerSemantics'
 
-export type WorldCountriesTypedAnswerOutcome = 'exact' | 'fuzzy' | 'incorrect' | 'revealed'
+const WRONG_KIND_FEEDBACK_DURATION_MS = 650
+
+export type WorldCountriesTypedAnswerOutcome = 'exact' | 'fuzzy' | 'incorrect' | 'revealed' | 'wrong-kind'
 
 export interface WorldCountriesTypedAnswerEvaluation {
   outcome: Exclude<WorldCountriesTypedAnswerOutcome, 'revealed'>
@@ -41,6 +43,12 @@ export interface WorldCountriesTypedAnswerRenderState {
   reveal: () => boolean
 }
 
+export function isWorldCountriesTypedAnswerResolved(
+  outcome: WorldCountriesTypedAnswerOutcome | null,
+): boolean {
+  return outcome === 'exact' || outcome === 'fuzzy' || outcome === 'revealed'
+}
+
 export function WorldCountriesTypedAnswer({
   promptKey,
   answerKind,
@@ -69,6 +77,8 @@ export function WorldCountriesTypedAnswer({
   children: (state: WorldCountriesTypedAnswerRenderState) => ReactNode
 }) {
   const [result, setResult] = useState<WorldCountriesTypedAnswerResult | null>(null)
+  const [wrongKindResult, setWrongKindResult] = useState<WorldCountriesTypedAnswerResult | null>(null)
+  const [attemptResetKey, setAttemptResetKey] = useState(0)
   const startedAtRef = useRef(now())
   const answeredRef = useRef(false)
   const transitionStartedRef = useRef<WorldCountriesTypedAnswerResult | null>(null)
@@ -86,10 +96,19 @@ export function WorldCountriesTypedAnswer({
 
   useEffect(() => {
     resultRef.current = null
+    setWrongKindResult(null)
     resetAttempt()
     transitionStartedRef.current = null
     setResult(null)
   }, [promptKey, resetAttempt])
+
+  useEffect(() => {
+    if (!wrongKindResult) return
+    const timer = window.setTimeout(() => {
+      setWrongKindResult(current => current === wrongKindResult ? null : current)
+    }, WRONG_KIND_FEEDBACK_DURATION_MS)
+    return () => window.clearTimeout(timer)
+  }, [wrongKindResult])
 
   const activeResult = result?.promptKey === promptKey ? result : null
 
@@ -120,6 +139,12 @@ export function WorldCountriesTypedAnswer({
     const latencyMs = Math.max(0, now() - startedAtRef.current)
     const evaluation = evaluate(answer, latencyMs)
     const nextResult: WorldCountriesTypedAnswerResult = { ...evaluation, promptKey, latencyMs, submittedAnswer: answer }
+    if (evaluation.outcome === 'wrong-kind') {
+      resetAttempt()
+      setWrongKindResult(nextResult)
+      setAttemptResetKey(value => value + 1)
+      return
+    }
     setResult(nextResult)
     onAnswer(answer, evaluation, latencyMs)
   }
@@ -133,9 +158,15 @@ export function WorldCountriesTypedAnswer({
 
   const isPositive = activeResult?.outcome === 'exact' || activeResult?.outcome === 'fuzzy'
   const answerAccent = getWorldCountriesAnswerAccent(answerKind)
+  const neutralFeedbackOverlay = wrongKindResult ? (
+    <WorldCountriesAnswerFeedback
+      result={wrongKindResult}
+      onContinue={() => setWrongKindResult(current => current === wrongKindResult ? null : current)}
+    />
+  ) : null
   const input = (
     <TypingInput
-      resetKey={promptKey}
+      resetKey={`${promptKey}-${attemptResetKey}`}
       onAnswer={submit}
       answeredCorrect={activeResult ? Boolean(isPositive) : null}
       correctAnswer={correctAnswer}
@@ -158,15 +189,16 @@ export function WorldCountriesTypedAnswer({
     allowIncorrectSpellingPractice,
     onContinue: handleFeedbackContinue,
   })
+  const visibleFeedbackOverlay = feedbackOverlay ?? neutralFeedbackOverlay
 
-  useMapSurfaceFeedbackOverlay(feedbackOverlay)
+  useMapSurfaceFeedbackOverlay(visibleFeedbackOverlay)
 
   return children({
     input,
-    feedbackOverlay,
-    isAnswerable: activeResult === null,
-    feedbackActive,
-    outcome: activeResult?.outcome ?? null,
+    feedbackOverlay: visibleFeedbackOverlay,
+    isAnswerable: activeResult === null && wrongKindResult === null,
+    feedbackActive: feedbackActive || wrongKindResult !== null,
+    outcome: activeResult?.outcome ?? wrongKindResult?.outcome ?? null,
     reveal: revealAnswer,
   })
 }

@@ -3,6 +3,7 @@ import type { SchedulerLearningSession } from '@/features/world-countries/learni
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import { TaskDock } from '@/features/world-countries/ui/MapSurface'
 import { WorldCountriesMapActivitySurface, type WorldCountriesActivityTask } from '@/features/world-countries/ui/WorldCountriesActivity'
+import { getRecallAnswerKindMistakeMessage } from '@/features/world-countries/learning/recallAnswerMatching'
 import {
   WorldCountriesTypedAnswer,
   type WorldCountriesTypedAnswerEvaluation,
@@ -13,6 +14,7 @@ import { useLearningMapPresentation } from './LearningMapSurface'
 export interface SchedulerAnswerEvaluation {
   correct: boolean
   fuzzyMatch: boolean
+  wrongAnswerKind?: boolean
   canonicalAnswer: string
 }
 
@@ -90,10 +92,12 @@ export function SchedulerPracticeStep({
       evaluate={answer => {
         const evaluation = evaluateAnswer(answer, current)
         return {
-          outcome: evaluation.fuzzyMatch ? 'fuzzy' : evaluation.correct ? 'exact' : 'incorrect',
+          outcome: evaluation.wrongAnswerKind ? 'wrong-kind' : evaluation.fuzzyMatch ? 'fuzzy' : evaluation.correct ? 'exact' : 'incorrect',
           canonicalAnswer: evaluation.canonicalAnswer,
           answerKind,
-          message: formatFeedback(evaluation, current),
+          message: evaluation.wrongAnswerKind
+            ? getRecallAnswerKindMistakeMessage(answerKind === 'capital' ? 'country-to-capital' : 'capital-to-country')
+            : formatFeedback(evaluation, current),
         } satisfies WorldCountriesTypedAnswerEvaluation
       }}
       onAnswer={() => undefined}

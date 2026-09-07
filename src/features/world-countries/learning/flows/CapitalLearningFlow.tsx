@@ -39,12 +39,17 @@ import { useLearningCountryOrderAuthoring } from './useLearningCountryOrderAutho
 import { deriveLearningMapPresentation } from './learningMapPresentation'
 import { LearningMapMetadata } from './LearningMapMetadata'
 
-function evaluateCapitalAnswer(answer: string, country: Country, fuzzyMatching: boolean, candidates: readonly string[]): SchedulerAnswerEvaluation {
+function evaluateCapitalAnswer(answer: string, country: Country, fuzzyMatching: boolean, candidates: readonly Country[]): SchedulerAnswerEvaluation {
   const match = classifyRecallAnswer('country-to-capital', answer, country, {
     fuzzy: fuzzyMatching,
-    capitalCandidates: candidates,
+    capitalCandidates: candidates.map(candidate => candidate.capital),
   })
-  return { correct: match !== 'none', fuzzyMatch: match === 'fuzzy', canonicalAnswer: country.capital }
+  return {
+    correct: match === 'exact' || match === 'fuzzy',
+    fuzzyMatch: match === 'fuzzy',
+    wrongAnswerKind: match === 'wrong-kind',
+    canonicalAnswer: country.capital,
+  }
 }
 
 function formatCapitalFeedback(evaluation: SchedulerAnswerEvaluation): string {
@@ -213,7 +218,7 @@ export function CapitalLearningFlow({
       break
     case 'practice':
     case 'combined-practice':
-      content = flow.practice ? <SchedulerPracticeStep continent={continent} entries={stageEntries.length ? stageEntries : allPresentationEntries} session={flow.practice} stepLabel={flow.phase === 'combined-practice' ? 'Combined practice' : `Set ${stageSetNumber} · Step 2 - Practice`} questionLabel="Country → Capital" questionTitle="Name the capital" answerLabel="Type the capital" placeholder="Type the capital…" showCountryName answerKind="capital" surface promptText="Name the capital" evaluateAnswer={(answer, country) => evaluateCapitalAnswer(answer, country, fuzzyMatching, allPresentationEntries.map(entry => entry.capital))} formatFeedback={formatCapitalFeedback} onSubmit={updatePractice} onBack={() => run(backStagedCapital)} onExit={onExit} allowIncorrectSpellingPractice={allowIncorrectSpellingPractice} /> : null
+      content = flow.practice ? <SchedulerPracticeStep continent={continent} entries={stageEntries.length ? stageEntries : allPresentationEntries} session={flow.practice} stepLabel={flow.phase === 'combined-practice' ? 'Combined practice' : `Set ${stageSetNumber} · Step 2 - Practice`} questionLabel="Country → Capital" questionTitle="Name the capital" answerLabel="Type the capital" placeholder="Type the capital…" showCountryName answerKind="capital" surface promptText="Name the capital" evaluateAnswer={(answer, country) => evaluateCapitalAnswer(answer, country, fuzzyMatching, allPresentationEntries)} formatFeedback={formatCapitalFeedback} onSubmit={updatePractice} onBack={() => run(backStagedCapital)} onExit={onExit} allowIncorrectSpellingPractice={allowIncorrectSpellingPractice} /> : null
       break
     case 'set-ready':
       content = <StagedLearningReadyStep title={`Set ${stageSetNumber} Ready`} summary="Every Country in this Set met the spaced Capital Practice threshold." nextLabel={getNextLearningStageLabel(flow.plan, flow.stageIndex)} onNext={() => run(advanceStagedCapitalPlan)} onKeepPractising={() => run(keepStagedCapitalPractising)} onBack={() => run(backStagedCapital)} onExit={onExit} surface />
@@ -225,7 +230,7 @@ export function CapitalLearningFlow({
       content = <FinalRecallGate ready={flow.finalScopeReady} onStart={() => run(startStagedCapitalFinalRecall)} onKeepPractising={() => run(keepStagedCapitalPractising)} onBack={() => run(backStagedCapital)} onExit={onExit} surface />
       break
     case 'final-recall':
-      content = flow.ordered ? <StagedFinalRecallStep continent={continent} entries={entries} ordered={flow.ordered} stepLabel="Final recall" answerLabel="Country → Capital" placeholder="Type the capital…" showCountryName answerKind="capital" evaluateAnswer={(answer, country) => evaluateCapitalAnswer(answer, country, fuzzyMatching, entries.map(entry => entry.capital))} formatFeedback={formatCapitalFeedback} onSubmit={updateFinal} onBack={() => run(backStagedCapital)} onExit={onExit} allowIncorrectSpellingPractice={allowIncorrectSpellingPractice} surface /> : null
+      content = flow.ordered ? <StagedFinalRecallStep continent={continent} entries={entries} ordered={flow.ordered} stepLabel="Final recall" answerLabel="Country → Capital" placeholder="Type the capital…" showCountryName answerKind="capital" evaluateAnswer={(answer, country) => evaluateCapitalAnswer(answer, country, fuzzyMatching, entries)} formatFeedback={formatCapitalFeedback} onSubmit={updateFinal} onBack={() => run(backStagedCapital)} onExit={onExit} allowIncorrectSpellingPractice={allowIncorrectSpellingPractice} surface /> : null
       break
     case 'complete':
       content = <CapitalLearningComplete subregion={subregion} scopeLabel={learningScopeLabel} onDone={onDone ?? onExit} doneLabel={doneLabel} onRestart={() => { completionReporter.current?.reset(); transition(createStagedCapitalLearningFlow({ countryIds: ids, maximum: newItemsPerSet, schedulerSettings })) }} surface />

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import type { Country } from '@/features/world-countries/data/countries'
-import { classifyRecallAnswer } from '@/features/world-countries/learning/recallAnswerMatching'
+import { classifyRecallAnswer, getRecallAnswerKindMistakeMessage } from '@/features/world-countries/learning/recallAnswerMatching'
 import { recordWorldCountriesAttempt } from '@/features/world-countries/learning/recallProgress'
 import type { WorldCountriesRecallSkill } from '@/features/world-countries/learning/recallTargets'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
@@ -10,6 +10,7 @@ import { getWorldCountriesAnswerKind, getWorldCountriesTaskHighlightFill } from 
 import {
   WorldCountriesTypedAnswer,
   type WorldCountriesTypedAnswerEvaluation,
+  isWorldCountriesTypedAnswerResolved,
 } from '@/features/world-countries/ui/WorldCountriesTypedAnswer'
 import {
   createWorldCountriesTodayReviewQueue,
@@ -130,12 +131,14 @@ export function TodayReviewSession({
             countryCandidates: activeCountries,
             capitalCandidates: activeCountries.map(entry => entry.capital),
           })
-          const outcome = match === 'fuzzy' ? 'fuzzy' : match === 'exact' ? 'exact' : 'incorrect'
+          const outcome = match === 'wrong-kind' ? 'wrong-kind' : match === 'fuzzy' ? 'fuzzy' : match === 'exact' ? 'exact' : 'incorrect'
           return {
             outcome,
             canonicalAnswer: expectedAnswer,
             answerKind,
-            message: outcome === 'incorrect'
+            message: outcome === 'wrong-kind'
+              ? getRecallAnswerKindMistakeMessage(skill)
+              : outcome === 'incorrect'
               ? `The correct answer is ${expectedAnswer}.`
               : outcome === 'fuzzy'
                 ? `Correct. The canonical answer is ${expectedAnswer}.`
@@ -145,7 +148,7 @@ export function TodayReviewSession({
         onAnswer={(_answer, evaluation, latencyMs) => {
           const write = recordWorldCountriesAttempt(country.id, skill, {
             at: Date.now(),
-            ok: evaluation.outcome !== 'incorrect',
+            ok: isWorldCountriesTypedAnswerResolved(evaluation.outcome),
             ms: latencyMs,
             evidenceKind: 'recall',
           })
@@ -162,6 +165,7 @@ export function TodayReviewSession({
           : finishOrAdvance(result.outcome === 'incorrect' ? 'incorrect' : 'correct')}
       >
         {typed => {
+          const answerResolved = isWorldCountriesTypedAnswerResolved(typed.outcome)
           const map = (
             <div className="relative">
               <CountryLearningMap
@@ -170,8 +174,8 @@ export function TodayReviewSession({
                 highlightFill={getWorldCountriesTaskHighlightFill(answerKind)}
                 taskTargetCountryId={isLocationQuestion ? country.id : null}
                 highlightedCountryId={country.id}
-                namedCountryId={typed.outcome && typed.outcome !== 'incorrect' || !isLocationQuestion ? country.id : null}
-                showHighlightedNames={Boolean(typed.outcome && typed.outcome !== 'incorrect' || !isLocationQuestion)}
+                namedCountryId={answerResolved || !isLocationQuestion ? country.id : null}
+                showHighlightedNames={Boolean(answerResolved || !isLocationQuestion)}
                 showHoverNames={false}
                 ariaLabel={isLocationQuestion && !typed.feedbackActive
                   ? 'Map showing the selected location for Today recall without the Country name revealed'

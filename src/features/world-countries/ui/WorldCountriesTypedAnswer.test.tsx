@@ -251,6 +251,42 @@ describe('WorldCountriesTypedAnswer', () => {
     expect(document.activeElement).toBe(retryInput)
   })
 
+  it('gives a neutral retry for the opposite answer kind without scoring or disabling the input', () => {
+    vi.useFakeTimers()
+    const mount = document.createElement('div')
+    document.body.append(mount)
+    const onAnswer = vi.fn()
+    const onTransition = vi.fn()
+    renderAnswer(mount, {
+      answerKind: 'capital',
+      answerLabel: 'Type the capital',
+      correctAnswer: 'Oslo',
+      evaluate: () => ({
+        outcome: 'wrong-kind',
+        canonicalAnswer: 'Oslo',
+        answerKind: 'capital',
+        message: "That's the Country — enter its Capital.",
+      }),
+    }, onAnswer, onTransition)
+
+    const input = mount.querySelector<HTMLInputElement>('input')!
+    typeInto(input, 'Norway')
+    act(() => input.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
+
+    expect(onAnswer).not.toHaveBeenCalled()
+    expect(onTransition).not.toHaveBeenCalled()
+    expect(input.disabled).toBe(false)
+    expect(input.value).toBe('')
+    expect(mount.querySelector('[data-world-answer-outcome="wrong-kind"]')).not.toBeNull()
+    expect(mount.textContent).toContain("That's the Country")
+    expect(mount.textContent).not.toContain('Incorrect')
+
+    act(() => vi.advanceTimersByTime(50))
+    expect(document.activeElement).toBe(input)
+    act(() => vi.advanceTimersByTime(600))
+    expect(mount.querySelector('[data-world-answer-outcome="wrong-kind"]')).toBeNull()
+  })
+
   it('starts a fresh answer attempt when completed feedback leaves the prompt key unchanged', () => {
     vi.useFakeTimers()
     let timestamp = 1000

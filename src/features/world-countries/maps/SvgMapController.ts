@@ -53,6 +53,8 @@ export interface SvgMapZoomArea {
 export interface SvgMapTargetCentricZoomIntent {
   targetIds: readonly string[]
   contextIds?: readonly string[]
+  /** Choose a full regional frame for compact geometry and a bounded target frame for sparse geometry. */
+  adaptive?: boolean
 }
 
 export interface SvgMapSettings {
@@ -165,6 +167,7 @@ const TARGET_CENTRIC_CONTEXT_SAMPLE_COUNT = 32
 const TARGET_CENTRIC_PADDING_RATIO = 0.3
 const TARGET_CENTRIC_MIN_WINDOW_RATIO = 0.16
 const TARGET_CENTRIC_MAX_WINDOW_RATIO = 0.85
+const ADAPTIVE_SPARSE_REGION_FILL_RATIO = 0.08
 
 function captureStyle(element: SVGElement, property: string): OriginalStyle {
   return {
@@ -251,6 +254,11 @@ export class SvgMapController {
     kind: 'target-centric-neighbourhood'
     targetIds: readonly string[]
     contextIds: readonly string[]
+  } | {
+    kind: 'adaptive-target-centric-neighbourhood'
+    targetIds: readonly string[]
+    contextIds: readonly string[]
+    regionalPadding: number
   } | null = null
   private loadVersion = 0
   private abortController: AbortController | null = null
@@ -392,6 +400,48 @@ export class SvgMapController {
       contextIds: context.knownIds,
     }
     this.recomputeViewBox(targetBounds)
+    return { activeIds, unknownIds }
+  }
+
+  /**
+   * Fit a regional frame unless the supplied geometry is spatially sparse.
+   * Sparse regions use the existing target-centric camera so disconnected
+   * islands do not make the learner look at a mostly empty bounding box.
+   */
+  setAdaptiveTargetCentricZoom(
+    targetIds: Iterable<string>,
+    contextIds: Iterable<string> = [],
+    regionalPadding = 0,
+  ): SvgMapMutationResult {
+    this.assertUsable()
+    const target = this.resolveKnown(targetIds)
+    const context = this.resolveKnown(contextIds)
+    const activeIds = uniqueStrings([...target.knownIds, ...context.knownIds])
+    const unknownIds = uniqueStrings([...target.unknownIds, ...context.unknownIds])
+    if (target.knownIds.length === 0 || !this.svg || !this.originalViewBox) {
+      this.resetZoom()
+      return { activeIds: [], unknownIds }
+    }
+
+    const safePadding = Number.isFinite(regionalPadding) ? Math.max(0, regionalPadding) : 0
+    const regionalIds = uniqueStrings([...target.knownIds, ...context.knownIds])
+    const regionalBounds = this.getPaddedCountryBounds(regionalIds, safePadding)
+    const targetCentricBounds = this.getTargetCentricCountryBounds(target.knownIds, context.knownIds)
+    const bounds = this.isSparseRegion(regionalIds)
+      ? targetCentricBounds ?? regionalBounds
+      : regionalBounds ?? targetCentricBounds
+    if (!bounds) {
+      this.resetZoom()
+      return { activeIds, unknownIds }
+    }
+
+    this.zoomIntent = {
+      kind: 'adaptive-target-centric-neighbourhood',
+      targetIds: target.knownIds,
+      contextIds: context.knownIds,
+      regionalPadding: safePadding,
+    }
+    this.recomputeViewBox(bounds)
     return { activeIds, unknownIds }
   }
 
@@ -1187,6 +1237,26 @@ export class SvgMapController {
     }
   }
 
+  private isSparseRegion(countryIds: readonly string[]): boolean {
+    const regionalBounds = this.getBoundsUnion(this.getCountryBoxes(countryIds))
+    if (!regionalBounds) return false
+
+    const components = countryIds.flatMap(countryId => this.getTargetGeometryComponents([countryId]))
+    if (components.length < 3) return false
+
+    const totalComponentArea = components.reduce(
+      (total, component) => total + component.bounds.width * component.bounds.height,
+      0,
+    )
+    const regionalArea = regionalBounds.width * regionalBounds.height
+    if (!Number.isFinite(totalComponentArea) || !Number.isFinite(regionalArea) || regionalArea <= 0) return false
+
+    // Component bounding boxes are intentionally conservative. A low fill
+    // ratio still reliably identifies disconnected dot/island groups without
+    // classifying ordinary contiguous Country regions as sparse.
+    return totalComponentArea / regionalArea < ADAPTIVE_SPARSE_REGION_FILL_RATIO
+  }
+
   private selectTargetGeometryComponents(
     targetIds: readonly string[],
     contextIds: readonly string[],
@@ -1440,7 +1510,26 @@ export class SvgMapController {
     if (!this.zoomIntent) return this.originalViewBox ? parseViewBox(this.originalViewBox) : null
     return this.zoomIntent.kind === 'country-bounds'
       ? this.getPaddedCountryBounds(this.zoomIntent.countryIds, this.zoomIntent.padding)
-      : this.getTargetCentricCountryBounds(this.zoomIntent.targetIds, this.zoomIntent.contextIds)
+      : this.zoomIntent.kind === 'target-centric-neighbourhood'
+        ? this.getTargetCentricCountryBounds(this.zoomIntent.targetIds, this.zoomIntent.contextIds)
+        : this.getAdaptiveTargetCentricCountryBounds(
+          this.zoomIntent.targetIds,
+          this.zoomIntent.contextIds,
+          this.zoomIntent.regionalPadding,
+        )
+  }
+
+  private getAdaptiveTargetCentricCountryBounds(
+    targetIds: readonly string[],
+    contextIds: readonly string[],
+    regionalPadding: number,
+  ): SvgViewBoxRect | null {
+    const regionalIds = uniqueStrings([...targetIds, ...contextIds])
+    const regionalBounds = this.getPaddedCountryBounds(regionalIds, regionalPadding)
+    const targetCentricBounds = this.getTargetCentricCountryBounds(targetIds, contextIds)
+    return this.isSparseRegion(regionalIds)
+      ? targetCentricBounds ?? regionalBounds
+      : regionalBounds ?? targetCentricBounds
   }
 
   private setViewBox(value: string): void {

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useRails } from '@/app/layout/PageLayoutContext'
-import { classifyRecallAnswer } from '@/features/world-countries/learning/recallAnswerMatching'
+import { classifyRecallAnswer, getRecallAnswerKindMistakeMessage } from '@/features/world-countries/learning/recallAnswerMatching'
 import { getCurrentRecallStep, getRecallSessionTotalSteps, type WorldCountriesRecallSessionState } from '@/features/world-countries/learning/recallSession'
 import { WorldCountriesTypedAnswer, type WorldCountriesTypedAnswerEvaluation, type WorldCountriesTypedAnswerResult } from '@/features/world-countries/ui/WorldCountriesTypedAnswer'
 import type { PracticeRecallAnswer, PracticeQuizRun } from './practiceRun'
@@ -35,12 +35,14 @@ export function CapitalQuizSession({ run, session, fuzzyMatching, correctCount, 
           countryCandidates: run.countries,
           capitalCandidates: run.countries.map(candidate => candidate.capital),
         })
-        const outcome = match === 'exact' ? 'exact' : match === 'fuzzy' ? 'fuzzy' : 'incorrect'
+        const outcome = match === 'wrong-kind' ? 'wrong-kind' : match === 'exact' ? 'exact' : match === 'fuzzy' ? 'fuzzy' : 'incorrect'
         return {
           outcome,
           canonicalAnswer: country.capital,
           answerKind: 'capital',
-          message: outcome === 'incorrect'
+          message: outcome === 'wrong-kind'
+            ? getRecallAnswerKindMistakeMessage('country-to-capital')
+            : outcome === 'incorrect'
             ? `The correct capital is ${country.capital}.`
             : outcome === 'fuzzy'
               ? `Correct. The canonical answer is ${country.capital}.`
@@ -48,6 +50,7 @@ export function CapitalQuizSession({ run, session, fuzzyMatching, correctCount, 
         }
       }}
       onAnswer={(answer, evaluation) => {
+        if (evaluation.outcome === 'wrong-kind') return
         onAnswer({ countryId: country.id, skill: 'country-to-capital', outcome: evaluation.outcome, submittedAnswer: answer })
       }}
       reveal={{ canonicalAnswer: country.capital, answerKind: 'capital', message: `The capital is ${country.capital}.` }}

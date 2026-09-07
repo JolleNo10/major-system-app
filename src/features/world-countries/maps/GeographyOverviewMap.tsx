@@ -13,7 +13,9 @@ import {
   resolveCountriesToSvgIds,
   resolveSvgIdsOutsideCountryPopulation,
 } from './geographyMapAdapter'
+import { getMapLearningAnchors } from './learningAnchors'
 import { getMemoMapDefinition, MEMO_MAP_DEFINITIONS } from './mapDefinitions'
+import { getMapSyntheticDots } from './syntheticDots'
 import type { SvgMapGroupOutline } from './SvgMapController'
 import { SvgMapView, type SvgMapCountry, type SvgMapLoadState } from './SvgMapView'
 
@@ -49,7 +51,11 @@ export interface GeographyOverviewMapProps {
   neighbourhoodZoom?: {
     targetCountryId: CountryId
     contextCountryIds?: readonly CountryId[]
+    /** Use a full regional frame for compact geometry and target-centric framing for sparse geometry. */
+    adaptive?: boolean
   }
+  /** Country identity for a task marker/representative anchor; translated to SVG at this map boundary. */
+  taskTargetCountryId?: CountryId | null
   /** Optional non-color descriptions for the mapped Countries. */
   countryAccessibleDescriptionsById?: ReadonlyMap<CountryId, string>
   /** Optional caller-owned population snapshot; defaults to the active context population. */
@@ -88,6 +94,7 @@ export function GeographyOverviewMap({
   namedCountryIds = EMPTY_COUNTRY_IDS,
   zoomCountryIds,
   neighbourhoodZoom,
+  taskTargetCountryId = null,
   countryAccessibleDescriptionsById,
   countryPopulation,
   hiddenCountryIds = EMPTY_COUNTRY_IDS,
@@ -280,13 +287,47 @@ export function GeographyOverviewMap({
   )
   const neighbourhoodTargetCountryId = neighbourhoodZoom?.targetCountryId
   const neighbourhoodContextCountryIds = neighbourhoodZoom?.contextCountryIds
+  const neighbourhoodAdaptive = neighbourhoodZoom?.adaptive ?? false
   const targetCentricZoom = useMemo(() => neighbourhoodTargetCountryId
     ? {
       targetIds: resolveCountryIdsToSvgIds([neighbourhoodTargetCountryId], visibleCountries, mapCountryIds),
       contextIds: resolveCountryIdsToSvgIds(neighbourhoodContextCountryIds ?? [], visibleCountries, mapCountryIds),
+      ...(neighbourhoodAdaptive ? { adaptive: true } : {}),
     }
     : undefined,
-  [mapCountryIds, neighbourhoodContextCountryIds, neighbourhoodTargetCountryId, visibleCountries])
+  [mapCountryIds, neighbourhoodAdaptive, neighbourhoodContextCountryIds, neighbourhoodTargetCountryId, visibleCountries])
+  const taskAssistance = useMemo(() => {
+    if (taskTargetCountryId === null) return null
+    const targetCountry = visibleCountries.find(country => country.id === taskTargetCountryId)
+    if (!targetCountry) return null
+
+    const anchorDefinitions = getMapLearningAnchors(definition.id, [targetCountry.id])
+    const learningAnchors = anchorDefinitions
+      .filter(anchor => mapCountryIds.includes(anchor.sourceSvgId))
+      .map(anchor => ({
+        sourceSvgId: anchor.sourceSvgId,
+        kind: anchor.kind,
+        sourceFingerprint: anchor.sourceFingerprint,
+        ...(anchor.point ? { point: anchor.point } : {}),
+      }))
+    const syntheticDots = getMapSyntheticDots(definition.id, [targetCountry.id])
+      .filter(dot => mapCountryIds.includes(dot.sourceSvgId))
+      .map(dot => ({
+        sourceSvgId: dot.sourceSvgId,
+        sourceFingerprint: dot.sourceFingerprint,
+        point: dot.point,
+      }))
+    const targetSvgIds = resolveCountriesToSvgIds([targetCountry], mapCountryIds)
+    const targetAnchor = anchorDefinitions.find(anchor => (
+      anchor.countryId === targetCountry.id && mapCountryIds.includes(anchor.sourceSvgId)
+    ))
+
+    return {
+      taskTargetId: targetAnchor?.sourceSvgId ?? targetSvgIds[0] ?? null,
+      learningAnchors,
+      ...(syntheticDots.length ? { syntheticDots } : {}),
+    }
+  }, [definition.id, mapCountryIds, taskTargetCountryId, visibleCountries])
   const zoomIds = zoomCountryIds !== undefined
     ? explicitZoomSvgIds
     : level === 'continent' && continent && (focusedSubregionId || definition.domainContinents.length > 1)
@@ -333,6 +374,7 @@ export function GeographyOverviewMap({
         namedIds={namedSvgIds}
         zoomIds={targetCentricZoom ? [] : zoomIds}
         targetCentricZoom={targetCentricZoom}
+        taskAssistance={taskAssistance}
         zoomPadding={definition.zoomPadding}
         onCountriesLoaded={setMapCountries}
         onLoadStateChange={onMapStateChange}

@@ -89,6 +89,11 @@ const feedbackToneClass = {
     bg-[rgba(24,18,10,0.44)]
     shadow-[0_20px_75px_rgba(0,0,0,0.34),0_0_52px_rgba(251,191,36,0.06)]
   `,
+  'wrong-kind': `
+    border-zinc-400/25
+    bg-[rgba(24,24,27,0.46)]
+    shadow-[0_20px_75px_rgba(0,0,0,0.34),0_0_52px_rgba(161,161,170,0.05)]
+  `,
 } as const
 
 const titleClass = {
@@ -96,6 +101,7 @@ const titleClass = {
   fuzzy: 'text-amber-50',
   incorrect: 'text-rose-50',
   revealed: 'text-amber-50',
+  'wrong-kind': 'text-zinc-100',
 } as const
 
 const secondaryClass = {
@@ -103,6 +109,7 @@ const secondaryClass = {
   fuzzy: 'text-amber-200',
   incorrect: 'text-rose-200',
   revealed: 'text-amber-200',
+  'wrong-kind': 'text-zinc-300',
 } as const
 
 const iconClass = {
@@ -110,6 +117,7 @@ const iconClass = {
   fuzzy: 'border-amber-300/30 bg-amber-400/10 text-amber-200',
   incorrect: 'border-rose-300/30 bg-rose-400/10 text-rose-200',
   revealed: 'border-amber-300/30 bg-amber-400/10 text-amber-200',
+  'wrong-kind': 'border-zinc-400/25 bg-zinc-400/10 text-zinc-200',
 } as const
 
 export function WorldCountriesAnswerFeedback({ result, onContinue, allowIncorrectSpellingPractice = false, allowFuzzySpellingPractice = true }: {
@@ -126,9 +134,13 @@ export function WorldCountriesAnswerFeedback({ result, onContinue, allowIncorrec
     ? 'Correct'
     : outcome === 'incorrect'
       ? 'Incorrect'
-      : 'Answer revealed'
-  const icon = outcome === 'exact' || outcome === 'fuzzy' ? '✓' : outcome === 'incorrect' ? '×' : '↗'
-  const statusText = outcome === 'incorrect'
+      : outcome === 'wrong-kind'
+        ? 'Try again'
+        : 'Answer revealed'
+  const icon = outcome === 'exact' || outcome === 'fuzzy' ? '✓' : outcome === 'incorrect' ? '×' : outcome === 'wrong-kind' ? '↺' : '↗'
+  const statusText = outcome === 'wrong-kind'
+    ? typeof result.message === 'string' ? result.message : 'Try the requested answer type.'
+    : outcome === 'incorrect'
     ? `Incorrect.${typeof result.message === 'string' ? ` ${result.message}` : ''}`
     : outcome === 'revealed'
       ? `Answer revealed. ${result.canonicalAnswer}`

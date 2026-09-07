@@ -4,13 +4,13 @@ import { MultipleChoice } from '@/core/ui/MultipleChoice'
 import { RecallFeedback } from '@/core/ui/RecallFeedback'
 import { shuffle } from '@/core/scoring/quiz'
 import type { Country } from '@/features/world-countries/data/countries'
-import { classifyRecallAnswer } from '@/features/world-countries/learning/recallAnswerMatching'
+import { classifyRecallAnswer, getRecallAnswerKindMistakeMessage, type RecallAnswerMatchKind } from '@/features/world-countries/learning/recallAnswerMatching'
 import type { WorldCountriesRecallSkill } from '@/features/world-countries/learning/recallTargets'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import { TaskDock } from '@/features/world-countries/ui/MapSurface'
 import { WorldCountriesMapActivitySurface, type WorldCountriesActivityTask } from '@/features/world-countries/ui/WorldCountriesActivity'
 import { getWorldCountriesTaskHighlightFill, type WorldCountriesAnswerKind } from '@/features/world-countries/ui/WorldCountriesAnswerSemantics'
-import { WorldCountriesTypedAnswer } from '@/features/world-countries/ui/WorldCountriesTypedAnswer'
+import { isWorldCountriesTypedAnswerResolved, WorldCountriesTypedAnswer } from '@/features/world-countries/ui/WorldCountriesTypedAnswer'
 import { getDrillSelectionScopeLabel, type WorldCountriesDrillSelection } from './drillSelection'
 import { DrillSessionRails } from './DrillSessionRails'
 import { getDrillModeDefinition } from './drillModes'
@@ -29,7 +29,7 @@ const CORRECTION_FEEDBACK_DURATION_MS = 1800
 interface StepFeedback {
   answer: string
   correct: boolean
-  match: 'none' | 'exact' | 'fuzzy'
+  match: RecallAnswerMatchKind
   expectedAnswer: string
   answerKind: WorldCountriesAnswerKind
 }
@@ -132,7 +132,7 @@ export function DrillSession({
       countryCandidates: scopeCountries,
       capitalCandidates: scopeCountries.map(entry => entry.capital),
     })
-    const correct = match !== 'none'
+    const correct = match === 'exact' || match === 'fuzzy'
     const elapsed = Math.max(0, now() - startedAtRef.current)
     setFeedback({ answer, correct, match, expectedAnswer, answerKind })
     onAnswer({
@@ -214,10 +214,12 @@ export function DrillSession({
             capitalCandidates: scopeCountries.map(entry => entry.capital),
           })
           return {
-            outcome: match === 'exact' ? 'exact' : match === 'fuzzy' ? 'fuzzy' : 'incorrect',
+            outcome: match === 'wrong-kind' ? 'wrong-kind' : match === 'exact' ? 'exact' : match === 'fuzzy' ? 'fuzzy' : 'incorrect',
             canonicalAnswer: expectedAnswer,
             answerKind,
-            message: match === 'exact'
+            message: match === 'wrong-kind'
+              ? getRecallAnswerKindMistakeMessage(step.skill)
+              : match === 'exact'
               ? 'Correct.'
               : match === 'fuzzy'
                 ? `Correct. The canonical answer is ${expectedAnswer}.`
@@ -229,7 +231,7 @@ export function DrillSession({
             countryId: step.countryId,
             skill: step.skill,
             answer,
-            correct: evaluation.outcome !== 'incorrect',
+            correct: evaluation.outcome === 'exact' || evaluation.outcome === 'fuzzy',
             at: Date.now(),
             ms: latencyMs,
             evidenceKind: 'recall',
@@ -250,14 +252,14 @@ export function DrillSession({
                   highlightFill={getWorldCountriesTaskHighlightFill(answerKind)}
                   taskTargetCountryId={isLocationQuestion ? country.id : null}
                   highlightedCountryId={isShapeQuestion
-                    ? typed.outcome ? country.id : null
-                    : isCapitalQuestion ? (typed.outcome && typed.outcome !== 'incorrect' ? country.id : null) : country.id}
+                    ? typed.outcome && typed.outcome !== 'wrong-kind' ? country.id : null
+                    : isCapitalQuestion ? (isWorldCountriesTypedAnswerResolved(typed.outcome) ? country.id : null) : country.id}
                   namedCountryId={isShapeQuestion
-                    ? typed.outcome ? country.id : null
-                    : isLocationQuestion || isCapitalQuestion ? (typed.outcome && typed.outcome !== 'incorrect' ? country.id : null) : country.id}
+                    ? typed.outcome && typed.outcome !== 'wrong-kind' ? country.id : null
+                    : isLocationQuestion || isCapitalQuestion ? (isWorldCountriesTypedAnswerResolved(typed.outcome) ? country.id : null) : country.id}
                   showHighlightedNames={isShapeQuestion
-                    ? Boolean(typed.outcome)
-                    : isLocationQuestion || isCapitalQuestion ? Boolean(typed.outcome && typed.outcome !== 'incorrect') : true}
+                    ? Boolean(typed.outcome && typed.outcome !== 'wrong-kind')
+                    : isLocationQuestion || isCapitalQuestion ? isWorldCountriesTypedAnswerResolved(typed.outcome) : true}
                   visibleCountryIds={getShapeMapCountryIds(typed.outcome)}
                   zoomCountryIds={getShapeMapCountryIds(typed.outcome)}
                   ariaLabel={isShapeQuestion && !typed.outcome

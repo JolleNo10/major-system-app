@@ -8,6 +8,8 @@ const republicOfTheCongo = countries.find(country => country.id === 'CG')!
 const turkiye = countries.find(country => country.id === 'TR')!
 const sriLanka = countries.find(country => country.id === 'LK')!
 const unitedStates = countries.find(country => country.id === 'US')!
+const unitedKingdom = countries.find(country => country.id === 'GB')!
+const ukraine = countries.find(country => country.id === 'UA')!
 
 describe('World Countries recall answer matching', () => {
   it('evaluates each recall direction against the canonical relationship', () => {
@@ -49,5 +51,22 @@ describe('World Countries recall answer matching', () => {
     expect(classifyRecallAnswer('country-to-capital', 'Washington', unitedStates)).toBe('exact')
     expect(classifyRecallAnswer('country-to-capital', 'Sri Jayawardenepura Kotte', sriLanka)).toBe('exact')
     expect(classifyRecallAnswer('country-to-capital', 'Washington, D.C.', unitedStates)).toBe('exact')
+  })
+
+  it('classifies the current pair opposite as a neutral wrong-answer-kind retry', () => {
+    expect(classifyRecallAnswer('country-to-capital', 'Norway', norway)).toBe('wrong-kind')
+    expect(classifyRecallAnswer('capital-to-country', 'Oslo', norway)).toBe('wrong-kind')
+    expect(classifyRecallAnswer('country-to-capital', 'UK', unitedKingdom)).toBe('wrong-kind')
+    expect(classifyRecallAnswer('capital-to-country', 'Kiev', ukraine)).toBe('wrong-kind')
+  })
+
+  it('only treats the current pair as wrong-kind and preserves ordinary matching', () => {
+    expect(classifyRecallAnswer('country-to-capital', 'Berlin', norway)).toBe('none')
+    expect(classifyRecallAnswer('capital-to-country', 'Germany', norway)).toBe('none')
+    expect(classifyRecallAnswer('country-to-capital', 'Oslo', norway)).toBe('exact')
+    expect(classifyRecallAnswer('capital-to-country', 'Noreway', norway, {
+      fuzzy: true,
+      countryCandidates: [norway],
+    })).toBe('fuzzy')
   })
 })
