@@ -302,6 +302,8 @@ describe('World Countries Recite workflow', () => {
     const initialMap = activeMapProps()
     const initialFrame = initialMap.neighbourhoodZoom
     expect(initialMap).toMatchObject({
+      level: 'continent',
+      continent: 'Europe',
       selectedCountryIds: ['SE', 'NO'],
       hiddenCountryIds: [],
       highlightedCountryIds: ['SE'],
@@ -346,6 +348,11 @@ describe('World Countries Recite workflow', () => {
       taskTargetCountryId: 'NO',
     })
     expect(activeMapProps().neighbourhoodZoom).not.toBe(initialFrame)
+    const sessionMapSources = mapRender.mock.calls
+      .map(([props]) => props as Record<string, unknown>)
+      .filter(props => props.interactive === false)
+      .map(props => `${String(props.level)}:${String(props.continent ?? '')}`)
+    expect(new Set(sessionMapSources)).toEqual(new Set(['continent:Europe']))
 
     const secondCountryInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the country name"]')!
     await act(async () => {
@@ -718,6 +725,42 @@ describe('World Countries Recite workflow', () => {
     })
     await act(async () => buttonContaining(mount, 'Recite again').click())
     expect(activeMapProps()).toMatchObject({ continent: 'Europe', highlightedCountryIds: ['NO'] })
+  })
+
+  it('keeps the World map source stable across Random prompts from different Continents', async () => {
+    vi.useFakeTimers()
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+    const entries = countries.filter(country => ['NO', 'IN'].includes(country.id))
+    const mount = await renderRecite(entries)
+
+    await act(async () => selectRadio(mount, 1))
+    await act(async () => mount.querySelector<HTMLInputElement>('input[type="radio"][value="random"]')?.click())
+    await act(async () => mount.querySelector<HTMLButtonElement>('[aria-label="Select Europe"]')?.click())
+    await act(async () => openContinent(mount, 'Asia'))
+    await act(async () => buttonContaining(mount, 'South Asia').click())
+    await act(async () => goToWorld(mount))
+    await act(async () => buttonContaining(mount, 'Start Recite').click())
+
+    const firstTargetId = activeMapProps().taskTargetCountryId as string
+    expect(activeMapProps()).toMatchObject({ level: 'world', continent: undefined, taskTargetCountryId: firstTargetId })
+    const firstCountry = entries.find(country => country.id === firstTargetId)!
+    const firstInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the country name"]')!
+    await act(async () => {
+      typeInto(firstInput, firstCountry.country)
+      firstInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(500)
+      await Promise.resolve()
+    })
+
+    expect(activeMapProps()).toMatchObject({ level: 'world', continent: undefined })
+    expect(activeMapProps().taskTargetCountryId).not.toBe(firstTargetId)
+    const sessionMapSources = mapRender.mock.calls
+      .map(([props]) => props as Record<string, unknown>)
+      .filter(props => props.interactive === false)
+      .map(props => `${String(props.level)}:${String(props.continent ?? '')}`)
+    expect(new Set(sessionMapSources)).toEqual(new Set(['world:']))
   })
 
   it('supports the shared World toggle and semantic none/all Continent state', async () => {

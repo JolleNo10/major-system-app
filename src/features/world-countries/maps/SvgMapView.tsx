@@ -153,35 +153,22 @@ export function SvgMapView({
   useEffect(() => {
     const controller = controllerRef.current
     if (!controller || countries.length === 0) return
-    controller.updateSettings(settings)
-  }, [countries, settings])
-
-  useEffect(() => {
-    const controller = controllerRef.current
-    if (!controller || countries.length === 0) return
-    if (hoverGroups !== undefined) controller.setHoverGroups(hoverGroups)
-    controller.setGroupOutlines(groupOutlines)
-    controller.setHiddenCountries(hiddenIds)
-    if (hoverableIds === undefined) controller.resetHoverableCountries()
-    else controller.setHoverableCountries(hoverableIds)
-    if (selectableIds === undefined) controller.resetSelectableCountries()
-    else controller.setSelectableCountries(selectableIds)
-    controller.setTaskAssistance(taskAssistance)
-    controller.setHighlighted(highlightedIds)
-    controller.setMutedCountries(mutedIds)
-    controller.clearCountryLabels()
-    if (Object.keys(countryLabels).length) controller.setCountryLabels(countryLabels)
-    const previouslyNamed = controller.getNamedIds()
-    if (previouslyNamed.length) controller.setNamesVisible(previouslyNamed, false)
-    if (namedIds.length) controller.setNamesVisible(namedIds, true)
-  }, [countries, countryLabels, groupOutlines, hiddenIds, highlightedIds, hoverGroups, hoverableIds, mutedIds, namedIds, selectableIds, taskAssistance])
-
-  useEffect(() => {
-    const controller = controllerRef.current
-    if (!controller || countries.length === 0) return
-    controller.clearColors()
-    controller.setCountryColors(stableCountryColors)
-  }, [countries, stableCountryColors])
+    controller.updatePresentation({
+      settings,
+      hoverGroups,
+      groupOutlines,
+      hiddenIds,
+      hoverableIds,
+      selectableIds,
+      taskAssistance,
+      highlightedIds,
+      mutedIds,
+      countryColors: stableCountryColors,
+      countryLabels,
+      namedIds,
+      hoveredId,
+    })
+  }, [countries, countryLabels, groupOutlines, hiddenIds, highlightedIds, hoverGroups, hoveredId, hoverableIds, mutedIds, namedIds, selectableIds, settings, stableCountryColors, taskAssistance])
 
   useEffect(() => {
     const controller = controllerRef.current
@@ -191,12 +178,6 @@ export function SvgMapView({
     else if (zoomIds.length) controller.setZoomArea(zoomIds, zoomPadding)
     else controller.resetZoom()
   }, [countries, targetCentricZoom, zoomIds, zoomPadding])
-
-  useEffect(() => {
-    const controller = controllerRef.current
-    if (!controller || countries.length === 0) return
-    controller.hoverCountry(hoveredId)
-  }, [countries, hoveredId])
 
   const clearMapHover = () => {
     const controller = controllerRef.current

@@ -12,7 +12,7 @@ import { SvgMapController } from './SvgMapController'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 let root: Root | null = null
-afterEach(() => { act(() => root?.unmount()); root = null; document.body.replaceChildren(); vi.unstubAllGlobals() })
+afterEach(() => { act(() => root?.unmount()); root = null; document.body.replaceChildren(); vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
 describe('GeographyOverviewMap', () => {
   it('keeps real tiny Countries at source size without task semantics', async () => {

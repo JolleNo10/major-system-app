@@ -46,7 +46,11 @@ export function ReciteSession({ run, phase, fuzzyMatching, onSubmit, onReveal, o
   const currentPrompt = phase === 'session' ? getCurrentRecitePrompt(run.session) : null
   const currentCountry = currentPrompt ? run.scopeCountries.find(country => country.id === currentPrompt.countryId) : undefined
   const runContinents = [...new Set(run.scopeCountries.map(country => country.continent))]
-  const activeContinent = currentCountry?.continent ?? (phase === 'complete' && runContinents.length === 1 ? runContinents[0] : undefined)
+  const currentContinent = currentCountry?.continent
+  const activeContinent = currentContinent ?? (phase === 'complete' && runContinents.length === 1 ? runContinents[0] : undefined)
+  const mapContinent = run.assistance === 'random'
+    ? runContinents.length === 1 ? runContinents[0] : undefined
+    : activeContinent
   // Answer feedback replaces the session object; the snapshot arrays are the semantic inputs here.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const outcomes = useMemo(() => getReciteCountryOutcomes(run.session), [run.session.countries, run.session.prompts])
@@ -58,8 +62,8 @@ export function ReciteSession({ run, phase, fuzzyMatching, onSubmit, onReveal, o
     [outcomeSignature, run.session.countries],
   )
   const activeMapCountries = useMemo(
-    () => activeContinent ? run.population.filter(country => country.continent === activeContinent) : run.population,
-    [activeContinent, run.population],
+    () => mapContinent ? run.population.filter(country => country.continent === mapContinent) : run.population,
+    [mapContinent, run.population],
   )
   const selectedCountryIds = useMemo(
     () => run.session.countries.map(country => country.id),
@@ -92,7 +96,6 @@ export function ReciteSession({ run, phase, fuzzyMatching, onSubmit, onReveal, o
     () => run.assistance !== 'reveal' && currentPromptCountryId ? [currentPromptCountryId] : EMPTY_COUNTRY_IDS,
     [currentPromptCountryId, run.assistance],
   )
-  const currentContinent = currentCountry?.continent
   const currentSubregionId = currentCountry?.subregionId
   const randomNeighbourhoodZoom = useMemo(() => {
     if (run.assistance !== 'random' || !currentPromptCountryId || !currentContinent || !currentSubregionId) return undefined
@@ -108,8 +111,8 @@ export function ReciteSession({ run, phase, fuzzyMatching, onSubmit, onReveal, o
   const highlightFill = currentAnswerKind ? getWorldCountriesTaskHighlightFill(currentAnswerKind) : undefined
   const map = useMemo(() => (
     <GeographyOverviewMap
-      level={activeContinent ? 'continent' : 'world'}
-      continent={activeContinent}
+      level={mapContinent ? 'continent' : 'world'}
+      continent={mapContinent}
       selectedCountryIds={selectedCountryIds}
       countryColorsById={activeCountryColors}
       countryPopulation={run.population}
@@ -121,7 +124,7 @@ export function ReciteSession({ run, phase, fuzzyMatching, onSubmit, onReveal, o
       interactive={false}
       ariaLabel={`${activeContinent ?? 'World'} map for active Recite session`}
     />
-  ), [activeContinent, activeCountryColors, currentPromptCountryId, highlightedCountryIds, hiddenCountryIds, highlightFill, randomNeighbourhoodZoom, run.assistance, run.population, selectedCountryIds])
+  ), [activeContinent, activeCountryColors, currentPromptCountryId, highlightedCountryIds, hiddenCountryIds, highlightFill, mapContinent, randomNeighbourhoodZoom, run.assistance, run.population, selectedCountryIds])
 
   if (phase === 'complete') {
     const count = (outcome: ReciteCountryOutcome) => outcomes.filter(candidate => candidate === outcome).length
