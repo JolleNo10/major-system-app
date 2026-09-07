@@ -172,7 +172,7 @@ describe('SvgMapController persistent state', () => {
     expect(renderNow).toHaveBeenCalledTimes(1)
   })
 
-  it('zooms to a padded country bounding box and can restore the original viewBox', async () => {
+  it('keeps the source layout aspect ratio while zooming and restoring the camera viewBox', async () => {
     const { mount, controller } = makeController()
     await controller.load({ markup: TEST_MAP })
 
@@ -189,12 +189,32 @@ describe('SvgMapController persistent state', () => {
       activeIds: ['Alpha', 'Beta'],
       unknownIds: [],
     })
-    expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('5 5 45 35')
-    expect(mount.querySelector('svg')?.style.aspectRatio).toBe('45 / 35')
+    expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('-7.5 5 70 35')
+    expect(mount.querySelector('svg')?.style.aspectRatio).toBe('100 / 50')
 
     controller.resetZoom()
     expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('0 0 100 50')
     expect(mount.querySelector('svg')?.style.aspectRatio).toBe('100 / 50')
+  })
+
+  it('does not resize the map surface when adaptive framing changes between large and tiny targets', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500">
+        <g><path id="Large" d="M 40 40 h 400 v 400 h -400 z"/><text id="Large_label">LARGE</text></g>
+        <g><path id="Tiny" d="M 800 240 h 2 v 2 h -2 z"/><text id="Tiny_label">TINY</text></g>
+      </svg>` })
+    setBBox(mount, 'Large', { x: 40, y: 40, width: 400, height: 400 })
+    setBBox(mount, 'Tiny', { x: 800, y: 240, width: 2, height: 2 })
+
+    controller.setAdaptiveTargetCentricZoom(['Large'], ['Large'])
+    const largeFrame = mount.querySelector('svg')?.getAttribute('viewBox')
+    expect(mount.querySelector('svg')?.style.aspectRatio).toBe('1000 / 500')
+
+    controller.setAdaptiveTargetCentricZoom(['Tiny'], ['Tiny'])
+    const tinyFrame = mount.querySelector('svg')?.getAttribute('viewBox')
+    expect(tinyFrame).not.toBe(largeFrame)
+    expect(mount.querySelector('svg')?.style.aspectRatio).toBe('1000 / 500')
   })
 
   it('preserves zoom padding beyond the source viewBox at an edge', async () => {
@@ -210,7 +230,7 @@ describe('SvgMapController persistent state', () => {
       activeIds: ['Alpha'],
       unknownIds: [],
     })
-    expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('10 75 30 35')
+    expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('-10 75 70 35')
   })
 
   it('keeps generic country zoom unchanged for zero-area geometry', async () => {
@@ -256,7 +276,7 @@ describe('SvgMapController persistent state', () => {
     const result = controller.setAdaptiveTargetCentricZoom(['Beta'], ['Alpha', 'Beta', 'Gamma'], 5)
 
     expect(result).toEqual({ activeIds: ['Beta', 'Alpha', 'Gamma'], unknownIds: [] })
-    expect(readViewBox(mount)).toEqual({ x: 5, y: 5, width: 70, height: 30 })
+    expect(readViewBox(mount)).toEqual({ x: 5, y: 2.5, width: 70, height: 35 })
   })
 
   it('uses bounded target-centric framing when a region is spatially sparse', async () => {
@@ -661,7 +681,7 @@ describe('SvgMapController persistent state', () => {
     expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('5 -5 20 40')
 
     controller.setPresentation('standard')
-    expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('5 5 20 20')
+    expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('-5 5 40 20')
   })
 
   it('fits the original source viewBox when expanded without an explicit zoom target', async () => {

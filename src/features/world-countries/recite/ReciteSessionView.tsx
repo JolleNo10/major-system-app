@@ -48,9 +48,9 @@ export function ReciteSession({ run, phase, fuzzyMatching, onSubmit, onReveal, o
   const runContinents = [...new Set(run.scopeCountries.map(country => country.continent))]
   const currentContinent = currentCountry?.continent
   const activeContinent = currentContinent ?? (phase === 'complete' && runContinents.length === 1 ? runContinents[0] : undefined)
-  const mapContinent = run.assistance === 'random'
-    ? runContinents.length === 1 ? runContinents[0] : undefined
-    : activeContinent
+  // Regional assets are authoritative for the active prompt. A completed
+  // multi-continent run has no active target, so it may use the World map.
+  const mapContinent = activeContinent
   // Answer feedback replaces the session object; the snapshot arrays are the semantic inputs here.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const outcomes = useMemo(() => getReciteCountryOutcomes(run.session), [run.session.countries, run.session.prompts])

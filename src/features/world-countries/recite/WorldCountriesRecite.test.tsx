@@ -727,16 +727,18 @@ describe('World Countries Recite workflow', () => {
     expect(activeMapProps()).toMatchObject({ continent: 'Europe', highlightedCountryIds: ['NO'] })
   })
 
-  it('keeps the World map source stable across Random prompts from different Continents', async () => {
+  it('uses each target Country Continent map across a multi-continent Random run', async () => {
     vi.useFakeTimers()
-    vi.spyOn(Math, 'random').mockReturnValue(0)
+    const random = vi.spyOn(Math, 'random')
+    random.mockImplementationOnce(() => 0.5).mockImplementationOnce(() => 0.5).mockReturnValue(0)
     const entries = [
-      countries.find(country => country.continent === 'Europe' && country.subregionId === 'northern-europe')!,
-      countries.find(country => country.continent === 'Asia' && country.subregionId === 'south-asia')!,
+      countries.find(country => country.id === 'NO')!,
+      countries.find(country => country.id === 'SE')!,
+      countries.find(country => country.id === 'IN')!,
     ]
     const mount = await renderRecite(entries)
 
-    await act(async () => selectRadio(mount, 1))
+    await act(async () => selectRadio(mount, 0))
     await act(async () => mount.querySelector<HTMLInputElement>('input[type="radio"][value="random"]')?.click())
     await act(async () => mount.querySelector<HTMLButtonElement>('[aria-label="Select Europe"]')?.click())
     await act(async () => openContinent(mount, 'Asia'))
@@ -745,7 +747,8 @@ describe('World Countries Recite workflow', () => {
     await act(async () => buttonContaining(mount, 'Start Recite').click())
 
     const firstTargetId = activeMapProps().taskTargetCountryId as string
-    expect(activeMapProps()).toMatchObject({ level: 'world', continent: undefined, taskTargetCountryId: firstTargetId })
+    expect(activeMapProps()).toMatchObject({ level: 'continent', continent: 'Europe', taskTargetCountryId: firstTargetId })
+    expect(firstTargetId).toBe('NO')
     const firstCountry = entries.find(country => country.id === firstTargetId)!
     const firstInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the country name"]')!
     await act(async () => {
@@ -757,13 +760,49 @@ describe('World Countries Recite workflow', () => {
       await Promise.resolve()
     })
 
-    expect(activeMapProps()).toMatchObject({ level: 'world', continent: undefined })
-    expect(activeMapProps().taskTargetCountryId).not.toBe(firstTargetId)
+    expect(activeMapProps()).toMatchObject({ level: 'continent', continent: 'Asia', taskTargetCountryId: 'IN' })
     const sessionMapSources = mapRender.mock.calls
       .map(([props]) => props as Record<string, unknown>)
       .filter(props => props.interactive === false)
       .map(props => `${String(props.level)}:${String(props.continent ?? '')}`)
-    expect(new Set(sessionMapSources)).toEqual(new Set(['world:']))
+    expect(sessionMapSources).toContain('continent:Europe')
+    expect(sessionMapSources).toContain('continent:Asia')
+
+    const secondInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the country name"]')!
+    await act(async () => {
+      typeInto(secondInput, 'India')
+      secondInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(500)
+      await Promise.resolve()
+    })
+
+    expect(activeMapProps()).toMatchObject({ level: 'continent', continent: 'Europe', taskTargetCountryId: 'SE' })
+    expect(activeMapProps().neighbourhoodZoom).toMatchObject({ targetCountryId: 'SE' })
+  })
+
+  it('keeps Random Recite microstate framing on the Oceania map', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+    const palau = countries.find(country => country.id === 'PW')!
+    const mount = await renderRecite([palau])
+
+    await act(async () => mount.querySelector<HTMLInputElement>('input[type="radio"][value="random"]')?.click())
+    await act(async () => openContinent(mount, 'Oceania'))
+    await act(async () => buttonContaining(mount, 'Micronesia').click())
+    await act(async () => buttonContaining(mount, 'Start Recite').click())
+
+    expect(activeMapProps()).toMatchObject({
+      level: 'continent',
+      continent: 'Oceania',
+      highlightedCountryIds: ['PW'],
+      taskTargetCountryId: 'PW',
+      neighbourhoodZoom: {
+        targetCountryId: 'PW',
+        contextCountryIds: ['PW'],
+        adaptive: true,
+      },
+    })
   })
 
   it('supports the shared World toggle and semantic none/all Continent state', async () => {

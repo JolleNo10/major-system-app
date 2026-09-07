@@ -336,7 +336,7 @@ export class SvgMapController {
     this.mount.replaceChildren(imported)
     this.svg = imported
     this.originalViewBox = imported.getAttribute('viewBox')
-    this.syncAspectRatio(this.originalViewBox)
+    this.syncLayoutAspectRatio()
     this.observeResize()
     this.bindDiscoveredCountries(imported, markup)
     this.attachHoverListeners()
@@ -1438,9 +1438,7 @@ export class SvgMapController {
 
   private getTargetFrameScale(targetBounds: SvgViewBoxRect, frame: SvgViewBoxRect): { width: number; height: number } | null {
     if (frame.width <= 0 || frame.height <= 0 || targetBounds.width <= 0 || targetBounds.height <= 0) return null
-    const fittedFrame = this.presentation === 'expanded'
-      ? fitViewBoxToAspect(frame, this.getMapSlotAspect())
-      : frame
+    const fittedFrame = fitViewBoxToAspect(frame, this.getMapSlotAspect())
     return {
       width: targetBounds.width / fittedFrame.width,
       height: targetBounds.height / fittedFrame.height,
@@ -1663,23 +1661,24 @@ export class SvgMapController {
   }
 
   private getMapSlotAspect(): number | null {
+    const sourceBounds = this.originalViewBox ? parseViewBox(this.originalViewBox) : null
+    if (this.presentation !== 'expanded') {
+      return sourceBounds ? sourceBounds.width / sourceBounds.height : null
+    }
     const viewportRect = this.viewportElement.getBoundingClientRect()
     if (viewportRect.width > 0 && viewportRect.height > 0) return viewportRect.width / viewportRect.height
     const mountRect = this.mount.getBoundingClientRect()
     if (mountRect.width > 0 && mountRect.height > 0) return mountRect.width / mountRect.height
-    const svgRect = this.svg?.getBoundingClientRect()
-    if (svgRect && svgRect.width > 0 && svgRect.height > 0) return svgRect.width / svgRect.height
-    return null
+    return sourceBounds ? sourceBounds.width / sourceBounds.height : null
   }
 
   private recomputeViewBox(explicitTarget?: SvgViewBoxRect): void {
     if (!this.svg) return
     const target = explicitTarget ?? this.getRetainedZoomBounds()
     if (!target) return
-    const fitted = this.presentation === 'expanded' ? fitViewBoxToAspect(target, this.getMapSlotAspect()) : target
+    const fitted = fitViewBoxToAspect(target, this.getMapSlotAspect())
     const value = `${fitted.x} ${fitted.y} ${fitted.width} ${fitted.height}`
     if (this.svg.getAttribute('viewBox') === value) {
-      this.syncAspectRatio(value)
       this.render()
       return
     }
@@ -1739,7 +1738,6 @@ export class SvgMapController {
   private setViewBox(value: string): void {
     if (!this.svg) return
     this.svg.setAttribute('viewBox', value)
-    this.syncAspectRatio(value)
     this.render()
   }
 
@@ -1758,10 +1756,10 @@ export class SvgMapController {
     if (this.viewportElement !== this.mount) this.resizeObserver.observe(this.viewportElement)
   }
 
-  /** Keep auto-height SVG surfaces in step with a focused viewBox. */
-  private syncAspectRatio(viewBox: string | null): void {
-    if (!this.svg || !viewBox) return
-    const bounds = parseViewBox(viewBox)
+  /** Keep the physical SVG surface tied to its source map, not camera framing. */
+  private syncLayoutAspectRatio(): void {
+    if (!this.svg || !this.originalViewBox) return
+    const bounds = parseViewBox(this.originalViewBox)
     if (bounds) this.svg.style.aspectRatio = `${bounds.width} / ${bounds.height}`
   }
 

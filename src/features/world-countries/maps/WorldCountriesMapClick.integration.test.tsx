@@ -303,7 +303,16 @@ describe('real bundled-map tiny Country selection', () => {
     const svg = mount.querySelector<SVGSVGElement>('.world-map-svg svg')
     expect(svg).not.toBeNull()
     expect(mount.querySelector<SVGPathElement>('path#Nauru')?.style.visibility).not.toBe('hidden')
-    expect(svg?.getAttribute('viewBox')).toContain('829.243')
+    const sourceViewBox = oceaniaSvg.match(/\bviewBox="([^"]+)"/)?.[1]?.split(/[ ,]+/).map(Number)
+    const viewBox = svg?.getAttribute('viewBox')?.split(/[ ,]+/).map(Number)
+    if (!sourceViewBox || sourceViewBox.length !== 4 || !viewBox || viewBox.length !== 4) {
+      throw new Error('Missing Nauru camera viewBox')
+    }
+    expect(viewBox[2] / viewBox[3]).toBeCloseTo(sourceViewBox[2] / sourceViewBox[3])
+    expect(viewBox[0]).toBeLessThanOrEqual(861.243)
+    expect(viewBox[1]).toBeLessThanOrEqual(288.799)
+    expect(viewBox[0] + viewBox[2]).toBeGreaterThanOrEqual(865.543)
+    expect(viewBox[1] + viewBox[3]).toBeGreaterThanOrEqual(293.099)
     expect(mount.querySelector('[data-svg-map-task-targets]')).toBeNull()
   })
 
