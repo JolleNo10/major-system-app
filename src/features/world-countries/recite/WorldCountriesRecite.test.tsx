@@ -227,6 +227,91 @@ describe('World Countries Recite workflow', () => {
     expect(mount.textContent).toContain('Recite complete')
   })
 
+  it('keeps a randomized Countries + Capitals pair explicit, focused, and ready for the next Country', async () => {
+    vi.useFakeTimers()
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+    const entries = countries.filter(country => ['NO', 'SE'].includes(country.id))
+    const mount = await renderRecite(entries)
+
+    await act(async () => selectRadio(mount, 1))
+    await act(async () => mount.querySelector<HTMLInputElement>('input[type="radio"][value="random"]')?.click())
+    await act(async () => openContinent(mount, 'Europe'))
+    await act(async () => buttonContaining(mount, 'Northern Europe').click())
+    await act(async () => buttonContaining(mount, 'Start Recite').click())
+
+    expect(activeMapProps()).toMatchObject({
+      selectedCountryIds: ['SE', 'NO'],
+      hiddenCountryIds: [],
+      highlightedCountryIds: ['SE'],
+      highlightFill: '#0891b2',
+      neighbourhoodZoom: { targetCountryId: 'SE', contextCountryIds: ['NO'] },
+    })
+    expect(activeMapProps().selectedSubregionIds).toBeUndefined()
+    expect(mount.querySelector('[data-world-countries-task-direction]')?.textContent).toBe('Random Country recall')
+    expect(mount.querySelector('[data-world-countries-task-cue]')?.textContent).toBe('Identify the highlighted Country')
+
+    const firstCountryInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the country name"]')!
+    await act(async () => {
+      typeInto(firstCountryInput, 'Sweden')
+      firstCountryInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(500)
+      await Promise.resolve()
+    })
+
+    expect(mount.querySelector('[data-world-countries-task-direction]')?.textContent).toBe('Country → Capital')
+    expect(mount.querySelector('[data-world-countries-task-cue]')?.textContent).toBe('Capital of Sweden')
+    expect(activeMapProps()).toMatchObject({
+      highlightedCountryIds: ['SE'],
+      highlightFill: '#8b5cf6',
+      neighbourhoodZoom: { targetCountryId: 'SE', contextCountryIds: ['NO'] },
+    })
+
+    const firstCapitalInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the capital"]')!
+    await act(async () => {
+      typeInto(firstCapitalInput, 'Stockholm')
+      firstCapitalInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(500)
+      await Promise.resolve()
+    })
+
+    const secondCountryInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the country name"]')!
+    expect(secondCountryInput.disabled).toBe(false)
+    expect(secondCountryInput.value).toBe('')
+    expect(document.activeElement).toBe(secondCountryInput)
+    expect(mount.querySelector('[data-world-countries-task-direction]')?.textContent).toBe('Random Country recall')
+    expect(mount.querySelector('[data-world-countries-task-cue]')?.textContent).toBe('Identify the highlighted Country')
+    expect(activeMapProps()).toMatchObject({
+      highlightedCountryIds: ['NO'],
+      highlightFill: '#0891b2',
+      neighbourhoodZoom: { targetCountryId: 'NO', contextCountryIds: ['SE'] },
+    })
+    const activeColors = activeMapProps().countryColorsById as ReadonlyMap<string, string>
+    expect(activeColors.get('SE')).toBe('#15803d')
+
+    await act(async () => {
+      typeInto(secondCountryInput, 'Norway')
+      secondCountryInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(500)
+      await Promise.resolve()
+    })
+    const secondCapitalInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the capital"]')!
+    await act(async () => {
+      typeInto(secondCapitalInput, 'Oslo')
+      secondCapitalInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(500)
+      await Promise.resolve()
+    })
+    expect(mount.textContent).toContain('Recite complete')
+  })
+
   it('wires Reveal as you go to hidden Country IDs and reveals the Country after Skip', async () => {
     const mount = await renderRecite()
     await act(async () => selectRadio(mount, 4))

@@ -61,6 +61,16 @@ export function ReciteSession({ run, phase, fuzzyMatching, onSubmit, onReveal, o
   const highlightedCountryIds = run.assistance !== 'reveal' && currentPrompt
     ? [currentPrompt.countryId]
     : []
+  const neighbourhoodZoom = run.assistance === 'random' && currentPrompt && currentCountry
+    ? {
+      targetCountryId: currentCountry.id,
+      contextCountryIds: run.scopeCountries
+        .filter(country => country.id !== currentCountry.id
+          && country.continent === currentCountry.continent
+          && country.subregionId === currentCountry.subregionId)
+        .map(country => country.id),
+    }
+    : undefined
   const map = (
     <GeographyOverviewMap
       level={activeContinent ? 'continent' : 'world'}
@@ -70,6 +80,7 @@ export function ReciteSession({ run, phase, fuzzyMatching, onSubmit, onReveal, o
       countryPopulation={run.population}
       highlightedCountryIds={highlightedCountryIds}
       highlightFill={currentAnswerKind ? getWorldCountriesTaskHighlightFill(currentAnswerKind) : undefined}
+      neighbourhoodZoom={neighbourhoodZoom}
       hiddenCountryIds={hiddenCountryIds}
       interactive={false}
       ariaLabel={`${activeContinent ?? 'World'} map for active Recite session`}
@@ -116,8 +127,12 @@ export function ReciteSession({ run, phase, fuzzyMatching, onSubmit, onReveal, o
       progress: { label: 'Country', current: currentPrompt.countryIndex + 1, total: run.session.countries.length },
     }
     : {
-      direction: currentPrompt.kind === 'capital' ? 'Country → Capital' : 'Ordered Country recall',
-      cue: currentPrompt.kind === 'capital' ? `Capital of ${currentCountry.country}` : 'Next country',
+      direction: currentPrompt.kind === 'capital'
+        ? 'Country → Capital'
+        : run.assistance === 'random' ? 'Random Country recall' : 'Ordered Country recall',
+      cue: currentPrompt.kind === 'capital'
+        ? `Capital of ${currentCountry.country}`
+        : run.assistance === 'random' ? 'Identify the highlighted Country' : 'Next country',
       answerKind: currentAnswerKind,
       sessionContext: <><span className="text-zinc-300">{currentCountry.continent}</span> · {getReciteModeLabel(run.mode)}</>,
       progress: { label: 'Country', current: currentPrompt.countryIndex + 1, total: run.session.countries.length },
