@@ -33,6 +33,11 @@ export interface ReciteSessionState {
   feedback: RecitePromptFeedback
 }
 
+export interface CreateReciteSessionOptions {
+  randomize?: boolean
+  random?: () => number
+}
+
 export interface RecitePromptView {
   countryId: CountryId
   countryIndex: number
@@ -60,8 +65,11 @@ function replaceCurrentPrompt(
 export function createReciteSession(
   mode: ReciteMode,
   countries: readonly ReciteSessionCountry[],
+  options: CreateReciteSessionOptions = {},
 ): ReciteSessionState {
-  const snapshot = countries.map(country => ({ ...country }))
+  const snapshot = options.randomize
+    ? shuffleReciteCountries(countries, options.random ?? Math.random)
+    : countries.map(country => ({ ...country }))
   const prompts = snapshot.flatMap((_, countryIndex) => [
     createPrompt(countryIndex, 'country'),
     ...(mode === 'countries-capitals' ? [createPrompt(countryIndex, 'capital')] : []),
@@ -74,6 +82,16 @@ export function createReciteSession(
     phase: prompts.length > 0 ? 'answering' : 'complete',
     feedback: 'none',
   }
+}
+
+function shuffleReciteCountries(countries: readonly ReciteSessionCountry[], random: () => number): ReciteSessionCountry[] {
+  const result = countries.map(country => ({ ...country }))
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const value = Math.max(0, Math.min(0.999999999, random()))
+    const swapWith = Math.floor(value * (index + 1))
+    ;[result[index], result[swapWith]] = [result[swapWith]!, result[index]!]
+  }
+  return result
 }
 
 export function getCurrentRecitePrompt(state: ReciteSessionState): RecitePromptView | null {

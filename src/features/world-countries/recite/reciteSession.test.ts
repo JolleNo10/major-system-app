@@ -15,6 +15,11 @@ const countries: readonly ReciteSessionCountry[] = [
   { id: 'SE' as CountryId, country: 'Sweden', capital: 'Stockholm' },
 ]
 
+const randomCountries: readonly ReciteSessionCountry[] = [
+  ...countries,
+  { id: 'FR' as CountryId, country: 'France', capital: 'Paris' },
+]
+
 describe('World Countries Recite session', () => {
   it('snapshots the supplied ordered Country sequence', () => {
     const supplied = [...countries]
@@ -23,6 +28,20 @@ describe('World Countries Recite session', () => {
 
     expect(session.countries.map(country => country.id)).toEqual(['NO', 'SE'])
     expect(getCurrentRecitePrompt(session)).toMatchObject({ countryId: 'NO', kind: 'country' })
+  })
+
+  it('randomizes the Country snapshot once while keeping Countries + Capitals pairs together', () => {
+    const session = createReciteSession('countries-capitals', randomCountries, { randomize: true, random: () => 0 })
+    const countryIds = session.countries.map(country => country.id)
+
+    expect(new Set(countryIds)).toEqual(new Set(randomCountries.map(country => country.id)))
+    expect(countryIds).toHaveLength(randomCountries.length)
+    expect(countryIds).not.toEqual(randomCountries.map(country => country.id))
+    expect(session.prompts.map(prompt => [session.countries[prompt.countryIndex]?.id, prompt.kind]))
+      .toEqual(countryIds.flatMap(countryId => [[countryId, 'country'], [countryId, 'capital']]))
+
+    const afterFeedback = submitReciteAnswer(session, false)
+    expect(afterFeedback.countries.map(country => country.id)).toEqual(countryIds)
   })
 
   it('keeps an incorrect prompt active until a later correct answer', () => {

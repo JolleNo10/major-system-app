@@ -9,7 +9,7 @@ import { useWorldCountriesGeographyRevision } from '@/features/world-countries/g
 import { getContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
 import { getSubregionsForContinentInEffectiveOrder } from '@/features/world-countries/geography/queries'
 import { readWorldCountriesGeography } from '@/features/world-countries/geography/worldScope'
-import { clearSubregionScope, getCountriesForSubregionScopeInEffectiveOrder, normalizeSubregionScope, selectAllSubregions, toggleContinentInScope, toggleSubregionInScope, type WorldCountriesSubregionScope } from '@/features/world-countries/geography/subregionScope'
+import { getCountriesForSubregionScopeInEffectiveOrder, normalizeSubregionScope, selectAllSubregions, toggleContinentInScope, toggleSubregionInScope, toggleWorldScope, type WorldCountriesSubregionScope } from '@/features/world-countries/geography/subregionScope'
 import { advanceRecallStep, getCurrentRecallStep, type WorldCountriesRecallSessionState } from '@/features/world-countries/learning/recallSession'
 import type { WorldCountriesTypedAnswerResult } from '@/features/world-countries/ui/WorldCountriesTypedAnswer'
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
@@ -97,8 +97,9 @@ export function WorldCountriesQuiz({ answerMode: _answerMode }: { answerMode: An
   const toggleContinent = useCallback((continent: Continent) => {
     setSelectedSubregionIds(toggleContinentInScope(normalizedSelection, continent, activeCountries, selectionMetadata).subregionIds)
   }, [activeCountries, normalizedSelection, selectionMetadata])
-  const selectAllWorld = useCallback(() => setSelectedSubregionIds(selectAllSubregions(activeCountries, selectionMetadata).subregionIds), [activeCountries, selectionMetadata])
-  const clearWorld = useCallback(() => setSelectedSubregionIds(clearSubregionScope().subregionIds), [])
+  const toggleWorld = useCallback(() => {
+    setSelectedSubregionIds(toggleWorldScope(normalizedSelection, activeCountries, selectionMetadata).subregionIds)
+  }, [activeCountries, normalizedSelection, selectionMetadata])
 
   const startQuiz = useCallback(() => {
     if (setupQuestionTargetCount === 0 || !isPracticeQuestionCountValid(normalizedQuestionCount, setupQuestionTargetCount)) return
@@ -190,8 +191,7 @@ export function WorldCountriesQuiz({ answerMode: _answerMode }: { answerMode: An
     onWorld={goToWorld}
     onSelectContinent={selectContinent}
     onToggleContinent={toggleContinent}
-    onSelectAllWorld={selectAllWorld}
-    onClearWorld={clearWorld}
+    onToggleWorld={toggleWorld}
     onToggleSubregion={toggleSubregion}
     onSelectEntireContinent={() => { if (setupContinent) setSelectedSubregionIds(toggleContinentInScope(normalizedSelection, setupContinent, activeCountries, selectionMetadata).subregionIds) }}
   />
@@ -222,8 +222,7 @@ function QuizSetupPhase({
   onWorld,
   onSelectContinent,
   onToggleContinent,
-  onSelectAllWorld,
-  onClearWorld,
+  onToggleWorld,
   onToggleSubregion,
   onSelectEntireContinent,
 }: {
@@ -245,17 +244,16 @@ function QuizSetupPhase({
   onWorld: () => void
   onSelectContinent: (continent: Continent) => void
   onToggleContinent: (continent: Continent) => void
-  onSelectAllWorld: () => void
-  onClearWorld: () => void
+  onToggleWorld: () => void
   onToggleSubregion: (subregionId: SubregionId) => void
   onSelectEntireContinent: () => void
 }) {
   const rails = useMemo(() => ({
-    left: <GeographySelectionRail level={setupContinent ? 'continent' : 'world'} setupContinent={setupContinent} selection={normalizedSelection} selectionMetadata={selectionMetadata} worldOrder={worldOrder} subregionOrder={subregionOrder} entries={activeCountries} hoveredGroupId={hoveredGroupId} onHoverGroup={onHoverGroup} onWorld={onWorld} onSelectContinent={onSelectContinent} onToggleContinent={onToggleContinent} onSelectAllWorld={onSelectAllWorld} onClearWorld={onClearWorld} onToggleSubregion={onToggleSubregion} onSelectEntireContinent={onSelectEntireContinent} headingId="world-countries-quiz-geography-heading" />,
+    left: <GeographySelectionRail level={setupContinent ? 'continent' : 'world'} setupContinent={setupContinent} selection={normalizedSelection} selectionMetadata={selectionMetadata} worldOrder={worldOrder} subregionOrder={subregionOrder} entries={activeCountries} hoveredGroupId={hoveredGroupId} onHoverGroup={onHoverGroup} onWorld={onWorld} onSelectContinent={onSelectContinent} onToggleContinent={onToggleContinent} onToggleWorld={onToggleWorld} onToggleSubregion={onToggleSubregion} onSelectEntireContinent={onSelectEntireContinent} headingId="world-countries-quiz-geography-heading" />,
     right: <QuizSetupControls quizType={quizType} onQuizTypeChange={onQuizTypeChange} questionCount={normalizedQuestionCount} targetCount={setupQuestionTargetCount} onQuestionCountChange={onQuestionCountChange} canStart={setupQuestionTargetCount > 0} onStart={onStart} />,
     leftLabel: 'Geography',
     rightLabel: 'Quiz',
-  }), [activeCountries, hoveredGroupId, normalizedQuestionCount, normalizedSelection, onClearWorld, onHoverGroup, onQuestionCountChange, onQuizTypeChange, onSelectContinent, onSelectEntireContinent, onSelectAllWorld, onStart, onToggleContinent, onToggleSubregion, onWorld, quizType, selectionMetadata, setupContinent, setupQuestionTargetCount, subregionOrder, worldOrder])
+  }), [activeCountries, hoveredGroupId, normalizedQuestionCount, normalizedSelection, onHoverGroup, onQuestionCountChange, onQuizTypeChange, onSelectContinent, onSelectEntireContinent, onStart, onToggleContinent, onToggleSubregion, onToggleWorld, onWorld, quizType, selectionMetadata, setupContinent, setupQuestionTargetCount, subregionOrder, worldOrder])
   useRails(rails)
 
   return <section className="space-y-3 animate-fade-in" aria-labelledby="world-countries-quiz-heading">

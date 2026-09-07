@@ -5,6 +5,7 @@ import {
   getContinentScopeState,
   getContinentSubregionScopeCounts,
   getSubregionScopeCounts,
+  getWorldScopeState,
   type WorldCountriesSubregionScope,
   type WorldCountriesSubregionScopeMetadata,
 } from '@/features/world-countries/geography/subregionScope'
@@ -26,8 +27,7 @@ export interface GeographySelectionRailProps {
   onWorld: () => void
   onSelectContinent: (continent: Continent) => void
   onToggleContinent: (continent: Continent) => void
-  onSelectAllWorld: () => void
-  onClearWorld: () => void
+  onToggleWorld: () => void
   onToggleSubregion: (subregionId: SubregionId) => void
   onSelectEntireContinent: () => void
   headingId?: string
@@ -52,8 +52,7 @@ export function GeographySelectionRail({
   onWorld,
   onSelectContinent,
   onToggleContinent,
-  onSelectAllWorld,
-  onClearWorld,
+  onToggleWorld,
   onToggleSubregion,
   onSelectEntireContinent,
   headingId = 'world-countries-geography-heading',
@@ -65,6 +64,7 @@ export function GeographySelectionRail({
 }: GeographySelectionRailProps) {
   const continent = setupContinent
   const worldCounts = getSubregionScopeCounts(selection, entries, selectionMetadata)
+  const worldState = getWorldScopeState(selection, entries, selectionMetadata)
   const continentCounts = continent
     ? getContinentSubregionScopeCounts(selection, continent, entries, selectionMetadata)
     : null
@@ -104,10 +104,15 @@ export function GeographySelectionRail({
         </nav>
         <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
           <p aria-label="World selection summary" className="text-sm font-semibold text-zinc-200">{worldCounts.continents} {worldCounts.continents === 1 ? 'Continent' : 'Continents'} · {worldCounts.subregions} {worldCounts.subregions === 1 ? 'Subregion' : 'Subregions'} · {worldCounts.countries} {worldCounts.countries === 1 ? 'Country' : 'Countries'} selected</p>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <button type="button" onClick={onSelectAllWorld} className="rounded-lg border border-cyan-500/50 bg-cyan-500/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">Select all World</button>
-            <button type="button" onClick={onClearWorld} className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm font-semibold text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">Clear</button>
-          </div>
+          <button
+            type="button"
+            aria-label={worldState === 'all' ? 'Clear world' : 'Select world'}
+            aria-pressed={worldState === 'all'}
+            onClick={onToggleWorld}
+            className={`mt-3 w-full rounded-lg border px-3 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 ${worldState === 'all' ? 'border-zinc-700 bg-zinc-800 text-zinc-300 hover:border-zinc-500 hover:text-zinc-100' : 'border-cyan-500/50 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/20'}`}
+          >
+            {worldState === 'all' ? 'Clear world' : 'Select world'}
+          </button>
         </div>
       </WorldCountriesPanel>
     )

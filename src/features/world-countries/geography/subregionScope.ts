@@ -99,6 +99,32 @@ export function getContinentScopeState(
   return 'partial'
 }
 
+export function getWorldScopeState(
+  scope: WorldCountriesSubregionScope,
+  entries: readonly Country[] = countries,
+  metadata?: WorldCountriesSubregionScopeMetadata,
+): ContinentScopeState {
+  const allSubregionIds = selectAllSubregions(entries, metadata).subregionIds
+  if (allSubregionIds.length === 0) return 'none'
+
+  const normalized = normalizeSubregionScope(scope, entries, metadata)
+  const selectedCount = normalized.subregionIds.length
+  if (selectedCount === 0) return 'none'
+  const selected = new Set(normalized.subregionIds)
+  if (allSubregionIds.every(id => selected.has(id))) return 'all'
+  return 'partial'
+}
+
+export function toggleWorldScope(
+  scope: WorldCountriesSubregionScope,
+  entries: readonly Country[] = countries,
+  metadata?: WorldCountriesSubregionScopeMetadata,
+): WorldCountriesSubregionScope {
+  return getWorldScopeState(scope, entries, metadata) === 'all'
+    ? clearSubregionScope()
+    : selectAllSubregions(entries, metadata)
+}
+
 export function getContinentSubregionScopeCounts(
   scope: WorldCountriesSubregionScope,
   continent: Continent,

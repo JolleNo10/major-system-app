@@ -115,6 +115,24 @@ afterEach(() => {
 })
 
 describe('WorldCountriesDrill learning integration', () => {
+  it('toggles the effective World geography from partial to complete and back to empty', () => {
+    localStorage.setItem('world-countries-drill-preferences', JSON.stringify({
+      subregionIds: ['northern-europe'], mode: 'countries', order: 'ordered',
+    }))
+
+    renderDrill()
+    const toggleWorld = drillSetupProps.current?.onToggleWorld as (() => void) | undefined
+    expect(toggleWorld).toBeTypeOf('function')
+    expect((drillSetupProps.current?.selection as { subregionIds: readonly string[] }).subregionIds).toEqual(['northern-europe'])
+
+    act(() => toggleWorld?.())
+    const completeSelection = (drillSetupProps.current?.selection as { subregionIds: readonly string[] }).subregionIds
+    expect(new Set(completeSelection).size).toBeGreaterThan(1)
+
+    act(() => (drillSetupProps.current?.onToggleWorld as () => void)())
+    expect((drillSetupProps.current?.selection as { subregionIds: readonly string[] }).subregionIds).toEqual([])
+  })
+
   it('keeps assisted answers in session history without recording durable Drill evidence', () => {
     localStorage.setItem('world-countries-drill-preferences', JSON.stringify({
       continent: 'Europe', subregionIds: ['northern-europe'], mode: 'countries', order: 'ordered',

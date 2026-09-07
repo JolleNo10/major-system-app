@@ -5,7 +5,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { deriveWorldCountriesRecallProgress } from '@/features/world-countries/learning/recallProgress'
 import { recallTargetIdFor, WORLD_COUNTRIES_RECALL_SKILLS } from '@/features/world-countries/learning/recallTargets'
-import { createDrillSelection } from './drillSelection'
+import { createDrillSelection, selectAllDrillSubregions } from './drillSelection'
 import { DrillSetup } from './DrillSetup'
 import { WORLD_METADATA_STORAGE_KEY, setWorldMetadata } from '@/features/world-countries/geography/worldMetadataStore'
 
@@ -23,7 +23,7 @@ let root: Root | null = null
 afterEach(() => { act(() => root?.unmount()); root = null; document.body.replaceChildren(); useRailsMock.mockReset(); mapMock.mockReset(); loadRecallProgressMock.mockClear(); loadRecallProgressMock.mockImplementation(async () => new Map()); proficiencyScopeMock.mockReset(); proficiencyScopeMock.mockImplementation(() => ({ counts: { weak: 0, developing: 0 }, countryIds: [], countries: [] })); localStorage.clear() })
 
 function createSetupProps(overrides: Record<string, unknown> = {}) {
-  return { level: 'continent', setupContinent: 'Europe', selection: createDrillSelection(['northern-europe']), selectionMetadata: {}, mode: 'countries', order: 'ordered', purpose: 'drill', learnPracticeMode: 'learn-countries', learningStates: [], onSelectionChange: vi.fn(), onModeChange: vi.fn(), onOrderChange: vi.fn(), onPurposeChange: vi.fn(), onLearnPracticeModeChange: vi.fn(), onStart: vi.fn(), onLearnPracticeStart: vi.fn(), onWorld: vi.fn(), onSelectContinent: vi.fn(), onSelectAllWorld: vi.fn(), onClearWorld: vi.fn(), hoveredGroupId: null, onHoverGroup: vi.fn(), ...overrides } as never
+  return { level: 'continent', setupContinent: 'Europe', selection: createDrillSelection(['northern-europe']), selectionMetadata: {}, mode: 'countries', order: 'ordered', purpose: 'drill', learnPracticeMode: 'learn-countries', learningStates: [], onSelectionChange: vi.fn(), onModeChange: vi.fn(), onOrderChange: vi.fn(), onPurposeChange: vi.fn(), onLearnPracticeModeChange: vi.fn(), onStart: vi.fn(), onLearnPracticeStart: vi.fn(), onWorld: vi.fn(), onSelectContinent: vi.fn(), onToggleWorld: vi.fn(), hoveredGroupId: null, onHoverGroup: vi.fn(), ...overrides } as never
 }
 
 function renderSetup(overrides: Record<string, unknown> = {}) {
@@ -45,7 +45,36 @@ function renderLatestRight() {
   act(() => root?.render(config.right))
 }
 
+function renderLatestLeft() {
+  const config = useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1]?.[0] as { left: ReactNode }
+  act(() => root?.render(config.left))
+}
+
 describe('DrillSetup activity boundary', () => {
+  it('uses one shared World toggle action for empty and complete scopes', () => {
+    const onToggleWorld = vi.fn()
+    const emptySelection = createDrillSelection([], scopeEntries)
+    const mount = renderSetup({ level: 'world', setupContinent: null, entries: scopeEntries, selection: emptySelection, onToggleWorld })
+    renderLatestLeft()
+
+    expect(mount.querySelector<HTMLButtonElement>('[aria-label="Select world"]')).not.toBeNull()
+    act(() => mount.querySelector<HTMLButtonElement>('[aria-label="Select world"]')?.click())
+    expect(onToggleWorld).toHaveBeenCalledTimes(1)
+
+    act(() => root?.render(createElement(DrillSetup, createSetupProps({
+      level: 'world',
+      setupContinent: null,
+      entries: scopeEntries,
+      selection: createDrillSelection(selectAllDrillSubregions(scopeEntries).subregionIds, scopeEntries),
+      onToggleWorld,
+    }))))
+    renderLatestLeft()
+
+    expect(mount.querySelector<HTMLButtonElement>('[aria-label="Clear world"]')).not.toBeNull()
+    act(() => mount.querySelector<HTMLButtonElement>('[aria-label="Clear world"]')?.click())
+    expect(onToggleWorld).toHaveBeenCalledTimes(2)
+  })
+
   it('loads Countries + Capitals Drill status for the initial world map', async () => {
     const norway = {
       id: 'NO', country: 'Norway', capital: 'Oslo', continent: 'Europe' as const,

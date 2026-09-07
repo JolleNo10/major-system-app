@@ -6,8 +6,10 @@ import {
   getCountriesForSubregionScopeInEffectiveOrder,
   getSubregionScopeCounts,
   getSubregionScopeLabel,
+  getWorldScopeState,
   normalizeSubregionScope,
   selectAllSubregions,
+  toggleWorldScope,
   toggleContinentInScope,
   toggleSubregionInScope,
   type WorldCountriesSubregionScope,
@@ -46,6 +48,17 @@ describe('World Countries shared Subregion scope', () => {
     expect(getContinentScopeState(empty, 'Asia', entries, metadata)).toBe('none')
     expect(getContinentScopeState({ subregionIds: ['south-asia'] }, 'Asia', entries, metadata)).toBe('partial')
     expect(getContinentScopeState({ subregionIds: ['south-asia', 'east-asia'] }, 'Asia', entries, metadata)).toBe('all')
+  })
+
+  it('derives World state from the effective active Subregions', () => {
+    expect(getWorldScopeState(clearSubregionScope(), entries, metadata)).toBe('none')
+    expect(getWorldScopeState({ subregionIds: ['northern-europe'] }, entries, metadata)).toBe('partial')
+    expect(getWorldScopeState(selectAllSubregions(entries, metadata), entries, metadata)).toBe('all')
+  })
+
+  it('selects all from a partial World scope and clears only a complete World scope', () => {
+    expect(toggleWorldScope({ subregionIds: ['northern-europe'] }, entries, metadata)).toEqual(selectAllSubregions(entries, metadata))
+    expect(toggleWorldScope(selectAllSubregions(entries, metadata), entries, metadata)).toEqual(clearSubregionScope())
   })
 
   it('toggles a full Continent without clearing other Continents', () => {

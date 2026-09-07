@@ -8,7 +8,7 @@ import { useWorldCountriesGeographyRevision } from '@/features/world-countries/g
 import { getContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
 import { getSubregionsForContinentInEffectiveOrder } from '@/features/world-countries/geography/queries'
 import { readWorldCountriesGeography } from '@/features/world-countries/geography/worldScope'
-import { clearSubregionScope, getCountriesForSubregionScopeInEffectiveOrder, getSubregionScopeLabel, normalizeSubregionScope, selectAllSubregions, toggleContinentInScope, toggleSubregionInScope } from '@/features/world-countries/geography/subregionScope'
+import { getCountriesForSubregionScopeInEffectiveOrder, getSubregionScopeLabel, normalizeSubregionScope, toggleContinentInScope, toggleSubregionInScope, toggleWorldScope } from '@/features/world-countries/geography/subregionScope'
 import type { SvgMapLoadState } from '@/features/world-countries/maps/SvgMapView'
 import type { WorldCountriesTypedAnswerEvaluation } from '@/features/world-countries/ui/WorldCountriesTypedAnswer'
 import {
@@ -104,13 +104,9 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
     setSelectedSubregionIds(toggleContinentInScope(normalizedSelection, continent, activeCountries, selectionMetadata).subregionIds)
   }, [activeCountries, normalizedSelection, selectionMetadata])
 
-  const selectAllWorld = useCallback(() => {
-    setSelectedSubregionIds(selectAllSubregions(activeCountries, selectionMetadata).subregionIds)
-  }, [activeCountries, selectionMetadata])
-
-  const clearWorld = useCallback(() => {
-    setSelectedSubregionIds(clearSubregionScope().subregionIds)
-  }, [])
+  const toggleWorld = useCallback(() => {
+    setSelectedSubregionIds(toggleWorldScope(normalizedSelection, activeCountries, selectionMetadata).subregionIds)
+  }, [activeCountries, normalizedSelection, selectionMetadata])
 
   const startRecite = useCallback(() => {
     if (setupScopeCountries.length === 0 || !mapReady) return
@@ -126,7 +122,7 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
       assistance,
       population: [...activeCountries],
       scopeCountries: [...setupScopeCountries],
-      session: createReciteSession(mode, sessionCountries),
+      session: createReciteSession(mode, sessionCountries, { randomize: assistance === 'random' }),
     })
     setPhase('session')
     setHoveredGroupId(null)
@@ -150,7 +146,7 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
     const outcomes = getReciteCountryOutcomes(session)
     if (outcomes.some(outcome => outcome === null)) return
     const completedOutcomes = outcomes.map((outcome, index) => ({
-      countryId: run.scopeCountries[index]?.id ?? session.countries[index].id,
+      countryId: session.countries[index].id,
       outcome: outcome as ReciteCountryOutcome,
     }))
     setProgress(saveCompletedReciteRun(run.mode, completedOutcomes))
@@ -166,7 +162,7 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
     if (!run) return
     setRun({
       ...run,
-      session: createReciteSession(run.mode, run.session.countries),
+      session: createReciteSession(run.mode, run.session.countries, { randomize: run.assistance === 'random' }),
     })
     setPhase('session')
   }, [run])
@@ -187,8 +183,7 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
         onWorld={goToWorld}
         onSelectContinent={selectContinent}
         onToggleContinent={toggleWorldContinent}
-        onSelectAllWorld={selectAllWorld}
-        onClearWorld={clearWorld}
+        onToggleWorld={toggleWorld}
         onToggleSubregion={toggleSubregion}
         onSelectEntireContinent={toggleEntireContinent}
         onMapStateChange={handleMapStateChange}

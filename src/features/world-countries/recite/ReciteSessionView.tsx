@@ -58,7 +58,7 @@ export function ReciteSession({ run, phase, fuzzyMatching, onSubmit, onReveal, o
   const currentAnswerKind = currentPrompt
     ? currentPrompt.kind === 'capital' ? 'capital' : 'country'
     : undefined
-  const highlightedCountryIds = run.assistance === 'visible' && currentPrompt
+  const highlightedCountryIds = run.assistance !== 'reveal' && currentPrompt
     ? [currentPrompt.countryId]
     : []
   const map = (

@@ -108,6 +108,16 @@ describe('World Countries Recite workflow', () => {
     expect(mount.textContent).toContain('Countries from Capitals')
     expect(mount.textContent).toContain('Countries setup may use a stronger Countries + Capitals result.')
     expect(mount.textContent).toContain('Visible')
+    expect(mount.textContent).toContain('Random')
+    const controls = mount.querySelector('[aria-labelledby="world-countries-recite-controls-heading"]')
+    expect(controls).not.toBeNull()
+    expect(controls?.textContent).not.toContain('status legend')
+    const legend = [...mount.querySelectorAll('summary')].find(summary => summary.textContent?.includes('status legend'))
+    expect(legend).not.toBeUndefined()
+    const mapSurface = mount.querySelector('[data-map-surface]')
+    expect(mapSurface).not.toBeNull()
+    expect(mapSurface!.compareDocumentPosition(legend!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(legend?.closest('[data-map-surface]')).toBeNull()
     expect(mount.querySelector<HTMLButtonElement>('button:disabled')?.textContent).toContain('Choose a ready Country scope')
 
     await act(async () => openContinent(mount, 'Europe'))
@@ -252,6 +262,68 @@ describe('World Countries Recite workflow', () => {
     expect(activeMaps[activeMaps.length - 1]).toMatchObject({ highlightFill: '#0891b2' })
   })
 
+  it('offers mutually exclusive Random assistance and keeps its target highlighted without hiding Countries', async () => {
+    vi.useFakeTimers()
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+    const entries = countries.filter(country => ['NO', 'SE', 'FR'].includes(country.id))
+    const mount = await renderRecite(entries)
+    const assistance = ['visible', 'reveal', 'random'].map(value => mount.querySelector<HTMLInputElement>(`input[type="radio"][value="${value}"]`))
+
+    expect(assistance).toHaveLength(3)
+    expect(new Set(assistance.map(radio => radio?.name)).size).toBe(1)
+    expect(assistance[0]?.checked).toBe(true)
+    await act(async () => assistance[2]?.click())
+    expect(assistance[0]?.checked).toBe(false)
+    expect(assistance[1]?.checked).toBe(false)
+    expect(assistance[2]?.checked).toBe(true)
+
+    await act(async () => openContinent(mount, 'Europe'))
+    await act(async () => buttonContaining(mount, 'Northern Europe').click())
+    await act(async () => buttonContaining(mount, 'Start Recite').click())
+
+    const initial = activeMapProps()
+    expect(initial.selectedCountryIds).toEqual(['SE', 'NO'])
+    expect(initial.selectedSubregionIds).toBeUndefined()
+    expect(initial.hiddenCountryIds).toEqual([])
+    expect(initial.highlightedCountryIds).toEqual(['SE'])
+    expect(initial.highlightFill).toBe('#0891b2')
+
+    const input = mount.querySelector<HTMLInputElement>('input[aria-label="Type the country name"]')!
+    await act(async () => {
+      typeInto(input, 'Norway')
+      input.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    })
+    expect(activeMapProps().highlightedCountryIds).toEqual(['SE'])
+    expect(activeMapProps().hiddenCountryIds).toEqual([])
+
+    await act(async () => {
+      vi.advanceTimersByTime(1800)
+      await Promise.resolve()
+    })
+    const retryInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the country name"]')!
+    await act(async () => {
+      typeInto(retryInput, 'Sweden')
+      retryInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(500)
+      await Promise.resolve()
+    })
+    const finalInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the country name"]')!
+    await act(async () => {
+      typeInto(finalInput, 'Norway')
+      finalInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(500)
+      await Promise.resolve()
+    })
+    expect(mount.textContent).toContain('Recite complete')
+    expect(JSON.parse(localStorage.getItem(RECITE_PROGRESS_STORAGE_KEY) ?? '{}')).toMatchObject({
+      outcomes: { countries: { SE: { outcome: 'recovered' }, NO: { outcome: 'recalled' } } },
+    })
+  })
+
   it('uses the snapshotted Country scope for the active map without geographic selection styling', async () => {
     const entries = countries.filter(country => ['NO', 'FR'].includes(country.id))
     const mount = await renderRecite(entries)
@@ -347,17 +419,20 @@ describe('World Countries Recite workflow', () => {
     expect(activeMapProps()).toMatchObject({ continent: 'Europe', highlightedCountryIds: ['NO'] })
   })
 
-  it('supports World select-all, clear, and semantic none/all Continent state', async () => {
+  it('supports the shared World toggle and semantic none/all Continent state', async () => {
     const entries = countries.filter(country => ['NO', 'IN'].includes(country.id))
     const mount = await renderRecite(entries)
 
     expect(mount.querySelector<HTMLButtonElement>('[aria-label="Select Europe"]')?.getAttribute('aria-checked')).toBe('false')
-    await act(async () => buttonContaining(mount, 'Select all World').click())
+    await act(async () => mount.querySelector<HTMLButtonElement>('[aria-label="Select Europe"]')?.click())
+    expect(mount.querySelector<HTMLButtonElement>('[aria-label="Select world"]')).not.toBeNull()
+    await act(async () => buttonContaining(mount, 'Select world').click())
     expect(mount.querySelector<HTMLButtonElement>('[aria-label="Select Europe"]')?.getAttribute('aria-checked')).toBe('true')
     expect(mount.querySelector<HTMLButtonElement>('[aria-label="Select Asia"]')?.getAttribute('aria-checked')).toBe('true')
     expect(mount.textContent).toContain('2 Continents')
+    expect(mount.querySelector<HTMLButtonElement>('[aria-label="Clear world"]')).not.toBeNull()
 
-    await act(async () => buttonContaining(mount, 'Clear').click())
+    await act(async () => buttonContaining(mount, 'Clear world').click())
     expect(mount.querySelector<HTMLButtonElement>('[aria-label="Select Europe"]')?.getAttribute('aria-checked')).toBe('false')
     expect(mount.querySelector<HTMLButtonElement>('[aria-label="Select Asia"]')?.getAttribute('aria-checked')).toBe('false')
     expect(mount.textContent).toContain('0 Continents')

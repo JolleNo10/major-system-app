@@ -29,6 +29,7 @@ export const RECITE_ASSISTANCE_DEFINITIONS: readonly {
 }[] = [
   { id: 'visible', label: 'Visible', description: 'Keep Country geography visible without names or status history.' },
   { id: 'reveal', label: 'Reveal as you go', description: 'Reveal each Country only after its Country prompt is resolved.' },
+  { id: 'random', label: 'Random', description: 'Shuffle the Country order once when the run starts.' },
 ]
 
 export interface ReciteSetupProps {
@@ -45,8 +46,7 @@ export interface ReciteSetupProps {
   onWorld: () => void
   onSelectContinent: (continent: Continent) => void
   onToggleContinent: (continent: Continent) => void
-  onSelectAllWorld: () => void
-  onClearWorld: () => void
+  onToggleWorld: () => void
   onToggleSubregion: (subregionId: SubregionId) => void
   onSelectEntireContinent: () => void
   onMapStateChange: (state: SvgMapLoadState) => void
@@ -74,8 +74,7 @@ export function ReciteSetup({
   onWorld,
   onSelectContinent,
   onToggleContinent,
-  onSelectAllWorld,
-  onClearWorld,
+  onToggleWorld,
   onToggleSubregion,
   onSelectEntireContinent,
   onMapStateChange,
@@ -119,8 +118,7 @@ export function ReciteSetup({
         onWorld={onWorld}
         onSelectContinent={onSelectContinent}
         onToggleContinent={onToggleContinent}
-        onSelectAllWorld={onSelectAllWorld}
-        onClearWorld={onClearWorld}
+        onToggleWorld={onToggleWorld}
         onToggleSubregion={onToggleSubregion}
         onSelectEntireContinent={onSelectEntireContinent}
         headingId="world-countries-recite-geography-heading"
@@ -136,7 +134,6 @@ export function ReciteSetup({
         mapState={mapState}
         selectedCount={selectedScopeSubregionIds.length}
         onStart={onStart}
-        progress={progress}
       />
     ),
     leftLabel: 'Geography',
@@ -149,10 +146,9 @@ export function ReciteSetup({
     mapState,
     mode,
     onAssistanceChange,
-    onClearWorld,
     onHoverGroup,
     onModeChange,
-    onSelectAllWorld,
+    onToggleWorld,
     onSelectContinent,
     onSelectEntireContinent,
     onStart,
@@ -195,11 +191,12 @@ export function ReciteSetup({
         )}
         mapMeta={<span>{setupScopeCountries.length > 0 ? `${setupScopeCountries.length} Countries in current scope` : 'Select a Subregion to begin'}</span>}
       />
+      <ReciteStatusLegend mode={mode} progress={progress} />
     </section>
   )
 }
 
-function ReciteSetupControls({ mode, assistance, onModeChange, onAssistanceChange, canStart, mapState, selectedCount, onStart, progress }: {
+function ReciteSetupControls({ mode, assistance, onModeChange, onAssistanceChange, canStart, mapState, selectedCount, onStart }: {
   mode: ReciteMode
   assistance: ReciteMapAssistance
   onModeChange: (mode: ReciteMode) => void
@@ -208,7 +205,6 @@ function ReciteSetupControls({ mode, assistance, onModeChange, onAssistanceChang
   mapState: SvgMapLoadState
   selectedCount: number
   onStart: () => void
-  progress: WorldCountriesReciteProgress
 }) {
   const modeGroup = `world-countries-recite-mode-${useId()}`
   const assistanceGroup = `world-countries-recite-assistance-${useId()}`
@@ -217,7 +213,6 @@ function ReciteSetupControls({ mode, assistance, onModeChange, onAssistanceChang
       <div><p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Recite</p><h2 id="world-countries-recite-controls-heading" className="mt-1 text-lg font-bold text-zinc-100">Mode</h2></div>
       <fieldset className="space-y-2"><legend className="sr-only">Recite mode</legend>{RECITE_MODE_DEFINITIONS.map(candidate => <label key={candidate.id} className={`flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2.5 text-sm ${mode === candidate.id ? 'border-cyan-500 bg-cyan-500/10 text-cyan-100' : 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-cyan-600'}`}><input type="radio" name={modeGroup} value={candidate.id} checked={mode === candidate.id} onChange={() => onModeChange(candidate.id)} className="mt-1 accent-cyan-500" /><span><span className="block font-semibold">{candidate.label}</span><span className="mt-0.5 block text-xs text-zinc-500">{candidate.description}</span></span></label>)}</fieldset>
       <fieldset className="space-y-2 border-t border-zinc-800 pt-4"><legend className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Map assistance</legend>{RECITE_ASSISTANCE_DEFINITIONS.map(candidate => <label key={candidate.id} className={`flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2.5 text-sm ${assistance === candidate.id ? 'border-cyan-500 bg-cyan-500/10 text-cyan-100' : 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-cyan-600'}`}><input type="radio" name={assistanceGroup} value={candidate.id} checked={assistance === candidate.id} onChange={() => onAssistanceChange(candidate.id)} className="mt-1 accent-cyan-500" /><span><span className="block font-semibold">{candidate.label}</span><span className="mt-0.5 block text-xs text-zinc-500">{candidate.description}</span></span></label>)}</fieldset>
-      <ReciteStatusLegend mode={mode} progress={progress} />
       {selectedCount === 0 && <p className="text-sm text-amber-300" role="alert">Select at least one Subregion.</p>}
       {mapState === 'loading' && <p className="text-xs text-zinc-500" role="status">Loading map…</p>}
       {mapState === 'error' && <p className="text-sm text-red-300" role="alert">Recite will be available when the map loads successfully.</p>}

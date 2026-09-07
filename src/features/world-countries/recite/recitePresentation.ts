@@ -2,7 +2,7 @@ import type { Country, CountryId } from '@/features/world-countries/data/countri
 import { getReciteProgressOutcome, type WorldCountriesReciteProgress } from './reciteProgress'
 import type { ReciteCountryOutcome, ReciteMode } from './reciteSession'
 
-export type ReciteMapAssistance = 'visible' | 'reveal'
+export type ReciteMapAssistance = 'visible' | 'reveal' | 'random'
 
 export function getReciteModeLabel(mode: ReciteMode): string {
   switch (mode) {
@@ -22,6 +22,8 @@ export function getReciteAssistanceLabel(assistance: ReciteMapAssistance): strin
       return 'Visible'
     case 'reveal':
       return 'Reveal as you go'
+    case 'random':
+      return 'Random'
   }
   return assistance
 }

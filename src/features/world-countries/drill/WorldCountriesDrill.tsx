@@ -19,7 +19,8 @@ import { DrillSession } from './DrillSession'
 import { DrillSetup } from './DrillSetup'
 import type { WorldCountriesDrillMode } from './drillModes'
 import type { WorldCountriesDrillOrder } from './drillOrder'
-import { clearDrillSelection, getCountriesForDrillSelectionInEffectiveOrder, normalizeDrillSelection, selectAllDrillSubregions, type DrillSelectionMetadata, type WorldCountriesDrillSelection } from './drillSelection'
+import { clearDrillSelection, getCountriesForDrillSelectionInEffectiveOrder, normalizeDrillSelection, type DrillSelectionMetadata, type WorldCountriesDrillSelection } from './drillSelection'
+import { toggleWorldScope } from '@/features/world-countries/geography/subregionScope'
 import {
   createDrillSession,
   isDrillSessionCompatible,
@@ -293,14 +294,10 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
     setProficiencySelection([])
     updatePreferences({ ...selection, mode: preferences.mode, order: preferences.order })
   }, [preferences.mode, preferences.order, updatePreferences])
-  const selectAllWorld = useCallback(() => {
+  const toggleWorld = useCallback(() => {
     setProficiencySelection([])
-    updatePreferences({ ...selectAllDrillSubregions(activeCountries, selectionMetadata), mode: preferences.mode, order: preferences.order })
-  }, [activeCountries, preferences.mode, preferences.order, selectionMetadata, updatePreferences])
-  const clearWorld = useCallback(() => {
-    setProficiencySelection([])
-    updatePreferences({ ...clearDrillSelection(), mode: preferences.mode, order: preferences.order })
-  }, [preferences.mode, preferences.order, updatePreferences])
+    updatePreferences({ ...toggleWorldScope(effectivePreferences, activeCountries, selectionMetadata), mode: preferences.mode, order: preferences.order })
+  }, [activeCountries, effectivePreferences, preferences.mode, preferences.order, selectionMetadata, updatePreferences])
   const handleProficiencySelectionChange = useCallback((selection: WorldCountriesProficiencySelection) => {
     launchGeneration.current += 1
     setProficiencySelection(selection)
@@ -362,8 +359,7 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
     onLearnPracticeStart={mode => isWorldCountriesLearningMode(mode) ? startLearning(mode) : startPractice(mode)}
     onWorld={goToWorld}
     onSelectContinent={selectContinent}
-    onSelectAllWorld={selectAllWorld}
-    onClearWorld={clearWorld}
+    onToggleWorld={toggleWorld}
     selectionMetadata={selectionMetadata}
     entries={activeCountries}
   />
