@@ -149,8 +149,9 @@ the repository handoff by default:
 
 - commit all in-scope changes on the current branch;
 - push the current branch to its configured upstream;
-- if sandbox networking blocks the push, retry the same Git command in the
-  host/escalated context as described below;
+- run state-changing Git commands (`git add`, `git commit`, and `git push`)
+  directly in the host/escalated context; do not first attempt them in the
+  sandbox, where the repository's Git metadata is read-only;
 - report the commit SHA, push result, and any residual verification failure.
 
 Do not stop at an uncommitted worktree or local-only commit, and do not ask
