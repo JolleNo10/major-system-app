@@ -10,6 +10,8 @@
 
 Replace target-dependent learning-camera heuristics with one shared, deterministic Subregion learning-frame capability across applicable World Countries active learning/recall experiences, and simplify the map camera boundary so workflows express semantic camera intent rather than composing overlapping zoom mechanisms.
 
+In this specification, a “valid authored learning frame” means structurally valid registry data unless learning or pedagogical quality is explicitly stated. Structural validity covers complete Subregion coverage, authoritative map applicability, finite positive bounds, and source-coordinate containment. It does not by itself prove that the rectangle is a good learning composition.
+
 ## User-visible behavior
 
 ### One stable learning frame per Subregion
@@ -158,7 +160,7 @@ They identify or emphasize the target inside the stable learning frame. They do 
 
 ## Acceptance criteria
 
-- [x] Every current `SubregionId` has exactly one valid authored learning frame on its authoritative regional map.
+- [x] Every current `SubregionId` has exactly one structurally valid authored learning frame on its authoritative regional map; composition quality is calibrated separately.
 - [x] The common map boundary exposes a semantic Subregion learning-frame camera intent without leaking raw SVG coordinates to workflows.
 - [x] Caller-facing camera selection no longer relies on several overlapping optional zoom props with accidental precedence; the final API makes the active semantic camera intent clear.
 - [x] Recite `Visible`, `Reveal as you go`, and `Random` use the same frame for the same Subregion.
@@ -194,6 +196,10 @@ They identify or emphasize the target inside the stable learning frame. They do 
 - relevant active Today/Drill/Learning/Practice/Quiz map callers found during the required caller audit
 - `docs/architecture/features/WORLD_COUNTRIES.md`
 
+## Post-implementation calibration
+
+Subsequent real-use inspection exposed authored-value defects that were not covered by the original structural and caller-behavior validation: Poland was clipped or pushed against the lower edge in Central Europe, Serbia had the same problem in the Balkans, Romania had a poor Eastern Europe composition, and several Oceania frames were too tightly cropped. These findings do not invalidate ADR 0033 or the semantic camera-intent architecture. They require calibration of the map-owned authored data and stronger learning-frame quality regression coverage.
+
 ## Documentation impact
 
 When implemented:
@@ -213,6 +219,8 @@ When implemented:
 - The complete World Countries feature suite passed: 113 files, 701 tests.
 - `npm.cmd run lint` passed. `git diff --check` passed. `npm.cmd run typecheck` reports only an unrelated error in the untouched `src/features/world-countries/drill/DrillSetup.test.tsx` fixture (`Map<any, any>` is not assignable to `Map<string, never>`).
 - Browser/manual verification was not performed; no browser surface was already available without setup, and repository instructions do not require starting a development server for this task.
+- The original implementation evidence above is structural/architectural evidence, not a claim that every committed frame value was manually visually calibrated.
+- The calibration follow-up passes the focused World Countries map suite: 13 files and 148 tests, including source-geometry safe-zone regressions for Poland, Serbia, and Romania and authored Oceania composition guards. Lint passes; typecheck still reports only the unrelated existing `DrillSetup.test.tsx` fixture error.
 
 ## Verification
 

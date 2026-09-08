@@ -141,6 +141,16 @@ The learning-frame registry must be testable for at least:
 
 The authored rectangle is the semantic camera intent. Existing aspect-fit behavior may expand it to the actual map slot without changing its intended center/context, and camera changes must not resize the physical map surface.
 
+“Validated authored frame” has two distinct meanings and must not be reduced to a structural registry check. An authored Subregion learning frame is a deliberate learning composition, not simply a structurally valid rectangle.
+
+Structural validation establishes that the registry has complete current Subregion coverage, uses the correct authoritative map, contains finite positive bounds, and keeps those bounds inside the source coordinate system. Learning-frame quality is a separate product concern: the composition should give ordinary compact Countries a comfortable interior safe zone, avoid letting large or distributed geography distort the view, and provide useful surrounding spatial context.
+
+For ordinary compact Countries in a Subregion, the authored frame should keep the Country fully visible with a comfortable interior margin. A normal Country must not touch or cross a viewport edge, or be placed at an extreme edge merely because the rectangle technically contains it. Poland in Central Europe and Serbia in the Balkans are representative examples of this invariant.
+
+Huge, transcontinental, highly distributed, or otherwise frame-distorting Countries are an explicit exception to a naive whole-geometry containment rule. The Eastern Europe frame may show the geographically useful western portion of Russia while composing Romania, Moldova, Ukraine, Belarus, and their surrounding context well. The learning frame is a pedagogical window, not the union of every Country bound.
+
+Sparse and island geography may need a broader composition than a compact continental target. Micronesia, Polynesia, Melanesia, and Australia & New Zealand should keep targets legible while showing enough surrounding geography for spatial memory, avoiding both an isolated tight crop and a tiny target lost in empty ocean.
+
 ## Consequences
 
 - A learner sees the same geographic frame for the same Subregion across applicable active World Countries activities, strengthening spatial memory.
@@ -189,6 +199,8 @@ Document that `maps/` owns authored Subregion learning frames and the semantic c
 
 ## Confirmation
 
-Verified 2026-09-08. The implementation adds one validated authored frame for every current `SubregionId`, routes active learning/recall callers through the shared semantic camera-intent contract, preserves explicit fit and target-neighbourhood cameras, and removes the obsolete adaptive learning-camera path.
+Verified 2026-09-08 for the architectural implementation. It adds one structurally validated authored frame for every current `SubregionId`, routes active learning/recall callers through the shared semantic camera-intent contract, preserves explicit fit and target-neighbourhood cameras, and removes the obsolete adaptive learning-camera path. The original delivery evidence established structural registry correctness and caller/camera behavior; it did not visually validate every authored frame composition in a browser or through manual frame inspection.
 
-Evidence: the World Countries suite passed with 113 files and 701 tests; focused camera, registry, Recite, and caller tests passed with 161 tests; focused learning-flow and Today tests passed with 18 tests; lint passed; and `git diff --check` passed. Typecheck reached only an unrelated error in the untouched `src/features/world-countries/drill/DrillSetup.test.tsx` test fixture.
+Evidence: the World Countries suite passed with 113 files and 701 tests; focused camera, registry, Recite, and caller tests passed with 161 tests; focused learning-flow and Today tests passed with 18 tests; lint passed; and `git diff --check` passed. Typecheck reached only an unrelated error in the untouched `src/features/world-countries/drill/DrillSetup.test.tsx` test fixture. Browser/manual frame-composition validation was not performed at that delivery.
+
+The calibration follow-up verified the authored data with the focused World Countries map suite (13 files, 148 tests), including safe-zone regressions for Poland, Serbia, and Romania and Oceania composition guards. It did not include browser/manual inspection because no already-running browser surface was available.
