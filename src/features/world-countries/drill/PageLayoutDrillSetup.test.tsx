@@ -32,15 +32,16 @@ async function renderShell() {
 }
 
 describe('World Countries activity boundary', () => {
-  it('defaults to Today and keeps Drill, Recite, and Quiz available', async () => {
+  it('defaults to Home and reaches configurable Drill through Play', async () => {
     const mount = await renderShell()
-    expect([...mount.querySelectorAll('[role="tab"]')].map(tab => tab.textContent)).toEqual(['Today', 'Drill', 'Recite', 'Quiz'])
+    expect(mount.querySelector('[role="tablist"]')).toBeNull()
     expect(mount.textContent).toContain('World Countries')
-    expect(mount.textContent).toContain('Today')
+    expect(mount.textContent).toContain('Home')
+    expect(mount.textContent).toContain('Play')
     expect(mount.textContent).toContain('Due reviews')
 
-    const drillTab = [...mount.querySelectorAll('[role="tab"]')].find(tab => tab.textContent === 'Drill') as HTMLButtonElement | undefined
-    await act(async () => drillTab?.click())
+    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Play')?.click())
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-play-activity="custom-practice"]')?.click())
     expect(mount.textContent).toContain('Geography')
     expect(mount.textContent).toContain('Purpose')
     expect((mount.querySelector('input[value="drill"]') as HTMLInputElement | null)?.checked).toBe(true)
@@ -50,8 +51,8 @@ describe('World Countries activity boundary', () => {
 
   it('allows Drill setup to switch between four Learn & Practise modes', async () => {
     const mount = await renderShell()
-    const drillTab = [...mount.querySelectorAll('[role="tab"]')].find(tab => tab.textContent === 'Drill') as HTMLButtonElement | undefined
-    await act(async () => drillTab?.click())
+    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Play')?.click())
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-play-activity="custom-practice"]')?.click())
     const europe = [...mount.querySelectorAll('button')].find(button => button.textContent?.includes('Europe'))
     await act(async () => europe?.click())
     const learnPractice = [...mount.querySelectorAll('input[type="radio"]')].find(input => (input as HTMLInputElement).value === 'learn-practise') as HTMLInputElement | undefined

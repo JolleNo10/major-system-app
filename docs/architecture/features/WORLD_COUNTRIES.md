@@ -10,9 +10,16 @@ persisted state, identifiers, migrations, reset, or backup; and load
 
 ## Purpose and entry points
 
-World Countries has four user-facing areas: **Today**, **Drill**, **Recite**, and
-**Quiz**. Today is the default map-centered plan for due core review and the
-next guided Learning flow. Structural authoring is contextual rather than a
+World Countries opens on a map-centered **Home**. Home is the default guided
+entry: it shows World mastery, the interactive World map, and one Continue
+action derived from Today planning. A transient **Continent hub** provides the
+same guided composition over a Continent-scoped active Country population.
+**Play** is the learner-facing secondary entry to freeform Recite, Quiz,
+non-recording Practice, and configurable recorded Drill. **Progress** is a
+derived supporting view, not a separate evidence or analytics system.
+
+The user-facing entry hierarchy is Home -> Continent hub / Progress / Play ->
+existing workflow owners. Structural authoring is contextual rather than a
 separate workflow:
 
 - Drill's existing World Geography rail authors Continent order.
@@ -21,7 +28,8 @@ separate workflow:
   Subregion mnemonic.
 
 `WorldCountries.tsx` resolves the Settings country-set policy once, provides
-the active population, and composes Today, Drill, Recite, and Quiz.
+the active population, and composes Home/Continent/Play/Progress entry views
+with the existing Today, Drill, Recite, Quiz, Practice, and Learning owners.
 `WorldCountriesDrill.tsx` owns the Drill setup coordinator, Drill and Learn &
 Practise purpose selection, active sessions, and results. Geography metadata
 changes reach mounted consumers through the feature-owned geography subscription
@@ -116,9 +124,12 @@ orchestration. Capitals uses the purpose-neutral finite
 Practice-owned multi-answer run/session because one target accepts several
 Country answers. Neither model owns evidence, persistence, rails, or maps.
 
-The user-facing areas are Today, Drill, Recite, and Quiz. The activity
-semantics remain exactly Drill, Learning, and Practice; Quiz is Practice and
-does not introduce an Assessment semantic.
+The entry hierarchy is Home, transient Continent exploration, Play, and
+derived Progress. The activity semantics remain exactly Drill, Learning, and
+Practice; Quiz is Practice and does not introduce an Assessment semantic.
+Today remains the owner of guided planning/review and delegation into the
+existing Learning flows even though its learner-facing presentation is now the
+Home/Continent guided surface.
 
 Mounted World Countries consumers subscribe directly to the external state they
 derive: geography metadata, durable Subregion learning, and World Countries
@@ -147,8 +158,10 @@ is not persisted and clears after two clean recall days. Today presents the
 resulting reason as concise `Why today` summary counts and a per-prompt `Why
 now` explanation, including repeated difficulty and useful overdue wording.
 
-The shell exposes `[ Today ] [ Drill ] [ Recite ] [ Quiz ]`, with Today selected by
-default. Drill has a non-persisted Purpose selector:
+The shell exposes Home and Play, with Home selected by default. Continent and
+Progress are transient views within the Home composition. Existing workflow
+entry points remain reachable from Play, and Drill has a non-persisted Purpose
+selector:
 
 - **Drill**: `Countries`, `Countries + Capitals`, `Countries from Capitals`,
   and `Country for Shape`. These are the only `WorldCountriesDrillMode` values
@@ -243,6 +256,13 @@ non-limiting speed threshold and actual answer latency. Location, Country-name,
 Capital, and Combined scopes each start fresh scheduler state. Only the
 whole-Subregion ordered Final recall writes the owning Learning milestone;
 journey and scheduler state are not persisted.
+
+The learner-facing six-stage journey (Meet the countries, Practice the
+countries, Master the countries, Add the capitals, Put it all together, Master
+the region) is derived presentation over existing Subregion milestones and
+recall/proficiency evidence. No journey-step, current-Continent, or curriculum
+focus field is persisted. Capital learning extends existing Country knowledge;
+it does not reset Country evidence or add a World/Continent-wide Capital gate.
 
 During active scheduler-driven Learning Practice, the flows expose temporary
 scheduler progress through the feature-local progress seam in the right rail.
@@ -605,12 +625,16 @@ flowchart TD
 ## Source anchors
 
 - `src/features/world-countries/WorldCountries.tsx`
+- `src/features/world-countries/WorldCountriesPlay.tsx`
 - `src/features/world-countries/drill/WorldCountriesDrill.tsx`
 - `src/features/world-countries/drill/DrillSetup.tsx`
 - `src/features/world-countries/ui/WorldMasterySummary.tsx`
 - `src/features/world-countries/geography/effectiveOrder.ts`
 - `src/features/world-countries/geography/subregionScope.ts`
 - `src/features/world-countries/today/WorldCountriesToday.tsx`
+- `src/features/world-countries/today/GuidedHomeRails.tsx`
+- `src/features/world-countries/today/WorldCountriesProgressView.tsx`
+- `src/features/world-countries/today/journeyPresentation.ts`
 - `src/features/world-countries/today/TodayReviewSession.tsx`
 - `src/features/world-countries/today/todayPlan.ts`
 - `src/features/world-countries/learning/recallHistory.ts`

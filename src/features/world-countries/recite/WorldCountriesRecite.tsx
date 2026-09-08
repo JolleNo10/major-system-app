@@ -32,7 +32,7 @@ import type { ReciteMapAssistance } from './recitePresentation'
 
 type RecitePhase = 'setup' | 'session' | 'complete'
 
-export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: AnswerMode }) {
+export function WorldCountriesRecite({ answerMode: _answerMode, onExit }: { answerMode: AnswerMode; onExit?: () => void }) {
   const { settings } = useSettings()
   const activeCountries = useWorldCountriesPopulation()
   const geographyRevision = useWorldCountriesGeographyRevision()
@@ -157,6 +157,10 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
     setRun(null)
     setPhase('setup')
   }, [])
+  const exitWorkflow = useCallback(() => {
+    if (onExit) onExit()
+    else backToSetup()
+  }, [backToSetup, onExit])
 
   const reciteAgain = useCallback(() => {
     if (!run) return
@@ -195,6 +199,7 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
         mapState={mapState}
         onStart={startRecite}
         progress={progress}
+        onExit={onExit}
       />
     )
   }
@@ -202,7 +207,7 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
   if (!run) return null
   return (
     <>
-      <ReciteSessionRails run={run} phase={phase} onExit={backToSetup} />
+      <ReciteSessionRails run={run} phase={phase} onExit={exitWorkflow} />
       <ReciteSession
         run={run}
         phase={phase}
@@ -211,7 +216,7 @@ export function WorldCountriesRecite({ answerMode: _answerMode }: { answerMode: 
         onReveal={revealAnswer}
         onContinue={continueSession}
         onReciteAgain={reciteAgain}
-        onBackToSetup={backToSetup}
+        onBackToSetup={exitWorkflow}
       />
     </>
   )

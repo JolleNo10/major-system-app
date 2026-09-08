@@ -37,11 +37,12 @@ function NeighboursQuizMapMeta({ targetIndex, totalTargets }: {
   )
 }
 
-export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance }: {
+export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance, onExit }: {
   run: NeighboursQuizRun
   session: NeighboursQuizSessionState
   onSessionChange: (session: NeighboursQuizSessionState) => void
   onAdvance: () => void
+  onExit?: () => void
 }) {
   const target = getCurrentNeighboursTarget(session)
   const countryById = useMemo(() => new Map(run.countries.map(country => [country.id, country])), [run.countries])
@@ -98,10 +99,11 @@ export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance
   ) : null, [run.questions.length, session.targetIndex, target])
   const rails = useMemo(() => {
     if (!target) return {}
+    const exitButton = onExit ? <button type="button" onClick={onExit} className="w-full rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Exit Quiz</button> : null
     return target.phase === 'active'
-      ? { right: sessionTools, rightLabel: 'Session' }
-      : { right: checkpointRail, rightLabel: 'Checkpoint' }
-  }, [checkpointRail, sessionTools, target])
+      ? { right: <div className="space-y-3">{sessionTools}{exitButton}</div>, rightLabel: 'Session' }
+      : { right: <div className="space-y-3">{checkpointRail}{exitButton}</div>, rightLabel: 'Checkpoint' }
+  }, [checkpointRail, onExit, sessionTools, target])
   useRails(rails)
 
   if (!target || !targetCountry) return null

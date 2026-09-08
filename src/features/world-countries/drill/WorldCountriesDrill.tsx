@@ -64,13 +64,13 @@ type ActiveDrillRun = {
 }
 
 /** Coordinator for setup, the four Drill modes, durable Learning, and non-recording Practice. */
-export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) {
+export function WorldCountriesDrill({ answerMode, onExit, initialPurpose = 'drill', initialLearnPracticeMode = 'learn-countries' }: { answerMode: AnswerMode; onExit?: () => void; initialPurpose?: 'drill' | 'learn-practise'; initialLearnPracticeMode?: WorldCountriesLearnPracticeMode }) {
   const { settings } = useSettings()
   const activeCountries = useWorldCountriesPopulation()
   const [preferences, setPreferences] = useState<WorldCountriesDrillPreferences>(loadDrillPreferences)
   const [phase, setPhase] = useState<DrillPhase>('setup')
-  const [purpose, setPurpose] = useState<ActivityPurpose | null>('drill')
-  const [learnPracticeMode, setLearnPracticeMode] = useState<WorldCountriesLearnPracticeMode>('learn-countries')
+  const [purpose, setPurpose] = useState<ActivityPurpose | null>(initialPurpose)
+  const [learnPracticeMode, setLearnPracticeMode] = useState<WorldCountriesLearnPracticeMode>(initialLearnPracticeMode)
   const [proficiencySelection, setProficiencySelection] = useState<WorldCountriesProficiencySelection>([])
   const [learningRun, setLearningRun] = useState<DrillLearningRun | null>(null)
   const [setupContinent, setSetupContinent] = useState<Continent | null>(null)
@@ -224,8 +224,12 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
     setLearningRun(null)
     setSetupContinent(null)
     launchGeneration.current += 1
+    if (onExit) {
+      onExit()
+      return
+    }
     setPhase('setup')
-  }, [learningRun])
+  }, [learningRun, onExit])
 
   const restart = useCallback(() => {
     if (!activeRunActivity) return
@@ -272,12 +276,16 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
 
   const exitToSetup = useCallback(() => {
     launchGeneration.current += 1
+    if (onExit) {
+      onExit()
+      return
+    }
     setActiveRun(null)
     setLearningRun(null)
     setPhase('setup')
     setSetupContinent(null)
     setHoveredGroupId(null)
-  }, [])
+  }, [onExit])
 
   const selectContinent = useCallback((continent: Continent) => {
     launchGeneration.current += 1
@@ -358,6 +366,7 @@ export function WorldCountriesDrill({ answerMode }: { answerMode: AnswerMode }) 
     onStart={startDrill}
     onLearnPracticeStart={mode => isWorldCountriesLearningMode(mode) ? startLearning(mode) : startPractice(mode)}
     onWorld={goToWorld}
+    onExit={onExit}
     onSelectContinent={selectContinent}
     onToggleWorld={toggleWorld}
     selectionMetadata={selectionMetadata}

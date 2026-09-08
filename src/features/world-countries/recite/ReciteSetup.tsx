@@ -58,6 +58,7 @@ export interface ReciteSetupProps {
   mapState: SvgMapLoadState
   onStart: () => void
   progress: WorldCountriesReciteProgress
+  onExit?: () => void
 }
 
 export function ReciteSetup({
@@ -86,6 +87,7 @@ export function ReciteSetup({
   mapState,
   onStart,
   progress,
+  onExit,
 }: ReciteSetupProps) {
   const visibleCountries = useMemo(
     () => selectedContinent ? activeCountries.filter(country => country.continent === selectedContinent) : activeCountries,
@@ -134,6 +136,7 @@ export function ReciteSetup({
         mapState={mapState}
         selectedCount={selectedScopeSubregionIds.length}
         onStart={onStart}
+        onExit={onExit}
       />
     ),
     leftLabel: 'Geography',
@@ -152,6 +155,7 @@ export function ReciteSetup({
     onSelectContinent,
     onSelectEntireContinent,
     onStart,
+    onExit,
     onToggleContinent,
     onToggleSubregion,
     onWorld,
@@ -195,7 +199,7 @@ export function ReciteSetup({
   )
 }
 
-function ReciteSetupControls({ mode, assistance, onModeChange, onAssistanceChange, canStart, mapState, selectedCount, onStart }: {
+function ReciteSetupControls({ mode, assistance, onModeChange, onAssistanceChange, canStart, mapState, selectedCount, onStart, onExit }: {
   mode: ReciteMode
   assistance: ReciteMapAssistance
   onModeChange: (mode: ReciteMode) => void
@@ -204,6 +208,7 @@ function ReciteSetupControls({ mode, assistance, onModeChange, onAssistanceChang
   mapState: SvgMapLoadState
   selectedCount: number
   onStart: () => void
+  onExit?: () => void
 }) {
   const modeGroup = `world-countries-recite-mode-${useId()}`
   const assistanceGroup = `world-countries-recite-assistance-${useId()}`
@@ -216,6 +221,7 @@ function ReciteSetupControls({ mode, assistance, onModeChange, onAssistanceChang
       {mapState === 'loading' && <p className="text-xs text-zinc-500" role="status">Loading map…</p>}
       {mapState === 'error' && <p className="text-sm text-red-300" role="alert">Recite will be available when the map loads successfully.</p>}
       <button type="button" disabled={!canStart} onClick={onStart} className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40">{canStart ? 'Start Recite' : 'Choose a ready Country scope'}</button>
+      {onExit && <button type="button" onClick={onExit} className="w-full rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Back to guided home</button>}
     </WorldCountriesPanel>
   )
 }

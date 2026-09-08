@@ -54,6 +54,7 @@ export function DrillSetupRails({
   onPurposeChange,
   onLearnPracticeModeChange,
   onLearnPracticeStart,
+  onExit,
   entries = countries,
   worldOrder,
   subregionOrder,
@@ -93,6 +94,7 @@ export function DrillSetupRails({
   onPurposeChange: (purpose: 'drill' | 'learn-practise') => void
   onLearnPracticeModeChange: (mode: WorldCountriesLearnPracticeMode) => void
   onLearnPracticeStart: (mode: WorldCountriesLearnPracticeMode) => void
+  onExit?: () => void
   entries?: readonly Country[]
   worldOrder: readonly Continent[]
   subregionOrder: readonly SubregionDefinition[]
@@ -166,10 +168,10 @@ export function DrillSetupRails({
         {level === 'continent' && <ProficiencyScopePanel selection={proficiencySelection} scope={proficiencyScope} loading={proficiencyLoading} onChange={onProficiencySelectionChange} />}
       </section>
     ),
-    right: <ActivityPurposePanel purpose={purpose} groupName={purposeGroupName} onChange={onPurposeChange}>{purpose === 'drill' ? <CurrentDrillPanel mode={mode} order={order} groupName={modeGroupName} onModeChange={onModeChange} onOrderChange={onOrderChange} scopeSummary={scopeSummary} canStart={canStart} noMatching={noMatching} disabledButtonLabel={disabledButtonLabel} onStart={onStart} /> : purpose === 'learn-practise' ? <LearnPracticePanel selectedCount={selectedCount} selectedCountryCount={selectionCounts.countries} level={level} selectedStates={selectedStates} countriesIncomplete={countriesIncomplete} mode={learnPracticeMode} proficiencySelected={proficiencySelected} proficiencyLoading={proficiencyLoading} proficiencyCountryCount={proficiencyScope.countries.length} onModeChange={onLearnPracticeModeChange} onStart={onLearnPracticeStart} /> : null}</ActivityPurposePanel>,
+    right: <div className="space-y-3"><ActivityPurposePanel purpose={purpose} groupName={purposeGroupName} onChange={onPurposeChange}>{purpose === 'drill' ? <CurrentDrillPanel mode={mode} order={order} groupName={modeGroupName} onModeChange={onModeChange} onOrderChange={onOrderChange} scopeSummary={scopeSummary} canStart={canStart} noMatching={noMatching} disabledButtonLabel={disabledButtonLabel} onStart={onStart} /> : purpose === 'learn-practise' ? <LearnPracticePanel selectedCount={selectedCount} selectedCountryCount={selectionCounts.countries} level={level} selectedStates={selectedStates} countriesIncomplete={countriesIncomplete} mode={learnPracticeMode} proficiencySelected={proficiencySelected} proficiencyLoading={proficiencyLoading} proficiencyCountryCount={proficiencyScope.countries.length} onModeChange={onLearnPracticeModeChange} onStart={onLearnPracticeStart} /> : null}</ActivityPurposePanel>{onExit && <button type="button" onClick={onExit} className="w-full rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Back to guided home</button>}</div>,
     leftLabel: 'Geography',
     rightLabel: purpose === 'drill' ? 'Drill' : purpose === 'learn-practise' ? 'Learn & Practise' : 'Choose activity',
-  }), [canStart, continent, countriesIncomplete, disabledButtonLabel, editingOrder, entries, hoveredGroupId, learnPracticeMode, level, mode, modeGroupName, noMatching, onBeginOrderEdit, onCancelOrderEdit, onDraftSubregionOrder, onDraftWorldOrder, onHoverGroup, onLearnPracticeModeChange, onLearnPracticeStart, onModeChange, onOrderChange, onProficiencySelectionChange, onPurposeChange, onSaveSubregionOrder, onSaveWorldOrder, onSelectContinent, onSelectEntireContinent, onStart, onToggleContinent, onToggleSubregion, onToggleWorld, onWorld, order, purpose, purposeGroupName, proficiencyLoading, proficiencyScope, proficiencySelected, proficiencySelection, scopeSummary, selectedCount, selectedStates, selection, selectionCounts, selectionMetadata, subregions, worldOrder])
+  }), [canStart, continent, countriesIncomplete, disabledButtonLabel, editingOrder, entries, hoveredGroupId, learnPracticeMode, level, mode, modeGroupName, noMatching, onBeginOrderEdit, onCancelOrderEdit, onDraftSubregionOrder, onDraftWorldOrder, onExit, onHoverGroup, onLearnPracticeModeChange, onLearnPracticeStart, onModeChange, onOrderChange, onProficiencySelectionChange, onPurposeChange, onSaveSubregionOrder, onSaveWorldOrder, onSelectContinent, onSelectEntireContinent, onStart, onToggleContinent, onToggleSubregion, onToggleWorld, onWorld, order, purpose, purposeGroupName, proficiencyLoading, proficiencyScope, proficiencySelected, proficiencySelection, scopeSummary, selectedCount, selectedStates, selection, selectionCounts, selectionMetadata, subregions, worldOrder])
   useRails(rails)
   return null
 }

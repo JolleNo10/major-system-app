@@ -1,8 +1,9 @@
 import { getCountryProgressColor, WORLD_COUNTRIES_CORE_FINISH_LINE_EXPLANATION, WORLD_COUNTRIES_PROGRESS_LABELS } from '@/features/world-countries/learning/progressPresentation'
 import { WORLD_COUNTRIES_COUNTRY_CORE_STATES, type WorldCountriesScopeProgress } from '@/features/world-countries/learning/scopeProgress'
 
-/** Workflow-neutral World core mastery summary shared by Today and Drill. */
-export function WorldMasterySummary({ progress }: { progress: WorldCountriesScopeProgress | null }) {
+/** Workflow-neutral core mastery summary shared by guided and setup surfaces. */
+export function WorldMasterySummary({ progress, scopeLabel = 'World' }: { progress: WorldCountriesScopeProgress | null; scopeLabel?: string }) {
+  const title = scopeLabel === 'World' ? 'World mastery' : `${scopeLabel} progress`
   return (
     <section
       className="space-y-3 rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-3 text-sm"
@@ -11,8 +12,8 @@ export function WorldMasterySummary({ progress }: { progress: WorldCountriesScop
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <div>
-          <h2 id="world-mastery-heading" className="text-xs font-semibold uppercase tracking-wider text-cyan-300">World mastery</h2>
-          <p className="mt-1 text-xs text-zinc-500">Core Country finish line across the active World population.</p>
+        <h2 id="world-mastery-heading" className="text-xs font-semibold uppercase tracking-wider text-cyan-300">{title}</h2>
+          <p className="mt-1 text-xs text-zinc-500">Core Country finish line across the active {scopeLabel} population.</p>
         </div>
         {progress === null ? (
           <p role="status" aria-live="polite" className="text-sm text-zinc-400">Loading mastery…</p>

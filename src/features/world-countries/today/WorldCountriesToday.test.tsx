@@ -14,7 +14,7 @@ const activeCountries = [countries[0]]
 vi.mock('@/app/settings/SettingsContext', () => ({
   useSettings: () => ({ settings: { worldCountriesFuzzyAnswerMatching: false } }),
 }))
-vi.mock('@/app/layout/PageLayoutContext', () => ({ usePageLayoutPresentation: vi.fn() }))
+vi.mock('@/app/layout/PageLayoutContext', () => ({ usePageLayoutPresentation: vi.fn(), useRails: vi.fn() }))
 vi.mock('@/features/world-countries/WorldCountriesPopulationContext', () => ({
   useWorldCountriesPopulation: () => activeCountries,
 }))
@@ -27,7 +27,12 @@ vi.mock('@/features/world-countries/learning/recallHistory', async importOrigina
 }))
 vi.mock('@/features/world-countries/maps/GeographyOverviewMap', () => ({ GeographyOverviewMap: () => null }))
 vi.mock('@/features/world-countries/ui/WorldMasterySummary', () => ({ WorldMasterySummary: () => null }))
-vi.mock('./TodayRails', () => ({ TodayHomeRails: () => null }))
+vi.mock('@/features/world-countries/learning/flows/CountryLearningFlow', () => ({
+  CountryLearningFlow: () => createElement('div', { 'data-testid': 'country-learning-flow' }, 'Country Learning flow'),
+}))
+vi.mock('@/features/world-countries/learning/flows/CapitalLearningFlow', () => ({
+  CapitalLearningFlow: () => createElement('div', { 'data-testid': 'capital-learning-flow' }, 'Capital Learning flow'),
+}))
 vi.mock('./todayPlan', async importOriginal => ({
   ...await importOriginal<typeof import('./todayPlan')>(),
   buildWorldCountriesTodayPlan: buildPlanMock,
@@ -84,5 +89,34 @@ describe('World Countries Today', () => {
     })
 
     expect(document.activeElement?.textContent).toBe('Continue review')
+  })
+
+  it('delegates Continue learning to the recommended Country Learning flow', async () => {
+    buildPlanMock.mockReturnValue({
+      dueCandidates: [],
+      reviewQueue: [],
+      dueCount: 0,
+      dueCountryCount: 0,
+      introductions: new Map(),
+      nextLearning: {
+        track: 'learn-countries',
+        subregionId: countries[0].subregionId,
+        continent: countries[0].continent,
+        subregionLabel: 'Northern Europe',
+      },
+    })
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(WorldCountriesToday, { answerMode: 'typing', onNavigate: vi.fn() }))
+      await Promise.resolve()
+    })
+    await act(async () => {
+      [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Continue learning')?.click()
+    })
+
+    expect(mount.querySelector('[data-testid="country-learning-flow"]')).not.toBeNull()
   })
 })

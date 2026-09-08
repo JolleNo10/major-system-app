@@ -4,17 +4,19 @@ import { classifyRecallAnswer, getRecallAnswerKindMistakeMessage } from '@/featu
 import { getCurrentRecallStep, getRecallSessionTotalSteps, type WorldCountriesRecallSessionState } from '@/features/world-countries/learning/recallSession'
 import { WorldCountriesTypedAnswer, type WorldCountriesTypedAnswerEvaluation, type WorldCountriesTypedAnswerResult } from '@/features/world-countries/ui/WorldCountriesTypedAnswer'
 import type { PracticeRecallAnswer, PracticeQuizRun } from './practiceRun'
+import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
 
-export function CapitalQuizSession({ run, session, fuzzyMatching, correctCount, onAnswer, onAdvance }: {
+export function CapitalQuizSession({ run, session, fuzzyMatching, correctCount, onAnswer, onAdvance, onExit }: {
   run: PracticeQuizRun
   session: WorldCountriesRecallSessionState
   fuzzyMatching: boolean
   correctCount: number
   onAnswer: (answer: PracticeRecallAnswer) => void
   onAdvance: (result: WorldCountriesTypedAnswerResult) => void
+  onExit?: () => void
 }) {
-  const emptyRails = useMemo(() => ({}), [])
-  useRails(emptyRails)
+  const rails = useMemo(() => onExit ? ({ right: <WorldCountriesPanel><button type="button" onClick={onExit} className="w-full rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Exit Quiz</button></WorldCountriesPanel>, rightLabel: 'Quiz' }) : ({}), [onExit])
+  useRails(rails)
 
   const step = getCurrentRecallStep(session)
   const country = step ? run.countries.find(candidate => candidate.id === step.countryId) : undefined

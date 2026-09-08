@@ -40,7 +40,7 @@ interface ActiveNeighboursQuizRun {
 
 type ActiveQuizRun = ActiveCapitalQuizRun | ActiveNeighboursQuizRun
 
-export function WorldCountriesQuiz({ answerMode: _answerMode }: { answerMode: AnswerMode }) {
+export function WorldCountriesQuiz({ answerMode: _answerMode, onExit }: { answerMode: AnswerMode; onExit?: () => void }) {
   const { settings } = useSettings()
   const activeCountries = useWorldCountriesPopulation()
   const geographyRevision = useWorldCountriesGeographyRevision()
@@ -166,11 +166,15 @@ export function WorldCountriesQuiz({ answerMode: _answerMode }: { answerMode: An
   }, [activeRun])
 
   const changeSetup = useCallback(() => {
+    if (onExit) {
+      onExit()
+      return
+    }
     setActiveRun(null)
     setPhase('setup')
     setSetupContinent(null)
     setHoveredGroupId(null)
-  }, [])
+  }, [onExit])
 
   if (phase === 'setup') return <QuizSetupPhase
     activeCountries={activeCountries}
@@ -194,10 +198,11 @@ export function WorldCountriesQuiz({ answerMode: _answerMode }: { answerMode: An
     onToggleWorld={toggleWorld}
     onToggleSubregion={toggleSubregion}
     onSelectEntireContinent={() => { if (setupContinent) setSelectedSubregionIds(toggleContinentInScope(normalizedSelection, setupContinent, activeCountries, selectionMetadata).subregionIds) }}
+    onExit={onExit}
   />
 
-  if (phase === 'session' && activeRun?.type === 'capitals') return <CapitalQuizSession run={activeRun.run} session={activeRun.session} fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching} correctCount={activeRun.answers.filter(answer => answer.outcome === 'exact' || answer.outcome === 'fuzzy').length} onAnswer={submitAnswer} onAdvance={advanceQuiz} />
-  if (phase === 'session' && activeRun?.type === 'neighbours') return <NeighboursQuizSession run={activeRun.run} session={activeRun.session} onSessionChange={updateNeighboursSession} onAdvance={advanceNeighbours} />
+  if (phase === 'session' && activeRun?.type === 'capitals') return <CapitalQuizSession run={activeRun.run} session={activeRun.session} fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching} correctCount={activeRun.answers.filter(answer => answer.outcome === 'exact' || answer.outcome === 'fuzzy').length} onAnswer={submitAnswer} onAdvance={advanceQuiz} onExit={onExit} />
+  if (phase === 'session' && activeRun?.type === 'neighbours') return <NeighboursQuizSession run={activeRun.run} session={activeRun.session} onSessionChange={updateNeighboursSession} onAdvance={advanceNeighbours} onExit={onExit} />
   if (phase === 'results' && activeRun?.type === 'capitals') return <QuizResults run={activeRun.run} answers={activeRun.answers} onRetryMissed={retryMissed} onNewQuiz={startQuiz} onChangeSetup={changeSetup} />
   if (phase === 'results' && activeRun?.type === 'neighbours') return <NeighboursQuizResults run={activeRun.run} session={activeRun.session} onRetryMissed={retryMissed} onNewQuiz={startQuiz} onChangeSetup={changeSetup} />
   return null
@@ -225,6 +230,7 @@ function QuizSetupPhase({
   onToggleWorld,
   onToggleSubregion,
   onSelectEntireContinent,
+  onExit,
 }: {
   activeCountries: readonly Country[]
   normalizedSelection: WorldCountriesSubregionScope
@@ -247,13 +253,14 @@ function QuizSetupPhase({
   onToggleWorld: () => void
   onToggleSubregion: (subregionId: SubregionId) => void
   onSelectEntireContinent: () => void
+  onExit?: () => void
 }) {
   const rails = useMemo(() => ({
     left: <GeographySelectionRail level={setupContinent ? 'continent' : 'world'} setupContinent={setupContinent} selection={normalizedSelection} selectionMetadata={selectionMetadata} worldOrder={worldOrder} subregionOrder={subregionOrder} entries={activeCountries} hoveredGroupId={hoveredGroupId} onHoverGroup={onHoverGroup} onWorld={onWorld} onSelectContinent={onSelectContinent} onToggleContinent={onToggleContinent} onToggleWorld={onToggleWorld} onToggleSubregion={onToggleSubregion} onSelectEntireContinent={onSelectEntireContinent} headingId="world-countries-quiz-geography-heading" />,
-    right: <QuizSetupControls quizType={quizType} onQuizTypeChange={onQuizTypeChange} questionCount={normalizedQuestionCount} targetCount={setupQuestionTargetCount} onQuestionCountChange={onQuestionCountChange} canStart={setupQuestionTargetCount > 0} onStart={onStart} />,
+    right: <QuizSetupControls quizType={quizType} onQuizTypeChange={onQuizTypeChange} questionCount={normalizedQuestionCount} targetCount={setupQuestionTargetCount} onQuestionCountChange={onQuestionCountChange} canStart={setupQuestionTargetCount > 0} onStart={onStart} onExit={onExit} />,
     leftLabel: 'Geography',
     rightLabel: 'Quiz',
-  }), [activeCountries, hoveredGroupId, normalizedQuestionCount, normalizedSelection, onHoverGroup, onQuestionCountChange, onQuizTypeChange, onSelectContinent, onSelectEntireContinent, onStart, onToggleContinent, onToggleSubregion, onToggleWorld, onWorld, quizType, selectionMetadata, setupContinent, setupQuestionTargetCount, subregionOrder, worldOrder])
+  }), [activeCountries, hoveredGroupId, normalizedQuestionCount, normalizedSelection, onExit, onHoverGroup, onQuestionCountChange, onQuizTypeChange, onSelectContinent, onSelectEntireContinent, onStart, onToggleContinent, onToggleSubregion, onToggleWorld, onWorld, quizType, selectionMetadata, setupContinent, setupQuestionTargetCount, subregionOrder, worldOrder])
   useRails(rails)
 
   return <section className="space-y-3 animate-fade-in" aria-labelledby="world-countries-quiz-heading">
@@ -263,8 +270,8 @@ function QuizSetupPhase({
   </section>
 }
 
-function QuizSetupControls({ quizType, onQuizTypeChange, questionCount, targetCount, onQuestionCountChange, canStart, onStart }: { quizType: QuizType; onQuizTypeChange: (value: QuizType) => void; questionCount: PracticeQuestionCount; targetCount: number; onQuestionCountChange: (value: PracticeQuestionCount) => void; canStart: boolean; onStart: () => void }) {
-  return <WorldCountriesPanel className="space-y-4" aria-labelledby="world-countries-quiz-controls-heading"><div><p className="text-xs font-semibold uppercase tracking-wider text-violet-400">Quiz</p><h2 id="world-countries-quiz-controls-heading" className="mt-1 text-lg font-bold text-zinc-100">Quiz type</h2></div><fieldset className="grid grid-cols-2 gap-2"><legend className="sr-only">Quiz type</legend>{(['capitals', 'neighbours'] as const).map(candidate => <label key={candidate} className={`flex cursor-pointer items-center justify-center rounded-lg border px-3 py-3 text-sm font-semibold ${quizType === candidate ? 'border-cyan-500 bg-cyan-500/15 text-cyan-100' : 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-cyan-600'}`}><input type="radio" name="world-countries-quiz-type" value={candidate} checked={quizType === candidate} onChange={() => onQuizTypeChange(candidate)} className="sr-only" />{candidate === 'capitals' ? 'Capitals' : 'Neighbours'}</label>)}</fieldset><div><h3 className="text-sm font-semibold text-zinc-200">Question count</h3><fieldset className="mt-2 grid grid-cols-2 gap-2"><legend className="sr-only">Question count</legend>{PRACTICE_QUESTION_COUNTS.map(candidate => { const disabled = candidate !== 'all' && candidate > targetCount; return <label key={candidate} className={`flex cursor-pointer items-center justify-center rounded-lg border px-3 py-3 text-sm font-semibold ${questionCount === candidate ? 'border-cyan-500 bg-cyan-500/15 text-cyan-100' : 'border-zinc-800 bg-zinc-900 text-zinc-300'} ${disabled ? 'cursor-not-allowed opacity-40' : 'hover:border-cyan-600'}`}><input type="radio" name="world-countries-quiz-question-count" value={candidate} checked={questionCount === candidate} disabled={disabled} onChange={() => onQuestionCountChange(candidate)} className="sr-only" />{candidate === 'all' ? 'All' : candidate}</label> })}</fieldset></div><p className="text-xs leading-relaxed text-zinc-500">Quiz is Practice: it is randomized, finite, and does not record learner progress.</p><button type="button" disabled={!canStart} onClick={onStart} className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40">{canStart ? 'Start Quiz' : quizType === 'neighbours' ? 'No eligible target Countries' : 'Choose at least one Subregion'}</button></WorldCountriesPanel>
+function QuizSetupControls({ quizType, onQuizTypeChange, questionCount, targetCount, onQuestionCountChange, canStart, onStart, onExit }: { quizType: QuizType; onQuizTypeChange: (value: QuizType) => void; questionCount: PracticeQuestionCount; targetCount: number; onQuestionCountChange: (value: PracticeQuestionCount) => void; canStart: boolean; onStart: () => void; onExit?: () => void }) {
+  return <WorldCountriesPanel className="space-y-4" aria-labelledby="world-countries-quiz-controls-heading"><div><p className="text-xs font-semibold uppercase tracking-wider text-violet-400">Quiz</p><h2 id="world-countries-quiz-controls-heading" className="mt-1 text-lg font-bold text-zinc-100">Quiz type</h2></div><fieldset className="grid grid-cols-2 gap-2"><legend className="sr-only">Quiz type</legend>{(['capitals', 'neighbours'] as const).map(candidate => <label key={candidate} className={`flex cursor-pointer items-center justify-center rounded-lg border px-3 py-3 text-sm font-semibold ${quizType === candidate ? 'border-cyan-500 bg-cyan-500/15 text-cyan-100' : 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-cyan-600'}`}><input type="radio" name="world-countries-quiz-type" value={candidate} checked={quizType === candidate} onChange={() => onQuizTypeChange(candidate)} className="sr-only" />{candidate === 'capitals' ? 'Capitals' : 'Neighbours'}</label>)}</fieldset><div><h3 className="text-sm font-semibold text-zinc-200">Question count</h3><fieldset className="mt-2 grid grid-cols-2 gap-2"><legend className="sr-only">Question count</legend>{PRACTICE_QUESTION_COUNTS.map(candidate => { const disabled = candidate !== 'all' && candidate > targetCount; return <label key={candidate} className={`flex cursor-pointer items-center justify-center rounded-lg border px-3 py-3 text-sm font-semibold ${questionCount === candidate ? 'border-cyan-500 bg-cyan-500/15 text-cyan-100' : 'border-zinc-800 bg-zinc-900 text-zinc-300'} ${disabled ? 'cursor-not-allowed opacity-40' : 'hover:border-cyan-600'}`}><input type="radio" name="world-countries-quiz-question-count" value={candidate} checked={questionCount === candidate} disabled={disabled} onChange={() => onQuestionCountChange(candidate)} className="sr-only" />{candidate === 'all' ? 'All' : candidate}</label> })}</fieldset></div><p className="text-xs leading-relaxed text-zinc-500">Quiz is Practice: it is randomized, finite, and does not record learner progress.</p><button type="button" disabled={!canStart} onClick={onStart} className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40">{canStart ? 'Start Quiz' : quizType === 'neighbours' ? 'No eligible target Countries' : 'Choose at least one Subregion'}</button>{onExit && <button type="button" onClick={onExit} className="w-full rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Back to guided home</button>}</WorldCountriesPanel>
 }
 
 function sameIds(left: readonly SubregionId[], right: readonly SubregionId[]): boolean {

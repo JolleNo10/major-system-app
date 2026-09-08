@@ -11,6 +11,29 @@ function historyFor(attempts: readonly { itemId: string; at: number; ok: boolean
 }
 
 describe('World Countries Today plan', () => {
+  it('keeps a scoped plan inside the supplied active Country population', () => {
+    const scopedHistory = deriveWorldCountriesRecallHistory({
+      countryIds: ['NO', 'IN'],
+      skills: ['location-to-country', 'country-to-capital'],
+    }, [
+      { itemId: 'world-countries:location-to-country:NO', at: 1, ok: false, ms: 100, evidenceKind: 'recall', localDate: '2026-08-10' },
+      { itemId: 'world-countries:location-to-country:IN', at: 2, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-10' },
+      { itemId: 'world-countries:location-to-country:IN', at: 3, ok: false, ms: 100, evidenceKind: 'recall', localDate: '2026-08-11' },
+    ])
+    const india = countries.find(country => country.id === 'IN')!
+
+    const plan = buildWorldCountriesTodayPlan({
+      activeCountries: [india],
+      history: scopedHistory,
+      effectiveCountries: [india],
+      effectiveSubregionIds: [india.subregionId],
+      localDate: '2026-08-19',
+    })
+
+    expect(plan.dueCount).toBe(1)
+    expect(plan.reviewQueue[0]?.country.id).toBe('IN')
+  })
+
   it('counts only the two core skills and prioritizes latest failures', () => {
     const plan = buildWorldCountriesTodayPlan({
       activeCountries: countries.filter(country => country.id === 'NO'),
