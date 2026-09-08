@@ -34,7 +34,7 @@ export function TodayReviewRails({
       <WorldCountriesPanel className="space-y-4" aria-labelledby="world-countries-today-review-geography-heading">
         <GeographyBreadcrumbs items={[{ label: 'World' }, { label: continent }, { label: subregion, current: true }]} />
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Today · Review</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Guided review</p>
           <h2 id="world-countries-today-review-geography-heading" className="mt-1 text-lg font-bold text-zinc-100">Review geography</h2>
           <p className="mt-2 text-sm leading-relaxed text-zinc-400">Current prompt is within this Subregion.</p>
         </div>
@@ -43,7 +43,7 @@ export function TodayReviewRails({
     right: (
       <WorldCountriesPanel className="space-y-4" aria-labelledby="world-countries-today-review-session-heading">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-violet-400">Today</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-violet-400">Review</p>
           <h2 id="world-countries-today-review-session-heading" className="mt-1 text-lg font-bold text-zinc-100">Review</h2>
         </div>
         <section aria-labelledby="world-countries-today-review-progress-heading" aria-live="polite" className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
@@ -63,7 +63,7 @@ export function TodayReviewRails({
       </WorldCountriesPanel>
     ),
     leftLabel: 'Geography',
-    rightLabel: 'Today · Review',
+    rightLabel: 'Guided review',
   }), [blockSize, continent, currentPrompt, onExit, promptCount, promptKind, progressPercent, reviewed, reviewReason, subregion])
   useRails(rails)
 

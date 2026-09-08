@@ -64,10 +64,6 @@ export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
         <span className="block truncate text-sm font-semibold text-zinc-100">World Countries</span>
         <span className="block text-xs text-zinc-500">{continent && area === 'continent' ? `World / ${continent}` : area === 'play' ? 'Play' : 'Learn the world'}</span>
       </button>
-      <div className="flex shrink-0 items-center gap-1 rounded-xl border border-zinc-800 bg-zinc-900/80 p-1">
-        <button type="button" onClick={goHome} aria-current={area === 'home' ? 'page' : undefined} className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${area === 'home' ? 'bg-cyan-600 text-white shadow-sm' : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100'}`}>Home</button>
-        <button type="button" onClick={openPlay} aria-current={area === 'play' ? 'page' : undefined} className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${area === 'play' ? 'bg-cyan-600 text-white shadow-sm' : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100'}`}>Play</button>
-      </div>
     </nav>
   ), [area, continent])
   useLayoutHeader(header)
@@ -76,7 +72,7 @@ export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
     <WorldCountriesPopulationProvider countries={activeCountries}>
       {area === 'home' && <WorldCountriesToday answerMode={answerMode} onNavigate={openWorkflow} onSelectContinent={goToContinent} onOpenPlay={openPlay} />}
       {area === 'continent' && continent && <WorldCountriesToday answerMode={answerMode} continent={continent} onNavigate={openWorkflow} onSelectContinent={goToContinent} onWorld={goHome} onOpenPlay={openPlay} />}
-      {area === 'play' && <WorldCountriesPlay scopeLabel={continent ?? 'World'} onBack={goToScope} onOpenRecite={() => openWorkflow('recite')} onOpenQuiz={() => openWorkflow('quiz')} onOpenMapPractice={() => openDrillEntry({ purpose: 'learn-practise', learnPracticeMode: 'locate-countries' })} onOpenMixedPractice={() => openDrillEntry({ purpose: 'learn-practise', learnPracticeMode: 'capitals' })} onOpenCustomPractice={() => openDrillEntry({ purpose: 'drill' })} />}
+      {area === 'play' && <WorldCountriesPlay scopeLabel={continent ?? 'World'} scopeContinent={continent ?? undefined} onBack={goToScope} onOpenRecite={() => openWorkflow('recite')} onOpenQuiz={() => openWorkflow('quiz')} onOpenLocateCountries={() => openDrillEntry({ purpose: 'learn-practise', learnPracticeMode: 'locate-countries' })} onOpenLocateCapitals={() => openDrillEntry({ purpose: 'learn-practise', learnPracticeMode: 'locate-capitals' })} onOpenCapitalPractice={() => openDrillEntry({ purpose: 'learn-practise', learnPracticeMode: 'capitals' })} onOpenCustomDrill={() => openDrillEntry({ purpose: 'drill' })} />}
       {area === 'drill' && <WorldCountriesDrill answerMode={answerMode} onExit={goToScope} initialPurpose={drillEntry?.purpose} initialLearnPracticeMode={drillEntry?.learnPracticeMode} />}
       {area === 'recite' && <WorldCountriesRecite answerMode={answerMode} onExit={goToScope} />}
       {area === 'quiz' && <WorldCountriesQuiz answerMode={answerMode} onExit={goToScope} />}

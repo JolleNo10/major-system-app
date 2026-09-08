@@ -1,31 +1,36 @@
 import { useMemo } from 'react'
 import { useRails } from '@/app/layout/PageLayoutContext'
+import type { Continent } from './data/countries'
 import { GeographyBreadcrumbs } from '@/features/world-countries/ui/GeographyBreadcrumbs'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
 
 export function WorldCountriesPlay({
   scopeLabel,
+  scopeContinent,
   onBack,
   onOpenRecite,
   onOpenQuiz,
-  onOpenMapPractice,
-  onOpenMixedPractice,
-  onOpenCustomPractice,
+  onOpenLocateCountries,
+  onOpenLocateCapitals,
+  onOpenCapitalPractice,
+  onOpenCustomDrill,
 }: {
   scopeLabel: string
+  scopeContinent?: Continent
   onBack: () => void
   onOpenRecite: () => void
   onOpenQuiz: () => void
-  onOpenMapPractice: () => void
-  onOpenMixedPractice: () => void
-  onOpenCustomPractice: () => void
+  onOpenLocateCountries: () => void
+  onOpenLocateCapitals: () => void
+  onOpenCapitalPractice: () => void
+  onOpenCustomDrill: () => void
 }) {
   const rails = useMemo(() => ({
-    left: <WorldCountriesPanel className="space-y-4"><GeographyBreadcrumbs items={[{ label: 'World', onSelect: onBack }, { label: 'Play', current: true }]} /><div><p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Freeform</p><h2 className="mt-1 text-lg font-bold text-zinc-100">Choose what to practise</h2><p className="mt-2 text-sm leading-relaxed text-zinc-400">Play does not replace or reset the guided path. Existing workflow evidence rules remain authoritative.</p></div><div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3"><p className="text-xs uppercase tracking-wider text-zinc-500">Current guided scope</p><p className="mt-1 text-sm font-semibold text-zinc-200">{scopeLabel}</p></div></WorldCountriesPanel>,
+    left: <WorldCountriesPanel className="space-y-4"><GeographyBreadcrumbs items={[{ label: 'World', onSelect: scopeContinent ? undefined : onBack }, ...(scopeContinent ? [{ label: scopeLabel, onSelect: onBack }] : []), { label: 'Play', current: true }]} /><div><p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Freeform</p><h2 className="mt-1 text-lg font-bold text-zinc-100">Choose what to practise</h2><p className="mt-2 text-sm leading-relaxed text-zinc-400">Play does not replace or reset the guided path. Existing workflow evidence rules remain authoritative.</p></div><div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3"><p className="text-xs uppercase tracking-wider text-zinc-500">Current guided scope</p><p className="mt-1 text-sm font-semibold text-zinc-200">{scopeLabel}</p></div></WorldCountriesPanel>,
     right: <WorldCountriesPanel className="space-y-4"><div><p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Important</p><h2 className="mt-1 text-lg font-bold text-zinc-100">Guided path stays intact</h2><p className="mt-2 text-sm leading-relaxed text-zinc-400">Recite and non-recording Practice remain non-recording. Recorded Drill keeps its existing evidence behavior.</p></div><button type="button" onClick={onBack} className="w-full rounded-lg border border-zinc-700 px-3 py-2.5 text-sm font-semibold text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Back to {scopeLabel}</button></WorldCountriesPanel>,
     leftLabel: 'Play',
     rightLabel: 'Activity guidance',
-  }), [onBack, scopeLabel])
+  }), [onBack, scopeContinent, scopeLabel])
   useRails(rails)
 
   return (
@@ -34,9 +39,10 @@ export function WorldCountriesPlay({
       <div className="grid gap-3 sm:grid-cols-2">
         <PlayCard activity="recite" title="Recite" description="Free recall across one or multiple Continents/Subregions, with all existing Recite modes." onClick={onOpenRecite} />
         <PlayCard activity="quiz" title="Quiz" description="Use the existing Practice-owned Capitals and Neighbours Quiz experiences." onClick={onOpenQuiz} />
-        <PlayCard activity="map-practice" title="Map practice" description="Use existing non-recording map-backed Country Practice." onClick={onOpenMapPractice} />
-        <PlayCard activity="mixed-practice" title="Mixed practice" description="Use existing non-recording Capital Practice without changing the guided curriculum." onClick={onOpenMixedPractice} />
-        <PlayCard activity="custom-practice" title="Custom practice" description="Advanced scope and mode configuration continues through the existing Drill setup." onClick={onOpenCustomPractice} wide />
+        <PlayCard activity="locate-countries" title="Locate Countries" description="Use existing non-recording map-backed Country Practice." onClick={onOpenLocateCountries} />
+        <PlayCard activity="locate-capitals" title="Locate Capitals" description="Use existing non-recording map-backed Capital Practice." onClick={onOpenLocateCapitals} />
+        <PlayCard activity="capital-practice" title="Capital Practice" description="Use existing non-recording Country-to-Capital Practice." onClick={onOpenCapitalPractice} />
+        <PlayCard activity="custom-drill" title="Custom Drill" description="Configure recorded Drill scope and mode through the existing advanced setup." onClick={onOpenCustomDrill} wide />
       </div>
     </section>
   )

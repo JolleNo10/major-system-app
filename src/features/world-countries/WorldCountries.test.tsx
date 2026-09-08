@@ -17,8 +17,9 @@ vi.mock('./recite/WorldCountriesRecite', () => ({
 }))
 
 vi.mock('./today/WorldCountriesToday', () => ({
-  WorldCountriesToday: (props: { onSelectContinent?: (continent: 'Europe') => void; onWorld?: () => void }) => createElement('div', { 'data-testid': 'today-workflow' },
+  WorldCountriesToday: (props: { onSelectContinent?: (continent: 'Europe') => void; onWorld?: () => void; onOpenPlay?: () => void }) => createElement('div', { 'data-testid': 'today-workflow' },
     createElement('button', { type: 'button', onClick: () => props.onSelectContinent?.('Europe') }, 'Open Europe'),
+    createElement('button', { type: 'button', onClick: props.onOpenPlay }, 'Open Play'),
     createElement('button', { type: 'button', onClick: props.onWorld }, 'Back to World'),
     'Guided home',
   ),
@@ -68,8 +69,8 @@ describe('World Countries guided shell', () => {
     const header = mount.querySelector('nav[aria-label="World Countries navigation"]')
 
     expect(header?.textContent).toContain('World Countries')
-    expect(header?.textContent).toContain('Home')
-    expect(header?.textContent).toContain('Play')
+    expect(header?.textContent).not.toContain('Home')
+    expect(header?.textContent).not.toContain('Play')
     expect(header?.querySelector('[role="tablist"]')).toBeNull()
     expect(mount.querySelector('[data-testid="today-workflow"]')).not.toBeNull()
   })
@@ -77,7 +78,6 @@ describe('World Countries guided shell', () => {
   it('reaches the Continent hub from geography without starting a workflow', async () => {
     const mount = await renderShell()
 
-    await act(async () => mount.querySelector<HTMLButtonElement>('button')?.click())
     const openEurope = [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Open Europe')
     await act(async () => openEurope?.click())
 
@@ -88,12 +88,15 @@ describe('World Countries guided shell', () => {
 
   it('routes Play choices to the existing workflow owners and returns home', async () => {
     const mount = await renderShell()
-    const play = [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Play')
+    const play = [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Open Play')
     await act(async () => play?.click())
 
     expect(mount.textContent).toContain('Recite')
     expect(mount.textContent).toContain('Quiz')
-    expect(mount.textContent).toContain('Custom practice')
+    expect(mount.textContent).toContain('Custom Drill')
+    expect(mount.textContent).toContain('Locate Countries')
+    expect(mount.textContent).toContain('Locate Capitals')
+    expect(mount.textContent).toContain('Capital Practice')
 
     const recite = mount.querySelector<HTMLButtonElement>('[data-play-activity="recite"]')
     await act(async () => recite?.click())
@@ -102,14 +105,14 @@ describe('World Countries guided shell', () => {
     await act(async () => mount.querySelector<HTMLButtonElement>('button')?.click())
     expect(mount.querySelector('[data-testid="today-workflow"]')).not.toBeNull()
 
-    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Play')?.click())
-    await act(async () => mount.querySelector<HTMLButtonElement>('[data-play-activity="map-practice"]')?.click())
+    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Open Play')?.click())
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-play-activity="locate-countries"]')?.click())
     expect(mount.querySelector('[data-testid="drill-workflow"]')?.textContent).toContain('learn-practise locate-countries')
   })
 
   it('keeps Quiz transient state local when Play leaves and re-enters it', async () => {
     const mount = await renderShell()
-    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Play')?.click())
+    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Open Play')?.click())
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-play-activity="quiz"]')?.click())
     expect(mount.querySelector('[data-testid="quiz-local-state"]')?.textContent).toBe('Quiz initial state')
 
@@ -118,8 +121,28 @@ describe('World Countries guided shell', () => {
     await act(async () => mount.querySelector<HTMLButtonElement>('button')?.click())
     expect(mount.querySelector('[data-testid="today-workflow"]')).not.toBeNull()
 
-    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Play')?.click())
+    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Open Play')?.click())
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-play-activity="quiz"]')?.click())
     expect(mount.querySelector('[data-testid="quiz-local-state"]')?.textContent).toBe('Quiz initial state')
+  })
+
+  it('routes Locate Capitals and Capital Practice to their existing setup modes', async () => {
+    const mount = await renderShell()
+    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Open Play')?.click())
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-play-activity="locate-capitals"]')?.click())
+    expect(mount.querySelector('[data-testid="drill-workflow"]')?.textContent).toContain('learn-practise locate-capitals')
+
+    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Exit Drill')?.click())
+    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Open Play')?.click())
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-play-activity="capital-practice"]')?.click())
+    expect(mount.querySelector('[data-testid="drill-workflow"]')?.textContent).toContain('learn-practise capitals')
+  })
+
+  it('routes Custom Drill to the recorded Drill owner', async () => {
+    const mount = await renderShell()
+    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Open Play')?.click())
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-play-activity="custom-drill"]')?.click())
+
+    expect(mount.querySelector('[data-testid="drill-workflow"]')?.textContent).toContain('Drill workflow drill')
   })
 })

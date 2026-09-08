@@ -12,6 +12,21 @@ function progressFor(attempts: readonly { itemId: string; at: number; ok: boolea
   )
 }
 
+function countryRecallAttempts() {
+  return [
+    { itemId: 'world-countries:location-to-country:NO', at: 1, ok: true },
+    { itemId: 'world-countries:location-to-country:NO', at: 2, ok: true },
+  ]
+}
+
+function completeRecallAttempts() {
+  return [
+    ...countryRecallAttempts(),
+    { itemId: 'world-countries:country-to-capital:NO', at: 3, ok: true },
+    { itemId: 'world-countries:country-to-capital:NO', at: 4, ok: true },
+  ]
+}
+
 describe('World Countries learner journey presentation', () => {
   it('starts at Meet the countries without inventing durable journey state', () => {
     const journey = deriveWorldCountriesJourneyPresentation({
@@ -23,9 +38,10 @@ describe('World Countries learner journey presentation', () => {
     expect(journey.currentStageId).toBe('meet-countries')
     expect(journey.stages[0]).toMatchObject({ id: 'meet-countries', status: 'current' })
     expect(journey.stages[1]?.status).toBe('upcoming')
+    expect(journey.complete).toBe(false)
   })
 
-  it('shows Country practice before the Country milestone is complete', () => {
+  it('shows Country practice while Country recall is in progress', () => {
     const journey = deriveWorldCountriesJourneyPresentation({
       subregionId: 'northern-europe',
       entries: norway,
@@ -37,48 +53,77 @@ describe('World Countries learner journey presentation', () => {
     expect(journey.stages[1]?.status).toBe('current')
   })
 
-  it('presents Capitals as additive after Country Learning', () => {
+  it('makes Master the countries current when Country Learning is complete but recall is not mastered', () => {
     const journey = deriveWorldCountriesJourneyPresentation({
       subregionId: 'northern-europe',
       entries: norway,
       learningState: { subregionId: 'northern-europe', countriesLearnedAt: 1 },
-      recallProgress: progressFor([]),
+      recallProgress: progressFor([{ itemId: 'world-countries:location-to-country:NO', at: 1, ok: false }]),
+    })
+
+    expect(journey.currentStageId).toBe('master-countries')
+    expect(journey.stages[1]?.status).toBe('complete')
+    expect(journey.stages[2]?.status).toBe('current')
+    expect(journey.stages[3]?.status).toBe('upcoming')
+  })
+
+  it('moves to Add the capitals only after Country recall is mastered', () => {
+    const journey = deriveWorldCountriesJourneyPresentation({
+      subregionId: 'northern-europe',
+      entries: norway,
+      learningState: { subregionId: 'northern-europe', countriesLearnedAt: 1 },
+      recallProgress: progressFor(countryRecallAttempts()),
     })
 
     expect(journey.currentStageId).toBe('add-capitals')
-    expect(journey.countriesLearned).toBe(true)
+    expect(journey.countryRecallMastered).toBe(true)
     expect(journey.stages[2]?.status).toBe('complete')
     expect(journey.stages[3]?.status).toBe('current')
   })
 
-  it('distinguishes Capital practice from a completed guided milestone', () => {
+  it('keeps Add the capitals current after a failed Capital attempt without its milestone', () => {
     const journey = deriveWorldCountriesJourneyPresentation({
       subregionId: 'northern-europe',
       entries: norway,
       learningState: { subregionId: 'northern-europe', countriesLearnedAt: 1 },
-      recallProgress: progressFor([{ itemId: 'world-countries:country-to-capital:NO', at: 1, ok: false }]),
+      recallProgress: progressFor([
+        ...countryRecallAttempts(),
+        { itemId: 'world-countries:country-to-capital:NO', at: 3, ok: false },
+      ]),
     })
 
-    expect(journey.currentStageId).toBe('put-it-together')
-    expect(journey.stages[3]?.status).toBe('complete')
-    expect(journey.stages[4]?.status).toBe('current')
+    expect(journey.currentStageId).toBe('add-capitals')
+    expect(journey.stages[3]?.status).toBe('current')
+    expect(journey.stages[4]?.status).toBe('upcoming')
   })
 
-  it('reaches Master the region only after both guided milestones and core recall', () => {
+  it('shows Put it all together while Capital Learning is complete but combined recall develops', () => {
     const journey = deriveWorldCountriesJourneyPresentation({
       subregionId: 'northern-europe',
       entries: norway,
       learningState: { subregionId: 'northern-europe', countriesLearnedAt: 1, capitalsLearnedAt: 2 },
       recallProgress: progressFor([
-        { itemId: 'world-countries:location-to-country:NO', at: 1, ok: true },
-        { itemId: 'world-countries:location-to-country:NO', at: 2, ok: true },
-        { itemId: 'world-countries:country-to-capital:NO', at: 3, ok: true },
-        { itemId: 'world-countries:country-to-capital:NO', at: 4, ok: true },
+        ...countryRecallAttempts(),
+        { itemId: 'world-countries:country-to-capital:NO', at: 3, ok: false },
       ]),
     })
 
+    expect(journey.currentStageId).toBe('put-it-together')
+    expect(journey.stages[3]?.status).toBe('complete')
+    expect(journey.stages[4]?.status).toBe('current')
+    expect(journey.stages[5]?.status).toBe('upcoming')
+  })
+
+  it('reaches a meaningful completed final state after both milestones and core mastery', () => {
+    const journey = deriveWorldCountriesJourneyPresentation({
+      subregionId: 'northern-europe',
+      entries: norway,
+      learningState: { subregionId: 'northern-europe', countriesLearnedAt: 1, capitalsLearnedAt: 2 },
+      recallProgress: progressFor(completeRecallAttempts()),
+    })
+
     expect(journey.currentStageId).toBe('master-region')
-    expect(journey.stages.slice(0, 5).every(stage => stage.status === 'complete')).toBe(true)
-    expect(journey.stages[5]?.status).toBe('current')
+    expect(journey.complete).toBe(true)
+    expect(journey.stages.every(stage => stage.status === 'complete')).toBe(true)
   })
 })

@@ -100,6 +100,7 @@ export function WorldCountriesToday({
   }, [scopedCountries])
 
   useEffect(() => { void loadEvidence() }, [loadEvidence])
+  useEffect(() => { setFocusedSubregionId(null) }, [continent])
 
   const learningStates = useMemo(() => {
     void learningRevision
@@ -184,19 +185,17 @@ export function WorldCountriesToday({
   }
 
   const nextLearning = plan?.nextLearning ?? null
-  const guidedSubregionId = nextLearning?.subregionId ?? geographicOrder.subregionIds.find(subregionId => {
-    const state = learningStates.find(candidate => candidate.subregionId === subregionId)
-    return !state?.capitalsLearnedAt
-  }) ?? geographicOrder.subregionIds[0] ?? null
+  const guidedSubregionId = nextLearning?.subregionId ?? null
+  const displaySubregionId = focusedSubregionId ?? guidedSubregionId
   const journey = useMemo<WorldCountriesJourneyPresentation | null>(() => {
-    if (evidence.status !== 'ready' || !guidedSubregionId) return null
+    if (evidence.status !== 'ready' || !displaySubregionId) return null
     return deriveWorldCountriesJourneyPresentation({
-      subregionId: guidedSubregionId,
+      subregionId: displaySubregionId,
       entries: scopedCountries,
-      learningState: learningStates.find(state => state.subregionId === guidedSubregionId),
+      learningState: learningStates.find(state => state.subregionId === displaySubregionId),
       recallProgress: recallProgress ?? new Map(),
     })
-  }, [evidence.status, guidedSubregionId, learningStates, recallProgress, scopedCountries])
+  }, [displaySubregionId, evidence.status, learningStates, recallProgress, scopedCountries])
   const scopeSummaries = useMemo(() => {
     void geographyRevision
     if (!recallProgress) return []
@@ -218,10 +217,12 @@ export function WorldCountriesToday({
         label: subregion.label,
         progress: deriveWorldCountriesScopeProgressForCountries(`subregion:${subregion.id}`, entries, recallProgress),
         onSelect: () => setFocusedSubregionId(subregion.id),
-        status: subregion.id === guidedSubregionId ? 'Current guided unit' : undefined,
+        status: subregion.id === focusedSubregionId
+          ? subregion.id === guidedSubregionId ? 'Current guided unit · Inspecting' : 'Inspected Subregion'
+          : subregion.id === guidedSubregionId ? 'Current guided unit' : undefined,
       }
     })
-  }, [continent, geographyRevision, guidedSubregionId, onSelectContinent, recallProgress, scopedCountries])
+  }, [continent, focusedSubregionId, geographyRevision, guidedSubregionId, onSelectContinent, recallProgress, scopedCountries])
   const highlightedCountryIds = focusedSubregionId
     ? scopedCountries.filter(country => country.subregionId === focusedSubregionId).map(country => country.id)
     : []
@@ -231,6 +232,7 @@ export function WorldCountriesToday({
   if (showProgress) {
     return <WorldCountriesProgressView
       scopeLabel={scopeLabel}
+      scopeContinent={continent ?? undefined}
       scopeCountries={scopedCountries}
       progress={progress}
       recallProgress={recallProgress}
@@ -258,7 +260,7 @@ export function WorldCountriesToday({
         onPhaseChange={() => undefined}
         onExit={finishLearning}
         onDone={finishLearning}
-        doneLabel="Back to Today"
+        doneLabel={`Back to ${continent ?? 'World'}`}
         recordCompletion={true}
       />
     }
@@ -276,7 +278,7 @@ export function WorldCountriesToday({
       onPhaseChange={() => undefined}
       onExit={finishLearning}
       onDone={finishLearning}
-      doneLabel="Back to Today"
+      doneLabel={`Back to ${continent ?? 'World'}`}
       recordCompletion={true}
     />
   }
@@ -311,6 +313,8 @@ export function WorldCountriesToday({
         caughtUp={caughtUp}
         scopeSummaries={scopeSummaries}
         journey={journey}
+        guidedSubregionId={guidedSubregionId}
+        onFocusGuidedSubregion={() => setFocusedSubregionId(null)}
         onWorld={navigateWorld}
         onOpenPlay={onOpenPlay ?? (() => onNavigate('recite'))}
         onOpenProgress={() => { setShowProgress(true); onOpenProgress?.() }}

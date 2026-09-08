@@ -269,28 +269,28 @@ Starting a Play workflow snapshots scope according to that workflow's existing r
 
 ## Acceptance criteria
 
-- [ ] World Countries opens on a map-centered home rather than an equal Today/Drill/Recite/Quiz tab selector.
-- [ ] The home uses the existing PageLayout visual system and does not introduce a parallel dashboard/layout framework.
-- [ ] World mastery/progress and the interactive World map are visible on the home.
-- [ ] The primary home action is derived from the existing guided plan and starts due review before new Learning when current Today semantics require it.
-- [ ] Guided Continue reuses existing Today review and Country/Capital Learning flows rather than duplicating their scheduling or milestone behavior.
-- [ ] Selecting a Continent from the home navigates to a Continent hub without starting a session.
-- [ ] The Continent hub is map-centered, derives its progress from existing state, identifies a next guided Subregion/action, and can start that scoped action.
-- [ ] Returning from a Continent hub to World does not mutate geography configuration, Learning milestones, or workflow scope.
-- [ ] The learner-facing journey communicates Countries -> Capitals -> combined mastery without introducing six new persisted states.
-- [ ] Journey status is derived from existing Subregion Learning milestones plus retained recall/proficiency evidence and remains truthful for mixed/partial states.
-- [ ] Existing whole-Subregion Learning semantics remain valid; no new Continent/World-wide hard Capital gate is introduced.
-- [ ] Play exposes the existing Recite capability, including multi-Continent scope.
-- [ ] Play exposes existing Quiz/Practice and configurable recorded Drill capabilities through learner-facing entry points where appropriate.
-- [ ] Existing evidence semantics remain unchanged: Recite/non-recording Practice remain non-recording and recorded Drill continues to write only its existing evidence.
-- [ ] Completing or exiting a workflow returns to the new home/hub model and refreshes affected derived progress.
-- [ ] A caught-up/fully learned user receives a clear non-error completion state and can still access Play/Progress.
-- [ ] Evidence-loading, evidence-error, and zero-active-Country states remain usable.
-- [ ] Existing responsive rail/drawer behavior and MapSurface expanded behavior remain intact.
-- [ ] The old equal activity tabs are removed from the primary feature shell only after all required workflows remain reachable from the new information architecture.
-- [ ] Focused automated tests cover home routing, Continue behavior, Continent navigation/scoping, journey derivation, and Play routing without requiring browser/manual verification.
-- [ ] Current-state World Countries architecture is updated to describe the implemented home/guided/Play entry hierarchy and retained workflow ownership.
-- [ ] All implementation remains on the dedicated feature branch; no merge to `main` is performed by this task.
+- [x] World Countries opens on a map-centered home rather than an equal Today/Drill/Recite/Quiz tab selector.
+- [x] The home uses the existing PageLayout visual system and does not introduce a parallel dashboard/layout framework.
+- [x] World mastery/progress and the interactive World map are visible on the home.
+- [x] The primary home action is derived from the existing guided plan and starts due review before new Learning when current Today semantics require it.
+- [x] Guided Continue reuses existing Today review and Country/Capital Learning flows rather than duplicating their scheduling or milestone behavior.
+- [x] Selecting a Continent from the home navigates to a Continent hub without starting a session.
+- [x] The Continent hub is map-centered, derives its progress from existing state, identifies a next guided Subregion/action, and can start that scoped action.
+- [x] Returning from a Continent hub to World does not mutate geography configuration, Learning milestones, or workflow scope.
+- [x] The learner-facing journey communicates Countries -> Capitals -> combined mastery without introducing six new persisted states.
+- [x] Journey status is derived from existing Subregion Learning milestones plus retained recall/proficiency evidence and remains truthful for mixed/partial states.
+- [x] Existing whole-Subregion Learning semantics remain valid; no new Continent/World-wide hard Capital gate is introduced.
+- [x] Play exposes the existing Recite capability, including multi-Continent scope.
+- [x] Play exposes existing Quiz/Practice and configurable recorded Drill capabilities through learner-facing entry points where appropriate.
+- [x] Existing evidence semantics remain unchanged: Recite/non-recording Practice remain non-recording and recorded Drill continues to write only its existing evidence.
+- [x] Completing or exiting a workflow returns to the new home/hub model and refreshes affected derived progress.
+- [x] A caught-up/fully learned user receives a clear non-error completion state and can still access Play/Progress.
+- [x] Evidence-loading, evidence-error, and zero-active-Country states remain usable.
+- [x] Existing responsive rail/drawer behavior and MapSurface expanded behavior remain intact.
+- [x] The old equal activity tabs are removed from the primary feature shell only after all required workflows remain reachable from the new information architecture.
+- [x] Focused automated tests cover home routing, Continue behavior, Continent navigation/scoping, journey derivation, and Play routing without requiring browser/manual verification.
+- [x] Current-state World Countries architecture is updated to describe the implemented home/guided/Play entry hierarchy and retained workflow ownership.
+- [x] All implementation remains on the dedicated feature branch; no merge to `main` is performed by this task.
 
 ## Source anchors
 
@@ -342,13 +342,13 @@ Browser/manual verification is not required by default. Do not start or troubles
 
 ## Implementation evidence
 
-- Focused World Countries checks: `npx.cmd vitest run src/features/world-countries/WorldCountries.test.tsx src/features/world-countries/today/WorldCountriesToday.test.tsx src/features/world-countries/today/GuidedHomeRails.test.tsx src/features/world-countries/today/todayPlan.test.ts src/features/world-countries/today/journeyPresentation.test.ts src/features/world-countries/recite/WorldCountriesRecite.test.tsx src/features/world-countries/practice/WorldCountriesQuiz.test.tsx src/features/world-countries/drill/WorldCountriesDrill.test.tsx` — 8 files, 77 tests passed.
-- World Countries feature slice: `npx.cmd vitest run src/features/world-countries` — 114 files, 737 tests passed.
-- Repository suite: `npm.cmd test` — 149 files, 948 tests passed.
+- Correction-pass focused checks: `npx.cmd vitest run src/features/world-countries/today/journeyPresentation.test.ts src/features/world-countries/today/GuidedHomeRails.test.tsx src/features/world-countries/today/WorldCountriesProgressView.test.tsx src/features/world-countries/today/WorldCountriesToday.test.tsx src/features/world-countries/WorldCountries.test.tsx src/features/world-countries/drill/PageLayoutDrillSetup.test.tsx` — 6 files, 24 tests passed.
+- World Countries feature slice: `npx.cmd vitest run src/features/world-countries` — 115 files, 744 tests passed.
+- Repository suite: `npm.cmd test` — 150 files, 955 tests passed.
 - `npm.cmd run lint` passed.
-- `npm.cmd run typecheck` and `npm.cmd run build` stop at the existing unrelated `src/features/world-countries/drill/DrillSetup.test.tsx:301` `Map<any, any>` inference error; the Vite production build is not reached.
-- Covered behaviors include default Home and Play routing, transient World -> Continent navigation, scoped Today plan membership, review-first Continue behavior, loading/error/empty/caught-up rail states, representative derived journey states, and preserved Recite/Quiz/Drill workflow entry points.
-- `git diff --check` passed.
+- `npm.cmd run typecheck` reaches only the existing unrelated `src/features/world-countries/drill/DrillSetup.test.tsx:301` `Map<any, any>` inference error; no changed-file type error was reported. The Vite production build was not run because the known repository typecheck blocker remains.
+- Covered behaviors include truthful six-stage journey derivation, failed/partial Capital handling, complete final mastery, transient inspected Subregion presentation, Home-root shell navigation, all learner-facing Play entries, World-vs-Continent Progress hierarchy, review-first Continue delegation, loading/error/empty/caught-up rail states, and preserved Recite/Quiz/Drill entry points.
+- `npm.cmd run lint` and `git diff --check` passed after the final edits.
 - Browser/manual verification was intentionally not run, per the Change Spec and repository instructions.
-- Residual risk: repository typecheck currently reports an existing unrelated `Map<any, any>` inference error at `src/features/world-countries/drill/DrillSetup.test.tsx:301`; the changed implementation files themselves typecheck through the same compiler run, but the repository-wide typecheck/build baseline remains subject to that pre-existing test error.
+- Residual risk: the repository-wide typecheck baseline remains subject to the unrelated `Map<any, any>` inference error at `src/features/world-countries/drill/DrillSetup.test.tsx:301`; no implementation gap was identified from the automated World Countries and repository suites.
 - The visual reference was followed for hierarchy and interaction intent through existing `PageLayout`, rails, `MapSurface`/`TaskDock`, `GeographyOverviewMap`, `WorldCountriesPanel`, and mastery/progress seams. Prototype HTML/CSS, fake values, icons, and schematic map geometry were not ported.

@@ -70,7 +70,7 @@ export function TodayReviewSession({
   const activityTask: WorldCountriesActivityTask = {
     direction: isLocationQuestion ? 'Location → Country' : 'Country → Capital',
     cue: promptLabel,
-    sessionContext: 'Today review',
+    sessionContext: 'Guided review',
     answerKind,
     reviewReason,
     progress: {
@@ -179,8 +179,8 @@ export function TodayReviewSession({
                 showHighlightedNames={Boolean(answerResolved || !isLocationQuestion)}
                 showHoverNames={false}
                 ariaLabel={isLocationQuestion && !typed.feedbackActive
-                  ? 'Map showing the selected location for Today recall without the Country name revealed'
-                  : `Map with ${country.country} highlighted for Today recall`}
+                  ? 'Map showing the selected location for guided recall without the Country name revealed'
+                  : `Map with ${country.country} highlighted for guided recall`}
               />
             </div>
           )

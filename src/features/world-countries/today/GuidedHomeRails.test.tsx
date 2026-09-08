@@ -4,6 +4,7 @@ import { act, createElement, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { GuidedHomeRails } from './GuidedHomeRails'
+import { WORLD_COUNTRIES_JOURNEY_STAGES, type WorldCountriesJourneyPresentation } from './journeyPresentation'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -77,5 +78,31 @@ describe('Guided World Countries home status', () => {
     const mount = renderRails()
     expect(mount.textContent).toContain('All caught up')
     expect(mount.querySelector('[data-primary-action]')).toBeNull()
+  })
+
+  it('labels an inspected Subregion without replacing the guided recommendation', () => {
+    const onFocusGuidedSubregion = vi.fn()
+    const journey: WorldCountriesJourneyPresentation = {
+      subregionId: 'southern-europe',
+      currentStageId: 'meet-countries',
+      complete: false,
+      stages: WORLD_COUNTRIES_JOURNEY_STAGES.map(stage => ({ ...stage, status: stage.id === 'meet-countries' ? 'current' : 'upcoming', detail: 'Derived status' })),
+      countriesLearned: false,
+      capitalsLearned: false,
+      countryRecallMastered: false,
+      coreRecallComplete: false,
+    }
+    const mount = renderRails({
+      continent: 'Europe',
+      journey,
+      guidedSubregionId: 'northern-europe',
+      nextLearning: { track: 'learn-countries', subregionLabel: 'Northern Europe' },
+      onFocusGuidedSubregion,
+    })
+
+    expect(mount.textContent).toContain('Inspecting Southern Europe')
+    expect(mount.textContent).toContain('Continue still follows Northern Europe')
+    act(() => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Return to guided Subregion')?.click())
+    expect(onFocusGuidedSubregion).toHaveBeenCalledOnce()
   })
 })

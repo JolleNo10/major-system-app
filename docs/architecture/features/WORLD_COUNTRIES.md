@@ -18,9 +18,11 @@ same guided composition over a Continent-scoped active Country population.
 non-recording Practice, and configurable recorded Drill. **Progress** is a
 derived supporting view, not a separate evidence or analytics system.
 
-The user-facing entry hierarchy is Home -> Continent hub / Progress / Play ->
-existing workflow owners. Structural authoring is contextual rather than a
-separate workflow:
+The stable feature root is Home. Home and Continent guided rails expose
+secondary Play and Progress actions; Play uses its own breadcrumb/back context
+to return to the originating Home or Continent hub. The user-facing entry
+hierarchy is Home -> Continent hub / Progress / Play -> existing workflow
+owners. Structural authoring is contextual rather than a separate workflow:
 
 - Drill's existing World Geography rail authors Continent order.
 - Drill's existing Continent Geography rail authors Subregion order.
@@ -154,14 +156,14 @@ World Countries review spacing is also derived from retained raw attempts. The
 fixed `1, 3, 7, 14, 30, 60` day ladder advances on clean typed-recall days and
 regresses one level for an isolated lapse or two levels for repeated
 difficulty. Multiple attempts on one local date count as one event; difficulty
-is not persisted and clears after two clean recall days. Today presents the
-resulting reason as concise `Why today` summary counts and a per-prompt `Why
-now` explanation, including repeated difficulty and useful overdue wording.
+is not persisted and clears after two clean recall days. The guided Home
+presents the resulting reason as concise `Why now` summary counts and the
+Review flow gives a per-prompt `Why now` explanation, including repeated
+difficulty and useful overdue wording.
 
-The shell exposes Home and Play, with Home selected by default. Continent and
-Progress are transient views within the Home composition. Existing workflow
-entry points remain reachable from Play, and Drill has a non-persisted Purpose
-selector:
+Continent and Progress are transient views within the Home composition.
+Existing workflow entry points remain reachable from Play, and Drill has a
+non-persisted Purpose selector:
 
 - **Drill**: `Countries`, `Countries + Capitals`, `Countries from Capitals`,
   and `Country for Shape`. These are the only `WorldCountriesDrillMode` values
@@ -263,6 +265,13 @@ the region) is derived presentation over existing Subregion milestones and
 recall/proficiency evidence. No journey-step, current-Continent, or curriculum
 focus field is persisted. Capital learning extends existing Country knowledge;
 it does not reset Country evidence or add a World/Continent-wide Capital gate.
+Each stage status is derived independently enough to distinguish a completed
+Learning milestone from developing or mastered recall; a failed Capital
+attempt cannot complete Add the capitals, and a fully mastered core scope
+renders the final Master the region stage complete. On a Continent hub, a
+transiently inspected Subregion supplies the displayed journey/progress while
+the guided recommendation continues to come from Today planning. World
+Progress summarizes Continents; Continent Progress summarizes Subregions.
 
 During active scheduler-driven Learning Practice, the flows expose temporary
 scheduler progress through the feature-local progress seam in the right rail.

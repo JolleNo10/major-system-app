@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useRails } from '@/app/layout/PageLayoutContext'
 import type { Continent } from '@/features/world-countries/data/countries'
+import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
 import { GeographyBreadcrumbs } from '@/features/world-countries/ui/GeographyBreadcrumbs'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
 import type { WorldCountriesJourneyPresentation } from './journeyPresentation'
@@ -26,6 +27,8 @@ export function GuidedHomeRails({
   reviewReasonSummary,
   nextLearning,
   journey,
+  guidedSubregionId,
+  onFocusGuidedSubregion,
   refreshing,
   caughtUp,
   scopeSummaries,
@@ -42,6 +45,8 @@ export function GuidedHomeRails({
   reviewReasonSummary: WorldCountriesTodayReviewReasonSummary
   nextLearning: { track: WorldCountriesTodayLearningTrack; subregionLabel: string } | null
   journey: WorldCountriesJourneyPresentation | null
+  guidedSubregionId?: SubregionId | null
+  onFocusGuidedSubregion?: () => void
   refreshing: boolean
   caughtUp: boolean
   scopeSummaries: readonly GuidedHomeScopeSummary[]
@@ -57,6 +62,9 @@ export function GuidedHomeRails({
   ].filter((item): item is string => Boolean(item))
   const whyTodayText = whyTodayItems.join(' · ')
   const scopeName = continent ?? 'World'
+  const inspectedSubregionLabel = journey ? getSubregionDefinition(journey.subregionId).label : null
+  const guidedSubregionLabel = guidedSubregionId ? getSubregionDefinition(guidedSubregionId).label : null
+  const isInspectingOtherSubregion = Boolean(journey && (!guidedSubregionId || journey.subregionId !== guidedSubregionId))
   const statusHeading = activeCountryCount === 0
     ? '0 Countries active'
     : evidenceStatus === 'error'
@@ -136,13 +144,24 @@ export function GuidedHomeRails({
         )}
         {dueCount > 0 && whyTodayText.length > 0 && (
           <section className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3 text-sm" aria-labelledby="world-countries-guided-why-heading">
-            <p id="world-countries-guided-why-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Why today</p>
+            <p id="world-countries-guided-why-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Why now</p>
             <p className="mt-1 leading-relaxed text-zinc-300">{whyTodayText}</p>
             {reviewReasonSummary.repeated > 0 && <p className="mt-1 text-xs font-semibold text-amber-300">{reviewReasonSummary.repeated} repeated difficulty</p>}
           </section>
         )}
         {nextLearning && <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3 text-sm"><p className="text-xs uppercase tracking-wider text-cyan-300">Next Learning</p><p className="mt-1 font-semibold text-zinc-100">{trackLabel(nextLearning.track)} · {nextLearning.subregionLabel}</p></div>}
-        {journey && <JourneyPath journey={journey} />}
+        {journey && (
+          <>
+            {isInspectingOtherSubregion && (
+              <section className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-sm">
+                <p className="text-xs font-semibold uppercase tracking-wider text-amber-300">Inspecting {inspectedSubregionLabel}</p>
+                <p className="mt-1 text-zinc-300">{nextLearning ? `Continue still follows ${guidedSubregionLabel ?? 'the guided recommendation'}.` : 'No guided action is currently scheduled; this inspection does not change the guided path.'}</p>
+                {onFocusGuidedSubregion && <button type="button" onClick={onFocusGuidedSubregion} className="mt-2 text-xs font-semibold text-cyan-300 hover:text-cyan-200">{guidedSubregionId ? 'Return to guided Subregion' : 'Clear inspection'}</button>}
+              </section>
+            )}
+            <JourneyPath journey={journey} />
+          </>
+        )}
         <div className="space-y-2" aria-label="World Countries secondary actions">
           <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Play and progress</p>
           <div className="grid grid-cols-2 gap-2">
@@ -156,15 +175,16 @@ export function GuidedHomeRails({
     ),
     leftLabel: 'Geography',
     rightLabel: 'Guided journey',
-  }), [activeCountryCount, continent, dueCount, dueCountryCount, evidenceStatus, journey, level, nextLearning, onOpenPlay, onOpenProgress, onWorld, refreshing, reviewReasonSummary, scopeName, scopeSummaries, statusExplanation, statusHeading, whyTodayText])
+  }), [activeCountryCount, continent, dueCount, dueCountryCount, evidenceStatus, guidedSubregionId, guidedSubregionLabel, inspectedSubregionLabel, isInspectingOtherSubregion, journey, level, nextLearning, onFocusGuidedSubregion, onOpenPlay, onOpenProgress, onWorld, refreshing, reviewReasonSummary, scopeName, scopeSummaries, statusExplanation, statusHeading, whyTodayText])
   useRails(rails)
   return null
 }
 
 function JourneyPath({ journey }: { journey: WorldCountriesJourneyPresentation }) {
+  const subregionLabel = getSubregionDefinition(journey.subregionId).label
   return (
     <section className="space-y-2" aria-labelledby="world-countries-journey-heading">
-      <p id="world-countries-journey-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Guided journey</p>
+      <p id="world-countries-journey-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Journey · {subregionLabel}</p>
       <ol className="space-y-2">
         {journey.stages.map((stage, index) => (
           <li key={stage.id} className="flex items-start gap-2" data-journey-stage={stage.id} data-journey-status={stage.status}>
