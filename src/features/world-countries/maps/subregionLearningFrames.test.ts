@@ -33,7 +33,7 @@ function sourceBounds(mapId: string) {
   return value ? parseViewBox(value) : null
 }
 
-function transformBounds(bounds: { x: number; y: number; width: number; height: number }, transform: SvgAffineTransform | null) {
+function transformBounds(bounds: SvgViewBoxRect, transform: SvgAffineTransform | null): SvgViewBoxRect {
   if (!transform) return bounds
   const corners = [
     { x: bounds.x, y: bounds.y },
@@ -48,7 +48,7 @@ function transformBounds(bounds: { x: number; y: number; width: number; height: 
   return { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
 }
 
-function unionBounds(bounds: readonly { x: number; y: number; width: number; height: number }[]) {
+function unionBounds(bounds: readonly SvgViewBoxRect[]): SvgViewBoxRect | null {
   if (bounds.length === 0) return null
   const minX = Math.min(...bounds.map(entry => entry.x))
   const minY = Math.min(...bounds.map(entry => entry.y))
@@ -117,6 +117,9 @@ describe('Subregion learning frames', () => {
     ['central-europe', 'PL', 'Poland'],
     ['balkans', 'RS', 'Serbia'],
     ['eastern-europe', 'RO', 'Romania'],
+    ['eastern-europe', 'MD', 'Moldova'],
+    ['eastern-europe', 'UA', 'Ukraine'],
+    ['eastern-europe', 'BY', 'Belarus'],
   ] as const)('%s keeps %s inside an ordinary-Country safe area', (subregionId, countryId, countryName) => {
     const frame = getSubregionLearningFrame(subregionId)
     const source = frame ? sourceBounds(frame.mapDefinitionId) : null

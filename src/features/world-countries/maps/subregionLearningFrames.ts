@@ -26,7 +26,7 @@ const AUTHORED_BOUNDS = {
   'west-asia': { x: 100, y: 280, width: 550, height: 480 },
   'balkans': { x: 500, y: 260, width: 500, height: 500 },
   'central-europe': { x: 380, y: 300, width: 500, height: 400 },
-  'eastern-europe': { x: 620, y: 220, width: 520, height: 500 },
+  'eastern-europe': { x: 380, y: 300, width: 600, height: 450 },
   'northern-europe': { x: 250, y: 60, width: 700, height: 620 },
   'southern-europe': { x: 200, y: 250, width: 750, height: 540 },
   'western-europe': { x: 250, y: 350, width: 450, height: 400 },
