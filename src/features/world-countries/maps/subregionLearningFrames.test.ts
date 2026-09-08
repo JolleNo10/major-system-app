@@ -202,23 +202,29 @@ describe('Subregion learning frames', () => {
     expect(cameraBounds).not.toBeNull()
 
     for (const [countryId, countryName, representation] of targets) {
-      const geometry = representation === 'geometry' && frame
-        ? countrySourceBounds(frame.mapDefinitionId, countryId, source)
-        : null
-      const anchor = representation === 'learning anchor'
-        ? getMapLearningAnchors('oceania', [countryId])[0]?.point
-        : representation === 'synthetic dot'
-          ? getMapSyntheticDots('oceania', [countryId])[0]?.point
-          : null
+      const anchors = getMapLearningAnchors('oceania', [countryId])
+      const syntheticDots = getMapSyntheticDots('oceania', [countryId])
 
-      if (geometry) {
-        expect(isInsideSafeArea(geometry, cameraBounds!, 0), `${countryName} geometry should remain in view`).toBe(true)
-        const geometryCenter = getSvgBoundsCenter(geometry)
+      if (representation === 'geometry') {
+        expect(anchors, `${countryName} should use ordinary geometry in this regression`).toHaveLength(0)
+        expect(syntheticDots, `${countryName} should use ordinary geometry in this regression`).toHaveLength(0)
+        const geometry = frame ? countrySourceBounds(frame.mapDefinitionId, countryId, source) : null
+        expect(geometry, `${countryName} geometry should resolve from the authoritative SVG`).not.toBeNull()
+        expect(isInsideSafeArea(geometry!, cameraBounds!, 0), `${countryName} geometry should remain in view`).toBe(true)
+        const geometryCenter = getSvgBoundsCenter(geometry!)
         expect(geometryCenter, `${countryName} geometry should have a representative center`).not.toBeNull()
         expect(isPointInsideSafeArea(geometryCenter!, cameraBounds!, REPRESENTATIVE_TARGET_MARGIN_RATIO)).toBe(true)
       } else {
-        expect(anchor, `${countryName} should resolve through its ${representation} metadata`).not.toBeUndefined()
-        expect(isPointInsideSafeArea(anchor!, cameraBounds!, REPRESENTATIVE_TARGET_MARGIN_RATIO)).toBe(true)
+        let points: readonly { x: number; y: number }[]
+        if (representation === 'learning anchor') {
+          expect(anchors, `${countryName} should use its learning anchor metadata`).toHaveLength(1)
+          points = anchors.flatMap(anchor => anchor.point ? [anchor.point] : [])
+        } else {
+          expect(syntheticDots, `${countryName} should use its synthetic-dot metadata`).toHaveLength(1)
+          points = syntheticDots.map(dot => dot.point)
+        }
+        expect(points).toHaveLength(1)
+        expect(isPointInsideSafeArea(points[0]!, cameraBounds!, REPRESENTATIVE_TARGET_MARGIN_RATIO)).toBe(true)
       }
     }
   })
