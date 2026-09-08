@@ -82,6 +82,14 @@ function renderRail() {
 }
 
 describe('CapitalLearningFlow orchestration', () => {
+  it('keeps Country ↔ Capital presentation in the Capital walkthrough', () => {
+    const container = renderFlow(() => undefined)
+    const task = learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].task
+
+    expect(container.textContent).toContain('Norway ↔ Oslo')
+    expect(task).toMatchObject({ direction: 'Country ↔ Capital', cue: 'Norway ↔ Oslo' })
+  })
+
   it('reports staged phases and persists completion only after Final recall', () => {
     const phases: string[] = []
     const container = renderFlow(phase => phases.push(phase))

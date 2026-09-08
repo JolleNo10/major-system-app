@@ -11,7 +11,11 @@ const learningMapSurfaceMock = vi.hoisted(() => vi.fn())
 vi.mock('@/app/layout/PageLayoutContext', () => ({ useRails: useRailsMock }))
 vi.mock('./LearningMapSurface', () => ({ LearningMapSurface: (props: { context: ReactNode; children: ReactNode }) => { learningMapSurfaceMock(props); return createElement('div', null, props.context, props.children) } }))
 vi.mock('./StagedWalkthroughStep', () => ({
-  StagedWalkthroughStep: ({ onContinue }: { onContinue: () => void }) => <button type="button" data-testid="start-location" onClick={onContinue}>Start location</button>,
+  StagedWalkthroughStep: ({ onMove, onContinue }: { onMove: (offset: -1 | 1) => void; onContinue: () => void }) => <>
+    <button type="button" data-testid="walkthrough-previous" onClick={() => onMove(-1)}>Previous</button>
+    <button type="button" data-testid="walkthrough-next" onClick={() => onMove(1)}>Next</button>
+    <button type="button" data-testid="start-location" onClick={onContinue}>Start location</button>
+  </>,
 }))
 vi.mock('./SchedulerLocationPracticeStep', () => ({
   SchedulerLocationPracticeStep: () => <div>Location practice</div>,
@@ -33,6 +37,11 @@ vi.mock('@/features/world-countries/mnemonics/CountryCapitalMnemonicPanel', () =
 
 const entries: Country[] = [
   { id: 'NO', country: 'Norway', capital: 'Oslo', continent: 'Europe', subregionId: 'northern-europe', subregion: 'Northern Europe' },
+]
+
+const walkthroughEntries: Country[] = [
+  { id: 'IS', country: 'Iceland', capital: 'Reykjavík', continent: 'Europe', subregionId: 'northern-europe', subregion: 'Northern Europe' },
+  ...entries,
 ]
 
 let root: Root | null = null
@@ -59,7 +68,50 @@ function renderRail() {
   return mount
 }
 
+function renderFlow(flowEntries: readonly Country[] = entries): HTMLDivElement {
+  const container = document.createElement('div')
+  document.body.append(container)
+  act(() => {
+    root = createRoot(container)
+    root.render(
+      <CountryLearningFlow
+        continent="Europe"
+        subregion="northern-europe"
+        entries={flowEntries}
+        newItemsPerSet={3}
+        schedulerSettings={{ masteryLatencyFactor: 1.4, sessionUnmasteredShare: 0.5 }}
+        fuzzyMatching={false}
+        onPhaseChange={() => undefined}
+        onExit={() => undefined}
+      />,
+    )
+  })
+  return container
+}
+
 describe('CountryLearningFlow scheduler progress wiring', () => {
+  it('keeps the Country walkthrough focused on Country identity while moving between Countries', () => {
+    const container = renderFlow(walkthroughEntries)
+    const latestTask = () => learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].task
+
+    expect(container.textContent).toContain('Iceland')
+    expect(container.textContent).not.toContain('Reykjavík')
+    expect(container.textContent).not.toContain('Country ↔ Capital')
+    expect(latestTask()).toMatchObject({ direction: 'Country', cue: 'Iceland' })
+    expect(latestTask()).not.toHaveProperty('answerKind')
+
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="walkthrough-next"]')!.click())
+    expect(container.textContent).toContain('Norway')
+    expect(container.textContent).not.toContain('Oslo')
+    expect(container.textContent).not.toContain('Country ↔ Capital')
+    expect(latestTask()).toMatchObject({ direction: 'Country', cue: 'Norway' })
+
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="walkthrough-previous"]')!.click())
+    expect(container.textContent).toContain('Iceland')
+    expect(container.textContent).not.toContain('Reykjavík')
+    expect(latestTask()).toMatchObject({ direction: 'Country', cue: 'Iceland' })
+  })
+
   it('shows location scheduler progress only after Location Practice starts', () => {
     const container = document.createElement('div')
     document.body.append(container)

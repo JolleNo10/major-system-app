@@ -181,7 +181,7 @@ export function CountryLearningFlow({
   const activeTask: WorldCountriesActivityTask | undefined = (() => {
     switch (flow.phase) {
       case 'walkthrough':
-        return { direction: 'Country ↔ Capital', cue: walkthroughCountry ? `${walkthroughCountry.country} ↔ ${walkthroughCountry.capital}` : 'Review', sessionContext: `Set ${currentStagedCountrySetNumber(flow)} · Review`, progress: { label: 'Country', current: flow.walkthroughIndex + 1, total: stageEntries.length } }
+        return { direction: 'Country', cue: walkthroughCountry?.country ?? 'Review', sessionContext: `Set ${currentStagedCountrySetNumber(flow)} · Review`, progress: { label: 'Country', current: flow.walkthroughIndex + 1, total: stageEntries.length } }
       case 'location-practice': {
         const current = flow.location ? stageEntries.find(entry => entry.id === flow.location?.currentKey) : undefined
         return { direction: 'Location → Country', cue: current ? `Find ${current.country}` : 'Find the Country', sessionContext: `Set ${currentStagedCountrySetNumber(flow)} · Locate`, answerKind: 'country', progress: practiceProgress ? { label: 'Practice', current: practiceProgress.atTarget, total: practiceProgress.total, percent: practiceProgress.pct * 100 } : undefined }
