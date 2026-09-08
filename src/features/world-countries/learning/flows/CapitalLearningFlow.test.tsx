@@ -121,7 +121,7 @@ describe('CapitalLearningFlow orchestration', () => {
     const container = renderFlow(() => undefined)
 
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-practice"]')!.click())
-    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0]).toMatchObject({ task: { answerKind: 'capital' } })
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0]).toMatchObject({ task: { answerKind: 'capital' }, cameraIntent: { kind: 'subregion-learning', subregionId: 'northern-europe' } })
 
     for (let attempt = 0; attempt < 3; attempt += 1) {
       act(() => container.querySelector<HTMLButtonElement>('[data-testid="submit-correct"]')!.click())
@@ -129,7 +129,7 @@ describe('CapitalLearningFlow orchestration', () => {
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-start"]')!.click())
 
-    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0]).toMatchObject({ task: { answerKind: 'capital' } })
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0]).toMatchObject({ task: { answerKind: 'capital' }, cameraIntent: { kind: 'subregion-learning', subregionId: 'northern-europe' } })
   })
 
   it('hides progress at Ready and resumes retained progress when practising continues', () => {

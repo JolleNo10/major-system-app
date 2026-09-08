@@ -426,7 +426,7 @@ describe('DrillSession map presentation', () => {
     expect(isolatedProps).toMatchObject({
       scopeCountries: [norway, sweden, finland],
       visibleCountryIds: ['NO'],
-      zoomCountryIds: ['NO'],
+      cameraIntent: { kind: 'fit-countries', countryIds: ['NO'] },
       highlightedCountryId: null,
       namedCountryId: null,
       taskTargetCountryId: null,
@@ -439,7 +439,7 @@ describe('DrillSession map presentation', () => {
     const contextProps = learningMapMock.mock.calls[learningMapMock.mock.calls.length - 1][0] as Record<string, unknown>
     expect(contextProps).toMatchObject({
       visibleCountryIds: ['NO', 'SE', 'FI'],
-      zoomCountryIds: ['NO', 'SE', 'FI'],
+      cameraIntent: { kind: 'fit-countries', countryIds: ['NO', 'SE', 'FI'] },
       highlightedCountryId: 'NO',
       namedCountryId: 'NO',
     })
@@ -470,7 +470,7 @@ describe('DrillSession map presentation', () => {
     const feedbackProps = learningMapMock.mock.calls[learningMapMock.mock.calls.length - 1][0] as Record<string, unknown>
     expect(feedbackProps).toMatchObject({
       visibleCountryIds: ['NO'],
-      zoomCountryIds: ['NO'],
+      cameraIntent: { kind: 'fit-countries', countryIds: ['NO'] },
     })
   })
 
@@ -501,7 +501,7 @@ describe('DrillSession map presentation', () => {
     expect(contextProps).toMatchObject({
       scopeCountries: [norway, sweden, finland],
       visibleCountryIds: ['NO', 'SE', 'FI'],
-      zoomCountryIds: ['NO', 'SE', 'FI'],
+      cameraIntent: { kind: 'fit-countries', countryIds: ['NO', 'SE', 'FI'] },
       highlightedCountryId: 'NO',
     })
   })

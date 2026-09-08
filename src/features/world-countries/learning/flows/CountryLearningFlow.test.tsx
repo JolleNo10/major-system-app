@@ -109,6 +109,6 @@ describe('CountryLearningFlow scheduler progress wiring', () => {
     })
 
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-location"]')!.click())
-    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0]).toMatchObject({ task: { answerKind: 'country' } })
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0]).toMatchObject({ task: { answerKind: 'country' }, cameraIntent: { kind: 'subregion-learning', subregionId: 'northern-europe' } })
   })
 })

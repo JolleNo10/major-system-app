@@ -16,8 +16,14 @@ import {
 import { getMapLearningAnchors } from './learningAnchors'
 import { getMemoMapDefinition, MEMO_MAP_DEFINITIONS } from './mapDefinitions'
 import { getMapSyntheticDots } from './syntheticDots'
-import type { SvgMapGroupOutline } from './SvgMapController'
+import type { SvgMapCameraIntent, SvgMapGroupOutline } from './SvgMapController'
 import { SvgMapView, type SvgMapCountry, type SvgMapLoadState } from './SvgMapView'
+import { getSubregionLearningFrame } from './subregionLearningFrames'
+import {
+  DEFAULT_WORLD_COUNTRIES_MAP_CAMERA_INTENT,
+  getWorldCountriesMapCameraIntentSignature,
+  type WorldCountriesMapCameraIntent,
+} from './cameraIntent'
 
 const GEOGRAPHY_OVERVIEW_HOVER_FILL = '#0f766e'
 const GEOGRAPHY_OVERVIEW_HOVER_STROKE = '#d4d4d8'
@@ -45,15 +51,8 @@ export interface GeographyOverviewMapProps {
   highlightFill?: string
   /** Caller-owned Country IDs whose labels should be visible. */
   namedCountryIds?: readonly CountryId[]
-  /** Caller-controlled Country IDs used for explicit map fitting. */
-  zoomCountryIds?: readonly CountryId[]
-  /** Fit a target-centred local neighbourhood without fitting full context bboxes. */
-  neighbourhoodZoom?: {
-    targetCountryId: CountryId
-    contextCountryIds?: readonly CountryId[]
-    /** Use a full regional frame for compact geometry and target-centric framing for sparse geometry. */
-    adaptive?: boolean
-  }
+  /** One semantic camera intent; Country/Subregion identities are resolved here. */
+  cameraIntent?: WorldCountriesMapCameraIntent
   /** Country identity for a task marker/representative anchor; translated to SVG at this map boundary. */
   taskTargetCountryId?: CountryId | null
   /** Optional non-color descriptions for the mapped Countries. */
@@ -92,8 +91,7 @@ export function GeographyOverviewMap({
   highlightedCountryIds = EMPTY_COUNTRY_IDS,
   highlightFill,
   namedCountryIds = EMPTY_COUNTRY_IDS,
-  zoomCountryIds,
-  neighbourhoodZoom,
+  cameraIntent = DEFAULT_WORLD_COUNTRIES_MAP_CAMERA_INTENT,
   taskTargetCountryId = null,
   countryAccessibleDescriptionsById,
   countryPopulation,
@@ -279,23 +277,6 @@ export function GeographyOverviewMap({
     }),
     [activeHoveredGroupId, hoverGroups, selectedGroupIds],
   )
-  const explicitZoomSvgIds = useMemo(
-    () => zoomCountryIds === undefined
-      ? EMPTY_COUNTRY_IDS
-      : resolveCountryIdsToSvgIds(zoomCountryIds, visibleCountries, mapCountryIds),
-    [mapCountryIds, visibleCountries, zoomCountryIds],
-  )
-  const neighbourhoodTargetCountryId = neighbourhoodZoom?.targetCountryId
-  const neighbourhoodContextCountryIds = neighbourhoodZoom?.contextCountryIds
-  const neighbourhoodAdaptive = neighbourhoodZoom?.adaptive ?? false
-  const targetCentricZoom = useMemo(() => neighbourhoodTargetCountryId
-    ? {
-      targetIds: resolveCountryIdsToSvgIds([neighbourhoodTargetCountryId], visibleCountries, mapCountryIds),
-      contextIds: resolveCountryIdsToSvgIds(neighbourhoodContextCountryIds ?? [], visibleCountries, mapCountryIds),
-      ...(neighbourhoodAdaptive ? { adaptive: true } : {}),
-    }
-    : undefined,
-  [mapCountryIds, neighbourhoodAdaptive, neighbourhoodContextCountryIds, neighbourhoodTargetCountryId, visibleCountries])
   const taskAssistance = useMemo(() => {
     if (taskTargetCountryId === null) return null
     const targetCountry = visibleCountries.find(country => country.id === taskTargetCountryId)
@@ -328,11 +309,40 @@ export function GeographyOverviewMap({
       ...(syntheticDots.length ? { syntheticDots } : {}),
     }
   }, [definition.id, mapCountryIds, taskTargetCountryId, visibleCountries])
-  const zoomIds = zoomCountryIds !== undefined
-    ? explicitZoomSvgIds
-    : level === 'continent' && continent && (focusedSubregionId || definition.domainContinents.length > 1)
-      ? (focusedSubregionId ? focusSvgIds : visibleSvgIds)
-      : EMPTY_COUNTRY_IDS
+  const defaultZoomIds = level === 'continent' && continent && (focusedSubregionId || definition.domainContinents.length > 1)
+    ? (focusedSubregionId ? focusSvgIds : visibleSvgIds)
+    : EMPTY_COUNTRY_IDS
+
+  const cameraSignature = getWorldCountriesMapCameraIntentSignature(cameraIntent)
+  const camera = useMemo<SvgMapCameraIntent>(() => {
+    switch (cameraIntent.kind) {
+      case 'default':
+        return defaultZoomIds.length
+          ? { kind: 'country-bounds', countryIds: defaultZoomIds, padding: definition.zoomPadding }
+          : { kind: 'default' }
+      case 'subregion-learning': {
+        const frame = getSubregionLearningFrame(cameraIntent.subregionId)
+        return frame?.mapDefinitionId === definition.id
+          ? { kind: 'view-box', bounds: frame.bounds }
+          : { kind: 'default' }
+      }
+      case 'fit-countries':
+        return {
+          kind: 'country-bounds',
+          countryIds: resolveCountryIdsToSvgIds(cameraIntent.countryIds, visibleCountries, mapCountryIds),
+          padding: definition.zoomPadding,
+        }
+      case 'target-neighbourhood':
+        return {
+          kind: 'target-centric-neighbourhood',
+          targetIds: resolveCountryIdsToSvgIds([cameraIntent.targetCountryId], visibleCountries, mapCountryIds),
+          contextIds: resolveCountryIdsToSvgIds(cameraIntent.contextCountryIds ?? [], visibleCountries, mapCountryIds),
+        }
+    }
+  // The signature intentionally stabilizes same-semantic caller objects so
+  // target feedback does not reapply a stable learning camera.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cameraSignature, defaultZoomIds, definition.id, definition.zoomPadding, mapCountryIds, visibleCountries])
 
   const title = level === 'world' ? 'World' : continent ?? 'Continent'
   const descriptionId = `geography-map-descriptions-${useId().replace(/:/g, '')}`
@@ -372,10 +382,8 @@ export function GeographyOverviewMap({
         mutedIds={mutedSvgIds}
         countryColors={countryColors}
         namedIds={namedSvgIds}
-        zoomIds={targetCentricZoom ? [] : zoomIds}
-        targetCentricZoom={targetCentricZoom}
+        camera={camera}
         taskAssistance={taskAssistance}
-        zoomPadding={definition.zoomPadding}
         onCountriesLoaded={setMapCountries}
         onLoadStateChange={onMapStateChange}
         onCountryHover={svgId => {

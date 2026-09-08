@@ -38,6 +38,7 @@ export function SchedulerLocationPracticeStep({ continent, entries, session, lab
     setFeedback({ correct, expectedId: expected.id, selectedId, latencyMs: Date.now() - startedAt.current })
   }, [expected, feedback])
   useLearningMapPresentation({
+    cameraIntent: expected ? { kind: 'subregion-learning', subregionId: expected.subregionId } : { kind: 'default' },
     answerSelectionCountryIds: entries.map(entry => entry.id),
     taskTargetCountryId: feedback ? feedback.expectedId : null,
     highlightedCountryId: feedback ? feedback.expectedId : null,
@@ -68,7 +69,7 @@ export function SchedulerLocationPracticeStep({ continent, entries, session, lab
     <div className="space-y-4 animate-fade-in">
       <WorldCountriesMapActivitySurface
         task={activityTask}
-        map={<CountryLearningMap continent={continent} scopeCountries={entries} highlightFill={getWorldCountriesTaskHighlightFill('country')} answerSelectionCountryIds={entries.map(entry => entry.id)} taskTargetCountryId={feedback ? feedback.expectedId : null} highlightedCountryId={feedback ? feedback.expectedId : null} onCountryClick={submit} ariaLabel="Unlabeled map for location practice" />}
+        map={<CountryLearningMap continent={continent} scopeCountries={entries} cameraIntent={{ kind: 'subregion-learning', subregionId: expected.subregionId }} highlightFill={getWorldCountriesTaskHighlightFill('country')} answerSelectionCountryIds={entries.map(entry => entry.id)} taskTargetCountryId={feedback ? feedback.expectedId : null} highlightedCountryId={feedback ? feedback.expectedId : null} onCountryClick={submit} ariaLabel="Unlabeled map for location practice" />}
         dock={dock}
         dockPlacement="stacked"
       />

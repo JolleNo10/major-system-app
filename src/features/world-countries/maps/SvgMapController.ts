@@ -49,13 +49,12 @@ export interface SvgMapZoomArea {
   padding?: number
 }
 
-/** SVG-level target and local context for a bounded neighbourhood camera. */
-export interface SvgMapTargetCentricZoomIntent {
-  targetIds: readonly string[]
-  contextIds?: readonly string[]
-  /** Choose a full regional frame for compact geometry and a bounded target frame for sparse geometry. */
-  adaptive?: boolean
-}
+/** Resolved, workflow-agnostic camera intent used by the SVG adapter. */
+export type SvgMapCameraIntent =
+  | { kind: 'default' }
+  | { kind: 'view-box'; bounds: SvgViewBoxRect }
+  | { kind: 'country-bounds'; countryIds: readonly string[]; padding: number }
+  | { kind: 'target-centric-neighbourhood'; targetIds: readonly string[]; contextIds?: readonly string[] }
 
 /** Complete declarative map presentation applied as one DOM render. */
 export interface SvgMapPresentationState {
@@ -185,11 +184,7 @@ const TARGET_CENTRIC_CONTEXT_SAMPLE_COUNT = 32
 const TARGET_CENTRIC_PADDING_RATIO = 0.3
 const TARGET_CENTRIC_MIN_WINDOW_RATIO = 0.16
 const TARGET_CENTRIC_MAX_WINDOW_RATIO = 0.85
-const ADAPTIVE_SPARSE_REGION_FILL_RATIO = 0.08
-const ADAPTIVE_MIN_TARGET_FILL_RATIO = 0.04
-const ADAPTIVE_MAX_TARGET_FILL_RATIO = 0.78
-const ADAPTIVE_TARGET_MIN_WINDOW_RATIO = 0.04
-const ADAPTIVE_TARGET_ANCHOR_PADDING_RATIO = 0.01
+const TASK_TARGET_ANCHOR_PADDING_RATIO = 0.01
 
 function captureStyle(element: SVGElement, property: string): OriginalStyle {
   return {
@@ -223,6 +218,12 @@ function collectTextNodes(element: Element): Text[] {
 
 function uniqueStrings(values: Iterable<string>): string[] {
   return [...new Set(Array.from(values, value => value.trim()).filter(Boolean))]
+}
+
+function isFinitePositiveViewBox(bounds: SvgViewBoxRect): boolean {
+  return [bounds.x, bounds.y, bounds.width, bounds.height].every(Number.isFinite)
+    && bounds.width > 0
+    && bounds.height > 0
 }
 
 function copyGroup(group: SvgMapHoverGroup): SvgMapHoverGroup {
@@ -271,6 +272,9 @@ export class SvgMapController {
   private originalViewBox: string | null = null
   private presentation: SvgMapPresentation = 'standard'
   private zoomIntent: {
+    kind: 'view-box'
+    bounds: SvgViewBoxRect
+  } | {
     kind: 'country-bounds'
     countryIds: readonly string[]
     padding: number
@@ -278,11 +282,6 @@ export class SvgMapController {
     kind: 'target-centric-neighbourhood'
     targetIds: readonly string[]
     contextIds: readonly string[]
-  } | {
-    kind: 'adaptive-target-centric-neighbourhood'
-    targetIds: readonly string[]
-    contextIds: readonly string[]
-    regionalPadding: number
   } | null = null
   private loadVersion = 0
   private abortController: AbortController | null = null
@@ -414,6 +413,35 @@ export class SvgMapController {
     }
   }
 
+  setCamera(camera: SvgMapCameraIntent): SvgMapMutationResult {
+    switch (camera.kind) {
+      case 'default':
+        this.resetZoom()
+        return { activeIds: [], unknownIds: [] }
+      case 'view-box':
+        return this.setViewBoxRect(camera.bounds)
+      case 'country-bounds':
+        if (camera.countryIds.length === 0) {
+          this.resetZoom()
+          return { activeIds: [], unknownIds: [] }
+        }
+        return this.setZoomArea(camera.countryIds, camera.padding)
+      case 'target-centric-neighbourhood':
+        return this.setTargetCentricZoom(camera.targetIds, camera.contextIds)
+    }
+  }
+
+  setViewBoxRect(bounds: SvgViewBoxRect): SvgMapMutationResult {
+    this.assertUsable()
+    if (!isFinitePositiveViewBox(bounds)) {
+      this.resetZoom()
+      return { activeIds: [], unknownIds: [] }
+    }
+    this.zoomIntent = { kind: 'view-box', bounds: { ...bounds } }
+    this.recomputeViewBox(bounds)
+    return { activeIds: [], unknownIds: [] }
+  }
+
   setZoomArea(countryIds: Iterable<string>, padding = 40): SvgMapMutationResult {
     this.assertUsable()
     const { knownIds, unknownIds } = this.resolveKnown(countryIds)
@@ -461,43 +489,6 @@ export class SvgMapController {
       contextIds: context.knownIds,
     }
     this.recomputeViewBox(targetBounds)
-    return { activeIds, unknownIds }
-  }
-
-  /**
-   * Fit a regional frame unless the supplied geometry is spatially sparse.
-   * Sparse regions use the existing target-centric camera so disconnected
-   * islands do not make the learner look at a mostly empty bounding box.
-   */
-  setAdaptiveTargetCentricZoom(
-    targetIds: Iterable<string>,
-    contextIds: Iterable<string> = [],
-    regionalPadding = 0,
-  ): SvgMapMutationResult {
-    this.assertUsable()
-    const target = this.resolveKnown(targetIds)
-    const context = this.resolveKnown(contextIds)
-    const activeIds = uniqueStrings([...target.knownIds, ...context.knownIds])
-    const unknownIds = uniqueStrings([...target.unknownIds, ...context.unknownIds])
-    if (target.knownIds.length === 0 || !this.svg || !this.originalViewBox) {
-      this.resetZoom()
-      return { activeIds: [], unknownIds }
-    }
-
-    const safePadding = Number.isFinite(regionalPadding) ? Math.max(0, regionalPadding) : 0
-    const bounds = this.getAdaptiveTargetCentricCountryBounds(target.knownIds, context.knownIds, safePadding)
-    if (!bounds) {
-      this.resetZoom()
-      return { activeIds, unknownIds }
-    }
-
-    this.zoomIntent = {
-      kind: 'adaptive-target-centric-neighbourhood',
-      targetIds: target.knownIds,
-      contextIds: context.knownIds,
-      regionalPadding: safePadding,
-    }
-    this.recomputeViewBox(bounds)
     return { activeIds, unknownIds }
   }
 
@@ -1243,16 +1234,6 @@ export class SvgMapController {
     return this.getPaddedBounds(this.getCountryBoxes(countryIds), padding)
   }
 
-  private getPaddedCountryBoundsInMap(countryIds: readonly string[], padding: number): SvgViewBoxRect | null {
-    const boxes = countryIds.flatMap(id => {
-      const country = this.countries.get(id)
-      if (!country) return []
-      const box = this.getCountryBoxInLayer(country.path)
-      return box ? [box] : []
-    })
-    return this.getPaddedBounds(boxes, padding)
-  }
-
   private getPaddedBounds(boxes: readonly SvgViewBoxRect[], padding: number): SvgViewBoxRect | null {
     if (boxes.length === 0) return null
 
@@ -1271,17 +1252,15 @@ export class SvgMapController {
   private getTargetCentricCountryBounds(
     targetIds: readonly string[],
     contextIds: readonly string[],
-    minimumWindowRatio = TARGET_CENTRIC_MIN_WINDOW_RATIO,
   ): SvgViewBoxRect | null {
     const selection = this.selectTargetGeometryComponents(targetIds, contextIds)
     return selection
-      ? this.getTargetCentricCountryBoundsFromSelection(selection, minimumWindowRatio)
+      ? this.getTargetCentricCountryBoundsFromSelection(selection)
       : null
   }
 
   private getTargetCentricCountryBoundsFromSelection(
     selection: TargetComponentSelection,
-    minimumWindowRatio: number,
   ): SvgViewBoxRect | null {
 
     const sourceBounds = this.originalViewBox ? parseViewBox(this.originalViewBox) : null
@@ -1303,7 +1282,7 @@ export class SvgMapController {
       targetBounds.x,
       targetBounds.x + targetBounds.width,
       paddingX,
-      sourceWidth * minimumWindowRatio,
+      sourceWidth * TARGET_CENTRIC_MIN_WINDOW_RATIO,
       sourceWidth * TARGET_CENTRIC_MAX_WINDOW_RATIO,
     )
     const vertical = this.fitTargetClusterAxis(
@@ -1312,7 +1291,7 @@ export class SvgMapController {
       targetBounds.y,
       targetBounds.y + targetBounds.height,
       paddingY,
-      sourceHeight * minimumWindowRatio,
+      sourceHeight * TARGET_CENTRIC_MIN_WINDOW_RATIO,
       sourceHeight * TARGET_CENTRIC_MAX_WINDOW_RATIO,
     )
     return {
@@ -1321,40 +1300,6 @@ export class SvgMapController {
       width: horizontal.size,
       height: vertical.size,
     }
-  }
-
-  private isSparseRegion(countryIds: readonly string[]): boolean {
-    const regionalBounds = this.getBoundsUnion(this.getCountryBoxes(countryIds))
-    if (!regionalBounds) return false
-
-    const components = countryIds.flatMap(countryId => this.getTargetGeometryComponents([countryId]))
-    if (components.length < 3) return false
-
-    const totalComponentArea = components.reduce(
-      (total, component) => total + component.bounds.width * component.bounds.height,
-      0,
-    )
-    const regionalArea = regionalBounds.width * regionalBounds.height
-    if (!Number.isFinite(totalComponentArea) || !Number.isFinite(regionalArea) || regionalArea <= 0) return false
-
-    // Component bounding boxes are intentionally conservative. A low fill
-    // ratio still reliably identifies disconnected dot/island groups without
-    // classifying ordinary contiguous Country regions as sparse.
-    return totalComponentArea / regionalArea < ADAPTIVE_SPARSE_REGION_FILL_RATIO
-  }
-
-  private isSparseTargetGeometry(targetIds: readonly string[]): boolean {
-    const components = this.getTargetGeometryComponents(targetIds)
-    const targetBounds = this.getTargetFramingBounds(targetIds)
-    if (components.length < 2 || !targetBounds) return false
-
-    const totalComponentArea = components.reduce(
-      (total, component) => total + component.bounds.width * component.bounds.height,
-      0,
-    )
-    const targetArea = targetBounds.width * targetBounds.height
-    if (!Number.isFinite(totalComponentArea) || !Number.isFinite(targetArea) || targetArea <= 0) return false
-    return totalComponentArea / targetArea < ADAPTIVE_SPARSE_REGION_FILL_RATIO
   }
 
   private selectTargetGeometryComponents(
@@ -1399,16 +1344,6 @@ export class SvgMapController {
     return targetBounds ? { targetBounds, contextAssociations } : null
   }
 
-  private getTargetFramingBounds(targetIds: readonly string[]): SvgViewBoxRect | null {
-    const boxes = targetIds.flatMap(id => {
-      const country = this.countries.get(id)
-      if (!country) return []
-      const box = this.getCountryBoxInLayer(country.path)
-      return box ? [box] : []
-    })
-    return this.includeTaskTargetPoints(this.getBoundsUnion(boxes), targetIds)
-  }
-
   private getTaskTargetPoints(targetIds: readonly string[]): SvgPoint[] {
     return targetIds.flatMap(id => {
       const point = this.taskAssistance.getTaskTargetPoint(id)
@@ -1426,7 +1361,7 @@ export class SvgMapController {
     const sourceBounds = this.originalViewBox ? parseViewBox(this.originalViewBox) : null
     const fallbackSize = Math.max(bounds?.width ?? 0, bounds?.height ?? 0)
     const sourceSize = sourceBounds ? Math.min(sourceBounds.width, sourceBounds.height) : fallbackSize
-    const padding = Math.max(sourceSize * ADAPTIVE_TARGET_ANCHOR_PADDING_RATIO, Number.EPSILON)
+    const padding = Math.max(sourceSize * TASK_TARGET_ANCHOR_PADDING_RATIO, Number.EPSILON)
     const pointBounds = points.map(point => ({
       x: point.x - padding,
       y: point.y - padding,
@@ -1434,36 +1369,6 @@ export class SvgMapController {
       height: padding * 2,
     }))
     return this.getBoundsUnion(bounds ? [bounds, ...pointBounds] : pointBounds)
-  }
-
-  private getTargetFrameScale(targetBounds: SvgViewBoxRect, frame: SvgViewBoxRect): { width: number; height: number } | null {
-    if (frame.width <= 0 || frame.height <= 0 || targetBounds.width <= 0 || targetBounds.height <= 0) return null
-    const fittedFrame = fitViewBoxToAspect(frame, this.getMapSlotAspect())
-    return {
-      width: targetBounds.width / fittedFrame.width,
-      height: targetBounds.height / fittedFrame.height,
-    }
-  }
-
-  private isTargetTooSmall(scale: { width: number; height: number } | null): boolean {
-    return Boolean(scale && (scale.width < ADAPTIVE_MIN_TARGET_FILL_RATIO || scale.height < ADAPTIVE_MIN_TARGET_FILL_RATIO))
-  }
-
-  private isTargetTooDominant(scale: { width: number; height: number } | null): boolean {
-    return Boolean(scale && (scale.width > ADAPTIVE_MAX_TARGET_FILL_RATIO || scale.height > ADAPTIVE_MAX_TARGET_FILL_RATIO))
-  }
-
-  private expandFrameForTargetScale(frame: SvgViewBoxRect, targetBounds: SvgViewBoxRect): SvgViewBoxRect {
-    const minimumWidth = targetBounds.width / ADAPTIVE_MAX_TARGET_FILL_RATIO
-    const minimumHeight = targetBounds.height / ADAPTIVE_MAX_TARGET_FILL_RATIO
-    const width = Math.max(frame.width, minimumWidth)
-    const height = Math.max(frame.height, minimumHeight)
-    return {
-      x: frame.x - (width - frame.width) / 2,
-      y: frame.y - (height - frame.height) / 2,
-      width,
-      height,
-    }
   }
 
   private getTargetGeometryComponents(targetIds: readonly string[]): TargetGeometryComponent[] {
@@ -1682,64 +1587,19 @@ export class SvgMapController {
       this.render()
       return
     }
-    this.setViewBox(value)
+    this.applyViewBox(value)
   }
 
   private getRetainedZoomBounds(): SvgViewBoxRect | null {
     if (!this.zoomIntent) return this.originalViewBox ? parseViewBox(this.originalViewBox) : null
-    return this.zoomIntent.kind === 'country-bounds'
-      ? this.getPaddedCountryBounds(this.zoomIntent.countryIds, this.zoomIntent.padding)
-      : this.zoomIntent.kind === 'target-centric-neighbourhood'
-        ? this.getTargetCentricCountryBounds(this.zoomIntent.targetIds, this.zoomIntent.contextIds)
-        : this.getAdaptiveTargetCentricCountryBounds(
-          this.zoomIntent.targetIds,
-          this.zoomIntent.contextIds,
-          this.zoomIntent.regionalPadding,
-        )
+    return this.zoomIntent.kind === 'view-box'
+      ? this.zoomIntent.bounds
+      : this.zoomIntent.kind === 'country-bounds'
+        ? this.getPaddedCountryBounds(this.zoomIntent.countryIds, this.zoomIntent.padding)
+        : this.getTargetCentricCountryBounds(this.zoomIntent.targetIds, this.zoomIntent.contextIds)
   }
 
-  private getAdaptiveTargetCentricCountryBounds(
-    targetIds: readonly string[],
-    contextIds: readonly string[],
-    regionalPadding: number,
-  ): SvgViewBoxRect | null {
-    const regionalIds = uniqueStrings([...targetIds, ...contextIds])
-    const targetSelection = this.selectTargetGeometryComponents(targetIds, contextIds)
-    const regionalBounds = this.includeTaskTargetPoints(
-      this.getPaddedCountryBoundsInMap(regionalIds, regionalPadding),
-      targetIds,
-    )
-    const targetCentricBounds = targetSelection
-      ? this.getTargetCentricCountryBoundsFromSelection(targetSelection, ADAPTIVE_TARGET_MIN_WINDOW_RATIO)
-      : null
-    // Keep the regional scale check aligned with the target-centric candidate.
-    // A representative task point may deliberately select one small component
-    // of a dispersed Country; the full Country bbox must not make it appear
-    // legible in a broad regional frame.
-    const targetBounds = targetSelection?.targetBounds ?? this.getTargetFramingBounds(targetIds)
-    const regionalTargetScale = regionalBounds && targetBounds
-      ? this.getTargetFrameScale(targetBounds, regionalBounds)
-      : null
-    const targetCentricTargetBounds = targetBounds
-    const targetCentricScale = targetCentricBounds && targetCentricTargetBounds
-      ? this.getTargetFrameScale(targetCentricTargetBounds, targetCentricBounds)
-      : null
-    const useTargetCentric = Boolean(
-      targetCentricBounds
-      && (this.isSparseRegion(regionalIds)
-        || this.isSparseTargetGeometry(targetIds)
-        || this.isTargetTooSmall(regionalTargetScale)),
-    )
-    let bounds = useTargetCentric ? targetCentricBounds : regionalBounds ?? targetCentricBounds
-    const selectedTargetBounds = useTargetCentric ? targetCentricTargetBounds : targetBounds
-    const selectedTargetScale = useTargetCentric ? targetCentricScale : regionalTargetScale
-    if (bounds && selectedTargetBounds && this.isTargetTooDominant(selectedTargetScale)) {
-      bounds = this.expandFrameForTargetScale(bounds, selectedTargetBounds)
-    }
-    return bounds
-  }
-
-  private setViewBox(value: string): void {
+  private applyViewBox(value: string): void {
     if (!this.svg) return
     this.svg.setAttribute('viewBox', value)
     this.render()

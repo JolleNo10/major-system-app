@@ -66,6 +66,7 @@ export function SchedulerPracticeStep({
     : 'Map for typed Country practice without the Country name revealed'
   const presentationCountryId = current?.id ?? null
   useLearningMapPresentation({
+    cameraIntent: current ? { kind: 'subregion-learning', subregionId: current.subregionId } : { kind: 'default' },
     taskTargetCountryId: showCountryName ? null : presentationCountryId,
     highlightedCountryId: presentationCountryId,
     namedCountryId: showCountryName ? presentationCountryId : null,
@@ -119,7 +120,7 @@ export function SchedulerPracticeStep({
             <WorldCountriesMapActivitySurface
               task={activityTask}
               map={showMap
-                ? <CountryLearningMap continent={continent} scopeCountries={entries} highlightFill={getWorldCountriesTaskHighlightFill(answerKind)} taskTargetCountryId={showCountryName ? null : current.id} highlightedCountryId={current.id} namedCountryId={showCountryName ? current.id : null} showHighlightedNames={showCountryName} ariaLabel={ariaLabel} />
+                ? <CountryLearningMap continent={continent} scopeCountries={entries} cameraIntent={{ kind: 'subregion-learning', subregionId: current.subregionId }} highlightFill={getWorldCountriesTaskHighlightFill(answerKind)} taskTargetCountryId={showCountryName ? null : current.id} highlightedCountryId={current.id} namedCountryId={showCountryName ? current.id : null} showHighlightedNames={showCountryName} ariaLabel={ariaLabel} />
                 : <div className="hidden" aria-hidden="true" />}
               feedbackOverlay={typed.feedbackOverlay}
               dockPlacement="stacked"

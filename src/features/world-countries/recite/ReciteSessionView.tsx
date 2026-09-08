@@ -97,17 +97,12 @@ export function ReciteSession({ run, phase, fuzzyMatching, onSubmit, onReveal, o
     [currentPromptCountryId, run.assistance],
   )
   const currentSubregionId = currentCountry?.subregionId
-  const randomNeighbourhoodZoom = useMemo(() => {
-    if (run.assistance !== 'random' || !currentPromptCountryId || !currentContinent || !currentSubregionId) return undefined
-    const contextCountryIds = run.population
-      .filter(country => country.continent === currentContinent && country.subregionId === currentSubregionId)
-      .map(country => country.id)
-    return {
-      targetCountryId: currentPromptCountryId,
-      contextCountryIds,
-      adaptive: true,
-    }
-  }, [currentContinent, currentPromptCountryId, currentSubregionId, run.assistance, run.population])
+  const learningCameraIntent = useMemo(
+    () => currentSubregionId
+      ? { kind: 'subregion-learning' as const, subregionId: currentSubregionId }
+      : { kind: 'default' as const },
+    [currentSubregionId],
+  )
   const highlightFill = currentAnswerKind ? getWorldCountriesTaskHighlightFill(currentAnswerKind) : undefined
   const map = useMemo(() => (
     <GeographyOverviewMap
@@ -118,13 +113,13 @@ export function ReciteSession({ run, phase, fuzzyMatching, onSubmit, onReveal, o
       countryPopulation={run.population}
       highlightedCountryIds={highlightedCountryIds}
       highlightFill={highlightFill}
-      neighbourhoodZoom={randomNeighbourhoodZoom}
+      cameraIntent={learningCameraIntent}
       taskTargetCountryId={run.assistance === 'random' ? currentPromptCountryId : null}
       hiddenCountryIds={hiddenCountryIds}
       interactive={false}
       ariaLabel={`${mapContinent ?? 'World'} map for active Recite session`}
     />
-  ), [activeCountryColors, currentPromptCountryId, highlightedCountryIds, hiddenCountryIds, highlightFill, mapContinent, randomNeighbourhoodZoom, run.assistance, run.population, selectedCountryIds])
+  ), [activeCountryColors, currentPromptCountryId, highlightedCountryIds, hiddenCountryIds, highlightFill, learningCameraIntent, mapContinent, run.assistance, run.population, selectedCountryIds])
 
   if (phase === 'complete') {
     const count = (outcome: ReciteCountryOutcome) => outcomes.filter(candidate => candidate === outcome).length

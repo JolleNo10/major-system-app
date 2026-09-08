@@ -7,7 +7,7 @@ import {
   type SvgMapHoverGroup,
   type SvgMapTaskAssistance,
   type SvgMapSettings,
-  type SvgMapTargetCentricZoomIntent,
+  type SvgMapCameraIntent,
 } from './SvgMapController'
 import { useMapSurfacePresentation } from '@/features/world-countries/ui/MapSurface'
 
@@ -21,6 +21,7 @@ const EMPTY_GROUP_OUTLINES: readonly SvgMapGroupOutline[] = []
 const EMPTY_COUNTRY_COLORS: readonly (readonly [string, string | null])[] = []
 const EMPTY_SETTINGS: Partial<SvgMapSettings> = {}
 const EMBEDDED_MAPCHART_CREDIT_ID = 'credit-text-svg'
+const DEFAULT_CAMERA: SvgMapCameraIntent = { kind: 'default' }
 
 export interface SvgMapViewProps {
   svgUrl: string
@@ -35,9 +36,7 @@ export interface SvgMapViewProps {
   countryColors?: SvgMapCountryColors
   namedIds?: readonly string[]
   countryLabels?: Readonly<Record<string, string>>
-  zoomIds?: readonly string[]
-  targetCentricZoom?: SvgMapTargetCentricZoomIntent
-  zoomPadding?: number
+  camera?: SvgMapCameraIntent
   settings?: Partial<SvgMapSettings>
   taskAssistance?: SvgMapTaskAssistance | null
   className?: string
@@ -63,9 +62,7 @@ export function SvgMapView({
   countryColors = EMPTY_COUNTRY_COLORS,
   namedIds = EMPTY_IDS,
   countryLabels = EMPTY_COUNTRY_LABELS,
-  zoomIds = EMPTY_IDS,
-  targetCentricZoom,
-  zoomPadding = 32,
+  camera = DEFAULT_CAMERA,
   settings = EMPTY_SETTINGS,
   taskAssistance = null,
   className = '',
@@ -168,11 +165,8 @@ export function SvgMapView({
   useEffect(() => {
     const controller = controllerRef.current
     if (!controller || countries.length === 0) return
-    if (targetCentricZoom?.adaptive) controller.setAdaptiveTargetCentricZoom(targetCentricZoom.targetIds, targetCentricZoom.contextIds, zoomPadding)
-    else if (targetCentricZoom) controller.setTargetCentricZoom(targetCentricZoom.targetIds, targetCentricZoom.contextIds)
-    else if (zoomIds.length) controller.setZoomArea(zoomIds, zoomPadding)
-    else controller.resetZoom()
-  }, [countries, targetCentricZoom, zoomIds, zoomPadding])
+    controller.setCamera(camera)
+  }, [camera, countries])
 
   const clearMapHover = () => {
     const controller = controllerRef.current

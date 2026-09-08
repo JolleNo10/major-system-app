@@ -223,7 +223,7 @@ describe('real bundled-map tiny Country selection', () => {
         continent: 'Europe',
         scopeCountries: [andorra, sanMarino, vaticanCity, malta],
         visibleCountryIds: [andorra.id],
-        zoomCountryIds: [andorra.id],
+        cameraIntent: { kind: 'fit-countries', countryIds: [andorra.id] },
         ariaLabel: 'Isolated Andorra shape',
       }))
       await Promise.resolve()
@@ -245,7 +245,7 @@ describe('real bundled-map tiny Country selection', () => {
         continent: 'Europe',
         scopeCountries: [andorra, sanMarino, vaticanCity, malta],
         visibleCountryIds: [andorra.id, sanMarino.id, vaticanCity.id, malta.id],
-        zoomCountryIds: [andorra.id, sanMarino.id, vaticanCity.id, malta.id],
+        cameraIntent: { kind: 'fit-countries', countryIds: [andorra.id, sanMarino.id, vaticanCity.id, malta.id] },
         highlightedCountryId: andorra.id,
         ariaLabel: 'Southern Europe shape context',
       }))
@@ -267,7 +267,7 @@ describe('real bundled-map tiny Country selection', () => {
         continent: 'Europe',
         scopeCountries: [unitedKingdom],
         visibleCountryIds: [unitedKingdom.id],
-        zoomCountryIds: [unitedKingdom.id],
+        cameraIntent: { kind: 'fit-countries', countryIds: [unitedKingdom.id] },
         ariaLabel: 'United Kingdom shape',
       }))
       await Promise.resolve()
@@ -292,7 +292,7 @@ describe('real bundled-map tiny Country selection', () => {
         continent: 'Oceania',
         scopeCountries: [nauru],
         visibleCountryIds: [nauru.id],
-        zoomCountryIds: [nauru.id],
+        cameraIntent: { kind: 'fit-countries', countryIds: [nauru.id] },
         ariaLabel: 'Nauru shape',
       }))
       await Promise.resolve()

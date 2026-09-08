@@ -1,6 +1,7 @@
 import { createContext, useContext, useLayoutEffect, useMemo, useState, type DependencyList, type ReactNode } from 'react'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
 import { CountryLearningMap, type CountryLearningMapProps } from '@/features/world-countries/learning/CountryLearningMap'
+import type { WorldCountriesMapCameraIntent } from '@/features/world-countries/maps/cameraIntent'
 import { MapSurface, type MapSurfaceDockPlacement } from '@/features/world-countries/ui/MapSurface'
 import { WorldCountriesTaskContext, type WorldCountriesActivityTask } from '@/features/world-countries/ui/WorldCountriesActivity'
 import { getWorldCountriesTaskHighlightFill } from '@/features/world-countries/ui/WorldCountriesAnswerSemantics'
@@ -11,6 +12,7 @@ export type LearningMapOverride = Partial<Pick<CountryLearningMapProps,
   'answerSelectionCountryIds' | 'taskTargetCountryId' |
   'countryLabelsById' |
   'highlightFill' |
+  'cameraIntent' |
   'mapClassName' |
   'onCountryClick' | 'ariaLabel'
 >>
@@ -28,6 +30,7 @@ export function LearningMapSurface({
   presentationKey,
   context,
   task,
+  cameraIntent = { kind: 'default' },
   mapMeta,
   dockPlacement = 'overlay',
   children,
@@ -38,6 +41,7 @@ export function LearningMapSurface({
   presentationKey: string
   context: ReactNode
   task?: WorldCountriesActivityTask
+  cameraIntent?: WorldCountriesMapCameraIntent
   mapMeta?: ReactNode
   dockPlacement?: MapSurfaceDockPlacement
   children: ReactNode
@@ -49,9 +53,10 @@ export function LearningMapSurface({
     : undefined
   const effectivePresentation = useMemo(() => ({
     ...presentation,
+    cameraIntent,
     ...(taskHighlightFill ? { highlightFill: taskHighlightFill } : {}),
     ...override,
-  }), [override, presentation, taskHighlightFill])
+  }), [cameraIntent, override, presentation, taskHighlightFill])
   const contextValue = useMemo(() => ({ setOverride }), [])
   const map = <CountryLearningMap continent={continent} scopeCountries={scopeCountries} ariaLabel={effectivePresentation.ariaLabel ?? 'World Countries Learning map'} {...effectivePresentation} />
 

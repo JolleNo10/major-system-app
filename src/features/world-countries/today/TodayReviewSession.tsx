@@ -171,6 +171,7 @@ export function TodayReviewSession({
               <CountryLearningMap
                 continent={country.continent}
                 scopeCountries={activeCountries}
+                cameraIntent={{ kind: 'subregion-learning', subregionId: country.subregionId }}
                 highlightFill={getWorldCountriesTaskHighlightFill(answerKind)}
                 taskTargetCountryId={isLocationQuestion ? country.id : null}
                 highlightedCountryId={country.id}

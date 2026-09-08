@@ -7,6 +7,7 @@ import type { Country } from '@/features/world-countries/data/countries'
 import { classifyRecallAnswer, getRecallAnswerKindMistakeMessage, type RecallAnswerMatchKind } from '@/features/world-countries/learning/recallAnswerMatching'
 import type { WorldCountriesRecallSkill } from '@/features/world-countries/learning/recallTargets'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
+import type { WorldCountriesMapCameraIntent } from '@/features/world-countries/maps/cameraIntent'
 import { TaskDock } from '@/features/world-countries/ui/MapSurface'
 import { WorldCountriesMapActivitySurface, type WorldCountriesActivityTask } from '@/features/world-countries/ui/WorldCountriesActivity'
 import { getWorldCountriesTaskHighlightFill, type WorldCountriesAnswerKind } from '@/features/world-countries/ui/WorldCountriesAnswerSemantics'
@@ -117,12 +118,15 @@ export function DrillSession({
   const mapCountries = isShapeQuestion ? (activeCountries ?? entries) : entries
   const currentContinentMapCountries = mapCountries.filter(entry => entry.continent === country.continent)
   const shapeSubregionCountries = currentContinentMapCountries.filter(entry => entry.subregionId === country.subregionId)
-  const getShapeMapCountryIds = (outcome: string | null): readonly string[] | undefined => {
+  const getShapeMapCountryIds = (outcome: string | null): readonly Country['id'][] | undefined => {
     if (!isShapeQuestion) return undefined
     return outcome === 'incorrect'
       ? shapeSubregionCountries.map(entry => entry.id)
       : [country.id]
   }
+  const getMapCameraIntent = (outcome: string | null): WorldCountriesMapCameraIntent => isShapeQuestion
+    ? { kind: 'fit-countries', countryIds: getShapeMapCountryIds(outcome) ?? [country.id] }
+    : { kind: 'subregion-learning', subregionId: country.subregionId }
   const now = () => typeof performance === 'undefined' ? Date.now() : performance.now()
 
   const submit = (answer: string) => {
@@ -261,7 +265,7 @@ export function DrillSession({
                     ? Boolean(typed.outcome && typed.outcome !== 'wrong-kind')
                     : isLocationQuestion || isCapitalQuestion ? isWorldCountriesTypedAnswerResolved(typed.outcome) : true}
                   visibleCountryIds={getShapeMapCountryIds(typed.outcome)}
-                  zoomCountryIds={getShapeMapCountryIds(typed.outcome)}
+                  cameraIntent={getMapCameraIntent(typed.outcome)}
                   ariaLabel={isShapeQuestion && !typed.outcome
                     ? 'Map showing the isolated Country shape without the Country name revealed'
                     : isLocationQuestion && !typed.outcome
@@ -303,7 +307,7 @@ export function DrillSession({
                     namedCountryId={isShapeQuestion ? feedback ? country.id : null : namedCountryId}
                     showHighlightedNames={isShapeQuestion ? Boolean(feedback) : Boolean(namedCountryId)}
                     visibleCountryIds={getShapeMapCountryIds(feedback ? (feedback.correct ? 'correct' : 'incorrect') : null)}
-                    zoomCountryIds={getShapeMapCountryIds(feedback ? (feedback.correct ? 'correct' : 'incorrect') : null)}
+                    cameraIntent={getMapCameraIntent(feedback ? (feedback.correct ? 'correct' : 'incorrect') : null)}
                     ariaLabel={isShapeQuestion && !feedback
                       ? 'Map showing the isolated Country shape without the Country name revealed'
                       : isLocationQuestion && !feedback

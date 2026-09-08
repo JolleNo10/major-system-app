@@ -9,6 +9,7 @@ import europeSvg from '@/features/world-countries/maps/assets/MapChart_Map_Europ
 import oceaniaSvg from '@/features/world-countries/maps/assets/MapChart_Map_Oceania.svg?raw'
 import { GeographyOverviewMap } from './GeographyOverviewMap'
 import { SvgMapController } from './SvgMapController'
+import { getSubregionLearningFrame } from './subregionLearningFrames'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 let root: Root | null = null
@@ -36,7 +37,7 @@ describe('GeographyOverviewMap', () => {
     expect(mount.querySelector('[data-svg-map-tiny-marker]')).toBeNull()
   })
 
-  it('resolves a semantic island task target through map-owned task assistance', async () => {
+  it('resolves a shared authored learning frame and island task target separately', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => oceaniaSvg })))
     const palau = countries.find(country => country.id === 'PW')!
     const micronesia = countries.filter(country => country.continent === 'Oceania' && country.subregionId === palau.subregionId)
@@ -56,7 +57,8 @@ describe('GeographyOverviewMap', () => {
       },
     })
     const mount = document.createElement('div'); document.body.append(mount)
-    const adaptiveZoom = vi.spyOn(SvgMapController.prototype, 'setAdaptiveTargetCentricZoom')
+    const authoredFrame = getSubregionLearningFrame('micronesia')!
+    const authoredCamera = vi.spyOn(SvgMapController.prototype, 'setViewBoxRect')
     const taskAssistance = vi.spyOn(SvgMapController.prototype, 'setTaskAssistance')
 
     try {
@@ -68,11 +70,7 @@ describe('GeographyOverviewMap', () => {
           countryPopulation: micronesia,
           highlightedCountryIds: [palau.id],
           highlightFill: '#0891b2',
-          neighbourhoodZoom: {
-            targetCountryId: palau.id,
-            contextCountryIds: micronesia.map(country => country.id),
-            adaptive: true,
-          },
+          cameraIntent: { kind: 'subregion-learning', subregionId: 'micronesia' },
           taskTargetCountryId: palau.id,
           interactive: false,
           ariaLabel: 'Random Recite map',
@@ -84,72 +82,9 @@ describe('GeographyOverviewMap', () => {
       expect((mount.querySelector('text#Palau_label') as SVGTextElement | null)?.style.display).toBe('none')
       const viewBox = mount.querySelector('svg')?.getAttribute('viewBox') ?? ''
       expect(viewBox).not.toBe('0 0 1100 720')
-      expect(Number(viewBox.split(' ')[2])).toBeLessThan(500)
-      expect(adaptiveZoom).toHaveBeenCalledWith(['Palau'], expect.arrayContaining(['Micronesia', 'Palau']), 32)
+      expect(Number(viewBox.split(' ')[2])).toBeGreaterThanOrEqual(authoredFrame.bounds.width)
+      expect(authoredCamera).toHaveBeenCalledWith(authoredFrame.bounds)
       expect(taskAssistance).toHaveBeenCalledWith(expect.objectContaining({ taskTargetId: 'Palau' }))
-    } finally {
-      Object.defineProperty(svgElementPrototype, 'getBBox', { configurable: true, value: previousGetBBox })
-    }
-  })
-
-  it('frames the real Micronesia representative target in a bounded Oceania neighbourhood', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => oceaniaSvg })))
-    const micronesia = countries.find(country => country.id === 'FM')!
-    const contextCountries = countries.filter(country => (
-      country.continent === 'Oceania' && country.subregionId === micronesia.subregionId
-    ))
-    const svgElementPrototype = SVGElement.prototype as typeof SVGElement.prototype & { getBBox?: () => { x: number; y: number; width: number; height: number } }
-    const previousGetBBox = svgElementPrototype.getBBox
-    const boxes: Record<string, { x: number; y: number; width: number; height: number }> = {
-      Palau: { x: 780, y: 266, width: 6, height: 6 },
-      Micronesia: { x: 790, y: 260, width: 70, height: 20 },
-      Nauru: { x: 860, y: 288, width: 6, height: 6 },
-      Marshall_Islands: { x: 870, y: 266, width: 6, height: 6 },
-      Kiribati: { x: 876, y: 283, width: 80, height: 18 },
-    }
-    Object.defineProperty(svgElementPrototype, 'getBBox', {
-      configurable: true,
-      value(this: SVGElement) {
-        return boxes[this.id] ?? { x: 0, y: 0, width: 1, height: 1 }
-      },
-    })
-    const mount = document.createElement('div'); document.body.append(mount)
-
-    try {
-      await act(async () => {
-        root = createRoot(mount)
-        root.render(createElement(GeographyOverviewMap, {
-          level: 'continent',
-          continent: 'Oceania',
-          countryPopulation: contextCountries,
-          neighbourhoodZoom: {
-            targetCountryId: micronesia.id,
-            contextCountryIds: contextCountries.map(country => country.id),
-            adaptive: true,
-          },
-          taskTargetCountryId: micronesia.id,
-          interactive: false,
-          ariaLabel: 'Random Recite Micronesia map',
-        }))
-        await Promise.resolve(); await Promise.resolve()
-      })
-
-      const svg = mount.querySelector<SVGSVGElement>('svg')
-      const marker = mount.querySelector<SVGCircleElement>('[data-svg-map-task-representative-target="Micronesia"] [data-svg-map-task-marker="Micronesia"]')
-      if (!svg || !marker) throw new Error('Missing real Micronesia representative target')
-      const sourceViewBox = oceaniaSvg.match(/\bviewBox="([^"]+)"/)?.[1]?.split(/[ ,]+/).map(Number)
-      const viewBox = svg.getAttribute('viewBox')?.split(/[ ,]+/).map(Number)
-      if (!sourceViewBox || sourceViewBox.length !== 4 || !viewBox || viewBox.length !== 4) {
-        throw new Error('Missing Micronesia camera viewBox')
-      }
-      const markerX = Number(marker.getAttribute('cx'))
-      const markerY = Number(marker.getAttribute('cy'))
-      expect(marker.parentElement?.getAttribute('visibility')).toBe('visible')
-      expect(viewBox[2]).toBeLessThan(sourceViewBox[2] * 0.65)
-      expect(viewBox[0]).toBeLessThanOrEqual(markerX)
-      expect(viewBox[1]).toBeLessThanOrEqual(markerY)
-      expect(viewBox[0] + viewBox[2]).toBeGreaterThanOrEqual(markerX)
-      expect(viewBox[1] + viewBox[3]).toBeGreaterThanOrEqual(markerY)
     } finally {
       Object.defineProperty(svgElementPrototype, 'getBBox', { configurable: true, value: previousGetBBox })
     }
@@ -400,7 +335,7 @@ describe('GeographyOverviewMap', () => {
       },
     })
     const mount = document.createElement('div'); document.body.append(mount)
-    await act(async () => { root = createRoot(mount); root.render(createElement(GeographyOverviewMap, { level: 'world', countryPopulation: [countries.find(country => country.id === 'NO')!, countries.find(country => country.id === 'SE')!], hiddenCountryIds: ['SE'], zoomCountryIds: ['NO', 'SE'], ariaLabel: 'World map' })); await Promise.resolve(); await Promise.resolve() })
+    await act(async () => { root = createRoot(mount); root.render(createElement(GeographyOverviewMap, { level: 'world', countryPopulation: [countries.find(country => country.id === 'NO')!, countries.find(country => country.id === 'SE')!], hiddenCountryIds: ['SE'], cameraIntent: { kind: 'fit-countries', countryIds: ['NO', 'SE'] }, ariaLabel: 'World map' })); await Promise.resolve(); await Promise.resolve() })
     expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('-30 -20 180 90')
     expect((mount.querySelector('path#Sweden') as SVGPathElement | null)?.style.visibility).toBe('hidden')
     Object.defineProperty(svgElementPrototype, 'getBBox', { configurable: true, value: previousGetBBox })
@@ -411,7 +346,7 @@ describe('GeographyOverviewMap', () => {
     const norway = countries.find(country => country.id === 'NO')!
     const sweden = countries.find(country => country.id === 'SE')!
     const population = [norway, sweden]
-    const zoomCountryIds = [norway.id, sweden.id]
+    const cameraIntent = { kind: 'fit-countries' as const, countryIds: [norway.id, sweden.id] }
     const svgElementPrototype = SVGElement.prototype as typeof SVGElement.prototype & { getBBox?: () => { x: number; y: number; width: number; height: number } }
     const previousGetBBox = svgElementPrototype.getBBox
     Object.defineProperty(svgElementPrototype, 'getBBox', {
@@ -432,7 +367,7 @@ describe('GeographyOverviewMap', () => {
         level: 'world',
         countryPopulation: population,
         countryColorsById: new Map([['NO', '#15803d']]),
-        zoomCountryIds,
+        cameraIntent,
         ariaLabel: 'World map',
       }))
       await Promise.resolve(); await Promise.resolve()
@@ -446,7 +381,7 @@ describe('GeographyOverviewMap', () => {
         level: 'world',
         countryPopulation: population,
         countryColorsById: new Map([['NO', '#15803d']]),
-        zoomCountryIds,
+        cameraIntent,
         ariaLabel: 'World map',
       }))
       await Promise.resolve()
@@ -478,7 +413,7 @@ describe('GeographyOverviewMap', () => {
       root.render(createElement(GeographyOverviewMap, {
         level: 'world',
         countryPopulation: [norway, sweden],
-        neighbourhoodZoom: { targetCountryId: norway.id, contextCountryIds: [sweden.id] },
+        cameraIntent: { kind: 'target-neighbourhood', targetCountryId: norway.id, contextCountryIds: [sweden.id] },
         ariaLabel: 'World map',
       }))
       await Promise.resolve(); await Promise.resolve()

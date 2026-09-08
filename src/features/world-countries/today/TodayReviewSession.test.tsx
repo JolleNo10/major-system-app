@@ -78,7 +78,7 @@ describe('Today review session', () => {
     })
 
     expect(mount.textContent).not.toContain('Norway')
-    expect(countryLearningMapMock.mock.calls[0]?.[0]).toMatchObject({ taskTargetCountryId: 'NO', highlightFill: '#0891b2' })
+    expect(countryLearningMapMock.mock.calls[0]?.[0]).toMatchObject({ taskTargetCountryId: 'NO', highlightFill: '#0891b2', cameraIntent: { kind: 'subregion-learning', subregionId: 'northern-europe' } })
     const input = mount.querySelector<HTMLInputElement>('input[aria-label="Type the Country name"]')!
     await act(async () => {
       const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
@@ -110,7 +110,7 @@ describe('Today review session', () => {
     })
 
     expect(mount.querySelector('[data-world-countries-task-direction]')?.textContent).toBe('Country → Capital')
-    expect(countryLearningMapMock.mock.calls[0]?.[0]).toMatchObject({ highlightFill: '#8b5cf6' })
+    expect(countryLearningMapMock.mock.calls[0]?.[0]).toMatchObject({ highlightFill: '#8b5cf6', cameraIntent: { kind: 'subregion-learning', subregionId: 'northern-europe' } })
   })
 
   it('keeps review workflow state in the rails without revealing a hidden Country', async () => {

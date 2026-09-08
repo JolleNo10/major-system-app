@@ -210,7 +210,7 @@ export function NeighboursQuizSession({ run, session, onSessionChange, onAdvance
             hiddenCountryIds={hiddenCountryIds}
             hideCountriesOutsidePopulation
             namedCountryIds={namedCountryIds}
-            neighbourhoodZoom={{ targetCountryId: target.targetId, contextCountryIds: target.requiredNeighbourIds }}
+            cameraIntent={{ kind: 'target-neighbourhood', targetCountryId: target.targetId, contextCountryIds: target.requiredNeighbourIds }}
             interactive={false}
             onMapStateChange={setMapState}
             ariaLabel={`World map with ${targetCountry.country} highlighted for Neighbours Quiz`}

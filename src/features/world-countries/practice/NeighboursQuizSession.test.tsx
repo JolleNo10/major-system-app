@@ -11,7 +11,7 @@ import { createNeighboursQuizRun, createNeighboursQuizSession, type NeighboursQu
 import { NeighboursQuizSession } from './NeighboursQuizSession'
 
 vi.mock('@/features/world-countries/maps/GeographyOverviewMap', () => ({
-  GeographyOverviewMap: ({ countryPopulation, hiddenCountryIds, highlightedCountryIds, namedCountryIds, neighbourhoodZoom, zoomCountryIds, hideCountriesOutsidePopulation, interactive, onMapStateChange, highlightFill }: { countryPopulation?: readonly { id: string }[]; hiddenCountryIds?: readonly string[]; highlightedCountryIds?: readonly string[]; namedCountryIds?: readonly string[]; neighbourhoodZoom?: { targetCountryId: string; contextCountryIds?: readonly string[] }; zoomCountryIds?: readonly string[]; hideCountriesOutsidePopulation?: boolean; interactive?: boolean; onMapStateChange?: (state: 'loading' | 'ready' | 'error') => void; highlightFill?: string }) => {
+  GeographyOverviewMap: ({ countryPopulation, hiddenCountryIds, highlightedCountryIds, namedCountryIds, cameraIntent, hideCountriesOutsidePopulation, interactive, onMapStateChange, highlightFill }: { countryPopulation?: readonly { id: string }[]; hiddenCountryIds?: readonly string[]; highlightedCountryIds?: readonly string[]; namedCountryIds?: readonly string[]; cameraIntent?: { kind: string; targetCountryId?: string; contextCountryIds?: readonly string[] }; hideCountriesOutsidePopulation?: boolean; interactive?: boolean; onMapStateChange?: (state: 'loading' | 'ready' | 'error') => void; highlightFill?: string }) => {
     useEffect(() => {
       if (mockedMapState !== 'loading') onMapStateChange?.(mockedMapState)
     }, [onMapStateChange])
@@ -21,9 +21,8 @@ vi.mock('@/features/world-countries/maps/GeographyOverviewMap', () => ({
       'data-hidden': hiddenCountryIds?.join(',') ?? '',
       'data-highlighted': highlightedCountryIds?.join(',') ?? '',
       'data-named': namedCountryIds?.join(',') ?? '',
-      'data-neighbourhood-target': neighbourhoodZoom?.targetCountryId ?? '',
-      'data-neighbourhood-context': neighbourhoodZoom?.contextCountryIds?.join(',') ?? '',
-      'data-zoom': zoomCountryIds?.join(',') ?? '',
+      'data-neighbourhood-target': cameraIntent?.kind === 'target-neighbourhood' ? cameraIntent.targetCountryId ?? '' : '',
+      'data-neighbourhood-context': cameraIntent?.kind === 'target-neighbourhood' ? cameraIntent.contextCountryIds?.join(',') ?? '' : '',
       'data-hide-outside-population': String(hideCountriesOutsidePopulation),
       'data-interactive': String(interactive),
       'data-highlight-fill': highlightFill ?? '',

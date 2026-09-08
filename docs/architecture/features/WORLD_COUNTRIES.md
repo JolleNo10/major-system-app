@@ -58,9 +58,14 @@ signal rather than coordinator-owned refresh counters.
   Learning modes own their milestone writes; the guided UI is not Drill
   implementation detail.
 - `maps/` owns SVG loading, Country-to-SVG translation, overview and learning
-  map presentation, generic caller-controlled Country visibility and explicit
-  Country zoom, target-centric local-neighbourhood zoom, task-scoped
-  answer-selection interaction points,
+  map presentation, the authored `SubregionId` learning-frame registry, and
+  the workflow-neutral semantic camera-intent boundary. Active learning and
+  recall callers request one intent at a time: default/overview,
+  Subregion-learning, explicit Country fit, or target-local neighbourhood.
+  The map layer resolves Country/Subregion identities to SVG IDs and
+  viewBox coordinates. It also owns generic caller-controlled Country
+  visibility, explicit Country fitting, target-centric local-neighbourhood
+  zoom, and task-scoped answer-selection interaction points,
   map-owned synthetic dot metadata for visually weak source geography,
   representative learning anchors, map-owned pointer-intent resolution,
   existing Country sequence annotations, and workflow-neutral geographic
@@ -288,6 +293,15 @@ exception: an incorrect answer keeps the expected answer hidden, then resets
 the same prompt for another focused attempt, while Reveal / Skip resolves and
 advances automatically after the correction dwell.
 
+Applicable active Today, Drill, Learning, Practice, Quiz, and Recite
+learning/recall surfaces use the authored frame for their current Subregion,
+independent of workflow, prompt order, retry state, or Country/Capital answer
+kind. A Country change inside one Subregion changes target presentation only;
+the frame changes when the Subregion changes. Setup, navigation, selection,
+progress, and authoring maps retain their default or explicit overview
+semantics. Neighbours and Country-for-Shape retain their stronger explicit
+target-local and Country-fit cameras respectively.
+
 ## Contextual authoring rules
 
 - The effective hierarchy order comes from `geography/` for World, Continent,
@@ -358,11 +372,14 @@ advances automatically after the correction dwell.
   transient `expanded-center` PageLayout presentation, keeps the same map and
   dock mounted, reserves the complete bottom task row before fitting the active
   SVG/viewBox as contain sizing within the actual remaining desktop map slot.
-  The map controller retains semantic zoom intent separately from the concrete
-  viewBox, derives the expanded viewBox from that intent plus the measured slot
-  aspect ratio, and recomputes it through the existing resize lifecycle without
-  accumulating camera drift. Standard presentation keeps the source or normal
-  semantic zoom framing. The map controller's target-centric neighbourhood
+  The map controller retains semantic camera intent separately from the
+  concrete viewBox, derives the expanded viewBox from that intent plus the
+  measured slot aspect ratio, and recomputes it through the existing resize
+  lifecycle without accumulating camera drift. Standard presentation keeps
+  the source or normal semantic camera framing. Authored Subregion learning
+  frames are finite map-coordinate metadata and are not generated from target
+  geometry; an unresolvable frame falls back to the complete authoritative
+  regional map. The map controller's target-centric neighbourhood
   intent resolves target geometry components against required context-Country
   geometry, keeps the smallest stable component set that covers those
   relationships, and adds bounded nearest local path samples (with a

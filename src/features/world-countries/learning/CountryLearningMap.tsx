@@ -6,7 +6,13 @@ import { createCountryColorsById, createCountryOrderLabels, getCountryForSvgId, 
 import { getMemoMapDefinition } from '@/features/world-countries/maps/mapDefinitions'
 import { getMapLearningAnchors } from '@/features/world-countries/maps/learningAnchors'
 import { getMapSyntheticDots } from '@/features/world-countries/maps/syntheticDots'
-import type { SvgMapLearningAnchor, SvgMapSyntheticDot } from '@/features/world-countries/maps/SvgMapController'
+import type { SvgMapCameraIntent, SvgMapLearningAnchor, SvgMapSyntheticDot } from '@/features/world-countries/maps/SvgMapController'
+import {
+  DEFAULT_WORLD_COUNTRIES_MAP_CAMERA_INTENT,
+  getWorldCountriesMapCameraIntentSignature,
+  type WorldCountriesMapCameraIntent,
+} from '@/features/world-countries/maps/cameraIntent'
+import { getSubregionLearningFrame } from '@/features/world-countries/maps/subregionLearningFrames'
 
 export interface CountryLearningMapProps {
   continent: Continent
@@ -35,14 +41,14 @@ export interface CountryLearningMapProps {
   highlightFill?: string
   /** Restrict rendered geometry to these canonical Countries when provided. */
   visibleCountryIds?: readonly CountryId[]
-  /** Explicit Country geometry to fit; overrides generic learning-map zoom rules. */
-  zoomCountryIds?: readonly CountryId[]
+  /** One semantic camera intent; Country/Subregion identities are resolved here. */
+  cameraIntent?: WorldCountriesMapCameraIntent
   onCountryClick?: (countryId: string) => void
   ariaLabel: string
 }
 
-/** Oceania's scattered microstates make subregion bounds too tight to teach from. */
-export function getCountryLearningMapZoomIds(
+/** Keep the default/overview camera broad for Oceania's scattered microstates. */
+export function getCountryLearningMapDefaultZoomIds(
   continent: Continent,
   scopeSvgIds: readonly string[],
 ): readonly string[] {
@@ -69,7 +75,7 @@ export function CountryLearningMap({
   taskTargetCountryId = null,
   highlightFill,
   visibleCountryIds,
-  zoomCountryIds,
+  cameraIntent = DEFAULT_WORLD_COUNTRIES_MAP_CAMERA_INTENT,
   onCountryClick,
   ariaLabel,
 }: CountryLearningMapProps) {
@@ -119,16 +125,60 @@ export function CountryLearningMap({
     },
     [countryLabelsById, discoveredIds, interactionCountries, overviewCountries, scopeCountries, showOrderNumbers],
   )
-  const explicitZoomSvgIds = useMemo(
-    () => zoomCountryIds === undefined
-      ? undefined
-      : resolveCountriesToSvgIds(
-        (overviewCountries ?? scopeCountries).filter(country => zoomCountryIds.includes(country.id)),
+  const defaultZoomIds = getCountryLearningMapDefaultZoomIds(continent, zoomScopeSvgIds)
+  const cameraSignature = getWorldCountriesMapCameraIntentSignature(cameraIntent)
+  const defaultCamera = useMemo<SvgMapCameraIntent>(
+    () => defaultZoomIds.length
+      ? { kind: 'country-bounds', countryIds: defaultZoomIds, padding: definition.zoomPadding }
+      : { kind: 'default' },
+    [defaultZoomIds, definition.zoomPadding],
+  )
+  const subregionCamera = useMemo<SvgMapCameraIntent>(() => {
+    if (cameraIntent.kind !== 'subregion-learning') return { kind: 'default' }
+    const frame = getSubregionLearningFrame(cameraIntent.subregionId)
+    return frame?.mapDefinitionId === definition.id
+      ? { kind: 'view-box', bounds: frame.bounds }
+      : { kind: 'default' }
+  // The signature intentionally keeps a stable frame object when only target
+  // presentation changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cameraSignature, definition.id])
+  const fitCountryCamera = useMemo<SvgMapCameraIntent>(() => cameraIntent.kind === 'fit-countries'
+    ? {
+      kind: 'country-bounds',
+      countryIds: resolveCountriesToSvgIds(
+        interactionCountries.filter(country => cameraIntent.countryIds.includes(country.id)),
         discoveredIds,
       ),
-    [discoveredIds, overviewCountries, scopeCountries, zoomCountryIds],
-  )
-  const zoomIds = explicitZoomSvgIds ?? getCountryLearningMapZoomIds(continent, zoomScopeSvgIds)
+      padding: definition.zoomPadding,
+    }
+    : { kind: 'default' },
+  // cameraSignature is the intentional semantic dependency for inline ID arrays.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [cameraSignature, definition.zoomPadding, discoveredIds, interactionCountries])
+  const neighbourhoodCamera = useMemo<SvgMapCameraIntent>(() => cameraIntent.kind === 'target-neighbourhood'
+    ? {
+      kind: 'target-centric-neighbourhood',
+      targetIds: resolveCountriesToSvgIds(
+        interactionCountries.filter(country => country.id === cameraIntent.targetCountryId),
+        discoveredIds,
+      ),
+      contextIds: resolveCountriesToSvgIds(
+        interactionCountries.filter(country => (cameraIntent.contextCountryIds ?? []).includes(country.id)),
+        discoveredIds,
+      ),
+    }
+    : { kind: 'default' },
+  // cameraSignature is the intentional semantic dependency for inline ID arrays.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [cameraSignature, discoveredIds, interactionCountries])
+  const camera = cameraIntent.kind === 'subregion-learning'
+    ? subregionCamera
+    : cameraIntent.kind === 'fit-countries'
+      ? fitCountryCamera
+      : cameraIntent.kind === 'target-neighbourhood'
+        ? neighbourhoodCamera
+        : defaultCamera
   const visibleSvgIds = useMemo(
     () => visibleCountryIds === undefined
       ? undefined
@@ -220,7 +270,7 @@ export function CountryLearningMap({
         countryLabels={countryLabels}
         countryColors={countryColors}
         taskAssistance={taskAssistance}
-        zoomIds={zoomIds}
+        camera={camera}
         className={mapClassName}
         settings={{ showHighlightedNames, hoverHighlight: hoveredCountryId !== null, hoverShowName: showHoverNames, hoverFill: '#0f766e', hoverStroke: '#d4d4d8', hoverStrokeWidth: '2px', ...(highlightFill ? { highlightFill } : {}) }}
         onCountriesLoaded={setDiscovered}

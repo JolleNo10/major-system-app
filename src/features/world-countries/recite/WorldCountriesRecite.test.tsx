@@ -148,6 +148,7 @@ describe('World Countries Recite workflow', () => {
       return activeMaps[activeMaps.length - 1]
     }
     expect(activeMap()?.highlightedCountryIds).toEqual(['NO'])
+    expect(activeMap()?.cameraIntent).toEqual({ kind: 'subregion-learning', subregionId: 'northern-europe' })
 
     const input = mount.querySelector<HTMLInputElement>('input[aria-label="Type the country name"]')
     expect(input).not.toBeNull()
@@ -300,7 +301,7 @@ describe('World Countries Recite workflow', () => {
     await act(async () => buttonContaining(mount, 'Start Recite').click())
 
     const initialMap = activeMapProps()
-    const initialFrame = initialMap.neighbourhoodZoom
+    const initialFrame = initialMap.cameraIntent
     expect(initialMap).toMatchObject({
       level: 'continent',
       continent: 'Europe',
@@ -308,14 +309,9 @@ describe('World Countries Recite workflow', () => {
       hiddenCountryIds: [],
       highlightedCountryIds: ['SE'],
       highlightFill: '#0891b2',
-      neighbourhoodZoom: {
-        targetCountryId: 'SE',
-        contextCountryIds: ['NO', 'SE'],
-        adaptive: true,
-      },
+      cameraIntent: { kind: 'subregion-learning', subregionId: 'northern-europe' },
       taskTargetCountryId: 'SE',
     })
-    expect(initialMap.zoomCountryIds).toBeUndefined()
     expect(initialMap.selectedSubregionIds).toBeUndefined()
     expect(mount.querySelector('[data-world-countries-task-direction]')?.textContent).toBe('Random Country recall')
     expect(mount.querySelector('[data-world-countries-task-cue]')?.textContent).toBe('Identify the highlighted Country')
@@ -328,7 +324,7 @@ describe('World Countries Recite workflow', () => {
       firstCountryInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
     })
     expect(mount.textContent).toContain('Correct')
-    expect(activeMapProps().neighbourhoodZoom).toBe(initialFrame)
+    expect(activeMapProps().cameraIntent).toBe(initialFrame)
     expect(sessionControls().textContent).toContain('1 / 4 Prompts')
     await act(async () => {
       vi.advanceTimersByTime(500)
@@ -340,14 +336,10 @@ describe('World Countries Recite workflow', () => {
     expect(activeMapProps()).toMatchObject({
       highlightedCountryIds: ['NO'],
       highlightFill: '#0891b2',
-      neighbourhoodZoom: {
-        targetCountryId: 'NO',
-        contextCountryIds: ['NO', 'SE'],
-        adaptive: true,
-      },
+      cameraIntent: { kind: 'subregion-learning', subregionId: 'northern-europe' },
       taskTargetCountryId: 'NO',
     })
-    expect(activeMapProps().neighbourhoodZoom).not.toBe(initialFrame)
+    expect(activeMapProps().cameraIntent).toBe(initialFrame)
     const sessionMapSources = mapRender.mock.calls
       .map(([props]) => props as Record<string, unknown>)
       .filter(props => props.interactive === false)
@@ -360,7 +352,7 @@ describe('World Countries Recite workflow', () => {
       secondCountryInput.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
     })
     expect(mount.textContent).toContain('Correct')
-    expect(activeMapProps().neighbourhoodZoom).not.toBe(initialFrame)
+    expect(activeMapProps().cameraIntent).toBe(initialFrame)
     expect(sessionControls().textContent).toContain('2 / 4 Prompts')
     await act(async () => {
       vi.advanceTimersByTime(500)
@@ -371,14 +363,10 @@ describe('World Countries Recite workflow', () => {
     expect(activeMapProps()).toMatchObject({
       highlightedCountryIds: ['SE'],
       highlightFill: '#8b5cf6',
-      neighbourhoodZoom: {
-        targetCountryId: 'SE',
-        contextCountryIds: ['NO', 'SE'],
-        adaptive: true,
-      },
+      cameraIntent: { kind: 'subregion-learning', subregionId: 'northern-europe' },
       taskTargetCountryId: 'SE',
     })
-    expect(activeMapProps().neighbourhoodZoom).toMatchObject({ targetCountryId: 'SE', adaptive: true })
+    expect(activeMapProps().cameraIntent).toBe(initialFrame)
     const activeColors = activeMapProps().countryColorsById as ReadonlyMap<string, string>
     expect(activeColors.get('SE')).toBe('#52525b')
 
@@ -398,14 +386,10 @@ describe('World Countries Recite workflow', () => {
     expect(activeMapProps()).toMatchObject({
       highlightedCountryIds: ['NO'],
       highlightFill: '#8b5cf6',
-      neighbourhoodZoom: {
-        targetCountryId: 'NO',
-        contextCountryIds: ['NO', 'SE'],
-        adaptive: true,
-      },
+      cameraIntent: { kind: 'subregion-learning', subregionId: 'northern-europe' },
       taskTargetCountryId: 'NO',
     })
-    expect(activeMapProps().neighbourhoodZoom).not.toBe(initialFrame)
+    expect(activeMapProps().cameraIntent).toBe(initialFrame)
     const afterFirstCountry = activeMapProps().countryColorsById as ReadonlyMap<string, string>
     expect(afterFirstCountry.get('SE')).toBe('#15803d')
 
@@ -437,12 +421,7 @@ describe('World Countries Recite workflow', () => {
     await act(async () => buttonContaining(mount, 'Start Recite').click())
 
     const firstTargetId = (activeMapProps().highlightedCountryIds as string[])[0]
-    expect(activeMapProps().neighbourhoodZoom).toMatchObject({
-      targetCountryId: firstTargetId,
-      contextCountryIds: ['NO', 'SE', 'FI'],
-      adaptive: true,
-    })
-    expect(activeMapProps().zoomCountryIds).toBeUndefined()
+    expect(activeMapProps().cameraIntent).toEqual({ kind: 'subregion-learning', subregionId: 'northern-europe' })
   })
 
   it('updates the Random Countries + Capitals frame when the next Country changes Subregion', async () => {
@@ -460,10 +439,11 @@ describe('World Countries Recite workflow', () => {
 
     const firstTargetId = (activeMapProps().highlightedCountryIds as string[])[0]
     const firstCountry = entries.find(country => country.id === firstTargetId)!
+    const firstCamera = activeMapProps().cameraIntent
     expect(activeMapProps()).toMatchObject({
       highlightedCountryIds: [firstTargetId],
       highlightFill: '#0891b2',
-      neighbourhoodZoom: { targetCountryId: firstTargetId, adaptive: true },
+      cameraIntent: { kind: 'subregion-learning', subregionId: firstCountry.subregionId },
       taskTargetCountryId: firstTargetId,
     })
 
@@ -482,9 +462,10 @@ describe('World Countries Recite workflow', () => {
     expect(activeMapProps()).toMatchObject({
       highlightedCountryIds: [secondTargetId],
       highlightFill: '#0891b2',
-      neighbourhoodZoom: { targetCountryId: secondTargetId, adaptive: true },
+      cameraIntent: { kind: 'subregion-learning', subregionId: secondCountry.subregionId },
       taskTargetCountryId: secondTargetId,
     })
+    expect(activeMapProps().cameraIntent).not.toBe(firstCamera)
 
     await act(async () => {
       const secondCountryInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the country name"]')!
@@ -500,7 +481,7 @@ describe('World Countries Recite workflow', () => {
     expect(activeMapProps()).toMatchObject({
       highlightedCountryIds: [firstTargetId],
       highlightFill: '#8b5cf6',
-      neighbourhoodZoom: { targetCountryId: firstTargetId, adaptive: true },
+      cameraIntent: { kind: 'subregion-learning', subregionId: firstCountry.subregionId },
       taskTargetCountryId: firstTargetId,
     })
 
@@ -518,7 +499,7 @@ describe('World Countries Recite workflow', () => {
     expect(activeMapProps()).toMatchObject({
       highlightedCountryIds: [secondTargetId],
       highlightFill: '#8b5cf6',
-      neighbourhoodZoom: { targetCountryId: secondTargetId, adaptive: true },
+      cameraIntent: { kind: 'subregion-learning', subregionId: secondCountry.subregionId },
       taskTargetCountryId: secondTargetId,
     })
 
@@ -549,6 +530,7 @@ describe('World Countries Recite workflow', () => {
     }
     expect(activeMap()?.hiddenCountryIds).toEqual(['NO'])
     expect(activeMap()?.highlightedCountryIds).toEqual([])
+    expect(activeMap()?.cameraIntent).toEqual({ kind: 'subregion-learning', subregionId: 'northern-europe' })
 
     await act(async () => buttonContaining(mount, 'Reveal / Skip').click())
     expect(mount.textContent).toContain('Answer revealed')
@@ -595,6 +577,7 @@ describe('World Countries Recite workflow', () => {
     expect(initial.hiddenCountryIds).toEqual([])
     expect(initial.highlightedCountryIds).toEqual(['SE'])
     expect(initial.highlightFill).toBe('#0891b2')
+    expect(initial.cameraIntent).toEqual({ kind: 'subregion-learning', subregionId: 'northern-europe' })
 
     const input = mount.querySelector<HTMLInputElement>('input[aria-label="Type the country name"]')!
     await act(async () => {
@@ -747,7 +730,7 @@ describe('World Countries Recite workflow', () => {
     await act(async () => buttonContaining(mount, 'Start Recite').click())
 
     const firstTargetId = activeMapProps().taskTargetCountryId as string
-    expect(activeMapProps()).toMatchObject({ level: 'continent', continent: 'Europe', taskTargetCountryId: firstTargetId })
+    expect(activeMapProps()).toMatchObject({ level: 'continent', continent: 'Europe', taskTargetCountryId: firstTargetId, cameraIntent: { kind: 'subregion-learning', subregionId: 'northern-europe' } })
     expect(firstTargetId).toBe('NO')
     const firstCountry = entries.find(country => country.id === firstTargetId)!
     const firstInput = mount.querySelector<HTMLInputElement>('input[aria-label="Type the country name"]')!
@@ -760,7 +743,7 @@ describe('World Countries Recite workflow', () => {
       await Promise.resolve()
     })
 
-    expect(activeMapProps()).toMatchObject({ level: 'continent', continent: 'Asia', taskTargetCountryId: 'IN' })
+    expect(activeMapProps()).toMatchObject({ level: 'continent', continent: 'Asia', taskTargetCountryId: 'IN', cameraIntent: { kind: 'subregion-learning', subregionId: 'south-asia' } })
     const sessionMapSources = mapRender.mock.calls
       .map(([props]) => props as Record<string, unknown>)
       .filter(props => props.interactive === false)
@@ -778,8 +761,7 @@ describe('World Countries Recite workflow', () => {
       await Promise.resolve()
     })
 
-    expect(activeMapProps()).toMatchObject({ level: 'continent', continent: 'Europe', taskTargetCountryId: 'SE' })
-    expect(activeMapProps().neighbourhoodZoom).toMatchObject({ targetCountryId: 'SE' })
+    expect(activeMapProps()).toMatchObject({ level: 'continent', continent: 'Europe', taskTargetCountryId: 'SE', cameraIntent: { kind: 'subregion-learning', subregionId: 'northern-europe' } })
   })
 
   it('keeps Random Recite microstate framing on the Oceania map', async () => {
@@ -797,11 +779,7 @@ describe('World Countries Recite workflow', () => {
       continent: 'Oceania',
       highlightedCountryIds: ['PW'],
       taskTargetCountryId: 'PW',
-      neighbourhoodZoom: {
-        targetCountryId: 'PW',
-        contextCountryIds: ['PW'],
-        adaptive: true,
-      },
+      cameraIntent: { kind: 'subregion-learning', subregionId: 'micronesia' },
     })
   })
 

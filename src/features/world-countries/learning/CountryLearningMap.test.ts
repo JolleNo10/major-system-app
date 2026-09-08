@@ -4,7 +4,8 @@ import { act, createElement, useEffect } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Country } from '@/features/world-countries/data/countries'
-import { CountryLearningMap, getCountryLearningMapZoomIds } from './CountryLearningMap'
+import { getSubregionLearningFrame } from '@/features/world-countries/maps/subregionLearningFrames'
+import { CountryLearningMap, getCountryLearningMapDefaultZoomIds } from './CountryLearningMap'
 
 const mapProps = vi.hoisted(() => vi.fn())
 
@@ -41,12 +42,12 @@ afterEach(() => {
 
 describe('CountryLearningMap', () => {
   it('does not zoom Oceania to scattered microstates', () => {
-    expect(getCountryLearningMapZoomIds('Oceania', ['Australia', 'Fiji'])).toEqual([])
+    expect(getCountryLearningMapDefaultZoomIds('Oceania', ['Australia', 'Fiji'])).toEqual([])
   })
 
   it('zooms other Continents to the selected Country scope', () => {
     const scopeIds = ['Norway', 'Sweden']
-    expect(getCountryLearningMapZoomIds('Europe', scopeIds)).toBe(scopeIds)
+    expect(getCountryLearningMapDefaultZoomIds('Europe', scopeIds)).toBe(scopeIds)
   })
 
   it('shows the full order-edit overview without deactivating its Countries, then restores the scope', () => {
@@ -68,7 +69,7 @@ describe('CountryLearningMap', () => {
 
     const latestProps = mapProps.mock.calls[mapProps.mock.calls.length - 1]?.[0]
     expect(latestProps).toMatchObject({
-      zoomIds: ['Norway', 'Sweden'],
+      camera: { kind: 'country-bounds', countryIds: ['Norway', 'Sweden'] },
       highlightedIds: [],
       hoveredId: 'Sweden',
       namedIds: ['Norway', 'Sweden'],
@@ -88,7 +89,7 @@ describe('CountryLearningMap', () => {
 
     const restoredProps = mapProps.mock.calls[mapProps.mock.calls.length - 1]?.[0]
     expect(restoredProps).toMatchObject({
-      zoomIds: ['Norway'],
+      camera: { kind: 'country-bounds', countryIds: ['Norway'] },
       highlightedIds: ['Norway'],
       hoveredId: null,
       namedIds: ['Norway'],
@@ -142,7 +143,7 @@ describe('CountryLearningMap', () => {
     expect(latestProps.settings).toMatchObject({ highlightFill })
   })
 
-  it('supports explicit visibility and Country zoom without task assistance', () => {
+  it('supports explicit visibility and Country-fit camera intent without task assistance', () => {
     const mount = document.createElement('div')
     document.body.append(mount)
 
@@ -152,7 +153,7 @@ describe('CountryLearningMap', () => {
         continent: 'Europe',
         scopeCountries: [norway, sweden],
         visibleCountryIds: [norway.id],
-        zoomCountryIds: [norway.id],
+        cameraIntent: { kind: 'fit-countries', countryIds: [norway.id] },
         ariaLabel: 'Isolated Country shape',
       }))
     })
@@ -160,7 +161,7 @@ describe('CountryLearningMap', () => {
     const isolatedProps = mapProps.mock.calls[mapProps.mock.calls.length - 1]?.[0]
     expect(isolatedProps).toMatchObject({
       hiddenIds: ['Sweden'],
-      zoomIds: ['Norway'],
+      camera: { kind: 'country-bounds', countryIds: ['Norway'] },
       taskAssistance: null,
     })
 
@@ -169,13 +170,62 @@ describe('CountryLearningMap', () => {
         continent: 'Europe',
         scopeCountries: [norway, sweden],
         visibleCountryIds: [norway.id, sweden.id],
-        zoomCountryIds: [norway.id, sweden.id],
+        cameraIntent: { kind: 'fit-countries', countryIds: [norway.id, sweden.id] },
         highlightedCountryId: norway.id,
         ariaLabel: 'Country subregion context',
       }))
     })
 
     const contextProps = mapProps.mock.calls[mapProps.mock.calls.length - 1]?.[0]
-    expect(contextProps).toMatchObject({ hiddenIds: [], zoomIds: ['Norway', 'Sweden'], highlightedIds: ['Norway'] })
+    expect(contextProps).toMatchObject({ hiddenIds: [], camera: { kind: 'country-bounds', countryIds: ['Norway', 'Sweden'] }, highlightedIds: ['Norway'] })
+  })
+
+  it('resolves a stable authored Subregion frame independently of the presented target', () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+    const frame = getSubregionLearningFrame('northern-europe')!
+
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement(CountryLearningMap, {
+        continent: 'Europe',
+        scopeCountries: [norway, sweden],
+        cameraIntent: { kind: 'subregion-learning', subregionId: 'northern-europe' },
+        highlightedCountryId: norway.id,
+        ariaLabel: 'Learning map',
+      }))
+    })
+    const firstProps = mapProps.mock.calls[mapProps.mock.calls.length - 1]?.[0]
+    expect(firstProps.camera).toEqual({ kind: 'view-box', bounds: frame.bounds })
+
+    act(() => {
+      root?.render(createElement(CountryLearningMap, {
+        continent: 'Europe',
+        scopeCountries: [norway, sweden],
+        cameraIntent: { kind: 'subregion-learning', subregionId: 'northern-europe' },
+        highlightedCountryId: sweden.id,
+        ariaLabel: 'Learning map',
+      }))
+    })
+    const secondProps = mapProps.mock.calls[mapProps.mock.calls.length - 1]?.[0]
+    expect(secondProps.camera).toBe(firstProps.camera)
+  })
+
+  it('falls back to the complete map when a frame cannot apply to the active regional map', () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement(CountryLearningMap, {
+        continent: 'Asia',
+        scopeCountries: [norway],
+        cameraIntent: { kind: 'subregion-learning', subregionId: 'northern-europe' },
+        ariaLabel: 'Fallback map',
+      }))
+    })
+
+    const latestProps = mapProps.mock.calls[mapProps.mock.calls.length - 1]?.[0]
+    expect(latestProps.camera).toEqual({ kind: 'default' })
   })
 })

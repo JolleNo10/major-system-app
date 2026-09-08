@@ -47,6 +47,7 @@ export function StagedFinalRecallStep({
 }) {
   const current = entries.find(entry => entry.id === ordered.order[ordered.currentIndex])
   useLearningMapPresentation({
+    cameraIntent: current ? { kind: 'subregion-learning', subregionId: current.subregionId } : { kind: 'default' },
     taskTargetCountryId: showCountryName ? null : current?.id ?? null,
     highlightedCountryId: current?.id ?? null,
     namedCountryId: showCountryName ? current?.id ?? null : null,
@@ -103,7 +104,7 @@ export function StagedFinalRecallStep({
           <div className="space-y-4 animate-fade-in">
             <WorldCountriesMapActivitySurface
               task={activityTask}
-              map={<CountryLearningMap continent={continent} scopeCountries={entries} highlightFill={getWorldCountriesTaskHighlightFill(answerKind)} taskTargetCountryId={showCountryName ? null : current.id} highlightedCountryId={current.id} namedCountryId={showCountryName ? current.id : null} showHighlightedNames={showCountryName} showHoverNames ariaLabel="Highlighted Country for final recall" />}
+              map={<CountryLearningMap continent={continent} scopeCountries={entries} cameraIntent={{ kind: 'subregion-learning', subregionId: current.subregionId }} highlightFill={getWorldCountriesTaskHighlightFill(answerKind)} taskTargetCountryId={showCountryName ? null : current.id} highlightedCountryId={current.id} namedCountryId={showCountryName ? current.id : null} showHighlightedNames={showCountryName} showHoverNames ariaLabel="Highlighted Country for final recall" />}
               feedbackOverlay={typed.feedbackOverlay}
               dockPlacement="stacked"
               dock={dock}

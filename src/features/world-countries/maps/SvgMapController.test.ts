@@ -197,21 +197,18 @@ describe('SvgMapController persistent state', () => {
     expect(mount.querySelector('svg')?.style.aspectRatio).toBe('100 / 50')
   })
 
-  it('does not resize the map surface when adaptive framing changes between large and tiny targets', async () => {
+  it('does not resize the map surface when an authored camera frame changes', async () => {
     const { mount, controller } = makeController()
     await controller.load({ markup: `
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500">
         <g><path id="Large" d="M 40 40 h 400 v 400 h -400 z"/><text id="Large_label">LARGE</text></g>
         <g><path id="Tiny" d="M 800 240 h 2 v 2 h -2 z"/><text id="Tiny_label">TINY</text></g>
       </svg>` })
-    setBBox(mount, 'Large', { x: 40, y: 40, width: 400, height: 400 })
-    setBBox(mount, 'Tiny', { x: 800, y: 240, width: 2, height: 2 })
-
-    controller.setAdaptiveTargetCentricZoom(['Large'], ['Large'])
+    controller.setCamera({ kind: 'view-box', bounds: { x: 40, y: 40, width: 400, height: 400 } })
     const largeFrame = mount.querySelector('svg')?.getAttribute('viewBox')
     expect(mount.querySelector('svg')?.style.aspectRatio).toBe('1000 / 500')
 
-    controller.setAdaptiveTargetCentricZoom(['Tiny'], ['Tiny'])
+    controller.setCamera({ kind: 'view-box', bounds: { x: 800, y: 240, width: 2, height: 2 } })
     const tinyFrame = mount.querySelector('svg')?.getAttribute('viewBox')
     expect(tinyFrame).not.toBe(largeFrame)
     expect(mount.querySelector('svg')?.style.aspectRatio).toBe('1000 / 500')
@@ -259,142 +256,6 @@ describe('SvgMapController persistent state', () => {
     expect(viewBox.height).toBeLessThan(100)
     expect(viewBox.x).toBeLessThanOrEqual(42)
     expect(viewBox.x + viewBox.width).toBeGreaterThanOrEqual(46)
-  })
-
-  it('keeps compact adaptive regions on their existing broader regional frame', async () => {
-    const { mount, controller } = makeController()
-    await controller.load({ markup: `
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
-        <g><path id="Alpha" d="M 10 10 h 10 v 10 h -10 z"/><text id="Alpha_label">ALPHA</text></g>
-        <g><path id="Beta" d="M 40 20 h 10 v 10 h -10 z"/><text id="Beta_label">BETA</text></g>
-        <g><path id="Gamma" d="M 60 15 h 10 v 10 h -10 z"/><text id="Gamma_label">GAMMA</text></g>
-      </svg>` })
-    setBBox(mount, 'Alpha', { x: 10, y: 10, width: 10, height: 10 })
-    setBBox(mount, 'Beta', { x: 40, y: 20, width: 10, height: 10 })
-    setBBox(mount, 'Gamma', { x: 60, y: 15, width: 10, height: 10 })
-
-    const result = controller.setAdaptiveTargetCentricZoom(['Beta'], ['Alpha', 'Beta', 'Gamma'], 5)
-
-    expect(result).toEqual({ activeIds: ['Beta', 'Alpha', 'Gamma'], unknownIds: [] })
-    expect(readViewBox(mount)).toEqual({ x: 5, y: 2.5, width: 70, height: 35 })
-  })
-
-  it('uses bounded target-centric framing when a region is spatially sparse', async () => {
-    const { mount, controller } = makeController()
-    await controller.load({ markup: `
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
-        <g><path id="Alpha" d="M 42 20 h 4 v 4 h -4 z"/><text id="Alpha_label">ALPHA</text></g>
-        <g><path id="Beta" d="M 44 22 h 4 v 4 h -4 z"/><text id="Beta_label">BETA</text></g>
-        <g><path id="Gamma" d="M 48 24 h 4 v 4 h -4 z"/><text id="Gamma_label">GAMMA</text></g>
-      </svg>` })
-    setBBox(mount, 'Alpha', { x: 42, y: 20, width: 4, height: 4 })
-    setPathGeometry(mount, 'Beta', { x: -400, y: -200, width: 900, height: 700 }, [{ x: 46, y: 24 }])
-    setPathGeometry(mount, 'Gamma', { x: -350, y: -150, width: 800, height: 600 }, [{ x: 50, y: 26 }])
-
-    const result = controller.setAdaptiveTargetCentricZoom(['Alpha'], ['Alpha', 'Beta', 'Gamma'])
-
-    expect(result).toEqual({ activeIds: ['Alpha', 'Beta', 'Gamma'], unknownIds: [] })
-    const viewBox = readViewBox(mount)
-    expect(viewBox.width).toBeLessThan(100)
-    expect(viewBox.height).toBeLessThan(50)
-    expect(viewBox.x).toBeLessThanOrEqual(42)
-    expect(viewBox.x + viewBox.width).toBeGreaterThanOrEqual(46)
-  })
-
-  it('widens an adaptive frame when a large target would dominate the regional view', async () => {
-    const { mount, controller } = makeController()
-    await controller.load({ markup: `
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-        <g><path id="Australia" d="M 5 5 h 80 v 80 h -80 z"/><text id="Australia_label">AUSTRALIA</text></g>
-        <g><path id="NewZealand" d="M 88 42 h 4 v 8 h -4 z"/><text id="NewZealand_label">NEW ZEALAND</text></g>
-      </svg>` })
-    setBBox(mount, 'Australia', { x: 5, y: 5, width: 80, height: 80 })
-    setBBox(mount, 'NewZealand', { x: 88, y: 42, width: 4, height: 8 })
-
-    controller.setAdaptiveTargetCentricZoom(['Australia'], ['Australia', 'NewZealand'])
-
-    const viewBox = readViewBox(mount)
-    expect(80 / viewBox.width).toBeLessThanOrEqual(0.82)
-    expect(80 / viewBox.height).toBeLessThanOrEqual(0.82)
-    expect(viewBox.width).toBeGreaterThan(87)
-    expect(viewBox.height).toBeGreaterThan(80)
-  })
-
-  it('contracts an adaptive frame when a tiny target would be lost in a broad region', async () => {
-    const { mount, controller } = makeController()
-    await controller.load({ markup: `
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500">
-        <g><path id="Tiny" d="M 500 250 h 1 v 1 h -1 z"/><text id="Tiny_label">TINY</text></g>
-        <g><path id="Region" d="M 0 0 h 900 v 450 h -900 z"/><text id="Region_label">REGION</text></g>
-      </svg>` })
-    setBBox(mount, 'Tiny', { x: 500, y: 250, width: 1, height: 1 })
-    setBBox(mount, 'Region', { x: 0, y: 0, width: 900, height: 450 })
-
-    controller.setAdaptiveTargetCentricZoom(['Tiny'], ['Tiny', 'Region'])
-
-    const viewBox = readViewBox(mount)
-    expect(viewBox.width).toBeLessThan(500)
-    expect(viewBox.height).toBeLessThan(300)
-    expect(viewBox.x).toBeLessThanOrEqual(500)
-    expect(viewBox.x + viewBox.width).toBeGreaterThanOrEqual(501)
-  })
-
-  it('uses the representative task component for adaptive scale instead of full dispersed Country bounds', async () => {
-    const { mount, controller } = makeController()
-    const targetPath = 'M 8 10 h 40 v 20 h -40 z M 82 18 h 1 v 1 h -1 z'
-    await controller.load({ markup: `
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
-        <g><path id="Target" d="${targetPath}"/><text id="Target_label">TARGET</text></g>
-        <g><path id="Context" d="M 84 17 h 4 v 4 h -4 z"/><text id="Context_label">CONTEXT</text></g>
-      </svg>` })
-    setBBox(mount, 'Target', { x: 8, y: 10, width: 75, height: 20 })
-    setPathGeometry(mount, 'Context', { x: 84, y: 17, width: 4, height: 4 }, [{ x: 85, y: 18 }])
-    controller.setTaskAssistance({
-      taskTargetId: 'Target',
-      learningAnchors: [{
-        sourceSvgId: 'Target',
-        kind: 'multi-dot-representative',
-        sourceFingerprint: targetPath,
-        point: { x: 82.5, y: 18.5 },
-      }],
-    })
-
-    controller.setAdaptiveTargetCentricZoom(['Target'], ['Context'])
-
-    const viewBox = readViewBox(mount)
-    expect(viewBox.width).toBeLessThan(40)
-    expect(viewBox.width).toBeGreaterThanOrEqual(4)
-    expect(viewBox.x).toBeLessThanOrEqual(82.5)
-    expect(viewBox.x + viewBox.width).toBeGreaterThanOrEqual(85)
-  })
-
-  it('keeps a task representative anchor in an adaptive multi-dot frame', async () => {
-    const { mount, controller } = makeController()
-    const targetPath = 'M 10 10 h 4 v 4 h -4 z M 80 35 h 4 v 4 h -4 z'
-    await controller.load({ markup: `
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
-        <g><path id="Alpha" d="${targetPath}"/><text id="Alpha_label">ALPHA</text></g>
-        <g><path id="Beta" d="M 82 36 h 4 v 4 h -4 z"/><text id="Beta_label">BETA</text></g>
-      </svg>` })
-    setBBox(mount, 'Alpha', { x: 10, y: 10, width: 74, height: 29 })
-    setBBox(mount, 'Beta', { x: 82, y: 36, width: 4, height: 4 })
-    controller.setTaskAssistance({
-      taskTargetId: 'Alpha',
-      learningAnchors: [{
-        sourceSvgId: 'Alpha',
-        kind: 'multi-dot-representative',
-        sourceFingerprint: targetPath,
-        point: { x: 12, y: 12 },
-      }],
-    })
-
-    controller.setAdaptiveTargetCentricZoom(['Alpha'], ['Beta'])
-
-    const viewBox = readViewBox(mount)
-    expect(viewBox.x).toBeLessThanOrEqual(12)
-    expect(viewBox.y).toBeLessThanOrEqual(12)
-    expect(viewBox.x + viewBox.width).toBeGreaterThanOrEqual(86)
-    expect(viewBox.y + viewBox.height).toBeGreaterThanOrEqual(40)
   })
 
   it('clears the previous target-centric camera when the next target is unknown', async () => {
