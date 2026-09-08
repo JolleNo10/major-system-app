@@ -77,8 +77,22 @@ describe('World Countries learner journey presentation', () => {
 
     expect(journey.currentStageId).toBe('add-capitals')
     expect(journey.countryRecallMastered).toBe(true)
+    expect(journey.countriesEstablished).toBe(true)
     expect(journey.stages[2]?.status).toBe('complete')
     expect(journey.stages[3]?.status).toBe('current')
+  })
+
+  it('uses mastered Country recall as a non-persisted readiness fallback', () => {
+    const journey = deriveWorldCountriesJourneyPresentation({
+      subregionId: 'northern-europe',
+      entries: norway,
+      recallProgress: progressFor(countryRecallAttempts()),
+    })
+
+    expect(journey.countriesLearned).toBe(false)
+    expect(journey.countriesEstablished).toBe(true)
+    expect(journey.currentStageId).toBe('add-capitals')
+    expect(journey.stages[2]).toMatchObject({ id: 'countries-established', status: 'complete' })
   })
 
   it('keeps Add the capitals current after a failed Capital attempt without its milestone', () => {

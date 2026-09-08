@@ -119,6 +119,38 @@ export function getLearningReadinessBySubregionWithDrillEvidence(
   return readinessBySubregion
 }
 
+/**
+ * A display/planning-only fallback for an already-known Country layer.
+ *
+ * This deliberately requires the existing atomic mastery rule for every
+ * location -> Country target. It does not write or imply the durable
+ * countriesLearnedAt milestone.
+ */
+export function isWorldCountriesCountryRecallMastered(
+  entries: readonly Pick<Country, 'id' | 'subregionId'>[],
+  subregionId: SubregionId,
+  recallProgress: RecallProgress,
+): boolean {
+  const subregionEntries = entries.filter(entry => entry.subregionId === subregionId)
+  return subregionEntries.length > 0 && subregionEntries.every(entry => (
+    recallProgress.get(recallTargetIdFor(entry.id, 'location-to-country'))?.proficiency === 'mastered'
+  ))
+}
+
+/**
+ * Derive the non-persisted Country curriculum readiness used by guided Today
+ * presentation. The durable milestone remains independently observable.
+ */
+export function isWorldCountriesCountryLayerEstablished(
+  entries: readonly Pick<Country, 'id' | 'subregionId'>[],
+  subregionId: SubregionId,
+  state: SubregionLearningState | null | undefined,
+  recallProgress: RecallProgress,
+): boolean {
+  return isSubregionCountriesLearned(state)
+    || isWorldCountriesCountryRecallMastered(entries, subregionId, recallProgress)
+}
+
 export function getLearningReadinessForCountry(
   country: Pick<Country, 'subregionId'>,
   readinessBySubregion: ReadonlyMap<SubregionId, WorldCountriesLearningReadiness>,

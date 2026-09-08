@@ -286,8 +286,10 @@ Browser/manual verification is not required by default. Do not start or troubles
 ## Implementation evidence
 
 - Focused guided-loop checks: `npx.cmd vitest run src/features/world-countries/today/todayPlan.test.ts src/features/world-countries/today/journeyPresentation.test.ts src/features/world-countries/today/GuidedHomeRails.test.tsx src/features/world-countries/today/WorldCountriesToday.test.tsx src/features/world-countries/today/TodayReviewSession.test.tsx src/features/world-countries/learning/recallProgress.test.ts` — 6 files, 40 tests passed.
+- Correction-pass focused checks: `npx.cmd vitest run src/features/world-countries/learning/learningReadiness.test.ts src/features/world-countries/today/todayPlan.test.ts src/features/world-countries/today/journeyPresentation.test.ts src/features/world-countries/today/GuidedHomeRails.test.tsx src/features/world-countries/today/WorldCountriesToday.test.tsx` — 5 files, 36 tests passed. These cover target introduction versus Country curriculum readiness, the mastered-Country fallback, journey/Continue alignment, and the single attached consolidation CTA.
 - Today capability slice: `npx.cmd vitest run src/features/world-countries/today` — 9 files, 42 tests passed.
-- World Countries feature slice: `npx.cmd vitest run src/features/world-countries` — 115 files, 752 tests passed.
+- World Countries feature slice before this correction: `npx.cmd vitest run src/features/world-countries` — 115 files, 752 tests passed.
+- World Countries feature slice after this correction: `npx.cmd vitest run src/features/world-countries` — 115 files, 755 tests passed.
 - `npm.cmd run lint` passed.
 - `git diff --check` passed.
 - `npm.cmd run typecheck` reports only the known unrelated `src/features/world-countries/drill/DrillSetup.test.tsx:301` `Map<any, any>` inference error; no changed-file type errors remain.

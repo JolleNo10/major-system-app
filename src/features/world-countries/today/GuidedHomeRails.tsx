@@ -34,7 +34,7 @@ export function GuidedHomeRails({
   scopeComplete = false,
   scopeProgress,
   incompleteSubregionLabels = [],
-  onPracticeUnfinished,
+  consolidationAvailable = false,
   scopeSummaries,
   onWorld,
   onOpenPlay,
@@ -56,7 +56,7 @@ export function GuidedHomeRails({
   scopeComplete?: boolean
   scopeProgress?: WorldCountriesScopeProgress | null
   incompleteSubregionLabels?: readonly string[]
-  onPracticeUnfinished?: () => void
+  consolidationAvailable?: boolean
   scopeSummaries: readonly GuidedHomeScopeSummary[]
   onWorld: () => void
   onOpenPlay: () => void
@@ -73,11 +73,6 @@ export function GuidedHomeRails({
   const inspectedSubregionLabel = journey ? getSubregionDefinition(journey.subregionId).label : null
   const guidedSubregionLabel = guidedSubregionId ? getSubregionDefinition(guidedSubregionId).label : null
   const isInspectingOtherSubregion = Boolean(journey && (!guidedSubregionId || journey.subregionId !== guidedSubregionId))
-  const inspectionActionText = nextLearning
-    ? `Continue still follows ${guidedSubregionLabel ?? 'the guided recommendation'}.`
-    : onPracticeUnfinished
-      ? 'No new Learning is scheduled; targeted guided practice remains available for this scope.'
-      : 'No guided action is currently scheduled; this inspection does not change the guided path.'
   const scopeIsComplete = scopeComplete || scopeProgress?.complete === true
   const completionSummary = scopeProgress
     ? `${scopeProgress.completeCountries} / ${scopeProgress.totalCountries} complete`
@@ -175,7 +170,6 @@ export function GuidedHomeRails({
           <section className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-sm" aria-labelledby="world-countries-guided-consolidation-heading">
             <p id="world-countries-guided-consolidation-heading" className="text-xs font-semibold uppercase tracking-wider text-amber-300">Unfinished guided knowledge</p>
             <p className="mt-1 text-zinc-300">{completionSummary}. {unfinishedGeography ?? 'Some core recall still needs practice.'}</p>
-            {onPracticeUnfinished && <button type="button" onClick={onPracticeUnfinished} className="mt-3 w-full rounded-lg border border-amber-400/40 px-3 py-2 text-sm font-semibold text-amber-200 hover:border-amber-300 hover:text-amber-100">Practice unfinished area</button>}
           </section>
         )}
         {nextLearning && <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3 text-sm"><p className="text-xs uppercase tracking-wider text-cyan-300">Next Learning</p><p className="mt-1 font-semibold text-zinc-100">{trackLabel(nextLearning.track)} · {nextLearning.subregionLabel}</p></div>}
@@ -184,7 +178,11 @@ export function GuidedHomeRails({
             {isInspectingOtherSubregion && (
               <section className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-sm">
                 <p className="text-xs font-semibold uppercase tracking-wider text-amber-300">Inspecting {inspectedSubregionLabel}</p>
-                <p className="mt-1 text-zinc-300">{inspectionActionText}</p>
+                <p className="mt-1 text-zinc-300">{nextLearning
+                  ? `Continue still follows ${guidedSubregionLabel ?? 'the guided recommendation'}.`
+                  : consolidationAvailable
+                    ? 'No new Learning is scheduled; targeted guided practice remains available for this scope.'
+                    : 'No guided action is currently scheduled; this inspection does not change the guided path.'}</p>
                 {onFocusGuidedSubregion && <button type="button" onClick={onFocusGuidedSubregion} className="mt-2 text-xs font-semibold text-cyan-300 hover:text-cyan-200">{guidedSubregionId ? 'Return to guided Subregion' : 'Clear inspection'}</button>}
               </section>
             )}
@@ -204,7 +202,7 @@ export function GuidedHomeRails({
     ),
     leftLabel: 'Geography',
     rightLabel: 'Guided journey',
-  }), [activeCountryCount, caughtUp, completionSummary, continent, dueCount, dueCountryCount, evidenceStatus, guidedSubregionId, inspectedSubregionLabel, inspectionActionText, isInspectingOtherSubregion, journey, level, nextLearning, onFocusGuidedSubregion, onOpenPlay, onOpenProgress, onPracticeUnfinished, onWorld, refreshing, reviewReasonSummary, scopeIsComplete, scopeName, scopeSummaries, statusExplanation, statusHeading, unfinishedGeography, whyTodayText])
+  }), [activeCountryCount, caughtUp, completionSummary, consolidationAvailable, continent, dueCount, dueCountryCount, evidenceStatus, guidedSubregionId, guidedSubregionLabel, inspectedSubregionLabel, isInspectingOtherSubregion, journey, level, nextLearning, onFocusGuidedSubregion, onOpenPlay, onOpenProgress, onWorld, refreshing, reviewReasonSummary, scopeIsComplete, scopeName, scopeSummaries, statusExplanation, statusHeading, unfinishedGeography, whyTodayText])
   useRails(rails)
   return null
 }

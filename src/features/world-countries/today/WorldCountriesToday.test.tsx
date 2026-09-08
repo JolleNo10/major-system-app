@@ -165,6 +165,7 @@ describe('World Countries Today', () => {
       await Promise.resolve()
     })
     expect(mount.textContent).toContain('Practice unfinished area')
+    expect([...mount.querySelectorAll<HTMLButtonElement>('button')].filter(button => button.textContent === 'Practice unfinished area')).toHaveLength(1)
     await act(async () => {
       [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Practice unfinished area')?.click()
     })

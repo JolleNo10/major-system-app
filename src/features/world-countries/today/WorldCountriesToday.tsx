@@ -11,6 +11,7 @@ import { getWorldMetadata } from '@/features/world-countries/geography/worldMeta
 import { getAllSubregionLearningStates, useWorldCountriesSubregionLearningRevision } from '@/features/world-countries/learning/subregionLearningStore'
 import { useWorldCountriesGeographyRevision } from '@/features/world-countries/geography/geographyRefresh'
 import { deriveWorldCountriesCountryProgress, deriveWorldCountriesRecallProgress, type RecallProgress } from '@/features/world-countries/learning/recallProgress'
+import { isSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningState'
 import { flattenWorldCountriesRecallHistory, loadWorldCountriesRecallHistory, type WorldCountriesRecallHistory } from '@/features/world-countries/learning/recallHistory'
 import { WORLD_COUNTRIES_CORE_RECALL_SKILLS } from '@/features/world-countries/learning/recallTargets'
 import { deriveWorldCountriesScopeProgressForCountries } from '@/features/world-countries/learning/scopeProgress'
@@ -294,7 +295,7 @@ export function WorldCountriesToday({
       activeCountries={activeCountries}
       newItemsPerSet={settings.worldCountriesNewItemsPerSet as LearningSetMaximum}
       schedulerSettings={schedulerSettings}
-      countriesLearned={Boolean(learningState?.countriesLearnedAt)}
+      countriesLearned={isSubregionCountriesLearned(learningState)}
       fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching}
       onPhaseChange={() => undefined}
       onExit={finishLearning}
@@ -336,7 +337,7 @@ export function WorldCountriesToday({
         scopeComplete={plan?.scopeComplete ?? false}
         scopeProgress={progress}
         incompleteSubregionLabels={plan?.incompleteSubregionLabels ?? []}
-        onPracticeUnfinished={plan?.action.kind === 'consolidate' ? startPrimary : undefined}
+        consolidationAvailable={plan?.action.kind === 'consolidate'}
         scopeSummaries={scopeSummaries}
         journey={journey}
         guidedSubregionId={guidedSubregionId}

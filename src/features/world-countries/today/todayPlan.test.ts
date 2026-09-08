@@ -60,28 +60,45 @@ describe('World Countries Today plan', () => {
     expect(plan.dueCandidates[0]?.target.skill).toBe('location-to-country')
   })
 
-  it('recommends Capitals after successful location evidence without re-teaching Countries', () => {
-    const plan = buildWorldCountriesTodayPlan({
-      activeCountries: countries.filter(country => country.id === 'NO'),
-      history: historyFor([
-        { itemId: 'world-countries:location-to-country:NO', at: 1, ok: true, evidenceKind: 'recognition', localDate: '2026-08-10' },
-      ]),
-      localDate: '2026-08-19',
-      effectiveSubregionIds: ['northern-europe'],
-    })
-    expect(plan.dueCount).toBe(1)
-    expect(plan.nextLearning).toBeNull()
-
-    const caughtUp = buildWorldCountriesTodayPlan({
+  it('keeps Capital Learning behind Country establishment rather than target introduction', () => {
+    const partialCountryPractice = buildWorldCountriesTodayPlan({
       activeCountries: countries.filter(country => country.id === 'NO'),
       history: historyFor([
         { itemId: 'world-countries:location-to-country:NO', at: 1, ok: true, evidenceKind: 'recall', localDate: '2026-08-18' },
-        { itemId: 'world-countries:country-to-capital:NO', at: 2, ok: true, evidenceKind: 'recall', localDate: '2026-08-18' },
       ]),
       localDate: '2026-08-18',
       effectiveSubregionIds: ['northern-europe'],
     })
-    expect(caughtUp.nextLearning).toBeNull()
+    expect(partialCountryPractice.introductions.get('world-countries:location-to-country:NO')?.introduced).toBe(true)
+    expect(partialCountryPractice.nextLearning?.track).toBe('learn-countries')
+    expect(partialCountryPractice.action).toMatchObject({ kind: 'learn', recommendation: { track: 'learn-countries' } })
+
+    const countryEstablished = buildWorldCountriesTodayPlan({
+      activeCountries: countries.filter(country => country.id === 'NO'),
+      history: historyFor([
+        { itemId: 'world-countries:location-to-country:NO', at: 1, ok: true, evidenceKind: 'recall', localDate: '2026-08-18' },
+      ]),
+      learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: 1 }],
+      localDate: '2026-08-18',
+      effectiveSubregionIds: ['northern-europe'],
+    })
+    expect(countryEstablished.nextLearning?.track).toBe('learn-capitals')
+    expect(countryEstablished.action).toMatchObject({ kind: 'learn', recommendation: { track: 'learn-capitals' } })
+  })
+
+  it('uses fully mastered Country recall as a non-persisted fallback for already-known Countries', () => {
+    const plan = buildWorldCountriesTodayPlan({
+      activeCountries: countries.filter(country => country.id === 'NO'),
+      history: historyFor([
+        { itemId: 'world-countries:location-to-country:NO', at: 1, ok: true, evidenceKind: 'recall', localDate: '2026-08-10' },
+        { itemId: 'world-countries:location-to-country:NO', at: 2, ok: true, evidenceKind: 'recall', localDate: '2026-08-11' },
+      ]),
+      localDate: '2026-08-11',
+      effectiveSubregionIds: ['northern-europe'],
+    })
+
+    expect(plan.nextLearning?.track).toBe('learn-capitals')
+    expect(plan.action).toMatchObject({ kind: 'learn', recommendation: { track: 'learn-capitals' } })
   })
 
   it('prioritizes due review, then Learning, then bounded consolidation, then completion', () => {

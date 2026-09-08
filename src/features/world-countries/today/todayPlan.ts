@@ -4,6 +4,7 @@ import type { WorldCountriesRecallHistory } from '@/features/world-countries/lea
 import { deriveWorldCountriesIntroducedness, type WorldCountriesTargetIntroduction } from '@/features/world-countries/learning/todayIntroduction'
 import { getSubregionDefinition } from '@/features/world-countries/data/subregions'
 import type { SubregionLearningState } from '@/features/world-countries/learning/subregionLearningState'
+import { isWorldCountriesCountryLayerEstablished } from '@/features/world-countries/learning/learningReadiness'
 import {
   deriveWorldCountriesReviewSchedule,
   type WorldCountriesReviewSchedule,
@@ -172,6 +173,8 @@ function recommendationFor(
   countriesInOrder: readonly Country[],
   introductions: ReadonlyMap<string, WorldCountriesTargetIntroduction>,
   subregionIds: readonly SubregionId[],
+  learningStates: readonly SubregionLearningState[],
+  progressByTarget: ReadonlyMap<string, ReturnType<typeof deriveWorldCountriesAtomicProgress>>,
 ): WorldCountriesTodayLearningRecommendation | null {
   const bySubregion = new Map<SubregionId, Country[]>()
   for (const country of countriesInOrder) {
@@ -189,9 +192,11 @@ function recommendationFor(
     const hasUnintroducedCapitals = entries.some(country => !introductions.get(
       recallTargetIdFor(country.id, 'country-to-capital'),
     )?.introduced)
-    if (!hasUnintroducedCountries && !hasUnintroducedCapitals) continue
+    const learningState = learningStates.find(state => state.subregionId === subregionId)
+    const countriesEstablished = isWorldCountriesCountryLayerEstablished(entries, subregionId, learningState, progressByTarget)
+    if (!hasUnintroducedCountries && !hasUnintroducedCapitals && countriesEstablished) continue
 
-    const track: WorldCountriesTodayLearningTrack = hasUnintroducedCountries
+    const track: WorldCountriesTodayLearningTrack = hasUnintroducedCountries || !countriesEstablished
       ? 'learn-countries'
       : 'learn-capitals'
     return {
@@ -255,7 +260,13 @@ export function buildWorldCountriesTodayPlan(
   ].filter((id, index, values) => values.indexOf(id) === index)
 
   const nextLearning = dueCandidates.length === 0
-    ? recommendationFor(effectiveCountries, introductions, subregionIds)
+    ? recommendationFor(
+      effectiveCountries,
+      introductions,
+      subregionIds,
+      input.learningStates ?? [],
+      progressByTarget,
+    )
     : null
   const incompleteSubregionLabels = [...new Set(effectiveCountries
     .filter(country => incompleteCountries.has(country.id))

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { deriveWorldCountriesRecallProgress } from './recallProgress'
 import { recallTargetIdFor } from './recallTargets'
-import { createWorldCountriesLearningReadinessByCountry, deriveWorldCountriesLearningReadiness, getLearningReadinessBySubregion, getLearningReadinessBySubregionWithDrillEvidence, getLearningReadinessForCountry, WORLD_COUNTRIES_LEARNING_READINESS_COLORS, WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES } from './learningReadiness'
+import { createWorldCountriesLearningReadinessByCountry, deriveWorldCountriesLearningReadiness, getLearningReadinessBySubregion, getLearningReadinessBySubregionWithDrillEvidence, getLearningReadinessForCountry, isWorldCountriesCountryLayerEstablished, isWorldCountriesCountryRecallMastered, WORLD_COUNTRIES_LEARNING_READINESS_COLORS, WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES } from './learningReadiness'
 
 describe('World Countries Learning Readiness', () => {
   it('keeps the canonical three-state palette and labels together', () => {
@@ -69,5 +69,25 @@ describe('World Countries Learning Readiness', () => {
     )
 
     expect(getLearningReadinessBySubregionWithDrillEvidence(entries, [], progress).get('northern-europe')).toBe('NOT_LEARNED')
+  })
+
+  it('only treats complete Country recall as the already-known curriculum fallback', () => {
+    const entries = [{ id: 'NO', subregionId: 'northern-europe' as const }]
+    const partial = deriveWorldCountriesRecallProgress(
+      { countryIds: ['NO'], skills: ['location-to-country'] },
+      [{ itemId: recallTargetIdFor('NO', 'location-to-country'), at: 1, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10' }],
+    )
+    const complete = deriveWorldCountriesRecallProgress(
+      { countryIds: ['NO'], skills: ['location-to-country'] },
+      [
+        { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 1, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10' },
+        { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 2, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-11' },
+      ],
+    )
+
+    expect(isWorldCountriesCountryRecallMastered(entries, 'northern-europe', partial)).toBe(false)
+    expect(isWorldCountriesCountryRecallMastered(entries, 'northern-europe', complete)).toBe(true)
+    expect(isWorldCountriesCountryLayerEstablished(entries, 'northern-europe', undefined, partial)).toBe(false)
+    expect(isWorldCountriesCountryLayerEstablished(entries, 'northern-europe', { subregionId: 'northern-europe', countriesLearnedAt: 1 }, partial)).toBe(true)
   })
 })

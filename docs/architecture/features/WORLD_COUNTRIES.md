@@ -150,6 +150,17 @@ scope-local consolidation queue containing only introduced, non-mastered core
 targets. All queues, retry state, actions, and checkpoints remain transient;
 consolidation uses the same typed free-recall/evidence seam as guided review.
 
+Target introduction is intentionally separate from curriculum readiness:
+successful evidence can make an atomic target eligible for review or
+consolidation, but it does not by itself establish the whole-Subregion Country
+Learning layer. Today keeps recommending Country Learning until that layer has
+its durable `countriesLearnedAt` milestone, except when every active
+`location-to-country` target already has the existing two-date mastered recall
+evidence. That display/planning-only fallback avoids redundant Country
+Learning without writing a synthetic milestone. Once Countries are established
+by either route, Capital Learning may be layered on top; the durable milestone
+meaning remains unchanged.
+
 Today exposes all derived due candidates for urgency/counts, then snapshots at
 most 12 candidates into a deterministic interleaved review block. Priority
 tiers remain authoritative: latest failures, missing successful typed recall,
@@ -269,8 +280,9 @@ countries, Countries established, Add the capitals, Put it all together, Master
 the region) is derived presentation over existing Subregion milestones and
 recall/proficiency evidence. No journey-step, current-Continent, or curriculum
 focus field is persisted. The Country Learning milestone satisfies Countries
-established and is sufficient to layer Capital Learning on top; final Country
-recall mastery is not a Capital gate. Capital learning extends existing Country
+established and is sufficient to layer Capital Learning on top; fully mastered
+Country recall is a non-persisted fallback for already-known Countries, while
+partial target practice is not. Capital learning extends existing Country
 knowledge and does not reset Country evidence. Each stage status is derived
 independently enough to distinguish a completed Learning milestone from
 developing or mastered recall; after both milestones, incomplete core evidence
@@ -296,10 +308,14 @@ Durable Learning Readiness is derived from `countriesLearnedAt` and
 learned, and Countries + Capitals learned. A display-only Drill-evidence
 bridge may promote a Subregion to Countries learned when every active Country
 has current Location -> Country proficiency of Developing or better. It never
-writes a Learning milestone or changes Drill evidence.
+writes a Learning milestone or changes Drill evidence. This Drill setup
+readiness is not the Today curriculum gate: the guided planner requires the
+durable Country milestone or the separate complete-recall fallback described
+above before recommending Capital Learning.
 
-Learn Capitals is runnable before Countries learning and recommends, but does
-not require, Countries first.
+The standalone Learn Capitals flow remains runnable from its intentional
+non-Today entry points. The Today guided recommendation uses the Country
+establishment gate above rather than target introduction alone.
 
 Recite is a sibling activity with exactly three ordered modes: Countries,
 Countries + Capitals, and Countries from Capitals. It resolves the same

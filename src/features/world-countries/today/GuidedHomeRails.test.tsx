@@ -82,7 +82,6 @@ describe('Guided World Countries home status', () => {
   })
 
   it('distinguishes caught-up scheduled work from unfinished core progress', () => {
-    const onPracticeUnfinished = vi.fn()
     const mount = renderRails({
       scopeComplete: false,
       scopeProgress: {
@@ -98,14 +97,13 @@ describe('Guided World Countries home status', () => {
         additionalMasteryRatio: 0,
       },
       incompleteSubregionLabels: ['Eastern Europe'],
-      onPracticeUnfinished,
+      consolidationAvailable: true,
     })
 
     expect(mount.textContent).toContain('Caught up for today')
     expect(mount.textContent).toContain('45 / 46 complete')
     expect(mount.textContent).toContain('Eastern Europe')
-    act(() => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Practice unfinished area')?.click())
-    expect(onPracticeUnfinished).toHaveBeenCalledOnce()
+    expect([...mount.querySelectorAll<HTMLButtonElement>('button')].some(button => button.textContent === 'Practice unfinished area')).toBe(false)
   })
 
   it('labels an inspected Subregion without replacing the guided recommendation', () => {
@@ -116,6 +114,7 @@ describe('Guided World Countries home status', () => {
       complete: false,
       stages: WORLD_COUNTRIES_JOURNEY_STAGES.map(stage => ({ ...stage, status: stage.id === 'meet-countries' ? 'current' : 'upcoming', detail: 'Derived status' })),
       countriesLearned: false,
+      countriesEstablished: false,
       capitalsLearned: false,
       countryRecallMastered: false,
       coreRecallComplete: false,
@@ -141,6 +140,7 @@ describe('Guided World Countries home status', () => {
       complete: false,
       stages: WORLD_COUNTRIES_JOURNEY_STAGES.map(stage => ({ ...stage, status: stage.id === 'put-it-together' ? 'current' : 'upcoming', detail: 'Derived status' })),
       countriesLearned: true,
+      countriesEstablished: true,
       capitalsLearned: true,
       countryRecallMastered: false,
       coreRecallComplete: false,
@@ -150,7 +150,7 @@ describe('Guided World Countries home status', () => {
       journey,
       caughtUp: true,
       scopeComplete: false,
-      onPracticeUnfinished: vi.fn(),
+      consolidationAvailable: true,
     })
 
     expect(mount.textContent).toContain('No new Learning is scheduled; targeted guided practice remains available')
