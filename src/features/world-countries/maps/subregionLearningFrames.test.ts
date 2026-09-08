@@ -62,6 +62,7 @@ function unionBounds(bounds: readonly SvgViewBoxRect[]): SvgViewBoxRect | null {
 
 const ORDINARY_COUNTRY_SAFE_MARGIN_RATIO = 0.08
 const REPRESENTATIVE_TARGET_MARGIN_RATIO = 0.05
+type TestSubregionId = Parameters<typeof getSubregionLearningFrame>[0]
 
 function isInsideSafeArea(countryBounds: SvgViewBoxRect, frameBounds: SvgViewBoxRect, marginRatio: number) {
   const margin = Math.min(frameBounds.width, frameBounds.height) * marginRatio
@@ -75,7 +76,7 @@ function isPointInsideSafeArea(point: { x: number; y: number }, frameBounds: Svg
   return isInsideSafeArea({ x: point.x, y: point.y, width: 0, height: 0 }, frameBounds, marginRatio)
 }
 
-function countrySourceBounds(mapId: string, countryId: string) {
+function countrySourceBounds(mapId: string, countryId: string, visibleSource?: SvgViewBoxRect | null) {
   const markup = sourceSvgs.get(mapId)
   const country = countries.find(entry => entry.id === countryId)
   if (!markup || !country) return null
@@ -85,7 +86,27 @@ function countrySourceBounds(mapId: string, countryId: string) {
   const pathData = path?.getAttribute('d')
   if (!path || path.localName.toLowerCase() !== 'path' || !pathData) return null
   const transform = readSvgElementTransform(path as unknown as SVGGraphicsElement)
-  return unionBounds(readSvgPathGeometryComponents(pathData).map(component => transformBounds(component.bounds, transform)))
+  const components = readSvgPathGeometryComponents(pathData)
+    .map(component => transformBounds(component.bounds, transform))
+    .filter(bounds => !visibleSource || (
+      bounds.x < visibleSource.x + visibleSource.width
+      && bounds.x + bounds.width > visibleSource.x
+      && bounds.y < visibleSource.y + visibleSource.height
+      && bounds.y + bounds.height > visibleSource.y
+    ))
+  return unionBounds(components)
+}
+
+function getEffectiveFrameBounds(subregionId: TestSubregionId) {
+  const frame = getSubregionLearningFrame(subregionId)
+  const source = frame ? sourceBounds(frame.mapDefinitionId) : null
+  return {
+    frame,
+    source,
+    cameraBounds: frame && source
+      ? fitViewBoxToAspect(frame.bounds, source.width / source.height)
+      : null,
+  }
 }
 
 function isOrdinaryGeometryCountry(mapId: string, countryId: string) {
@@ -94,12 +115,8 @@ function isOrdinaryGeometryCountry(mapId: string, countryId: string) {
 }
 
 function expectCountryInsideSafeArea(subregionId: Parameters<typeof getSubregionLearningFrame>[0], countryId: string, countryName: string) {
-  const frame = getSubregionLearningFrame(subregionId)
-  const source = frame ? sourceBounds(frame.mapDefinitionId) : null
+  const { frame, source, cameraBounds } = getEffectiveFrameBounds(subregionId)
   const countryBounds = frame ? countrySourceBounds(frame.mapDefinitionId, countryId) : null
-  const cameraBounds = frame && source
-    ? fitViewBoxToAspect(frame.bounds, source.width / source.height)
-    : null
 
   expect(countryBounds, `${countryName} geometry should resolve from the authoritative SVG`).not.toBeNull()
   expect(cameraBounds).not.toBeNull()
@@ -161,35 +178,48 @@ describe('Subregion learning frames', () => {
   })
 
   it.each([
-    ['australia-new-zealand', 'AU', 'Australia', 'geometry'],
-    ['melanesia', 'SB', 'Solomon Islands', 'synthetic dot'],
-    ['micronesia', 'FM', 'Micronesia', 'learning anchor'],
-    ['polynesia', 'WS', 'Samoa', 'synthetic dot'],
-  ] as const)('keeps the %s representative %s target in the effective learning frame', (subregionId, countryId, countryName, representation) => {
-    const frame = getSubregionLearningFrame(subregionId)
-    const source = frame ? sourceBounds(frame.mapDefinitionId) : null
-    const cameraBounds = frame && source
-      ? fitViewBoxToAspect(frame.bounds, source.width / source.height)
-      : null
-    const geometry = representation === 'geometry' && frame
-      ? countrySourceBounds(frame.mapDefinitionId, countryId)
-      : null
-    const anchor = representation === 'learning anchor'
-      ? getMapLearningAnchors('oceania', [countryId])[0]?.point
-      : representation === 'synthetic dot'
-        ? getMapSyntheticDots('oceania', [countryId])[0]?.point
-        : null
-
+    ['australia-new-zealand', [
+      ['AU', 'Australia', 'geometry'],
+      ['NZ', 'New Zealand', 'geometry'],
+    ]],
+    ['melanesia', [
+      ['PG', 'Papua New Guinea', 'geometry'],
+      ['SB', 'Solomon Islands', 'synthetic dot'],
+      ['VU', 'Vanuatu', 'synthetic dot'],
+    ]],
+    ['micronesia', [
+      ['FM', 'Micronesia', 'learning anchor'],
+      ['PW', 'Palau', 'geometry'],
+    ]],
+    ['polynesia', [
+      ['WS', 'Samoa', 'synthetic dot'],
+      ['TO', 'Tonga', 'geometry'],
+      ['TV', 'Tuvalu', 'geometry'],
+    ]],
+  ] as const)('keeps %s representative targets in the effective learning frame', (subregionId, targets) => {
+    const { frame, source, cameraBounds } = getEffectiveFrameBounds(subregionId)
     expect(frame && source && isValidSubregionLearningFrame(frame, source)).toBe(true)
     expect(cameraBounds).not.toBeNull()
-    if (geometry) {
-      expect(isInsideSafeArea(geometry, cameraBounds!, 0)).toBe(true)
-      const geometryCenter = getSvgBoundsCenter(geometry)
-      expect(geometryCenter).not.toBeNull()
-      expect(isPointInsideSafeArea(geometryCenter!, cameraBounds!, REPRESENTATIVE_TARGET_MARGIN_RATIO)).toBe(true)
-    } else {
-      expect(anchor, `${countryName} should resolve through its ${representation} metadata`).not.toBeUndefined()
-      expect(isPointInsideSafeArea(anchor!, cameraBounds!, REPRESENTATIVE_TARGET_MARGIN_RATIO)).toBe(true)
+
+    for (const [countryId, countryName, representation] of targets) {
+      const geometry = representation === 'geometry' && frame
+        ? countrySourceBounds(frame.mapDefinitionId, countryId, source)
+        : null
+      const anchor = representation === 'learning anchor'
+        ? getMapLearningAnchors('oceania', [countryId])[0]?.point
+        : representation === 'synthetic dot'
+          ? getMapSyntheticDots('oceania', [countryId])[0]?.point
+          : null
+
+      if (geometry) {
+        expect(isInsideSafeArea(geometry, cameraBounds!, 0), `${countryName} geometry should remain in view`).toBe(true)
+        const geometryCenter = getSvgBoundsCenter(geometry)
+        expect(geometryCenter, `${countryName} geometry should have a representative center`).not.toBeNull()
+        expect(isPointInsideSafeArea(geometryCenter!, cameraBounds!, REPRESENTATIVE_TARGET_MARGIN_RATIO)).toBe(true)
+      } else {
+        expect(anchor, `${countryName} should resolve through its ${representation} metadata`).not.toBeUndefined()
+        expect(isPointInsideSafeArea(anchor!, cameraBounds!, REPRESENTATIVE_TARGET_MARGIN_RATIO)).toBe(true)
+      }
     }
   })
 
