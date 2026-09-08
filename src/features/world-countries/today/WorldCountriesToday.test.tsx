@@ -66,10 +66,17 @@ describe('World Countries Today', () => {
     buildPlanMock.mockReturnValue({
       dueCandidates: [{}],
       reviewQueue: [{}],
+      consolidationCandidates: [],
+      consolidationQueue: [],
       dueCount: 1,
       dueCountryCount: 1,
       introductions: new Map(),
       nextLearning: null,
+      incompleteCountryCount: 1,
+      incompleteSubregionLabels: [],
+      scopeComplete: false,
+      caughtUpForToday: false,
+      action: { kind: 'review', candidates: [{}] },
     })
     const mount = document.createElement('div')
     document.body.append(mount)
@@ -95,6 +102,8 @@ describe('World Countries Today', () => {
     buildPlanMock.mockReturnValue({
       dueCandidates: [],
       reviewQueue: [],
+      consolidationCandidates: [],
+      consolidationQueue: [],
       dueCount: 0,
       dueCountryCount: 0,
       introductions: new Map(),
@@ -104,6 +113,17 @@ describe('World Countries Today', () => {
         continent: countries[0].continent,
         subregionLabel: 'Northern Europe',
       },
+      incompleteCountryCount: 1,
+      incompleteSubregionLabels: ['Northern Europe'],
+      scopeComplete: false,
+      caughtUpForToday: false,
+      action: { kind: 'learn', recommendation: {
+        track: 'learn-countries',
+        subregionId: countries[0].subregionId,
+        continent: countries[0].continent,
+        subregionLabel: 'Northern Europe',
+        countryIds: [countries[0].id],
+      } },
     })
     const mount = document.createElement('div')
     document.body.append(mount)
@@ -118,5 +138,37 @@ describe('World Countries Today', () => {
     })
 
     expect(mount.querySelector('[data-testid="country-learning-flow"]')).not.toBeNull()
+  })
+
+  it('starts targeted consolidation instead of generic Play when the scope is unfinished', async () => {
+    buildPlanMock.mockReturnValue({
+      dueCandidates: [],
+      reviewQueue: [],
+      consolidationCandidates: [{}],
+      consolidationQueue: [{}],
+      dueCount: 0,
+      dueCountryCount: 0,
+      introductions: new Map(),
+      nextLearning: null,
+      incompleteCountryCount: 1,
+      incompleteSubregionLabels: ['Northern Europe'],
+      scopeComplete: false,
+      caughtUpForToday: true,
+      action: { kind: 'consolidate', candidates: [{}] },
+    })
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(WorldCountriesToday, { answerMode: 'typing', onNavigate: vi.fn() }))
+      await Promise.resolve()
+    })
+    expect(mount.textContent).toContain('Practice unfinished area')
+    await act(async () => {
+      [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Practice unfinished area')?.click()
+    })
+
+    expect(mount.textContent).toContain('Finish review')
   })
 })

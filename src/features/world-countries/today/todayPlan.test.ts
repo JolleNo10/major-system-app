@@ -10,6 +10,18 @@ function historyFor(attempts: readonly { itemId: string; at: number; ok: boolean
   }, attempts.map(attempt => ({ ms: 100, ...attempt })))
 }
 
+function completeCoreHistory(countryIds: readonly string[] = ['NO']) {
+  return deriveWorldCountriesRecallHistory(
+    { countryIds, skills: ['location-to-country', 'country-to-capital'] },
+    countryIds.flatMap(countryId => [
+      { itemId: `world-countries:location-to-country:${countryId}`, at: 1, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-10' },
+      { itemId: `world-countries:location-to-country:${countryId}`, at: 2, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-11' },
+      { itemId: `world-countries:country-to-capital:${countryId}`, at: 3, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-10' },
+      { itemId: `world-countries:country-to-capital:${countryId}`, at: 4, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-11' },
+    ]),
+  )
+}
+
 describe('World Countries Today plan', () => {
   it('keeps a scoped plan inside the supplied active Country population', () => {
     const scopedHistory = deriveWorldCountriesRecallHistory({
@@ -70,5 +82,98 @@ describe('World Countries Today plan', () => {
       effectiveSubregionIds: ['northern-europe'],
     })
     expect(caughtUp.nextLearning).toBeNull()
+  })
+
+  it('prioritizes due review, then Learning, then bounded consolidation, then completion', () => {
+    const country = countries.find(entry => entry.id === 'NO')!
+    const due = buildWorldCountriesTodayPlan({
+      activeCountries: [country],
+      history: historyFor([
+        { itemId: 'world-countries:location-to-country:NO', at: 1, ok: true, localDate: '2026-08-18' },
+        { itemId: 'world-countries:location-to-country:NO', at: 2, ok: false, localDate: '2026-08-19' },
+      ]),
+      localDate: '2026-08-19',
+    })
+    expect(due.action.kind).toBe('review')
+
+    const learning = buildWorldCountriesTodayPlan({
+      activeCountries: [country],
+      history: historyFor([]),
+      localDate: '2026-08-19',
+      effectiveSubregionIds: ['northern-europe'],
+    })
+    expect(learning.action.kind).toBe('learn')
+
+    const consolidation = buildWorldCountriesTodayPlan({
+      activeCountries: [country],
+      history: historyFor([
+        { itemId: 'world-countries:location-to-country:NO', at: 1, ok: true, evidenceKind: 'recall', localDate: '2026-08-18' },
+        { itemId: 'world-countries:country-to-capital:NO', at: 2, ok: true, evidenceKind: 'recall', localDate: '2026-08-18' },
+      ]),
+      learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: 1, capitalsLearnedAt: 2 }],
+      localDate: '2026-08-18',
+    })
+    expect(consolidation.dueCount).toBe(0)
+    expect(consolidation.nextLearning).toBeNull()
+    expect(consolidation.action.kind).toBe('consolidate')
+
+    const complete = buildWorldCountriesTodayPlan({
+      activeCountries: [country],
+      history: completeCoreHistory(),
+      learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: 1, capitalsLearnedAt: 2 }],
+      localDate: '2026-08-11',
+    })
+    expect(complete.scopeComplete).toBe(true)
+    expect(complete.action.kind).toBe('complete')
+  })
+
+  it('exposes caught-up-but-incomplete consolidation and excludes complete targets', () => {
+    const country = countries.find(entry => entry.id === 'NO')!
+    const plan = buildWorldCountriesTodayPlan({
+      activeCountries: [country],
+      history: deriveWorldCountriesRecallHistory({
+        countryIds: ['NO'],
+        skills: ['location-to-country', 'country-to-capital'],
+      }, [
+        { itemId: 'world-countries:location-to-country:NO', at: 1, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-17' },
+        { itemId: 'world-countries:location-to-country:NO', at: 2, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-18' },
+        { itemId: 'world-countries:country-to-capital:NO', at: 3, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-18' },
+      ]),
+      learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: 1, capitalsLearnedAt: 2 }],
+      localDate: '2026-08-18',
+    })
+
+    expect(plan.caughtUpForToday).toBe(true)
+    expect(plan.scopeComplete).toBe(false)
+    expect(plan.incompleteCountryCount).toBe(1)
+    expect(plan.consolidationCandidates).toHaveLength(1)
+    expect(plan.consolidationCandidates[0]?.target.skill).toBe('country-to-capital')
+    expect(plan.consolidationQueue).toHaveLength(1)
+    expect(plan.action).toMatchObject({ kind: 'consolidate' })
+  })
+
+  it('keeps consolidation candidates inside the supplied Continent population', () => {
+    const norway = countries.find(entry => entry.id === 'NO')!
+    const india = countries.find(entry => entry.id === 'IN')!
+    const history = deriveWorldCountriesRecallHistory({
+      countryIds: ['NO', 'IN'],
+      skills: ['location-to-country', 'country-to-capital'],
+    }, [
+      { itemId: 'world-countries:location-to-country:NO', at: 1, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-18' },
+      { itemId: 'world-countries:country-to-capital:NO', at: 2, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-18' },
+      { itemId: 'world-countries:location-to-country:IN', at: 3, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-18' },
+      { itemId: 'world-countries:country-to-capital:IN', at: 4, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-18' },
+    ])
+    const plan = buildWorldCountriesTodayPlan({
+      activeCountries: [norway],
+      effectiveCountries: [norway],
+      effectiveSubregionIds: [norway.subregionId],
+      history,
+      learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: 1, capitalsLearnedAt: 2 }],
+      localDate: '2026-08-18',
+    })
+
+    expect(plan.consolidationCandidates.every(candidate => candidate.country.continent === 'Europe')).toBe(true)
+    expect(plan.consolidationCandidates.some(candidate => candidate.country.id === india.id)).toBe(false)
   })
 })

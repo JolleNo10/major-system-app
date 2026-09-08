@@ -22,6 +22,7 @@ import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyO
 import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
 import { WorldMasterySummary } from '@/features/world-countries/ui/WorldMasterySummary'
 import { TodayReviewSession, type WorldCountriesTodayReviewCheckpoint } from './TodayReviewSession'
+import type { WorldCountriesGuidedRecallMode } from './TodayRails'
 import { GuidedHomeRails } from './GuidedHomeRails'
 import { WorldCountriesProgressView } from './WorldCountriesProgressView'
 import { deriveWorldCountriesJourneyPresentation, type WorldCountriesJourneyPresentation } from './journeyPresentation'
@@ -75,6 +76,7 @@ export function WorldCountriesToday({
   const geographyRevision = useWorldCountriesGeographyRevision()
   const learningRevision = useWorldCountriesSubregionLearningRevision()
   const [reviewCandidates, setReviewCandidates] = useState<WorldCountriesTodayPlan['reviewQueue'] | null>(null)
+  const [reviewMode, setReviewMode] = useState<WorldCountriesGuidedRecallMode>('review')
   const [checkpoint, setCheckpoint] = useState<WorldCountriesTodayReviewCheckpoint | null>(null)
   const [reviewing, setReviewing] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
@@ -151,22 +153,37 @@ export function WorldCountriesToday({
 
   const startPrimary = () => {
     if (!plan || evidence.status !== 'ready' || scopedCountries.length === 0) return
-    if (plan.dueCount > 0) {
-      setReviewCandidates(plan.reviewQueue)
-      setReviewing(true)
-      setCheckpoint(null)
-      return
-    }
-    if (plan.nextLearning) {
-      const countryEntries = geographicOrder.countries.filter(country => country.subregionId === plan.nextLearning?.subregionId)
-      if (!countryEntries.length) return
-      setLearningRun({ recommendation: plan.nextLearning, countryEntries })
+    const action = plan.action
+    switch (action.kind) {
+      case 'review':
+        setReviewCandidates(action.candidates)
+        setReviewMode('review')
+        setReviewing(true)
+        setCheckpoint(null)
+        return
+      case 'consolidate':
+        setReviewCandidates(action.candidates)
+        setReviewMode('consolidation')
+        setReviewing(true)
+        setCheckpoint(null)
+        return
+      case 'learn': {
+        const countryEntries = geographicOrder.countries.filter(country => country.subregionId === action.recommendation.subregionId)
+        if (!countryEntries.length) return
+        setLearningRun({ recommendation: action.recommendation, countryEntries })
+        return
+      }
+      case 'complete':
+      case 'unavailable':
+        return
     }
   }
 
   const finishReview = async (nextCheckpoint: WorldCountriesTodayReviewCheckpoint) => {
     setCheckpoint(nextCheckpoint)
     setReviewing(false)
+    setReviewCandidates(null)
+    setReviewMode('review')
     setRefreshing(true)
     await loadEvidence()
     setRefreshing(false)
@@ -175,6 +192,7 @@ export function WorldCountriesToday({
   const exitReview = () => {
     setReviewing(false)
     setReviewCandidates(null)
+    setReviewMode('review')
     void refreshAfterActivity()
   }
 
@@ -185,7 +203,10 @@ export function WorldCountriesToday({
   }
 
   const nextLearning = plan?.nextLearning ?? null
-  const guidedSubregionId = nextLearning?.subregionId ?? null
+  const guidedSubregionId = nextLearning?.subregionId
+    ?? (plan?.action.kind === 'review' || plan?.action.kind === 'consolidate'
+      ? plan.action.candidates[0]?.country?.subregionId ?? null
+      : null)
   const displaySubregionId = focusedSubregionId ?? guidedSubregionId
   const journey = useMemo<WorldCountriesJourneyPresentation | null>(() => {
     if (evidence.status !== 'ready' || !displaySubregionId) return null
@@ -288,14 +309,15 @@ export function WorldCountriesToday({
       candidates={reviewCandidates}
       activeCountries={scopedCountries}
       fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching}
+      mode={reviewMode}
       onDone={finishReview}
       onExit={exitReview}
     />
   }
 
-  const canContinue = Boolean(plan && evidence.status === 'ready' && scopedCountries.length > 0 && (plan.dueCount > 0 || plan.nextLearning))
+  const canContinue = Boolean(plan && evidence.status === 'ready' && scopedCountries.length > 0 && (plan.action.kind === 'review' || plan.action.kind === 'learn' || plan.action.kind === 'consolidate'))
   const hasDue = Boolean(plan && plan.dueCount > 0)
-  const caughtUp = evidence.status === 'ready' && scopedCountries.length > 0 && !hasDue && !nextLearning
+  const caughtUp = evidence.status === 'ready' && scopedCountries.length > 0 && Boolean(plan?.caughtUpForToday)
   const mapDescriptions = new Map(scopedCountries.map(country => [country.id, `${scopeLabel} core mastery is shown in the progress summary.`] as const))
 
   return (
@@ -311,6 +333,10 @@ export function WorldCountriesToday({
         nextLearning={nextLearning ? { track: nextLearning.track, subregionLabel: nextLearning.subregionLabel } : null}
         refreshing={refreshing}
         caughtUp={caughtUp}
+        scopeComplete={plan?.scopeComplete ?? false}
+        scopeProgress={progress}
+        incompleteSubregionLabels={plan?.incompleteSubregionLabels ?? []}
+        onPracticeUnfinished={plan?.action.kind === 'consolidate' ? startPrimary : undefined}
         scopeSummaries={scopeSummaries}
         journey={journey}
         guidedSubregionId={guidedSubregionId}
@@ -344,9 +370,9 @@ export function WorldCountriesToday({
             />
           )}
           dock={canContinue ? (
-            <TaskDock variant="navigation" focusPrimary={Boolean(checkpoint) && hasDue && !refreshing}>
+            <TaskDock variant="navigation" focusPrimary={Boolean(checkpoint) && !refreshing}>
               <button type="button" data-primary-action disabled={refreshing} onClick={startPrimary} className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40">
-                {hasDue ? 'Continue review' : 'Continue learning'}
+                {hasDue ? 'Continue review' : nextLearning ? 'Continue learning' : 'Practice unfinished area'}
               </button>
             </TaskDock>
           ) : undefined}

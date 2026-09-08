@@ -31,6 +31,10 @@ export function GuidedHomeRails({
   onFocusGuidedSubregion,
   refreshing,
   caughtUp,
+  scopeComplete = false,
+  scopeProgress,
+  incompleteSubregionLabels = [],
+  onPracticeUnfinished,
   scopeSummaries,
   onWorld,
   onOpenPlay,
@@ -49,6 +53,10 @@ export function GuidedHomeRails({
   onFocusGuidedSubregion?: () => void
   refreshing: boolean
   caughtUp: boolean
+  scopeComplete?: boolean
+  scopeProgress?: WorldCountriesScopeProgress | null
+  incompleteSubregionLabels?: readonly string[]
+  onPracticeUnfinished?: () => void
   scopeSummaries: readonly GuidedHomeScopeSummary[]
   onWorld: () => void
   onOpenPlay: () => void
@@ -65,6 +73,18 @@ export function GuidedHomeRails({
   const inspectedSubregionLabel = journey ? getSubregionDefinition(journey.subregionId).label : null
   const guidedSubregionLabel = guidedSubregionId ? getSubregionDefinition(guidedSubregionId).label : null
   const isInspectingOtherSubregion = Boolean(journey && (!guidedSubregionId || journey.subregionId !== guidedSubregionId))
+  const inspectionActionText = nextLearning
+    ? `Continue still follows ${guidedSubregionLabel ?? 'the guided recommendation'}.`
+    : onPracticeUnfinished
+      ? 'No new Learning is scheduled; targeted guided practice remains available for this scope.'
+      : 'No guided action is currently scheduled; this inspection does not change the guided path.'
+  const scopeIsComplete = scopeComplete || scopeProgress?.complete === true
+  const completionSummary = scopeProgress
+    ? `${scopeProgress.completeCountries} / ${scopeProgress.totalCountries} complete`
+    : 'core recall is still incomplete'
+  const unfinishedGeography = incompleteSubregionLabels.length > 0
+    ? `Unfinished: ${incompleteSubregionLabels.slice(0, 3).join(', ')}${incompleteSubregionLabels.length > 3 ? '…' : ''}.`
+    : null
   const statusHeading = activeCountryCount === 0
     ? '0 Countries active'
     : evidenceStatus === 'error'
@@ -74,7 +94,7 @@ export function GuidedHomeRails({
         : dueCount > 0
           ? `${dueCount} core reviews due`
           : caughtUp
-            ? 'All caught up'
+            ? scopeIsComplete ? 'Complete' : 'Caught up for today · unfinished'
             : 'Ready for the next step'
   const statusExplanation = activeCountryCount === 0
     ? `No active Countries are available in ${scopeName}.`
@@ -88,7 +108,9 @@ export function GuidedHomeRails({
             : 'Continue review before introducing more core material.'
           : nextLearning
             ? `Continue with Learn ${trackLabel(nextLearning.track)} · ${nextLearning.subregionLabel}`
-            : 'No core review is due and no new guided Learning remains.'
+            : scopeIsComplete
+              ? 'Core recall is complete for this scope. Play and progress remain available.'
+              : `No scheduled review is due, but ${scopeName} is still unfinished (${completionSummary}).`
 
   const rails = useMemo(() => ({
     left: (
@@ -149,13 +171,20 @@ export function GuidedHomeRails({
             {reviewReasonSummary.repeated > 0 && <p className="mt-1 text-xs font-semibold text-amber-300">{reviewReasonSummary.repeated} repeated difficulty</p>}
           </section>
         )}
+        {caughtUp && !scopeIsComplete && evidenceStatus === 'ready' && activeCountryCount > 0 && (
+          <section className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-sm" aria-labelledby="world-countries-guided-consolidation-heading">
+            <p id="world-countries-guided-consolidation-heading" className="text-xs font-semibold uppercase tracking-wider text-amber-300">Unfinished guided knowledge</p>
+            <p className="mt-1 text-zinc-300">{completionSummary}. {unfinishedGeography ?? 'Some core recall still needs practice.'}</p>
+            {onPracticeUnfinished && <button type="button" onClick={onPracticeUnfinished} className="mt-3 w-full rounded-lg border border-amber-400/40 px-3 py-2 text-sm font-semibold text-amber-200 hover:border-amber-300 hover:text-amber-100">Practice unfinished area</button>}
+          </section>
+        )}
         {nextLearning && <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3 text-sm"><p className="text-xs uppercase tracking-wider text-cyan-300">Next Learning</p><p className="mt-1 font-semibold text-zinc-100">{trackLabel(nextLearning.track)} · {nextLearning.subregionLabel}</p></div>}
         {journey && (
           <>
             {isInspectingOtherSubregion && (
               <section className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-sm">
                 <p className="text-xs font-semibold uppercase tracking-wider text-amber-300">Inspecting {inspectedSubregionLabel}</p>
-                <p className="mt-1 text-zinc-300">{nextLearning ? `Continue still follows ${guidedSubregionLabel ?? 'the guided recommendation'}.` : 'No guided action is currently scheduled; this inspection does not change the guided path.'}</p>
+                <p className="mt-1 text-zinc-300">{inspectionActionText}</p>
                 {onFocusGuidedSubregion && <button type="button" onClick={onFocusGuidedSubregion} className="mt-2 text-xs font-semibold text-cyan-300 hover:text-cyan-200">{guidedSubregionId ? 'Return to guided Subregion' : 'Clear inspection'}</button>}
               </section>
             )}
@@ -175,7 +204,7 @@ export function GuidedHomeRails({
     ),
     leftLabel: 'Geography',
     rightLabel: 'Guided journey',
-  }), [activeCountryCount, continent, dueCount, dueCountryCount, evidenceStatus, guidedSubregionId, guidedSubregionLabel, inspectedSubregionLabel, isInspectingOtherSubregion, journey, level, nextLearning, onFocusGuidedSubregion, onOpenPlay, onOpenProgress, onWorld, refreshing, reviewReasonSummary, scopeName, scopeSummaries, statusExplanation, statusHeading, whyTodayText])
+  }), [activeCountryCount, caughtUp, completionSummary, continent, dueCount, dueCountryCount, evidenceStatus, guidedSubregionId, inspectedSubregionLabel, inspectionActionText, isInspectingOtherSubregion, journey, level, nextLearning, onFocusGuidedSubregion, onOpenPlay, onOpenProgress, onPracticeUnfinished, onWorld, refreshing, reviewReasonSummary, scopeIsComplete, scopeName, scopeSummaries, statusExplanation, statusHeading, unfinishedGeography, whyTodayText])
   useRails(rails)
   return null
 }

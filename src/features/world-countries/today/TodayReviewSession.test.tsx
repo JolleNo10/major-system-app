@@ -113,6 +113,39 @@ describe('Today review session', () => {
     expect(countryLearningMapMock.mock.calls[0]?.[0]).toMatchObject({ highlightFill: '#8b5cf6', cameraIntent: { kind: 'subregion-learning', subregionId: 'northern-europe' } })
   })
 
+  it('uses the same typed recall/evidence session for targeted consolidation', async () => {
+    const mount = document.createElement('div')
+    const railMount = document.createElement('div')
+    document.body.append(mount, railMount)
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(TodayReviewSession, {
+        candidates: [candidate('NO')],
+        activeCountries: countries.filter(country => ['NO', 'SE', 'FI'].includes(country.id)),
+        fuzzyMatching: false,
+        mode: 'consolidation',
+        onDone: vi.fn(),
+        onExit: vi.fn(),
+      }))
+    })
+
+    renderRails(railMount)
+    expect(railMount.textContent).toContain('Guided consolidation')
+    expect(railMount.textContent).toContain('Practice unfinished area')
+
+    const input = mount.querySelector<HTMLInputElement>('input[aria-label="Type the Country name"]')!
+    await act(async () => {
+      const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+      setValue?.call(input, 'Norway')
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      input.dispatchEvent(new Event('change', { bubbles: true }))
+      mount.querySelector('form')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+      await Promise.resolve()
+    })
+
+    expect(recordAttemptMock).toHaveBeenCalledWith('NO', 'location-to-country', expect.objectContaining({ ok: true, evidenceKind: 'recall' }))
+  })
+
   it('keeps review workflow state in the rails without revealing a hidden Country', async () => {
     const mount = document.createElement('div')
     const railMount = document.createElement('div')

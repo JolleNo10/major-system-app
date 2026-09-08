@@ -60,10 +60,12 @@ signal rather than coordinator-owned refresh counters.
   Quizzes. Quiz is a Practice-semantic user-facing area with transient
   randomized runs, scoring, miss review, and retry; it owns no evidence,
   milestones, preferences, scheduling, or other durable learner state.
-- `today/` owns the derived Today plan, bounded due-review queue and retry
-  state, Today setup/checkpoint states, and delegation into existing Learning
-  flows. It consumes learning, geography, maps, and feature-local UI but not
-  Drill or Recite internals.
+- `today/` owns the derived guided plan, bounded due-review and targeted
+  consolidation queues with retry state, guided setup/checkpoint states, and
+  delegation into existing Learning flows. Its derived action priority is due
+  review, required Country/Capital Learning, bounded unfinished-core
+  consolidation, then complete/caught-up presentation. It consumes learning,
+  geography, maps, and feature-local UI but not Drill or Recite internals.
 - `learning/flows/` owns Country and Capital Learning UI and orchestration.
   Learning modes own their milestone writes; the guided UI is not Drill
   implementation detail.
@@ -143,7 +145,10 @@ coordinators do not carry generic version counters solely to force a re-read.
 Today derives its plan from raw core evidence and applicable Learning
 milestones. It reviews only `location-to-country` and `country-to-capital`,
 prioritizes due review before recommending new whole-Subregion Learning, and
-keeps its queue, retry state, and checkpoints transient.
+when scheduled work and new Learning are caught up it can expose a bounded,
+scope-local consolidation queue containing only introduced, non-mastered core
+targets. All queues, retry state, actions, and checkpoints remain transient;
+consolidation uses the same typed free-recall/evidence seam as guided review.
 
 Today exposes all derived due candidates for urgency/counts, then snapshots at
 most 12 candidates into a deterministic interleaved review block. Priority
@@ -260,18 +265,21 @@ whole-Subregion ordered Final recall writes the owning Learning milestone;
 journey and scheduler state are not persisted.
 
 The learner-facing six-stage journey (Meet the countries, Practice the
-countries, Master the countries, Add the capitals, Put it all together, Master
+countries, Countries established, Add the capitals, Put it all together, Master
 the region) is derived presentation over existing Subregion milestones and
 recall/proficiency evidence. No journey-step, current-Continent, or curriculum
-focus field is persisted. Capital learning extends existing Country knowledge;
-it does not reset Country evidence or add a World/Continent-wide Capital gate.
-Each stage status is derived independently enough to distinguish a completed
-Learning milestone from developing or mastered recall; a failed Capital
-attempt cannot complete Add the capitals, and a fully mastered core scope
-renders the final Master the region stage complete. On a Continent hub, a
-transiently inspected Subregion supplies the displayed journey/progress while
-the guided recommendation continues to come from Today planning. World
-Progress summarizes Continents; Continent Progress summarizes Subregions.
+focus field is persisted. The Country Learning milestone satisfies Countries
+established and is sufficient to layer Capital Learning on top; final Country
+recall mastery is not a Capital gate. Capital learning extends existing Country
+knowledge and does not reset Country evidence. Each stage status is derived
+independently enough to distinguish a completed Learning milestone from
+developing or mastered recall; after both milestones, incomplete core evidence
+belongs to Put it all together, and a fully mastered core scope renders the
+final Master the region stage complete. On a Continent hub, a transiently
+inspected Subregion supplies the displayed journey/progress while the guided
+recommendation and consolidation scope continue to come from Today planning.
+World Progress summarizes Continents; Continent Progress summarizes
+Subregions.
 
 During active scheduler-driven Learning Practice, the flows expose temporary
 scheduler progress through the feature-local progress seam in the right rail.

@@ -5,6 +5,8 @@ import { GeographyBreadcrumbs } from '@/features/world-countries/ui/GeographyBre
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
 import type { WorldCountriesTodayReviewPromptKind } from './reviewQueue'
 
+export type WorldCountriesGuidedRecallMode = 'review' | 'consolidation'
+
 export function TodayReviewRails({
   continent,
   subregion,
@@ -14,6 +16,7 @@ export function TodayReviewRails({
   blockSize,
   reviewed,
   reviewReason,
+  mode = 'review',
   onExit,
 }: {
   continent: Continent
@@ -24,18 +27,23 @@ export function TodayReviewRails({
   blockSize: number
   reviewed: number
   reviewReason: string
+  mode?: WorldCountriesGuidedRecallMode
   onExit: () => void
 }) {
   const currentPrompt = Math.min(cursor + 1, promptCount)
   const progressPercent = promptCount > 0 ? Math.round((currentPrompt / promptCount) * 100) : 0
+  const isConsolidation = mode === 'consolidation'
+  const sessionLabel = isConsolidation ? 'Guided consolidation' : 'Guided review'
+  const sessionTitle = isConsolidation ? 'Practice unfinished area' : 'Review geography'
+  const progressLabel = isConsolidation ? 'Practice progress' : 'Review progress'
 
   const rails = useMemo(() => ({
     left: (
       <WorldCountriesPanel className="space-y-4" aria-labelledby="world-countries-today-review-geography-heading">
         <GeographyBreadcrumbs items={[{ label: 'World' }, { label: continent }, { label: subregion, current: true }]} />
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Guided review</p>
-          <h2 id="world-countries-today-review-geography-heading" className="mt-1 text-lg font-bold text-zinc-100">Review geography</h2>
+          <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">{sessionLabel}</p>
+          <h2 id="world-countries-today-review-geography-heading" className="mt-1 text-lg font-bold text-zinc-100">{sessionTitle}</h2>
           <p className="mt-2 text-sm leading-relaxed text-zinc-400">Current prompt is within this Subregion.</p>
         </div>
       </WorldCountriesPanel>
@@ -43,11 +51,11 @@ export function TodayReviewRails({
     right: (
       <WorldCountriesPanel className="space-y-4" aria-labelledby="world-countries-today-review-session-heading">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-violet-400">Review</p>
-          <h2 id="world-countries-today-review-session-heading" className="mt-1 text-lg font-bold text-zinc-100">Review</h2>
+          <p className="text-xs font-semibold uppercase tracking-wider text-violet-400">{isConsolidation ? 'Practice' : 'Review'}</p>
+          <h2 id="world-countries-today-review-session-heading" className="mt-1 text-lg font-bold text-zinc-100">{sessionTitle}</h2>
         </div>
         <section aria-labelledby="world-countries-today-review-progress-heading" aria-live="polite" className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
-          <p id="world-countries-today-review-progress-heading" className="text-xs uppercase tracking-wider text-zinc-500">Review progress</p>
+          <p id="world-countries-today-review-progress-heading" className="text-xs uppercase tracking-wider text-zinc-500">{progressLabel}</p>
           <p className="mt-1 text-sm font-semibold tabular-nums text-zinc-200">Prompt {currentPrompt} / {promptCount}</p>
           <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-zinc-800" aria-hidden="true">
             <div className="h-full rounded-full bg-cyan-500" style={{ width: `${Math.max(2, progressPercent)}%` }} />
@@ -63,8 +71,8 @@ export function TodayReviewRails({
       </WorldCountriesPanel>
     ),
     leftLabel: 'Geography',
-    rightLabel: 'Guided review',
-  }), [blockSize, continent, currentPrompt, onExit, promptCount, promptKind, progressPercent, reviewed, reviewReason, subregion])
+    rightLabel: sessionLabel,
+  }), [blockSize, continent, currentPrompt, isConsolidation, onExit, promptCount, promptKind, progressLabel, progressPercent, reviewed, reviewReason, sessionLabel, sessionTitle, subregion])
   useRails(rails)
 
   return null

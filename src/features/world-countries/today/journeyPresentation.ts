@@ -6,7 +6,7 @@ import { deriveWorldCountriesCountryProgress, type RecallProgress } from '@/feat
 export const WORLD_COUNTRIES_JOURNEY_STAGES = [
   { id: 'meet-countries', label: 'Meet the countries' },
   { id: 'practice-countries', label: 'Practice the countries' },
-  { id: 'master-countries', label: 'Master the countries' },
+  { id: 'countries-established', label: 'Countries established' },
   { id: 'add-capitals', label: 'Add the capitals' },
   { id: 'put-it-together', label: 'Put it all together' },
   { id: 'master-region', label: 'Master the region' },
@@ -60,17 +60,15 @@ export function deriveWorldCountriesJourneyPresentation({
   const coreRecallComplete = countryProgress.length > 0 && countryProgress.every(progress => progress.complete)
   const hasCountryPractice = countryProgress.some(progress => (progress.skills.get('location-to-country')?.attempts ?? 0) > 0)
   const hasCapitalPractice = countryProgress.some(progress => (progress.skills.get('country-to-capital')?.attempts ?? 0) > 0)
-  const complete = countriesLearned && capitalsLearned && coreRecallComplete
+  const complete = coreRecallComplete
 
   const currentStageId = complete
     ? 'master-region'
     : !countriesLearned
       ? hasCountryPractice ? 'practice-countries' : 'meet-countries'
-      : !countryRecallMastered
-        ? 'master-countries'
-        : !capitalsLearned
-          ? 'add-capitals'
-          : 'put-it-together'
+      : !capitalsLearned
+        ? 'add-capitals'
+        : 'put-it-together'
   const stages: WorldCountriesJourneyStage[] = WORLD_COUNTRIES_JOURNEY_STAGES.map(stage => ({
     ...stage,
     status: statusFor(stage.id, {
@@ -119,11 +117,11 @@ function statusFor(
   if (stage === state.currentStageId) return 'current'
 
   const stageComplete = stage === 'meet-countries'
-    ? state.hasCountryPractice || state.countriesLearned || state.countryRecallMastered
-    : stage === 'practice-countries'
-      ? state.countriesLearned || state.countryRecallMastered
-      : stage === 'master-countries'
-        ? state.countryRecallMastered
+      ? state.hasCountryPractice || state.countriesLearned || state.countryRecallMastered
+      : stage === 'practice-countries'
+        ? state.countriesLearned || state.countryRecallMastered
+      : stage === 'countries-established'
+        ? state.countriesLearned
         : stage === 'add-capitals'
           ? state.capitalsLearned
           : false
@@ -138,6 +136,11 @@ function detailFor(
     hasCapitalPractice: boolean
   },
 ): string {
+  if (state.complete) {
+    return stage === 'master-region'
+      ? 'Core Country and Capital recall complete'
+      : 'Core recall is already complete for this scope'
+  }
   switch (stage) {
     case 'meet-countries':
       return state.countriesLearned
@@ -151,12 +154,12 @@ function detailFor(
         : state.countryRecallMastered
           ? 'Recall is strong; finish guided Country Learning'
           : 'Recall and map practice'
-    case 'master-countries':
-      return state.countryRecallMastered
-        ? 'Country recall is strong'
-        : state.countriesLearned
-          ? 'Country Learning is complete; recall can keep strengthening'
-          : 'Country recall mastery follows guided Learning'
+    case 'countries-established':
+      return state.countriesLearned
+        ? state.countryRecallMastered
+          ? 'Country Learning is complete; Country recall is strong'
+          : 'Country Learning is complete; recall can keep strengthening'
+        : 'Complete guided Country Learning to establish the Countries'
     case 'add-capitals':
       return state.capitalsLearned
         ? 'Capital Learning milestone recorded'

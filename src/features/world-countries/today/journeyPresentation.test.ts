@@ -53,7 +53,7 @@ describe('World Countries learner journey presentation', () => {
     expect(journey.stages[1]?.status).toBe('current')
   })
 
-  it('makes Master the countries current when Country Learning is complete but recall is not mastered', () => {
+  it('marks Countries established and allows Capitals when Country recall is not yet mastered', () => {
     const journey = deriveWorldCountriesJourneyPresentation({
       subregionId: 'northern-europe',
       entries: norway,
@@ -61,13 +61,13 @@ describe('World Countries learner journey presentation', () => {
       recallProgress: progressFor([{ itemId: 'world-countries:location-to-country:NO', at: 1, ok: false }]),
     })
 
-    expect(journey.currentStageId).toBe('master-countries')
+    expect(journey.currentStageId).toBe('add-capitals')
     expect(journey.stages[1]?.status).toBe('complete')
-    expect(journey.stages[2]?.status).toBe('current')
-    expect(journey.stages[3]?.status).toBe('upcoming')
+    expect(journey.stages[2]).toMatchObject({ id: 'countries-established', status: 'complete' })
+    expect(journey.stages[3]?.status).toBe('current')
   })
 
-  it('moves to Add the capitals only after Country recall is mastered', () => {
+  it('keeps Countries established complete when Country recall is mastered', () => {
     const journey = deriveWorldCountriesJourneyPresentation({
       subregionId: 'northern-europe',
       entries: norway,
@@ -124,6 +124,18 @@ describe('World Countries learner journey presentation', () => {
 
     expect(journey.currentStageId).toBe('master-region')
     expect(journey.complete).toBe(true)
+    expect(journey.stages.every(stage => stage.status === 'complete')).toBe(true)
+  })
+
+  it('treats complete core recall as the terminal presentation even without milestone metadata', () => {
+    const journey = deriveWorldCountriesJourneyPresentation({
+      subregionId: 'northern-europe',
+      entries: norway,
+      recallProgress: progressFor(completeRecallAttempts()),
+    })
+
+    expect(journey.complete).toBe(true)
+    expect(journey.currentStageId).toBe('master-region')
     expect(journey.stages.every(stage => stage.status === 'complete')).toBe(true)
   })
 })

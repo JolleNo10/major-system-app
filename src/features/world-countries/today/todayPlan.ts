@@ -13,6 +13,7 @@ import {
   WORLD_COUNTRIES_CORE_RECALL_SKILLS,
   type WorldCountriesCoreRecallSkill,
 } from '@/features/world-countries/learning/recallTargets'
+import { deriveWorldCountriesAtomicProgress, type WorldCountriesProficiency } from '@/features/world-countries/learning/recallMastery'
 import {
   summarizeWorldCountriesTodayReviewReasons,
   type WorldCountriesTodayReviewReasonSummary,
@@ -27,6 +28,7 @@ export interface WorldCountriesTodayReviewCandidate {
   target: { countryId: CountryId; skill: WorldCountriesCoreRecallSkill }
   country: Country
   schedule: WorldCountriesReviewSchedule
+  purpose?: 'review' | 'consolidation'
 }
 
 export interface WorldCountriesTodayLearningRecommendation {
@@ -37,14 +39,28 @@ export interface WorldCountriesTodayLearningRecommendation {
   countryIds: readonly CountryId[]
 }
 
+export type WorldCountriesTodayPrimaryAction =
+  | { kind: 'review'; candidates: readonly WorldCountriesTodayReviewCandidate[] }
+  | { kind: 'learn'; recommendation: WorldCountriesTodayLearningRecommendation }
+  | { kind: 'consolidate'; candidates: readonly WorldCountriesTodayReviewCandidate[] }
+  | { kind: 'complete' }
+  | { kind: 'unavailable' }
+
 export interface WorldCountriesTodayPlan {
   dueCandidates: readonly WorldCountriesTodayReviewCandidate[]
   reviewQueue: readonly WorldCountriesTodayReviewCandidate[]
+  consolidationCandidates: readonly WorldCountriesTodayReviewCandidate[]
+  consolidationQueue: readonly WorldCountriesTodayReviewCandidate[]
   reviewReasonSummary: WorldCountriesTodayReviewReasonSummary
   dueCount: number
   dueCountryCount: number
+  incompleteCountryCount: number
+  incompleteSubregionLabels: readonly string[]
+  scopeComplete: boolean
+  caughtUpForToday: boolean
   introductions: ReadonlyMap<string, WorldCountriesTargetIntroduction>
   nextLearning: WorldCountriesTodayLearningRecommendation | null
+  action: WorldCountriesTodayPrimaryAction
 }
 
 export interface WorldCountriesTodayPlanInput {
@@ -90,9 +106,7 @@ function createCandidate(
     localDate: options.localDate,
     milestoneAt: introduction.source === 'milestone' ? introduction.milestoneAt : null,
   })
-  return schedule.due
-    ? { target: { countryId: country.id, skill }, country, schedule }
-    : null
+  return { target: { countryId: country.id, skill }, country, schedule }
 }
 
 function compareCandidates(
@@ -116,6 +130,37 @@ function compareCandidates(
     const dueOrder = (left.schedule.nextDueAt ?? 0) - (right.schedule.nextDueAt ?? 0)
     if (dueOrder !== 0) return dueOrder
   }
+
+  const geographicOrder = (countryOrder.get(left.country.id) ?? Number.MAX_SAFE_INTEGER)
+    - (countryOrder.get(right.country.id) ?? Number.MAX_SAFE_INTEGER)
+  if (geographicOrder !== 0) return geographicOrder
+  return skillIndex(left.target.skill) - skillIndex(right.target.skill)
+}
+
+function proficiencyIndex(proficiency: WorldCountriesProficiency): number {
+  switch (proficiency) {
+    case 'unpractised': return 0
+    case 'weak': return 1
+    case 'developing': return 2
+    case 'strong': return 3
+    case 'mastered': return 4
+  }
+}
+
+function compareConsolidationCandidates(
+  left: WorldCountriesTodayReviewCandidate,
+  right: WorldCountriesTodayReviewCandidate,
+  countryOrder: ReadonlyMap<CountryId, number>,
+  progressByTarget: ReadonlyMap<string, ReturnType<typeof deriveWorldCountriesAtomicProgress>>,
+): number {
+  const leftProgress = progressByTarget.get(recallTargetIdFor(left.target.countryId, left.target.skill))
+  const rightProgress = progressByTarget.get(recallTargetIdFor(right.target.countryId, right.target.skill))
+  const proficiencyOrder = proficiencyIndex(leftProgress?.proficiency ?? 'unpractised')
+    - proficiencyIndex(rightProgress?.proficiency ?? 'unpractised')
+  if (proficiencyOrder !== 0) return proficiencyOrder
+
+  const failureOrder = (right.schedule.latestFailureAt ?? 0) - (left.schedule.latestFailureAt ?? 0)
+  if (failureOrder !== 0) return failureOrder
 
   const geographicOrder = (countryOrder.get(left.country.id) ?? Number.MAX_SAFE_INTEGER)
     - (countryOrder.get(right.country.id) ?? Number.MAX_SAFE_INTEGER)
@@ -160,7 +205,15 @@ function recommendationFor(
   return null
 }
 
-/** Derive due review and the next whole-Subregion Learning action. */
+function actionFor(plan: Omit<WorldCountriesTodayPlan, 'action'>): WorldCountriesTodayPrimaryAction {
+  if (plan.dueCount > 0) return { kind: 'review', candidates: plan.reviewQueue }
+  if (plan.nextLearning) return { kind: 'learn', recommendation: plan.nextLearning }
+  if (plan.consolidationQueue.length > 0) return { kind: 'consolidate', candidates: plan.consolidationQueue }
+  if (plan.scopeComplete) return { kind: 'complete' }
+  return { kind: 'unavailable' }
+}
+
+/** Derive due review, the next whole-Subregion Learning action, and bounded consolidation. */
 export function buildWorldCountriesTodayPlan(
   input: WorldCountriesTodayPlanInput,
 ): WorldCountriesTodayPlan {
@@ -175,32 +228,58 @@ export function buildWorldCountriesTodayPlan(
   )
   const countryOrder = new Map(effectiveCountries.map((country, index) => [country.id, index]))
   const dueCandidates: WorldCountriesTodayReviewCandidate[] = []
+  const consolidationCandidates: WorldCountriesTodayReviewCandidate[] = []
+  const progressByTarget = new Map<string, ReturnType<typeof deriveWorldCountriesAtomicProgress>>()
+  const incompleteCountries = new Set<CountryId>()
 
   for (const country of effectiveCountries) {
     for (const skill of WORLD_COUNTRIES_CORE_RECALL_SKILLS) {
+      const itemId = recallTargetIdFor(country.id, skill)
+      const progress = deriveWorldCountriesAtomicProgress(itemId, input.history.get(itemId) ?? [])
+      progressByTarget.set(itemId, progress)
+      if (!progress.mastered) incompleteCountries.add(country.id)
       const candidate = createCandidate(country, skill, input.history, introductions, input)
-      if (candidate) dueCandidates.push(candidate)
+      if (!candidate) continue
+      if (candidate.schedule.due) dueCandidates.push({ ...candidate, purpose: 'review' })
+      if (introductions.get(itemId)?.introduced && !progress.mastered) {
+        consolidationCandidates.push({ ...candidate, purpose: 'consolidation' })
+      }
     }
   }
   dueCandidates.sort((left, right) => compareCandidates(left, right, countryOrder))
+  consolidationCandidates.sort((left, right) => compareConsolidationCandidates(left, right, countryOrder, progressByTarget))
 
   const subregionIds = [
     ...(input.effectiveSubregionIds ?? []),
     ...effectiveCountries.map(country => country.subregionId),
   ].filter((id, index, values) => values.indexOf(id) === index)
 
-  return {
+  const nextLearning = dueCandidates.length === 0
+    ? recommendationFor(effectiveCountries, introductions, subregionIds)
+    : null
+  const incompleteSubregionLabels = [...new Set(effectiveCountries
+    .filter(country => incompleteCountries.has(country.id))
+    .map(country => getSubregionDefinition(country.subregionId).label))]
+  const planWithoutAction = {
     dueCandidates,
     reviewQueue: interleaveWorldCountriesTodayReviewCandidates(
       dueCandidates,
       WORLD_COUNTRIES_TODAY_REVIEW_BLOCK_SIZE,
     ),
+    consolidationCandidates,
+    consolidationQueue: interleaveWorldCountriesTodayReviewCandidates(
+      consolidationCandidates,
+      WORLD_COUNTRIES_TODAY_REVIEW_BLOCK_SIZE,
+    ),
     reviewReasonSummary: summarizeWorldCountriesTodayReviewReasons(dueCandidates),
     dueCount: dueCandidates.length,
     dueCountryCount: new Set(dueCandidates.map(candidate => candidate.country.id)).size,
+    incompleteCountryCount: incompleteCountries.size,
+    incompleteSubregionLabels,
+    scopeComplete: effectiveCountries.length > 0 && incompleteCountries.size === 0,
+    caughtUpForToday: dueCandidates.length === 0 && nextLearning === null,
     introductions,
-    nextLearning: dueCandidates.length === 0
-      ? recommendationFor(effectiveCountries, introductions, subregionIds)
-      : null,
+    nextLearning,
   }
+  return { ...planWithoutAction, action: actionFor(planWithoutAction) }
 }

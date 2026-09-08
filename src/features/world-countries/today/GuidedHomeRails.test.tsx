@@ -38,6 +38,7 @@ function renderRails(overrides: Partial<Parameters<typeof GuidedHomeRails>[0]> =
     journey: null,
     refreshing: false,
     caughtUp: true,
+    scopeComplete: true,
     scopeSummaries: [],
     onWorld: vi.fn(),
     onOpenPlay: vi.fn(),
@@ -76,8 +77,35 @@ describe('Guided World Countries home status', () => {
 
   it('renders a caught-up state without an actionable Continue control', () => {
     const mount = renderRails()
-    expect(mount.textContent).toContain('All caught up')
+    expect(mount.textContent).toContain('Complete')
     expect(mount.querySelector('[data-primary-action]')).toBeNull()
+  })
+
+  it('distinguishes caught-up scheduled work from unfinished core progress', () => {
+    const onPracticeUnfinished = vi.fn()
+    const mount = renderRails({
+      scopeComplete: false,
+      scopeProgress: {
+        scopeId: 'continent:Europe',
+        countryIds: ['NO'],
+        totalCountries: 46,
+        completeCountries: 45,
+        completionRatio: 45 / 46,
+        complete: false,
+        countryStateCounts: { unpractised: 0, weak: 0, developing: 1, strong: 0, complete: 45 },
+        additionalMasteredSkills: 0,
+        additionalSkillCount: 0,
+        additionalMasteryRatio: 0,
+      },
+      incompleteSubregionLabels: ['Eastern Europe'],
+      onPracticeUnfinished,
+    })
+
+    expect(mount.textContent).toContain('Caught up for today')
+    expect(mount.textContent).toContain('45 / 46 complete')
+    expect(mount.textContent).toContain('Eastern Europe')
+    act(() => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Practice unfinished area')?.click())
+    expect(onPracticeUnfinished).toHaveBeenCalledOnce()
   })
 
   it('labels an inspected Subregion without replacing the guided recommendation', () => {
@@ -104,5 +132,27 @@ describe('Guided World Countries home status', () => {
     expect(mount.textContent).toContain('Continue still follows Northern Europe')
     act(() => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Return to guided Subregion')?.click())
     expect(onFocusGuidedSubregion).toHaveBeenCalledOnce()
+  })
+
+  it('labels inspected geography as separate from available consolidation', () => {
+    const journey: WorldCountriesJourneyPresentation = {
+      subregionId: 'southern-europe',
+      currentStageId: 'put-it-together',
+      complete: false,
+      stages: WORLD_COUNTRIES_JOURNEY_STAGES.map(stage => ({ ...stage, status: stage.id === 'put-it-together' ? 'current' : 'upcoming', detail: 'Derived status' })),
+      countriesLearned: true,
+      capitalsLearned: true,
+      countryRecallMastered: false,
+      coreRecallComplete: false,
+    }
+    const mount = renderRails({
+      continent: 'Europe',
+      journey,
+      caughtUp: true,
+      scopeComplete: false,
+      onPracticeUnfinished: vi.fn(),
+    })
+
+    expect(mount.textContent).toContain('No new Learning is scheduled; targeted guided practice remains available')
   })
 })

@@ -20,7 +20,7 @@ import {
   submitWorldCountriesTodayReviewPrompt,
   type WorldCountriesTodayReviewQueueState,
 } from './reviewQueue'
-import { TodayReviewRails } from './TodayRails'
+import { TodayReviewRails, type WorldCountriesGuidedRecallMode } from './TodayRails'
 import type { WorldCountriesTodayReviewCandidate } from './todayPlan'
 import {
   classifyWorldCountriesTodayReviewReason,
@@ -38,12 +38,14 @@ export function TodayReviewSession({
   candidates,
   activeCountries,
   fuzzyMatching,
+  mode = 'review',
   onDone,
   onExit,
 }: {
   candidates: readonly WorldCountriesTodayReviewCandidate[]
   activeCountries: readonly Country[]
   fuzzyMatching: boolean
+  mode?: WorldCountriesGuidedRecallMode
   onDone: (checkpoint: WorldCountriesTodayReviewCheckpoint) => void
   onExit: () => void
 }) {
@@ -63,18 +65,20 @@ export function TodayReviewSession({
   const isLocationQuestion = skill === 'location-to-country'
   const expectedAnswer = isLocationQuestion ? country.country : country.capital
   const promptLabel = isLocationQuestion ? 'Which country is this?' : `Capital of ${country.country}`
-  const reviewReason = worldCountriesTodayReviewReasonLabel(
-    classifyWorldCountriesTodayReviewReason(candidate),
-    candidate.schedule.overdueDays,
-  )
+  const reviewReason = mode === 'consolidation'
+    ? 'Unfinished core recall'
+    : worldCountriesTodayReviewReasonLabel(
+      classifyWorldCountriesTodayReviewReason(candidate),
+      candidate.schedule.overdueDays,
+    )
   const activityTask: WorldCountriesActivityTask = {
     direction: isLocationQuestion ? 'Location → Country' : 'Country → Capital',
     cue: promptLabel,
-    sessionContext: 'Guided review',
+    sessionContext: mode === 'consolidation' ? 'Guided consolidation' : 'Guided review',
     answerKind,
     reviewReason,
     progress: {
-      label: 'Review',
+      label: mode === 'consolidation' ? 'Practice' : 'Review',
       current: queue.cursor + 1,
       total: queue.prompts.length,
     },
@@ -117,6 +121,7 @@ export function TodayReviewSession({
         blockSize={candidates.length}
         reviewed={queue.reviewed}
         reviewReason={reviewReason}
+        mode={mode}
         onExit={() => { void exit() }}
       />
       <WorldCountriesTypedAnswer
