@@ -220,7 +220,7 @@ When implemented:
 - `npm.cmd run lint` passed. `git diff --check` passed. `npm.cmd run typecheck` reports only an unrelated error in the untouched `src/features/world-countries/drill/DrillSetup.test.tsx` fixture (`Map<any, any>` is not assignable to `Map<string, never>`).
 - Browser/manual verification was not performed; no browser surface was already available without setup, and repository instructions do not require starting a development server for this task.
 - The original implementation evidence above is structural/architectural evidence, not a claim that every committed frame value was manually visually calibrated.
-- The calibration follow-up passes the focused World Countries map suite: 13 files and 151 tests, including source-geometry safe-zone regressions for Poland, Serbia, Moldova, Ukraine, and Belarus and authored Oceania composition guards. Lint passes; typecheck still reports only the unrelated existing `DrillSetup.test.tsx` fixture error.
+- The calibration follow-up passes the focused World Countries map suite: 13 files and 169 tests, including source-geometry safe-zone regressions for Poland, Serbia, Romania, Moldova, Ukraine, and Belarus and representative Oceania target-composition guards. Lint passes; typecheck still reports only the unrelated existing `DrillSetup.test.tsx` fixture error.
 
 ## Verification
 

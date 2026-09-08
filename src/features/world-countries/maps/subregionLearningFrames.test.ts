@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { countries } from '@/features/world-countries/data/countries'
 import { SUBREGION_DEFINITIONS } from '@/features/world-countries/data/subregions'
 import { countryToSvgIds } from './countryMapIds'
+import { getMapLearningAnchors } from './learningAnchors'
 import { getMemoMapDefinition } from './mapDefinitions'
 import africaSvg from './assets/MapChart_Map_Africa.svg?raw'
 import americaSvg from './assets/MapChart_Map_America.svg?raw'
@@ -11,7 +12,9 @@ import asiaSvg from './assets/MapChart_Map_Asia.svg?raw'
 import europeSvg from './assets/MapChart_Map_Europe.svg?raw'
 import oceaniaSvg from './assets/MapChart_Map_Oceania.svg?raw'
 import { getSubregionLearningFrame, isValidSubregionLearningFrame, SUBREGION_LEARNING_FRAMES } from './subregionLearningFrames'
+import { getMapSyntheticDots } from './syntheticDots'
 import {
+  getSvgBoundsCenter,
   readSvgElementTransform,
   readSvgPathGeometryComponents,
   transformPoint,
@@ -58,6 +61,7 @@ function unionBounds(bounds: readonly SvgViewBoxRect[]): SvgViewBoxRect | null {
 }
 
 const ORDINARY_COUNTRY_SAFE_MARGIN_RATIO = 0.08
+const REPRESENTATIVE_TARGET_MARGIN_RATIO = 0.05
 
 function isInsideSafeArea(countryBounds: SvgViewBoxRect, frameBounds: SvgViewBoxRect, marginRatio: number) {
   const margin = Math.min(frameBounds.width, frameBounds.height) * marginRatio
@@ -65,6 +69,10 @@ function isInsideSafeArea(countryBounds: SvgViewBoxRect, frameBounds: SvgViewBox
     && countryBounds.y >= frameBounds.y + margin
     && countryBounds.x + countryBounds.width <= frameBounds.x + frameBounds.width - margin
     && countryBounds.y + countryBounds.height <= frameBounds.y + frameBounds.height - margin
+}
+
+function isPointInsideSafeArea(point: { x: number; y: number }, frameBounds: SvgViewBoxRect, marginRatio: number) {
+  return isInsideSafeArea({ x: point.x, y: point.y, width: 0, height: 0 }, frameBounds, marginRatio)
 }
 
 function countrySourceBounds(mapId: string, countryId: string) {
@@ -79,6 +87,32 @@ function countrySourceBounds(mapId: string, countryId: string) {
   const transform = readSvgElementTransform(path as unknown as SVGGraphicsElement)
   return unionBounds(readSvgPathGeometryComponents(pathData).map(component => transformBounds(component.bounds, transform)))
 }
+
+function isOrdinaryGeometryCountry(mapId: string, countryId: string) {
+  return getMapLearningAnchors(mapId, [countryId]).length === 0
+    && getMapSyntheticDots(mapId, [countryId]).length === 0
+}
+
+function expectCountryInsideSafeArea(subregionId: Parameters<typeof getSubregionLearningFrame>[0], countryId: string, countryName: string) {
+  const frame = getSubregionLearningFrame(subregionId)
+  const source = frame ? sourceBounds(frame.mapDefinitionId) : null
+  const countryBounds = frame ? countrySourceBounds(frame.mapDefinitionId, countryId) : null
+  const cameraBounds = frame && source
+    ? fitViewBoxToAspect(frame.bounds, source.width / source.height)
+    : null
+
+  expect(countryBounds, `${countryName} geometry should resolve from the authoritative SVG`).not.toBeNull()
+  expect(cameraBounds).not.toBeNull()
+  expect(isInsideSafeArea(countryBounds!, cameraBounds!, ORDINARY_COUNTRY_SAFE_MARGIN_RATIO)).toBe(true)
+}
+
+const ordinaryCompactCountrySafeAreaCases = (['central-europe', 'balkans'] as const).flatMap(subregionId => {
+  const mapId = getMemoMapDefinition('Europe').id
+  return countries
+    .filter(country => country.subregionId === subregionId)
+    .filter(country => isOrdinaryGeometryCountry(mapId, country.id))
+    .map(country => [subregionId, country.id, country.country] as const)
+})
 
 describe('Subregion learning frames', () => {
   it('covers each current Subregion exactly once', () => {
@@ -113,31 +147,50 @@ describe('Subregion learning frames', () => {
     expect(norway?.mapDefinitionId).toBe('europe')
   })
 
+  it.each(ordinaryCompactCountrySafeAreaCases)('%s keeps %s inside the ordinary-Country safe area', (subregionId, countryId, countryName) => {
+    expectCountryInsideSafeArea(subregionId, countryId, countryName)
+  })
+
   it.each([
-    ['central-europe', 'PL', 'Poland'],
-    ['balkans', 'RS', 'Serbia'],
     ['eastern-europe', 'RO', 'Romania'],
     ['eastern-europe', 'MD', 'Moldova'],
     ['eastern-europe', 'UA', 'Ukraine'],
     ['eastern-europe', 'BY', 'Belarus'],
-  ] as const)('%s keeps %s inside an ordinary-Country safe area', (subregionId, countryId, countryName) => {
+  ] as const)('%s keeps %s inside the ordinary-Country safe area', (subregionId, countryId, countryName) => {
+    expectCountryInsideSafeArea(subregionId, countryId, countryName)
+  })
+
+  it.each([
+    ['australia-new-zealand', 'AU', 'Australia', 'geometry'],
+    ['melanesia', 'SB', 'Solomon Islands', 'synthetic dot'],
+    ['micronesia', 'FM', 'Micronesia', 'learning anchor'],
+    ['polynesia', 'WS', 'Samoa', 'synthetic dot'],
+  ] as const)('keeps the %s representative %s target in the effective learning frame', (subregionId, countryId, countryName, representation) => {
     const frame = getSubregionLearningFrame(subregionId)
     const source = frame ? sourceBounds(frame.mapDefinitionId) : null
-    const countryBounds = frame ? countrySourceBounds(frame.mapDefinitionId, countryId) : null
     const cameraBounds = frame && source
       ? fitViewBoxToAspect(frame.bounds, source.width / source.height)
       : null
+    const geometry = representation === 'geometry' && frame
+      ? countrySourceBounds(frame.mapDefinitionId, countryId)
+      : null
+    const anchor = representation === 'learning anchor'
+      ? getMapLearningAnchors('oceania', [countryId])[0]?.point
+      : representation === 'synthetic dot'
+        ? getMapSyntheticDots('oceania', [countryId])[0]?.point
+        : null
 
-    expect(countryBounds, `${countryName} geometry should resolve from the authoritative SVG`).not.toBeNull()
+    expect(frame && source && isValidSubregionLearningFrame(frame, source)).toBe(true)
     expect(cameraBounds).not.toBeNull()
-    expect(isInsideSafeArea(countryBounds!, cameraBounds!, ORDINARY_COUNTRY_SAFE_MARGIN_RATIO)).toBe(true)
-  })
-
-  it('keeps Oceania learning compositions broad enough for regional orientation', () => {
-    expect(getSubregionLearningFrame('australia-new-zealand')?.bounds).toMatchObject({ width: 950, height: 650 })
-    expect(getSubregionLearningFrame('melanesia')?.bounds).toMatchObject({ width: 950, height: 640 })
-    expect(getSubregionLearningFrame('micronesia')?.bounds).toMatchObject({ width: 700, height: 260 })
-    expect(getSubregionLearningFrame('polynesia')?.bounds).toMatchObject({ width: 650, height: 500 })
+    if (geometry) {
+      expect(isInsideSafeArea(geometry, cameraBounds!, 0)).toBe(true)
+      const geometryCenter = getSvgBoundsCenter(geometry)
+      expect(geometryCenter).not.toBeNull()
+      expect(isPointInsideSafeArea(geometryCenter!, cameraBounds!, REPRESENTATIVE_TARGET_MARGIN_RATIO)).toBe(true)
+    } else {
+      expect(anchor, `${countryName} should resolve through its ${representation} metadata`).not.toBeUndefined()
+      expect(isPointInsideSafeArea(anchor!, cameraBounds!, REPRESENTATIVE_TARGET_MARGIN_RATIO)).toBe(true)
+    }
   })
 
   it('does not widen Eastern Europe to fit the complete Russia geometry', () => {
