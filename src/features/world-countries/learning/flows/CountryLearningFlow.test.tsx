@@ -89,27 +89,26 @@ function renderFlow(flowEntries: readonly Country[] = entries): HTMLDivElement {
   return container
 }
 
+function expectCountryWalkthrough(container: HTMLDivElement, task: unknown, country: Country) {
+  expect(container.textContent).toContain(country.country)
+  expect(container.textContent).not.toContain(country.capital)
+  expect(container.textContent).not.toContain('Country ↔ Capital')
+  expect(task).toMatchObject({ direction: 'Country', cue: country.country })
+  expect(task).not.toHaveProperty('answerKind')
+}
+
 describe('CountryLearningFlow scheduler progress wiring', () => {
   it('keeps the Country walkthrough focused on Country identity while moving between Countries', () => {
     const container = renderFlow(walkthroughEntries)
     const latestTask = () => learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].task
 
-    expect(container.textContent).toContain('Iceland')
-    expect(container.textContent).not.toContain('Reykjavík')
-    expect(container.textContent).not.toContain('Country ↔ Capital')
-    expect(latestTask()).toMatchObject({ direction: 'Country', cue: 'Iceland' })
-    expect(latestTask()).not.toHaveProperty('answerKind')
+    expectCountryWalkthrough(container, latestTask(), walkthroughEntries[0]!)
 
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="walkthrough-next"]')!.click())
-    expect(container.textContent).toContain('Norway')
-    expect(container.textContent).not.toContain('Oslo')
-    expect(container.textContent).not.toContain('Country ↔ Capital')
-    expect(latestTask()).toMatchObject({ direction: 'Country', cue: 'Norway' })
+    expectCountryWalkthrough(container, latestTask(), walkthroughEntries[1]!)
 
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="walkthrough-previous"]')!.click())
-    expect(container.textContent).toContain('Iceland')
-    expect(container.textContent).not.toContain('Reykjavík')
-    expect(latestTask()).toMatchObject({ direction: 'Country', cue: 'Iceland' })
+    expectCountryWalkthrough(container, latestTask(), walkthroughEntries[0]!)
   })
 
   it('shows location scheduler progress only after Location Practice starts', () => {
