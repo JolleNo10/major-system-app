@@ -142,6 +142,21 @@ and stop every process started for it before completing the task.
 
 ## Repository workflow
 
+### Implementation delivery
+
+For a completed implementation or change task, verification is followed by
+the repository handoff by default:
+
+- commit all in-scope changes on the current branch;
+- push the current branch to its configured upstream;
+- if sandbox networking blocks the push, retry the same Git command in the
+  host/escalated context as described below;
+- report the commit SHA, push result, and any residual verification failure.
+
+Do not stop at an uncommitted worktree or local-only commit, and do not ask
+whether to commit or push unless the user explicitly opts out or the required
+Git operation encounters an actual authentication or authorization failure.
+
 ### RepoWise hooks
 
 `.codex/hooks.json` is the active lean RepoWise configuration. The previous
