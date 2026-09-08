@@ -33,7 +33,7 @@ afterEach(() => {
   useRailsMock.mockReset()
 })
 
-function renderRails(phase: 'walkthrough' | 'location-practice', track: 'countries' | 'capitals' = 'countries', walkthroughCountryId?: string, practiceProgress?: LearningPracticeProgress, onBack?: () => void) {
+function renderRails(phase: 'walkthrough' | 'location-practice', track: 'countries' | 'capitals' = 'countries', walkthroughCountryId?: string, practiceProgress?: LearningPracticeProgress, onBack?: () => void, currentSetEntries?: readonly Country[]) {
   const mount = document.createElement('div')
   document.body.append(mount)
   const onOrderDraftChanged = vi.fn()
@@ -44,6 +44,7 @@ function renderRails(phase: 'walkthrough' | 'location-practice', track: 'countri
       subregion: 'northern-europe',
       entries,
       activeCountries: entries,
+      currentSetEntries,
       phase,
       track,
       countriesEstablished: false,
@@ -63,10 +64,25 @@ describe('GuidedLearningRails contextual authoring visibility', () => {
     act(() => root?.render(createElement('div', null, config.left)))
     expect(mount.textContent).toContain('Edit order')
     expect(mount.textContent).not.toContain('Edit mnemonics')
+    expect(mount.textContent).toContain('Learning progress')
+    expect(mount.textContent).toContain('Countries not established yet')
+    expect(mount.textContent).not.toContain('Learning Readiness')
     expect(mount.querySelector('.rounded-xl.border.border-zinc-800.bg-zinc-900')).not.toBeNull()
 
     act(() => root?.render(createElement('div', null, config.right)))
     expect(mount.textContent).toContain('Edit mnemonics')
+  })
+
+  it('emphasizes the current Set while keeping the full learning order visible', () => {
+    const { mount, config } = renderRails('walkthrough', 'countries', undefined, undefined, undefined, [entries[0]!])
+    act(() => root?.render(createElement('div', null, config.left)))
+
+    expect(mount.querySelectorAll('[data-learning-order-entry]').length).toBe(2)
+    expect(mount.querySelectorAll('[data-learning-set="current"]').length).toBe(1)
+    expect(mount.querySelectorAll('[data-learning-set="later"]').length).toBe(1)
+    expect(mount.textContent).toContain('Norway')
+    expect(mount.textContent).toContain('Sweden')
+    expect(mount.querySelector('[data-learning-current-set]')?.textContent).toBe('Current Set')
   })
 
   it('opts only the Learning Country editor into click-sequence authoring', () => {

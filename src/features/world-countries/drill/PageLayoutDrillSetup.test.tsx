@@ -37,7 +37,7 @@ describe('World Countries activity boundary', () => {
     expect(mount.querySelector('[role="tablist"]')).toBeNull()
     expect(mount.textContent).toContain('World Countries')
     expect(mount.textContent).toContain('Play')
-    expect(mount.textContent).toContain('Due reviews')
+    expect(mount.textContent).not.toContain('Due reviews')
 
     await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Play')?.click())
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-play-activity="custom-drill"]')?.click())

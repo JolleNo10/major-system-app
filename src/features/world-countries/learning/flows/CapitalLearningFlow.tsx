@@ -154,11 +154,11 @@ export function CapitalLearningFlow({
     hoveredCountryId,
     orderPresentation: orderMapPresentation,
   })
-  const mapMeta = <LearningMapMetadata scopeLabel={learningScopeLabel} entries={mapEntries} />
+  const mapMeta = <LearningMapMetadata scopeLabel={learningScopeLabel} fullEntries={allPresentationEntries} activeEntries={mapEntries} activeScopeLabel={currentPlanStage?.kind === 'set' ? 'Current Set' : currentPlanStage?.kind === 'combined' ? 'Introduced scope' : 'Full Subregion'} />
 
   const context = (() => {
     switch (flow.phase) {
-      case 'walkthrough': return <LearningHeader label={`Set ${stageSetNumber} · Review`} title={walkthroughCountry ? `${walkthroughCountry.country} ↔ ${walkthroughCountry.capital}` : 'Review'} meta={`${flow.walkthroughIndex + 1} / ${stageEntries.length}`} onExit={onExit} />
+      case 'walkthrough': return <LearningHeader label="Add the capitals" title={walkthroughCountry ? `${walkthroughCountry.country} ↔ ${walkthroughCountry.capital}` : 'Country ↔ Capital'} meta={`${flow.walkthroughIndex + 1} / ${stageEntries.length}`} onExit={onExit} />
       case 'practice': return <LearningHeader label={`Set ${stageSetNumber} · Step 2 - Practice`} title="Name the capital" onExit={onExit} />
       case 'set-ready': return <LearningHeader label="Ready" title={`Set ${stageSetNumber} Ready`} onExit={onExit} />
       case 'combined-practice': return <LearningHeader label="Combined practice" title="Name the capital" onExit={onExit} />
@@ -175,7 +175,7 @@ export function CapitalLearningFlow({
   const activeTask: WorldCountriesActivityTask | undefined = (() => {
     switch (flow.phase) {
       case 'walkthrough':
-        return { direction: 'Country ↔ Capital', cue: walkthroughCountry ? `${walkthroughCountry.country} ↔ ${walkthroughCountry.capital}` : 'Review', sessionContext: `Set ${stageSetNumber} · Review`, progress: { label: 'Country', current: flow.walkthroughIndex + 1, total: stageEntries.length } }
+        return { direction: 'Add the capitals', cue: walkthroughCountry ? `${walkthroughCountry.country} ↔ ${walkthroughCountry.capital}` : 'Country ↔ Capital', sessionContext: `Country ↔ Capital · Set ${stageSetNumber}`, progress: { label: 'Country', current: flow.walkthroughIndex + 1, total: stageEntries.length } }
       case 'practice':
       case 'combined-practice':
         return { direction: 'Country → Capital', cue: 'Name the capital', sessionContext: flow.phase === 'combined-practice' ? 'Combined practice' : `Set ${stageSetNumber} · Practice`, answerKind: 'capital', progress: practiceProgress ? { label: 'Practice', current: practiceProgress.atTarget, total: practiceProgress.total, percent: practiceProgress.pct * 100 } : undefined }
@@ -194,6 +194,7 @@ export function CapitalLearningFlow({
     activeCountries={activeCountries ?? entries}
     phase={flow.phase}
     track="capitals"
+    currentSetEntries={currentPlanStage?.kind === 'set' ? stageEntries : undefined}
     countriesEstablished={countriesEstablished}
     capitalsLearned={false}
     onCountryHover={setHoveredCountryId}

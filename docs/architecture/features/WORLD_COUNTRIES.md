@@ -271,6 +271,13 @@ Combined practice is inserted before the next Set, with a required full-scope
 Combined practice before Final recall. A one-Set scope has no duplicate
 Combined stage.
 
+Active Learning presents the staged scope alongside the full ordered Subregion:
+the current Set is identified and emphasized in the Learning rail, while the
+map metadata names the active Set or combined scope and the full Subregion
+count. Combined and Final phases report their actual broader scope rather than
+calling it a current Set. The full order remains the authoring surface, so Set
+emphasis does not restrict Country-order editing or change staged membership.
+
 All temporary Learning Practice scopes use the shared
 `core/scoring/roundScheduler.ts` through a feature-local adapter with a
 non-limiting speed threshold and actual answer latency. Location, Country-name,
@@ -304,7 +311,11 @@ The progress section is session-scoped and phase-specific. Active Drill,
 Practice, Recite, Today Review, and map-backed Learning phases also provide
 semantic task/context/progress data to the shared World Countries map-activity
 surface; setup, overview, readiness, and completion screens retain their own
-presentation.
+presentation. Active Learning uses learner-facing progress language rather than
+exposing the internal Learning Readiness label. Home and Continent guided rails
+keep due counts only when review is due and let the Continue status carry the
+next-Learning recommendation without a duplicate card; the attached map dock
+remains the primary guided action.
 
 ## Learning Readiness
 

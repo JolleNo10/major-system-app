@@ -8,7 +8,6 @@ import { subregionMnemonicId } from '@/features/world-countries/mnemonics/geogra
 import { GeographyMnemonicEditor } from '@/features/world-countries/mnemonics/GeographyMnemonicEditor'
 import { GeographyMnemonicView } from '@/features/world-countries/mnemonics/GeographyMnemonicView'
 import { CountryCapitalMnemonicPanel } from '@/features/world-countries/mnemonics/CountryCapitalMnemonicPanel'
-import { deriveWorldCountriesLearningReadiness, getWorldCountriesLearningReadinessLabel } from '@/features/world-countries/learning/learningReadiness'
 import type { LearningPracticeProgress } from '@/features/world-countries/learning/learningPracticeProgress'
 import { InlineOrderEditor, type InlineOrderClickState } from '@/features/world-countries/ui/InlineOrderEditor'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
@@ -22,6 +21,7 @@ export function GuidedLearningRails({
   scopeLabel,
   entries,
   activeCountries,
+  currentSetEntries,
   phase,
   track,
   countriesEstablished,
@@ -45,6 +45,7 @@ export function GuidedLearningRails({
   scopeLabel?: string
   entries: readonly Country[]
   activeCountries: readonly Country[]
+  currentSetEntries?: readonly Country[]
   phase: StagedCountryLearningPhase | StagedCapitalLearningPhase
   track: 'countries' | 'capitals'
   countriesEstablished: boolean
@@ -66,6 +67,7 @@ export function GuidedLearningRails({
   const quietPhase = phase === 'location-practice' || phase === 'location-ready' || phase === 'practice' || phase === 'set-ready' || phase === 'combined-practice' || phase === 'combined-ready' || phase === 'final-gate' || phase === 'final-recall' || phase === 'complete'
   const walkthroughCountry = walkthroughCountryId ? entries.find(entry => entry.id === walkthroughCountryId) ?? null : null
   const learningScopeLabel = scopeLabel ?? (subregion ? getSubregionDefinition(subregion).label : 'Learning scope')
+  const currentSetIds = useMemo(() => new Set(currentSetEntries?.map(entry => entry.id) ?? []), [currentSetEntries])
   const showSubregionMnemonic = !quietPhase && subregion !== undefined
   const showCapitalMnemonic = !quietPhase && track === 'capitals' && phase === 'walkthrough' && walkthroughCountry !== null
   const showMemoryAid = showSubregionMnemonic || showCapitalMnemonic
@@ -120,9 +122,9 @@ export function GuidedLearningRails({
             <h2 id="world-countries-guided-context-heading" className="mt-1 text-lg font-bold text-zinc-100">Learning context</h2>
           </div>
           {subregion ? <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
-            <p className="text-xs uppercase tracking-wider text-zinc-500">Learning Readiness</p>
-            <p className="mt-1 text-sm font-semibold text-zinc-200">{getWorldCountriesLearningReadinessLabel(deriveWorldCountriesLearningReadiness({ subregionId: subregion, ...(countriesEstablished ? { countriesLearnedAt: 1 } : {}), ...(track === 'capitals' && capitalsLearned ? { capitalsLearnedAt: 1 } : {}) }))}</p>
-          </div> : <p className="rounded-lg border border-violet-500/20 bg-violet-500/5 p-3 text-xs leading-relaxed text-violet-200">Temporary proficiency scope. Completing this run does not change Learning Readiness.</p>}
+            <p className="text-xs uppercase tracking-wider text-zinc-500">Learning progress</p>
+            <p className="mt-1 text-sm font-semibold text-zinc-200">{getLearningProgressLabel(track, countriesEstablished, capitalsLearned)}</p>
+          </div> : <p className="rounded-lg border border-violet-500/20 bg-violet-500/5 p-3 text-xs leading-relaxed text-violet-200">Temporary proficiency scope. Completing this run does not change your guided journey.</p>}
           <section aria-labelledby="guided-learning-order-heading">
             <div className="flex items-center justify-between gap-3">
               <h3 id="guided-learning-order-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Learning order</h3>
@@ -152,7 +154,10 @@ export function GuidedLearningRails({
                 }}
               />
             ) : (
-              <ol className="mt-3 space-y-1.5 text-sm text-zinc-300">{entries.map((entry, index) => <li key={entry.id} className="flex gap-2"><span className="w-5 shrink-0 text-right text-xs tabular-nums text-zinc-600" aria-label={`Sequence ${index + 1}`}>{index + 1}.</span><span>{entry.country}</span></li>)}</ol>
+              <ol className="mt-3 space-y-1.5 text-sm text-zinc-300">{entries.map((entry, index) => {
+                const isCurrentSet = currentSetEntries !== undefined && currentSetIds.has(entry.id)
+                return <li key={entry.id} data-learning-order-entry data-learning-set={currentSetEntries === undefined ? 'active-scope' : isCurrentSet ? 'current' : 'later'} className={`flex items-center gap-2 rounded-md px-1.5 py-1 ${isCurrentSet ? 'border border-cyan-500/25 bg-cyan-500/5 text-zinc-100' : ''}`}><span className={`w-5 shrink-0 text-right text-xs tabular-nums ${isCurrentSet ? 'text-cyan-300' : 'text-zinc-600'}`} aria-label={`Sequence ${index + 1}`}>{index + 1}.</span><span className="min-w-0">{entry.country}</span>{isCurrentSet && <span data-learning-current-set className="ml-auto shrink-0 text-[10px] font-semibold uppercase tracking-wider text-cyan-300">Current Set</span>}</li>
+              })}</ol>
             )}
           </section>
         </WorldCountriesPanel>
@@ -167,8 +172,14 @@ export function GuidedLearningRails({
       ) : undefined,
       leftLabel: 'Learning context',
       rightLabel: practiceProgress ? 'Practice progress' : showMemoryAid && (onBack || onExit || onSkip) ? 'Learning tools' : showMemoryAid ? 'Memory aid' : onBack || onExit || onSkip ? 'Learning actions' : undefined,
-    }), [activeCountries, backLabel, beginOrderEdit, cancelOrder, continent, countriesEstablished, editingMnemonic, editingOrder, entries, learningScopeLabel, capitalsLearned, mnemonicAction, onBack, onClickOrderStateChange, onClickOrderToggle, onCountryHover, onExit, onOrderDraftChanged, onSkip, practiceProgress, saveOrder, showCapitalMnemonic, showMemoryAid, showSubregionMnemonic, skipLabel, subregion, track, walkthroughCountry, quietPhase])
+    }), [activeCountries, backLabel, beginOrderEdit, cancelOrder, continent, countriesEstablished, currentSetEntries, currentSetIds, editingMnemonic, editingOrder, entries, learningScopeLabel, capitalsLearned, mnemonicAction, onBack, onClickOrderStateChange, onClickOrderToggle, onCountryHover, onExit, onOrderDraftChanged, onSkip, practiceProgress, saveOrder, showCapitalMnemonic, showMemoryAid, showSubregionMnemonic, skipLabel, subregion, track, walkthroughCountry, quietPhase])
   useRails(rails)
 
   return null
+}
+
+function getLearningProgressLabel(track: 'countries' | 'capitals', countriesEstablished: boolean, capitalsLearned: boolean): string {
+  if (!countriesEstablished) return 'Countries not established yet'
+  if (track === 'countries') return capitalsLearned ? 'Countries + Capitals established' : 'Countries established'
+  return capitalsLearned ? 'Countries + Capitals established' : 'Adding capitals'
 }

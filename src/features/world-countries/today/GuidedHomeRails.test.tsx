@@ -78,7 +78,30 @@ describe('Guided World Countries home status', () => {
   it('renders a caught-up state without an actionable Continue control', () => {
     const mount = renderRails()
     expect(mount.textContent).toContain('Complete')
+    expect(mount.textContent).not.toContain('Due reviews')
+    expect(mount.textContent).not.toContain('Due Countries')
     expect(mount.querySelector('[data-primary-action]')).toBeNull()
+  })
+
+  it('keeps useful due counts and reasons when review is due', () => {
+    const mount = renderRails({
+      dueCount: 3,
+      dueCountryCount: 2,
+      caughtUp: false,
+      reviewReasonSummary: { mistakes: 1, firstRecall: 0, firstReviewAfterLearning: 0, spaced: 2, repeated: 0 },
+    })
+
+    expect(mount.textContent).toContain('Due reviews')
+    expect(mount.textContent).toContain('Due Countries')
+    expect(mount.textContent).toContain('Why now')
+    expect(mount.textContent).toContain('1 mistake')
+  })
+
+  it('keeps the next Learning recommendation in the Continue explanation only', () => {
+    const mount = renderRails({ nextLearning: { track: 'learn-capitals', subregionLabel: 'Northern Europe' } })
+
+    expect(mount.textContent).toContain('Continue with Learn Capitals · Northern Europe')
+    expect(mount.textContent).not.toContain('Next Learning')
   })
 
   it('distinguishes caught-up scheduled work from unfinished core progress', () => {

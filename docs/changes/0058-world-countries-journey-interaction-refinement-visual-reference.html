@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>CS 0058 — World Countries interaction refinement</title>
+<style>
+:root{--bg:#09090b;--panel:#18181b;--panel2:#202024;--line:#27272a;--line2:#3f3f46;--text:#f4f4f5;--muted:#a1a1aa;--dim:#71717a;--cyan:#22d3ee;--cyan2:#0891b2;--cyan3:#164e63;--green:#22c55e;--amber:#fbbf24}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}.page{min-height:100vh;padding:18px 24px 48px}.top{height:46px;border-bottom:1px solid #1d1d20;display:flex;align-items:center;justify-content:center;margin:-18px -24px 28px}.top-inner{width:780px;max-width:100%;display:flex;justify-content:space-between;align-items:center}.top strong{font-size:15px}.switch{display:flex;gap:7px}.switch button{border:1px solid var(--line2);background:var(--panel);color:var(--muted);border-radius:8px;padding:7px 10px;cursor:pointer}.switch button.on{border-color:rgba(34,211,238,.45);color:var(--cyan);background:rgba(8,145,178,.08)}.screen{display:none}.screen.on{display:block}.grid{display:grid;grid-template-columns:288px 672px 288px;gap:24px;justify-content:center;align-items:start}.panel{border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:16px}.eyebrow{font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--cyan)}h1,h2,p{margin:0}.panel h2{font-size:18px;margin-top:5px}.muted{color:var(--muted);font-size:13px;line-height:1.5}.map-context{padding:0 4px 10px}.map-context h1{font-size:24px;margin-top:4px}.map-context p{margin-top:5px;color:var(--dim);font-size:12px}.map{height:480px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(180deg,#202022,#171719);position:relative;overflow:hidden}.land{position:absolute;border:1px solid #3f3f46;background:#2b2b30}.land.active{background:#0e7490;border-color:#22d3ee}.land.later{background:#27272a}.land.mastered{background:#15803d}.country-label{position:absolute;color:#e4e4e7;font-size:11px;font-weight:700}.meta{position:absolute;left:14px;top:14px;padding:10px 12px;border-radius:9px;border:1px solid var(--line2);background:rgba(9,9,11,.86)}.meta strong{display:block;font-size:13px}.meta span{display:block;margin-top:3px;color:var(--muted);font-size:10px}.dock{margin:-13px 12px 0;position:relative;padding:8px;border:1px solid var(--line2);background:rgba(9,9,11,.92);border-radius:12px}.dock button{width:100%;border:0;border-radius:9px;background:var(--cyan2);color:#fff;padding:12px;font-weight:750}.section-title{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);font-weight:800;margin-bottom:8px}.current-set{border:1px solid rgba(34,211,238,.25);background:rgba(8,145,178,.06);border-radius:10px;padding:11px}.current-set strong{font-size:13px}.current-set p{font-size:11px;color:var(--muted);margin-top:4px}.order{margin-top:12px}.row{display:flex;align-items:center;gap:8px;padding:5px 0;color:var(--muted);font-size:12px}.row b{width:18px;text-align:right;color:var(--dim);font-size:10px}.row.now{color:var(--text);font-weight:650}.row.now b{color:var(--cyan)}.row .tag{margin-left:auto;color:var(--cyan);font-size:9px;text-transform:uppercase;letter-spacing:.07em}.progress-state{border:1px solid var(--line);background:#131315;border-radius:9px;padding:11px}.progress-state strong{display:block;font-size:13px}.progress-state span{display:block;color:var(--muted);font-size:10px;margin-top:4px}.actions{display:grid;gap:8px}.actions button,.secondary{border:1px solid var(--line2);background:var(--panel2);color:var(--muted);border-radius:8px;padding:9px;font-weight:650}.memory{margin-top:14px;border-top:1px solid var(--line);padding-top:14px}.memory strong{font-size:13px}.memory p{font-size:11px;color:var(--dim);line-height:1.45;margin-top:5px}.journey{display:grid;gap:7px}.jrow{display:grid;grid-template-columns:22px 1fr;gap:8px}.dot{width:22px;height:22px;border-radius:50%;border:1px solid var(--line2);display:grid;place-items:center;font-size:10px;color:var(--dim)}.jrow.done .dot{border-color:#166534;color:#86efac;background:rgba(34,197,94,.08)}.jrow.now .dot{background:var(--cyan2);border-color:var(--cyan);color:white}.jrow strong{font-size:11px}.jrow small{display:block;color:var(--dim);font-size:9px;margin-top:2px}.scope-list{display:grid;gap:10px;margin-top:12px}.scope{font-size:12px}.scope-head{display:flex;justify-content:space-between}.bar{height:5px;background:var(--line);border-radius:99px;margin-top:5px;overflow:hidden}.bar i{display:block;height:100%;background:var(--cyan2)}.status-box{border:1px solid rgba(34,211,238,.2);background:rgba(8,145,178,.05);border-radius:9px;padding:12px}.status-box strong{display:block;font-size:14px;margin-top:4px}.status-box p{font-size:11px;color:var(--muted);line-height:1.45;margin-top:5px}.note{margin-top:10px;padding:10px;border:1px solid rgba(251,191,36,.18);background:rgba(251,191,36,.04);border-radius:8px;color:#d4d4d8;font-size:11px}.secondary-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.legend{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:11px;color:var(--dim);line-height:1.5}.annotation{max-width:1248px;margin:18px auto 0;border:1px dashed var(--line2);border-radius:10px;padding:12px;color:var(--muted);font-size:12px;line-height:1.5}.annotation b{color:var(--text)}
+@media(max-width:1250px){.grid{grid-template-columns:minmax(0,672px)}.rail{display:none}}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="top"><div class="top-inner"><strong>World Countries · CS 0058 visual reference</strong><div class="switch"><button id="hubBtn" onclick="show('hub')">Continent hub</button><button id="learnBtn" class="on" onclick="show('learn')">Learning session</button></div></div></div>
+
+  <section id="learn" class="screen on">
+    <div class="grid">
+      <aside class="panel rail">
+        <div class="eyebrow">Northern Europe</div>
+        <h2>Meet the countries</h2>
+        <p class="muted" style="margin-top:6px">Learn the first Set, then move through the rest of the region.</p>
+
+        <div class="current-set" style="margin-top:14px">
+          <div class="section-title" style="color:var(--cyan);margin:0 0 5px">Current Set</div>
+          <strong>3 Countries</strong>
+          <p>Iceland · Norway · Denmark</p>
+        </div>
+
+        <div class="progress-state" style="margin-top:10px">
+          <div class="section-title" style="margin:0 0 5px">Your progress</div>
+          <strong>Countries not established yet</strong>
+          <span>You are meeting and locating the Countries first.</span>
+        </div>
+
+        <div class="order">
+          <div class="section-title">Northern Europe · 10 Countries total</div>
+          <div class="row now"><b>1.</b>Iceland<span class="tag">Current Set</span></div>
+          <div class="row now"><b>2.</b>Norway<span class="tag">Current Set</span></div>
+          <div class="row now"><b>3.</b>Denmark<span class="tag">Current Set</span></div>
+          <div class="row"><b>4.</b>Estonia</div><div class="row"><b>5.</b>Finland</div><div class="row"><b>6.</b>Ireland</div><div class="row"><b>7.</b>Latvia</div><div class="row"><b>8.</b>Lithuania</div><div class="row"><b>9.</b>Sweden</div><div class="row"><b>10.</b>United Kingdom</div>
+          <button class="secondary" style="width:100%;margin-top:8px">Edit full learning order</button>
+        </div>
+      </aside>
+
+      <main>
+        <div class="map-context"><div class="eyebrow">Meet the countries · Set 1</div><h1>Iceland</h1><p>1 / 3 in the current Set</p></div>
+        <div class="map">
+          <div class="meta"><strong>Current Set · 3 Countries</strong><span>Northern Europe · 10 Countries total</span></div>
+          <div class="land active" style="left:18%;top:20%;width:8%;height:8%;border-radius:45%"></div><span class="country-label" style="left:19%;top:29%">Iceland</span>
+          <div class="land active" style="left:43%;top:29%;width:9%;height:27%;transform:rotate(15deg)"></div><span class="country-label" style="left:45%;top:43%">Norway</span>
+          <div class="land active" style="left:41%;top:57%;width:6%;height:5%"></div><span class="country-label" style="left:38%;top:64%">Denmark</span>
+          <div class="land later" style="left:54%;top:40%;width:9%;height:14%"></div><div class="land later" style="left:50%;top:21%;width:10%;height:24%"></div><div class="land later" style="left:58%;top:27%;width:11%;height:24%"></div>
+        </div>
+        <div class="dock"><button>Next Country →</button></div>
+      </main>
+
+      <aside class="panel rail">
+        <div class="section-title">Learning actions</div>
+        <div class="actions"><button>Skip to Locate</button><button>Exit</button></div>
+        <div class="memory"><strong>Subregion memory aid</strong><p>Optional story or picture for the full Northern Europe learning order.</p><p style="color:var(--cyan);font-weight:700">Edit mnemonics</p></div>
+        <div class="legend"><b style="color:var(--text)">Intent:</b> current task first; tools stay available but do not compete with the map.</div>
+      </aside>
+    </div>
+  </section>
+
+  <section id="hub" class="screen">
+    <div class="grid">
+      <aside class="panel rail">
+        <div class="eyebrow">Europe geography</div><h2>Learning regions</h2><p class="muted" style="margin-top:6px">Select a region to inspect its progress. Selection does not start a session.</p>
+        <div class="scope-list">
+          <div class="scope"><div class="scope-head"><strong>Northern Europe</strong><span>100%</span></div><div class="bar"><i style="width:100%"></i></div></div>
+          <div class="scope"><div class="scope-head"><strong>Eastern Europe</strong><span>80%</span></div><div class="bar"><i style="width:80%"></i></div></div>
+          <div class="scope"><div class="scope-head"><strong>Balkans</strong><span>100%</span></div><div class="bar"><i style="width:100%"></i></div></div>
+          <div class="scope"><div class="scope-head"><strong>Central Europe</strong><span>100%</span></div><div class="bar"><i style="width:100%"></i></div></div>
+        </div>
+      </aside>
+
+      <main>
+        <div class="map-context"><div class="eyebrow">World Countries · Continent hub</div><h1>Europe learning hub</h1><p>The map is both progress overview and geographic navigation.</p></div>
+        <div class="map">
+          <div class="land mastered" style="left:33%;top:20%;width:12%;height:23%"></div><div class="land mastered" style="left:44%;top:27%;width:12%;height:24%"></div><div class="land mastered" style="left:40%;top:48%;width:13%;height:14%"></div><div class="land active" style="left:55%;top:37%;width:14%;height:15%"></div><div class="land mastered" style="left:48%;top:58%;width:15%;height:12%"></div>
+        </div>
+        <div class="dock"><button>Practice unfinished area →</button></div>
+      </main>
+
+      <aside class="panel rail">
+        <div class="eyebrow">Continue</div><h2>Caught up for today · unfinished</h2><p class="muted" style="margin-top:7px">No scheduled review is due, but Europe is still 45 / 46 complete.</p>
+        <div class="note"><b>Eastern Europe</b><br>1 Country still needs practice.</div>
+        <div style="margin-top:16px"><div class="section-title">Journey · Eastern Europe</div><div class="journey">
+          <div class="jrow done"><div class="dot">✓</div><div><strong>Meet the countries</strong><small>Complete</small></div></div>
+          <div class="jrow done"><div class="dot">✓</div><div><strong>Practice the countries</strong><small>Complete</small></div></div>
+          <div class="jrow done"><div class="dot">✓</div><div><strong>Countries established</strong><small>Complete</small></div></div>
+          <div class="jrow done"><div class="dot">✓</div><div><strong>Add the capitals</strong><small>Complete</small></div></div>
+          <div class="jrow now"><div class="dot">5</div><div><strong>Put it all together</strong><small>One core item is still developing</small></div></div>
+          <div class="jrow"><div class="dot">6</div><div><strong>Master the region</strong><small>Finish line</small></div></div>
+        </div></div>
+        <div class="secondary-row"><button class="secondary">Play</button><button class="secondary">View progress</button></div>
+        <div class="legend"><b style="color:var(--text)">Removed on purpose:</b> two separate zero-value cards for Due reviews and Due Countries, plus duplicate “Next Learning” when the status already explains the next action.</div>
+      </aside>
+    </div>
+  </section>
+
+  <div class="annotation"><b>Visual-reference rule:</b> this file demonstrates hierarchy and information grouping only. It is not React/CSS implementation guidance. Reuse the repository's existing `PageLayout`, rails, `MapSurface`, `TaskDock`, `LearningMapSurface`, panels, typography, and map presentation components.</div>
+</div>
+<script>
+function show(id){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('on'));document.getElementById(id).classList.add('on');document.getElementById('hubBtn').classList.toggle('on',id==='hub');document.getElementById('learnBtn').classList.toggle('on',id==='learn')}
+</script>
+</body>
+</html>

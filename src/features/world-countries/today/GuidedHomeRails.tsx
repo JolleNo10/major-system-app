@@ -153,7 +153,7 @@ export function GuidedHomeRails({
           <h2 id="world-countries-guided-status-heading" className="mt-1 text-lg font-bold text-zinc-100">{statusHeading}</h2>
           <p role="status" aria-live="polite" className="mt-2 text-sm text-zinc-400">{statusExplanation}</p>
         </div>
-        {evidenceStatus === 'ready' && activeCountryCount > 0 && (
+        {evidenceStatus === 'ready' && activeCountryCount > 0 && dueCount > 0 && (
           <dl className="grid grid-cols-2 gap-2 text-sm">
             <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3"><dt className="text-xs uppercase tracking-wider text-zinc-500">Due reviews</dt><dd className="mt-1 font-semibold tabular-nums text-zinc-100">{dueCount}</dd></div>
             <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3"><dt className="text-xs uppercase tracking-wider text-zinc-500">Due Countries</dt><dd className="mt-1 font-semibold tabular-nums text-zinc-100">{dueCountryCount}</dd></div>
@@ -172,7 +172,6 @@ export function GuidedHomeRails({
             <p className="mt-1 text-zinc-300">{completionSummary}. {unfinishedGeography ?? 'Some core recall still needs practice.'}</p>
           </section>
         )}
-        {nextLearning && <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3 text-sm"><p className="text-xs uppercase tracking-wider text-cyan-300">Next Learning</p><p className="mt-1 font-semibold text-zinc-100">{trackLabel(nextLearning.track)} · {nextLearning.subregionLabel}</p></div>}
         {journey && (
           <>
             {isInspectingOtherSubregion && (

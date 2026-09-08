@@ -104,6 +104,7 @@ export function CountryLearningFlow({
   const { allPresentationEntries, mapPresentation: orderMapPresentation, onClickOrderStateChange, onClickOrderToggle } = useLearningCountryOrderAuthoring({ entries, orderDraft, editingOrder })
   const stageIds = currentStagedCountryIds(flow)
   const stageEntries = useMemo(() => stageIds.map(id => entries.find(entry => entry.id === id)).filter((entry): entry is Country => Boolean(entry)), [entries, stageIds])
+  const currentPlanStage = flow.plan[flow.stageIndex]
 
   const transition = (next: StagedCountryLearningFlowState) => {
     if (next.phase !== flow.phase) onPhaseChange(next.phase)
@@ -157,11 +158,11 @@ export function CountryLearningFlow({
     hoveredCountryId,
     orderPresentation: orderMapPresentation,
   })
-  const mapMeta = <LearningMapMetadata scopeLabel={learningScopeLabel} entries={mapEntries} />
+  const mapMeta = <LearningMapMetadata scopeLabel={learningScopeLabel} fullEntries={allPresentationEntries} activeEntries={mapEntries} activeScopeLabel={currentPlanStage?.kind === 'set' ? 'Current Set' : currentPlanStage?.kind === 'combined' ? 'Introduced scope' : 'Full Subregion'} />
 
   const context = (() => {
     switch (flow.phase) {
-      case 'walkthrough': return <LearningHeader label={`Set ${currentStagedCountrySetNumber(flow)} · Review`} title={walkthroughCountry?.country ?? 'Review'} meta={`${flow.walkthroughIndex + 1} / ${stageEntries.length}`} onExit={onExit} />
+      case 'walkthrough': return <LearningHeader label="Meet the countries" title={walkthroughCountry?.country ?? 'Country'} meta={`${flow.walkthroughIndex + 1} / ${stageEntries.length}`} onExit={onExit} />
       case 'location-practice': return <LearningHeader label={`Set ${currentStagedCountrySetNumber(flow)} · Step 2 - Locate`} title={`Find ${flow.location ? stageEntries.find(entry => entry.id === flow.location?.currentKey)?.country ?? 'the Country' : 'the Country'}`} onExit={onExit} />
       case 'location-ready': return <LearningHeader label="Ready" title="Location Ready" onExit={onExit} />
       case 'practice': return <LearningHeader label={`Set ${currentStagedCountrySetNumber(flow)} · Step 3 - Practice`} title="Name the country" onExit={onExit} />
@@ -181,7 +182,7 @@ export function CountryLearningFlow({
   const activeTask: WorldCountriesActivityTask | undefined = (() => {
     switch (flow.phase) {
       case 'walkthrough':
-        return { direction: 'Country', cue: walkthroughCountry?.country ?? 'Review', sessionContext: `Set ${currentStagedCountrySetNumber(flow)} · Review`, progress: { label: 'Country', current: flow.walkthroughIndex + 1, total: stageEntries.length } }
+        return { direction: 'Meet the countries', cue: walkthroughCountry?.country ?? 'Country', sessionContext: `Country · Set ${currentStagedCountrySetNumber(flow)}`, progress: { label: 'Country', current: flow.walkthroughIndex + 1, total: stageEntries.length } }
       case 'location-practice': {
         const current = flow.location ? stageEntries.find(entry => entry.id === flow.location?.currentKey) : undefined
         return { direction: 'Location → Country', cue: current ? `Find ${current.country}` : 'Find the Country', sessionContext: `Set ${currentStagedCountrySetNumber(flow)} · Locate`, answerKind: 'country', progress: practiceProgress ? { label: 'Practice', current: practiceProgress.atTarget, total: practiceProgress.total, percent: practiceProgress.pct * 100 } : undefined }
@@ -204,6 +205,7 @@ export function CountryLearningFlow({
     activeCountries={activeCountries ?? entries}
     phase={flow.phase}
     track="countries"
+    currentSetEntries={currentPlanStage?.kind === 'set' ? stageEntries : undefined}
     countriesEstablished={false}
     capitalsLearned={false}
     onCountryHover={setHoveredCountryId}

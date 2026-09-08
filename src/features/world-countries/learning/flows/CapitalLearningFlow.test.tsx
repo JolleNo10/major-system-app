@@ -10,7 +10,7 @@ import { CapitalLearningFlow } from './CapitalLearningFlow'
 const useRailsMock = vi.hoisted(() => vi.fn())
 const learningMapSurfaceMock = vi.hoisted(() => vi.fn())
 vi.mock('@/app/layout/PageLayoutContext', () => ({ useRails: useRailsMock }))
-vi.mock('./LearningMapSurface', () => ({ LearningMapSurface: (props: { context: ReactNode; children: ReactNode }) => { learningMapSurfaceMock(props); return createElement('div', null, props.context, props.children) } }))
+vi.mock('./LearningMapSurface', () => ({ LearningMapSurface: (props: { context: ReactNode; mapMeta?: ReactNode; children: ReactNode }) => { learningMapSurfaceMock(props); return createElement('div', null, props.mapMeta, props.context, props.children) } }))
 vi.mock('./StagedWalkthroughStep', () => ({
   StagedWalkthroughStep: ({ onContinue }: { onContinue: () => void }) => <button type="button" data-testid="start-practice" onClick={onContinue}>Start practice</button>,
 }))
@@ -34,6 +34,12 @@ vi.mock('@/features/world-countries/mnemonics/CountryCapitalMnemonicPanel', () =
 const entries: Country[] = [
   { id: 'NO', country: 'Norway', capital: 'Oslo', continent: 'Europe', subregionId: 'northern-europe', subregion: 'Northern Europe' },
 ]
+const fullEntries: Country[] = [
+  ...entries,
+  { id: 'SE', country: 'Sweden', capital: 'Stockholm', continent: 'Europe', subregionId: 'northern-europe', subregion: 'Northern Europe' },
+  { id: 'DK', country: 'Denmark', capital: 'Copenhagen', continent: 'Europe', subregionId: 'northern-europe', subregion: 'Northern Europe' },
+  { id: 'FI', country: 'Finland', capital: 'Helsinki', continent: 'Europe', subregionId: 'northern-europe', subregion: 'Northern Europe' },
+]
 
 let root: Root | null = null
 let railRoot: Root | null = null
@@ -48,7 +54,7 @@ afterEach(() => {
   learningMapSurfaceMock.mockReset()
 })
 
-function renderFlow(onPhaseChange: (phase: string) => void, countriesEstablished = false): HTMLDivElement {
+function renderFlow(onPhaseChange: (phase: string) => void, flowEntries: readonly Country[] = entries, countriesEstablished = false): HTMLDivElement {
   const container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
@@ -57,7 +63,7 @@ function renderFlow(onPhaseChange: (phase: string) => void, countriesEstablished
       <CapitalLearningFlow
         continent="Europe"
         subregion="northern-europe"
-        entries={entries}
+        entries={flowEntries}
         newItemsPerSet={3}
         schedulerSettings={{ masteryLatencyFactor: 1.4, sessionUnmasteredShare: 0.5 }}
         countriesEstablished={countriesEstablished}
@@ -94,11 +100,11 @@ function renderLeftRail() {
 
 describe('CapitalLearningFlow orchestration', () => {
   it('shows derived Country readiness when Capital Learning follows mastered Country recall', () => {
-    const container = renderFlow(() => undefined, true)
+    const container = renderFlow(() => undefined, entries, true)
     const leftRail = renderLeftRail()
 
     expect(container.textContent).toContain('Norway')
-    expect(leftRail.textContent).toContain('Countries learned')
+    expect(leftRail.textContent).toContain('Adding capitals')
     expect(leftRail.textContent).not.toContain('Not learned')
   })
 
@@ -107,7 +113,14 @@ describe('CapitalLearningFlow orchestration', () => {
     const task = learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].task
 
     expect(container.textContent).toContain('Norway ↔ Oslo')
-    expect(task).toMatchObject({ direction: 'Country ↔ Capital', cue: 'Norway ↔ Oslo' })
+    expect(task).toMatchObject({ direction: 'Add the capitals', cue: 'Norway ↔ Oslo' })
+  })
+
+  it('identifies the current Capital Set within the full Subregion', () => {
+    const container = renderFlow(() => undefined, fullEntries)
+
+    expect(container.querySelector('[data-learning-active-scope]')?.textContent).toBe('Current Set · 2 Countries')
+    expect(container.querySelector('[data-learning-full-scope]')?.textContent).toBe('Northern Europe · 4 Countries total')
   })
 
   it('reports staged phases and persists completion only after Final recall', () => {

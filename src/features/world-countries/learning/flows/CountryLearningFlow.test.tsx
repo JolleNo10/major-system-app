@@ -9,7 +9,7 @@ import { CountryLearningFlow } from './CountryLearningFlow'
 const useRailsMock = vi.hoisted(() => vi.fn())
 const learningMapSurfaceMock = vi.hoisted(() => vi.fn())
 vi.mock('@/app/layout/PageLayoutContext', () => ({ useRails: useRailsMock }))
-vi.mock('./LearningMapSurface', () => ({ LearningMapSurface: (props: { context: ReactNode; children: ReactNode }) => { learningMapSurfaceMock(props); return createElement('div', null, props.context, props.children) } }))
+vi.mock('./LearningMapSurface', () => ({ LearningMapSurface: (props: { context: ReactNode; mapMeta?: ReactNode; children: ReactNode }) => { learningMapSurfaceMock(props); return createElement('div', null, props.mapMeta, props.context, props.children) } }))
 vi.mock('./StagedWalkthroughStep', () => ({
   StagedWalkthroughStep: ({ onMove, onContinue }: { onMove: (offset: -1 | 1) => void; onContinue: () => void }) => <>
     <button type="button" data-testid="walkthrough-previous" onClick={() => onMove(-1)}>Previous</button>
@@ -42,6 +42,11 @@ const entries: Country[] = [
 const walkthroughEntries: Country[] = [
   { id: 'IS', country: 'Iceland', capital: 'Reykjavík', continent: 'Europe', subregionId: 'northern-europe', subregion: 'Northern Europe' },
   ...entries,
+]
+const fullWalkthroughEntries: Country[] = [
+  ...walkthroughEntries,
+  { id: 'DK', country: 'Denmark', capital: 'Copenhagen', continent: 'Europe', subregionId: 'northern-europe', subregion: 'Northern Europe' },
+  { id: 'FI', country: 'Finland', capital: 'Helsinki', continent: 'Europe', subregionId: 'northern-europe', subregion: 'Northern Europe' },
 ]
 
 let root: Root | null = null
@@ -93,22 +98,24 @@ function expectCountryWalkthrough(container: HTMLDivElement, task: unknown, coun
   expect(container.textContent).toContain(country.country)
   expect(container.textContent).not.toContain(country.capital)
   expect(container.textContent).not.toContain('Country ↔ Capital')
-  expect(task).toMatchObject({ direction: 'Country', cue: country.country })
+  expect(task).toMatchObject({ direction: 'Meet the countries', cue: country.country })
   expect(task).not.toHaveProperty('answerKind')
 }
 
 describe('CountryLearningFlow scheduler progress wiring', () => {
   it('keeps the Country walkthrough focused on Country identity while moving between Countries', () => {
-    const container = renderFlow(walkthroughEntries)
+    const container = renderFlow(fullWalkthroughEntries)
     const latestTask = () => learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].task
 
-    expectCountryWalkthrough(container, latestTask(), walkthroughEntries[0]!)
+    expectCountryWalkthrough(container, latestTask(), fullWalkthroughEntries[0]!)
+    expect(container.querySelector('[data-learning-active-scope]')?.textContent).toBe('Current Set · 2 Countries')
+    expect(container.querySelector('[data-learning-full-scope]')?.textContent).toBe('Northern Europe · 4 Countries total')
 
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="walkthrough-next"]')!.click())
-    expectCountryWalkthrough(container, latestTask(), walkthroughEntries[1]!)
+    expectCountryWalkthrough(container, latestTask(), fullWalkthroughEntries[1]!)
 
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="walkthrough-previous"]')!.click())
-    expectCountryWalkthrough(container, latestTask(), walkthroughEntries[0]!)
+    expectCountryWalkthrough(container, latestTask(), fullWalkthroughEntries[0]!)
   })
 
   it('shows location scheduler progress only after Location Practice starts', () => {
