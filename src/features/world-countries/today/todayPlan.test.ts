@@ -101,6 +101,73 @@ describe('World Countries Today plan', () => {
     expect(plan.action).toMatchObject({ kind: 'learn', recommendation: { track: 'learn-capitals' } })
   })
 
+  it('does not let incidental Capital practice skip Capital Learning', () => {
+    const entries = countries.filter(country => country.id === 'NO' || country.id === 'SE')
+    const history = deriveWorldCountriesRecallHistory(
+      { countryIds: entries.map(country => country.id), skills: ['location-to-country', 'country-to-capital'] },
+      entries.flatMap((country, index) => [
+        { itemId: `world-countries:location-to-country:${country.id}`, at: index + 1, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-18' },
+        { itemId: `world-countries:country-to-capital:${country.id}`, at: index + 3, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-18' },
+      ]),
+    )
+    const plan = buildWorldCountriesTodayPlan({
+      activeCountries: entries,
+      history,
+      learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: 1 }],
+      effectiveSubregionIds: ['northern-europe'],
+      localDate: '2026-08-18',
+    })
+
+    expect(plan.nextLearning?.track).toBe('learn-capitals')
+    expect(plan.action).toMatchObject({ kind: 'learn', recommendation: { track: 'learn-capitals' } })
+  })
+
+  it('keeps Capital Learning required when only some Capital targets are mastered', () => {
+    const entries = countries.filter(country => country.id === 'NO' || country.id === 'SE')
+    const norway = entries.find(country => country.id === 'NO')!
+    const sweden = entries.find(country => country.id === 'SE')!
+    const history = deriveWorldCountriesRecallHistory(
+      { countryIds: entries.map(country => country.id), skills: ['location-to-country', 'country-to-capital'] },
+      [
+        ...entries.map((country, index) => ({ itemId: `world-countries:location-to-country:${country.id}`, at: index + 1, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-18' })),
+        { itemId: `world-countries:country-to-capital:${norway.id}`, at: 3, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-16' },
+        { itemId: `world-countries:country-to-capital:${norway.id}`, at: 4, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-17' },
+        { itemId: `world-countries:country-to-capital:${sweden.id}`, at: 5, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-18' },
+      ],
+    )
+    const plan = buildWorldCountriesTodayPlan({
+      activeCountries: entries,
+      history,
+      learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: 1 }],
+      effectiveSubregionIds: ['northern-europe'],
+      localDate: '2026-08-18',
+    })
+
+    expect(plan.nextLearning?.track).toBe('learn-capitals')
+  })
+
+  it('does not require redundant Capital Learning when every Capital target is mastered', () => {
+    const entries = countries.filter(country => country.id === 'NO' || country.id === 'SE')
+    const history = deriveWorldCountriesRecallHistory(
+      { countryIds: entries.map(country => country.id), skills: ['location-to-country', 'country-to-capital'] },
+      entries.flatMap((country, index) => [
+        { itemId: `world-countries:location-to-country:${country.id}`, at: index + 1, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-16' },
+        { itemId: `world-countries:location-to-country:${country.id}`, at: index + 3, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-17' },
+        { itemId: `world-countries:country-to-capital:${country.id}`, at: index + 5, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-16' },
+        { itemId: `world-countries:country-to-capital:${country.id}`, at: index + 7, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-17' },
+      ]),
+    )
+    const plan = buildWorldCountriesTodayPlan({
+      activeCountries: entries,
+      history,
+      effectiveSubregionIds: ['northern-europe'],
+      localDate: '2026-08-17',
+    })
+
+    expect(plan.nextLearning).toBeNull()
+    expect(plan.action.kind).toBe('complete')
+  })
+
   it('prioritizes due review, then Learning, then bounded consolidation, then completion', () => {
     const country = countries.find(entry => entry.id === 'NO')!
     const due = buildWorldCountriesTodayPlan({

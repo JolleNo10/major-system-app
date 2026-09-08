@@ -48,7 +48,7 @@ afterEach(() => {
   learningMapSurfaceMock.mockReset()
 })
 
-function renderFlow(onPhaseChange: (phase: string) => void): HTMLDivElement {
+function renderFlow(onPhaseChange: (phase: string) => void, countriesEstablished = false): HTMLDivElement {
   const container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
@@ -60,7 +60,7 @@ function renderFlow(onPhaseChange: (phase: string) => void): HTMLDivElement {
         entries={entries}
         newItemsPerSet={3}
         schedulerSettings={{ masteryLatencyFactor: 1.4, sessionUnmasteredShare: 0.5 }}
-        countriesLearned={false}
+        countriesEstablished={countriesEstablished}
         fuzzyMatching={false}
         onPhaseChange={onPhaseChange}
         onExit={() => undefined}
@@ -81,7 +81,27 @@ function renderRail() {
   return mount
 }
 
+function renderLeftRail() {
+  const config = useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1]?.[0] as { left?: ReactNode } | undefined
+  const mount = document.createElement('div')
+  document.body.append(mount)
+  act(() => {
+    railRoot = createRoot(mount)
+    railRoot.render(createElement('div', null, config?.left))
+  })
+  return mount
+}
+
 describe('CapitalLearningFlow orchestration', () => {
+  it('shows derived Country readiness when Capital Learning follows mastered Country recall', () => {
+    const container = renderFlow(() => undefined, true)
+    const leftRail = renderLeftRail()
+
+    expect(container.textContent).toContain('Norway')
+    expect(leftRail.textContent).toContain('Countries learned')
+    expect(leftRail.textContent).not.toContain('Not learned')
+  })
+
   it('keeps Country ↔ Capital presentation in the Capital walkthrough', () => {
     const container = renderFlow(() => undefined)
     const task = learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].task

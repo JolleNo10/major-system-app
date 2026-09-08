@@ -11,7 +11,7 @@ import { getWorldMetadata } from '@/features/world-countries/geography/worldMeta
 import { getAllSubregionLearningStates, useWorldCountriesSubregionLearningRevision } from '@/features/world-countries/learning/subregionLearningStore'
 import { useWorldCountriesGeographyRevision } from '@/features/world-countries/geography/geographyRefresh'
 import { deriveWorldCountriesCountryProgress, deriveWorldCountriesRecallProgress, type RecallProgress } from '@/features/world-countries/learning/recallProgress'
-import { isSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningState'
+import { isWorldCountriesCountryLayerEstablished } from '@/features/world-countries/learning/learningReadiness'
 import { flattenWorldCountriesRecallHistory, loadWorldCountriesRecallHistory, type WorldCountriesRecallHistory } from '@/features/world-countries/learning/recallHistory'
 import { WORLD_COUNTRIES_CORE_RECALL_SKILLS } from '@/features/world-countries/learning/recallTargets'
 import { deriveWorldCountriesScopeProgressForCountries } from '@/features/world-countries/learning/scopeProgress'
@@ -295,7 +295,7 @@ export function WorldCountriesToday({
       activeCountries={activeCountries}
       newItemsPerSet={settings.worldCountriesNewItemsPerSet as LearningSetMaximum}
       schedulerSettings={schedulerSettings}
-      countriesLearned={isSubregionCountriesLearned(learningState)}
+      countriesEstablished={isWorldCountriesCountryLayerEstablished(countryEntries, recommendation.subregionId, learningState, recallProgress ?? new Map())}
       fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching}
       onPhaseChange={() => undefined}
       onExit={finishLearning}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { deriveWorldCountriesRecallProgress } from './recallProgress'
 import { recallTargetIdFor } from './recallTargets'
-import { createWorldCountriesLearningReadinessByCountry, deriveWorldCountriesLearningReadiness, getLearningReadinessBySubregion, getLearningReadinessBySubregionWithDrillEvidence, getLearningReadinessForCountry, isWorldCountriesCountryLayerEstablished, isWorldCountriesCountryRecallMastered, WORLD_COUNTRIES_LEARNING_READINESS_COLORS, WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES } from './learningReadiness'
+import { createWorldCountriesLearningReadinessByCountry, deriveWorldCountriesLearningReadiness, getLearningReadinessBySubregion, getLearningReadinessBySubregionWithDrillEvidence, getLearningReadinessForCountry, isWorldCountriesCapitalLayerEstablished, isWorldCountriesCapitalRecallMastered, isWorldCountriesCountryLayerEstablished, isWorldCountriesCountryRecallMastered, WORLD_COUNTRIES_LEARNING_READINESS_COLORS, WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES } from './learningReadiness'
 
 describe('World Countries Learning Readiness', () => {
   it('keeps the canonical three-state palette and labels together', () => {
@@ -89,5 +89,36 @@ describe('World Countries Learning Readiness', () => {
     expect(isWorldCountriesCountryRecallMastered(entries, 'northern-europe', complete)).toBe(true)
     expect(isWorldCountriesCountryLayerEstablished(entries, 'northern-europe', undefined, partial)).toBe(false)
     expect(isWorldCountriesCountryLayerEstablished(entries, 'northern-europe', { subregionId: 'northern-europe', countriesLearnedAt: 1 }, partial)).toBe(true)
+  })
+
+  it('only treats complete Capital recall as the already-known curriculum fallback', () => {
+    const entries = [
+      { id: 'NO', subregionId: 'northern-europe' as const },
+      { id: 'SE', subregionId: 'northern-europe' as const },
+    ]
+    const incidental = deriveWorldCountriesRecallProgress(
+      { countryIds: ['NO', 'SE'], skills: ['country-to-capital'] },
+      entries.map((entry, index) => ({
+        itemId: recallTargetIdFor(entry.id, 'country-to-capital'),
+        at: index + 1,
+        ok: true,
+        ms: 500,
+        evidenceKind: 'recall' as const,
+        localDate: '2026-08-10',
+      })),
+    )
+    const mastered = deriveWorldCountriesRecallProgress(
+      { countryIds: ['NO', 'SE'], skills: ['country-to-capital'] },
+      entries.flatMap((entry, index) => [
+        { itemId: recallTargetIdFor(entry.id, 'country-to-capital'), at: index + 1, ok: true, ms: 500, evidenceKind: 'recall' as const, localDate: '2026-08-10' },
+        { itemId: recallTargetIdFor(entry.id, 'country-to-capital'), at: index + 3, ok: true, ms: 500, evidenceKind: 'recall' as const, localDate: '2026-08-11' },
+      ]),
+    )
+
+    expect(isWorldCountriesCapitalRecallMastered(entries, 'northern-europe', incidental)).toBe(false)
+    expect(isWorldCountriesCapitalRecallMastered(entries, 'northern-europe', mastered)).toBe(true)
+    expect(isWorldCountriesCapitalLayerEstablished(entries, 'northern-europe', undefined, incidental)).toBe(false)
+    expect(isWorldCountriesCapitalLayerEstablished(entries, 'northern-europe', { subregionId: 'northern-europe', capitalsLearnedAt: 1 }, incidental)).toBe(true)
+    expect(isWorldCountriesCapitalLayerEstablished(entries, 'northern-europe', undefined, mastered)).toBe(true)
   })
 })

@@ -4,7 +4,7 @@ import type { WorldCountriesRecallHistory } from '@/features/world-countries/lea
 import { deriveWorldCountriesIntroducedness, type WorldCountriesTargetIntroduction } from '@/features/world-countries/learning/todayIntroduction'
 import { getSubregionDefinition } from '@/features/world-countries/data/subregions'
 import type { SubregionLearningState } from '@/features/world-countries/learning/subregionLearningState'
-import { isWorldCountriesCountryLayerEstablished } from '@/features/world-countries/learning/learningReadiness'
+import { isWorldCountriesCapitalLayerEstablished, isWorldCountriesCountryLayerEstablished } from '@/features/world-countries/learning/learningReadiness'
 import {
   deriveWorldCountriesReviewSchedule,
   type WorldCountriesReviewSchedule,
@@ -189,12 +189,10 @@ function recommendationFor(
     const hasUnintroducedCountries = entries.some(country => !introductions.get(
       recallTargetIdFor(country.id, 'location-to-country'),
     )?.introduced)
-    const hasUnintroducedCapitals = entries.some(country => !introductions.get(
-      recallTargetIdFor(country.id, 'country-to-capital'),
-    )?.introduced)
     const learningState = learningStates.find(state => state.subregionId === subregionId)
     const countriesEstablished = isWorldCountriesCountryLayerEstablished(entries, subregionId, learningState, progressByTarget)
-    if (!hasUnintroducedCountries && !hasUnintroducedCapitals && countriesEstablished) continue
+    const capitalsEstablished = isWorldCountriesCapitalLayerEstablished(entries, subregionId, learningState, progressByTarget)
+    if (!hasUnintroducedCountries && countriesEstablished && capitalsEstablished) continue
 
     const track: WorldCountriesTodayLearningTrack = hasUnintroducedCountries || !countriesEstablished
       ? 'learn-countries'

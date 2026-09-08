@@ -71,7 +71,7 @@ export function CapitalLearningFlow({
   onExit,
   onDone,
   doneLabel = 'Back to Learn & Practise',
-  countriesLearned = false,
+  countriesEstablished = false,
   onWalkthroughCountryChange,
   recordCompletion = true,
   allowIncorrectSpellingPractice = false,
@@ -88,7 +88,7 @@ export function CapitalLearningFlow({
   onExit: () => void
   onDone?: () => void
   doneLabel?: string
-  countriesLearned?: boolean
+  countriesEstablished?: boolean
   onWalkthroughCountryChange?: (countryId: string | null) => void
   recordCompletion?: boolean
   allowIncorrectSpellingPractice?: boolean
@@ -194,7 +194,7 @@ export function CapitalLearningFlow({
     activeCountries={activeCountries ?? entries}
     phase={flow.phase}
     track="capitals"
-    learned={countriesLearned}
+    countriesEstablished={countriesEstablished}
     capitalsLearned={false}
     onCountryHover={setHoveredCountryId}
     onOrderDraftChanged={setOrderDraft}

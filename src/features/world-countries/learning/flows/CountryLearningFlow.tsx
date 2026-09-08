@@ -204,7 +204,7 @@ export function CountryLearningFlow({
     activeCountries={activeCountries ?? entries}
     phase={flow.phase}
     track="countries"
-    learned={false}
+    countriesEstablished={false}
     capitalsLearned={false}
     onCountryHover={setHoveredCountryId}
     onOrderDraftChanged={setOrderDraft}

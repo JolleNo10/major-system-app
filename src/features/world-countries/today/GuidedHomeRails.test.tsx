@@ -116,7 +116,9 @@ describe('Guided World Countries home status', () => {
       countriesLearned: false,
       countriesEstablished: false,
       capitalsLearned: false,
+      capitalsEstablished: false,
       countryRecallMastered: false,
+      capitalRecallMastered: false,
       coreRecallComplete: false,
     }
     const mount = renderRails({
@@ -142,7 +144,9 @@ describe('Guided World Countries home status', () => {
       countriesLearned: true,
       countriesEstablished: true,
       capitalsLearned: true,
+      capitalsEstablished: true,
       countryRecallMastered: false,
+      capitalRecallMastered: false,
       coreRecallComplete: false,
     }
     const mount = renderRails({

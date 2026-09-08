@@ -111,6 +111,50 @@ describe('World Countries learner journey presentation', () => {
     expect(journey.stages[4]?.status).toBe('upcoming')
   })
 
+  it('does not complete Add the capitals after incidental Capital practice', () => {
+    const journey = deriveWorldCountriesJourneyPresentation({
+      subregionId: 'northern-europe',
+      entries: norway,
+      learningState: { subregionId: 'northern-europe', countriesLearnedAt: 1 },
+      recallProgress: progressFor([
+        ...countryRecallAttempts(),
+        { itemId: 'world-countries:country-to-capital:NO', at: 3, ok: true },
+      ]),
+    })
+
+    expect(journey.capitalsEstablished).toBe(false)
+    expect(journey.currentStageId).toBe('add-capitals')
+    expect(journey.stages[3]?.status).toBe('current')
+  })
+
+  it('uses the Capital milestone to move into combined recall', () => {
+    const journey = deriveWorldCountriesJourneyPresentation({
+      subregionId: 'northern-europe',
+      entries: norway,
+      learningState: { subregionId: 'northern-europe', countriesLearnedAt: 1, capitalsLearnedAt: 2 },
+      recallProgress: progressFor([...countryRecallAttempts(), { itemId: 'world-countries:country-to-capital:NO', at: 3, ok: true }]),
+    })
+
+    expect(journey.capitalsEstablished).toBe(true)
+    expect(journey.currentStageId).toBe('put-it-together')
+  })
+
+  it('uses fully mastered Capital recall as a non-persisted fallback', () => {
+    const journey = deriveWorldCountriesJourneyPresentation({
+      subregionId: 'northern-europe',
+      entries: norway,
+      recallProgress: progressFor([
+        ...countryRecallAttempts(),
+        { itemId: 'world-countries:country-to-capital:NO', at: 3, ok: true },
+        { itemId: 'world-countries:country-to-capital:NO', at: 4, ok: true },
+      ]),
+    })
+
+    expect(journey.capitalsLearned).toBe(false)
+    expect(journey.capitalsEstablished).toBe(true)
+    expect(journey.currentStageId).toBe('master-region')
+  })
+
   it('shows Put it all together while Capital Learning is complete but combined recall develops', () => {
     const journey = deriveWorldCountriesJourneyPresentation({
       subregionId: 'northern-europe',

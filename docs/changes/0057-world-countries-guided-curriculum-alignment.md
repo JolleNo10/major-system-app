@@ -228,8 +228,10 @@ Retain the usable loading, evidence-error, and zero-active-Country shell behavio
 - [x] Consolidation does not bypass/fabricate the existing two-distinct-local-date mastery requirement.
 - [x] Scheduled due review remains higher priority than consolidation or new Learning.
 - [x] Country Learning establishment, not final spaced Country mastery, is the prerequisite represented before **Add the capitals**.
+- [x] Capital Learning establishment likewise requires its durable milestone or fully mastered Country-to-Capital recall; incidental Capital practice does not skip Learning and the recall fallback remains non-persisted.
 - [x] The learner-facing stage previously implying `Master the countries` is renamed/refined so Continue can legitimately recommend Capital Learning without contradicting the journey.
 - [x] Capital Learning still reuses the existing whole-Subregion Capital Learning flow and does not reset Country evidence.
+- [x] Country Learning walkthrough presentation is Country-only while Capital Learning walkthrough presentation remains Country ↔ Capital.
 - [x] After both Learning milestones, incomplete core recall is represented as combined consolidation/mastery rather than unfinished Capital introduction.
 - [x] A truly core-complete scope is distinguishable from merely caught-up scheduled work.
 - [x] Continent consolidation never includes Countries outside the selected Continent.
@@ -265,6 +267,7 @@ When implemented, update `docs/architecture/features/WORLD_COUNTRIES.md` to make
 - the Today-owned planner can derive a bounded consolidation action for incomplete core recall when nothing is due;
 - Country Learning establishment is sufficient to layer Capital Learning on top, while long-term Country mastery continues through review/consolidation;
 - learner-facing journey/action state remains derived and non-persisted.
+- Capital-layer establishment is derived from the durable Capital milestone or fully mastered Country-to-Capital recall, while target introduction and incidental practice remain review evidence rather than curriculum completion.
 
 ## Verification
 
@@ -287,9 +290,10 @@ Browser/manual verification is not required by default. Do not start or troubles
 
 - Focused guided-loop checks: `npx.cmd vitest run src/features/world-countries/today/todayPlan.test.ts src/features/world-countries/today/journeyPresentation.test.ts src/features/world-countries/today/GuidedHomeRails.test.tsx src/features/world-countries/today/WorldCountriesToday.test.tsx src/features/world-countries/today/TodayReviewSession.test.tsx src/features/world-countries/learning/recallProgress.test.ts` — 6 files, 40 tests passed.
 - Correction-pass focused checks: `npx.cmd vitest run src/features/world-countries/learning/learningReadiness.test.ts src/features/world-countries/today/todayPlan.test.ts src/features/world-countries/today/journeyPresentation.test.ts src/features/world-countries/today/GuidedHomeRails.test.tsx src/features/world-countries/today/WorldCountriesToday.test.tsx` — 5 files, 36 tests passed. These cover target introduction versus Country curriculum readiness, the mastered-Country fallback, journey/Continue alignment, and the single attached consolidation CTA.
+- Final Capital-readiness correction focused checks: `npx.cmd vitest run src/features/world-countries/learning/learningReadiness.test.ts src/features/world-countries/today/todayPlan.test.ts src/features/world-countries/today/journeyPresentation.test.ts src/features/world-countries/today/WorldCountriesToday.test.tsx src/features/world-countries/learning/flows/CapitalLearningFlow.test.tsx src/features/world-countries/learning/flows/GuidedLearningRails.test.tsx src/features/world-countries/learning/flows/CountryLearningFlow.test.tsx` — 7 files, 52 tests passed. These cover incidental/partial Capital practice, the durable and mastered-recall Capital establishment paths, planner/journey agreement, recall-derived Country readiness presentation, and the Country-only walkthrough regression with Capital walkthrough preservation.
 - Today capability slice: `npx.cmd vitest run src/features/world-countries/today` — 9 files, 42 tests passed.
 - World Countries feature slice before this correction: `npx.cmd vitest run src/features/world-countries` — 115 files, 752 tests passed.
-- World Countries feature slice after this correction: `npx.cmd vitest run src/features/world-countries` — 115 files, 755 tests passed.
+- World Countries feature slice after the final Capital-readiness correction: `npx.cmd vitest run src/features/world-countries` — 115 files, 766 tests passed. This includes the Country-only walkthrough regression, Capital walkthrough preservation, Capital establishment fallbacks, planner/journey alignment, and recall-derived Country readiness presentation.
 - `npm.cmd run lint` passed.
 - `git diff --check` passed.
 - `npm.cmd run typecheck` reports only the known unrelated `src/features/world-countries/drill/DrillSetup.test.tsx:301` `Map<any, any>` inference error; no changed-file type errors remain.

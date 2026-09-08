@@ -235,7 +235,7 @@ describe('WorldCountriesDrill learning integration', () => {
     act(() => mount.querySelector<HTMLButtonElement>('[data-testid="start-capital-learning"]')!.click())
 
     expect(mount.querySelector('[data-testid="capital-learning"]')).not.toBeNull()
-    expect(capitalFlowProps.current?.countriesLearned).toBe(true)
+    expect(capitalFlowProps.current?.countriesEstablished).toBe(true)
   })
 
   it('starts proficiency Learning as a temporary Country scope', async () => {

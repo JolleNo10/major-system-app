@@ -9,6 +9,7 @@ import { countries } from '@/features/world-countries/data/countries'
 
 const loadHistoryMock = vi.hoisted(() => vi.fn(() => Promise.resolve(new Map())))
 const buildPlanMock = vi.hoisted(() => vi.fn())
+const capitalLearningFlowMock = vi.hoisted(() => vi.fn())
 const activeCountries = [countries[0]]
 
 vi.mock('@/app/settings/SettingsContext', () => ({
@@ -31,7 +32,10 @@ vi.mock('@/features/world-countries/learning/flows/CountryLearningFlow', () => (
   CountryLearningFlow: () => createElement('div', { 'data-testid': 'country-learning-flow' }, 'Country Learning flow'),
 }))
 vi.mock('@/features/world-countries/learning/flows/CapitalLearningFlow', () => ({
-  CapitalLearningFlow: () => createElement('div', { 'data-testid': 'capital-learning-flow' }, 'Capital Learning flow'),
+  CapitalLearningFlow: (props: Record<string, unknown>) => {
+    capitalLearningFlowMock(props)
+    return createElement('div', { 'data-testid': 'capital-learning-flow' }, 'Capital Learning flow')
+  },
 }))
 vi.mock('./todayPlan', async importOriginal => ({
   ...await importOriginal<typeof import('./todayPlan')>(),
@@ -59,6 +63,7 @@ afterEach(() => {
   document.body.replaceChildren()
   loadHistoryMock.mockClear()
   buildPlanMock.mockReset()
+  capitalLearningFlowMock.mockReset()
 })
 
 describe('World Countries Today', () => {
@@ -138,6 +143,36 @@ describe('World Countries Today', () => {
     })
 
     expect(mount.querySelector('[data-testid="country-learning-flow"]')).not.toBeNull()
+  })
+
+  it('passes recall-derived Country establishment into Capital Learning presentation', async () => {
+    const country = activeCountries[0]
+    const countryItemId = `world-countries:location-to-country:${country.id}`
+    loadHistoryMock.mockResolvedValueOnce(new Map([[countryItemId, [
+      { itemId: countryItemId, at: 1, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-10' },
+      { itemId: countryItemId, at: 2, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-11' },
+    ]]]))
+    buildPlanMock.mockReturnValue({
+      dueCandidates: [], reviewQueue: [], consolidationCandidates: [], consolidationQueue: [], dueCount: 0, dueCountryCount: 0,
+      introductions: new Map(),
+      nextLearning: { track: 'learn-capitals', subregionId: country.subregionId, continent: country.continent, subregionLabel: 'Northern Europe' },
+      incompleteCountryCount: 1, incompleteSubregionLabels: ['Northern Europe'], scopeComplete: false, caughtUpForToday: false,
+      action: { kind: 'learn', recommendation: { track: 'learn-capitals', subregionId: country.subregionId, continent: country.continent, subregionLabel: 'Northern Europe', countryIds: [country.id] } },
+    })
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(WorldCountriesToday, { answerMode: 'typing', onNavigate: vi.fn() }))
+      await Promise.resolve()
+    })
+    await act(async () => {
+      [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Continue learning')?.click()
+    })
+
+    expect(capitalLearningFlowMock).toHaveBeenCalledWith(expect.objectContaining({ countriesEstablished: true }))
+    expect(capitalLearningFlowMock.mock.calls[0]?.[0]).not.toHaveProperty('countriesLearned')
   })
 
   it('starts targeted consolidation instead of generic Play when the scope is unfinished', async () => {

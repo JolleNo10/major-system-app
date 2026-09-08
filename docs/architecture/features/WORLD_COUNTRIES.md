@@ -159,7 +159,10 @@ its durable `countriesLearnedAt` milestone, except when every active
 evidence. That display/planning-only fallback avoids redundant Country
 Learning without writing a synthetic milestone. Once Countries are established
 by either route, Capital Learning may be layered on top; the durable milestone
-meaning remains unchanged.
+meaning remains unchanged. Capital Learning uses the same distinction:
+`capitalsLearnedAt` establishes the Capital layer, while a display/planning-only
+fallback may treat every active `country-to-capital` target with two-date
+mastery as already known without writing a synthetic milestone.
 
 Today exposes all derived due candidates for urgency/counts, then snapshots at
 most 12 candidates into a deterministic interleaved review block. Priority
@@ -282,8 +285,10 @@ recall/proficiency evidence. No journey-step, current-Continent, or curriculum
 focus field is persisted. The Country Learning milestone satisfies Countries
 established and is sufficient to layer Capital Learning on top; fully mastered
 Country recall is a non-persisted fallback for already-known Countries, while
-partial target practice is not. Capital learning extends existing Country
-knowledge and does not reset Country evidence. Each stage status is derived
+partial target practice is not. Capital Learning is likewise established by
+its durable milestone or fully mastered Country-to-Capital recall, while
+incidental Capital practice remains insufficient. Capital learning extends
+existing Country knowledge and does not reset Country evidence. Each stage status is derived
 independently enough to distinguish a completed Learning milestone from
 developing or mastered recall; after both milestones, incomplete core evidence
 belongs to Put it all together, and a fully mastered core scope renders the

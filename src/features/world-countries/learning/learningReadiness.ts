@@ -1,6 +1,6 @@
 import type { Country, CountryId } from '@/features/world-countries/data/countries'
 import type { SubregionId } from '@/features/world-countries/data/subregions'
-import { recallTargetIdFor } from './recallTargets'
+import { recallTargetIdFor, type WorldCountriesCoreRecallSkill } from './recallTargets'
 import type { RecallProgress } from './recallProgress'
 import type { SubregionLearningState } from './subregionLearningState'
 import { isSubregionCountriesLearned, isSubregionCapitalsLearned } from './subregionLearningState'
@@ -131,9 +131,27 @@ export function isWorldCountriesCountryRecallMastered(
   subregionId: SubregionId,
   recallProgress: RecallProgress,
 ): boolean {
+  return isWorldCountriesRecallSkillMastered(entries, subregionId, recallProgress, 'location-to-country')
+}
+
+/** A display/planning-only fallback for an already-known Capital layer. */
+export function isWorldCountriesCapitalRecallMastered(
+  entries: readonly Pick<Country, 'id' | 'subregionId'>[],
+  subregionId: SubregionId,
+  recallProgress: RecallProgress,
+): boolean {
+  return isWorldCountriesRecallSkillMastered(entries, subregionId, recallProgress, 'country-to-capital')
+}
+
+function isWorldCountriesRecallSkillMastered(
+  entries: readonly Pick<Country, 'id' | 'subregionId'>[],
+  subregionId: SubregionId,
+  recallProgress: RecallProgress,
+  skill: WorldCountriesCoreRecallSkill,
+): boolean {
   const subregionEntries = entries.filter(entry => entry.subregionId === subregionId)
   return subregionEntries.length > 0 && subregionEntries.every(entry => (
-    recallProgress.get(recallTargetIdFor(entry.id, 'location-to-country'))?.proficiency === 'mastered'
+    recallProgress.get(recallTargetIdFor(entry.id, skill))?.proficiency === 'mastered'
   ))
 }
 
@@ -149,6 +167,20 @@ export function isWorldCountriesCountryLayerEstablished(
 ): boolean {
   return isSubregionCountriesLearned(state)
     || isWorldCountriesCountryRecallMastered(entries, subregionId, recallProgress)
+}
+
+/**
+ * Derive the non-persisted Capital curriculum readiness used by guided Today
+ * presentation. The durable milestone remains independently observable.
+ */
+export function isWorldCountriesCapitalLayerEstablished(
+  entries: readonly Pick<Country, 'id' | 'subregionId'>[],
+  subregionId: SubregionId,
+  state: SubregionLearningState | null | undefined,
+  recallProgress: RecallProgress,
+): boolean {
+  return isSubregionCapitalsLearned(state)
+    || isWorldCountriesCapitalRecallMastered(entries, subregionId, recallProgress)
 }
 
 export function getLearningReadinessForCountry(

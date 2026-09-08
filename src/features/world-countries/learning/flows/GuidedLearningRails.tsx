@@ -24,7 +24,7 @@ export function GuidedLearningRails({
   activeCountries,
   phase,
   track,
-  learned,
+  countriesEstablished,
   capitalsLearned,
   walkthroughCountryId,
   onCountryHover = () => undefined,
@@ -47,7 +47,7 @@ export function GuidedLearningRails({
   activeCountries: readonly Country[]
   phase: StagedCountryLearningPhase | StagedCapitalLearningPhase
   track: 'countries' | 'capitals'
-  learned: boolean
+  countriesEstablished: boolean
   capitalsLearned: boolean
   walkthroughCountryId?: string | null
   onCountryHover?: (countryId: string | null) => void
@@ -121,7 +121,7 @@ export function GuidedLearningRails({
           </div>
           {subregion ? <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
             <p className="text-xs uppercase tracking-wider text-zinc-500">Learning Readiness</p>
-            <p className="mt-1 text-sm font-semibold text-zinc-200">{getWorldCountriesLearningReadinessLabel(deriveWorldCountriesLearningReadiness({ subregionId: subregion, ...(track === 'countries' && learned ? { countriesLearnedAt: 1 } : {}), ...(track === 'capitals' && capitalsLearned ? { capitalsLearnedAt: 1 } : {}) }))}</p>
+            <p className="mt-1 text-sm font-semibold text-zinc-200">{getWorldCountriesLearningReadinessLabel(deriveWorldCountriesLearningReadiness({ subregionId: subregion, ...(countriesEstablished ? { countriesLearnedAt: 1 } : {}), ...(track === 'capitals' && capitalsLearned ? { capitalsLearnedAt: 1 } : {}) }))}</p>
           </div> : <p className="rounded-lg border border-violet-500/20 bg-violet-500/5 p-3 text-xs leading-relaxed text-violet-200">Temporary proficiency scope. Completing this run does not change Learning Readiness.</p>}
           <section aria-labelledby="guided-learning-order-heading">
             <div className="flex items-center justify-between gap-3">
@@ -167,7 +167,7 @@ export function GuidedLearningRails({
       ) : undefined,
       leftLabel: 'Learning context',
       rightLabel: practiceProgress ? 'Practice progress' : showMemoryAid && (onBack || onExit || onSkip) ? 'Learning tools' : showMemoryAid ? 'Memory aid' : onBack || onExit || onSkip ? 'Learning actions' : undefined,
-    }), [activeCountries, backLabel, beginOrderEdit, cancelOrder, continent, editingMnemonic, editingOrder, entries, learned, learningScopeLabel, capitalsLearned, mnemonicAction, onBack, onClickOrderStateChange, onClickOrderToggle, onCountryHover, onExit, onOrderDraftChanged, onSkip, practiceProgress, saveOrder, showCapitalMnemonic, showMemoryAid, showSubregionMnemonic, skipLabel, subregion, track, walkthroughCountry, quietPhase])
+    }), [activeCountries, backLabel, beginOrderEdit, cancelOrder, continent, countriesEstablished, editingMnemonic, editingOrder, entries, learningScopeLabel, capitalsLearned, mnemonicAction, onBack, onClickOrderStateChange, onClickOrderToggle, onCountryHover, onExit, onOrderDraftChanged, onSkip, practiceProgress, saveOrder, showCapitalMnemonic, showMemoryAid, showSubregionMnemonic, skipLabel, subregion, track, walkthroughCountry, quietPhase])
   useRails(rails)
 
   return null
