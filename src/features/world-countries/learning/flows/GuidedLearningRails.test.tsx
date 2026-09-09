@@ -5,6 +5,8 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Country } from '@/features/world-countries/data/countries'
 import type { LearningPracticeProgress } from '@/features/world-countries/learning/learningPracticeProgress'
+import type { LearningStagePresentation } from '@/features/world-countries/learning/stagedLearningPlan'
+import type { StagedCountryLearningPhase } from '@/features/world-countries/learning/stagedCountryLearningFlow'
 import { GuidedLearningRails } from './GuidedLearningRails'
 
 const useRailsMock = vi.hoisted(() => vi.fn())
@@ -26,6 +28,43 @@ const entries: Country[] = [
 ]
 let root: Root | null = null
 
+const defaultStagePresentation: LearningStagePresentation = {
+  kind: 'set',
+  scopeIds: entries.map(entry => entry.id),
+  setNumber: 1,
+  setCount: 1,
+  previousSetIds: [],
+  currentSetIds: entries.map(entry => entry.id),
+  upcomingSetIds: [],
+}
+const secondSetPresentation: LearningStagePresentation = {
+  kind: 'set',
+  scopeIds: [entries[1]!.id],
+  setNumber: 2,
+  setCount: 2,
+  previousSetIds: [entries[0]!.id],
+  currentSetIds: [entries[1]!.id],
+  upcomingSetIds: [],
+}
+const combinedStagePresentation: LearningStagePresentation = {
+  kind: 'combined',
+  scopeIds: [entries[0]!.id],
+  setNumber: null,
+  setCount: 2,
+  previousSetIds: [],
+  currentSetIds: [],
+  upcomingSetIds: [],
+}
+const finalStagePresentation: LearningStagePresentation = {
+  kind: 'final',
+  scopeIds: entries.map(entry => entry.id),
+  setNumber: null,
+  setCount: 2,
+  previousSetIds: [],
+  currentSetIds: [],
+  upcomingSetIds: [],
+}
+
 afterEach(() => {
   act(() => root?.unmount())
   root = null
@@ -33,7 +72,7 @@ afterEach(() => {
   useRailsMock.mockReset()
 })
 
-function renderRails(phase: 'walkthrough' | 'location-practice', track: 'countries' | 'capitals' = 'countries', walkthroughCountryId?: string, practiceProgress?: LearningPracticeProgress, onBack?: () => void, currentSetEntries?: readonly Country[], previousSetEntries?: readonly Country[]) {
+function renderRails(phase: StagedCountryLearningPhase = 'walkthrough', track: 'countries' | 'capitals' = 'countries', walkthroughCountryId?: string, practiceProgress?: LearningPracticeProgress, onBack?: () => void, stagePresentation: LearningStagePresentation = defaultStagePresentation) {
   const mount = document.createElement('div')
   document.body.append(mount)
   const onOrderDraftChanged = vi.fn()
@@ -44,8 +83,7 @@ function renderRails(phase: 'walkthrough' | 'location-practice', track: 'countri
       subregion: 'northern-europe',
       entries,
       activeCountries: entries,
-      currentSetEntries,
-      previousSetEntries,
+      stagePresentation,
       phase,
       track,
       countriesEstablished: false,
@@ -75,7 +113,14 @@ describe('GuidedLearningRails contextual authoring visibility', () => {
   })
 
   it('emphasizes the current Set while keeping the full learning order visible', () => {
-    const { mount, config } = renderRails('walkthrough', 'countries', undefined, undefined, undefined, [entries[0]!])
+    const { mount, config } = renderRails('walkthrough', 'countries', undefined, undefined, undefined, {
+      ...defaultStagePresentation,
+      scopeIds: [entries[0]!.id],
+      setNumber: 1,
+      setCount: 2,
+      currentSetIds: [entries[0]!.id],
+      upcomingSetIds: [entries[1]!.id],
+    })
     act(() => root?.render(createElement('div', null, config.left)))
 
     expect(mount.querySelectorAll('[data-learning-order-entry]').length).toBe(2)
@@ -87,7 +132,7 @@ describe('GuidedLearningRails contextual authoring visibility', () => {
   })
 
   it('distinguishes previous, current, and upcoming Sets without calling previous Countries mastered', () => {
-    const { mount, config } = renderRails('walkthrough', 'countries', undefined, undefined, undefined, [entries[1]!], [entries[0]!])
+    const { mount, config } = renderRails('walkthrough', 'countries', undefined, undefined, undefined, secondSetPresentation)
     act(() => root?.render(createElement('div', null, config.left)))
 
     expect(mount.querySelectorAll('[data-learning-set="previous"]').length).toBe(1)
@@ -122,9 +167,76 @@ describe('GuidedLearningRails contextual authoring visibility', () => {
   })
 
   it('hides authoring and discards any draft during active location recall', () => {
-    const { config, onOrderDraftChanged } = renderRails('location-practice')
-    expect(config.left).toBeUndefined()
+    const { mount, config, onOrderDraftChanged } = renderRails('location-practice')
+    expect(config.left).not.toBeUndefined()
+    act(() => root?.render(createElement('div', null, config.left)))
+    expect(mount.textContent).not.toContain('Edit order')
+    expect(mount.textContent).not.toContain('Edit mnemonics')
     expect(onOrderDraftChanged).toHaveBeenCalledWith(null)
+  })
+
+  it('clears every transient authoring channel when walkthrough ends', () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+    const onOrderDraftChanged = vi.fn()
+    const onCountryHover = vi.fn()
+    const onOrderEditingChange = vi.fn()
+    const onClickOrderStateChange = vi.fn()
+    const onClickOrderToggle = vi.fn()
+    const baseProps = {
+      continent: 'Europe' as const,
+      subregion: 'northern-europe' as const,
+      entries,
+      activeCountries: entries,
+      stagePresentation: defaultStagePresentation,
+      track: 'countries' as const,
+      countriesEstablished: false,
+      capitalsEstablished: false,
+      onOrderDraftChanged,
+      onCountryHover,
+      onOrderEditingChange,
+      onClickOrderStateChange,
+      onClickOrderToggle,
+    }
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement(GuidedLearningRails, { ...baseProps, phase: 'walkthrough' }))
+    })
+
+    act(() => root?.render(createElement(GuidedLearningRails, { ...baseProps, phase: 'location-practice' })))
+
+    expect(onOrderDraftChanged).toHaveBeenLastCalledWith(null)
+    expect(onCountryHover).toHaveBeenLastCalledWith(null)
+    expect(onOrderEditingChange).toHaveBeenLastCalledWith(false)
+    expect(onClickOrderStateChange).toHaveBeenLastCalledWith({ active: false, positions: expect.any(Map) })
+    expect(onClickOrderToggle).toHaveBeenLastCalledWith(null)
+    expect(useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1]?.[0].left).not.toBeUndefined()
+  })
+
+  it('shows cumulative introduced scope without a current Set during Combined practice', () => {
+    const { mount, config } = renderRails('combined-practice', 'countries', undefined, undefined, undefined, combinedStagePresentation)
+    act(() => root?.render(createElement('div', null, config.left)))
+
+    expect(mount.querySelector('[data-learning-stage]')?.getAttribute('data-learning-stage')).toBe('combined')
+    expect(mount.querySelector('[data-learning-stage-label]')?.textContent).toBe('Combined practice')
+    expect(mount.querySelector('[data-learning-stage-scope]')?.textContent).toBe('1 of 2 Countries introduced')
+    expect(mount.querySelectorAll('[data-learning-set="introduced"]')).toHaveLength(1)
+    expect(mount.querySelectorAll('[data-learning-set="upcoming"]')).toHaveLength(1)
+    expect(mount.querySelector('[data-learning-current-set]')).toBeNull()
+    expect(mount.textContent).not.toContain('Current Set')
+  })
+
+  it('shows the full scope without Set distinctions during Final recall', () => {
+    const { mount, config } = renderRails('final-recall', 'capitals', undefined, undefined, undefined, finalStagePresentation)
+    act(() => root?.render(createElement('div', null, config.left)))
+
+    expect(mount.querySelector('[data-learning-stage]')?.getAttribute('data-learning-stage')).toBe('final')
+    expect(mount.querySelector('[data-learning-stage-label]')?.textContent).toBe('Final recall')
+    expect(mount.querySelector('[data-learning-stage-scope]')?.textContent).toBe('All 2 Countries')
+    expect(mount.querySelectorAll('[data-learning-set="active-scope"]')).toHaveLength(2)
+    expect(mount.querySelector('[data-learning-current-set]')).toBeNull()
+    expect(mount.querySelector('[data-learning-previous-set]')).toBeNull()
+    expect(mount.textContent).not.toContain('Upcoming')
   })
 
   it('keeps quiet-phase workflow actions in the right rail in Back, Skip, Exit order', () => {
@@ -138,7 +250,7 @@ describe('GuidedLearningRails contextual authoring visibility', () => {
       root = createRoot(mount)
       root.render(createElement(GuidedLearningRails, {
         continent: 'Europe', subregion: 'northern-europe', entries, activeCountries: entries,
-        phase: 'location-practice', track: 'countries', countriesEstablished: false, capitalsEstablished: false,
+        phase: 'location-practice', track: 'countries', stagePresentation: defaultStagePresentation, countriesEstablished: false, capitalsEstablished: false,
         onOrderDraftChanged, onBack, backLabel: 'Back to Meet countries', onSkip, skipLabel: 'Next: Practice', onExit,
       }))
     })

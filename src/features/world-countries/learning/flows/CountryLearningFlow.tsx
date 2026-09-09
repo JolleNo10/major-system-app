@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
 import {
-  deriveLearningSetPresentation,
+  deriveLearningStagePresentation,
   getNextLearningStageLabel,
   rebuildLearningPlanAfterCountryOrderSave,
   type LearningSetMaximum,
@@ -111,10 +111,7 @@ export function CountryLearningFlow({
   const stageIds = currentStagedCountryIds(flow)
   const stageEntries = useMemo(() => stageIds.map(id => entries.find(entry => entry.id === id)).filter((entry): entry is Country => Boolean(entry)), [entries, stageIds])
   const currentPlanStage = flow.plan[flow.stageIndex]
-  const setPresentation = deriveLearningSetPresentation(flow.plan, flow.stageIndex)
-  const previousSetEntries = setPresentation
-    ? allPresentationEntries.filter(entry => setPresentation.previousSetIds.includes(entry.id))
-    : undefined
+  const stagePresentation = deriveLearningStagePresentation(flow.plan, flow.stageIndex)
   const effectiveCountriesEstablished = countriesEstablished || countryLearningCompleted
 
   const transition = (next: StagedCountryLearningFlowState) => {
@@ -217,8 +214,7 @@ export function CountryLearningFlow({
     activeCountries={activeCountries ?? entries}
     phase={flow.phase}
     track="countries"
-    currentSetEntries={currentPlanStage?.kind === 'set' ? stageEntries : undefined}
-    previousSetEntries={previousSetEntries}
+    stagePresentation={stagePresentation}
     countriesEstablished={effectiveCountriesEstablished}
     capitalsEstablished={capitalsEstablished}
     onCountryHover={setHoveredCountryId}

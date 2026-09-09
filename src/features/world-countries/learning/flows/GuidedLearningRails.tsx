@@ -11,6 +11,7 @@ import { CountryCapitalMnemonicPanel } from '@/features/world-countries/mnemonic
 import type { LearningPracticeProgress } from '@/features/world-countries/learning/learningPracticeProgress'
 import { InlineOrderEditor, type InlineOrderClickState } from '@/features/world-countries/ui/InlineOrderEditor'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
+import type { LearningStagePresentation } from '@/features/world-countries/learning/stagedLearningPlan'
 import type { StagedCountryLearningPhase } from '@/features/world-countries/learning/stagedCountryLearningFlow'
 import type { StagedCapitalLearningPhase } from '@/features/world-countries/learning/stagedCapitalLearningFlow'
 import { SchedulerPracticeProgress } from './SchedulerPracticeProgress'
@@ -21,8 +22,7 @@ export function GuidedLearningRails({
   scopeLabel,
   entries,
   activeCountries,
-  currentSetEntries,
-  previousSetEntries,
+  stagePresentation,
   phase,
   track,
   countriesEstablished,
@@ -46,8 +46,7 @@ export function GuidedLearningRails({
   scopeLabel?: string
   entries: readonly Country[]
   activeCountries: readonly Country[]
-  currentSetEntries?: readonly Country[]
-  previousSetEntries?: readonly Country[]
+  stagePresentation: LearningStagePresentation<Country['id']> | null
   phase: StagedCountryLearningPhase | StagedCapitalLearningPhase
   track: 'countries' | 'capitals'
   countriesEstablished: boolean
@@ -66,19 +65,22 @@ export function GuidedLearningRails({
   skipLabel?: string
   practiceProgress?: LearningPracticeProgress | null
 }) {
-  const quietPhase = phase === 'location-practice' || phase === 'location-ready' || phase === 'practice' || phase === 'set-ready' || phase === 'combined-practice' || phase === 'combined-ready' || phase === 'final-gate' || phase === 'final-recall' || phase === 'complete'
+  const walkthroughPhase = phase === 'walkthrough'
+  const completePhase = phase === 'complete'
+  const clearsAuthoring = !walkthroughPhase
   const walkthroughCountry = walkthroughCountryId ? entries.find(entry => entry.id === walkthroughCountryId) ?? null : null
   const learningScopeLabel = scopeLabel ?? (subregion ? getSubregionDefinition(subregion).label : 'Learning scope')
-  const currentSetIds = useMemo(() => new Set(currentSetEntries?.map(entry => entry.id) ?? []), [currentSetEntries])
-  const previousSetIds = useMemo(() => new Set(previousSetEntries?.map(entry => entry.id) ?? []), [previousSetEntries])
-  const showSubregionMnemonic = !quietPhase && subregion !== undefined
-  const showCapitalMnemonic = !quietPhase && track === 'capitals' && phase === 'walkthrough' && walkthroughCountry !== null
+  const currentSetIds = useMemo(() => new Set(stagePresentation?.currentSetIds ?? []), [stagePresentation])
+  const previousSetIds = useMemo(() => new Set(stagePresentation?.previousSetIds ?? []), [stagePresentation])
+  const introducedIds = useMemo(() => new Set(stagePresentation?.kind === 'combined' ? stagePresentation.scopeIds : []), [stagePresentation])
+  const showSubregionMnemonic = walkthroughPhase && subregion !== undefined
+  const showCapitalMnemonic = walkthroughPhase && track === 'capitals' && walkthroughCountry !== null
   const showMemoryAid = showSubregionMnemonic || showCapitalMnemonic
   const [editingOrder, setEditingOrder] = useState(false)
   const [editingMnemonic, setEditingMnemonic] = useState<'subregion' | 'country-capital' | null>(null)
 
   useEffect(() => {
-    if (!quietPhase) return
+    if (!clearsAuthoring) return
     onOrderDraftChanged(null)
     onCountryHover(null)
     setEditingOrder(false)
@@ -86,7 +88,7 @@ export function GuidedLearningRails({
     onClickOrderStateChange?.({ active: false, positions: new Map() })
     onClickOrderToggle?.(null)
     setEditingMnemonic(null)
-  }, [onClickOrderStateChange, onClickOrderToggle, onCountryHover, onOrderDraftChanged, onOrderEditingChange, quietPhase])
+  }, [clearsAuthoring, onClickOrderStateChange, onClickOrderToggle, onCountryHover, onOrderDraftChanged, onOrderEditingChange])
 
   const beginOrderEdit = useCallback(() => {
     setEditingOrder(true)
@@ -114,8 +116,12 @@ export function GuidedLearningRails({
     </button>
   ), [editingMnemonic])
 
+  const stageKind = stagePresentation?.kind
+  const stageLabel = getLearningStageLabel(stagePresentation)
+  const stageScopeLabel = getLearningStageScopeLabel(stagePresentation, entries.length)
+
   const rails = useMemo(() => ({
-      left: quietPhase ? undefined : (
+      left: completePhase ? undefined : (
         <WorldCountriesPanel className="space-y-4" aria-labelledby="world-countries-guided-context-heading">
           <nav aria-label="World Countries hierarchy" className="flex flex-wrap items-center gap-1.5 text-xs">
             <span className="text-zinc-500">World</span><span className="text-zinc-700">/</span><span className="text-zinc-500">{continent}</span><span className="text-zinc-700">/</span><span className="text-cyan-300">{learningScopeLabel}</span>
@@ -128,12 +134,17 @@ export function GuidedLearningRails({
             <p className="text-xs uppercase tracking-wider text-zinc-500">Learning progress</p>
             <p className="mt-1 text-sm font-semibold text-zinc-200">{getLearningProgressLabel(track, countriesEstablished, capitalsEstablished)}</p>
           </div> : <p className="rounded-lg border border-violet-500/20 bg-violet-500/5 p-3 text-xs leading-relaxed text-violet-200">Temporary proficiency scope. Completing this run does not change your guided journey.</p>}
+          <section aria-labelledby="guided-learning-stage-heading" data-learning-stage={stageKind ?? 'scope'} className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
+            <p id="guided-learning-stage-heading" className="text-xs uppercase tracking-wider text-zinc-500">Learning scope</p>
+            <p data-learning-stage-label className="mt-1 text-sm font-semibold text-zinc-200">{stageLabel}</p>
+            <p data-learning-stage-scope className="mt-1 text-xs text-zinc-400">{stageScopeLabel}</p>
+          </section>
           <section aria-labelledby="guided-learning-order-heading">
             <div className="flex items-center justify-between gap-3">
               <h3 id="guided-learning-order-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Learning order</h3>
-              {!editingOrder && subregion && entries.length > 1 && <button type="button" onClick={beginOrderEdit} className="text-xs font-semibold text-cyan-300 hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70">Edit order</button>}
+              {walkthroughPhase && !editingOrder && subregion && entries.length > 1 && <button type="button" onClick={beginOrderEdit} className="text-xs font-semibold text-cyan-300 hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70">Edit order</button>}
             </div>
-            {editingOrder ? (
+            {walkthroughPhase && editingOrder ? (
               <InlineOrderEditor
                 key={`country-order-${subregion}-${entries.map(entry => entry.id).sort().join('|')}`}
                 entries={entries}
@@ -158,10 +169,13 @@ export function GuidedLearningRails({
               />
             ) : (
               <ol className="mt-3 space-y-1.5 text-sm text-zinc-300">{entries.map((entry, index) => {
-                const isCurrentSet = currentSetEntries !== undefined && currentSetIds.has(entry.id)
-                const isPreviousSet = currentSetEntries !== undefined && previousSetIds.has(entry.id)
-                const setState = currentSetEntries === undefined ? 'active-scope' : isCurrentSet ? 'current' : isPreviousSet ? 'previous' : 'upcoming'
-                return <li key={entry.id} data-learning-order-entry data-learning-set={setState} data-learning-set-state={setState} className={`flex items-center gap-2 rounded-md px-1.5 py-1 ${isCurrentSet ? 'border border-cyan-500/25 bg-cyan-500/5 text-zinc-100' : isPreviousSet ? 'text-zinc-500' : ''}`}><span className={`w-5 shrink-0 text-right text-xs tabular-nums ${isCurrentSet ? 'text-cyan-300' : isPreviousSet ? 'text-zinc-500' : 'text-zinc-600'}`} aria-label={`Sequence ${index + 1}`}>{index + 1}.</span><span className="min-w-0">{entry.country}</span>{isPreviousSet && <span data-learning-previous-set aria-label="Completed earlier in this Learning pass" className="ml-auto shrink-0 text-xs text-zinc-500">✓</span>}{isCurrentSet && <span data-learning-current-set className="ml-auto shrink-0 text-[10px] font-semibold uppercase tracking-wider text-cyan-300">Current Set</span>}</li>
+                const isCurrentSet = stageKind === 'set' && currentSetIds.has(entry.id)
+                const isPreviousSet = stageKind === 'set' && previousSetIds.has(entry.id)
+                const isIntroduced = stageKind === 'combined' && introducedIds.has(entry.id)
+                const isUpcoming = stageKind === 'set' ? !isCurrentSet && !isPreviousSet : stageKind === 'combined' ? !isIntroduced : false
+                const setState = stageKind === 'set' ? isCurrentSet ? 'current' : isPreviousSet ? 'previous' : 'upcoming' : stageKind === 'combined' ? isIntroduced ? 'introduced' : 'upcoming' : 'active-scope'
+                const scopeDescription = stageKind === 'set' ? isCurrentSet ? 'Current Set' : isPreviousSet ? 'Completed earlier in this Learning pass' : 'Upcoming in this Learning pass' : stageKind === 'combined' ? isIntroduced ? 'Introduced in Combined practice' : 'Upcoming in Combined practice' : 'Active in Final recall'
+                return <li key={entry.id} data-learning-order-entry data-learning-set={setState} data-learning-set-state={setState} aria-label={`Sequence ${index + 1}: ${entry.country} · ${scopeDescription}`} className={`flex items-center gap-2 rounded-md px-1.5 py-1 ${isCurrentSet || isIntroduced ? 'border border-cyan-500/25 bg-cyan-500/5 text-zinc-100' : isPreviousSet || isUpcoming ? 'text-zinc-500' : ''}`}><span className={`w-5 shrink-0 text-right text-xs tabular-nums ${isCurrentSet || isIntroduced ? 'text-cyan-300' : isPreviousSet || isUpcoming ? 'text-zinc-500' : 'text-zinc-600'}`} aria-label={`Sequence ${index + 1}`}>{index + 1}.</span><span className="min-w-0">{entry.country}</span>{isPreviousSet && <span data-learning-previous-set aria-label="Completed earlier in this Learning pass" className="ml-auto shrink-0 text-xs text-zinc-500">✓</span>}{isCurrentSet && <span data-learning-current-set className="ml-auto shrink-0 text-[10px] font-semibold uppercase tracking-wider text-cyan-300">Current Set</span>}</li>
               })}</ol>
             )}
           </section>
@@ -177,7 +191,7 @@ export function GuidedLearningRails({
       ) : undefined,
       leftLabel: 'Learning context',
       rightLabel: practiceProgress ? 'Practice progress' : showMemoryAid && (onBack || onExit || onSkip) ? 'Learning tools' : showMemoryAid ? 'Memory aid' : onBack || onExit || onSkip ? 'Learning actions' : undefined,
-    }), [activeCountries, backLabel, beginOrderEdit, cancelOrder, continent, countriesEstablished, currentSetEntries, currentSetIds, editingMnemonic, editingOrder, entries, learningScopeLabel, capitalsEstablished, mnemonicAction, onBack, onClickOrderStateChange, onClickOrderToggle, onCountryHover, onExit, onOrderDraftChanged, onSkip, practiceProgress, previousSetIds, saveOrder, showCapitalMnemonic, showMemoryAid, showSubregionMnemonic, skipLabel, subregion, track, walkthroughCountry, quietPhase])
+    }), [activeCountries, backLabel, beginOrderEdit, cancelOrder, completePhase, continent, countriesEstablished, currentSetIds, editingMnemonic, editingOrder, entries, introducedIds, learningScopeLabel, capitalsEstablished, mnemonicAction, onBack, onClickOrderStateChange, onClickOrderToggle, onCountryHover, onExit, onOrderDraftChanged, onSkip, practiceProgress, previousSetIds, saveOrder, showCapitalMnemonic, showMemoryAid, showSubregionMnemonic, skipLabel, stageKind, stageLabel, stageScopeLabel, subregion, track, walkthroughCountry, walkthroughPhase])
   useRails(rails)
 
   return null
@@ -187,4 +201,25 @@ function getLearningProgressLabel(track: 'countries' | 'capitals', countriesEsta
   if (!countriesEstablished) return 'Countries not established yet'
   if (track === 'countries') return capitalsEstablished ? 'Countries + Capitals established' : 'Countries established'
   return capitalsEstablished ? 'Countries + Capitals established' : 'Adding capitals'
+}
+
+function getLearningStageLabel(stagePresentation: LearningStagePresentation<Country['id']> | null): string {
+  if (!stagePresentation) return 'Learning scope'
+  if (stagePresentation.kind === 'set') {
+    return stagePresentation.setCount > 1 && stagePresentation.setNumber !== null
+      ? `Set ${stagePresentation.setNumber} of ${stagePresentation.setCount}`
+      : 'Learning set'
+  }
+  return stagePresentation.kind === 'combined' ? 'Combined practice' : 'Final recall'
+}
+
+function getLearningStageScopeLabel(stagePresentation: LearningStagePresentation<Country['id']> | null, totalCount: number): string {
+  if (!stagePresentation) return `${totalCount} ${totalCount === 1 ? 'Country' : 'Countries'}`
+  if (stagePresentation.kind === 'set') {
+    return stagePresentation.setCount > 1
+      ? `${stagePresentation.scopeIds.length} of ${totalCount} Countries in this Set`
+      : `${totalCount} ${totalCount === 1 ? 'Country' : 'Countries'} in this Learning set`
+  }
+  if (stagePresentation.kind === 'combined') return `${stagePresentation.scopeIds.length} of ${totalCount} Countries introduced`
+  return `All ${totalCount} ${totalCount === 1 ? 'Country' : 'Countries'}`
 }

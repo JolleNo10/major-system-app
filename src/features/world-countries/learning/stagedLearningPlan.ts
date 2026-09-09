@@ -18,6 +18,16 @@ export interface LearningSetPresentation<TId = CountryId> {
   upcomingSetIds: readonly TId[]
 }
 
+export interface LearningStagePresentation<TId = CountryId> {
+  kind: LearningPlanStage<TId>['kind']
+  scopeIds: readonly TId[]
+  setNumber: number | null
+  setCount: number
+  previousSetIds: readonly TId[]
+  currentSetIds: readonly TId[]
+  upcomingSetIds: readonly TId[]
+}
+
 /** Derive Set status for the active staged Set without adding curriculum state. */
 export function deriveLearningSetPresentation<TId>(
   plan: readonly LearningPlanStage<TId>[],
@@ -29,6 +39,38 @@ export function deriveLearningSetPresentation<TId>(
     previousSetIds: setIds(plan.slice(0, stageIndex)),
     currentSetIds: plan[stageIndex].set.ids,
     upcomingSetIds: setIds(plan.slice(stageIndex + 1)),
+  }
+}
+
+/** Derive the orientation scope for any in-session staged Learning phase. */
+export function deriveLearningStagePresentation<TId>(
+  plan: readonly LearningPlanStage<TId>[],
+  stageIndex: number,
+): LearningStagePresentation<TId> | null {
+  const stage = plan[stageIndex]
+  if (!stage) return null
+
+  const setCount = plan.filter(candidate => candidate.kind === 'set').length
+  if (stage.kind === 'set') {
+    const setPresentation = deriveLearningSetPresentation(plan, stageIndex)
+    if (!setPresentation) return null
+    return {
+      kind: 'set',
+      scopeIds: stage.set.ids,
+      setNumber: stage.set.index + 1,
+      setCount,
+      ...setPresentation,
+    }
+  }
+
+  return {
+    kind: stage.kind,
+    scopeIds: stage.ids,
+    setNumber: null,
+    setCount,
+    previousSetIds: [],
+    currentSetIds: [],
+    upcomingSetIds: [],
   }
 }
 

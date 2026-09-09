@@ -95,6 +95,7 @@ function renderLeftRail() {
   const mount = document.createElement('div')
   document.body.append(mount)
   act(() => {
+    railRoot?.unmount()
     railRoot = createRoot(mount)
     railRoot.render(createElement('div', null, config?.left))
   })
@@ -152,6 +153,39 @@ describe('CapitalLearningFlow orchestration', () => {
     const leftRail = renderLeftRail()
     expect(leftRail.querySelectorAll('[data-learning-set="previous"]')).toHaveLength(3)
     expect(leftRail.querySelectorAll('[data-learning-set="current"]')).toHaveLength(3)
+  })
+
+  it('keeps Capital context truthful through Combined and Final phases', () => {
+    const container = renderFlow(() => undefined, fullEntries)
+    const finishSet = () => {
+      act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-practice"]')!.click())
+      for (let attempt = 0; attempt < 20 && container.querySelector('[data-testid="submit-correct"]'); attempt += 1) act(() => container.querySelector<HTMLButtonElement>('[data-testid="submit-correct"]')!.click())
+      act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
+    }
+
+    finishSet()
+    finishSet()
+
+    const combinedRail = renderLeftRail()
+    expect(combinedRail.textContent).toContain('Combined practice')
+    expect(combinedRail.textContent).toContain('4 of 4 Countries introduced')
+    expect(combinedRail.querySelectorAll('[data-learning-set="introduced"]')).toHaveLength(4)
+    expect(combinedRail.querySelector('[data-learning-current-set]')).toBeNull()
+
+    for (let attempt = 0; attempt < 20 && container.querySelector('[data-testid="submit-correct"]'); attempt += 1) act(() => container.querySelector<HTMLButtonElement>('[data-testid="submit-correct"]')!.click())
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
+
+    const finalGateRail = renderLeftRail()
+    expect(finalGateRail.textContent).toContain('Final recall')
+    expect(finalGateRail.textContent).toContain('All 4 Countries')
+    expect(finalGateRail.querySelectorAll('[data-learning-set="active-scope"]')).toHaveLength(4)
+    expect(finalGateRail.querySelector('[data-learning-current-set]')).toBeNull()
+    expect(finalGateRail.querySelector('[data-learning-previous-set]')).toBeNull()
+
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-start"]')!.click())
+    const finalRecallRail = renderLeftRail()
+    expect(finalRecallRail.textContent).toContain('All 4 Countries')
+    expect(finalRecallRail.textContent).not.toContain('Upcoming')
   })
 
   it('reports staged phases and persists completion only after Final recall', () => {

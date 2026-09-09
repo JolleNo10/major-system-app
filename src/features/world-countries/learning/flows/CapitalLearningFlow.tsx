@@ -3,7 +3,7 @@ import type { Continent, Country } from '@/features/world-countries/data/countri
 import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
 import {
   getNextLearningStageLabel,
-  deriveLearningSetPresentation,
+  deriveLearningStagePresentation,
   rebuildLearningPlanAfterCountryOrderSave,
   type LearningSetMaximum,
 } from '@/features/world-countries/learning/stagedLearningPlan'
@@ -109,10 +109,7 @@ export function CapitalLearningFlow({
   const stageEntries = useMemo(() => stageIds.map(id => entries.find(entry => entry.id === id)).filter((entry): entry is Country => Boolean(entry)), [entries, stageIds])
   const currentPlanStage = flow.plan[flow.stageIndex]
   const stageSetNumber = currentPlanStage?.kind === 'set' ? currentPlanStage.set.index + 1 : 0
-  const setPresentation = deriveLearningSetPresentation(flow.plan, flow.stageIndex)
-  const previousSetEntries = setPresentation
-    ? allPresentationEntries.filter(entry => setPresentation.previousSetIds.includes(entry.id))
-    : undefined
+  const stagePresentation = deriveLearningStagePresentation(flow.plan, flow.stageIndex)
   const effectiveCountriesEstablished = countriesEstablished
   const effectiveCapitalsEstablished = capitalsEstablished || capitalLearningCompleted
 
@@ -205,8 +202,7 @@ export function CapitalLearningFlow({
     activeCountries={activeCountries ?? entries}
     phase={flow.phase}
     track="capitals"
-    currentSetEntries={currentPlanStage?.kind === 'set' ? stageEntries : undefined}
-    previousSetEntries={previousSetEntries}
+    stagePresentation={stagePresentation}
     countriesEstablished={effectiveCountriesEstablished}
     capitalsEstablished={effectiveCapitalsEstablished}
     onCountryHover={setHoveredCountryId}

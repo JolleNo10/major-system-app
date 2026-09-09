@@ -271,15 +271,20 @@ Combined practice is inserted before the next Set, with a required full-scope
 Combined practice before Final recall. A one-Set scope has no duplicate
 Combined stage.
 
-Active Learning presents the staged scope alongside the full ordered Subregion:
-the current Set is identified and emphasized in the Learning rail, preceding
-Sets are marked as completed for this Learning pass, and upcoming Countries
-remain subdued. Walkthrough maps use the same full-order sequence labels as
-the rail while rendering only the active Set as the unmuted working scope.
-Map metadata names the active Set or combined scope and the full Subregion
-count. Combined and Final phases report their actual broader scope rather than
-calling it a current Set. The full order remains the authoring surface, so Set
-emphasis does not restrict Country-order editing or change staged membership.
+Active Learning keeps its context rail registered from walkthrough through
+in-session Location, Practice, Combined, and Final recall phases. The
+walkthrough rail is the rich authoring presentation; later in-session phases
+use a reduced, non-authoring presentation with the geography, staged scope,
+and full ordered Subregion visible. Set-local phases identify and emphasize
+the current Set, mark preceding Sets as completed for this Learning pass, and
+keep upcoming Countries subdued. Combined phases present the cumulative
+introduced scope without a current-Set claim, while Final phases present the
+full scope without Set-state distinctions. Walkthrough maps use the same
+full-order sequence labels as the rail while rendering only the active Set as
+the unmuted working scope. Map metadata names the active Set or combined scope
+and the full Subregion count. The full order remains the authoring surface, so
+Set emphasis does not restrict Country-order editing or change staged
+membership.
 
 All temporary Learning Practice scopes use the shared
 `core/scoring/roundScheduler.ts` through a feature-local adapter with a
@@ -378,9 +383,10 @@ target-local and Country-fit cameras respectively.
 
 - The effective hierarchy order comes from `geography/` for World, Continent,
   Subregion, and Country lists.
-- The visible rail list is the authoring surface. `Edit order` transforms that
-  list in place; it never opens a modal, overlay, drawer, second rail, side
-  panel, or separate screen.
+- During Learning walkthrough, the visible rail list is the authoring surface.
+  `Edit order` transforms that list in place; it never opens a modal, overlay,
+  drawer, second rail, side panel, or separate screen. The persistent
+  non-walkthrough Learning rail keeps the same order read-only for orientation.
 - World and Continent Drill rails edit only their represented hierarchy.
   Learning rails edit Country order only.
 - The Learning Subregion Country editor keeps drag/drop available and may opt
@@ -404,9 +410,10 @@ target-local and Country-fit cameras respectively.
 - A failed order write keeps the editor open with its draft and a recoverable
   error. Existing best-effort storage helpers may silently swallow browser
   storage failures, so reliable detection of every failure is not required.
-- The stable Learning Subregion rail exposes `Edit mnemonics` for the existing
-  Subregion mnemonic target whenever the rail is visible. Order and mnemonic
-  authoring are hidden during ordered recall, active recall, and completion.
+- The stable Learning Subregion walkthrough rail exposes `Edit mnemonics` for
+  the existing Subregion mnemonic target. Order and mnemonic authoring are
+  hidden in the reduced in-session rail, ordered recall, active recall, and
+  completion.
 - Drill gives concise Country-order guidance in its existing setup/map context.
   It does not add a Subregion detail, Country list, or navigation shortcut.
 

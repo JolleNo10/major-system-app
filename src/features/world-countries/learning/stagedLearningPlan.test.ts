@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildLearningPlan, deriveLearningSetPresentation, partitionLearningSets } from './stagedLearningPlan'
+import { buildLearningPlan, deriveLearningSetPresentation, deriveLearningStagePresentation, partitionLearningSets } from './stagedLearningPlan'
 
 describe('partitionLearningSets', () => {
   it.each([
@@ -48,5 +48,63 @@ describe('buildLearningPlan', () => {
       upcomingSetIds: ['g', 'h', 'i'],
     })
     expect(deriveLearningSetPresentation(plan, 2)).toBeNull()
+  })
+
+  it('derives Set context without inferring identity from scope counts', () => {
+    const plan = buildLearningPlan(['a', 'b', 'c', 'd', 'e', 'f', 'g'], 3)
+
+    expect(deriveLearningStagePresentation(plan, 1)).toEqual({
+      kind: 'set',
+      scopeIds: ['d', 'e'],
+      setNumber: 2,
+      setCount: 3,
+      previousSetIds: ['a', 'b', 'c'],
+      currentSetIds: ['d', 'e'],
+      upcomingSetIds: ['f', 'g'],
+    })
+  })
+
+  it('keeps one-Set context distinct from the later full-scope Final stage', () => {
+    const plan = buildLearningPlan(['a', 'b'], 3)
+
+    expect(deriveLearningStagePresentation(plan, 0)).toMatchObject({
+      kind: 'set',
+      scopeIds: ['a', 'b'],
+      setNumber: 1,
+      setCount: 1,
+      currentSetIds: ['a', 'b'],
+      previousSetIds: [],
+      upcomingSetIds: [],
+    })
+    expect(deriveLearningStagePresentation(plan, 1)).toMatchObject({
+      kind: 'final',
+      scopeIds: ['a', 'b'],
+      previousSetIds: [],
+      currentSetIds: [],
+      upcomingSetIds: [],
+    })
+  })
+
+  it('derives cumulative Combined and full Final scopes without Set distinctions', () => {
+    const plan = buildLearningPlan(['a', 'b', 'c', 'd', 'e', 'f', 'g'], 3)
+
+    expect(deriveLearningStagePresentation(plan, 2)).toEqual({
+      kind: 'combined',
+      scopeIds: ['a', 'b', 'c', 'd', 'e'],
+      setNumber: null,
+      setCount: 3,
+      previousSetIds: [],
+      currentSetIds: [],
+      upcomingSetIds: [],
+    })
+    expect(deriveLearningStagePresentation(plan, 5)).toEqual({
+      kind: 'final',
+      scopeIds: ['a', 'b', 'c', 'd', 'e', 'f', 'g'],
+      setNumber: null,
+      setCount: 3,
+      previousSetIds: [],
+      currentSetIds: [],
+      upcomingSetIds: [],
+    })
   })
 })
