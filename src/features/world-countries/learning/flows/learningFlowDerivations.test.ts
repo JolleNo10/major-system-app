@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Country } from '@/features/world-countries/data/countries'
 import {
+  getNextLearningStageDescription,
   getNextLearningStageLabel,
   rebuildLearningPlanAfterCountryOrderSave,
   type LearningPlanStage,
@@ -45,6 +46,50 @@ describe('staged learning flow derivations', () => {
     ]
 
     expect(getNextLearningStageLabel(plan, 0)).toBe('Continue to Final recall')
+  })
+
+  it('describes the next Set for Country Learning', () => {
+    const plan: LearningPlanStage<string>[] = [
+      { kind: 'set', set: { index: 0, ids: ['NO'] } },
+      { kind: 'set', set: { index: 1, ids: ['SE'] } },
+    ]
+
+    expect(getNextLearningStageDescription(plan, 0, 'countries')).toBe('Next: meet the countries in Set 2.')
+  })
+
+  it('describes the next Set for Capital Learning', () => {
+    const plan: LearningPlanStage<string>[] = [
+      { kind: 'set', set: { index: 0, ids: ['NO'] } },
+      { kind: 'set', set: { index: 1, ids: ['SE'] } },
+    ]
+
+    expect(getNextLearningStageDescription(plan, 0, 'capitals')).toBe('Next: add the capitals in Set 2.')
+  })
+
+  it('describes the cumulative next Combined stage for both tracks', () => {
+    const plan: LearningPlanStage<string>[] = [
+      { kind: 'set', set: { index: 0, ids: ['NO'] } },
+      { kind: 'combined', ids: ['NO', 'SE', 'FI'] },
+    ]
+
+    expect(getNextLearningStageDescription(plan, 0, 'countries')).toBe('Next: practise all 3 introduced countries together.')
+    expect(getNextLearningStageDescription(plan, 0, 'capitals')).toBe('Next: practise all 3 introduced country–capital pairs together.')
+  })
+
+  it('describes the next Final stage with scope-neutral wording', () => {
+    const plan: LearningPlanStage<string>[] = [
+      { kind: 'set', set: { index: 0, ids: ['NO'] } },
+      { kind: 'final', ids: ['NO'] },
+    ]
+
+    expect(getNextLearningStageDescription(plan, 0, 'countries')).toBe('Next: one final recall of the full Learning scope.')
+    expect(getNextLearningStageDescription(plan, 0, 'capitals')).toBe('Next: one final recall of the full Learning scope.')
+  })
+
+  it('treats an absent next stage as the final recall description', () => {
+    const plan: LearningPlanStage<string>[] = [{ kind: 'set', set: { index: 0, ids: ['NO'] } }]
+
+    expect(getNextLearningStageDescription(plan, 0, 'countries')).toBe('Next: one final recall of the full Learning scope.')
   })
 
   it('rebuilds a reordered plan and resets walkthrough position', () => {

@@ -3,6 +3,7 @@ import type { Continent, Country } from '@/features/world-countries/data/countri
 import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
 import {
   deriveLearningStagePresentation,
+  getNextLearningStageDescription,
   getNextLearningStageLabel,
   rebuildLearningPlanAfterCountryOrderSave,
   type LearningSetMaximum,
@@ -247,10 +248,10 @@ export function CountryLearningFlow({
       content = flow.practice ? <SchedulerPracticeStep continent={continent} entries={stageEntries.length ? stageEntries : allPresentationEntries} session={flow.practice} stepLabel={flow.phase === 'combined-practice' ? 'Combined practice' : `Set ${currentStagedCountrySetNumber(flow)} · Step 3 - Practice`} questionLabel="Country name" questionTitle="Name the country" answerLabel="Type the country name" placeholder="Type the country…" showCountryName={false} answerKind="country" showMap={flow.phase !== 'combined-practice'} promptText="Name the country" evaluateAnswer={(answer, country) => evaluateCountryAnswer(answer, country, fuzzyMatching, allPresentationEntries)} formatFeedback={formatCountryFeedback} onSubmit={updatePractice} onBack={() => run(backStagedCountry)} onExit={onExit} allowIncorrectSpellingPractice={allowIncorrectSpellingPractice} surface /> : null
       break
     case 'set-ready':
-      content = <StagedLearningReadyStep title={`Set ${currentStagedCountrySetNumber(flow)} ready`} summary="You can now locate and name the countries in this Set." nextDescription={`Next: ${getNextLearningStageLabel(flow.plan, flow.stageIndex)}`} nextLabel={getNextLearningStageLabel(flow.plan, flow.stageIndex)} onNext={() => run(advanceStagedCountryPlan)} onKeepPractising={() => run(keepStagedCountryPractising)} onBack={() => run(backStagedCountry)} onExit={onExit} surface />
+      content = <StagedLearningReadyStep title={`Set ${currentStagedCountrySetNumber(flow)} ready`} summary="You can now locate and name the countries in this Set." nextDescription={getNextLearningStageDescription(flow.plan, flow.stageIndex, 'countries')} nextLabel={getNextLearningStageLabel(flow.plan, flow.stageIndex)} onNext={() => run(advanceStagedCountryPlan)} onKeepPractising={() => run(keepStagedCountryPractising)} onBack={() => run(backStagedCountry)} onExit={onExit} surface />
       break
     case 'combined-ready':
-      content = <StagedLearningReadyStep title="Combined practice ready" summary="You've practised the introduced countries together." nextDescription={`Next: ${getNextLearningStageLabel(flow.plan, flow.stageIndex)}`} nextLabel={getNextLearningStageLabel(flow.plan, flow.stageIndex)} onNext={() => run(advanceStagedCountryPlan)} onKeepPractising={() => run(keepStagedCountryPractising)} onBack={() => run(backStagedCountry)} onExit={onExit} surface />
+      content = <StagedLearningReadyStep title="Combined practice ready" summary="You've practised the introduced countries together." nextDescription={getNextLearningStageDescription(flow.plan, flow.stageIndex, 'countries')} nextLabel={getNextLearningStageLabel(flow.plan, flow.stageIndex)} onNext={() => run(advanceStagedCountryPlan)} onKeepPractising={() => run(keepStagedCountryPractising)} onBack={() => run(backStagedCountry)} onExit={onExit} surface />
       break
     case 'final-gate':
       content = <FinalRecallGate ready={flow.finalScopeReady} onStart={() => run(startStagedCountryFinalRecall)} onKeepPractising={() => run(keepStagedCountryPractising)} onBack={() => run(backStagedCountry)} onExit={onExit} surface />

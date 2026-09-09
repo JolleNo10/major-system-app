@@ -85,6 +85,23 @@ export function getNextLearningStageLabel<TId>(
   return 'Continue to Final recall'
 }
 
+export function getNextLearningStageDescription<TId>(
+  plan: readonly LearningPlanStage<TId>[],
+  stageIndex: number,
+  track: 'countries' | 'capitals',
+): string {
+  const next = plan[stageIndex + 1]
+  if (!next || next.kind === 'final') return 'Next: one final recall of the full Learning scope.'
+  if (next.kind === 'set') {
+    return track === 'countries'
+      ? `Next: meet the countries in Set ${next.set.index + 1}.`
+      : `Next: add the capitals in Set ${next.set.index + 1}.`
+  }
+  return track === 'countries'
+    ? `Next: practise all ${next.ids.length} introduced countries together.`
+    : `Next: practise all ${next.ids.length} introduced country–capital pairs together.`
+}
+
 export function rebuildLearningPlanAfterCountryOrderSave<TId>(
   countryIds: readonly TId[],
   maximum: LearningSetMaximum,

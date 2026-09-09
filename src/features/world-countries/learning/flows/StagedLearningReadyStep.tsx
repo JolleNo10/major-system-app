@@ -63,7 +63,7 @@ export function FinalRecallGate({
   onExit: () => void
   surface?: boolean
 }) {
-  const description = ready ? 'One last pass through the full region.' : "Try the full-region recall when you're ready."
+  const description = ready ? "One last pass through everything you've been learning." : "Try the full recall when you're ready."
   const nextDescription = ready
     ? 'Recall the whole Learning order from start to finish.'
     : 'You can start now, or go back for more practice.'
