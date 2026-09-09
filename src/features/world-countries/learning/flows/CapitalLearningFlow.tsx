@@ -113,7 +113,7 @@ export function CapitalLearningFlow({
   const previousSetEntries = setPresentation
     ? allPresentationEntries.filter(entry => setPresentation.previousSetIds.includes(entry.id))
     : undefined
-  const effectiveCountriesEstablished = countriesEstablished || capitalLearningCompleted
+  const effectiveCountriesEstablished = countriesEstablished
   const effectiveCapitalsEstablished = capitalsEstablished || capitalLearningCompleted
 
   const transition = (next: StagedCapitalLearningFlowState) => {
