@@ -81,7 +81,8 @@ export function getNextLearningStageLabel<TId>(
   const next = plan[stageIndex + 1]
   if (!next) return 'Continue to Final recall'
   if (next.kind === 'set') return `Continue to Set ${next.set.index + 1}`
-  return `Practise all ${next.ids.length}`
+  if (next.kind === 'combined') return `Practise all ${next.ids.length} together`
+  return 'Continue to Final recall'
 }
 
 export function rebuildLearningPlanAfterCountryOrderSave<TId>(

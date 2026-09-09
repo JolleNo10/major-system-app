@@ -35,7 +35,16 @@ describe('staged learning flow derivations', () => {
       { kind: 'combined', ids: ['NO', 'SE', 'FI'] },
     ]
 
-    expect(getNextLearningStageLabel(plan, 0)).toBe('Practise all 3')
+    expect(getNextLearningStageLabel(plan, 0)).toBe('Practise all 3 together')
+  })
+
+  it('labels the next Final stage as Final recall', () => {
+    const plan: LearningPlanStage<string>[] = [
+      { kind: 'set', set: { index: 0, ids: ['NO'] } },
+      { kind: 'final', ids: ['NO'] },
+    ]
+
+    expect(getNextLearningStageLabel(plan, 0)).toBe('Continue to Final recall')
   })
 
   it('rebuilds a reordered plan and resets walkthrough position', () => {

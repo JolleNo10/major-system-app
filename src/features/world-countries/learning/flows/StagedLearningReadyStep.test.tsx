@@ -23,12 +23,14 @@ describe('Learning Ready task dock behavior', () => {
     act(() => {
       root = createRoot(mount)
       root.render(createElement(StagedLearningReadyStep, {
-        title: 'Set 1 Ready', summary: 'Every Country is ready.', nextLabel: 'Continue to Set 2',
+        title: 'Set 1 ready', summary: 'You can now locate and name the countries in this Set.', nextDescription: 'Next: Continue to Set 2', nextLabel: 'Continue to Set 2',
         onNext, onKeepPractising: vi.fn(), onBack: vi.fn(), onExit: vi.fn(),
       }))
     })
 
-    expect(mount.querySelector('[role="status"]')?.textContent).toContain('Every Country is ready.')
+    expect(mount.querySelector('[role="status"]')?.textContent).toContain('You can now locate and name the countries in this Set.')
+    expect(mount.querySelector('[role="status"]')?.textContent).toContain('Next: Continue to Set 2')
+    expect(mount.querySelector('[role="status"]')?.textContent).not.toContain('threshold')
     expect(document.activeElement?.textContent).toContain('Continue to Set 2')
 
     act(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })))
@@ -38,14 +40,44 @@ describe('Learning Ready task dock behavior', () => {
   it('focuses Final recall even when the gate is not Ready', () => {
     const mount = document.createElement('div')
     document.body.append(mount)
+    const onStart = vi.fn()
     act(() => {
       root = createRoot(mount)
       root.render(createElement(FinalRecallGate, {
-        ready: false, onStart: vi.fn(), onKeepPractising: vi.fn(), onBack: vi.fn(), onExit: vi.fn(),
+        ready: false, onStart, onKeepPractising: vi.fn(), onBack: vi.fn(), onExit: vi.fn(),
       }))
     })
 
     expect(document.activeElement?.textContent).toContain('Final recall')
-    expect(mount.querySelector('[role="status"]')?.textContent).toContain('Final recall')
+    const status = mount.querySelector('[role="status"]')?.textContent
+    expect(status).toContain('Final recall')
+    expect(status).toContain("Try the full-region recall when you're ready.")
+    expect(status).toContain('You can start now, or go back for more practice.')
+    expect(status).not.toContain('effective Country order')
+    expect(status).not.toContain('completion gate')
+    expect(status).not.toContain('Learning flow')
+    expect(status).not.toContain('before starting')
+
+    act(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })))
+    expect(onStart).toHaveBeenCalledTimes(1)
+  })
+
+  it('uses learner-facing copy for a ready Final recall gate', () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement(FinalRecallGate, {
+        ready: true, onStart: vi.fn(), onKeepPractising: vi.fn(), onBack: vi.fn(), onExit: vi.fn(),
+      }))
+    })
+
+    const status = mount.querySelector('[role="status"]')?.textContent
+    expect(status).toContain('Ready for final recall')
+    expect(status).toContain('One last pass through the full region.')
+    expect(status).toContain('Recall the whole Learning order from start to finish.')
+    expect(status).not.toContain('effective Country order')
+    expect(status).not.toContain('completion gate')
+    expect(status).not.toContain('Learning flow')
   })
 })

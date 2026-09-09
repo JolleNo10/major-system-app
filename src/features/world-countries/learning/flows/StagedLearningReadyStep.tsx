@@ -8,6 +8,7 @@ function EnterKey() {
 export function StagedLearningReadyStep({
   title,
   summary,
+  nextDescription,
   nextLabel,
   onNext,
   onKeepPractising,
@@ -17,6 +18,7 @@ export function StagedLearningReadyStep({
 }: {
   title: string
   summary: string
+  nextDescription: string
   nextLabel: string
   onNext: () => void
   onKeepPractising: () => void
@@ -31,7 +33,7 @@ export function StagedLearningReadyStep({
         {title}
       </div>
       <div className="mt-1 text-lg font-bold text-zinc-100">{summary}</div>
-      <div className="mt-0.5 max-w-[360px] text-xs text-zinc-400">The map stays as the memory peg. Extra practice remains optional.</div>
+      <div className="mt-0.5 max-w-[360px] text-xs text-zinc-400">{nextDescription}</div>
     </div>
   )
   const dock = (
@@ -61,7 +63,10 @@ export function FinalRecallGate({
   onExit: () => void
   surface?: boolean
 }) {
-  const description = 'Recall the complete effective Country order to finish Learning for this Subregion.'
+  const description = ready ? 'One last pass through the full region.' : "Try the full-region recall when you're ready."
+  const nextDescription = ready
+    ? 'Recall the whole Learning order from start to finish.'
+    : 'You can start now, or go back for more practice.'
   const status = (
     <div className="min-w-0">
       <div className={`flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.08em] ${ready ? 'text-green-400' : 'text-zinc-400'}`}>
@@ -69,7 +74,7 @@ export function FinalRecallGate({
         {ready ? 'Ready for final recall' : 'Final recall'}
       </div>
       <div className="mt-1 text-lg font-bold text-zinc-100">{description}</div>
-      <div className="mt-0.5 max-w-[360px] text-xs text-zinc-400">{ready ? 'This is the completion gate for the current Learning flow.' : 'Complete the remaining practice before starting the gate.'}</div>
+      <div className="mt-0.5 max-w-[360px] text-xs text-zinc-400">{nextDescription}</div>
     </div>
   )
   const dock = (
