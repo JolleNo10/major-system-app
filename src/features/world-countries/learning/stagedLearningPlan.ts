@@ -12,6 +12,26 @@ export type LearningPlanStage<TId = CountryId> =
   | { kind: 'combined'; ids: readonly TId[] }
   | { kind: 'final'; ids: readonly TId[] }
 
+export interface LearningSetPresentation<TId = CountryId> {
+  previousSetIds: readonly TId[]
+  currentSetIds: readonly TId[]
+  upcomingSetIds: readonly TId[]
+}
+
+/** Derive Set status for the active staged Set without adding curriculum state. */
+export function deriveLearningSetPresentation<TId>(
+  plan: readonly LearningPlanStage<TId>[],
+  stageIndex: number,
+): LearningSetPresentation<TId> | null {
+  if (plan[stageIndex]?.kind !== 'set') return null
+  const setIds = (stages: readonly LearningPlanStage<TId>[]) => stages.flatMap(stage => stage.kind === 'set' ? stage.set.ids : [])
+  return {
+    previousSetIds: setIds(plan.slice(0, stageIndex)),
+    currentSetIds: plan[stageIndex].set.ids,
+    upcomingSetIds: setIds(plan.slice(stageIndex + 1)),
+  }
+}
+
 export function getNextLearningStageLabel<TId>(
   plan: readonly LearningPlanStage<TId>[],
   stageIndex: number,

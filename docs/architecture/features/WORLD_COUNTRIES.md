@@ -272,8 +272,11 @@ Combined practice before Final recall. A one-Set scope has no duplicate
 Combined stage.
 
 Active Learning presents the staged scope alongside the full ordered Subregion:
-the current Set is identified and emphasized in the Learning rail, while the
-map metadata names the active Set or combined scope and the full Subregion
+the current Set is identified and emphasized in the Learning rail, preceding
+Sets are marked as completed for this Learning pass, and upcoming Countries
+remain subdued. Walkthrough maps use the same full-order sequence labels as
+the rail while rendering only the active Set as the unmuted working scope.
+Map metadata names the active Set or combined scope and the full Subregion
 count. Combined and Final phases report their actual broader scope rather than
 calling it a current Set. The full order remains the authoring surface, so Set
 emphasis does not restrict Country-order editing or change staged membership.

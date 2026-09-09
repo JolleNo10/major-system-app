@@ -290,9 +290,9 @@ Browser/manual verification is not required by default. Do not start or troubles
 
 ## Implementation evidence
 
-- Focused presentation checks: `npx.cmd vitest run src/features/world-countries/learning/flows/CountryLearningFlow.test.tsx src/features/world-countries/learning/flows/CapitalLearningFlow.test.tsx src/features/world-countries/learning/flows/GuidedLearningRails.test.tsx src/features/world-countries/today/GuidedHomeRails.test.tsx src/features/world-countries/today/WorldCountriesToday.test.tsx src/features/world-countries/learning/flows/LearningMapSurface.test.tsx src/features/world-countries/ui/MapSurface.test.tsx` — 7 files, 44 tests passed. These cover Set/Subregion metadata, full-order/current-Set emphasis, walkthrough stage language and task semantics, truthful progress after Learn again, the journey-consistent Country back action, learner-facing progress wording, zero/review-due Home rails, and retained map/interaction seams.
-- `npx.cmd vitest run src/features/world-countries` — 115 files, 772 tests passed.
-- `npm.cmd test` — 150 files, 983 tests passed.
+- Focused presentation checks: `npx.cmd vitest run src/features/world-countries/learning/flows/CountryLearningFlow.test.tsx src/features/world-countries/learning/flows/CapitalLearningFlow.test.tsx src/features/world-countries/learning/flows/GuidedLearningRails.test.tsx src/features/world-countries/today/GuidedHomeRails.test.tsx src/features/world-countries/today/WorldCountriesToday.test.tsx src/features/world-countries/learning/flows/LearningMapSurface.test.tsx src/features/world-countries/ui/MapSurface.test.tsx` — 7 files, 49 tests passed. These cover caller-seeded learning state, Set/Subregion metadata, full-order/current-Set emphasis, previous/current/upcoming Set states, full-order map labels, walkthrough stage language and task semantics, truthful progress after Learn again, the journey-consistent Country back action, learner-facing progress wording, zero/review-due Home rails, and retained map/interaction seams.
+- `npx.cmd vitest run src/features/world-countries` — 115 files, 780 tests passed.
+- `npm.cmd test` — 150 files, 991 tests passed.
 - `git diff --check` — passed.
 - `npm.cmd run lint` — passed.
 - `npm.cmd run typecheck` — reports only the known unrelated `src/features/world-countries/drill/DrillSetup.test.tsx:301` `Map<any, any>` inference error; no changed-file type errors remain.

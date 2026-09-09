@@ -269,6 +269,8 @@ export function WorldCountriesToday({
       masteryLatencyFactor: settings.masteryLatencyFactor,
       sessionUnmasteredShare: settings.sessionUnmasteredShare,
     }
+    const learningState = learningStates.find(state => state.subregionId === recommendation.subregionId)
+    const countriesEstablished = isWorldCountriesCountryLayerEstablished(countryEntries, recommendation.subregionId, learningState, recallProgress ?? new Map())
     if (recommendation.track === 'learn-countries') {
       return <CountryLearningFlow
         key={`${recommendation.track}:${recommendation.subregionId}`}
@@ -279,6 +281,8 @@ export function WorldCountriesToday({
         newItemsPerSet={settings.worldCountriesNewItemsPerSet as LearningSetMaximum}
         schedulerSettings={schedulerSettings}
         fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching}
+        countriesEstablished={countriesEstablished}
+        capitalsEstablished={Boolean(learningState?.capitalsLearnedAt)}
         onPhaseChange={() => undefined}
         onExit={finishLearning}
         onDone={finishLearning}
@@ -286,7 +290,6 @@ export function WorldCountriesToday({
         recordCompletion={true}
       />
     }
-    const learningState = learningStates.find(state => state.subregionId === recommendation.subregionId)
     return <CapitalLearningFlow
       key={`${recommendation.track}:${recommendation.subregionId}`}
       continent={recommendation.continent}
@@ -295,7 +298,8 @@ export function WorldCountriesToday({
       activeCountries={activeCountries}
       newItemsPerSet={settings.worldCountriesNewItemsPerSet as LearningSetMaximum}
       schedulerSettings={schedulerSettings}
-      countriesEstablished={isWorldCountriesCountryLayerEstablished(countryEntries, recommendation.subregionId, learningState, recallProgress ?? new Map())}
+      countriesEstablished={countriesEstablished}
+      capitalsEstablished={Boolean(learningState?.capitalsLearnedAt)}
       fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching}
       onPhaseChange={() => undefined}
       onExit={finishLearning}

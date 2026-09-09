@@ -93,6 +93,16 @@ describe('learning map presentation derivation', () => {
     })
   })
 
+  it('labels walkthrough Countries from the effective full Learning Order', () => {
+    const reordered = [entries[2]!, entries[0]!, entries[1]!]
+    const result = derive({ phase: 'walkthrough', fullEntries: reordered, stageEntries: [entries[0]!] })
+    const labels = result.presentation.countryLabelsById as ReadonlyMap<string, string>
+
+    expect(labels.get('FI')).toBe('1. Finland')
+    expect(labels.get('NO')).toBe('2. Norway')
+    expect(labels.get('SE')).toBe('3. Sweden')
+  })
+
   it('derives the final-recall highlight from ordered recall', () => {
     const result = derive({ phase: 'final-recall', ordered: { order: ['SE', 'NO'], currentIndex: 0 } })
 

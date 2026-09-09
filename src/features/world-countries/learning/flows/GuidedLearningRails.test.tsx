@@ -33,7 +33,7 @@ afterEach(() => {
   useRailsMock.mockReset()
 })
 
-function renderRails(phase: 'walkthrough' | 'location-practice', track: 'countries' | 'capitals' = 'countries', walkthroughCountryId?: string, practiceProgress?: LearningPracticeProgress, onBack?: () => void, currentSetEntries?: readonly Country[]) {
+function renderRails(phase: 'walkthrough' | 'location-practice', track: 'countries' | 'capitals' = 'countries', walkthroughCountryId?: string, practiceProgress?: LearningPracticeProgress, onBack?: () => void, currentSetEntries?: readonly Country[], previousSetEntries?: readonly Country[]) {
   const mount = document.createElement('div')
   document.body.append(mount)
   const onOrderDraftChanged = vi.fn()
@@ -45,10 +45,11 @@ function renderRails(phase: 'walkthrough' | 'location-practice', track: 'countri
       entries,
       activeCountries: entries,
       currentSetEntries,
+      previousSetEntries,
       phase,
       track,
       countriesEstablished: false,
-      capitalsLearned: false,
+      capitalsEstablished: false,
       onOrderDraftChanged,
       walkthroughCountryId,
       practiceProgress,
@@ -79,10 +80,21 @@ describe('GuidedLearningRails contextual authoring visibility', () => {
 
     expect(mount.querySelectorAll('[data-learning-order-entry]').length).toBe(2)
     expect(mount.querySelectorAll('[data-learning-set="current"]').length).toBe(1)
-    expect(mount.querySelectorAll('[data-learning-set="later"]').length).toBe(1)
+    expect(mount.querySelectorAll('[data-learning-set="upcoming"]').length).toBe(1)
     expect(mount.textContent).toContain('Norway')
     expect(mount.textContent).toContain('Sweden')
     expect(mount.querySelector('[data-learning-current-set]')?.textContent).toBe('Current Set')
+  })
+
+  it('distinguishes previous, current, and upcoming Sets without calling previous Countries mastered', () => {
+    const { mount, config } = renderRails('walkthrough', 'countries', undefined, undefined, undefined, [entries[1]!], [entries[0]!])
+    act(() => root?.render(createElement('div', null, config.left)))
+
+    expect(mount.querySelectorAll('[data-learning-set="previous"]').length).toBe(1)
+    expect(mount.querySelectorAll('[data-learning-set="current"]').length).toBe(1)
+    expect(mount.querySelectorAll('[data-learning-set="upcoming"]').length).toBe(0)
+    expect(mount.querySelector('[data-learning-previous-set]')?.getAttribute('aria-label')).toContain('Completed earlier')
+    expect(mount.textContent).not.toContain('Mastered')
   })
 
   it('opts only the Learning Country editor into click-sequence authoring', () => {
@@ -126,7 +138,7 @@ describe('GuidedLearningRails contextual authoring visibility', () => {
       root = createRoot(mount)
       root.render(createElement(GuidedLearningRails, {
         continent: 'Europe', subregion: 'northern-europe', entries, activeCountries: entries,
-        phase: 'location-practice', track: 'countries', countriesEstablished: false, capitalsLearned: false,
+        phase: 'location-practice', track: 'countries', countriesEstablished: false, capitalsEstablished: false,
         onOrderDraftChanged, onBack, backLabel: 'Back to Meet countries', onSkip, skipLabel: 'Next: Practice', onExit,
       }))
     })

@@ -51,6 +51,14 @@ const fullWalkthroughEntries: Country[] = [
   { id: 'DK', country: 'Denmark', capital: 'Copenhagen', continent: 'Europe', subregionId: 'northern-europe', subregion: 'Northern Europe' },
   { id: 'FI', country: 'Finland', capital: 'Helsinki', continent: 'Europe', subregionId: 'northern-europe', subregion: 'Northern Europe' },
 ]
+const setProgressEntries: Country[] = [
+  ...fullWalkthroughEntries,
+  { id: 'EE', country: 'Estonia', capital: 'Tallinn', continent: 'Europe', subregionId: 'northern-europe', subregion: 'Northern Europe' },
+  { id: 'LV', country: 'Latvia', capital: 'Riga', continent: 'Europe', subregionId: 'northern-europe', subregion: 'Northern Europe' },
+  { id: 'LT', country: 'Lithuania', capital: 'Vilnius', continent: 'Europe', subregionId: 'northern-europe', subregion: 'Northern Europe' },
+  { id: 'GB', country: 'United Kingdom', capital: 'London', continent: 'Europe', subregionId: 'northern-europe', subregion: 'Northern Europe' },
+  { id: 'IE', country: 'Ireland', capital: 'Dublin', continent: 'Europe', subregionId: 'northern-europe', subregion: 'Northern Europe' },
+]
 
 let root: Root | null = null
 let railRoot: Root | null = null
@@ -88,7 +96,7 @@ function renderLeftRail() {
   return mount
 }
 
-function renderFlow(flowEntries: readonly Country[] = entries): HTMLDivElement {
+function renderFlow(flowEntries: readonly Country[] = entries, countriesEstablished = false, capitalsEstablished = false): HTMLDivElement {
   const container = document.createElement('div')
   document.body.append(container)
   act(() => {
@@ -98,6 +106,8 @@ function renderFlow(flowEntries: readonly Country[] = entries): HTMLDivElement {
         continent="Europe"
         subregion="northern-europe"
         entries={flowEntries}
+        countriesEstablished={countriesEstablished}
+        capitalsEstablished={capitalsEstablished}
         newItemsPerSet={3}
         schedulerSettings={{ masteryLatencyFactor: 1.4, sessionUnmasteredShare: 0.5 }}
         fuzzyMatching={false}
@@ -131,6 +141,40 @@ describe('CountryLearningFlow scheduler progress wiring', () => {
 
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="walkthrough-previous"]')!.click())
     expectCountryWalkthrough(container, latestTask(), fullWalkthroughEntries[0]!)
+  })
+
+  it('seeds Country progress from existing durable state on a fresh flow', () => {
+    const container = renderFlow(entries, true)
+    const leftRail = renderLeftRail()
+
+    expect(leftRail.textContent).toContain('Countries established')
+    expect(leftRail.textContent).not.toContain('Countries not established yet')
+    expect(container.querySelector('[data-testid="start-location"]')).not.toBeNull()
+  })
+
+  it('keeps full-order map numbering and previous/current/upcoming Set states aligned', () => {
+    const container = renderFlow(setProgressEntries)
+    const latestTask = () => learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0]
+
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-location"]')!.click())
+    for (let attempt = 0; attempt < 20 && container.querySelector('[data-testid="location-submit"]'); attempt += 1) act(() => container.querySelector<HTMLButtonElement>('[data-testid="location-submit"]')!.click())
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
+    for (let attempt = 0; attempt < 20 && container.querySelector('[data-testid="practice-submit"]'); attempt += 1) act(() => container.querySelector<HTMLButtonElement>('[data-testid="practice-submit"]')!.click())
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
+
+    const leftRail = renderLeftRail()
+    expect(leftRail.querySelectorAll('[data-learning-set="previous"]')).toHaveLength(3)
+    expect(leftRail.querySelectorAll('[data-learning-set="current"]')).toHaveLength(3)
+    expect(leftRail.querySelectorAll('[data-learning-set="upcoming"]')).toHaveLength(3)
+    expect(leftRail.querySelector('[data-learning-set="previous"]')?.textContent).toContain('Iceland')
+    expect(leftRail.querySelector('[data-learning-set="current"]')?.textContent).toContain('Finland')
+    expect(leftRail.querySelector('[data-learning-set="upcoming"]')?.textContent).toContain('Lithuania')
+
+    const labels = latestTask().presentation.countryLabelsById as ReadonlyMap<string, string>
+    expect(labels.get('FI')).toBe('4. Finland')
+    expect(labels.get('EE')).toBe('5. Estonia')
+    expect(labels.get('LV')).toBe('6. Latvia')
+    expect(labels.get('FI')).not.toBe('1. Finland')
   })
 
   it('shows location scheduler progress only after Location Practice starts', () => {

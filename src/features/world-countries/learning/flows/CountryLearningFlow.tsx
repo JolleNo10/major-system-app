@@ -2,6 +2,7 @@ import { useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
 import {
+  deriveLearningSetPresentation,
   getNextLearningStageLabel,
   rebuildLearningPlanAfterCountryOrderSave,
   type LearningSetMaximum,
@@ -76,6 +77,8 @@ export function CountryLearningFlow({
   onExit,
   onDone,
   doneLabel = 'Back to Learn & Practise',
+  countriesEstablished = false,
+  capitalsEstablished = false,
   recordCompletion = true,
   allowIncorrectSpellingPractice = false,
 }: {
@@ -91,6 +94,8 @@ export function CountryLearningFlow({
   onExit: () => void
   onDone?: () => void
   doneLabel?: string
+  countriesEstablished?: boolean
+  capitalsEstablished?: boolean
   recordCompletion?: boolean
   allowIncorrectSpellingPractice?: boolean
 }) {
@@ -106,6 +111,11 @@ export function CountryLearningFlow({
   const stageIds = currentStagedCountryIds(flow)
   const stageEntries = useMemo(() => stageIds.map(id => entries.find(entry => entry.id === id)).filter((entry): entry is Country => Boolean(entry)), [entries, stageIds])
   const currentPlanStage = flow.plan[flow.stageIndex]
+  const setPresentation = deriveLearningSetPresentation(flow.plan, flow.stageIndex)
+  const previousSetEntries = setPresentation
+    ? allPresentationEntries.filter(entry => setPresentation.previousSetIds.includes(entry.id))
+    : undefined
+  const effectiveCountriesEstablished = countriesEstablished || countryLearningCompleted
 
   const transition = (next: StagedCountryLearningFlowState) => {
     if (next.phase !== flow.phase) onPhaseChange(next.phase)
@@ -151,7 +161,7 @@ export function CountryLearningFlow({
   const walkthroughCountry = stageEntries[flow.walkthroughIndex]
   const { mapEntries, presentation: mapPresentation, presentationKey } = deriveLearningMapPresentation({
     phase: flow.phase,
-    fullEntries: entries,
+    fullEntries: allPresentationEntries,
     stageEntries,
     fallbackEntries: allPresentationEntries,
     walkthroughIndex: flow.walkthroughIndex,
@@ -208,8 +218,9 @@ export function CountryLearningFlow({
     phase={flow.phase}
     track="countries"
     currentSetEntries={currentPlanStage?.kind === 'set' ? stageEntries : undefined}
-    countriesEstablished={countryLearningCompleted}
-    capitalsLearned={false}
+    previousSetEntries={previousSetEntries}
+    countriesEstablished={effectiveCountriesEstablished}
+    capitalsEstablished={capitalsEstablished}
     onCountryHover={setHoveredCountryId}
     onOrderDraftChanged={setOrderDraft}
     onOrderEditingChange={setEditingOrder}

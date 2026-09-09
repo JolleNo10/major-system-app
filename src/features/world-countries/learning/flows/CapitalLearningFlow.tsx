@@ -3,6 +3,7 @@ import type { Continent, Country } from '@/features/world-countries/data/countri
 import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
 import {
   getNextLearningStageLabel,
+  deriveLearningSetPresentation,
   rebuildLearningPlanAfterCountryOrderSave,
   type LearningSetMaximum,
 } from '@/features/world-countries/learning/stagedLearningPlan'
@@ -72,6 +73,7 @@ export function CapitalLearningFlow({
   onDone,
   doneLabel = 'Back to Learn & Practise',
   countriesEstablished = false,
+  capitalsEstablished = false,
   onWalkthroughCountryChange,
   recordCompletion = true,
   allowIncorrectSpellingPractice = false,
@@ -89,6 +91,7 @@ export function CapitalLearningFlow({
   onDone?: () => void
   doneLabel?: string
   countriesEstablished?: boolean
+  capitalsEstablished?: boolean
   onWalkthroughCountryChange?: (countryId: string | null) => void
   recordCompletion?: boolean
   allowIncorrectSpellingPractice?: boolean
@@ -106,6 +109,12 @@ export function CapitalLearningFlow({
   const stageEntries = useMemo(() => stageIds.map(id => entries.find(entry => entry.id === id)).filter((entry): entry is Country => Boolean(entry)), [entries, stageIds])
   const currentPlanStage = flow.plan[flow.stageIndex]
   const stageSetNumber = currentPlanStage?.kind === 'set' ? currentPlanStage.set.index + 1 : 0
+  const setPresentation = deriveLearningSetPresentation(flow.plan, flow.stageIndex)
+  const previousSetEntries = setPresentation
+    ? allPresentationEntries.filter(entry => setPresentation.previousSetIds.includes(entry.id))
+    : undefined
+  const effectiveCountriesEstablished = countriesEstablished || capitalLearningCompleted
+  const effectiveCapitalsEstablished = capitalsEstablished || capitalLearningCompleted
 
   const transition = (next: StagedCapitalLearningFlowState) => {
     if (next.phase !== flow.phase) onPhaseChange(next.phase)
@@ -147,7 +156,7 @@ export function CapitalLearningFlow({
   const walkthroughCountry = stageEntries[flow.walkthroughIndex]
   const { mapEntries, presentation: mapPresentation, presentationKey } = deriveLearningMapPresentation({
     phase: flow.phase,
-    fullEntries: entries,
+    fullEntries: allPresentationEntries,
     stageEntries,
     fallbackEntries: allPresentationEntries,
     walkthroughIndex: flow.walkthroughIndex,
@@ -197,8 +206,9 @@ export function CapitalLearningFlow({
     phase={flow.phase}
     track="capitals"
     currentSetEntries={currentPlanStage?.kind === 'set' ? stageEntries : undefined}
-    countriesEstablished={countriesEstablished || capitalLearningCompleted}
-    capitalsLearned={capitalLearningCompleted}
+    previousSetEntries={previousSetEntries}
+    countriesEstablished={effectiveCountriesEstablished}
+    capitalsEstablished={effectiveCapitalsEstablished}
     onCountryHover={setHoveredCountryId}
     onOrderDraftChanged={setOrderDraft}
     onOrderEditingChange={setEditingOrder}

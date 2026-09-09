@@ -22,10 +22,11 @@ export function GuidedLearningRails({
   entries,
   activeCountries,
   currentSetEntries,
+  previousSetEntries,
   phase,
   track,
   countriesEstablished,
-  capitalsLearned,
+  capitalsEstablished,
   walkthroughCountryId,
   onCountryHover = () => undefined,
   onOrderDraftChanged,
@@ -46,10 +47,11 @@ export function GuidedLearningRails({
   entries: readonly Country[]
   activeCountries: readonly Country[]
   currentSetEntries?: readonly Country[]
+  previousSetEntries?: readonly Country[]
   phase: StagedCountryLearningPhase | StagedCapitalLearningPhase
   track: 'countries' | 'capitals'
   countriesEstablished: boolean
-  capitalsLearned: boolean
+  capitalsEstablished: boolean
   walkthroughCountryId?: string | null
   onCountryHover?: (countryId: string | null) => void
   onOrderDraftChanged: (draft: readonly Country[] | null) => void
@@ -68,6 +70,7 @@ export function GuidedLearningRails({
   const walkthroughCountry = walkthroughCountryId ? entries.find(entry => entry.id === walkthroughCountryId) ?? null : null
   const learningScopeLabel = scopeLabel ?? (subregion ? getSubregionDefinition(subregion).label : 'Learning scope')
   const currentSetIds = useMemo(() => new Set(currentSetEntries?.map(entry => entry.id) ?? []), [currentSetEntries])
+  const previousSetIds = useMemo(() => new Set(previousSetEntries?.map(entry => entry.id) ?? []), [previousSetEntries])
   const showSubregionMnemonic = !quietPhase && subregion !== undefined
   const showCapitalMnemonic = !quietPhase && track === 'capitals' && phase === 'walkthrough' && walkthroughCountry !== null
   const showMemoryAid = showSubregionMnemonic || showCapitalMnemonic
@@ -123,7 +126,7 @@ export function GuidedLearningRails({
           </div>
           {subregion ? <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
             <p className="text-xs uppercase tracking-wider text-zinc-500">Learning progress</p>
-            <p className="mt-1 text-sm font-semibold text-zinc-200">{getLearningProgressLabel(track, countriesEstablished, capitalsLearned)}</p>
+            <p className="mt-1 text-sm font-semibold text-zinc-200">{getLearningProgressLabel(track, countriesEstablished, capitalsEstablished)}</p>
           </div> : <p className="rounded-lg border border-violet-500/20 bg-violet-500/5 p-3 text-xs leading-relaxed text-violet-200">Temporary proficiency scope. Completing this run does not change your guided journey.</p>}
           <section aria-labelledby="guided-learning-order-heading">
             <div className="flex items-center justify-between gap-3">
@@ -156,7 +159,9 @@ export function GuidedLearningRails({
             ) : (
               <ol className="mt-3 space-y-1.5 text-sm text-zinc-300">{entries.map((entry, index) => {
                 const isCurrentSet = currentSetEntries !== undefined && currentSetIds.has(entry.id)
-                return <li key={entry.id} data-learning-order-entry data-learning-set={currentSetEntries === undefined ? 'active-scope' : isCurrentSet ? 'current' : 'later'} className={`flex items-center gap-2 rounded-md px-1.5 py-1 ${isCurrentSet ? 'border border-cyan-500/25 bg-cyan-500/5 text-zinc-100' : ''}`}><span className={`w-5 shrink-0 text-right text-xs tabular-nums ${isCurrentSet ? 'text-cyan-300' : 'text-zinc-600'}`} aria-label={`Sequence ${index + 1}`}>{index + 1}.</span><span className="min-w-0">{entry.country}</span>{isCurrentSet && <span data-learning-current-set className="ml-auto shrink-0 text-[10px] font-semibold uppercase tracking-wider text-cyan-300">Current Set</span>}</li>
+                const isPreviousSet = currentSetEntries !== undefined && previousSetIds.has(entry.id)
+                const setState = currentSetEntries === undefined ? 'active-scope' : isCurrentSet ? 'current' : isPreviousSet ? 'previous' : 'upcoming'
+                return <li key={entry.id} data-learning-order-entry data-learning-set={setState} data-learning-set-state={setState} className={`flex items-center gap-2 rounded-md px-1.5 py-1 ${isCurrentSet ? 'border border-cyan-500/25 bg-cyan-500/5 text-zinc-100' : isPreviousSet ? 'text-zinc-500' : ''}`}><span className={`w-5 shrink-0 text-right text-xs tabular-nums ${isCurrentSet ? 'text-cyan-300' : isPreviousSet ? 'text-zinc-500' : 'text-zinc-600'}`} aria-label={`Sequence ${index + 1}`}>{index + 1}.</span><span className="min-w-0">{entry.country}</span>{isPreviousSet && <span data-learning-previous-set aria-label="Completed earlier in this Learning pass" className="ml-auto shrink-0 text-xs text-zinc-500">✓</span>}{isCurrentSet && <span data-learning-current-set className="ml-auto shrink-0 text-[10px] font-semibold uppercase tracking-wider text-cyan-300">Current Set</span>}</li>
               })}</ol>
             )}
           </section>
@@ -172,14 +177,14 @@ export function GuidedLearningRails({
       ) : undefined,
       leftLabel: 'Learning context',
       rightLabel: practiceProgress ? 'Practice progress' : showMemoryAid && (onBack || onExit || onSkip) ? 'Learning tools' : showMemoryAid ? 'Memory aid' : onBack || onExit || onSkip ? 'Learning actions' : undefined,
-    }), [activeCountries, backLabel, beginOrderEdit, cancelOrder, continent, countriesEstablished, currentSetEntries, currentSetIds, editingMnemonic, editingOrder, entries, learningScopeLabel, capitalsLearned, mnemonicAction, onBack, onClickOrderStateChange, onClickOrderToggle, onCountryHover, onExit, onOrderDraftChanged, onSkip, practiceProgress, saveOrder, showCapitalMnemonic, showMemoryAid, showSubregionMnemonic, skipLabel, subregion, track, walkthroughCountry, quietPhase])
+    }), [activeCountries, backLabel, beginOrderEdit, cancelOrder, continent, countriesEstablished, currentSetEntries, currentSetIds, editingMnemonic, editingOrder, entries, learningScopeLabel, capitalsEstablished, mnemonicAction, onBack, onClickOrderStateChange, onClickOrderToggle, onCountryHover, onExit, onOrderDraftChanged, onSkip, practiceProgress, previousSetIds, saveOrder, showCapitalMnemonic, showMemoryAid, showSubregionMnemonic, skipLabel, subregion, track, walkthroughCountry, quietPhase])
   useRails(rails)
 
   return null
 }
 
-function getLearningProgressLabel(track: 'countries' | 'capitals', countriesEstablished: boolean, capitalsLearned: boolean): string {
+function getLearningProgressLabel(track: 'countries' | 'capitals', countriesEstablished: boolean, capitalsEstablished: boolean): string {
   if (!countriesEstablished) return 'Countries not established yet'
-  if (track === 'countries') return capitalsLearned ? 'Countries + Capitals established' : 'Countries established'
-  return capitalsLearned ? 'Countries + Capitals established' : 'Adding capitals'
+  if (track === 'countries') return capitalsEstablished ? 'Countries + Capitals established' : 'Countries established'
+  return capitalsEstablished ? 'Countries + Capitals established' : 'Adding capitals'
 }

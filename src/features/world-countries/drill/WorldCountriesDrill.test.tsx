@@ -6,11 +6,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SettingsProvider } from '@/app/settings/SettingsContext'
 import { WorldCountriesPopulationProvider } from '@/features/world-countries/WorldCountriesPopulationContext'
 import type { Country } from '@/features/world-countries/data/countries'
-import { markSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningStore'
+import { markSubregionCapitalsLearned, markSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningStore'
 import { WorldCountriesDrill } from './WorldCountriesDrill'
 import { getCurrentDrillStep, getDrillSessionSkills, type DrillAnswerRecord, type DrillSessionState } from './drillSessionState'
 
 const capitalFlowProps = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }))
+const countryFlowProps = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }))
 const drillSessionProps = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }))
 const drillResultsProps = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }))
 const practiceResultsProps = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }))
@@ -28,6 +29,7 @@ vi.mock('./DrillSetup', () => ({
       null,
       createElement('button', { type: 'button', 'data-testid': 'start-drill', onClick: () => (props.onStart as () => void)() }, 'Start Drill'),
       createElement('button', { type: 'button', 'data-testid': 'select-proficiency', onClick: () => onProficiencySelectionChange(['weak']) }, 'Select weak'),
+      createElement('button', { type: 'button', 'data-testid': 'start-country-learning', onClick: () => onLearnPracticeStart('learn-countries') }, 'Start country learning'),
       createElement('button', { type: 'button', 'data-testid': 'start-capital-learning', onClick: () => onLearnPracticeStart('learn-capitals') }, 'Start capital learning'),
       createElement('button', { type: 'button', 'data-testid': 'start-locate-capitals', onClick: () => onLearnPracticeStart('locate-capitals') }, 'Start Locate Capitals'),
     )
@@ -76,6 +78,13 @@ vi.mock('@/features/world-countries/learning/flows/CapitalLearningFlow', () => (
   },
 }))
 
+vi.mock('@/features/world-countries/learning/flows/CountryLearningFlow', () => ({
+  CountryLearningFlow: (props: Record<string, unknown>) => {
+    countryFlowProps.current = props
+    return createElement('div', { 'data-testid': 'country-learning' })
+  },
+}))
+
 let root: Root | null = null
 
 function createDeferred<T>() {
@@ -102,6 +111,7 @@ afterEach(() => {
   act(() => root?.unmount())
   root = null
   capitalFlowProps.current = null
+  countryFlowProps.current = null
   drillSessionProps.current = null
   drillResultsProps.current = null
   practiceResultsProps.current = null
@@ -236,6 +246,27 @@ describe('WorldCountriesDrill learning integration', () => {
 
     expect(mount.querySelector('[data-testid="capital-learning"]')).not.toBeNull()
     expect(capitalFlowProps.current?.countriesEstablished).toBe(true)
+  })
+
+  it('passes existing durable Country and Capital state into fresh Country Learning', () => {
+    localStorage.setItem('world-countries-drill-preferences', JSON.stringify({
+      continent: 'Europe', subregionIds: ['northern-europe'], mode: 'countries', order: 'ordered',
+    }))
+    markSubregionCountriesLearned('northern-europe', 123)
+    markSubregionCapitalsLearned('northern-europe', 456)
+
+    const mount = document.createElement('div')
+    document.body.append(mount)
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement(SettingsProvider, null,
+        createElement(WorldCountriesDrill, { answerMode: 'typing' }),
+      ))
+    })
+
+    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="start-country-learning"]')!.click())
+
+    expect(countryFlowProps.current).toEqual(expect.objectContaining({ countriesEstablished: true, capitalsEstablished: true }))
   })
 
   it('starts proficiency Learning as a temporary Country scope', async () => {

@@ -37,6 +37,11 @@ const fullEntries: Country[] = [
   { id: 'DK', country: 'Denmark', capital: 'Copenhagen', continent: 'Europe', subregionId: 'northern-europe', subregion: 'Northern Europe' },
   { id: 'FI', country: 'Finland', capital: 'Helsinki', continent: 'Europe', subregionId: 'northern-europe', subregion: 'Northern Europe' },
 ]
+const setProgressEntries: Country[] = [
+  ...fullEntries,
+  { id: 'EE', country: 'Estonia', capital: 'Tallinn', continent: 'Europe', subregionId: 'northern-europe', subregion: 'Northern Europe' },
+  { id: 'LV', country: 'Latvia', capital: 'Riga', continent: 'Europe', subregionId: 'northern-europe', subregion: 'Northern Europe' },
+]
 
 let root: Root | null = null
 let railRoot: Root | null = null
@@ -51,7 +56,7 @@ afterEach(() => {
   learningMapSurfaceMock.mockReset()
 })
 
-function renderFlow(onPhaseChange: (phase: string) => void, flowEntries: readonly Country[] = entries, countriesEstablished = false): HTMLDivElement {
+function renderFlow(onPhaseChange: (phase: string) => void, flowEntries: readonly Country[] = entries, countriesEstablished = false, capitalsEstablished = false): HTMLDivElement {
   const container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
@@ -64,6 +69,7 @@ function renderFlow(onPhaseChange: (phase: string) => void, flowEntries: readonl
         newItemsPerSet={3}
         schedulerSettings={{ masteryLatencyFactor: 1.4, sessionUnmasteredShare: 0.5 }}
         countriesEstablished={countriesEstablished}
+        capitalsEstablished={capitalsEstablished}
         fuzzyMatching={false}
         onPhaseChange={onPhaseChange}
         onExit={() => undefined}
@@ -105,6 +111,15 @@ describe('CapitalLearningFlow orchestration', () => {
     expect(leftRail.textContent).not.toContain('Not learned')
   })
 
+  it('seeds established Country and Capital progress on a fresh flow', () => {
+    const container = renderFlow(() => undefined, entries, true, true)
+    const leftRail = renderLeftRail()
+
+    expect(container.textContent).toContain('Norway')
+    expect(leftRail.textContent).toContain('Countries + Capitals established')
+    expect(leftRail.textContent).not.toContain('Adding capitals')
+  })
+
   it('keeps Country ↔ Capital presentation in the Capital walkthrough', () => {
     const container = renderFlow(() => undefined)
     const task = learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].task
@@ -118,6 +133,25 @@ describe('CapitalLearningFlow orchestration', () => {
 
     expect(container.querySelector('[data-learning-active-scope]')?.textContent).toBe('Current Set · 2 Countries')
     expect(container.querySelector('[data-learning-full-scope]')?.textContent).toBe('Northern Europe · 4 Countries total')
+  })
+
+  it('keeps Capital walkthrough map numbering aligned with the full Learning Order', () => {
+    const container = renderFlow(() => undefined, setProgressEntries)
+    const latestSurface = () => learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0]
+
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-practice"]')!.click())
+    for (let attempt = 0; attempt < 20 && container.querySelector('[data-testid="submit-correct"]'); attempt += 1) act(() => container.querySelector<HTMLButtonElement>('[data-testid="submit-correct"]')!.click())
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
+
+    const labels = latestSurface().presentation.countryLabelsById as ReadonlyMap<string, string>
+    expect(labels.get('FI')).toBe('4. Finland')
+    expect(labels.get('EE')).toBe('5. Estonia')
+    expect(labels.get('LV')).toBe('6. Latvia')
+    expect(labels.get('FI')).not.toBe('1. Finland')
+
+    const leftRail = renderLeftRail()
+    expect(leftRail.querySelectorAll('[data-learning-set="previous"]')).toHaveLength(3)
+    expect(leftRail.querySelectorAll('[data-learning-set="current"]')).toHaveLength(3)
   })
 
   it('reports staged phases and persists completion only after Final recall', () => {

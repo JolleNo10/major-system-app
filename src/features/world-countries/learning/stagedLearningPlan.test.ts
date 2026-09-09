@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildLearningPlan, partitionLearningSets } from './stagedLearningPlan'
+import { buildLearningPlan, deriveLearningSetPresentation, partitionLearningSets } from './stagedLearningPlan'
 
 describe('partitionLearningSets', () => {
   it.each([
@@ -37,5 +37,16 @@ describe('buildLearningPlan', () => {
 
   it('does not duplicate combined practice for a single set', () => {
     expect(buildLearningPlan(['a', 'b'], 3).map(stage => stage.kind)).toEqual(['set', 'final'])
+  })
+
+  it('derives previous, current, and upcoming Sets from the staged plan', () => {
+    const plan = buildLearningPlan(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'], 3)
+
+    expect(deriveLearningSetPresentation(plan, 1)).toEqual({
+      previousSetIds: ['a', 'b', 'c'],
+      currentSetIds: ['d', 'e', 'f'],
+      upcomingSetIds: ['g', 'h', 'i'],
+    })
+    expect(deriveLearningSetPresentation(plan, 2)).toBeNull()
   })
 })
