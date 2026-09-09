@@ -127,14 +127,14 @@ describe('GuidedLearningRails contextual authoring visibility', () => {
       root.render(createElement(GuidedLearningRails, {
         continent: 'Europe', subregion: 'northern-europe', entries, activeCountries: entries,
         phase: 'location-practice', track: 'countries', countriesEstablished: false, capitalsLearned: false,
-        onOrderDraftChanged, onBack, backLabel: 'Back to Review', onSkip, skipLabel: 'Next: Practice', onExit,
+        onOrderDraftChanged, onBack, backLabel: 'Back to Meet countries', onSkip, skipLabel: 'Next: Practice', onExit,
       }))
     })
 
     const latestConfig = useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1]?.[0]
     act(() => root?.render(createElement('div', null, latestConfig?.right)))
     expect([...mount.querySelectorAll('button')].map(button => button.textContent)).toEqual([
-      'Back to Review', 'Next: Practice', 'Exit',
+      'Back to Meet countries', 'Next: Practice', 'Exit',
     ])
   })
 

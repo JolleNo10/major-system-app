@@ -98,6 +98,7 @@ export function CountryLearningFlow({
   const ids = useMemo(() => entries.map(country => country.id), [entries])
   const [flow, setFlow] = useState<StagedCountryLearningFlowState>(() => createStagedCountryLearningFlow({ countryIds: ids, maximum: newItemsPerSet, schedulerSettings }))
   const completionReported = useRef(false)
+  const [countryLearningCompleted, setCountryLearningCompleted] = useState(false)
   const [orderDraft, setOrderDraft] = useState<readonly Country[] | null>(null)
   const [editingOrder, setEditingOrder] = useState(false)
   const [hoveredCountryId, setHoveredCountryId] = useState<string | null>(null)
@@ -122,6 +123,7 @@ export function CountryLearningFlow({
     const result = submitStagedCountryFinalAnswer(flow, correct)
     transition(result.state)
     if (result.result.completedNow && !completionReported.current) {
+      setCountryLearningCompleted(true)
       completionReported.current = true
       if (recordCompletion && subregion) markSubregionCountriesLearned(subregion, Date.now(), activeCountries)
     }
@@ -142,7 +144,7 @@ export function CountryLearningFlow({
     || flow.phase === 'final-recall'
     || flow.phase === 'final-gate'
     || ((flow.phase === 'combined-practice' || flow.phase === 'combined-ready') && flow.stageIndex > 0)
-  const backLabel = flow.phase === 'location-practice' ? 'Back to Review'
+  const backLabel = flow.phase === 'location-practice' ? 'Back to Meet countries'
     : flow.phase === 'final-recall' ? 'Back to Final recall'
       : 'Back'
 
@@ -206,7 +208,7 @@ export function CountryLearningFlow({
     phase={flow.phase}
     track="countries"
     currentSetEntries={currentPlanStage?.kind === 'set' ? stageEntries : undefined}
-    countriesEstablished={false}
+    countriesEstablished={countryLearningCompleted}
     capitalsLearned={false}
     onCountryHover={setHoveredCountryId}
     onOrderDraftChanged={setOrderDraft}

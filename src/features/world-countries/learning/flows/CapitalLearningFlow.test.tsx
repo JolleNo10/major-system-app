@@ -24,9 +24,6 @@ vi.mock('./StagedLearningReadyStep', () => ({
 vi.mock('./StagedFinalRecallStep', () => ({
   StagedFinalRecallStep: ({ onSubmit }: { onSubmit: (correct: boolean) => void }) => <button type="button" data-testid="final-submit" onClick={() => onSubmit(true)}>Correct final</button>,
 }))
-vi.mock('./CapitalLearningComplete', () => ({
-  CapitalLearningComplete: ({ onRestart }: { onRestart: () => void }) => <button type="button" data-testid="restart" onClick={onRestart}>Review again</button>,
-}))
 vi.mock('@/features/world-countries/mnemonics/GeographyMnemonicView', () => ({ GeographyMnemonicView: () => null }))
 vi.mock('@/features/world-countries/mnemonics/GeographyMnemonicEditor', () => ({ GeographyMnemonicEditor: () => null }))
 vi.mock('@/features/world-countries/mnemonics/CountryCapitalMnemonicPanel', () => ({ CountryCapitalMnemonicPanel: () => null }))
@@ -141,8 +138,10 @@ describe('CapitalLearningFlow orchestration', () => {
     expect(phases).toEqual(['practice', 'set-ready', 'final-gate', 'final-recall', 'complete'])
     expect(getSubregionLearningState('northern-europe')).toMatchObject({ capitalsLearnedAt: expect.any(Number) })
 
-    act(() => container.querySelector<HTMLButtonElement>('[data-testid="restart"]')!.click())
+    act(() => [...container.querySelectorAll('button')].find(button => button.textContent === 'Learn again')?.click())
     expect(phases).toEqual(['practice', 'set-ready', 'final-gate', 'final-recall', 'complete', 'walkthrough'])
+    expect(renderLeftRail().textContent).toContain('Countries + Capitals established')
+    expect(renderLeftRail().textContent).not.toContain('Adding capitals')
   })
 
   it('shows scheduler progress during Capital Set Practice', () => {

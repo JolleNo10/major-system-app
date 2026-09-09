@@ -53,7 +53,7 @@ export function SchedulerLocationPracticeStep({ continent, entries, session, lab
     <div className="text-center">
       {feedback && <RecallFeedback variant="inline" correct={feedback.correct} message={feedback.correct ? 'Correct location.' : `That was ${entries.find(entry => entry.id === feedback.selectedId)?.country ?? 'not the target'} - ${expected.country} is highlighted.`} />}
       {!feedback && <p className="sr-only">Select the target Country on the map to answer.</p>}
-      {!surface && <div className="mt-3 flex justify-center gap-2"><button type="button" onClick={onBack} className="rounded-lg border border-zinc-800 px-4 py-2 text-sm text-zinc-500 hover:text-zinc-200">Back to Review</button><button type="button" onClick={onExit} className="rounded-lg border border-zinc-800 px-4 py-2 text-sm text-zinc-500 hover:text-zinc-200">Exit</button></div>}
+      {!surface && <div className="mt-3 flex justify-center gap-2"><button type="button" onClick={onBack} className="rounded-lg border border-zinc-800 px-4 py-2 text-sm text-zinc-500 hover:text-zinc-200">Back to Meet countries</button><button type="button" onClick={onExit} className="rounded-lg border border-zinc-800 px-4 py-2 text-sm text-zinc-500 hover:text-zinc-200">Exit</button></div>}
     </div>
   )
   if (surface) return dock

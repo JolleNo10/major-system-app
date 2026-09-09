@@ -4,6 +4,7 @@ import { act, createElement, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Country } from '@/features/world-countries/data/countries'
+import { getSubregionLearningState } from '@/features/world-countries/learning/subregionLearningStore'
 import { CountryLearningFlow } from './CountryLearningFlow'
 
 const useRailsMock = vi.hoisted(() => vi.fn())
@@ -18,17 +19,19 @@ vi.mock('./StagedWalkthroughStep', () => ({
   </>,
 }))
 vi.mock('./SchedulerLocationPracticeStep', () => ({
-  SchedulerLocationPracticeStep: () => <div>Location practice</div>,
+  SchedulerLocationPracticeStep: ({ onSelect, onBack }: { onSelect: (correct: boolean, latencyMs: number) => void; onBack: () => void }) => <>
+    <button type="button" data-testid="location-submit" onClick={() => onSelect(true, 100)}>Correct location</button>
+    <button type="button" data-testid="location-back" onClick={onBack}>Back to Meet countries</button>
+  </>,
 }))
 vi.mock('./SchedulerPracticeStep', () => ({
-  SchedulerPracticeStep: () => <div>Country practice</div>,
+  SchedulerPracticeStep: ({ onSubmit }: { onSubmit: (correct: boolean, latencyMs: number) => void }) => <button type="button" data-testid="practice-submit" onClick={() => onSubmit(true, 100)}>Correct Country</button>,
 }))
 vi.mock('./StagedLearningReadyStep', () => ({
-  StagedLearningReadyStep: () => <div>Ready</div>,
-  FinalRecallGate: () => <div>Final recall gate</div>,
+  StagedLearningReadyStep: ({ onNext }: { onNext: () => void }) => <button type="button" data-testid="ready-next" onClick={onNext}>Next</button>,
+  FinalRecallGate: ({ onStart }: { onStart: () => void }) => <button type="button" data-testid="final-start" onClick={onStart}>Final recall</button>,
 }))
-vi.mock('./StagedFinalRecallStep', () => ({ StagedFinalRecallStep: () => <div>Final recall</div> }))
-vi.mock('./CountryLearningComplete', () => ({ CountryLearningComplete: () => <div>Complete</div> }))
+vi.mock('./StagedFinalRecallStep', () => ({ StagedFinalRecallStep: ({ onSubmit }: { onSubmit: (correct: boolean) => void }) => <button type="button" data-testid="final-submit" onClick={() => onSubmit(true)}>Correct final</button> }))
 vi.mock('@/features/world-countries/mnemonics/GeographyMnemonicView', () => ({ GeographyMnemonicView: () => null }))
 vi.mock('@/features/world-countries/mnemonics/GeographyMnemonicEditor', () => ({ GeographyMnemonicEditor: () => null }))
 vi.mock('@/features/world-countries/mnemonics/CountryCapitalMnemonicPanel', () => ({ CountryCapitalMnemonicPanel: () => null }))
@@ -58,17 +61,29 @@ afterEach(() => {
   root = null
   railRoot = null
   document.body.replaceChildren()
+  localStorage.clear()
   useRailsMock.mockReset()
   learningMapSurfaceMock.mockReset()
 })
 
 function renderRail() {
-  const config = useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1]?.[0] as { right?: ReactNode } | undefined
+  const config = useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1]?.[0] as { right?: ReactNode; left?: ReactNode } | undefined
   const mount = document.createElement('div')
   document.body.append(mount)
   act(() => {
     railRoot = createRoot(mount)
     railRoot.render(createElement('div', null, config?.right))
+  })
+  return mount
+}
+
+function renderLeftRail() {
+  const config = useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1]?.[0] as { left?: ReactNode } | undefined
+  const mount = document.createElement('div')
+  document.body.append(mount)
+  act(() => {
+    railRoot = createRoot(mount)
+    railRoot.render(createElement('div', null, config?.left))
   })
   return mount
 }
@@ -168,5 +183,41 @@ describe('CountryLearningFlow scheduler progress wiring', () => {
 
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-location"]')!.click())
     expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0]).toMatchObject({ task: { answerKind: 'country' }, cameraIntent: { kind: 'subregion-learning', subregionId: 'northern-europe' } })
+  })
+
+  it('returns from Location Practice to Meet the countries with journey-consistent wording', () => {
+    const container = renderFlow()
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-location"]')!.click())
+
+    expect(renderRail().textContent).toContain('Back to Meet countries')
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="location-back"]')!.click())
+
+    expect(container.querySelector('[data-testid="start-location"]')).not.toBeNull()
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].task).toMatchObject({ direction: 'Meet the countries', cue: 'Norway' })
+  })
+
+  it('keeps established Country progress after completing and restarting Learning', () => {
+    const container = renderFlow()
+    expect(renderLeftRail().textContent).toContain('Countries not established yet')
+
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-location"]')!.click())
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      act(() => container.querySelector<HTMLButtonElement>('[data-testid="location-submit"]')!.click())
+    }
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      act(() => container.querySelector<HTMLButtonElement>('[data-testid="practice-submit"]')!.click())
+    }
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-start"]')!.click())
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-submit"]')!.click())
+
+    expect(getSubregionLearningState('northern-europe')).toMatchObject({ countriesLearnedAt: expect.any(Number) })
+    act(() => [...container.querySelectorAll('button')].find(button => button.textContent === 'Learn again')?.click())
+
+    expect(container.querySelector('[data-testid="start-location"]')).not.toBeNull()
+    const restartedRail = renderLeftRail()
+    expect(restartedRail.textContent).toContain('Countries established')
+    expect(restartedRail.textContent).not.toContain('Countries not established yet')
   })
 })

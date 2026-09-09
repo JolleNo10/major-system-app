@@ -97,6 +97,7 @@ export function CapitalLearningFlow({
   const ids = useMemo(() => entries.map(country => country.id), [entries])
   const [flow, setFlow] = useState<StagedCapitalLearningFlowState>(() => createStagedCapitalLearningFlow({ countryIds: ids, maximum: newItemsPerSet, schedulerSettings }))
   const completionReporter = useRef(subregion && recordCompletion ? createSubregionCapitalCompletionReporter(subregion, activeCountries) : null)
+  const [capitalLearningCompleted, setCapitalLearningCompleted] = useState(false)
   const [orderDraft, setOrderDraft] = useState<readonly Country[] | null>(null)
   const [editingOrder, setEditingOrder] = useState(false)
   const [hoveredCountryId, setHoveredCountryId] = useState<string | null>(null)
@@ -120,6 +121,7 @@ export function CapitalLearningFlow({
   const updateFinal = (correct: boolean) => {
     const result = submitStagedCapitalFinalAnswer(flow, correct)
     transition(result.state)
+    if (result.result.completedNow) setCapitalLearningCompleted(true)
     completionReporter.current?.report(result.result.completedNow)
   }
   const onOrderSaved = (draft: readonly Country[]) => {
@@ -195,8 +197,8 @@ export function CapitalLearningFlow({
     phase={flow.phase}
     track="capitals"
     currentSetEntries={currentPlanStage?.kind === 'set' ? stageEntries : undefined}
-    countriesEstablished={countriesEstablished}
-    capitalsLearned={false}
+    countriesEstablished={countriesEstablished || capitalLearningCompleted}
+    capitalsLearned={capitalLearningCompleted}
     onCountryHover={setHoveredCountryId}
     onOrderDraftChanged={setOrderDraft}
     onOrderEditingChange={setEditingOrder}
