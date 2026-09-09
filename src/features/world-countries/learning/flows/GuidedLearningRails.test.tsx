@@ -72,7 +72,7 @@ afterEach(() => {
   useRailsMock.mockReset()
 })
 
-function renderRails(phase: StagedCountryLearningPhase = 'walkthrough', track: 'countries' | 'capitals' = 'countries', walkthroughCountryId?: string, practiceProgress?: LearningPracticeProgress, onBack?: () => void, stagePresentation: LearningStagePresentation = defaultStagePresentation) {
+function renderRails(phase: StagedCountryLearningPhase = 'walkthrough', track: 'countries' | 'capitals' = 'countries', walkthroughCountryId?: string, practiceProgress?: LearningPracticeProgress, onBack?: () => void, stagePresentation: LearningStagePresentation = defaultStagePresentation, scopeLabel = 'Northern Europe', temporaryScope = false) {
   const mount = document.createElement('div')
   document.body.append(mount)
   const onOrderDraftChanged = vi.fn()
@@ -80,7 +80,8 @@ function renderRails(phase: StagedCountryLearningPhase = 'walkthrough', track: '
     root = createRoot(mount)
     root.render(createElement(GuidedLearningRails, {
       continent: 'Europe',
-      subregion: 'northern-europe',
+      subregion: temporaryScope ? undefined : 'northern-europe',
+      scopeLabel,
       entries,
       activeCountries: entries,
       stagePresentation,
@@ -172,7 +173,23 @@ describe('GuidedLearningRails contextual authoring visibility', () => {
     act(() => root?.render(createElement('div', null, config.left)))
     expect(mount.textContent).not.toContain('Edit order')
     expect(mount.textContent).not.toContain('Edit mnemonics')
+    expect(mount.textContent).not.toContain('Learning progress')
+    expect(mount.textContent).not.toContain('Learning context')
     expect(onOrderDraftChanged).toHaveBeenCalledWith(null)
+  })
+
+  it('keeps Set-ready context compact while retaining truthful Set-local order states', () => {
+    const { mount, config } = renderRails('set-ready', 'countries', undefined, undefined, undefined, secondSetPresentation)
+    act(() => root?.render(createElement('div', null, config.left)))
+
+    expect(mount.textContent).not.toContain('Learning progress')
+    expect(mount.textContent).not.toContain('Countries not established yet')
+    expect(mount.textContent).not.toContain('Learning context')
+    expect(mount.querySelector('[data-learning-stage-label]')?.textContent).toBe('Set 2 of 2')
+    expect(mount.querySelector('[data-learning-stage-scope]')?.textContent).toBe('1 of 2 Countries in this Set')
+    expect(mount.querySelectorAll('[data-learning-set="previous"]')).toHaveLength(1)
+    expect(mount.querySelectorAll('[data-learning-set="current"]')).toHaveLength(1)
+    expect(mount.querySelector('[data-learning-current-set]')?.textContent).toBe('Current Set')
   })
 
   it('clears every transient authoring channel when walkthrough ends', () => {
@@ -217,6 +234,9 @@ describe('GuidedLearningRails contextual authoring visibility', () => {
     const { mount, config } = renderRails('combined-practice', 'countries', undefined, undefined, undefined, combinedStagePresentation)
     act(() => root?.render(createElement('div', null, config.left)))
 
+    expect(mount.textContent).not.toContain('Learning progress')
+    expect(mount.textContent).not.toContain('Countries not established yet')
+    expect(mount.textContent).not.toContain('Learning context')
     expect(mount.querySelector('[data-learning-stage]')?.getAttribute('data-learning-stage')).toBe('combined')
     expect(mount.querySelector('[data-learning-stage-label]')?.textContent).toBe('Combined practice')
     expect(mount.querySelector('[data-learning-stage-scope]')?.textContent).toBe('1 of 2 Countries introduced')
@@ -230,6 +250,9 @@ describe('GuidedLearningRails contextual authoring visibility', () => {
     const { mount, config } = renderRails('final-recall', 'capitals', undefined, undefined, undefined, finalStagePresentation)
     act(() => root?.render(createElement('div', null, config.left)))
 
+    expect(mount.textContent).not.toContain('Learning progress')
+    expect(mount.textContent).not.toContain('Countries not established yet')
+    expect(mount.textContent).not.toContain('Learning context')
     expect(mount.querySelector('[data-learning-stage]')?.getAttribute('data-learning-stage')).toBe('final')
     expect(mount.querySelector('[data-learning-stage-label]')?.textContent).toBe('Final recall')
     expect(mount.querySelector('[data-learning-stage-scope]')?.textContent).toBe('All 2 Countries')
@@ -237,6 +260,53 @@ describe('GuidedLearningRails contextual authoring visibility', () => {
     expect(mount.querySelector('[data-learning-current-set]')).toBeNull()
     expect(mount.querySelector('[data-learning-previous-set]')).toBeNull()
     expect(mount.textContent).not.toContain('Upcoming')
+  })
+
+  it('shows the same full compact scope at the Final recall gate', () => {
+    const { mount, config } = renderRails('final-gate', 'countries', undefined, undefined, undefined, finalStagePresentation)
+    act(() => root?.render(createElement('div', null, config.left)))
+
+    expect(mount.textContent).not.toContain('Learning progress')
+    expect(mount.textContent).not.toContain('Countries established')
+    expect(mount.querySelector('[data-learning-stage-label]')?.textContent).toBe('Final recall')
+    expect(mount.querySelector('[data-learning-stage-scope]')?.textContent).toBe('All 2 Countries')
+    expect(mount.querySelectorAll('[data-learning-set="active-scope"]')).toHaveLength(2)
+  })
+
+  it('keeps every non-walkthrough rail read-only', () => {
+    const phases: StagedCountryLearningPhase[] = [
+      'location-practice',
+      'location-ready',
+      'practice',
+      'set-ready',
+      'combined-practice',
+      'combined-ready',
+      'final-gate',
+      'final-recall',
+    ]
+
+    for (const phase of phases) {
+      const { mount, config } = renderRails(phase)
+      act(() => root?.render(createElement('div', null, config.left, config.right)))
+      expect(mount.textContent).not.toContain('Edit order')
+      expect(mount.textContent).not.toContain('Edit mnemonics')
+      act(() => root?.unmount())
+      root = null
+      mount.remove()
+      useRailsMock.mockReset()
+    }
+  })
+
+  it('keeps temporary proficiency context compact and non-milestone', () => {
+    const { mount, config } = renderRails('practice', 'countries', undefined, undefined, undefined, defaultStagePresentation, 'Weak Countries', true)
+    act(() => root?.render(createElement('div', null, config.left)))
+
+    expect(mount.textContent).toContain('Weak Countries')
+    expect(mount.textContent).toContain('Temporary proficiency scope. Completing this run does not change your guided journey.')
+    expect(mount.textContent).not.toContain('Learning progress')
+    expect(mount.textContent).not.toContain('Countries not established yet')
+    expect(mount.textContent).not.toContain('Learning context')
+    expect(mount.textContent).not.toContain('Northern Europe')
   })
 
   it('keeps quiet-phase workflow actions in the right rail in Back, Skip, Exit order', () => {

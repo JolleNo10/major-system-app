@@ -121,7 +121,7 @@ export function GuidedLearningRails({
   const stageScopeLabel = getLearningStageScopeLabel(stagePresentation, entries.length)
 
   const rails = useMemo(() => ({
-      left: completePhase ? undefined : (
+      left: completePhase ? undefined : walkthroughPhase ? (
         <WorldCountriesPanel className="space-y-4" aria-labelledby="world-countries-guided-context-heading">
           <nav aria-label="World Countries hierarchy" className="flex flex-wrap items-center gap-1.5 text-xs">
             <span className="text-zinc-500">World</span><span className="text-zinc-700">/</span><span className="text-zinc-500">{continent}</span><span className="text-zinc-700">/</span><span className="text-cyan-300">{learningScopeLabel}</span>
@@ -139,46 +139,55 @@ export function GuidedLearningRails({
             <p data-learning-stage-label className="mt-1 text-sm font-semibold text-zinc-200">{stageLabel}</p>
             <p data-learning-stage-scope className="mt-1 text-xs text-zinc-400">{stageScopeLabel}</p>
           </section>
-          <section aria-labelledby="guided-learning-order-heading">
-            <div className="flex items-center justify-between gap-3">
-              <h3 id="guided-learning-order-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Learning order</h3>
-              {walkthroughPhase && !editingOrder && subregion && entries.length > 1 && <button type="button" onClick={beginOrderEdit} className="text-xs font-semibold text-cyan-300 hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70">Edit order</button>}
-            </div>
-            {walkthroughPhase && editingOrder ? (
-              <InlineOrderEditor
-                key={`country-order-${subregion}-${entries.map(entry => entry.id).sort().join('|')}`}
-                entries={entries}
-                getId={entry => entry.id}
-                getLabel={entry => entry.country}
-                onItemHover={entry => onCountryHover(entry.id)}
-                onItemLeave={() => onCountryHover(null)}
-                onDraftChanged={onOrderDraftChanged}
-                onSave={saveOrder}
-                onCancel={cancelOrder}
-                onResetCanonical={() => activeCountries.filter(entry => entry.subregionId === subregion && entry.continent === continent)}
-                clickOrder
-                onClickOrderStateChange={onClickOrderStateChange}
-                onClickOrderToggle={onClickOrderToggle}
-                autoOrder={{
-                  label: 'Auto-order from map',
-                  pendingLabel: 'Reading map…',
-                  hint: 'Best effort; review before saving.',
-                  errorMessage: 'Map auto-ordering was unavailable. The draft is unchanged.',
-                  run: draft => sortCountriesByMemoMapPosition(continent, draft),
-                }}
-              />
-            ) : (
-              <ol className="mt-3 space-y-1.5 text-sm text-zinc-300">{entries.map((entry, index) => {
-                const isCurrentSet = stageKind === 'set' && currentSetIds.has(entry.id)
-                const isPreviousSet = stageKind === 'set' && previousSetIds.has(entry.id)
-                const isIntroduced = stageKind === 'combined' && introducedIds.has(entry.id)
-                const isUpcoming = stageKind === 'set' ? !isCurrentSet && !isPreviousSet : stageKind === 'combined' ? !isIntroduced : false
-                const setState = stageKind === 'set' ? isCurrentSet ? 'current' : isPreviousSet ? 'previous' : 'upcoming' : stageKind === 'combined' ? isIntroduced ? 'introduced' : 'upcoming' : 'active-scope'
-                const scopeDescription = stageKind === 'set' ? isCurrentSet ? 'Current Set' : isPreviousSet ? 'Completed earlier in this Learning pass' : 'Upcoming in this Learning pass' : stageKind === 'combined' ? isIntroduced ? 'Introduced in Combined practice' : 'Upcoming in Combined practice' : 'Active in Final recall'
-                return <li key={entry.id} data-learning-order-entry data-learning-set={setState} data-learning-set-state={setState} aria-label={`Sequence ${index + 1}: ${entry.country} · ${scopeDescription}`} className={`flex items-center gap-2 rounded-md px-1.5 py-1 ${isCurrentSet || isIntroduced ? 'border border-cyan-500/25 bg-cyan-500/5 text-zinc-100' : isPreviousSet || isUpcoming ? 'text-zinc-500' : ''}`}><span className={`w-5 shrink-0 text-right text-xs tabular-nums ${isCurrentSet || isIntroduced ? 'text-cyan-300' : isPreviousSet || isUpcoming ? 'text-zinc-500' : 'text-zinc-600'}`} aria-label={`Sequence ${index + 1}`}>{index + 1}.</span><span className="min-w-0">{entry.country}</span>{isPreviousSet && <span data-learning-previous-set aria-label="Completed earlier in this Learning pass" className="ml-auto shrink-0 text-xs text-zinc-500">✓</span>}{isCurrentSet && <span data-learning-current-set className="ml-auto shrink-0 text-[10px] font-semibold uppercase tracking-wider text-cyan-300">Current Set</span>}</li>
-              })}</ol>
-            )}
+          <LearningOrderSection
+            entries={entries}
+            activeCountries={activeCountries}
+            continent={continent}
+            subregion={subregion}
+            stageKind={stageKind}
+            currentSetIds={currentSetIds}
+            previousSetIds={previousSetIds}
+            introducedIds={introducedIds}
+            walkthroughPhase
+            editingOrder={editingOrder}
+            onBeginOrderEdit={beginOrderEdit}
+            onCountryHover={onCountryHover}
+            onOrderDraftChanged={onOrderDraftChanged}
+            onSaveOrder={saveOrder}
+            onCancelOrder={cancelOrder}
+            onClickOrderStateChange={onClickOrderStateChange}
+            onClickOrderToggle={onClickOrderToggle}
+          />
+        </WorldCountriesPanel>
+      ) : (
+        <WorldCountriesPanel className="space-y-4" aria-labelledby="world-countries-guided-context-heading">
+          <nav aria-label="World Countries hierarchy" className="flex flex-wrap items-center gap-1.5 text-xs">
+            <span className="text-zinc-500">World</span><span className="text-zinc-700">/</span><span className="text-zinc-500">{continent}</span><span className="text-zinc-700">/</span><span id="world-countries-guided-context-heading" className="text-cyan-300">{learningScopeLabel}</span>
+          </nav>
+          {!subregion && <p className="rounded-lg border border-violet-500/20 bg-violet-500/5 p-3 text-xs leading-relaxed text-violet-200">Temporary proficiency scope. Completing this run does not change your guided journey.</p>}
+          <section aria-labelledby="guided-learning-stage-heading" data-learning-stage={stageKind ?? 'scope'} className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
+            <h2 id="guided-learning-stage-heading" data-learning-stage-label className="text-sm font-semibold text-zinc-100">{stageLabel}</h2>
+            <p data-learning-stage-scope className="mt-1 text-xs text-zinc-400">{stageScopeLabel}</p>
           </section>
+          <LearningOrderSection
+            entries={entries}
+            activeCountries={activeCountries}
+            continent={continent}
+            subregion={subregion}
+            stageKind={stageKind}
+            currentSetIds={currentSetIds}
+            previousSetIds={previousSetIds}
+            introducedIds={introducedIds}
+            walkthroughPhase={false}
+            editingOrder={false}
+            onBeginOrderEdit={beginOrderEdit}
+            onCountryHover={onCountryHover}
+            onOrderDraftChanged={onOrderDraftChanged}
+            onSaveOrder={saveOrder}
+            onCancelOrder={cancelOrder}
+            onClickOrderStateChange={onClickOrderStateChange}
+            onClickOrderToggle={onClickOrderToggle}
+          />
         </WorldCountriesPanel>
       ),
       right: showMemoryAid || onBack || onExit || onSkip || practiceProgress ? (
@@ -189,12 +198,91 @@ export function GuidedLearningRails({
           {showCapitalMnemonic && walkthroughCountry && <CountryCapitalMnemonicPanel country={walkthroughCountry} />}
         </div>
       ) : undefined,
-      leftLabel: 'Learning context',
+      leftLabel: walkthroughPhase ? 'Learning context' : 'Learning order',
       rightLabel: practiceProgress ? 'Practice progress' : showMemoryAid && (onBack || onExit || onSkip) ? 'Learning tools' : showMemoryAid ? 'Memory aid' : onBack || onExit || onSkip ? 'Learning actions' : undefined,
     }), [activeCountries, backLabel, beginOrderEdit, cancelOrder, completePhase, continent, countriesEstablished, currentSetIds, editingMnemonic, editingOrder, entries, introducedIds, learningScopeLabel, capitalsEstablished, mnemonicAction, onBack, onClickOrderStateChange, onClickOrderToggle, onCountryHover, onExit, onOrderDraftChanged, onSkip, practiceProgress, previousSetIds, saveOrder, showCapitalMnemonic, showMemoryAid, showSubregionMnemonic, skipLabel, stageKind, stageLabel, stageScopeLabel, subregion, track, walkthroughCountry, walkthroughPhase])
   useRails(rails)
 
   return null
+}
+
+function LearningOrderSection({
+  entries,
+  activeCountries,
+  continent,
+  subregion,
+  stageKind,
+  currentSetIds,
+  previousSetIds,
+  introducedIds,
+  walkthroughPhase,
+  editingOrder,
+  onBeginOrderEdit,
+  onCountryHover,
+  onOrderDraftChanged,
+  onSaveOrder,
+  onCancelOrder,
+  onClickOrderStateChange,
+  onClickOrderToggle,
+}: {
+  entries: readonly Country[]
+  activeCountries: readonly Country[]
+  continent: Continent
+  subregion?: SubregionId
+  stageKind?: LearningStagePresentation<Country['id']>['kind']
+  currentSetIds: ReadonlySet<string>
+  previousSetIds: ReadonlySet<string>
+  introducedIds: ReadonlySet<string>
+  walkthroughPhase: boolean
+  editingOrder: boolean
+  onBeginOrderEdit: () => void
+  onCountryHover: (countryId: string | null) => void
+  onOrderDraftChanged: (draft: readonly Country[] | null) => void
+  onSaveOrder: (draft: readonly Country[]) => void
+  onCancelOrder: () => void
+  onClickOrderStateChange?: (state: InlineOrderClickState) => void
+  onClickOrderToggle?: (toggle: ((countryId: string) => void) | null) => void
+}) {
+  return <section aria-labelledby="guided-learning-order-heading">
+    <div className="flex items-center justify-between gap-3">
+      <h3 id="guided-learning-order-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Learning order</h3>
+      {walkthroughPhase && !editingOrder && subregion && entries.length > 1 && <button type="button" onClick={onBeginOrderEdit} className="text-xs font-semibold text-cyan-300 hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70">Edit order</button>}
+    </div>
+    {walkthroughPhase && editingOrder ? (
+      <InlineOrderEditor
+        key={`country-order-${subregion}-${entries.map(entry => entry.id).sort().join('|')}`}
+        entries={entries}
+        getId={entry => entry.id}
+        getLabel={entry => entry.country}
+        onItemHover={entry => onCountryHover(entry.id)}
+        onItemLeave={() => onCountryHover(null)}
+        onDraftChanged={onOrderDraftChanged}
+        onSave={onSaveOrder}
+        onCancel={onCancelOrder}
+        onResetCanonical={() => activeCountries.filter(entry => entry.subregionId === subregion && entry.continent === continent)}
+        clickOrder
+        onClickOrderStateChange={onClickOrderStateChange}
+        onClickOrderToggle={onClickOrderToggle}
+        autoOrder={{
+          label: 'Auto-order from map',
+          pendingLabel: 'Reading map…',
+          hint: 'Best effort; review before saving.',
+          errorMessage: 'Map auto-ordering was unavailable. The draft is unchanged.',
+          run: draft => sortCountriesByMemoMapPosition(continent, draft),
+        }}
+      />
+    ) : (
+      <ol className="mt-3 space-y-1.5 text-sm text-zinc-300">{entries.map((entry, index) => {
+        const isCurrentSet = stageKind === 'set' && currentSetIds.has(entry.id)
+        const isPreviousSet = stageKind === 'set' && previousSetIds.has(entry.id)
+        const isIntroduced = stageKind === 'combined' && introducedIds.has(entry.id)
+        const isUpcoming = stageKind === 'set' ? !isCurrentSet && !isPreviousSet : stageKind === 'combined' ? !isIntroduced : false
+        const setState = stageKind === 'set' ? isCurrentSet ? 'current' : isPreviousSet ? 'previous' : 'upcoming' : stageKind === 'combined' ? isIntroduced ? 'introduced' : 'upcoming' : 'active-scope'
+        const scopeDescription = stageKind === 'set' ? isCurrentSet ? 'Current Set' : isPreviousSet ? 'Completed earlier in this Learning pass' : 'Upcoming in this Learning pass' : stageKind === 'combined' ? isIntroduced ? 'Introduced in Combined practice' : 'Upcoming in Combined practice' : 'Active in Final recall'
+        return <li key={entry.id} data-learning-order-entry data-learning-set={setState} data-learning-set-state={setState} aria-label={`Sequence ${index + 1}: ${entry.country} · ${scopeDescription}`} className={`flex items-center gap-2 rounded-md px-1.5 py-1 ${isCurrentSet || isIntroduced ? 'border border-cyan-500/25 bg-cyan-500/5 text-zinc-100' : isPreviousSet || isUpcoming ? 'text-zinc-500' : ''}`}><span className={`w-5 shrink-0 text-right text-xs tabular-nums ${isCurrentSet || isIntroduced ? 'text-cyan-300' : isPreviousSet || isUpcoming ? 'text-zinc-500' : 'text-zinc-600'}`} aria-label={`Sequence ${index + 1}`}>{index + 1}.</span><span className="min-w-0">{entry.country}</span>{isPreviousSet && <span data-learning-previous-set aria-label="Completed earlier in this Learning pass" className="ml-auto shrink-0 text-xs text-zinc-500">✓</span>}{isCurrentSet && <span data-learning-current-set className="ml-auto shrink-0 text-[10px] font-semibold uppercase tracking-wider text-cyan-300">Current Set</span>}</li>
+      })}</ol>
+    )}
+  </section>
 }
 
 function getLearningProgressLabel(track: 'countries' | 'capitals', countriesEstablished: boolean, capitalsEstablished: boolean): string {
