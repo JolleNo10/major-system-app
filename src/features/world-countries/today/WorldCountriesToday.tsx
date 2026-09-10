@@ -29,7 +29,7 @@ import { GuidedHomeRails } from './GuidedHomeRails'
 import { WorldCountriesProgressView } from './WorldCountriesProgressView'
 import { deriveWorldCountriesJourneyPresentation, type WorldCountriesJourneyPresentation } from './journeyPresentation'
 import type { WorldCountriesTodayReviewReasonSummary } from './reviewReason'
-import { buildWorldCountriesTodayPlan, type WorldCountriesTodayLearningRecommendation, type WorldCountriesTodayPlan } from './todayPlan'
+import { buildWorldCountriesTodayPlan, type WorldCountriesTodayLearningRecommendation, type WorldCountriesTodayPlan, type WorldCountriesTodayReviewOpportunity } from './todayPlan'
 
 type TodayArea = 'drill' | 'recite'
 type EvidenceState =
@@ -78,83 +78,33 @@ function firstCountryLearningSetCount(
   return firstStage?.kind === 'set' ? firstStage.set.ids.length : null
 }
 
-function getTodayActionLabel(
-  action: WorldCountriesTodayPlan['action'],
+function getJourneyActionLabel(
+  recommendation: WorldCountriesTodayLearningRecommendation,
   newItemsPerSet?: LearningSetMaximum,
 ): string | null {
-  switch (action.kind) {
-    case 'review':
-      return formatCountedAction('Review', action.candidates.length, 'item')
-    case 'learn': {
-      if (action.recommendation.track === 'learn-capitals') return 'Add the capitals'
-      const count = firstCountryLearningSetCount(action.recommendation, newItemsPerSet)
-      return count === null ? 'Learn the countries' : formatCountedAction('Learn', count, 'country')
-    }
-    case 'consolidate':
-      return formatCountedAction('Strengthen', action.candidates.length, 'item')
-    case 'complete':
-    case 'unavailable':
-      return null
-  }
-}
-
-function getActionRegionLabel(candidates: readonly { country?: Country }[]): string | null {
-  const labels = [...new Set(candidates.flatMap(candidate => candidate.country ? [getSubregionDefinition(candidate.country.subregionId).label] : []))]
-  return labels.length === 1 ? labels[0]! : labels.length > 1 ? 'multiple regions' : null
-}
-
-function getTodayActionStatus(action: WorldCountriesTodayPlan['action']): string | null {
-  switch (action.kind) {
-    case 'learn':
-      return `${action.recommendation.subregionLabel} is next`
-    case 'review': {
-      const scope = getActionRegionLabel(action.candidates)
-      const suffix = scope ? scope === 'multiple regions' ? ` across ${scope}` : ` in ${scope}` : ''
-      return `Next review · ${action.candidates.length} ${action.candidates.length === 1 ? 'item' : 'items'}${suffix}`
-    }
-    case 'consolidate': {
-      const scope = getActionRegionLabel(action.candidates)
-      const suffix = scope ? scope === 'multiple regions' ? ` across ${scope}` : ` in ${scope}` : ''
-      return `Next consolidation · ${action.candidates.length} ${action.candidates.length === 1 ? 'item' : 'items'}${suffix}`
-    }
-    case 'complete':
-    case 'unavailable':
-      return null
-  }
+  if (recommendation.track === 'learn-capitals') return 'Add the capitals'
+  const count = firstCountryLearningSetCount(recommendation, newItemsPerSet)
+  return count === null ? 'Learn the countries' : formatCountedAction('Learn', count, 'country')
 }
 
 function createCompletionHandoff(
-  action: WorldCountriesTodayPlan['action'],
   currentRecommendation: WorldCountriesTodayLearningRecommendation,
+  nextRecommendation: WorldCountriesTodayLearningRecommendation | null,
   newItemsPerSet: LearningSetMaximum | undefined,
-  returnLabel: string,
   onContinue: () => void,
 ): LearningCompletionHandoff | undefined {
-  if (action.kind === 'learn' && isSameLearningRecommendation(currentRecommendation, action.recommendation)) return undefined
-  const nextLabel = getTodayActionLabel(action, newItemsPerSet)
-
-  switch (action.kind) {
-    case 'review':
-      return { description: `Next: ${nextLabel?.toLowerCase() ?? 'review the next items'}.`, label: nextLabel ?? 'Review', onContinue }
-    case 'consolidate':
-      return { description: `Next: ${nextLabel?.toLowerCase() ?? 'strengthen unfinished recall'}.`, label: nextLabel ?? 'Strengthen recall', onContinue }
-    case 'learn': {
-      const isCountryToCapital = currentRecommendation.track === 'learn-countries'
-        && action.recommendation.track === 'learn-capitals'
-        && action.recommendation.subregionId === currentRecommendation.subregionId
-      return isCountryToCapital
-        ? { description: 'Next: add the capitals to these countries.', label: 'Add the capitals', onContinue }
-        : {
-            description: `Next: ${(nextLabel ?? (action.recommendation.track === 'learn-capitals' ? 'Add the capitals' : 'Learn the countries')).toLowerCase()} in ${action.recommendation.subregionLabel}.`,
-            label: nextLabel ?? (action.recommendation.track === 'learn-capitals' ? 'Add the capitals' : 'Learn the countries'),
-            onContinue,
-          }
-    }
-    case 'complete':
-      return { description: 'Core Country and Capital recall is complete for this guided scope.', label: returnLabel, onContinue }
-    case 'unavailable':
-      return { description: 'No further guided activity is available for this scope right now.', label: returnLabel, onContinue }
-  }
+  if (!nextRecommendation || isSameLearningRecommendation(currentRecommendation, nextRecommendation)) return undefined
+  const nextLabel = getJourneyActionLabel(nextRecommendation, newItemsPerSet)
+  const isCountryToCapital = currentRecommendation.track === 'learn-countries'
+    && nextRecommendation.track === 'learn-capitals'
+    && nextRecommendation.subregionId === currentRecommendation.subregionId
+  return isCountryToCapital
+    ? { description: 'Next: add the capitals to these countries.', label: 'Add the capitals', onContinue }
+    : {
+        description: `Next: ${(nextLabel ?? (nextRecommendation.track === 'learn-capitals' ? 'Add the capitals' : 'Learn the countries')).toLowerCase()} in ${nextRecommendation.subregionLabel}.`,
+        label: nextLabel ?? (nextRecommendation.track === 'learn-capitals' ? 'Add the capitals' : 'Learn the countries'),
+        onContinue,
+      }
 }
 
 /** Map-centered Today orchestration for derived World Countries review. */
@@ -266,44 +216,34 @@ export function WorldCountriesToday({
     void refreshAfterActivity()
   }
 
-  const launchAction = (action: WorldCountriesTodayPlan['action']) => {
-    switch (action.kind) {
-      case 'review':
-        setLearningRun(null)
-        setReviewCandidates(action.candidates)
-        setReviewMode('review')
-        setReviewing(true)
-        setCheckpoint(null)
-        return
-      case 'consolidate':
-        setLearningRun(null)
-        setReviewCandidates(action.candidates)
-        setReviewMode('consolidation')
-        setReviewing(true)
-        setCheckpoint(null)
-        return
-      case 'learn': {
-        const countriesById = new Map(geographicOrder.countries.map(country => [country.id, country]))
-        const countryEntries = action.recommendation.countryIds
-          .map(countryId => countriesById.get(countryId))
-          .filter((country): country is Country => Boolean(country))
-        if (countryEntries.length !== action.recommendation.countryIds.length) return
-        setReviewing(false)
-        setReviewCandidates(null)
-        setCheckpoint(null)
-        setLearningRun({ recommendation: action.recommendation, countryEntries })
-        return
-      }
-      case 'complete':
-      case 'unavailable':
-        finishLearning()
-        return
-    }
+  const launchReviewOpportunity = (opportunity: Exclude<WorldCountriesTodayReviewOpportunity, null>) => {
+    setLearningRun(null)
+    setReviewCandidates(opportunity.candidates)
+    setReviewMode(opportunity.kind === 'consolidate' ? 'consolidation' : 'review')
+    setReviewing(true)
+    setCheckpoint(null)
   }
 
-  const startPrimary = () => {
-    if (!plan || evidence.status !== 'ready' || scopedCountries.length === 0) return
-    launchAction(plan.action)
+  const launchLearningRecommendation = (recommendation: WorldCountriesTodayLearningRecommendation) => {
+    const countriesById = new Map(geographicOrder.countries.map(country => [country.id, country]))
+    const countryEntries = recommendation.countryIds
+      .map(countryId => countriesById.get(countryId))
+      .filter((country): country is Country => Boolean(country))
+    if (countryEntries.length !== recommendation.countryIds.length) return
+    setReviewing(false)
+    setReviewCandidates(null)
+    setCheckpoint(null)
+    setLearningRun({ recommendation, countryEntries })
+  }
+
+  const startReview = () => {
+    if (!plan?.reviewOpportunity || evidence.status !== 'ready' || scopedCountries.length === 0) return
+    launchReviewOpportunity(plan.reviewOpportunity)
+  }
+
+  const startJourney = () => {
+    if (!plan?.curriculumRecommendation || evidence.status !== 'ready' || scopedCountries.length === 0) return
+    launchLearningRecommendation(plan.curriculumRecommendation)
   }
 
   const finishReview = async (nextCheckpoint: WorldCountriesTodayReviewCheckpoint) => {
@@ -323,10 +263,9 @@ export function WorldCountriesToday({
     void refreshAfterActivity()
   }
 
-  const nextLearning = plan?.nextLearning ?? null
+  const journeyLearning = plan?.curriculumRecommendation ?? null
   const guidedSubregionId = plan?.journeyFocusSubregionId
-    ?? plan?.curriculumRecommendation?.subregionId
-    ?? nextLearning?.subregionId
+    ?? journeyLearning?.subregionId
     ?? null
   const displaySubregionId = focusedSubregionId ?? guidedSubregionId
   const journey = useMemo<WorldCountriesJourneyPresentation | null>(() => {
@@ -370,8 +309,8 @@ export function WorldCountriesToday({
     : []
   const scopeLabel = continent ?? 'World'
   const navigateWorld = onWorld ?? (() => undefined)
-  const completionHandoff = learningRun && evidence.status === 'ready' && plan
-    ? createCompletionHandoff(plan.action, learningRun.recommendation, settings.worldCountriesNewItemsPerSet as LearningSetMaximum | undefined, `Back to ${continent ?? 'World'}`, () => launchAction(plan.action))
+  const completionHandoff = learningRun && evidence.status === 'ready' && journeyLearning
+    ? createCompletionHandoff(learningRun.recommendation, journeyLearning, settings.worldCountriesNewItemsPerSet as LearningSetMaximum | undefined, () => launchLearningRecommendation(journeyLearning))
     : undefined
 
   if (showProgress) {
@@ -445,16 +384,11 @@ export function WorldCountriesToday({
     />
   }
 
-  const canContinue = Boolean(plan && evidence.status === 'ready' && scopedCountries.length > 0 && (plan.action.kind === 'review' || plan.action.kind === 'learn' || plan.action.kind === 'consolidate'))
-  const primaryActionLabel = canContinue && plan
-    ? getTodayActionLabel(plan.action, settings.worldCountriesNewItemsPerSet as LearningSetMaximum | undefined)
+  const canContinue = Boolean(journeyLearning && evidence.status === 'ready' && scopedCountries.length > 0)
+  const journeyActionLabel = journeyLearning
+    ? getJourneyActionLabel(journeyLearning, settings.worldCountriesNewItemsPerSet as LearningSetMaximum | undefined)
     : null
-  const primaryActionStatusBase = canContinue && plan ? getTodayActionStatus(plan.action) : null
   const inspectedSubregionLabel = focusedSubregionId ? getSubregionDefinition(focusedSubregionId).label : null
-  const primaryActionStatus = primaryActionStatusBase
-    ? `${primaryActionStatusBase}${inspectedSubregionLabel && focusedSubregionId !== guidedSubregionId ? ` · You're inspecting ${inspectedSubregionLabel}` : ''}`
-    : null
-  const caughtUp = evidence.status === 'ready' && scopedCountries.length > 0 && Boolean(plan?.caughtUpForToday)
   const mapDescriptions = new Map(scopedCountries.map(country => [country.id, `Progress for ${scopeLabel} is shown in the progress summary.`] as const))
 
   return (
@@ -466,15 +400,10 @@ export function WorldCountriesToday({
         evidenceStatus={evidence.status}
         dueCount={plan?.dueCount ?? 0}
         dueCountryCount={plan?.dueCountryCount ?? 0}
-        reviewActionCount={plan?.action.kind === 'review' ? plan.action.candidates.length : null}
+        reviewOpportunity={plan?.reviewOpportunity ?? null}
         reviewReasonSummary={plan?.reviewReasonSummary ?? EMPTY_REVIEW_REASON_SUMMARY}
-        nextLearning={nextLearning ? { track: nextLearning.track, subregionLabel: nextLearning.subregionLabel } : null}
+        onStartReview={startReview}
         refreshing={refreshing}
-        caughtUp={caughtUp}
-        scopeComplete={plan?.scopeComplete ?? false}
-        scopeProgress={progress}
-        incompleteSubregionLabels={plan?.incompleteSubregionLabels ?? []}
-        consolidationAvailable={plan?.action.kind === 'consolidate'}
         scopeSummaries={scopeSummaries}
         journey={journey}
         guidedSubregionId={guidedSubregionId}
@@ -508,9 +437,15 @@ export function WorldCountriesToday({
             />
           )}
           dock={canContinue ? (
-            <TaskDock variant="navigation" focusPrimary={Boolean(checkpoint) && !refreshing} status={primaryActionStatus ? <span data-task-scope-context>{primaryActionStatus}</span> : undefined}>
-              <button type="button" data-primary-action disabled={refreshing} onClick={startPrimary} className="w-full rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white hover:bg-violet-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-40">
-                {primaryActionLabel}
+            <TaskDock variant="navigation" focusPrimary={Boolean(checkpoint) && !refreshing} status={(
+              <div data-task-scope-context>
+                <p className="text-xs font-semibold uppercase tracking-wider text-violet-300">Continue your journey</p>
+                <p className="mt-1 font-semibold text-zinc-100">{journeyActionLabel} · {journeyLearning?.subregionLabel}</p>
+                {inspectedSubregionLabel && focusedSubregionId !== guidedSubregionId && <p className="mt-1 text-xs text-zinc-400">You&apos;re inspecting {inspectedSubregionLabel}</p>}
+              </div>
+            )}>
+              <button type="button" data-primary-action disabled={refreshing} onClick={startJourney} className="w-full rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white hover:bg-violet-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-40">
+                Continue learning
               </button>
             </TaskDock>
           ) : undefined}

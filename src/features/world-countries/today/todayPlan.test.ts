@@ -73,8 +73,8 @@ describe('World Countries Today plan', () => {
       effectiveSubregionIds: ['northern-europe'],
     })
     expect(partialCountryPractice.introductions.get('world-countries:location-to-country:NO')?.introduced).toBe(true)
-    expect(partialCountryPractice.nextLearning?.track).toBe('learn-countries')
-    expect(partialCountryPractice.action).toMatchObject({ kind: 'learn', recommendation: { track: 'learn-countries' } })
+    expect(partialCountryPractice.curriculumRecommendation?.track).toBe('learn-countries')
+    expect(partialCountryPractice.reviewOpportunity?.kind).toBe('consolidate')
 
     const countryEstablished = buildWorldCountriesTodayPlan({
       activeCountries: countries.filter(country => country.id === 'NO'),
@@ -85,8 +85,8 @@ describe('World Countries Today plan', () => {
       localDate: '2026-08-18',
       effectiveSubregionIds: ['northern-europe'],
     })
-    expect(countryEstablished.nextLearning?.track).toBe('learn-capitals')
-    expect(countryEstablished.action).toMatchObject({ kind: 'learn', recommendation: { track: 'learn-capitals' } })
+    expect(countryEstablished.curriculumRecommendation?.track).toBe('learn-capitals')
+    expect(countryEstablished.reviewOpportunity?.kind).toBe('consolidate')
   })
 
   it('uses fully mastered Country recall as a non-persisted fallback for already-known Countries', () => {
@@ -100,8 +100,8 @@ describe('World Countries Today plan', () => {
       effectiveSubregionIds: ['northern-europe'],
     })
 
-    expect(plan.nextLearning?.track).toBe('learn-capitals')
-    expect(plan.action).toMatchObject({ kind: 'learn', recommendation: { track: 'learn-capitals' } })
+    expect(plan.curriculumRecommendation?.track).toBe('learn-capitals')
+    expect(plan.reviewOpportunity).toBeNull()
   })
 
   it('does not let incidental Capital practice skip Capital Learning', () => {
@@ -121,8 +121,8 @@ describe('World Countries Today plan', () => {
       localDate: '2026-08-18',
     })
 
-    expect(plan.nextLearning?.track).toBe('learn-capitals')
-    expect(plan.action).toMatchObject({ kind: 'learn', recommendation: { track: 'learn-capitals' } })
+    expect(plan.curriculumRecommendation?.track).toBe('learn-capitals')
+    expect(plan.reviewOpportunity?.kind).toBe('consolidate')
   })
 
   it('keeps Capital Learning required when only some Capital targets are mastered', () => {
@@ -146,7 +146,7 @@ describe('World Countries Today plan', () => {
       localDate: '2026-08-18',
     })
 
-    expect(plan.nextLearning?.track).toBe('learn-capitals')
+    expect(plan.curriculumRecommendation?.track).toBe('learn-capitals')
   })
 
   it('does not require redundant Capital Learning when every Capital target is mastered', () => {
@@ -167,8 +167,8 @@ describe('World Countries Today plan', () => {
       localDate: '2026-08-17',
     })
 
-    expect(plan.nextLearning).toBeNull()
-    expect(plan.action.kind).toBe('complete')
+    expect(plan.curriculumRecommendation).toBeNull()
+    expect(plan.reviewOpportunity).toBeNull()
   })
 
   it('keeps the curriculum journey focus while due review owns Today priority', () => {
@@ -185,8 +185,8 @@ describe('World Countries Today plan', () => {
       localDate: '2026-08-19',
     })
 
-    expect(plan.action.kind).toBe('review')
-    expect(plan.nextLearning).toBeNull()
+    expect(plan.reviewOpportunity?.kind).toBe('review')
+    expect(plan.curriculumRecommendation?.track).toBe('learn-countries')
     expect(plan.curriculumRecommendation?.subregionId).toBe('northern-europe')
     expect(plan.journeyFocusSubregionId).toBe('northern-europe')
   })
@@ -214,13 +214,13 @@ describe('World Countries Today plan', () => {
     })
 
     expect(plan.curriculumRecommendation).toBeNull()
-    expect(plan.action.kind).toBe('review')
+    expect(plan.reviewOpportunity?.kind).toBe('review')
     expect(plan.reviewQueue.length).toBeGreaterThan(1)
     expect(plan.reviewQueue[0]?.country.subregionId).toBe('southern-europe')
     expect(plan.journeyFocusSubregionId).toBe('northern-europe')
   })
 
-  it('prioritizes due review, then Learning, then bounded consolidation, then completion', () => {
+  it('derives due Review, Journey Learning, and fallback consolidation independently', () => {
     const country = countries.find(entry => entry.id === 'NO')!
     const due = buildWorldCountriesTodayPlan({
       activeCountries: [country],
@@ -230,7 +230,8 @@ describe('World Countries Today plan', () => {
       ]),
       localDate: '2026-08-19',
     })
-    expect(due.action.kind).toBe('review')
+    expect(due.reviewOpportunity?.kind).toBe('review')
+    expect(due.curriculumRecommendation?.track).toBe('learn-countries')
 
     const learning = buildWorldCountriesTodayPlan({
       activeCountries: [country],
@@ -238,7 +239,8 @@ describe('World Countries Today plan', () => {
       localDate: '2026-08-19',
       effectiveSubregionIds: ['northern-europe'],
     })
-    expect(learning.action.kind).toBe('learn')
+    expect(learning.curriculumRecommendation?.track).toBe('learn-countries')
+    expect(learning.reviewOpportunity).toBeNull()
 
     const consolidation = buildWorldCountriesTodayPlan({
       activeCountries: [country],
@@ -250,8 +252,8 @@ describe('World Countries Today plan', () => {
       localDate: '2026-08-18',
     })
     expect(consolidation.dueCount).toBe(0)
-    expect(consolidation.nextLearning).toBeNull()
-    expect(consolidation.action.kind).toBe('consolidate')
+    expect(consolidation.curriculumRecommendation).toBeNull()
+    expect(consolidation.reviewOpportunity?.kind).toBe('consolidate')
 
     const complete = buildWorldCountriesTodayPlan({
       activeCountries: [country],
@@ -261,7 +263,7 @@ describe('World Countries Today plan', () => {
     })
     expect(complete.scopeComplete).toBe(true)
     expect(complete.journeyFocusSubregionId).toBeNull()
-    expect(complete.action.kind).toBe('complete')
+    expect(complete.reviewOpportunity).toBeNull()
   })
 
   it('exposes caught-up-but-incomplete consolidation and excludes complete targets', () => {
@@ -280,13 +282,13 @@ describe('World Countries Today plan', () => {
       localDate: '2026-08-18',
     })
 
-    expect(plan.caughtUpForToday).toBe(true)
+    expect(plan.dueCount).toBe(0)
     expect(plan.scopeComplete).toBe(false)
     expect(plan.incompleteCountryCount).toBe(1)
     expect(plan.consolidationCandidates).toHaveLength(1)
     expect(plan.consolidationCandidates[0]?.target.skill).toBe('country-to-capital')
     expect(plan.consolidationQueue).toHaveLength(1)
-    expect(plan.action).toMatchObject({ kind: 'consolidate' })
+    expect(plan.reviewOpportunity).toMatchObject({ kind: 'consolidate' })
   })
 
   it('keeps consolidation candidates inside the supplied Continent population', () => {

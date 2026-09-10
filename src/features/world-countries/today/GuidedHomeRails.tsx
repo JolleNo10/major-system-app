@@ -5,14 +5,17 @@ import { getSubregionDefinition, type SubregionId } from '@/features/world-count
 import { GeographyBreadcrumbs } from '@/features/world-countries/ui/GeographyBreadcrumbs'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
 import type { WorldCountriesJourneyPresentation } from './journeyPresentation'
-import type { WorldCountriesTodayLearningTrack } from './todayPlan'
+import type { WorldCountriesTodayReviewOpportunity } from './todayPlan'
 import type { WorldCountriesTodayReviewReasonSummary } from './reviewReason'
-import type { WorldCountriesScopeProgress } from '@/features/world-countries/learning/scopeProgress'
 
 export interface GuidedHomeScopeSummary {
   id: string
   label: string
-  progress: WorldCountriesScopeProgress
+  progress: {
+    completeCountries: number
+    totalCountries: number
+    completionRatio: number
+  }
   onSelect?: () => void
   status?: string
 }
@@ -24,18 +27,13 @@ export function GuidedHomeRails({
   evidenceStatus,
   dueCount,
   dueCountryCount,
-  reviewActionCount,
+  reviewOpportunity,
   reviewReasonSummary,
-  nextLearning,
+  onStartReview,
   journey,
   guidedSubregionId,
   onFocusGuidedSubregion,
   refreshing,
-  caughtUp,
-  scopeComplete = false,
-  scopeProgress,
-  incompleteSubregionLabels = [],
-  consolidationAvailable = false,
   scopeSummaries,
   onWorld,
   onOpenPlay,
@@ -47,18 +45,13 @@ export function GuidedHomeRails({
   evidenceStatus: 'loading' | 'ready' | 'error'
   dueCount: number
   dueCountryCount: number
-  reviewActionCount?: number | null
+  reviewOpportunity: WorldCountriesTodayReviewOpportunity
   reviewReasonSummary: WorldCountriesTodayReviewReasonSummary
-  nextLearning: { track: WorldCountriesTodayLearningTrack; subregionLabel: string } | null
+  onStartReview: () => void
   journey: WorldCountriesJourneyPresentation | null
   guidedSubregionId?: SubregionId | null
   onFocusGuidedSubregion?: () => void
   refreshing: boolean
-  caughtUp: boolean
-  scopeComplete?: boolean
-  scopeProgress?: WorldCountriesScopeProgress | null
-  incompleteSubregionLabels?: readonly string[]
-  consolidationAvailable?: boolean
   scopeSummaries: readonly GuidedHomeScopeSummary[]
   onWorld: () => void
   onOpenPlay: () => void
@@ -75,53 +68,69 @@ export function GuidedHomeRails({
   const inspectedSubregionLabel = journey ? getSubregionDefinition(journey.subregionId).label : null
   const guidedSubregionLabel = guidedSubregionId ? getSubregionDefinition(guidedSubregionId).label : null
   const isInspectingOtherSubregion = Boolean(journey && (!guidedSubregionId || journey.subregionId !== guidedSubregionId))
-  const scopeIsComplete = scopeComplete || scopeProgress?.complete === true
-  const hasReviewActionCount = reviewActionCount !== undefined
-    && reviewActionCount !== null
-  const reviewCountsDiffer = hasReviewActionCount && reviewActionCount !== dueCount
-  const reviewCountsEqual = hasReviewActionCount && reviewActionCount === dueCount
-  const reviewSummary = reviewCountsDiffer
-    ? `${dueCount} ${dueCount === 1 ? 'review' : 'reviews'} due in total · ${dueCountryCount} ${dueCountryCount === 1 ? 'country' : 'countries'}`
-    : reviewCountsEqual
-      ? dueCountryCount > 0
+  const opportunityCount = reviewOpportunity?.candidates.length ?? 0
+  const reviewCountsDiffer = reviewOpportunity?.kind === 'review' && dueCount !== opportunityCount
+  const reviewSupportSummary = reviewOpportunity?.kind === 'review'
+    ? reviewCountsDiffer
+      ? `${dueCount} ${dueCount === 1 ? 'review' : 'reviews'} due overall · ${dueCountryCount} ${dueCountryCount === 1 ? 'country' : 'countries'}`
+      : dueCountryCount > 0
         ? `${dueCountryCount} ${dueCountryCount === 1 ? 'country' : 'countries'}`
         : null
-      : `${dueCount} ${dueCount === 1 ? 'review' : 'reviews'} ready · ${dueCountryCount} ${dueCountryCount === 1 ? 'country' : 'countries'}`
-  const hasActionableToday = evidenceStatus === 'ready'
-    && activeCountryCount > 0
-    && (dueCount > 0 || Boolean(nextLearning) || consolidationAvailable)
-  const completionSummary = scopeProgress
-    ? `${scopeProgress.completeCountries} of ${scopeProgress.totalCountries} countries complete`
-    : 'Some countries still need practice'
-  const unfinishedGeography = incompleteSubregionLabels.length > 0
-    ? `${incompleteSubregionLabels.slice(0, 3).join(', ')}${incompleteSubregionLabels.length > 3 ? '…' : ''} ${incompleteSubregionLabels.length === 1 ? 'remains' : 'remain'}.`
     : null
-  const statusHeading = activeCountryCount === 0
-    ? 'No countries in this scope'
-    : evidenceStatus === 'error'
-      ? 'Progress unavailable'
-      : evidenceStatus === 'loading'
-        ? 'Loading your progress'
-        : dueCount > 0
-          ? `${dueCount} ${dueCount === 1 ? 'review' : 'reviews'} ready`
-          : caughtUp
-            ? scopeIsComplete ? 'Complete' : 'Caught up for today'
-            : 'Ready for the next step'
-  const statusExplanation = activeCountryCount === 0
-    ? `There are no countries to learn in ${scopeName}.`
-    : evidenceStatus === 'loading'
-      ? 'Your saved progress is loading; the map will stay visible.'
-      : evidenceStatus === 'error'
-        ? "We couldn't load your progress. Play remains available."
-        : dueCount > 0
-          ? nextLearning
-            ? `Review first. Then ${learningStepDescription(nextLearning.track, nextLearning.subregionLabel)}.`
-            : "Review what you've learned before adding something new."
-            : nextLearning
-              ? `The guided path continues in ${nextLearning.subregionLabel}.`
-            : scopeIsComplete
-              ? "You've completed the guided Country and Capital recall for this scope. Play and progress remain available."
-              : `Nothing needs reviewing right now. ${scopeName} is still in progress.`
+  const reviewScopeLabel = reviewOpportunity?.kind === 'review'
+    ? getReviewScopeLabel(reviewOpportunity.candidates)
+    : null
+
+  const reviewPanel = useMemo(() => (
+    <WorldCountriesPanel className="space-y-3" aria-labelledby="world-countries-review-opportunity-heading">
+      {activeCountryCount === 0 ? (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Reviews caught up</p>
+          <h2 id="world-countries-review-opportunity-heading" className="mt-1 text-lg font-bold text-zinc-100">No countries in this scope</h2>
+          <p className="mt-2 text-sm text-zinc-400">There are no countries to review here.</p>
+        </div>
+      ) : evidenceStatus === 'loading' ? (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Today</p>
+          <h2 id="world-countries-review-opportunity-heading" className="mt-1 text-lg font-bold text-zinc-100">Loading your progress</h2>
+          <p role="status" aria-live="polite" className="mt-2 text-sm text-zinc-400">Your saved progress is loading; the map will stay visible.</p>
+        </div>
+      ) : evidenceStatus === 'error' ? (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Today</p>
+          <h2 id="world-countries-review-opportunity-heading" className="mt-1 text-lg font-bold text-zinc-100">Progress unavailable</h2>
+          <p role="status" aria-live="polite" className="mt-2 text-sm text-zinc-400">We couldn&apos;t load your progress. Play remains available.</p>
+        </div>
+      ) : reviewOpportunity?.kind === 'review' ? (
+        <>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-green-300">Review ready</p>
+            <h2 id="world-countries-review-opportunity-heading" className="mt-1 text-2xl font-black tabular-nums text-zinc-100">{opportunityCount} {opportunityCount === 1 ? 'item' : 'items'}</h2>
+            <p className="mt-1 text-sm text-zinc-400">See what stuck.</p>
+          </div>
+          <button type="button" data-review-action onClick={onStartReview} disabled={refreshing} className="w-full rounded-lg border border-green-500/45 bg-green-500/10 px-3 py-2.5 text-sm font-bold text-green-200 hover:bg-green-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 disabled:cursor-not-allowed disabled:opacity-40">Review {opportunityCount} {opportunityCount === 1 ? 'item' : 'items'}</button>
+          {reviewScopeLabel && <p className="text-xs text-zinc-500">Review scope: {reviewScopeLabel}</p>}
+          {reviewSupportSummary && <p className="text-xs leading-relaxed text-zinc-400">{reviewSupportSummary}</p>}
+          {whyTodayText.length > 0 && <p className="text-xs leading-relaxed text-zinc-500">{whyTodayText}</p>}
+          {reviewReasonSummary.repeated > 0 && <p className="text-xs font-semibold text-amber-300">{reviewReasonSummary.repeated} {reviewReasonSummary.repeated === 1 ? 'item needs' : 'items need'} extra practice</p>}
+        </>
+      ) : reviewOpportunity?.kind === 'consolidate' ? (
+        <>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Reviews caught up</p>
+            <h2 id="world-countries-review-opportunity-heading" className="mt-1 text-lg font-bold text-zinc-100">{opportunityCount} weak {opportunityCount === 1 ? 'spot' : 'spots'} available</h2>
+          </div>
+          <button type="button" data-review-action onClick={onStartReview} disabled={refreshing} className="w-full rounded-lg border border-zinc-700 px-3 py-2.5 text-sm font-bold text-green-200 hover:border-green-500/60 hover:bg-green-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 disabled:cursor-not-allowed disabled:opacity-40">Strengthen weak spots</button>
+        </>
+      ) : (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Reviews caught up</p>
+          <h2 id="world-countries-review-opportunity-heading" className="mt-1 text-lg font-bold text-zinc-100">Nothing needs your attention right now.</h2>
+          <p className="mt-1 text-xs leading-relaxed text-zinc-500">Come back when something is ready to revisit.</p>
+        </div>
+      )}
+    </WorldCountriesPanel>
+  ), [activeCountryCount, evidenceStatus, onStartReview, opportunityCount, refreshing, reviewOpportunity, reviewReasonSummary, reviewScopeLabel, reviewSupportSummary, whyTodayText])
 
   const rails = useMemo(() => ({
     left: (
@@ -159,43 +168,23 @@ export function GuidedHomeRails({
       </WorldCountriesPanel>
     ),
     right: (
-      <WorldCountriesPanel className="space-y-4" aria-labelledby="world-countries-guided-status-heading">
-        {!hasActionableToday && <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Today</p>
-          <h2 id="world-countries-guided-status-heading" className="mt-1 text-lg font-bold text-zinc-100">{statusHeading}</h2>
-          <p role="status" aria-live="polite" className="mt-2 text-sm text-zinc-400">{statusExplanation}</p>
-        </div>}
-        {dueCount > 0 && (
-          <section className="border-t border-zinc-800 pt-3 text-sm" aria-labelledby="world-countries-guided-why-heading">
-            <p id="world-countries-guided-why-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Why review now</p>
-            {reviewSummary && <p className="mt-1 leading-relaxed text-zinc-300">{reviewSummary}</p>}
-            {whyTodayText.length > 0 && <p className="mt-1 leading-relaxed text-zinc-400">{whyTodayText}</p>}
-            {reviewReasonSummary.repeated > 0 && <p className="mt-1 text-xs font-semibold text-amber-300">{reviewReasonSummary.repeated} {reviewReasonSummary.repeated === 1 ? 'item needs' : 'items need'} extra practice</p>}
-          </section>
-        )}
-        {caughtUp && !scopeIsComplete && evidenceStatus === 'ready' && activeCountryCount > 0 && (
-          <section className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-sm" aria-labelledby="world-countries-guided-consolidation-heading">
-            <p id="world-countries-guided-consolidation-heading" className="text-xs font-semibold uppercase tracking-wider text-amber-300">Still in progress</p>
-            <p className="mt-1 text-zinc-300">{completionSummary}. {unfinishedGeography ?? 'Some countries still need practice.'}</p>
-          </section>
-        )}
+      <div className="space-y-4">
+        {reviewPanel}
         {journey && (
-          <>
+          <WorldCountriesPanel className="space-y-4" aria-labelledby="world-countries-journey-heading">
             {isInspectingOtherSubregion && (
               <section className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-sm">
-                <p className="text-xs font-semibold uppercase tracking-wider text-amber-300">You're viewing {inspectedSubregionLabel}</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-amber-300">You&apos;re viewing {inspectedSubregionLabel}</p>
                 <p className="mt-1 text-zinc-300">{guidedSubregionLabel
                   ? `Your journey is still focused on ${guidedSubregionLabel}.`
-                  : consolidationAvailable
-                    ? 'There is nothing new to learn here right now, but you can keep practising unfinished recall.'
-                    : 'Your journey focus stays the same.'}</p>
+                  : 'Your journey focus stays the same.'}</p>
                 {onFocusGuidedSubregion && <button type="button" onClick={onFocusGuidedSubregion} className="mt-2 text-xs font-semibold text-cyan-300 hover:text-cyan-200">{guidedSubregionLabel ? `Back to ${guidedSubregionLabel}` : 'Back to the guided view'}</button>}
               </section>
             )}
             <CompactJourneyPath journey={journey} />
-          </>
+          </WorldCountriesPanel>
         )}
-        <div className="space-y-2" aria-label="World Countries secondary actions">
+        <WorldCountriesPanel className="space-y-2" aria-label="World Countries secondary actions">
           <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Play and progress</p>
           <div className="grid grid-cols-2 gap-2">
             <button type="button" onClick={onOpenPlay} className="rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Play</button>
@@ -203,12 +192,12 @@ export function GuidedHomeRails({
           </div>
           {level === 'continent' && <button type="button" onClick={onWorld} className="w-full rounded-lg border border-zinc-800 bg-zinc-950/40 px-3 py-2 text-sm font-semibold text-zinc-400 hover:border-zinc-600 hover:text-zinc-100">Back to World</button>}
           {refreshing && <p className="text-xs text-zinc-500">Updating your progress…</p>}
-        </div>
-      </WorldCountriesPanel>
+        </WorldCountriesPanel>
+      </div>
     ),
     leftLabel: 'Geography',
-    rightLabel: 'Learning journey',
-  }), [activeCountryCount, caughtUp, completionSummary, consolidationAvailable, continent, dueCount, evidenceStatus, guidedSubregionLabel, hasActionableToday, inspectedSubregionLabel, isInspectingOtherSubregion, journey, level, onFocusGuidedSubregion, onOpenPlay, onOpenProgress, onWorld, refreshing, reviewReasonSummary, reviewSummary, scopeIsComplete, scopeName, scopeSummaries, statusExplanation, statusHeading, unfinishedGeography, whyTodayText])
+    rightLabel: 'Review and journey',
+  }), [continent, guidedSubregionLabel, inspectedSubregionLabel, isInspectingOtherSubregion, journey, level, onFocusGuidedSubregion, onOpenPlay, onOpenProgress, onWorld, refreshing, reviewPanel, scopeName, scopeSummaries])
   useRails(rails)
   return null
 }
@@ -224,32 +213,24 @@ function CompactJourneyPath({ journey }: { journey: WorldCountriesJourneyPresent
     status: milestone.complete ? 'complete' : milestone.current ? 'current' : 'upcoming' as const,
     statusLabel: milestone.complete ? 'Complete' : milestone.current ? 'Current' : 'Upcoming',
   }))
-  const nextMilestone = milestones.find(milestone => milestone.status !== 'complete')
-  const fallbackNextAction = nextMilestone?.id === 'countries'
-    ? 'Learn the countries'
-    : nextMilestone?.id === 'capitals'
-      ? 'Add the capitals'
-      : nextMilestone?.id === 'mastery'
-        ? 'Strengthen the full region'
-        : null
   return (
     <section className="space-y-2" aria-labelledby="world-countries-journey-heading">
       <p id="world-countries-journey-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Your journey · {subregionLabel}</p>
       <ol className="space-y-2">
-        {milestones.map((stage, index) => (
+        {milestones.map(stage => (
           <li key={stage.id} className="flex items-start gap-2" data-journey-milestone={stage.id} data-journey-status={stage.status}>
             <span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border text-[10px] font-bold ${stage.status === 'complete' ? 'border-green-500/40 bg-green-500/10 text-green-300' : stage.status === 'current' ? 'border-violet-400 bg-violet-600 text-white' : 'border-zinc-700 text-zinc-500'}`} aria-hidden="true">{stage.status === 'complete' ? '✓' : stage.status === 'current' ? '•' : '○'}</span>
             <span className="min-w-0"><span className={`block text-xs font-semibold ${stage.status === 'current' ? 'text-violet-100' : 'text-zinc-300'}`}>{stage.label}</span><span className="mt-0.5 block text-[11px] text-zinc-500">{stage.statusLabel}</span></span>
           </li>
         ))}
       </ol>
-      {fallbackNextAction && <p className="pt-1 text-xs font-semibold text-violet-200">Next in journey: {fallbackNextAction}</p>}
     </section>
   )
 }
 
-function learningStepDescription(track: WorldCountriesTodayLearningTrack, subregionLabel: string): string {
-  return track === 'learn-countries'
-    ? `learn the countries in ${subregionLabel}`
-    : `add the capitals in ${subregionLabel}`
+function getReviewScopeLabel(candidates: readonly { country?: { subregionId: SubregionId } }[]): string | null {
+  const labels = [...new Set(candidates.flatMap(candidate => (
+    candidate.country ? [getSubregionDefinition(candidate.country.subregionId).label] : []
+  )))]
+  return labels.length === 1 ? labels[0]! : labels.length > 1 ? 'multiple regions' : null
 }

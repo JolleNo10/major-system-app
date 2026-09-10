@@ -130,8 +130,9 @@ describe('Today review session', () => {
     })
 
     renderRails(railMount)
-    expect(railMount.textContent).toContain('Guided consolidation')
-    expect(railMount.textContent).toContain('Practice unfinished area')
+    expect(railMount.textContent).toContain('Weak-spot practice')
+    expect(railMount.textContent).toContain('Strengthen weak spots')
+    expect(railMount.textContent).not.toContain('Guided consolidation')
 
     const input = mount.querySelector<HTMLInputElement>('input[aria-label="Type the Country name"]')!
     await act(async () => {

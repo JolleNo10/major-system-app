@@ -33,9 +33,10 @@ export function TodayReviewRails({
   const currentPrompt = Math.min(cursor + 1, promptCount)
   const progressPercent = promptCount > 0 ? Math.round((currentPrompt / promptCount) * 100) : 0
   const isConsolidation = mode === 'consolidation'
-  const sessionLabel = isConsolidation ? 'Guided consolidation' : 'Guided review'
-  const sessionTitle = isConsolidation ? 'Practice unfinished area' : 'Review geography'
+  const sessionLabel = isConsolidation ? 'Weak-spot practice' : 'Guided review'
+  const sessionTitle = isConsolidation ? 'Strengthen weak spots' : 'Review geography'
   const progressLabel = isConsolidation ? 'Practice progress' : 'Review progress'
+  const exitLabel = isConsolidation ? 'Exit practice' : 'Exit Review'
 
   const rails = useMemo(() => ({
     left: (
@@ -67,12 +68,12 @@ export function TodayReviewRails({
           <p id="world-countries-today-review-why-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Why now</p>
           <p className="mt-1 font-semibold text-zinc-200">{reviewReason}</p>
         </section>
-        <button type="button" onClick={onExit} className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2.5 text-sm font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">Exit Review</button>
+        <button type="button" onClick={onExit} className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2.5 text-sm font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">{exitLabel}</button>
       </WorldCountriesPanel>
     ),
     leftLabel: 'Geography',
     rightLabel: sessionLabel,
-  }), [blockSize, continent, currentPrompt, isConsolidation, onExit, promptCount, promptKind, progressLabel, progressPercent, reviewed, reviewReason, sessionLabel, sessionTitle, subregion])
+  }), [blockSize, continent, currentPrompt, exitLabel, isConsolidation, onExit, promptCount, promptKind, progressLabel, progressPercent, reviewed, reviewReason, sessionLabel, sessionTitle, subregion])
   useRails(rails)
 
   return null

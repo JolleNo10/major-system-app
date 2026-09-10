@@ -1,5 +1,3 @@
-// @vitest-environment jsdom
-
 import { act, createElement, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -46,6 +44,12 @@ vi.mock('@/features/world-countries/learning/flows/CountryLearningFlow', () => (
           markSubregionCountriesLearned(countries[0].subregionId, Date.now(), activeCountries)
         },
       }, 'Finish Country Learning'),
+      createElement('button', {
+        key: 'done',
+        type: 'button',
+        'data-testid': 'country-learning-done',
+        onClick: props.onDone as () => void,
+      }, 'Back to Home'),
       handoff ? createElement('button', {
         key: 'handoff',
         type: 'button',
@@ -100,173 +104,162 @@ afterEach(() => {
   localStorage.clear()
 })
 
+function recommendation(track: 'learn-countries' | 'learn-capitals', countryIds: readonly string[] = [countries[0].id]) {
+  return {
+    track,
+    subregionId: countries[0].subregionId,
+    continent: countries[0].continent,
+    subregionLabel: 'Northern Europe',
+    countryIds,
+  }
+}
+
+function plan(overrides: Record<string, unknown> = {}) {
+  return {
+    dueCandidates: [],
+    reviewQueue: [],
+    consolidationCandidates: [],
+    consolidationQueue: [],
+    dueCount: 0,
+    dueCountryCount: 0,
+    introductions: new Map(),
+    curriculumRecommendation: null,
+    journeyFocusSubregionId: null,
+    incompleteCountryCount: 1,
+    incompleteSubregionLabels: ['Northern Europe'],
+    scopeComplete: false,
+    reviewReasonSummary: { mistakes: 0, firstRecall: 0, firstReviewAfterLearning: 0, spaced: 0, repeated: 0 },
+    reviewOpportunity: null,
+    ...overrides,
+  }
+}
+
+async function renderToday(props: Partial<Parameters<typeof WorldCountriesToday>[0]> = {}) {
+  const mount = document.createElement('div')
+  document.body.append(mount)
+  await act(async () => {
+    root = createRoot(mount)
+    root.render(createElement(WorldCountriesToday, { answerMode: 'typing', onNavigate: vi.fn(), ...props }))
+    await Promise.resolve()
+  })
+  return mount
+}
+
+function renderLatestRails() {
+  act(() => railRoot?.unmount())
+  const config = useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1]?.[0] as { left?: ReactNode; right?: ReactNode } | undefined
+  const railMount = document.createElement('div')
+  document.body.append(railMount)
+  railRoot = createRoot(railMount)
+  act(() => railRoot?.render(createElement('div', null, config?.left, config?.right)))
+  return railMount
+}
+
 describe('World Countries Today', () => {
-  it('focuses the review action after finishing a review block', async () => {
-    buildPlanMock.mockReturnValue({
-      dueCandidates: [{}],
-      reviewQueue: [{}],
-      consolidationCandidates: [],
-      consolidationQueue: [],
-      dueCount: 1,
-      dueCountryCount: 1,
-      introductions: new Map(),
-      nextLearning: null,
-      incompleteCountryCount: 1,
-      incompleteSubregionLabels: [],
-      scopeComplete: false,
-      caughtUpForToday: false,
-      action: { kind: 'review', candidates: [{}] },
-    })
-    const mount = document.createElement('div')
-    document.body.append(mount)
-
-    await act(async () => {
-      root = createRoot(mount)
-      root.render(createElement(WorldCountriesToday, { answerMode: 'typing', onNavigate: vi.fn() }))
-      await Promise.resolve()
-    })
-    const reviewAction = [...mount.querySelectorAll('button')].find(button => button.textContent === 'Review 1 item')
-    act(() => reviewAction?.click())
-    await act(async () => {
-      const finishReview = [...mount.querySelectorAll('button')].find(button => button.textContent === 'Finish review')
-      finishReview?.click()
-      await Promise.resolve()
-      await Promise.resolve()
-    })
-
-    expect(document.activeElement?.textContent).toBe('Review 1 item')
-  })
-
-  it('keeps equal total and bounded review counts distinct across the Home composition', async () => {
-    const reviewCandidates = [{}, {}, {}]
-    buildPlanMock.mockReturnValue({
-      dueCandidates: reviewCandidates,
-      reviewQueue: reviewCandidates,
-      consolidationCandidates: [],
-      consolidationQueue: [],
-      dueCount: 3,
-      dueCountryCount: 2,
-      introductions: new Map(),
-      nextLearning: null,
-      incompleteCountryCount: 1,
-      incompleteSubregionLabels: [],
-      scopeComplete: false,
-      caughtUpForToday: false,
-      reviewReasonSummary: { mistakes: 1, firstRecall: 0, firstReviewAfterLearning: 0, spaced: 0, repeated: 0 },
-      action: { kind: 'review', candidates: reviewCandidates },
-    })
-    const mount = document.createElement('div')
-    document.body.append(mount)
-
-    await act(async () => {
-      root = createRoot(mount)
-      root.render(createElement(WorldCountriesToday, { answerMode: 'typing', onNavigate: vi.fn() }))
-      await Promise.resolve()
-    })
-
-    const config = useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1]?.[0] as { left?: ReactNode; right?: ReactNode } | undefined
-    const railMount = document.createElement('div')
-    document.body.append(railMount)
-    railRoot = createRoot(railMount)
-    act(() => railRoot?.render(createElement('div', null, config?.left, config?.right)))
-
-    expect(railMount.textContent).toContain('2 countries')
-    expect(railMount.textContent).toContain('recent mistake')
-    expect(railMount.textContent).not.toContain('3 reviews ready')
-    expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('Next review · 3 items')
-    expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Review 3 items')
-  })
-
-  it('delegates the specific Country Learning action to the recommended flow', async () => {
-    buildPlanMock.mockReturnValue({
-      dueCandidates: [],
-      reviewQueue: [],
-      consolidationCandidates: [],
-      consolidationQueue: [],
-      dueCount: 0,
-      dueCountryCount: 0,
-      introductions: new Map(),
-      nextLearning: {
-        track: 'learn-countries',
-        subregionId: countries[0].subregionId,
-        continent: countries[0].continent,
-        subregionLabel: 'Northern Europe',
-      },
-      incompleteCountryCount: 1,
-      incompleteSubregionLabels: ['Northern Europe'],
-      scopeComplete: false,
-      caughtUpForToday: false,
-      action: { kind: 'learn', recommendation: {
-        track: 'learn-countries',
-        subregionId: countries[0].subregionId,
-        continent: countries[0].continent,
-        subregionLabel: 'Northern Europe',
-        countryIds: [countries[0].id],
-      } },
-    })
-    const mount = document.createElement('div')
-    document.body.append(mount)
-
-    await act(async () => {
-      root = createRoot(mount)
-      root.render(createElement(WorldCountriesToday, { answerMode: 'typing', onNavigate: vi.fn() }))
-      await Promise.resolve()
-    })
-    await act(async () => {
-      [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Learn 1 country')?.click()
-    })
-
-    expect(mount.querySelector('[data-testid="country-learning-flow"]')).not.toBeNull()
-  })
-
-  it('keeps an inspected region separate from the real guided action and launch scope', async () => {
+  it('shows Review and Continue Learning independently when both are available', async () => {
     const northernEntries = countries.filter(country => country.subregionId === 'northern-europe').slice(0, 3)
     const southernEntry = countries.find(country => country.subregionId === 'southern-europe')!
     activeCountries = [...northernEntries, southernEntry]
-    buildPlanMock.mockReturnValue({
-      dueCandidates: [],
-      reviewQueue: [],
-      consolidationCandidates: [],
-      consolidationQueue: [],
-      dueCount: 0,
-      dueCountryCount: 0,
-      introductions: new Map(),
-      nextLearning: {
-        track: 'learn-countries',
-        subregionId: 'northern-europe',
-        continent: 'Europe',
-        subregionLabel: 'Northern Europe',
-      },
+    const reviewCandidates = [{ country: southernEntry }, { country: southernEntry }]
+    buildPlanMock.mockReturnValue(plan({
+      dueCandidates: reviewCandidates,
+      reviewQueue: reviewCandidates,
+      dueCount: 20,
+      dueCountryCount: 15,
+      curriculumRecommendation: recommendation('learn-countries', northernEntries.map(country => country.id)),
+      journeyFocusSubregionId: 'northern-europe',
       incompleteCountryCount: activeCountries.length,
       incompleteSubregionLabels: ['Northern Europe', 'Southern Europe'],
-      scopeComplete: false,
-      caughtUpForToday: false,
-      action: { kind: 'learn', recommendation: {
-        track: 'learn-countries',
-        subregionId: 'northern-europe',
-        continent: 'Europe',
-        subregionLabel: 'Northern Europe',
-        countryIds: northernEntries.map(country => country.id),
-      } },
-    })
-    const mount = document.createElement('div')
-    document.body.append(mount)
+      reviewOpportunity: { kind: 'review', candidates: reviewCandidates },
+    }))
+
+    const mount = await renderToday({ continent: 'Europe' })
+    const railMount = renderLatestRails()
+
+    expect(railMount.textContent).toContain('Review ready')
+    expect(railMount.textContent).toContain('Review 2 items')
+    expect(railMount.textContent).toContain('20 reviews due overall')
+    expect(railMount.textContent).toContain('Your journey · Northern Europe')
+    expect(railMount.textContent).not.toContain('Next in journey')
+    expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Continue learning')
+    expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('Continue your journey')
+    expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('Learn 3 countries · Northern Europe')
+  })
+
+  it('keeps equal total and bounded Review counts from duplicating the item count across Home surfaces', async () => {
+    const candidate = { country: countries[0] }
+    buildPlanMock.mockReturnValue(plan({
+      dueCandidates: [candidate, candidate, candidate],
+      reviewQueue: [candidate, candidate, candidate],
+      dueCount: 3,
+      dueCountryCount: 2,
+      reviewReasonSummary: { mistakes: 1, firstRecall: 0, firstReviewAfterLearning: 0, spaced: 0, repeated: 0 },
+      reviewOpportunity: { kind: 'review', candidates: [candidate, candidate, candidate] },
+    }))
+
+    const mount = await renderToday()
+    const railMount = renderLatestRails()
+
+    expect(railMount.textContent).toContain('Review 3 items')
+    expect(railMount.textContent).toContain('2 countries')
+    expect(railMount.textContent).toContain('recent mistake')
+    expect(railMount.textContent).not.toContain('3 reviews ready')
+    expect(mount.querySelector('[data-primary-action]')).toBeNull()
+  })
+
+  it('launches Review from the independent panel', async () => {
+    const candidate = { country: countries[0] }
+    buildPlanMock.mockReturnValue(plan({
+      dueCandidates: [candidate],
+      reviewQueue: [candidate],
+      dueCount: 1,
+      dueCountryCount: 1,
+      reviewOpportunity: { kind: 'review', candidates: [candidate] },
+    }))
+    const mount = await renderToday()
+    const railMount = renderLatestRails()
+
+    act(() => railMount.querySelector<HTMLButtonElement>('[data-review-action]')?.click())
+    expect(mount.querySelector('[data-testid="today-review"]')?.getAttribute('data-review-mode')).toBe('review')
+    expect(mount.querySelector('[data-primary-action]')).toBeNull()
+  })
+
+  it('launches the Journey recommendation from the map dock', async () => {
+    const countryIds = countries.filter(country => country.subregionId === 'northern-europe').slice(0, 3).map(country => country.id)
+    activeCountries = countries.filter(country => countryIds.includes(country.id))
+    buildPlanMock.mockReturnValue(plan({
+      curriculumRecommendation: recommendation('learn-countries', countryIds),
+      journeyFocusSubregionId: 'northern-europe',
+    }))
+    const mount = await renderToday()
 
     await act(async () => {
-      root = createRoot(mount)
-      root.render(createElement(WorldCountriesToday, { answerMode: 'typing', continent: 'Europe', onNavigate: vi.fn() }))
+      mount.querySelector<HTMLButtonElement>('[data-primary-action]')?.click()
       await Promise.resolve()
     })
-    const renderLatestRails = () => {
-      act(() => railRoot?.unmount())
-      const config = useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1]?.[0] as { left?: ReactNode; right?: ReactNode } | undefined
-      const railMount = document.createElement('div')
-      document.body.append(railMount)
-      railRoot = createRoot(railMount)
-      act(() => railRoot?.render(createElement('div', null, config?.left, config?.right)))
-      return railMount
-    }
+    expect(countryLearningFlowMock).toHaveBeenCalledWith(expect.objectContaining({
+      subregion: 'northern-europe',
+      entries: countryIds.map(countryId => countries.find(country => country.id === countryId)),
+    }))
+  })
 
+  it('keeps inspected geography local while the dock continues the guided Journey', async () => {
+    const northernEntries = countries.filter(country => country.subregionId === 'northern-europe').slice(0, 3)
+    const southernEntry = countries.find(country => country.subregionId === 'southern-europe')!
+    activeCountries = [...northernEntries, southernEntry]
+    const reviewCandidates = [{ country: southernEntry }, { country: southernEntry }]
+    buildPlanMock.mockReturnValue(plan({
+      dueCandidates: reviewCandidates,
+      reviewQueue: reviewCandidates,
+      dueCount: 20,
+      dueCountryCount: 15,
+      curriculumRecommendation: recommendation('learn-countries', northernEntries.map(country => country.id)),
+      journeyFocusSubregionId: 'northern-europe',
+      incompleteCountryCount: activeCountries.length,
+      incompleteSubregionLabels: ['Northern Europe', 'Southern Europe'],
+      reviewOpportunity: { kind: 'review', candidates: reviewCandidates },
+    }))
+    const mount = await renderToday({ continent: 'Europe' })
     let railMount = renderLatestRails()
     act(() => [...railMount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent?.startsWith('Southern Europe'))?.click())
     railMount = renderLatestRails()
@@ -274,116 +267,82 @@ describe('World Countries Today', () => {
     expect(railMount.textContent).toContain("You're viewing Southern Europe")
     expect(railMount.textContent).toContain('Your journey is still focused on Northern Europe')
     expect(railMount.textContent).toContain('Journey focus')
-    expect(railMount.textContent).not.toContain('Your next step')
-    expect(railMount.textContent).not.toContain('next action')
-    expect(railMount.textContent).toContain('Next in journey: Learn the countries')
-    expect(railMount.textContent).not.toContain('Next in journey: Learn 3 countries')
-    expect(mount.textContent).toContain("what you've learned and what's still ahead")
-    expect(mount.textContent).not.toContain('choose where to learn')
-    expect(mount.querySelector('[data-primary-action]')?.textContent).toContain('Learn 3 countries')
-    expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('Northern Europe is next')
+    expect(railMount.textContent).toContain('Review scope: Southern Europe')
+    expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('Learn 3 countries · Northern Europe')
     expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain("You're inspecting Southern Europe")
 
     await act(async () => {
       mount.querySelector<HTMLButtonElement>('[data-primary-action]')?.click()
       await Promise.resolve()
     })
-
-    expect(countryLearningFlowMock).toHaveBeenCalledWith(expect.objectContaining({
-      subregion: 'northern-europe',
-      entries: northernEntries,
-    }))
+    expect(countryLearningFlowMock).toHaveBeenCalledWith(expect.objectContaining({ subregion: 'northern-europe' }))
   })
 
-  it('keeps the curriculum journey focus when a Southern Europe review has Today priority', async () => {
-    const northernEntries = countries.filter(country => country.subregionId === 'northern-europe').slice(0, 3)
-    const southernEntry = countries.find(country => country.subregionId === 'southern-europe')!
-    activeCountries = [...northernEntries, southernEntry]
-    const reviewCandidates = [{ country: southernEntry }, { country: southernEntry }]
-    buildPlanMock.mockReturnValue({
-      dueCandidates: reviewCandidates,
-      reviewQueue: reviewCandidates,
-      consolidationCandidates: [],
-      consolidationQueue: [],
-      dueCount: 20,
-      dueCountryCount: 15,
-      introductions: new Map(),
-      curriculumRecommendation: {
-        track: 'learn-countries',
-        subregionId: 'northern-europe',
-        continent: 'Europe',
-        subregionLabel: 'Northern Europe',
-        countryIds: northernEntries.map(country => country.id),
-      },
+  it('shows weak-spot practice alongside Journey Learning when reviews are caught up', async () => {
+    const candidate = { country: countries[0] }
+    buildPlanMock.mockReturnValue(plan({
+      curriculumRecommendation: recommendation('learn-countries'),
       journeyFocusSubregionId: 'northern-europe',
-      nextLearning: null,
-      incompleteCountryCount: activeCountries.length,
-      incompleteSubregionLabels: ['Northern Europe', 'Southern Europe'],
-      scopeComplete: false,
-      caughtUpForToday: false,
-      action: { kind: 'review', candidates: reviewCandidates },
-    })
-    const mount = document.createElement('div')
-    document.body.append(mount)
+      consolidationCandidates: [candidate],
+      consolidationQueue: [candidate],
+      reviewOpportunity: { kind: 'consolidate', candidates: [candidate] },
+    }))
+    const mount = await renderToday()
+    const railMount = renderLatestRails()
 
-    await act(async () => {
-      root = createRoot(mount)
-      root.render(createElement(WorldCountriesToday, { answerMode: 'typing', continent: 'Europe', onNavigate: vi.fn() }))
-      await Promise.resolve()
-    })
-
-    const renderLatestRails = () => {
-      act(() => railRoot?.unmount())
-      const config = useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1]?.[0] as { left?: ReactNode; right?: ReactNode } | undefined
-      const railMount = document.createElement('div')
-      document.body.append(railMount)
-      railRoot = createRoot(railMount)
-      act(() => railRoot?.render(createElement('div', null, config?.left, config?.right)))
-      return railMount
-    }
-
-    let railMount = renderLatestRails()
-    expect(railMount.textContent).toContain('Your journey · Northern Europe')
-    act(() => [...railMount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent?.startsWith('Southern Europe'))?.click())
-    railMount = renderLatestRails()
-
-    expect(railMount.textContent).toContain("You're viewing Southern Europe")
-    expect(railMount.textContent).toContain('Your journey is still focused on Northern Europe')
-    expect(railMount.textContent).toContain('Journey focus')
-    expect(railMount.textContent).not.toContain('Your guided next action remains in Northern Europe')
-    expect(railMount.textContent).not.toContain('next action')
-    expect(railMount.textContent).toContain('20 reviews due in total')
-    expect(railMount.textContent).toContain('15 countries')
-    expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Review 2 items')
-    expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('Next review · 2 items in Southern Europe')
-    expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain("You're inspecting Southern Europe")
+    expect(railMount.textContent).toContain('Reviews caught up')
+    expect(railMount.textContent).toContain('Strengthen weak spots')
+    expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Continue learning')
+    act(() => railMount.querySelector<HTMLButtonElement>('[data-review-action]')?.click())
+    expect(mount.querySelector('[data-testid="today-review"]')?.getAttribute('data-review-mode')).toBe('consolidation')
   })
 
-  it('offers the latest post-milestone learn-capitals action and launches it directly', async () => {
-    const country = activeCountries[0]
-    const initialPlan = {
-      dueCandidates: [], reviewQueue: [], consolidationCandidates: [], consolidationQueue: [], dueCount: 0, dueCountryCount: 0,
-      introductions: new Map(),
-      nextLearning: { track: 'learn-countries', subregionId: country.subregionId, continent: country.continent, subregionLabel: 'Northern Europe' },
-      incompleteCountryCount: 1, incompleteSubregionLabels: ['Northern Europe'], scopeComplete: false, caughtUpForToday: false,
-      action: { kind: 'learn', recommendation: { track: 'learn-countries', subregionId: country.subregionId, continent: country.continent, subregionLabel: 'Northern Europe', countryIds: [country.id] } },
-    }
-    const postMilestonePlan = {
-      ...initialPlan,
-      nextLearning: { track: 'learn-capitals', subregionId: country.subregionId, continent: country.continent, subregionLabel: 'Northern Europe' },
-      action: { kind: 'learn', recommendation: { track: 'learn-capitals', subregionId: country.subregionId, continent: country.continent, subregionLabel: 'Northern Europe', countryIds: [country.id] } },
-    }
-    buildPlanMock.mockImplementation(() => milestoneWritten ? postMilestonePlan : initialPlan)
-    const mount = document.createElement('div')
-    document.body.append(mount)
+  it('shows a caught-up Review state while keeping Journey Learning available', async () => {
+    buildPlanMock.mockReturnValue(plan({
+      curriculumRecommendation: recommendation('learn-countries'),
+      journeyFocusSubregionId: 'northern-europe',
+    }))
+    const mount = await renderToday()
+    const railMount = renderLatestRails()
 
-    await act(async () => {
-      root = createRoot(mount)
-      root.render(createElement(WorldCountriesToday, { answerMode: 'typing', onNavigate: vi.fn() }))
-      await Promise.resolve()
+    expect(railMount.textContent).toContain('Reviews caught up')
+    expect(railMount.querySelector('[data-review-action]')).toBeNull()
+    expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Continue learning')
+  })
+
+  it('does not render a fake Journey dock when only Review is available', async () => {
+    const candidate = { country: countries[0] }
+    buildPlanMock.mockReturnValue(plan({
+      dueCandidates: [candidate],
+      reviewQueue: [candidate],
+      dueCount: 1,
+      dueCountryCount: 1,
+      reviewOpportunity: { kind: 'review', candidates: [candidate] },
+    }))
+    const mount = await renderToday()
+    expect(mount.querySelector('[data-primary-action]')).toBeNull()
+  })
+
+  it('hands Learning completion to the next Journey recommendation, not Review', async () => {
+    const country = activeCountries[0]
+    const initialPlan = plan({
+      curriculumRecommendation: recommendation('learn-countries'),
+      journeyFocusSubregionId: 'northern-europe',
     })
+    const postMilestonePlan = plan({
+      dueCandidates: [{ country: countries[0] }],
+      reviewQueue: [{ country: countries[0] }],
+      dueCount: 1,
+      dueCountryCount: 1,
+      curriculumRecommendation: recommendation('learn-capitals'),
+      journeyFocusSubregionId: 'northern-europe',
+      reviewOpportunity: { kind: 'review', candidates: [{ country: countries[0] }] },
+    })
+    buildPlanMock.mockImplementation(() => milestoneWritten ? postMilestonePlan : initialPlan)
+    const mount = await renderToday()
     await act(async () => {
-      [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Learn 1 country')?.click()
+      mount.querySelector<HTMLButtonElement>('[data-primary-action]')?.click()
+      await Promise.resolve()
     })
     await act(async () => {
       mount.querySelector<HTMLButtonElement>('[data-testid="complete-country-learning"]')?.click()
@@ -392,125 +351,62 @@ describe('World Countries Today', () => {
 
     expect(mount.textContent).toContain('Next: add the capitals to these countries.')
     expect(mount.textContent).toContain('Add the capitals')
-    await act(async () => {
-      mount.querySelector<HTMLButtonElement>('[data-testid="country-learning-handoff"]')?.click()
-    })
-
-    expect(mount.querySelector('[data-testid="country-learning-flow"]')).toBeNull()
-    expect(capitalLearningFlowMock).toHaveBeenCalledWith(expect.objectContaining({
-      subregion: country.subregionId,
-      entries: [country],
-    }))
+    expect(mount.textContent).not.toContain('Review 1 item')
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="country-learning-handoff"]')?.click())
+    expect(capitalLearningFlowMock).toHaveBeenCalledWith(expect.objectContaining({ subregion: country.subregionId }))
   })
 
-  it.each([
-    ['review', 'Review 1 item', 'review'],
-    ['consolidate', 'Strengthen 1 item', 'consolidation'],
-  ] as const)('replaces the completed Learning run before a %s handoff', async (kind, label, mode) => {
-    const country = activeCountries[0]
-    const initialPlan = {
-      dueCandidates: [], reviewQueue: [], consolidationCandidates: [], consolidationQueue: [], dueCount: 0, dueCountryCount: 0,
-      introductions: new Map(),
-      nextLearning: { track: 'learn-countries', subregionId: country.subregionId, continent: country.continent, subregionLabel: 'Northern Europe' },
-      incompleteCountryCount: 1, incompleteSubregionLabels: ['Northern Europe'], scopeComplete: false, caughtUpForToday: false,
-      action: { kind: 'learn', recommendation: { track: 'learn-countries', subregionId: country.subregionId, continent: country.continent, subregionLabel: 'Northern Europe', countryIds: [country.id] } },
-    }
-    const postMilestonePlan = {
-      ...initialPlan,
-      dueCandidates: kind === 'review' ? [{}] : [],
-      reviewQueue: kind === 'review' ? [{}] : [],
-      consolidationCandidates: kind === 'consolidate' ? [{}] : [],
-      consolidationQueue: kind === 'consolidate' ? [{}] : [],
-      dueCount: kind === 'review' ? 1 : 0,
-      caughtUpForToday: kind === 'consolidate',
-      action: kind === 'review' ? { kind: 'review', candidates: [{ country }] } : { kind: 'consolidate', candidates: [{ country }] },
-    }
-    buildPlanMock.mockImplementation(() => milestoneWritten ? postMilestonePlan : initialPlan)
-    const mount = document.createElement('div')
-    document.body.append(mount)
-
-    await act(async () => {
-      root = createRoot(mount)
-      root.render(createElement(WorldCountriesToday, { answerMode: 'typing', onNavigate: vi.fn() }))
-      await Promise.resolve()
-    })
-    await act(async () => {
-      [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Learn 1 country')?.click()
-    })
-    await act(async () => {
-      mount.querySelector<HTMLButtonElement>('[data-testid="complete-country-learning"]')?.click()
-      await Promise.resolve()
-    })
-
-    expect(mount.textContent).toContain(label)
-    await act(async () => {
-      mount.querySelector<HTMLButtonElement>('[data-testid="country-learning-handoff"]')?.click()
-    })
-
-    expect(mount.querySelector('[data-testid="country-learning-flow"]')).toBeNull()
-    expect(mount.querySelector('[data-testid="today-review"]')?.getAttribute('data-review-mode')).toBe(mode)
-  })
-
-  it('passes recall-derived Country establishment into Capital Learning presentation', async () => {
+  it('passes recall-derived Country establishment into Capital Learning', async () => {
     const country = activeCountries[0]
     const countryItemId = `world-countries:location-to-country:${country.id}`
     loadHistoryMock.mockResolvedValueOnce(new Map([[countryItemId, [
       { itemId: countryItemId, at: 1, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-10' },
       { itemId: countryItemId, at: 2, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-11' },
     ]]]))
-    buildPlanMock.mockReturnValue({
-      dueCandidates: [], reviewQueue: [], consolidationCandidates: [], consolidationQueue: [], dueCount: 0, dueCountryCount: 0,
-      introductions: new Map(),
-      nextLearning: { track: 'learn-capitals', subregionId: country.subregionId, continent: country.continent, subregionLabel: 'Northern Europe' },
-      incompleteCountryCount: 1, incompleteSubregionLabels: ['Northern Europe'], scopeComplete: false, caughtUpForToday: false,
-      action: { kind: 'learn', recommendation: { track: 'learn-capitals', subregionId: country.subregionId, continent: country.continent, subregionLabel: 'Northern Europe', countryIds: [country.id] } },
-    })
-    const mount = document.createElement('div')
-    document.body.append(mount)
+    buildPlanMock.mockReturnValue(plan({ curriculumRecommendation: recommendation('learn-capitals') }))
+    const mount = await renderToday()
 
     await act(async () => {
-      root = createRoot(mount)
-      root.render(createElement(WorldCountriesToday, { answerMode: 'typing', onNavigate: vi.fn() }))
+      mount.querySelector<HTMLButtonElement>('[data-primary-action]')?.click()
       await Promise.resolve()
-    })
-    await act(async () => {
-      [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Add the capitals')?.click()
     })
 
     expect(capitalLearningFlowMock).toHaveBeenCalledWith(expect.objectContaining({ countriesEstablished: true }))
     expect(capitalLearningFlowMock.mock.calls[0]?.[0]).not.toHaveProperty('countriesLearned')
   })
 
-  it('starts targeted consolidation instead of generic Play when the scope is unfinished', async () => {
-    buildPlanMock.mockReturnValue({
-      dueCandidates: [],
-      reviewQueue: [],
-      consolidationCandidates: [{}],
-      consolidationQueue: [{}],
-      dueCount: 0,
-      dueCountryCount: 0,
-      introductions: new Map(),
-      nextLearning: null,
-      incompleteCountryCount: 1,
-      incompleteSubregionLabels: ['Northern Europe'],
-      scopeComplete: false,
-      caughtUpForToday: true,
-      action: { kind: 'consolidate', candidates: [{}] },
+  it('returns Home after Learning when no further Journey recommendation exists', async () => {
+    const initialPlan = plan({ curriculumRecommendation: recommendation('learn-countries'), journeyFocusSubregionId: 'northern-europe' })
+    const postMilestonePlan = plan({
+      dueCandidates: [{ country: countries[0] }],
+      reviewQueue: [{ country: countries[0] }],
+      dueCount: 1,
+      dueCountryCount: 1,
+      reviewOpportunity: { kind: 'review', candidates: [{ country: countries[0] }] },
+      curriculumRecommendation: null,
+      journeyFocusSubregionId: null,
     })
-    const mount = document.createElement('div')
-    document.body.append(mount)
-
+    buildPlanMock.mockImplementation(() => milestoneWritten ? postMilestonePlan : initialPlan)
+    const mount = await renderToday()
     await act(async () => {
-      root = createRoot(mount)
-      root.render(createElement(WorldCountriesToday, { answerMode: 'typing', onNavigate: vi.fn() }))
+      mount.querySelector<HTMLButtonElement>('[data-primary-action]')?.click()
       await Promise.resolve()
     })
-    expect(mount.textContent).toContain('Strengthen 1 item')
-    expect([...mount.querySelectorAll<HTMLButtonElement>('button')].filter(button => button.textContent === 'Strengthen 1 item')).toHaveLength(1)
     await act(async () => {
-      [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Strengthen 1 item')?.click()
+      mount.querySelector<HTMLButtonElement>('[data-testid="complete-country-learning"]')?.click()
+      await Promise.resolve()
     })
 
-    expect(mount.textContent).toContain('Finish review')
+    expect(mount.querySelector('[data-testid="country-learning-handoff"]')).toBeNull()
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-testid="country-learning-done"]')?.click()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(mount.querySelector('[data-testid="country-learning-flow"]')).toBeNull()
+    const railMount = renderLatestRails()
+    expect(railMount.querySelector('[data-review-action]')).not.toBeNull()
+    expect(mount.querySelector('[data-primary-action]')).toBeNull()
   })
 })

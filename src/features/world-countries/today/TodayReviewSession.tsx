@@ -66,7 +66,7 @@ export function TodayReviewSession({
   const expectedAnswer = isLocationQuestion ? country.country : country.capital
   const promptLabel = isLocationQuestion ? 'Which country is this?' : `Capital of ${country.country}`
   const reviewReason = mode === 'consolidation'
-    ? 'Unfinished core recall'
+    ? 'Weak spot to strengthen'
     : worldCountriesTodayReviewReasonLabel(
       classifyWorldCountriesTodayReviewReason(candidate),
       candidate.schedule.overdueDays,
@@ -74,7 +74,7 @@ export function TodayReviewSession({
   const activityTask: WorldCountriesActivityTask = {
     direction: isLocationQuestion ? 'Location → Country' : 'Country → Capital',
     cue: promptLabel,
-    sessionContext: mode === 'consolidation' ? 'Guided consolidation' : 'Guided review',
+    sessionContext: mode === 'consolidation' ? 'Weak-spot practice' : 'Guided review',
     answerKind,
     reviewReason,
     progress: {

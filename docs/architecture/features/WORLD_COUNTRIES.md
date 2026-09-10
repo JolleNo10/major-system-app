@@ -11,9 +11,10 @@ persisted state, identifiers, migrations, reset, or backup; and load
 ## Purpose and entry points
 
 World Countries opens on a map-centered **Home**. Home is the default guided
-entry: it shows World mastery, the interactive World map, and one Continue
-action derived from Today planning. A transient **Continent hub** provides the
-same guided composition over a Continent-scoped active Country population.
+entry: it shows World mastery, the interactive World map, a Journey continuation
+attached to the map, and an independent Review/practice opportunity in the
+right rail. A transient **Continent hub** provides the same guided composition
+over a Continent-scoped active Country population.
 **Play** is the learner-facing secondary entry to freeform Recite, Quiz,
 non-recording Practice, and configurable recorded Drill. **Progress** is a
 derived supporting view, not a separate evidence or analytics system.
@@ -60,12 +61,13 @@ signal rather than coordinator-owned refresh counters.
   Quizzes. Quiz is a Practice-semantic user-facing area with transient
   randomized runs, scoring, miss review, and retry; it owns no evidence,
   milestones, preferences, scheduling, or other durable learner state.
-- `today/` owns the derived guided plan, bounded due-review and targeted
-  consolidation queues with retry state, guided setup/checkpoint states, and
-  delegation into existing Learning flows. Its derived action priority is due
-  review, required Country/Capital Learning, bounded unfinished-core
-  consolidation, then complete/caught-up presentation. It consumes learning,
-  geography, maps, and feature-local UI but not Drill or Recite internals.
+- `today/` owns the derived guided plan, independent curriculum and
+  Review/practice opportunities, bounded due-review and targeted consolidation
+  queues with retry state, guided setup/checkpoint states, and delegation into
+  existing Learning flows. Its Review opportunity chooses scheduled due review
+  before bounded unfinished-core consolidation; curriculum Learning remains
+  independently available. It consumes learning, geography, maps, and
+  feature-local UI but not Drill or Recite internals.
 - `learning/flows/` owns Country and Capital Learning UI and orchestration.
   Learning modes own their milestone writes; the guided UI is not Drill
   implementation detail.
@@ -133,15 +135,18 @@ derived Progress. The activity semantics remain exactly Drill, Learning, and
 Practice; Quiz is Practice and does not introduce an Assessment semantic.
 Today remains the owner of guided planning/review and delegation into the
 existing Learning flows even though its learner-facing presentation is now the
-Home/Continent guided surface.
-When Today launches Learning, the completed Learning surface can present a
-parent-provided next action: the flow writes its durable milestone first, Today
-observes the feature-local learning revision, and the latest derived Today plan
-remains authoritative for a direct review, Learning, or consolidation handoff.
-If that plan has no actionable continuation, completion returns to the current
-World/Continent guided surface. Direct Learn & Practise and temporary
-proficiency Learning remain caller-owned and do not receive a fabricated Today
-handoff.
+Home/Continent guided surface. Review/practice and curriculum Learning are
+separate derived opportunities: the former is owned by the right rail and the
+map dock owns the latter. When Today launches Learning, the completed Learning
+surface can present a parent-provided next Journey handoff: the flow writes its
+durable milestone first, Today observes the feature-local learning revision,
+and the latest derived curriculum recommendation remains authoritative for a
+direct Country-to-Capital or later Journey continuation. Review and weak-spot
+practice remain independently selectable from Home rather than becoming a
+completion handoff. If there is no further Journey recommendation, completion
+returns to the current World/Continent guided surface. Direct Learn & Practise
+and temporary proficiency Learning remain caller-owned and do not receive a
+fabricated Today handoff.
 
 Mounted World Countries consumers subscribe directly to the external state they
 derive: geography metadata, durable Subregion learning, and World Countries
@@ -152,11 +157,11 @@ coordinators do not carry generic version counters solely to force a re-read.
 
 Today derives its plan from raw core evidence and applicable Learning
 milestones. It reviews only `location-to-country` and `country-to-capital`,
-prioritizes due review before recommending new whole-Subregion Learning, and
-when scheduled work and new Learning are caught up it can expose a bounded,
-scope-local consolidation queue containing only introduced, non-mastered core
-targets. All queues, retry state, actions, and checkpoints remain transient;
-consolidation uses the same typed free-recall/evidence seam as guided review.
+derives the current whole-Subregion Learning recommendation independently of
+Review, and when no scheduled work is due it can expose a bounded, scope-local
+consolidation queue containing only introduced, non-mastered core targets. All
+queues, retry state, actions, and checkpoints remain transient; consolidation
+uses the same typed free-recall/evidence seam as guided review.
 
 Target introduction is intentionally separate from curriculum readiness:
 successful evidence can make an atomic target eligible for review or
@@ -183,8 +188,9 @@ The plan also derives the underlying curriculum recommendation independently
 of review priority. Home uses that recommendation, or the first incomplete
 core-recall Subregion in effective order once curriculum introduction is
 complete, as a non-persisted journey focus; review/consolidation queue order
-does not choose the journey region. Home presents total due work separately
-from the bounded review block that the Today action will launch.
+does not choose the journey region. The Review opportunity exposes the bounded
+block that will launch, while Home support copy distinguishes it from total due
+work when those values differ.
 
 World Countries review spacing is also derived from retained raw attempts. The
 fixed `1, 3, 7, 14, 30, 60` day ladder advances on clean typed-recall days and
@@ -328,14 +334,13 @@ inspected Subregion supplies the displayed journey/progress while the guided
 recommendation and consolidation scope continue to come from Today planning.
 Default Home and Continent rails project this derived truth into a compact,
 non-persisted Countries / Capitals / Mastery summary; the six-stage derivation
-remains authoritative for supporting progress surfaces. Guided primary labels
-are action-specific (including bounded review/consolidation counts or an
-authoritative staged Country count when available), while Today remains the
-owner of the action meaning and priority. The attached Today task dock
-identifies its action scope and the inspected-vs-guided distinction when the
-learner is inspecting another Subregion. The compact journey derives its own `Next in journey:` text only
-from the displayed Subregion's journey; map and geography selection inspect
-progress and do not change the planner-authoritative guided path.
+remains authoritative for supporting progress surfaces. The attached Today
+task dock owns the Journey continuation and identifies its scope, while the
+right rail owns the independent Review/weak-spot opportunity. The Journey
+panel is orientation only and does not repeat a specific next action. The
+inspected-vs-guided distinction remains explicit when the learner is inspecting
+another Subregion; map and geography selection inspect progress and do not
+change the planner-authoritative guided path.
 
 Guided Learning presents the internal staged phases with learner-facing
 language: Meet, Find, Recall, Mix, and Final recall. One-Set learner-facing
@@ -357,10 +362,12 @@ semantic task/context/progress data to the shared World Countries map-activity
 surface; setup, overview, readiness, and completion screens retain their own
 presentation. Active Learning uses learner-facing progress language rather than
 exposing the internal Learning Readiness label. Home and Continent guided rails
-keep due counts only when review is due and keep the next action attached to the
-map dock without a duplicate recommendation card; the dock remains the primary
-guided action. The compact Learning context rail stays present through Final
-recall as a quiet, full-scope, read-only orientation surface.
+present Review/practice and Journey as sibling choices: the right rail owns the
+Review opportunity and Journey orientation, while the map dock owns the
+primary Journey continuation. Review does not suppress Learning, and the
+Journey panel does not duplicate the dock action. The compact Learning context
+rail stays present through Final recall as a quiet, full-scope, read-only
+orientation surface.
 
 ## Learning Readiness
 

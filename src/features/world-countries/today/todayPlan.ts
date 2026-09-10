@@ -40,12 +40,10 @@ export interface WorldCountriesTodayLearningRecommendation {
   countryIds: readonly CountryId[]
 }
 
-export type WorldCountriesTodayPrimaryAction =
+export type WorldCountriesTodayReviewOpportunity =
   | { kind: 'review'; candidates: readonly WorldCountriesTodayReviewCandidate[] }
-  | { kind: 'learn'; recommendation: WorldCountriesTodayLearningRecommendation }
   | { kind: 'consolidate'; candidates: readonly WorldCountriesTodayReviewCandidate[] }
-  | { kind: 'complete' }
-  | { kind: 'unavailable' }
+  | null
 
 export interface WorldCountriesTodayPlan {
   dueCandidates: readonly WorldCountriesTodayReviewCandidate[]
@@ -58,14 +56,13 @@ export interface WorldCountriesTodayPlan {
   incompleteCountryCount: number
   incompleteSubregionLabels: readonly string[]
   scopeComplete: boolean
-  caughtUpForToday: boolean
   introductions: ReadonlyMap<string, WorldCountriesTargetIntroduction>
-  /** The curriculum recommendation before Today priority suppresses Learning behind due review. */
+  /** The current whole-Subregion curriculum recommendation, independent of Review. */
   curriculumRecommendation: WorldCountriesTodayLearningRecommendation | null
   /** Derived Home journey focus; never persisted and never sourced from queue position. */
   journeyFocusSubregionId: SubregionId | null
-  nextLearning: WorldCountriesTodayLearningRecommendation | null
-  action: WorldCountriesTodayPrimaryAction
+  /** Independent Review-area opportunity: scheduled review first, weak spots second. */
+  reviewOpportunity: WorldCountriesTodayReviewOpportunity
 }
 
 export interface WorldCountriesTodayPlanInput {
@@ -212,15 +209,7 @@ function recommendationFor(
   return null
 }
 
-function actionFor(plan: Omit<WorldCountriesTodayPlan, 'action'>): WorldCountriesTodayPrimaryAction {
-  if (plan.dueCount > 0) return { kind: 'review', candidates: plan.reviewQueue }
-  if (plan.nextLearning) return { kind: 'learn', recommendation: plan.nextLearning }
-  if (plan.consolidationQueue.length > 0) return { kind: 'consolidate', candidates: plan.consolidationQueue }
-  if (plan.scopeComplete) return { kind: 'complete' }
-  return { kind: 'unavailable' }
-}
-
-/** Derive due review, the next whole-Subregion Learning action, and bounded consolidation. */
+/** Derive independent Journey Learning and Review-area opportunities. */
 export function buildWorldCountriesTodayPlan(
   input: WorldCountriesTodayPlanInput,
 ): WorldCountriesTodayPlan {
@@ -268,35 +257,39 @@ export function buildWorldCountriesTodayPlan(
     input.learningStates ?? [],
     progressByTarget,
   )
-  const nextLearning = dueCandidates.length === 0 ? curriculumRecommendation : null
   const journeyFocusSubregionId = curriculumRecommendation?.subregionId
     ?? subregionIds.find(subregionId => effectiveCountries.some(country => country.subregionId === subregionId && incompleteCountries.has(country.id)))
     ?? null
   const incompleteSubregionLabels = [...new Set(effectiveCountries
     .filter(country => incompleteCountries.has(country.id))
     .map(country => getSubregionDefinition(country.subregionId).label))]
-  const planWithoutAction = {
+  const reviewQueue = interleaveWorldCountriesTodayReviewCandidates(
     dueCandidates,
-    reviewQueue: interleaveWorldCountriesTodayReviewCandidates(
-      dueCandidates,
-      WORLD_COUNTRIES_TODAY_REVIEW_BLOCK_SIZE,
-    ),
+    WORLD_COUNTRIES_TODAY_REVIEW_BLOCK_SIZE,
+  )
+  const consolidationQueue = interleaveWorldCountriesTodayReviewCandidates(
     consolidationCandidates,
-    consolidationQueue: interleaveWorldCountriesTodayReviewCandidates(
-      consolidationCandidates,
-      WORLD_COUNTRIES_TODAY_REVIEW_BLOCK_SIZE,
-    ),
+    WORLD_COUNTRIES_TODAY_REVIEW_BLOCK_SIZE,
+  )
+  const reviewOpportunity: WorldCountriesTodayReviewOpportunity = dueCandidates.length > 0
+    ? { kind: 'review', candidates: reviewQueue }
+    : consolidationCandidates.length > 0
+      ? { kind: 'consolidate', candidates: consolidationQueue }
+      : null
+  return {
+    dueCandidates,
+    reviewQueue,
+    consolidationCandidates,
+    consolidationQueue,
     reviewReasonSummary: summarizeWorldCountriesTodayReviewReasons(dueCandidates),
     dueCount: dueCandidates.length,
     dueCountryCount: new Set(dueCandidates.map(candidate => candidate.country.id)).size,
     incompleteCountryCount: incompleteCountries.size,
     incompleteSubregionLabels,
     scopeComplete: effectiveCountries.length > 0 && incompleteCountries.size === 0,
-    caughtUpForToday: dueCandidates.length === 0 && nextLearning === null,
     introductions,
     curriculumRecommendation,
     journeyFocusSubregionId,
-    nextLearning,
+    reviewOpportunity,
   }
-  return { ...planWithoutAction, action: actionFor(planWithoutAction) }
 }

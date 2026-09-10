@@ -1,10 +1,10 @@
-// @vitest-environment jsdom
-
 import { act, createElement, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { countries } from '@/features/world-countries/data/countries'
 import { GuidedHomeRails } from './GuidedHomeRails'
 import { WORLD_COUNTRIES_JOURNEY_STAGES, type WorldCountriesJourneyPresentation } from './journeyPresentation'
+import type { WorldCountriesTodayReviewOpportunity } from './todayPlan'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -24,6 +24,13 @@ afterEach(() => {
   document.body.replaceChildren()
 })
 
+function makeReviewOpportunity(kind: 'review' | 'consolidate', count: number): Exclude<WorldCountriesTodayReviewOpportunity, null> {
+  return {
+    kind,
+    candidates: Array.from({ length: count }, () => ({ country: countries[0] })) as never,
+  }
+}
+
 function renderRails(overrides: Partial<Parameters<typeof GuidedHomeRails>[0]> = {}) {
   const mount = document.createElement('div')
   document.body.append(mount)
@@ -33,12 +40,11 @@ function renderRails(overrides: Partial<Parameters<typeof GuidedHomeRails>[0]> =
     evidenceStatus: 'ready',
     dueCount: 0,
     dueCountryCount: 0,
+    reviewOpportunity: null,
     reviewReasonSummary: { mistakes: 0, firstRecall: 0, firstReviewAfterLearning: 0, spaced: 0, repeated: 0 },
-    nextLearning: null,
+    onStartReview: vi.fn(),
     journey: null,
     refreshing: false,
-    caughtUp: true,
-    scopeComplete: true,
     scopeSummaries: [],
     onWorld: vi.fn(),
     onOpenPlay: vi.fn(),
@@ -55,16 +61,15 @@ function renderRails(overrides: Partial<Parameters<typeof GuidedHomeRails>[0]> =
   return railMount
 }
 
-describe('Guided World Countries home status', () => {
+describe('Guided World Countries home rails', () => {
   it('keeps a stable loading shell', () => {
-    const mount = renderRails({ evidenceStatus: 'loading', caughtUp: false })
+    const mount = renderRails({ evidenceStatus: 'loading' })
     expect(mount.textContent).toMatch(/loading.*progress/i)
     expect(mount.textContent).toContain('map will stay visible')
-    expect(mount.textContent).not.toContain('Retained recall evidence')
   })
 
   it('explains evidence failure while leaving Play available', () => {
-    const mount = renderRails({ evidenceStatus: 'error', caughtUp: false })
+    const mount = renderRails({ evidenceStatus: 'error' })
     expect(mount.textContent).toContain('Progress unavailable')
     expect(mount.textContent).toContain("couldn't load your progress")
     expect(mount.textContent).toContain('Play remains available')
@@ -72,95 +77,66 @@ describe('Guided World Countries home status', () => {
   })
 
   it('renders the zero-active-Country state', () => {
-    const mount = renderRails({ activeCountryCount: 0, caughtUp: false })
+    const mount = renderRails({ activeCountryCount: 0 })
     expect(mount.textContent).toContain('No countries in this scope')
-    expect(mount.textContent).toContain('There are no countries to learn')
+    expect(mount.textContent).toContain('There are no countries to review')
   })
 
-  it('renders a caught-up state without an actionable Continue control', () => {
+  it('renders a compact caught-up Review state without a CTA', () => {
     const mount = renderRails()
-    expect(mount.textContent).toContain('Complete')
-    expect(mount.textContent).not.toContain('Due reviews')
-    expect(mount.textContent).not.toContain('Due Countries')
-    expect(mount.querySelector('[data-primary-action]')).toBeNull()
+    expect(mount.textContent).toContain('Reviews caught up')
+    expect(mount.textContent).toContain('Nothing needs your attention right now')
+    expect(mount.querySelector('[data-review-action]')).toBeNull()
   })
 
-  it('keeps useful due counts and reasons when review is due', () => {
+  it('presents scheduled Review as a positive independent opportunity', () => {
     const mount = renderRails({
       dueCount: 3,
       dueCountryCount: 2,
-      reviewActionCount: 3,
-      caughtUp: false,
+      reviewOpportunity: makeReviewOpportunity('review', 3),
       reviewReasonSummary: { mistakes: 1, firstRecall: 0, firstReviewAfterLearning: 1, spaced: 2, repeated: 1 },
     })
 
-    expect(mount.textContent).not.toContain('3 reviews ready')
+    expect(mount.textContent).toContain('Review ready')
+    expect(mount.textContent).toContain('3 items')
+    expect(mount.textContent).toContain('See what stuck.')
+    expect(mount.textContent).toContain('Review 3 items')
     expect(mount.textContent).toContain('2 countries')
-    expect(mount.textContent).toContain('Why review now')
     expect(mount.textContent).toContain('recent mistake')
-    expect(mount.textContent).toContain('first review')
-    expect(mount.textContent).toContain('ready to revisit')
-    expect(mount.textContent).toContain('item needs extra practice')
-    expect(mount.textContent).not.toContain('spaced')
+    expect(mount.textContent).not.toContain('Why review now')
+    expect(mount.textContent).not.toContain('Guided consolidation')
   })
 
-  it('labels total due work separately from the bounded review block', () => {
+  it('labels total due work separately from the bounded Review block', () => {
     const mount = renderRails({
       dueCount: 20,
       dueCountryCount: 15,
-      reviewActionCount: 12,
-      caughtUp: false,
+      reviewOpportunity: makeReviewOpportunity('review', 12),
     })
 
-    expect(mount.textContent).toContain('20 reviews due in total')
+    expect(mount.textContent).toContain('12 items')
+    expect(mount.textContent).toContain('Review 12 items')
+    expect(mount.textContent).toContain('20 reviews due overall')
     expect(mount.textContent).toContain('15 countries')
     expect(mount.textContent).not.toContain('20 reviews ready')
   })
 
-  it('leaves the equal review count to the primary action while keeping support context', () => {
+  it('offers weak-spot practice only after scheduled reviews are caught up', () => {
+    const onStartReview = vi.fn()
     const mount = renderRails({
-      dueCount: 3,
-      dueCountryCount: 2,
-      reviewActionCount: 3,
-      caughtUp: false,
-      reviewReasonSummary: { mistakes: 1, firstRecall: 0, firstReviewAfterLearning: 0, spaced: 0, repeated: 0 },
+      reviewOpportunity: makeReviewOpportunity('consolidate', 4),
+      onStartReview,
     })
 
-    expect(mount.textContent).toContain('2 countries')
-    expect(mount.textContent).toContain('Why review now')
-    expect(mount.textContent).toContain('recent mistake')
-    expect(mount.textContent).not.toContain('3 reviews ready')
-    expect(mount.textContent).not.toContain('3 reviews due in total')
+    expect(mount.textContent).toContain('Reviews caught up')
+    expect(mount.textContent).toContain('4 weak spots available')
+    expect(mount.textContent).toContain('Strengthen weak spots')
+    expect(mount.textContent).not.toContain('consolidation')
+    act(() => mount.querySelector<HTMLButtonElement>('[data-review-action]')?.click())
+    expect(onStartReview).toHaveBeenCalledOnce()
   })
 
-  it('explains geography choices without showing a population card', () => {
-    const worldMount = renderRails({ level: 'world' })
-    expect(worldMount.textContent).toContain('Explore the world')
-    expect(worldMount.textContent).toContain('Choose a continent')
-    expect(worldMount.textContent).toContain('inspect your progress')
-    expect(worldMount.textContent).not.toContain('Population')
-    expect(worldMount.textContent).not.toContain('active Countries')
-
-    act(() => root?.unmount())
-    root = null
-    act(() => railRoot?.unmount())
-    railRoot = null
-    document.body.replaceChildren()
-
-    const continentMount = renderRails({ level: 'continent', continent: 'Europe' })
-    expect(continentMount.textContent).toContain('Learning regions')
-    expect(continentMount.textContent).toContain('Choose a region')
-    expect(continentMount.textContent).toContain('inspect its learning journey')
-  })
-
-  it('keeps the planner action out of the normal Home rail', () => {
-    const mount = renderRails({ nextLearning: { track: 'learn-capitals', subregionLabel: 'Northern Europe' } })
-
-    expect(mount.textContent).not.toContain('Continue')
-    expect(mount.textContent).not.toContain('The guided path continues')
-  })
-
-  it('projects the detailed journey into three learner milestones', () => {
+  it('keeps Journey orientation separate from its specific next action', () => {
     const journey: WorldCountriesJourneyPresentation = {
       subregionId: 'northern-europe',
       currentStageId: 'add-capitals',
@@ -182,50 +158,13 @@ describe('Guided World Countries home status', () => {
     expect(mount.textContent).toContain('Complete')
     expect(mount.textContent).toContain('Current')
     expect(mount.textContent).toContain('Upcoming')
-    expect(mount.textContent).toContain('Next in journey: Add the capitals')
+    expect(mount.textContent).not.toContain('Next in journey')
     expect(mount.querySelector('[data-journey-milestone="countries"]')?.getAttribute('data-journey-status')).toBe('complete')
     expect(mount.querySelector('[data-journey-milestone="capitals"]')?.getAttribute('data-journey-status')).toBe('current')
     expect(mount.querySelector('[data-journey-milestone="mastery"]')?.getAttribute('data-journey-status')).toBe('upcoming')
-    expect(mount.textContent).not.toContain('Meet the countries')
   })
 
-  it('explains why review comes before new learning', () => {
-    const mount = renderRails({ dueCount: 1, caughtUp: false, nextLearning: null })
-
-    expect(mount.textContent).toContain('Why review now')
-    expect(mount.textContent).toContain('1 review ready')
-  })
-
-  it('distinguishes caught-up scheduled work from unfinished core progress', () => {
-    const mount = renderRails({
-      level: 'continent',
-      continent: 'Europe',
-      scopeComplete: false,
-      scopeProgress: {
-        scopeId: 'continent:Europe',
-        countryIds: ['NO'],
-        totalCountries: 46,
-        completeCountries: 45,
-        completionRatio: 45 / 46,
-        complete: false,
-        countryStateCounts: { unpractised: 0, weak: 0, developing: 1, strong: 0, complete: 45 },
-        additionalMasteredSkills: 0,
-        additionalSkillCount: 0,
-        additionalMasteryRatio: 0,
-      },
-      incompleteSubregionLabels: ['Eastern Europe'],
-      consolidationAvailable: true,
-    })
-
-    expect(mount.textContent).toContain('Still in progress')
-    expect(mount.textContent).toContain('45 of 46 countries complete')
-    expect(mount.textContent).toContain('Eastern Europe')
-    expect(mount.textContent).not.toContain('Complete')
-    expect(mount.textContent).not.toContain('Unfinished guided knowledge')
-    expect([...mount.querySelectorAll<HTMLButtonElement>('button')].some(button => button.textContent === 'Practice unfinished area')).toBe(false)
-  })
-
-  it('labels an inspected Subregion without replacing the guided recommendation', () => {
+  it('keeps an inspected Subregion separate from the guided Journey focus', () => {
     const onFocusGuidedSubregion = vi.fn()
     const journey: WorldCountriesJourneyPresentation = {
       subregionId: 'southern-europe',
@@ -244,43 +183,32 @@ describe('Guided World Countries home status', () => {
       continent: 'Europe',
       journey,
       guidedSubregionId: 'northern-europe',
-      nextLearning: { track: 'learn-countries', subregionLabel: 'Northern Europe' },
       onFocusGuidedSubregion,
     })
 
     expect(mount.textContent).toContain("You're viewing Southern Europe")
     expect(mount.textContent).toContain('Your journey is still focused on Northern Europe')
-    expect(mount.textContent).not.toContain('Your next step')
     expect(mount.textContent).not.toContain('next action')
-    expect(mount.textContent).not.toContain('The guided path continues in Northern Europe.')
-    expect(mount.textContent).toContain('Next in journey: Learn the countries')
+    expect(mount.textContent).not.toContain('next step')
     act(() => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Back to Northern Europe')?.click())
     expect(onFocusGuidedSubregion).toHaveBeenCalledOnce()
   })
 
-  it('labels inspected geography as separate from available consolidation', () => {
-    const journey: WorldCountriesJourneyPresentation = {
-      subregionId: 'southern-europe',
-      currentStageId: 'put-it-together',
-      complete: false,
-      stages: WORLD_COUNTRIES_JOURNEY_STAGES.map(stage => ({ ...stage, status: stage.id === 'put-it-together' ? 'current' : 'upcoming', detail: 'Progress detail' })),
-      countriesLearned: true,
-      countriesEstablished: true,
-      capitalsLearned: true,
-      capitalsEstablished: true,
-      countryRecallMastered: false,
-      capitalRecallMastered: false,
-      coreRecallComplete: false,
-    }
-    const mount = renderRails({
-      continent: 'Europe',
-      journey,
-      caughtUp: true,
-      scopeComplete: false,
-      consolidationAvailable: true,
-    })
+  it('keeps geography choices and secondary actions available', () => {
+    const worldMount = renderRails({ level: 'world' })
+    expect(worldMount.textContent).toContain('Explore the world')
+    expect(worldMount.textContent).toContain('Choose a continent')
+    expect(worldMount.textContent).toContain('Play and progress')
 
-    expect(mount.textContent).toContain('There is nothing new to learn here right now, but you can keep practising unfinished recall.')
-    expect(mount.textContent).not.toContain('targeted guided practice')
+    act(() => root?.unmount())
+    root = null
+    act(() => railRoot?.unmount())
+    railRoot = null
+    document.body.replaceChildren()
+
+    const continentMount = renderRails({ level: 'continent', continent: 'Europe' })
+    expect(continentMount.textContent).toContain('Learning regions')
+    expect(continentMount.textContent).toContain('Choose a region')
+    expect(continentMount.textContent).toContain('Back to World')
   })
 })
