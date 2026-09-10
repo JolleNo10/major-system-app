@@ -96,6 +96,38 @@ describe('World Countries guided shell', () => {
     expect(mount.querySelector('#world-countries-play-heading')).not.toBeNull()
     expect(mount.querySelector('nav[aria-label="World Countries hierarchy"]')?.textContent).toMatch(/World\s*\/\s*Europe\s*\/\s*Playground/)
     expect(mount.textContent).toContain('Current guided scopeEurope')
+
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.click())
+
+    expect(mount.querySelector('[data-testid="today-workflow"]')).not.toBeNull()
+    expect(mount.querySelector('nav[aria-label="World Countries navigation"]')?.textContent).toContain('World / Europe')
+    expect(mount.querySelector('[data-world-countries-playground]')?.getAttribute('aria-current')).toBeNull()
+  })
+
+  it('toggles Playground back to World Home at World scope', async () => {
+    const mount = await renderShell()
+
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.click())
+    expect(mount.querySelector('#world-countries-play-heading')).not.toBeNull()
+
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.click())
+
+    expect(mount.querySelector('[data-testid="today-workflow"]')).not.toBeNull()
+    expect(mount.querySelector('nav[aria-label="World Countries navigation"]')?.textContent).toContain('Learn the world')
+    expect(mount.querySelector('[data-world-countries-playground]')?.getAttribute('aria-current')).toBeNull()
+  })
+
+  it('returns to Playground from an activity launched through the header', async () => {
+    const mount = await renderShell()
+
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.click())
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-play-activity="recite"]')?.click())
+    expect(mount.querySelector('[data-testid="recite-workflow"]')).not.toBeNull()
+
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.click())
+
+    expect(mount.querySelector('#world-countries-play-heading')).not.toBeNull()
+    expect(mount.querySelector('[data-world-countries-playground]')?.getAttribute('aria-current')).toBe('page')
   })
 
   it('opens Playground from Home and routes its choices to the existing workflow owners', async () => {

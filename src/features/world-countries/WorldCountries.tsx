@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import type { AnswerMode } from '@/core/types'
 import { useLayoutHeader } from '@/app/layout/PageLayoutContext'
 import { useSettings } from '@/app/settings/SettingsContext'
@@ -44,10 +44,10 @@ export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
     setContinent(nextContinent)
     setArea('continent')
   }
-  const goToScope = () => {
+  const goToScope = useCallback(() => {
     setDrillEntry(null)
     setArea(continent ? 'continent' : 'home')
-  }
+  }, [continent])
   const openPlay = () => setArea('play')
   const openWorkflow = (workflow: Extract<WorldCountriesArea, 'drill' | 'recite' | 'quiz'>) => {
     if (workflow === 'drill') setDrillEntry(null)
@@ -68,13 +68,13 @@ export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
         type="button"
         data-world-countries-playground
         aria-current={area === 'play' ? 'page' : undefined}
-        onClick={openPlay}
+        onClick={area === 'play' ? goToScope : openPlay}
         className={`shrink-0 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 ${area === 'play' ? 'border-cyan-500/60 bg-cyan-500/10 text-cyan-200' : 'border-zinc-700 text-zinc-300 hover:border-cyan-500 hover:text-zinc-100'}`}
       >
         Playground
       </button>
     </nav>
-  ), [area, continent])
+  ), [area, continent, goToScope])
   useLayoutHeader(header)
 
   return (
