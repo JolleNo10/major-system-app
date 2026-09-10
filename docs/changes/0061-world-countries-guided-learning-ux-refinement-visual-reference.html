@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>World Countries — Guided Path UX Drafts</title>
+<style>
+  :root{
+    --bg:#09090b; --panel:#18181b; --panel2:#111113; --border:#2a2a2f;
+    --text:#fafafa; --muted:#a1a1aa; --dim:#71717a;
+    --violet:#7c3aed; --violet2:#8b5cf6; --cyan:#22d3ee; --cyan2:#67e8f9;
+    --green:#22c55e; --amber:#f59e0b; --red:#ef4444;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+  body{min-height:100vh}
+  button,input{font:inherit}
+  .prototype-nav{height:52px;display:flex;align-items:center;gap:8px;padding:0 18px;border-bottom:1px solid #202024;background:#0d0d10;position:sticky;top:0;z-index:20}
+  .prototype-nav strong{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#d4d4d8;margin-right:10px}
+  .prototype-nav button{border:1px solid #303036;background:#18181b;color:#a1a1aa;padding:7px 11px;border-radius:8px;cursor:pointer;font-size:12px}
+  .prototype-nav button.active{background:#2e1065;border-color:#6d28d9;color:#f5f3ff}
+  .note{margin-left:auto;color:#71717a;font-size:11px}
+  .screen{display:none;min-height:calc(100vh - 52px);padding:18px}
+  .screen.active{display:block}
+  .app-shell{height:calc(100vh - 88px);min-height:780px;display:grid;grid-template-rows:auto 1fr;gap:12px;max-width:1580px;margin:0 auto}
+  .app-header{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:2px 4px 8px}
+  .brand-kicker{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--violet2)}
+  .app-title{font-size:22px;line-height:1.1;font-weight:850;margin-top:3px}
+  .header-nav{display:flex;gap:8px;align-items:center}
+  .header-nav span{font-size:13px;color:#a1a1aa;padding:8px 11px;border-radius:8px}
+  .header-nav .selected{background:#1f1f23;color:#fafafa;border:1px solid #303036}
+  .layout{min-height:0;display:grid;grid-template-columns:260px minmax(620px,1fr) 285px;gap:12px}
+  .layout.two{grid-template-columns:245px minmax(720px,1fr)}
+  .layout.one{grid-template-columns:1fr}
+  .panel{background:linear-gradient(180deg,#18181b 0%,#151518 100%);border:1px solid var(--border);border-radius:14px;min-height:0}
+  .rail{padding:16px;overflow:hidden}
+  .rail h2,.rail h3,.rail p{margin:0}
+  .eyebrow{font-size:10px;font-weight:850;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+  .crumb{font-size:11px;color:#71717a;margin-bottom:12px}.crumb b{color:var(--cyan2);font-weight:650}
+  .rail-title{font-size:18px;font-weight:780;margin-top:4px!important}
+  .rail-sub{font-size:12px;color:var(--muted);line-height:1.5;margin-top:5px!important}
+  .list{margin-top:16px;display:grid;gap:7px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border-radius:9px;border:1px solid transparent;color:#d4d4d8;font-size:12px}
+  .row:hover{background:#1d1d21}
+  .row.active{background:#10262b;border-color:#164e63;color:#ecfeff}
+  .row strong{font-weight:700}.row small{color:#71717a;font-size:11px}
+  .bar{height:4px;background:#27272a;border-radius:99px;overflow:hidden;width:70px}.bar>i{display:block;height:100%;background:#52525b}.row.active .bar>i{background:var(--cyan)}
+  .subsection{margin-top:18px;padding-top:16px;border-top:1px solid #27272a}
+  .journey{margin-top:10px;display:grid;gap:8px}
+  .journey-step{display:flex;align-items:center;gap:9px;font-size:12px;color:#a1a1aa}
+  .dot{width:18px;height:18px;display:grid;place-items:center;border-radius:50%;border:1px solid #3f3f46;color:#71717a;font-size:10px;font-weight:900;flex:0 0 auto}
+  .journey-step.done{color:#d4d4d8}.journey-step.done .dot{background:#12351e;border-color:#166534;color:#86efac}
+  .journey-step.current{color:#fff}.journey-step.current .dot{background:#2e1065;border-color:#7c3aed;color:#ddd6fe;box-shadow:0 0 0 3px rgba(124,58,237,.12)}
+  .tiny-link{margin-top:10px;color:#a78bfa;font-size:11px;font-weight:650}
+  .map-panel{position:relative;overflow:hidden;background:radial-gradient(circle at 50% 40%,#172025 0%,#0f1114 50%,#0c0c0f 100%);border:1px solid var(--border);border-radius:14px;min-height:0}
+  .map-header{position:absolute;top:15px;left:18px;z-index:3}
+  .map-header .eyebrow{color:#67e8f9}.map-header h1{font-size:26px;margin:2px 0 0;font-weight:850}.map-header p{font-size:12px;color:#a1a1aa;margin:5px 0 0}
+  .map-meta{position:absolute;top:16px;right:18px;display:flex;gap:7px;z-index:3}.pill{padding:6px 9px;border-radius:99px;background:rgba(24,24,27,.88);border:1px solid #303036;font-size:10px;color:#a1a1aa;backdrop-filter:blur(8px)}
+  .world-map{position:absolute;inset:84px 58px 118px;opacity:.95}
+  .world-map svg,.region-map svg{width:100%;height:100%}
+  .land{fill:#24262b;stroke:#3f3f46;stroke-width:2;transition:.2s}.land.progress{fill:#15373f;stroke:#22d3ee}.land.mastered{fill:#173320;stroke:#22c55e}.land.dim{opacity:.42}
+  .map-legend{position:absolute;left:18px;bottom:100px;display:flex;gap:11px;font-size:10px;color:#71717a}.legend-item{display:flex;align-items:center;gap:5px}.swatch{width:9px;height:9px;border-radius:2px;background:#24262b;border:1px solid #3f3f46}.swatch.cyan{background:#15373f;border-color:#22d3ee}.swatch.green{background:#173320;border-color:#22c55e}
+  .dock{position:absolute;left:14px;right:14px;bottom:14px;min-height:78px;border:1px solid #34343a;background:rgba(20,20,23,.96);backdrop-filter:blur(12px);border-radius:12px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:16px;box-shadow:0 16px 40px rgba(0,0,0,.28)}
+  .dock-copy{min-width:0}.dock-kicker{font-size:10px;font-weight:850;letter-spacing:.1em;text-transform:uppercase;color:#a78bfa}.dock-title{font-size:18px;font-weight:800;margin-top:2px}.dock-sub{font-size:11px;color:#a1a1aa;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:760px}
+  .actions{display:flex;gap:8px;align-items:center;flex:0 0 auto}.btn{border-radius:9px;border:1px solid #3f3f46;background:#27272a;color:#e4e4e7;padding:10px 14px;font-size:12px;font-weight:650}.btn.primary{background:var(--violet);border-color:#8b5cf6;color:white;font-weight:800}.btn.ghost{background:#18181b;color:#a1a1aa}.key{margin-left:8px;padding:1px 5px;border:1px solid rgba(255,255,255,.25);border-bottom-width:2px;border-radius:4px;font-size:9px}
+  .stat-card{padding:12px;border-radius:10px;background:#131316;border:1px solid #29292e;margin-top:12px}.stat-card strong{display:block;font-size:13px}.stat-card span{display:block;margin-top:3px;color:#71717a;font-size:11px;line-height:1.35}
+  .why{margin-top:12px;padding:10px;border-radius:9px;background:#151519;border:1px solid #29292e;color:#a1a1aa;font-size:11px;line-height:1.5}.why b{color:#d4d4d8}
+
+  /* learning */
+  .learning-map{position:relative;overflow:hidden;background:radial-gradient(circle at 50% 44%,#182229,#0d0f12 62%);border:1px solid var(--border);border-radius:14px}
+  .region-map{position:absolute;inset:90px 80px 154px}
+  .country-shape{fill:#24272b;stroke:#52525b;stroke-width:2}.country-shape.learned{fill:#122f25;stroke:#22c55e}.country-shape.current{fill:#103842;stroke:#22d3ee;stroke-width:3;filter:drop-shadow(0 0 8px rgba(34,211,238,.22))}.country-shape.muted{opacity:.35}
+  .session-top{position:absolute;top:16px;left:18px;right:18px;display:flex;align-items:flex-start;justify-content:space-between;z-index:3}.session-top h1{font-size:22px;margin:2px 0 0}.session-top p{margin:4px 0 0;color:#a1a1aa;font-size:11px}.exit{padding:7px 9px;border-radius:7px;border:1px solid #303036;color:#71717a;font-size:11px;background:#151518}
+  .task-dock{position:absolute;left:14px;right:14px;bottom:14px;border:1px solid #36363b;background:rgba(20,20,23,.97);border-radius:12px;padding:13px 14px;box-shadow:0 16px 40px rgba(0,0,0,.3)}
+  .task-row{display:grid;grid-template-columns:minmax(200px,1fr) minmax(320px,500px) auto;gap:14px;align-items:end}
+  .task-direction{font-size:10px;color:#67e8f9;text-transform:uppercase;letter-spacing:.11em;font-weight:850}.task-title{font-size:20px;font-weight:820;margin-top:2px}.task-sub{font-size:11px;color:#71717a;margin-top:3px}
+  .answer-label{font-size:10px;color:#71717a;margin-bottom:5px}.answer{height:42px;border-radius:9px;border:1px solid #3f3f46;background:#0f0f12;color:#fafafa;padding:0 12px;width:100%;outline:none}.answer:focus{border-color:#8b5cf6;box-shadow:0 0 0 3px rgba(124,58,237,.18)}
+  .progress-card{padding:12px;border:1px solid #29292e;border-radius:10px;background:#131316;margin-top:14px}.progress-head{display:flex;justify-content:space-between;font-size:11px;color:#a1a1aa}.progress-track{height:6px;background:#27272a;border-radius:99px;overflow:hidden;margin-top:8px}.progress-track i{display:block;height:100%;background:#22c55e;width:66%}
+  .country-list{display:grid;gap:7px;margin-top:12px}.country-item{display:flex;align-items:center;gap:8px;padding:8px 9px;border-radius:8px;color:#a1a1aa;font-size:12px}.country-item.current{background:#10262b;color:#ecfeff}.country-item.done{color:#d4d4d8}.country-status{width:17px;height:17px;border:1px solid #3f3f46;border-radius:50%;display:grid;place-items:center;font-size:9px}.country-item.done .country-status{background:#12351e;border-color:#166534;color:#86efac}.country-item.current .country-status{border-color:#22d3ee;color:#67e8f9}
+  .micro-help{margin-top:14px;color:#71717a;font-size:11px;line-height:1.45}.micro-help b{color:#a1a1aa}
+
+  /* checkpoint */
+  .checkpoint-dock .dock-kicker{color:#86efac}.checkpoint-dock .dock-title{font-size:19px}.checkpoint-dock .dock-sub{max-width:610px}
+  .success-mark{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#12351e;border:1px solid #166534;color:#86efac;margin-right:7px;font-size:10px}
+
+  /* final */
+  .final-shell{height:calc(100vh - 88px);max-width:1280px;margin:0 auto;position:relative;border:1px solid var(--border);border-radius:14px;overflow:hidden;background:radial-gradient(circle at 50% 42%,#182229,#0d0f12 65%)}
+  .final-head{position:absolute;top:20px;left:22px;right:22px;display:flex;justify-content:space-between;align-items:flex-start;z-index:3}.final-head .eyebrow{color:#a78bfa}.final-head h1{margin:3px 0 0;font-size:26px}.final-counter{font-size:12px;color:#a1a1aa;padding:8px 10px;border:1px solid #303036;border-radius:8px;background:#151518}
+  .final-map{position:absolute;inset:82px 70px 150px}
+  .final-hint{position:absolute;left:22px;bottom:112px;color:#71717a;font-size:10px}
+
+  /* completion */
+  .completion-side{padding:16px}.completion-side h2{font-size:17px;margin:4px 0 0}.completion-side p{font-size:11px;color:#a1a1aa;line-height:1.5}.completion-card{margin-top:14px;padding:12px;border:1px solid #2b2b30;border-radius:10px;background:#131316}.completion-card .line{display:flex;justify-content:space-between;gap:12px;font-size:12px;padding:7px 0}.completion-card .line+.line{border-top:1px solid #242428}.ok{color:#86efac}.next{color:#c4b5fd}
+
+  @media (max-width:1100px){.layout,.layout.two{grid-template-columns:1fr}.rail{display:none}.note{display:none}.task-row{grid-template-columns:1fr}.app-shell{height:auto;min-height:900px}.map-panel,.learning-map{min-height:760px}}
+</style>
+</head>
+<body>
+  <div class="prototype-nav">
+    <strong>UX Drafts</strong>
+    <button data-screen="home">1 · Home</button>
+    <button data-screen="learn">2 · Active learning</button>
+    <button data-screen="checkpoint">3 · Checkpoint</button>
+    <button data-screen="final">4 · Final recall</button>
+    <button data-screen="complete">5 · Completion</button>
+    <span class="note">Concept only · follow existing branch architecture</span>
+  </div>
+
+  <section id="home" class="screen">
+    <div class="app-shell">
+      <div class="app-header">
+        <div><div class="brand-kicker">World Countries</div><div class="app-title">Your world</div></div>
+        <div class="header-nav"><span class="selected">Home</span><span>Play</span><span>Progress</span></div>
+      </div>
+      <div class="layout">
+        <aside class="panel rail">
+          <div class="eyebrow">World progress</div>
+          <h2 class="rail-title">Explore by continent</h2>
+          <p class="rail-sub">The map and this list show where your knowledge is strongest.</p>
+          <div class="list">
+            <div class="row"><strong>Africa</strong><div class="bar"><i style="width:18%"></i></div><small>18%</small></div>
+            <div class="row"><strong>Americas</strong><div class="bar"><i style="width:31%"></i></div><small>31%</small></div>
+            <div class="row"><strong>Asia</strong><div class="bar"><i style="width:42%"></i></div><small>42%</small></div>
+            <div class="row active"><strong>Europe</strong><div class="bar"><i style="width:67%"></i></div><small>67%</small></div>
+            <div class="row"><strong>Oceania</strong><div class="bar"><i style="width:12%"></i></div><small>12%</small></div>
+          </div>
+          <div class="subsection">
+            <div class="eyebrow">World mastery</div>
+            <div class="stat-card"><strong>76 of 193 mastered</strong><span>Both country location and capital recall are strong.</span></div>
+          </div>
+        </aside>
+
+        <main class="map-panel">
+          <div class="map-header"><div class="eyebrow">World map</div><h1>Build a map you can recall</h1><p>Progress becomes visible here as your recall strengthens.</p></div>
+          <div class="map-meta"><div class="pill">193 countries</div><div class="pill">Offline progress</div></div>
+          <div class="world-map">
+            <svg viewBox="0 0 1000 500" aria-hidden="true">
+              <path class="land mastered" d="M88 123 L168 82 L239 102 L260 150 L227 198 L174 215 L141 181 L97 174 Z"/>
+              <path class="land progress" d="M214 222 L259 216 L292 251 L285 324 L251 405 L217 353 L224 294 Z"/>
+              <path class="land progress" d="M451 102 L499 82 L548 98 L561 133 L527 154 L481 148 Z"/>
+              <path class="land progress" d="M489 160 L558 148 L599 198 L578 300 L535 356 L492 296 L471 218 Z"/>
+              <path class="land" d="M557 102 L642 73 L756 91 L839 130 L886 180 L827 218 L742 194 L689 224 L618 201 L578 163 Z"/>
+              <path class="land dim" d="M791 318 L851 300 L902 333 L887 374 L821 383 L778 351 Z"/>
+              <circle cx="520" cy="111" r="6" fill="#67e8f9"/>
+            </svg>
+          </div>
+          <div class="map-legend"><div class="legend-item"><i class="swatch"></i>Not started</div><div class="legend-item"><i class="swatch cyan"></i>In progress</div><div class="legend-item"><i class="swatch green"></i>Mastered</div></div>
+          <div class="dock">
+            <div class="dock-copy"><div class="dock-kicker">Ready to review</div><div class="dock-title">8 reviews are ready</div><div class="dock-sub">4 first reviews · 2 recent misses · then Northern Europe capitals are next.</div></div>
+            <div class="actions"><button class="btn ghost">Choose another area</button><button class="btn primary">Review 8 items <span class="key">↵</span></button></div>
+          </div>
+        </main>
+
+        <aside class="panel rail">
+          <div class="eyebrow">Your journey</div>
+          <h2 class="rail-title">Northern Europe</h2>
+          <p class="rail-sub">You’re part-way through this region. Review comes first; capitals are next.</p>
+          <div class="journey">
+            <div class="journey-step done"><span class="dot">✓</span><span>Countries</span></div>
+            <div class="journey-step current"><span class="dot">●</span><span>Capitals</span></div>
+            <div class="journey-step"><span class="dot">○</span><span>Mastery</span></div>
+          </div>
+          <div class="tiny-link">See full learning journey</div>
+          <div class="subsection">
+            <div class="eyebrow">Why this now?</div>
+            <div class="why"><b>Reviews protect what you've learned.</b><br/>A short review block is due before you add new material.</div>
+          </div>
+          <div class="subsection"><div class="row"><strong>Play</strong><small>Free practice →</small></div><div class="row"><strong>Progress</strong><small>See details →</small></div></div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <section id="learn" class="screen">
+    <div class="app-shell">
+      <div class="app-header"><div><div class="brand-kicker">World Countries</div><div class="app-title">Learn Northern Europe</div></div><div class="header-nav"><span>Set 1 of 4</span></div></div>
+      <div class="layout">
+        <aside class="panel rail">
+          <div class="crumb">World / Europe / <b>Northern Europe</b></div>
+          <div class="eyebrow">Current set</div><h2 class="rail-title">3 countries</h2><p class="rail-sub">Focus only on this small group. The rest can wait.</p>
+          <div class="country-list">
+            <div class="country-item done"><span class="country-status">✓</span>Norway</div>
+            <div class="country-item current"><span class="country-status">●</span>Sweden</div>
+            <div class="country-item"><span class="country-status">○</span>Finland</div>
+          </div>
+          <div class="subsection"><div class="tiny-link">Edit learning order</div><div class="tiny-link">Memory aid</div></div>
+        </aside>
+
+        <main class="learning-map">
+          <div class="session-top"><div><div class="eyebrow" style="color:#67e8f9">Recall</div><h1>Which country is highlighted?</h1><p>Northern Europe · Set 1</p></div><button class="exit">Exit</button></div>
+          <div class="region-map">
+            <svg viewBox="0 0 700 500" aria-hidden="true">
+              <path class="country-shape learned" d="M216 98 L260 71 L284 93 L276 149 L244 195 L222 162 Z"/>
+              <path class="country-shape current" d="M291 83 L337 70 L359 101 L348 177 L315 206 L292 160 Z"/>
+              <path class="country-shape" d="M371 92 L416 83 L444 120 L434 188 L401 206 L373 164 Z"/>
+              <path class="country-shape muted" d="M190 215 L242 208 L252 258 L226 292 L186 268 Z"/>
+              <path class="country-shape muted" d="M282 229 L333 216 L355 256 L332 296 L285 288 Z"/>
+              <path class="country-shape muted" d="M381 228 L436 218 L462 257 L438 300 L392 286 Z"/>
+            </svg>
+          </div>
+          <div class="task-dock">
+            <div class="task-row">
+              <div><div class="task-direction">Location → Country</div><div class="task-title">Name the country</div><div class="task-sub">2 of 3 in this set</div></div>
+              <div><div class="answer-label">Your answer</div><input class="answer" value="" placeholder="Type the country…" /></div>
+              <button class="btn primary">Check <span class="key">↵</span></button>
+            </div>
+          </div>
+        </main>
+
+        <aside class="panel rail">
+          <div class="eyebrow">Practice</div><h2 class="rail-title">2 of 3 solid</h2><p class="rail-sub">Get each country back reliably before moving on.</p>
+          <div class="progress-card"><div class="progress-head"><span>This set</span><strong>67%</strong></div><div class="progress-track"><i></i></div></div>
+          <div class="subsection"><div class="eyebrow">What happens next</div><p class="rail-sub">Finish this set, then mix it with the countries you've already learned.</p></div>
+          <div class="subsection"><div class="tiny-link">Skip to next step</div></div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <section id="checkpoint" class="screen">
+    <div class="app-shell">
+      <div class="app-header"><div><div class="brand-kicker">World Countries</div><div class="app-title">Learn Northern Europe</div></div><div class="header-nav"><span>Set 1 complete</span></div></div>
+      <div class="layout two">
+        <aside class="panel rail">
+          <div class="crumb">World / Europe / <b>Northern Europe</b></div>
+          <div class="eyebrow">Current set</div><h2 class="rail-title">Set 1 complete</h2>
+          <div class="country-list"><div class="country-item done"><span class="country-status">✓</span>Norway</div><div class="country-item done"><span class="country-status">✓</span>Sweden</div><div class="country-item done"><span class="country-status">✓</span>Finland</div></div>
+          <div class="subsection"><div class="eyebrow">Up next</div><p class="rail-sub">Learn the next 3 countries. They’ll be mixed with this set afterward.</p></div>
+        </aside>
+        <main class="learning-map">
+          <div class="session-top"><div><div class="eyebrow" style="color:#86efac">Set complete</div><h1>Northern Europe</h1><p>Your map stays visible while you choose the next step.</p></div><button class="exit">Exit</button></div>
+          <div class="region-map">
+            <svg viewBox="0 0 700 500" aria-hidden="true">
+              <path class="country-shape learned" d="M216 98 L260 71 L284 93 L276 149 L244 195 L222 162 Z"/>
+              <path class="country-shape learned" d="M291 83 L337 70 L359 101 L348 177 L315 206 L292 160 Z"/>
+              <path class="country-shape learned" d="M371 92 L416 83 L444 120 L434 188 L401 206 L373 164 Z"/>
+              <path class="country-shape muted" d="M190 215 L242 208 L252 258 L226 292 L186 268 Z"/>
+              <path class="country-shape muted" d="M282 229 L333 216 L355 256 L332 296 L285 288 Z"/>
+              <path class="country-shape muted" d="M381 228 L436 218 L462 257 L438 300 L392 286 Z"/>
+            </svg>
+          </div>
+          <div class="dock checkpoint-dock">
+            <div class="dock-copy"><div class="dock-kicker"><span class="success-mark">✓</span>Set 1 complete</div><div class="dock-title">You recalled all 3 countries in this practice.</div><div class="dock-sub">Next: learn 3 more. After that, you'll practise all 6 together.</div></div>
+            <div class="actions"><button class="btn ghost">Practise this set again</button><button class="btn primary">Learn next 3 <span class="key">↵</span></button></div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </section>
+
+  <section id="final" class="screen">
+    <div class="final-shell">
+      <div class="final-head"><div><div class="eyebrow">Final recall</div><h1>Northern Europe</h1></div><div class="final-counter">7 / 12</div></div>
+      <div class="final-map">
+        <svg viewBox="0 0 900 520" aria-hidden="true">
+          <path class="country-shape learned" d="M208 92 L254 64 L281 88 L270 151 L238 204 L214 165 Z"/>
+          <path class="country-shape current" d="M289 75 L343 62 L365 98 L353 181 L316 214 L288 158 Z"/>
+          <path class="country-shape" d="M376 85 L428 77 L458 116 L448 191 L409 214 L378 164 Z"/>
+          <path class="country-shape" d="M193 220 L250 211 L264 267 L232 307 L184 278 Z"/>
+          <path class="country-shape" d="M286 235 L344 220 L370 263 L341 310 L286 298 Z"/>
+          <path class="country-shape" d="M391 232 L451 221 L479 264 L452 314 L400 299 Z"/>
+          <path class="country-shape" d="M495 116 L544 103 L565 142 L554 190 L511 202 L487 163 Z"/>
+          <path class="country-shape" d="M510 231 L566 223 L588 268 L558 306 L511 294 Z"/>
+        </svg>
+      </div>
+      <div class="final-hint">No learning-order cues or memory aids in Final Recall.</div>
+      <div class="task-dock">
+        <div class="task-row">
+          <div><div class="task-direction">Location → Country</div><div class="task-title">Name the country</div><div class="task-sub">One full pass through the region</div></div>
+          <div><div class="answer-label">Your answer</div><input class="answer" placeholder="Type the country…" /></div>
+          <button class="btn primary">Check <span class="key">↵</span></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="complete" class="screen">
+    <div class="app-shell">
+      <div class="app-header"><div><div class="brand-kicker">World Countries</div><div class="app-title">Northern Europe</div></div><div class="header-nav"><span>Learning complete</span></div></div>
+      <div class="layout">
+        <aside class="panel rail">
+          <div class="crumb">World / Europe / <b>Northern Europe</b></div>
+          <div class="eyebrow">Region progress</div><h2 class="rail-title">Countries learned</h2><p class="rail-sub">You’ve completed the country-learning path for this region.</p>
+          <div class="journey"><div class="journey-step done"><span class="dot">✓</span><span>Countries</span></div><div class="journey-step current"><span class="dot">●</span><span>Capitals</span></div><div class="journey-step"><span class="dot">○</span><span>Mastery</span></div></div>
+        </aside>
+        <main class="learning-map">
+          <div class="session-top"><div><div class="eyebrow" style="color:#86efac">Countries learned</div><h1>Northern Europe</h1><p>All countries in this region completed through final recall.</p></div></div>
+          <div class="region-map">
+            <svg viewBox="0 0 700 500" aria-hidden="true">
+              <path class="country-shape learned" d="M216 98 L260 71 L284 93 L276 149 L244 195 L222 162 Z"/>
+              <path class="country-shape learned" d="M291 83 L337 70 L359 101 L348 177 L315 206 L292 160 Z"/>
+              <path class="country-shape learned" d="M371 92 L416 83 L444 120 L434 188 L401 206 L373 164 Z"/>
+              <path class="country-shape learned" d="M190 215 L242 208 L252 258 L226 292 L186 268 Z"/>
+              <path class="country-shape learned" d="M282 229 L333 216 L355 256 L332 296 L285 288 Z"/>
+              <path class="country-shape learned" d="M381 228 L436 218 L462 257 L438 300 L392 286 Z"/>
+            </svg>
+          </div>
+          <div class="dock checkpoint-dock">
+            <div class="dock-copy"><div class="dock-kicker"><span class="success-mark">✓</span>Countries learned</div><div class="dock-title">You can now locate and recall all 12 countries.</div><div class="dock-sub">We'll bring them back later so they stick. Next, connect each country with its capital.</div></div>
+            <div class="actions"><button class="btn ghost">Back to Europe</button><button class="btn primary">Add the capitals <span class="key">↵</span></button></div>
+          </div>
+        </main>
+        <aside class="panel completion-side">
+          <div class="eyebrow">What changed</div><h2>Your map moved forward</h2><p>This is a learning milestone, not the end of review. Mastery will continue to strengthen through later recall.</p>
+          <div class="completion-card"><div class="line"><span>Countries</span><strong class="ok">Learned ✓</strong></div><div class="line"><span>Capitals</span><strong class="next">Next</strong></div><div class="line"><span>Long-term mastery</span><strong>Building</strong></div></div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+<script>
+  const screens=[...document.querySelectorAll('.screen')];
+  const buttons=[...document.querySelectorAll('[data-screen]')];
+  function show(id){screens.forEach(s=>s.classList.toggle('active',s.id===id));buttons.forEach(b=>b.classList.toggle('active',b.dataset.screen===id));history.replaceState(null,'','?screen='+id)}
+  buttons.forEach(b=>b.addEventListener('click',()=>show(b.dataset.screen)));
+  const id=new URLSearchParams(location.search).get('screen')||'home';
+  show(document.getElementById(id)?id:'home');
+</script>
+</body>
+</html>
