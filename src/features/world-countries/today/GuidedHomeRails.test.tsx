@@ -43,8 +43,8 @@ function renderRails(overrides: Partial<Parameters<typeof GuidedHomeRails>[0]> =
     journey: null,
     refreshing: false,
     scopeSummaries: [],
+    scopeProgress: null,
     onWorld: vi.fn(),
-    onOpenPlay: vi.fn(),
     onOpenProgress: vi.fn(),
     ...overrides,
   }
@@ -63,15 +63,17 @@ describe('Guided World Countries home rails', () => {
     const mount = renderRails({ evidenceStatus: 'loading' })
     expect(mount.textContent).toMatch(/loading.*progress/i)
     expect(mount.textContent).toContain('map will stay visible')
+    expect(mount.querySelector('[data-progress-action]')).toHaveProperty('disabled', true)
     expect(mount.querySelector('[aria-labelledby="world-countries-review-opportunity-heading"] h2')?.textContent).toBe('Loading your progress')
   })
 
-  it('explains evidence failure while leaving Play available', () => {
+  it('explains evidence failure while leaving Playground available', () => {
     const mount = renderRails({ evidenceStatus: 'error' })
     expect(mount.textContent).toContain('Progress unavailable')
     expect(mount.textContent).toContain("couldn't load your progress")
-    expect(mount.textContent).toContain('Play remains available')
-    expect(mount.textContent).toContain('Play and progress')
+    expect(mount.textContent).toContain('Playground remains available from the feature header')
+    expect(mount.textContent).not.toContain('Play and progress')
+    expect(mount.querySelector('[data-progress-action]')).toHaveProperty('disabled', true)
     expect(mount.querySelector('[aria-labelledby="world-countries-review-opportunity-heading"] h2')?.textContent).toBe('Progress unavailable')
   })
 
@@ -264,11 +266,17 @@ describe('Guided World Countries home rails', () => {
     expect(mount.textContent).not.toContain('Journey focus')
   })
 
-  it('keeps geography choices and secondary actions available', () => {
-    const worldMount = renderRails({ level: 'world' })
+  it('keeps geography choices and places Progress in the geography footer', () => {
+    const onOpenProgress = vi.fn()
+    const worldMount = renderRails({ level: 'world', scopeProgress: { completeCountries: 1, totalCountries: 1, completionRatio: 1 }, onOpenProgress })
     expect(worldMount.textContent).toContain('Explore the world')
     expect(worldMount.textContent).toContain('Choose a continent')
-    expect(worldMount.textContent).toContain('Play and progress')
+    expect(worldMount.textContent).toContain('World progress')
+    expect(worldMount.textContent).toContain('1 / 1 complete')
+    expect(worldMount.querySelector('[aria-label="World Countries secondary actions"]')).toBeNull()
+
+    act(() => worldMount.querySelector<HTMLButtonElement>('[data-progress-action]')?.click())
+    expect(onOpenProgress).toHaveBeenCalledOnce()
 
     act(() => root?.unmount())
     root = null
@@ -276,9 +284,11 @@ describe('Guided World Countries home rails', () => {
     railRoot = null
     document.body.replaceChildren()
 
-    const continentMount = renderRails({ level: 'continent', continent: 'Europe' })
+    const continentMount = renderRails({ level: 'continent', continent: 'Europe', scopeProgress: { completeCountries: 1, totalCountries: 1, completionRatio: 1 } })
     expect(continentMount.textContent).toContain('Learning regions')
     expect(continentMount.textContent).toContain('Choose a region')
-    expect(continentMount.textContent).toContain('Back to World')
+    expect(continentMount.textContent).toContain('Europe progress')
+    expect(continentMount.textContent).toContain('World')
+    expect(continentMount.textContent).not.toContain('Back to World')
   })
 })

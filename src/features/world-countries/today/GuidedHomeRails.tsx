@@ -35,8 +35,8 @@ export function GuidedHomeRails({
   onFocusGuidedSubregion,
   refreshing,
   scopeSummaries,
+  scopeProgress,
   onWorld,
-  onOpenPlay,
   onOpenProgress,
 }: {
   level: 'world' | 'continent'
@@ -53,8 +53,8 @@ export function GuidedHomeRails({
   onFocusGuidedSubregion?: () => void
   refreshing: boolean
   scopeSummaries: readonly GuidedHomeScopeSummary[]
+  scopeProgress: GuidedHomeScopeSummary['progress'] | null
   onWorld: () => void
-  onOpenPlay: () => void
   onOpenProgress: () => void
 }) {
   const scopeName = continent ?? 'World'
@@ -88,7 +88,7 @@ export function GuidedHomeRails({
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Today</p>
           <h2 id="world-countries-review-opportunity-heading" className="mt-1 text-lg font-bold text-zinc-100">Progress unavailable</h2>
-          <p role="status" aria-live="polite" className="mt-2 text-sm text-zinc-400">We couldn&apos;t load your progress. Play remains available.</p>
+          <p role="status" aria-live="polite" className="mt-2 text-sm text-zinc-400">We couldn&apos;t load your progress. Playground remains available from the feature header.</p>
         </div>
       ) : reviewOpportunity?.kind === 'review' ? (
         <>
@@ -154,6 +154,18 @@ export function GuidedHomeRails({
             ))}
           </div>
         )}
+        <div data-progress-entry className="border-t border-zinc-800 pt-4" aria-labelledby="world-countries-scope-progress-heading">
+          <p id="world-countries-scope-progress-heading" className="text-xs font-semibold uppercase tracking-wider text-cyan-400">{scopeName} progress</p>
+          {scopeProgress ? (
+            <p className="mt-1 flex items-baseline justify-between gap-2 text-sm text-zinc-300">
+              <span className="font-semibold tabular-nums">{scopeProgress.completeCountries} / {scopeProgress.totalCountries} complete</span>
+              <span className="text-xs tabular-nums text-zinc-500">{Math.round(scopeProgress.completionRatio * 100)}%</span>
+            </p>
+          ) : (
+            <p role="status" aria-live="polite" className="mt-2 text-xs text-zinc-500">{evidenceStatus === 'loading' ? 'Progress is loading.' : 'Progress is unavailable right now.'}</p>
+          )}
+          <button type="button" data-progress-action onClick={onOpenProgress} disabled={evidenceStatus !== 'ready' || !scopeProgress} className="mt-3 w-full rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-300 hover:border-cyan-500 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 disabled:cursor-not-allowed disabled:opacity-40">View progress</button>
+        </div>
       </WorldCountriesPanel>
     ),
     right: (
@@ -173,20 +185,12 @@ export function GuidedHomeRails({
             <CompactJourneyPath journey={journey} curriculumRecommendationAvailable={curriculumRecommendationAvailable} />
           </WorldCountriesPanel>
         )}
-        <WorldCountriesPanel className="space-y-2" aria-label="World Countries secondary actions">
-          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Play and progress</p>
-          <div className="grid grid-cols-2 gap-2">
-            <button type="button" onClick={onOpenPlay} className="rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Play</button>
-            <button type="button" onClick={onOpenProgress} className="rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">View progress</button>
-          </div>
-          {level === 'continent' && <button type="button" onClick={onWorld} className="w-full rounded-lg border border-zinc-800 bg-zinc-950/40 px-3 py-2 text-sm font-semibold text-zinc-400 hover:border-zinc-600 hover:text-zinc-100">Back to World</button>}
-          {refreshing && <p className="text-xs text-zinc-500">Updating your progress…</p>}
-        </WorldCountriesPanel>
+        {refreshing && <p role="status" aria-live="polite" className="text-xs text-zinc-500">Updating your progress…</p>}
       </div>
     ),
     leftLabel: 'Geography',
     rightLabel: 'Review and journey',
-  }), [continent, curriculumRecommendationAvailable, guidedSubregionLabel, inspectedSubregionLabel, isInspectingOtherSubregion, journey, level, onFocusGuidedSubregion, onOpenPlay, onOpenProgress, onWorld, refreshing, reviewPanel, scopeName, scopeSummaries])
+  }), [continent, curriculumRecommendationAvailable, evidenceStatus, guidedSubregionLabel, inspectedSubregionLabel, isInspectingOtherSubregion, journey, level, onFocusGuidedSubregion, onOpenProgress, onWorld, refreshing, reviewPanel, scopeName, scopeProgress, scopeSummaries])
   useRails(rails)
   return null
 }

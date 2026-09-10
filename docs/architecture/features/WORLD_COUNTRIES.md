@@ -15,15 +15,17 @@ entry: it shows World mastery, the interactive World map, a Journey continuation
 attached to the map, and an independent Review/practice opportunity in the
 right rail. A transient **Continent hub** provides the same guided composition
 over a Continent-scoped active Country population.
-**Play** is the learner-facing secondary entry to freeform Recite, Quiz,
+**Playground** is the learner-facing top-level freeform activity destination for Recite, Quiz,
 non-recording Practice, and configurable recorded Drill. **Progress** is a
 derived supporting view, not a separate evidence or analytics system.
 
-The stable feature root is Home. Home and Continent guided rails expose
-secondary Play and Progress actions; Play uses its own breadcrumb/back context
-to return to the originating Home or Continent hub. The user-facing entry
-hierarchy is Home -> Continent hub / Progress / Play -> existing workflow
-owners. Structural authoring is contextual rather than a separate workflow:
+The stable feature root is Home. Home and Continent guided surfaces keep
+Review and Journey context in the right rail, while the geography left rail
+provides a concise current-scope Progress entry after its geography list.
+Playground uses its own breadcrumb/back context to return to the originating
+Home or Continent hub. The user-facing entry hierarchy is Home -> Continent
+hub / Progress / Playground -> existing workflow owners. Structural authoring
+is contextual rather than a separate workflow:
 
 - Drill's existing World Geography rail authors Continent order.
 - Drill's existing Continent Geography rail authors Subregion order.
@@ -31,8 +33,10 @@ owners. Structural authoring is contextual rather than a separate workflow:
   Subregion mnemonic.
 
 `WorldCountries.tsx` resolves the Settings country-set policy once, provides
-the active population, and composes Home/Continent/Play/Progress entry views
-with the existing Today, Drill, Recite, Quiz, Practice, and Learning owners.
+the active population, and continues to own the top-level Home/Continent/
+Playground composition. It composes those entry views with the existing Today,
+Drill, Recite, Quiz, Practice, and Learning owners; the underlying workflow
+semantics and ownership remain unchanged.
 `WorldCountriesDrill.tsx` owns the Drill setup coordinator, Drill and Learn &
 Practise purpose selection, active sessions, and results. Geography metadata
 changes reach mounted consumers through the feature-owned geography subscription
@@ -130,8 +134,10 @@ orchestration. Capitals uses the purpose-neutral finite
 Practice-owned multi-answer run/session because one target accepts several
 Country answers. Neither model owns evidence, persistence, rails, or maps.
 
-The entry hierarchy is Home, transient Continent exploration, Play, and
-derived Progress. The activity semantics remain exactly Drill, Learning, and
+The entry hierarchy is Home, transient Continent exploration, Playground, and
+derived Progress. Progress remains a derived supporting view entered from the
+geography/progress left rail rather than a second progress authority. The
+activity semantics remain exactly Drill, Learning, and
 Practice; Quiz is Practice and does not introduce an Assessment semantic.
 Today remains the owner of guided planning/review and delegation into the
 existing Learning flows even though its learner-facing presentation is now the
@@ -224,8 +230,9 @@ presents the resulting reason as concise `Why now` summary counts and the
 Review flow gives a per-prompt `Why now` explanation, including repeated
 difficulty and useful overdue wording.
 
-Continent and Progress are transient views within the Home composition.
-Existing workflow entry points remain reachable from Play, and Drill has a
+Continent, Playground, and Progress are transient views within the Home
+composition. Existing workflow entry points remain reachable from Playground,
+and Drill has a
 non-persisted Purpose selector:
 
 - **Drill**: `Countries`, `Countries + Capitals`, `Countries from Capitals`,

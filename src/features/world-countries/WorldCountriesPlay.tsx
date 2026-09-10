@@ -26,16 +26,16 @@ export function WorldCountriesPlay({
   onOpenCustomDrill: () => void
 }) {
   const rails = useMemo(() => ({
-    left: <WorldCountriesPanel className="space-y-4"><GeographyBreadcrumbs items={[{ label: 'World', onSelect: scopeContinent ? undefined : onBack }, ...(scopeContinent ? [{ label: scopeLabel, onSelect: onBack }] : []), { label: 'Play', current: true }]} /><div><p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Freeform</p><h2 className="mt-1 text-lg font-bold text-zinc-100">Choose what to practise</h2><p className="mt-2 text-sm leading-relaxed text-zinc-400">Play does not replace or reset the guided path. Existing workflow evidence rules remain authoritative.</p></div><div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3"><p className="text-xs uppercase tracking-wider text-zinc-500">Current guided scope</p><p className="mt-1 text-sm font-semibold text-zinc-200">{scopeLabel}</p></div></WorldCountriesPanel>,
+    left: <WorldCountriesPanel className="space-y-4"><GeographyBreadcrumbs items={[{ label: 'World', onSelect: scopeContinent ? undefined : onBack }, ...(scopeContinent ? [{ label: scopeLabel, onSelect: onBack }] : []), { label: 'Playground', current: true }]} /><div><p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Freeform</p><h2 className="mt-1 text-lg font-bold text-zinc-100">Choose what to practise</h2><p className="mt-2 text-sm leading-relaxed text-zinc-400">Playground does not replace or reset the guided path. Existing workflow evidence rules remain authoritative.</p></div><div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3"><p className="text-xs uppercase tracking-wider text-zinc-500">Current guided scope</p><p className="mt-1 text-sm font-semibold text-zinc-200">{scopeLabel}</p></div></WorldCountriesPanel>,
     right: <WorldCountriesPanel className="space-y-4"><div><p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Important</p><h2 className="mt-1 text-lg font-bold text-zinc-100">Guided path stays intact</h2><p className="mt-2 text-sm leading-relaxed text-zinc-400">Recite and non-recording Practice remain non-recording. Recorded Drill keeps its existing evidence behavior.</p></div><button type="button" onClick={onBack} className="w-full rounded-lg border border-zinc-700 px-3 py-2.5 text-sm font-semibold text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Back to {scopeLabel}</button></WorldCountriesPanel>,
-    leftLabel: 'Play',
+    leftLabel: 'Playground',
     rightLabel: 'Activity guidance',
   }), [onBack, scopeContinent, scopeLabel])
   useRails(rails)
 
   return (
     <section className="space-y-4 animate-fade-in" aria-labelledby="world-countries-play-heading">
-      <div className="space-y-1"><p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World Countries · Play</p><h1 id="world-countries-play-heading" className="text-2xl font-black text-zinc-100">What do you feel like doing?</h1><p className="text-sm text-zinc-500">Choose an existing activity intentionally; the guided path remains separate.</p></div>
+      <div className="space-y-1"><p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World Countries · Playground</p><h1 id="world-countries-play-heading" className="text-2xl font-black text-zinc-100">What do you feel like doing?</h1><p className="text-sm text-zinc-500">Choose an existing activity intentionally; the guided path remains separate.</p></div>
       <div className="grid gap-3 sm:grid-cols-2">
         <PlayCard activity="recite" title="Recite" description="Free recall across one or multiple Continents/Subregions, with all existing Recite modes." onClick={onOpenRecite} />
         <PlayCard activity="quiz" title="Quiz" description="Use the existing Practice-owned Capitals and Neighbours Quiz experiences." onClick={onOpenQuiz} />

@@ -32,14 +32,14 @@ async function renderShell() {
 }
 
 describe('World Countries activity boundary', () => {
-  it('defaults to Home and reaches configurable Drill through Play', async () => {
+  it('defaults to Home and reaches configurable Drill through Playground', async () => {
     const mount = await renderShell()
     expect(mount.querySelector('[role="tablist"]')).toBeNull()
     expect(mount.textContent).toContain('World Countries')
-    expect(mount.textContent).toContain('Play')
+    expect(mount.textContent).toContain('Playground')
     expect(mount.textContent).not.toContain('Due reviews')
 
-    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Play')?.click())
+    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Playground')?.click())
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-play-activity="custom-drill"]')?.click())
     expect(mount.textContent).toContain('Geography')
     expect(mount.textContent).toContain('Purpose')
@@ -50,7 +50,7 @@ describe('World Countries activity boundary', () => {
 
   it('allows Drill setup to switch between four Learn & Practise modes', async () => {
     const mount = await renderShell()
-    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Play')?.click())
+    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Playground')?.click())
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-play-activity="custom-drill"]')?.click())
     const europe = [...mount.querySelectorAll('button')].find(button => button.textContent?.includes('Europe'))
     await act(async () => europe?.click())

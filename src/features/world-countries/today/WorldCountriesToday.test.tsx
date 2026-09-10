@@ -205,6 +205,47 @@ function renderLatestRails() {
 }
 
 describe('World Countries Today', () => {
+  it('does not open Progress while recall evidence is unavailable', async () => {
+    loadHistoryMock.mockRejectedValueOnce(new Error('storage unavailable'))
+    const mount = await renderToday()
+    const railMount = renderLatestRails()
+    const progressAction = railMount.querySelector<HTMLButtonElement>('[data-progress-action]')
+
+    expect(progressAction?.disabled).toBe(true)
+
+    await act(async () => progressAction?.click())
+
+    expect(mount.querySelector('#world-countries-progress-heading')).toBeNull()
+  })
+
+  it('places the derived World progress in the geography footer and opens the existing Progress view', async () => {
+    const mount = await renderToday()
+    const railMount = renderLatestRails()
+    const progressEntry = railMount.querySelector('[data-progress-entry]')
+
+    expect(progressEntry?.textContent).toContain('World progress')
+    expect(progressEntry?.textContent).toContain('0 / 1 complete')
+    expect(progressEntry?.textContent).toContain('0%')
+    expect(railMount.querySelector('[aria-label="World Countries secondary actions"]')).toBeNull()
+
+    await act(async () => railMount.querySelector<HTMLButtonElement>('[data-progress-action]')?.click())
+
+    expect(mount.querySelector('#world-countries-progress-heading')?.textContent).toBe('World progress')
+  })
+
+  it('uses the current Continent scope for the geography progress footer', async () => {
+    activeCountries = countries.filter(country => country.continent === 'Europe').slice(0, 2)
+    const mount = await renderToday({ continent: 'Europe' })
+    const railMount = renderLatestRails()
+
+    expect(railMount.querySelector('[data-progress-entry]')?.textContent).toContain('Europe progress')
+    expect(railMount.querySelector('[data-progress-entry]')?.textContent).toContain('0 / 2 complete')
+
+    await act(async () => railMount.querySelector<HTMLButtonElement>('[data-progress-action]')?.click())
+
+    expect(mount.querySelector('#world-countries-progress-heading')?.textContent).toBe('Europe progress')
+  })
+
   it('shows Review and Continue Learning independently when both are available', async () => {
     const northernEntries = countries.filter(country => country.subregionId === 'northern-europe').slice(0, 3)
     const southernEntry = countries.find(country => country.subregionId === 'southern-europe')!

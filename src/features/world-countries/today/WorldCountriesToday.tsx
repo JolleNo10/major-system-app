@@ -125,7 +125,6 @@ export function WorldCountriesToday({
   continent = null,
   onSelectContinent,
   onWorld,
-  onOpenPlay,
   onOpenProgress,
 }: {
   answerMode: AnswerMode
@@ -133,7 +132,6 @@ export function WorldCountriesToday({
   continent?: Continent | null
   onSelectContinent?: (continent: Continent) => void
   onWorld?: () => void
-  onOpenPlay?: () => void
   onOpenProgress?: () => void
 }) {
   const { settings } = useSettings()
@@ -446,13 +444,17 @@ export function WorldCountriesToday({
         focusReviewActionRequest={reviewFocusRequest}
         refreshing={refreshing}
         scopeSummaries={scopeSummaries}
+        scopeProgress={progress}
         journey={journey}
         guidedSubregionId={guidedSubregionId}
         curriculumRecommendationAvailable={Boolean(journeyLearning)}
         onFocusGuidedSubregion={() => setFocusedSubregionId(null)}
         onWorld={navigateWorld}
-        onOpenPlay={onOpenPlay ?? (() => onNavigate('recite'))}
-        onOpenProgress={() => { setShowProgress(true); onOpenProgress?.() }}
+        onOpenProgress={() => {
+          if (evidence.status !== 'ready' || !progress) return
+          setShowProgress(true)
+          onOpenProgress?.()
+        }}
       />
 
       <div className="space-y-4">
