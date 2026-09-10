@@ -137,6 +137,46 @@ describe('World Countries Today', () => {
     expect(document.activeElement?.textContent).toBe('Review 1 item')
   })
 
+  it('keeps equal total and bounded review counts distinct across the Home composition', async () => {
+    const reviewCandidates = [{}, {}, {}]
+    buildPlanMock.mockReturnValue({
+      dueCandidates: reviewCandidates,
+      reviewQueue: reviewCandidates,
+      consolidationCandidates: [],
+      consolidationQueue: [],
+      dueCount: 3,
+      dueCountryCount: 2,
+      introductions: new Map(),
+      nextLearning: null,
+      incompleteCountryCount: 1,
+      incompleteSubregionLabels: [],
+      scopeComplete: false,
+      caughtUpForToday: false,
+      reviewReasonSummary: { mistakes: 1, firstRecall: 0, firstReviewAfterLearning: 0, spaced: 0, repeated: 0 },
+      action: { kind: 'review', candidates: reviewCandidates },
+    })
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(WorldCountriesToday, { answerMode: 'typing', onNavigate: vi.fn() }))
+      await Promise.resolve()
+    })
+
+    const config = useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1]?.[0] as { left?: ReactNode; right?: ReactNode } | undefined
+    const railMount = document.createElement('div')
+    document.body.append(railMount)
+    railRoot = createRoot(railMount)
+    act(() => railRoot?.render(createElement('div', null, config?.left, config?.right)))
+
+    expect(railMount.textContent).toContain('2 countries')
+    expect(railMount.textContent).toContain('recent mistake')
+    expect(railMount.textContent).not.toContain('3 reviews ready')
+    expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('Next review · 3 items')
+    expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Review 3 items')
+  })
+
   it('delegates the specific Country Learning action to the recommended flow', async () => {
     buildPlanMock.mockReturnValue({
       dueCandidates: [],
@@ -232,7 +272,10 @@ describe('World Countries Today', () => {
     railMount = renderLatestRails()
 
     expect(railMount.textContent).toContain("You're viewing Southern Europe")
-    expect(railMount.textContent).toContain('Your next step is still in Northern Europe')
+    expect(railMount.textContent).toContain('Your journey is still focused on Northern Europe')
+    expect(railMount.textContent).toContain('Journey focus')
+    expect(railMount.textContent).not.toContain('Your next step')
+    expect(railMount.textContent).not.toContain('next action')
     expect(railMount.textContent).toContain('Next in journey: Learn the countries')
     expect(railMount.textContent).not.toContain('Next in journey: Learn 3 countries')
     expect(mount.textContent).toContain("what you've learned and what's still ahead")
@@ -305,7 +348,10 @@ describe('World Countries Today', () => {
     railMount = renderLatestRails()
 
     expect(railMount.textContent).toContain("You're viewing Southern Europe")
-    expect(railMount.textContent).toContain('Your guided next action remains in Northern Europe')
+    expect(railMount.textContent).toContain('Your journey is still focused on Northern Europe')
+    expect(railMount.textContent).toContain('Journey focus')
+    expect(railMount.textContent).not.toContain('Your guided next action remains in Northern Europe')
+    expect(railMount.textContent).not.toContain('next action')
     expect(railMount.textContent).toContain('20 reviews due in total')
     expect(railMount.textContent).toContain('15 countries')
     expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Review 2 items')

@@ -359,9 +359,9 @@ export function WorldCountriesToday({
         label: subregion.label,
         progress: deriveWorldCountriesScopeProgressForCountries(`subregion:${subregion.id}`, entries, recallProgress),
         onSelect: () => setFocusedSubregionId(subregion.id),
-        status: subregion.id === focusedSubregionId
-          ? subregion.id === guidedSubregionId ? 'Your next step' : "You're viewing this region"
-          : subregion.id === guidedSubregionId ? 'Next in your journey' : undefined,
+        status: subregion.id === guidedSubregionId
+          ? 'Journey focus'
+          : subregion.id === focusedSubregionId ? "You're viewing this region" : undefined,
       }
     })
   }, [continent, focusedSubregionId, geographyRevision, guidedSubregionId, onSelectContinent, recallProgress, scopedCountries])

@@ -94,7 +94,7 @@ describe('Guided World Countries home status', () => {
       reviewReasonSummary: { mistakes: 1, firstRecall: 0, firstReviewAfterLearning: 1, spaced: 2, repeated: 1 },
     })
 
-    expect(mount.textContent).toContain('3 reviews ready')
+    expect(mount.textContent).not.toContain('3 reviews ready')
     expect(mount.textContent).toContain('2 countries')
     expect(mount.textContent).toContain('Why review now')
     expect(mount.textContent).toContain('recent mistake')
@@ -117,15 +117,19 @@ describe('Guided World Countries home status', () => {
     expect(mount.textContent).not.toContain('20 reviews ready')
   })
 
-  it('keeps equal total and bounded review counts as one concise supporting count', () => {
+  it('leaves the equal review count to the primary action while keeping support context', () => {
     const mount = renderRails({
       dueCount: 3,
       dueCountryCount: 2,
       reviewActionCount: 3,
       caughtUp: false,
+      reviewReasonSummary: { mistakes: 1, firstRecall: 0, firstReviewAfterLearning: 0, spaced: 0, repeated: 0 },
     })
 
-    expect(mount.textContent).toContain('3 reviews ready')
+    expect(mount.textContent).toContain('2 countries')
+    expect(mount.textContent).toContain('Why review now')
+    expect(mount.textContent).toContain('recent mistake')
+    expect(mount.textContent).not.toContain('3 reviews ready')
     expect(mount.textContent).not.toContain('3 reviews due in total')
   })
 
@@ -245,7 +249,9 @@ describe('Guided World Countries home status', () => {
     })
 
     expect(mount.textContent).toContain("You're viewing Southern Europe")
-    expect(mount.textContent).toContain('Your next step is still in Northern Europe')
+    expect(mount.textContent).toContain('Your journey is still focused on Northern Europe')
+    expect(mount.textContent).not.toContain('Your next step')
+    expect(mount.textContent).not.toContain('next action')
     expect(mount.textContent).not.toContain('The guided path continues in Northern Europe.')
     expect(mount.textContent).toContain('Next in journey: Learn the countries')
     act(() => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Back to Northern Europe')?.click())

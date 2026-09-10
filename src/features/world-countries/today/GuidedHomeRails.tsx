@@ -76,12 +76,17 @@ export function GuidedHomeRails({
   const guidedSubregionLabel = guidedSubregionId ? getSubregionDefinition(guidedSubregionId).label : null
   const isInspectingOtherSubregion = Boolean(journey && (!guidedSubregionId || journey.subregionId !== guidedSubregionId))
   const scopeIsComplete = scopeComplete || scopeProgress?.complete === true
-  const reviewCountsDiffer = reviewActionCount !== undefined
+  const hasReviewActionCount = reviewActionCount !== undefined
     && reviewActionCount !== null
-    && reviewActionCount !== dueCount
+  const reviewCountsDiffer = hasReviewActionCount && reviewActionCount !== dueCount
+  const reviewCountsEqual = hasReviewActionCount && reviewActionCount === dueCount
   const reviewSummary = reviewCountsDiffer
     ? `${dueCount} ${dueCount === 1 ? 'review' : 'reviews'} due in total · ${dueCountryCount} ${dueCountryCount === 1 ? 'country' : 'countries'}`
-    : `${dueCount} ${dueCount === 1 ? 'review' : 'reviews'} ready · ${dueCountryCount} ${dueCountryCount === 1 ? 'country' : 'countries'}`
+    : reviewCountsEqual
+      ? dueCountryCount > 0
+        ? `${dueCountryCount} ${dueCountryCount === 1 ? 'country' : 'countries'}`
+        : null
+      : `${dueCount} ${dueCount === 1 ? 'review' : 'reviews'} ready · ${dueCountryCount} ${dueCountryCount === 1 ? 'country' : 'countries'}`
   const hasActionableToday = evidenceStatus === 'ready'
     && activeCountryCount > 0
     && (dueCount > 0 || Boolean(nextLearning) || consolidationAvailable)
@@ -163,7 +168,7 @@ export function GuidedHomeRails({
         {dueCount > 0 && (
           <section className="border-t border-zinc-800 pt-3 text-sm" aria-labelledby="world-countries-guided-why-heading">
             <p id="world-countries-guided-why-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Why review now</p>
-            <p className="mt-1 leading-relaxed text-zinc-300">{reviewSummary}</p>
+            {reviewSummary && <p className="mt-1 leading-relaxed text-zinc-300">{reviewSummary}</p>}
             {whyTodayText.length > 0 && <p className="mt-1 leading-relaxed text-zinc-400">{whyTodayText}</p>}
             {reviewReasonSummary.repeated > 0 && <p className="mt-1 text-xs font-semibold text-amber-300">{reviewReasonSummary.repeated} {reviewReasonSummary.repeated === 1 ? 'item needs' : 'items need'} extra practice</p>}
           </section>
@@ -179,13 +184,11 @@ export function GuidedHomeRails({
             {isInspectingOtherSubregion && (
               <section className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-sm">
                 <p className="text-xs font-semibold uppercase tracking-wider text-amber-300">You're viewing {inspectedSubregionLabel}</p>
-                <p className="mt-1 text-zinc-300">{nextLearning
-                  ? `Your next step is still in ${guidedSubregionLabel ?? 'the guided area'}.`
-                  : guidedSubregionLabel
-                    ? `Your guided next action remains in ${guidedSubregionLabel}.`
-                    : consolidationAvailable
+                <p className="mt-1 text-zinc-300">{guidedSubregionLabel
+                  ? `Your journey is still focused on ${guidedSubregionLabel}.`
+                  : consolidationAvailable
                     ? 'There is nothing new to learn here right now, but you can keep practising unfinished recall.'
-                    : 'Your guided path stays the same.'}</p>
+                    : 'Your journey focus stays the same.'}</p>
                 {onFocusGuidedSubregion && <button type="button" onClick={onFocusGuidedSubregion} className="mt-2 text-xs font-semibold text-cyan-300 hover:text-cyan-200">{guidedSubregionLabel ? `Back to ${guidedSubregionLabel}` : 'Back to the guided view'}</button>}
               </section>
             )}
@@ -205,7 +208,7 @@ export function GuidedHomeRails({
     ),
     leftLabel: 'Geography',
     rightLabel: 'Learning journey',
-  }), [activeCountryCount, caughtUp, completionSummary, consolidationAvailable, continent, dueCount, evidenceStatus, guidedSubregionLabel, hasActionableToday, inspectedSubregionLabel, isInspectingOtherSubregion, journey, level, nextLearning, onFocusGuidedSubregion, onOpenPlay, onOpenProgress, onWorld, refreshing, reviewReasonSummary, reviewSummary, scopeIsComplete, scopeName, scopeSummaries, statusExplanation, statusHeading, unfinishedGeography, whyTodayText])
+  }), [activeCountryCount, caughtUp, completionSummary, consolidationAvailable, continent, dueCount, evidenceStatus, guidedSubregionLabel, hasActionableToday, inspectedSubregionLabel, isInspectingOtherSubregion, journey, level, onFocusGuidedSubregion, onOpenPlay, onOpenProgress, onWorld, refreshing, reviewReasonSummary, reviewSummary, scopeIsComplete, scopeName, scopeSummaries, statusExplanation, statusHeading, unfinishedGeography, whyTodayText])
   useRails(rails)
   return null
 }
