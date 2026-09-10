@@ -23,7 +23,7 @@ import { buildLearningPlan, type LearningSetMaximum } from '@/features/world-cou
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
 import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
 import { WorldMasterySummary } from '@/features/world-countries/ui/WorldMasterySummary'
-import { TodayReviewSession, type WorldCountriesTodayReviewCheckpoint } from './TodayReviewSession'
+import { TodayReviewSession } from './TodayReviewSession'
 import type { WorldCountriesGuidedRecallMode } from './TodayRails'
 import { GuidedHomeRails } from './GuidedHomeRails'
 import { WorldCountriesProgressView } from './WorldCountriesProgressView'
@@ -136,8 +136,8 @@ export function WorldCountriesToday({
   const learningRevision = useWorldCountriesSubregionLearningRevision()
   const [reviewCandidates, setReviewCandidates] = useState<WorldCountriesTodayPlan['reviewQueue'] | null>(null)
   const [reviewMode, setReviewMode] = useState<WorldCountriesGuidedRecallMode>('review')
-  const [checkpoint, setCheckpoint] = useState<WorldCountriesTodayReviewCheckpoint | null>(null)
   const [reviewing, setReviewing] = useState(false)
+  const [reviewFocusRequest, setReviewFocusRequest] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   const [learningRun, setLearningRun] = useState<LearningRun | null>(null)
   const [focusedSubregionId, setFocusedSubregionId] = useState<SubregionId | null>(null)
@@ -210,9 +210,13 @@ export function WorldCountriesToday({
     setRefreshing(false)
   }
 
+  const refreshAfterReview = async () => {
+    await refreshAfterActivity()
+    setReviewFocusRequest(request => request + 1)
+  }
+
   const finishLearning = () => {
     setLearningRun(null)
-    setCheckpoint(null)
     void refreshAfterActivity()
   }
 
@@ -221,7 +225,6 @@ export function WorldCountriesToday({
     setReviewCandidates(opportunity.candidates)
     setReviewMode(opportunity.kind === 'consolidate' ? 'consolidation' : 'review')
     setReviewing(true)
-    setCheckpoint(null)
   }
 
   const launchLearningRecommendation = (recommendation: WorldCountriesTodayLearningRecommendation) => {
@@ -232,7 +235,6 @@ export function WorldCountriesToday({
     if (countryEntries.length !== recommendation.countryIds.length) return
     setReviewing(false)
     setReviewCandidates(null)
-    setCheckpoint(null)
     setLearningRun({ recommendation, countryEntries })
   }
 
@@ -246,21 +248,18 @@ export function WorldCountriesToday({
     launchLearningRecommendation(plan.curriculumRecommendation)
   }
 
-  const finishReview = async (nextCheckpoint: WorldCountriesTodayReviewCheckpoint) => {
-    setCheckpoint(nextCheckpoint)
+  const finishReview = async () => {
     setReviewing(false)
     setReviewCandidates(null)
     setReviewMode('review')
-    setRefreshing(true)
-    await loadEvidence()
-    setRefreshing(false)
+    await refreshAfterReview()
   }
 
-  const exitReview = () => {
+  const exitReview = async () => {
     setReviewing(false)
     setReviewCandidates(null)
     setReviewMode('review')
-    void refreshAfterActivity()
+    await refreshAfterReview()
   }
 
   const journeyLearning = plan?.curriculumRecommendation ?? null
@@ -403,6 +402,7 @@ export function WorldCountriesToday({
         reviewOpportunity={plan?.reviewOpportunity ?? null}
         reviewReasonSummary={plan?.reviewReasonSummary ?? EMPTY_REVIEW_REASON_SUMMARY}
         onStartReview={startReview}
+        focusReviewActionRequest={reviewFocusRequest}
         refreshing={refreshing}
         scopeSummaries={scopeSummaries}
         journey={journey}
@@ -437,7 +437,7 @@ export function WorldCountriesToday({
             />
           )}
           dock={canContinue ? (
-            <TaskDock variant="navigation" focusPrimary={Boolean(checkpoint) && !refreshing} status={(
+            <TaskDock variant="navigation" status={(
               <div data-task-scope-context>
                 <p className="text-xs font-semibold uppercase tracking-wider text-violet-300">Continue your journey</p>
                 <p className="mt-1 font-semibold text-zinc-100">{journeyActionLabel} · {journeyLearning?.subregionLabel}</p>

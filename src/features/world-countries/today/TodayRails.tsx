@@ -36,6 +36,7 @@ export function TodayReviewRails({
   const sessionLabel = isConsolidation ? 'Weak-spot practice' : 'Guided review'
   const sessionTitle = isConsolidation ? 'Strengthen weak spots' : 'Review geography'
   const progressLabel = isConsolidation ? 'Practice progress' : 'Review progress'
+  const progressCountLabel = isConsolidation ? 'First pass' : 'Initial reviews'
   const exitLabel = isConsolidation ? 'Exit practice' : 'Exit Review'
 
   const rails = useMemo(() => ({
@@ -61,7 +62,7 @@ export function TodayReviewRails({
           <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-zinc-800" aria-hidden="true">
             <div className="h-full rounded-full bg-cyan-500" style={{ width: `${Math.max(2, progressPercent)}%` }} />
           </div>
-          <p className="mt-2 text-xs tabular-nums text-zinc-500">Initial reviews {Math.min(reviewed, blockSize)} / {blockSize}</p>
+          <p className="mt-2 text-xs tabular-nums text-zinc-500">{progressCountLabel} {Math.min(reviewed, blockSize)} / {blockSize}</p>
           {promptKind === 'retry' && <p className="mt-2 text-xs font-semibold text-amber-300">Delayed retry · answerable now</p>}
         </section>
         <section className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3 text-sm" aria-labelledby="world-countries-today-review-why-heading">
@@ -73,7 +74,7 @@ export function TodayReviewRails({
     ),
     leftLabel: 'Geography',
     rightLabel: sessionLabel,
-  }), [blockSize, continent, currentPrompt, exitLabel, isConsolidation, onExit, promptCount, promptKind, progressLabel, progressPercent, reviewed, reviewReason, sessionLabel, sessionTitle, subregion])
+  }), [blockSize, continent, currentPrompt, exitLabel, isConsolidation, onExit, progressCountLabel, promptCount, promptKind, progressLabel, progressPercent, reviewed, reviewReason, sessionLabel, sessionTitle, subregion])
   useRails(rails)
 
   return null

@@ -66,6 +66,7 @@ describe('Guided World Countries home rails', () => {
     const mount = renderRails({ evidenceStatus: 'loading' })
     expect(mount.textContent).toMatch(/loading.*progress/i)
     expect(mount.textContent).toContain('map will stay visible')
+    expect(mount.querySelector('[aria-labelledby="world-countries-review-opportunity-heading"] h2')?.textContent).toBe('Loading your progress')
   })
 
   it('explains evidence failure while leaving Play available', () => {
@@ -74,12 +75,14 @@ describe('Guided World Countries home rails', () => {
     expect(mount.textContent).toContain("couldn't load your progress")
     expect(mount.textContent).toContain('Play remains available')
     expect(mount.textContent).toContain('Play and progress')
+    expect(mount.querySelector('[aria-labelledby="world-countries-review-opportunity-heading"] h2')?.textContent).toBe('Progress unavailable')
   })
 
   it('renders the zero-active-Country state', () => {
     const mount = renderRails({ activeCountryCount: 0 })
     expect(mount.textContent).toContain('No countries in this scope')
     expect(mount.textContent).toContain('There are no countries to review')
+    expect(mount.querySelector('[aria-labelledby="world-countries-review-opportunity-heading"] h2')?.textContent).toBe('Reviews caught up')
   })
 
   it('renders a compact caught-up Review state without a CTA', () => {
@@ -87,6 +90,7 @@ describe('Guided World Countries home rails', () => {
     expect(mount.textContent).toContain('Reviews caught up')
     expect(mount.textContent).toContain('Nothing needs your attention right now')
     expect(mount.querySelector('[data-review-action]')).toBeNull()
+    expect(mount.querySelector('[aria-labelledby="world-countries-review-opportunity-heading"] h2')?.textContent).toBe('Reviews caught up')
   })
 
   it('presents scheduled Review as a positive independent opportunity', () => {
@@ -105,6 +109,7 @@ describe('Guided World Countries home rails', () => {
     expect(mount.textContent).toContain('recent mistake')
     expect(mount.textContent).not.toContain('Why review now')
     expect(mount.textContent).not.toContain('Guided consolidation')
+    expect(mount.querySelector('[aria-labelledby="world-countries-review-opportunity-heading"] h2')?.textContent).toBe('Review ready')
   })
 
   it('labels total due work separately from the bounded Review block', () => {
@@ -116,7 +121,7 @@ describe('Guided World Countries home rails', () => {
 
     expect(mount.textContent).toContain('12 items')
     expect(mount.textContent).toContain('Review 12 items')
-    expect(mount.textContent).toContain('20 reviews due overall')
+    expect(mount.textContent).toContain('20 ready overall')
     expect(mount.textContent).toContain('15 countries')
     expect(mount.textContent).not.toContain('20 reviews ready')
   })
@@ -132,6 +137,7 @@ describe('Guided World Countries home rails', () => {
     expect(mount.textContent).toContain('4 weak spots available')
     expect(mount.textContent).toContain('Strengthen weak spots')
     expect(mount.textContent).not.toContain('consolidation')
+    expect(mount.querySelector('[aria-labelledby="world-countries-review-opportunity-heading"] h2')?.textContent).toBe('Reviews caught up')
     act(() => mount.querySelector<HTMLButtonElement>('[data-review-action]')?.click())
     expect(onStartReview).toHaveBeenCalledOnce()
   })

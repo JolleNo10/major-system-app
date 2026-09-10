@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import { useRails } from '@/app/layout/PageLayoutContext'
 import type { Continent } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
@@ -30,6 +30,7 @@ export function GuidedHomeRails({
   reviewOpportunity,
   reviewReasonSummary,
   onStartReview,
+  focusReviewActionRequest = 0,
   journey,
   guidedSubregionId,
   onFocusGuidedSubregion,
@@ -48,6 +49,7 @@ export function GuidedHomeRails({
   reviewOpportunity: WorldCountriesTodayReviewOpportunity
   reviewReasonSummary: WorldCountriesTodayReviewReasonSummary
   onStartReview: () => void
+  focusReviewActionRequest?: number
   journey: WorldCountriesJourneyPresentation | null
   guidedSubregionId?: SubregionId | null
   onFocusGuidedSubregion?: () => void
@@ -65,6 +67,12 @@ export function GuidedHomeRails({
   ].filter((item): item is string => Boolean(item))
   const whyTodayText = whyTodayItems.join(' · ')
   const scopeName = continent ?? 'World'
+  const lastFocusedReviewRequest = useRef(0)
+  const reviewActionRef = useCallback((button: HTMLButtonElement | null) => {
+    if (!button || focusReviewActionRequest <= lastFocusedReviewRequest.current) return
+    lastFocusedReviewRequest.current = focusReviewActionRequest
+    button.focus()
+  }, [focusReviewActionRequest])
   const inspectedSubregionLabel = journey ? getSubregionDefinition(journey.subregionId).label : null
   const guidedSubregionLabel = guidedSubregionId ? getSubregionDefinition(guidedSubregionId).label : null
   const isInspectingOtherSubregion = Boolean(journey && (!guidedSubregionId || journey.subregionId !== guidedSubregionId))
@@ -72,7 +80,7 @@ export function GuidedHomeRails({
   const reviewCountsDiffer = reviewOpportunity?.kind === 'review' && dueCount !== opportunityCount
   const reviewSupportSummary = reviewOpportunity?.kind === 'review'
     ? reviewCountsDiffer
-      ? `${dueCount} ${dueCount === 1 ? 'review' : 'reviews'} due overall · ${dueCountryCount} ${dueCountryCount === 1 ? 'country' : 'countries'}`
+      ? `${dueCount} ready overall · ${dueCountryCount} ${dueCountryCount === 1 ? 'country' : 'countries'}`
       : dueCountryCount > 0
         ? `${dueCountryCount} ${dueCountryCount === 1 ? 'country' : 'countries'}`
         : null
@@ -85,8 +93,8 @@ export function GuidedHomeRails({
     <WorldCountriesPanel className="space-y-3" aria-labelledby="world-countries-review-opportunity-heading">
       {activeCountryCount === 0 ? (
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Reviews caught up</p>
-          <h2 id="world-countries-review-opportunity-heading" className="mt-1 text-lg font-bold text-zinc-100">No countries in this scope</h2>
+          <h2 id="world-countries-review-opportunity-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Reviews caught up</h2>
+          <p className="mt-1 text-lg font-bold text-zinc-100">No countries in this scope</p>
           <p className="mt-2 text-sm text-zinc-400">There are no countries to review here.</p>
         </div>
       ) : evidenceStatus === 'loading' ? (
@@ -104,11 +112,11 @@ export function GuidedHomeRails({
       ) : reviewOpportunity?.kind === 'review' ? (
         <>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-green-300">Review ready</p>
-            <h2 id="world-countries-review-opportunity-heading" className="mt-1 text-2xl font-black tabular-nums text-zinc-100">{opportunityCount} {opportunityCount === 1 ? 'item' : 'items'}</h2>
+            <h2 id="world-countries-review-opportunity-heading" className="text-xs font-semibold uppercase tracking-wider text-green-300">Review ready</h2>
+            <p className="mt-1 text-2xl font-black tabular-nums text-zinc-100">{opportunityCount} {opportunityCount === 1 ? 'item' : 'items'}</p>
             <p className="mt-1 text-sm text-zinc-400">See what stuck.</p>
           </div>
-          <button type="button" data-review-action onClick={onStartReview} disabled={refreshing} className="w-full rounded-lg border border-green-500/45 bg-green-500/10 px-3 py-2.5 text-sm font-bold text-green-200 hover:bg-green-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 disabled:cursor-not-allowed disabled:opacity-40">Review {opportunityCount} {opportunityCount === 1 ? 'item' : 'items'}</button>
+          <button ref={reviewActionRef} type="button" data-review-action onClick={onStartReview} disabled={refreshing} className="w-full rounded-lg border border-green-500/45 bg-green-500/10 px-3 py-2.5 text-sm font-bold text-green-200 hover:bg-green-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 disabled:cursor-not-allowed disabled:opacity-40">Review {opportunityCount} {opportunityCount === 1 ? 'item' : 'items'}</button>
           {reviewScopeLabel && <p className="text-xs text-zinc-500">Review scope: {reviewScopeLabel}</p>}
           {reviewSupportSummary && <p className="text-xs leading-relaxed text-zinc-400">{reviewSupportSummary}</p>}
           {whyTodayText.length > 0 && <p className="text-xs leading-relaxed text-zinc-500">{whyTodayText}</p>}
@@ -117,20 +125,20 @@ export function GuidedHomeRails({
       ) : reviewOpportunity?.kind === 'consolidate' ? (
         <>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Reviews caught up</p>
-            <h2 id="world-countries-review-opportunity-heading" className="mt-1 text-lg font-bold text-zinc-100">{opportunityCount} weak {opportunityCount === 1 ? 'spot' : 'spots'} available</h2>
+            <h2 id="world-countries-review-opportunity-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Reviews caught up</h2>
+            <p className="mt-1 text-lg font-bold text-zinc-100">{opportunityCount} weak {opportunityCount === 1 ? 'spot' : 'spots'} available</p>
           </div>
-          <button type="button" data-review-action onClick={onStartReview} disabled={refreshing} className="w-full rounded-lg border border-zinc-700 px-3 py-2.5 text-sm font-bold text-green-200 hover:border-green-500/60 hover:bg-green-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 disabled:cursor-not-allowed disabled:opacity-40">Strengthen weak spots</button>
+          <button ref={reviewActionRef} type="button" data-review-action onClick={onStartReview} disabled={refreshing} className="w-full rounded-lg border border-zinc-700 px-3 py-2.5 text-sm font-bold text-green-200 hover:border-green-500/60 hover:bg-green-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 disabled:cursor-not-allowed disabled:opacity-40">Strengthen weak spots</button>
         </>
       ) : (
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Reviews caught up</p>
-          <h2 id="world-countries-review-opportunity-heading" className="mt-1 text-lg font-bold text-zinc-100">Nothing needs your attention right now.</h2>
+          <h2 id="world-countries-review-opportunity-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Reviews caught up</h2>
+          <p className="mt-1 text-lg font-bold text-zinc-100">Nothing needs your attention right now.</p>
           <p className="mt-1 text-xs leading-relaxed text-zinc-500">Come back when something is ready to revisit.</p>
         </div>
       )}
     </WorldCountriesPanel>
-  ), [activeCountryCount, evidenceStatus, onStartReview, opportunityCount, refreshing, reviewOpportunity, reviewReasonSummary, reviewScopeLabel, reviewSupportSummary, whyTodayText])
+  ), [activeCountryCount, evidenceStatus, onStartReview, opportunityCount, refreshing, reviewActionRef, reviewOpportunity, reviewReasonSummary, reviewScopeLabel, reviewSupportSummary, whyTodayText])
 
   const rails = useMemo(() => ({
     left: (

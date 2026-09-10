@@ -132,6 +132,8 @@ describe('Today review session', () => {
     renderRails(railMount)
     expect(railMount.textContent).toContain('Weak-spot practice')
     expect(railMount.textContent).toContain('Strengthen weak spots')
+    expect(railMount.textContent).toContain('First pass 0 / 1')
+    expect(railMount.textContent).not.toContain('Initial reviews')
     expect(railMount.textContent).not.toContain('Guided consolidation')
 
     const input = mount.querySelector<HTMLInputElement>('input[aria-label="Type the Country name"]')!

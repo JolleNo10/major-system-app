@@ -70,17 +70,24 @@ vi.mock('./todayPlan', async importOriginal => ({
   buildWorldCountriesTodayPlan: buildPlanMock,
 }))
 vi.mock('./TodayReviewSession', () => ({
-  TodayReviewSession: (props: Record<string, unknown>) => createElement('button', {
-    type: 'button',
-    'data-testid': 'today-review',
-    'data-review-mode': props.mode,
-    onClick: () => (props.onDone as (checkpoint: Record<string, number>) => void)({
-      reviewed: 1,
-      correctFirstTry: 1,
-      recoveredOnRetry: 0,
-      stillNeedsWork: 0,
-    }),
-  }, 'Finish review'),
+  TodayReviewSession: (props: Record<string, unknown>) => createElement('div', null,
+    createElement('button', {
+      type: 'button',
+      'data-testid': 'today-review',
+      'data-review-mode': props.mode,
+      onClick: () => (props.onDone as (checkpoint: Record<string, number>) => void)({
+        reviewed: 1,
+        correctFirstTry: 1,
+        recoveredOnRetry: 0,
+        stillNeedsWork: 0,
+      }),
+    }, 'Finish review'),
+    createElement('button', {
+      type: 'button',
+      'data-testid': 'today-review-exit',
+      onClick: props.onExit as () => void,
+    }, 'Exit review'),
+  ),
 }))
 
 import { WorldCountriesToday } from './WorldCountriesToday'
@@ -178,7 +185,7 @@ describe('World Countries Today', () => {
 
     expect(railMount.textContent).toContain('Review ready')
     expect(railMount.textContent).toContain('Review 2 items')
-    expect(railMount.textContent).toContain('20 reviews due overall')
+    expect(railMount.textContent).toContain('20 ready overall')
     expect(railMount.textContent).toContain('Your journey · Northern Europe')
     expect(railMount.textContent).not.toContain('Next in journey')
     expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Continue learning')
@@ -222,6 +229,98 @@ describe('World Countries Today', () => {
     act(() => railMount.querySelector<HTMLButtonElement>('[data-review-action]')?.click())
     expect(mount.querySelector('[data-testid="today-review"]')?.getAttribute('data-review-mode')).toBe('review')
     expect(mount.querySelector('[data-primary-action]')).toBeNull()
+  })
+
+  it('returns focus to the Review action after completion without focusing Journey', async () => {
+    const candidate = { country: countries[0] }
+    buildPlanMock.mockReturnValue(plan({
+      dueCandidates: [candidate],
+      reviewQueue: [candidate],
+      dueCount: 1,
+      dueCountryCount: 1,
+      curriculumRecommendation: recommendation('learn-countries'),
+      journeyFocusSubregionId: 'northern-europe',
+      reviewOpportunity: { kind: 'review', candidates: [candidate] },
+    }))
+    const mount = await renderToday()
+    let railMount = renderLatestRails()
+
+    act(() => railMount.querySelector<HTMLButtonElement>('[data-review-action]')?.click())
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-testid="today-review"]')?.click()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    railMount = renderLatestRails()
+
+    const reviewAction = railMount.querySelector<HTMLButtonElement>('[data-review-action]')
+    expect(reviewAction).not.toBeNull()
+    expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Continue learning')
+    expect(document.activeElement).toBe(reviewAction)
+  })
+
+  it('does not focus Journey when Review completion leaves no Review opportunity', async () => {
+    const candidate = { country: countries[0] }
+    let reviewCompleted = false
+    const initialPlan = plan({
+      dueCandidates: [candidate],
+      reviewQueue: [candidate],
+      dueCount: 1,
+      dueCountryCount: 1,
+      curriculumRecommendation: recommendation('learn-countries'),
+      journeyFocusSubregionId: 'northern-europe',
+      reviewOpportunity: { kind: 'review', candidates: [candidate] },
+    })
+    const caughtUpPlan = plan({
+      curriculumRecommendation: recommendation('learn-countries'),
+      journeyFocusSubregionId: 'northern-europe',
+    })
+    buildPlanMock.mockImplementation(() => reviewCompleted ? caughtUpPlan : initialPlan)
+    const mount = await renderToday()
+    let railMount = renderLatestRails()
+
+    act(() => railMount.querySelector<HTMLButtonElement>('[data-review-action]')?.click())
+    await act(async () => {
+      reviewCompleted = true
+      mount.querySelector<HTMLButtonElement>('[data-testid="today-review"]')?.click()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    renderLatestRails()
+
+    const journeyAction = mount.querySelector<HTMLButtonElement>('[data-primary-action]')
+    expect(journeyAction).not.toBeNull()
+    expect(document.activeElement).not.toBe(journeyAction)
+  })
+
+  it('returns focus to Review after exiting while the opportunity remains', async () => {
+    const candidate = { country: countries[0] }
+    buildPlanMock.mockReturnValue(plan({
+      dueCandidates: [candidate],
+      reviewQueue: [candidate],
+      dueCount: 1,
+      dueCountryCount: 1,
+      curriculumRecommendation: recommendation('learn-countries'),
+      journeyFocusSubregionId: 'northern-europe',
+      reviewOpportunity: { kind: 'review', candidates: [candidate] },
+    }))
+    const mount = await renderToday()
+    let railMount = renderLatestRails()
+
+    act(() => railMount.querySelector<HTMLButtonElement>('[data-review-action]')?.click())
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-testid="today-review-exit"]')?.click()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    railMount = renderLatestRails()
+
+    const reviewAction = railMount.querySelector<HTMLButtonElement>('[data-review-action]')
+    expect(reviewAction).not.toBeNull()
+    expect(document.activeElement).toBe(reviewAction)
   })
 
   it('launches the Journey recommendation from the map dock', async () => {
