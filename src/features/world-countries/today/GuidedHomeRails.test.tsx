@@ -89,6 +89,7 @@ describe('Guided World Countries home status', () => {
     const mount = renderRails({
       dueCount: 3,
       dueCountryCount: 2,
+      reviewActionCount: 3,
       caughtUp: false,
       reviewReasonSummary: { mistakes: 1, firstRecall: 0, firstReviewAfterLearning: 1, spaced: 2, repeated: 1 },
     })
@@ -101,6 +102,31 @@ describe('Guided World Countries home status', () => {
     expect(mount.textContent).toContain('ready to revisit')
     expect(mount.textContent).toContain('item needs extra practice')
     expect(mount.textContent).not.toContain('spaced')
+  })
+
+  it('labels total due work separately from the bounded review block', () => {
+    const mount = renderRails({
+      dueCount: 20,
+      dueCountryCount: 15,
+      reviewActionCount: 12,
+      caughtUp: false,
+    })
+
+    expect(mount.textContent).toContain('20 reviews due in total')
+    expect(mount.textContent).toContain('15 countries')
+    expect(mount.textContent).not.toContain('20 reviews ready')
+  })
+
+  it('keeps equal total and bounded review counts as one concise supporting count', () => {
+    const mount = renderRails({
+      dueCount: 3,
+      dueCountryCount: 2,
+      reviewActionCount: 3,
+      caughtUp: false,
+    })
+
+    expect(mount.textContent).toContain('3 reviews ready')
+    expect(mount.textContent).not.toContain('3 reviews due in total')
   })
 
   it('explains geography choices without showing a population card', () => {

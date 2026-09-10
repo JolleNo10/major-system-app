@@ -110,12 +110,12 @@ function getTodayActionStatus(action: WorldCountriesTodayPlan['action']): string
     case 'review': {
       const scope = getActionRegionLabel(action.candidates)
       const suffix = scope ? scope === 'multiple regions' ? ` across ${scope}` : ` in ${scope}` : ''
-      return `${action.candidates.length} ${action.candidates.length === 1 ? 'review' : 'reviews'} ready${suffix}`
+      return `Next review · ${action.candidates.length} ${action.candidates.length === 1 ? 'item' : 'items'}${suffix}`
     }
     case 'consolidate': {
       const scope = getActionRegionLabel(action.candidates)
       const suffix = scope ? scope === 'multiple regions' ? ` across ${scope}` : ` in ${scope}` : ''
-      return `Strengthening ${action.candidates.length} ${action.candidates.length === 1 ? 'item' : 'items'}${suffix}`
+      return `Next consolidation · ${action.candidates.length} ${action.candidates.length === 1 ? 'item' : 'items'}${suffix}`
     }
     case 'complete':
     case 'unavailable':
@@ -324,10 +324,10 @@ export function WorldCountriesToday({
   }
 
   const nextLearning = plan?.nextLearning ?? null
-  const guidedSubregionId = nextLearning?.subregionId
-    ?? (plan?.action.kind === 'review' || plan?.action.kind === 'consolidate'
-      ? plan.action.candidates[0]?.country?.subregionId ?? null
-      : null)
+  const guidedSubregionId = plan?.journeyFocusSubregionId
+    ?? plan?.curriculumRecommendation?.subregionId
+    ?? nextLearning?.subregionId
+    ?? null
   const displaySubregionId = focusedSubregionId ?? guidedSubregionId
   const journey = useMemo<WorldCountriesJourneyPresentation | null>(() => {
     if (evidence.status !== 'ready' || !displaySubregionId) return null
@@ -466,6 +466,7 @@ export function WorldCountriesToday({
         evidenceStatus={evidence.status}
         dueCount={plan?.dueCount ?? 0}
         dueCountryCount={plan?.dueCountryCount ?? 0}
+        reviewActionCount={plan?.action.kind === 'review' ? plan.action.candidates.length : null}
         reviewReasonSummary={plan?.reviewReasonSummary ?? EMPTY_REVIEW_REASON_SUMMARY}
         nextLearning={nextLearning ? { track: nextLearning.track, subregionLabel: nextLearning.subregionLabel } : null}
         refreshing={refreshing}

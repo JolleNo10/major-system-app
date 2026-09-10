@@ -60,6 +60,10 @@ export interface WorldCountriesTodayPlan {
   scopeComplete: boolean
   caughtUpForToday: boolean
   introductions: ReadonlyMap<string, WorldCountriesTargetIntroduction>
+  /** The curriculum recommendation before Today priority suppresses Learning behind due review. */
+  curriculumRecommendation: WorldCountriesTodayLearningRecommendation | null
+  /** Derived Home journey focus; never persisted and never sourced from queue position. */
+  journeyFocusSubregionId: SubregionId | null
   nextLearning: WorldCountriesTodayLearningRecommendation | null
   action: WorldCountriesTodayPrimaryAction
 }
@@ -257,15 +261,17 @@ export function buildWorldCountriesTodayPlan(
     ...effectiveCountries.map(country => country.subregionId),
   ].filter((id, index, values) => values.indexOf(id) === index)
 
-  const nextLearning = dueCandidates.length === 0
-    ? recommendationFor(
-      effectiveCountries,
-      introductions,
-      subregionIds,
-      input.learningStates ?? [],
-      progressByTarget,
-    )
-    : null
+  const curriculumRecommendation = recommendationFor(
+    effectiveCountries,
+    introductions,
+    subregionIds,
+    input.learningStates ?? [],
+    progressByTarget,
+  )
+  const nextLearning = dueCandidates.length === 0 ? curriculumRecommendation : null
+  const journeyFocusSubregionId = curriculumRecommendation?.subregionId
+    ?? subregionIds.find(subregionId => effectiveCountries.some(country => country.subregionId === subregionId && incompleteCountries.has(country.id)))
+    ?? null
   const incompleteSubregionLabels = [...new Set(effectiveCountries
     .filter(country => incompleteCountries.has(country.id))
     .map(country => getSubregionDefinition(country.subregionId).label))]
@@ -288,6 +294,8 @@ export function buildWorldCountriesTodayPlan(
     scopeComplete: effectiveCountries.length > 0 && incompleteCountries.size === 0,
     caughtUpForToday: dueCandidates.length === 0 && nextLearning === null,
     introductions,
+    curriculumRecommendation,
+    journeyFocusSubregionId,
     nextLearning,
   }
   return { ...planWithoutAction, action: actionFor(planWithoutAction) }

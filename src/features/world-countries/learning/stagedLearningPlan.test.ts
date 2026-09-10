@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildLearningPlan, deriveLearningSetPresentation, deriveLearningStagePresentation, partitionLearningSets } from './stagedLearningPlan'
+import { buildLearningPlan, deriveLearningSetPresentation, deriveLearningStagePresentation, formatLearningScopeCount, getLearningSetCompletionLabel, getLearningSetContextLabel, partitionLearningSets } from './stagedLearningPlan'
 
 describe('partitionLearningSets', () => {
   it.each([
@@ -66,6 +66,11 @@ describe('buildLearningPlan', () => {
 
   it('keeps one-Set context distinct from the later full-scope Final stage', () => {
     const plan = buildLearningPlan(['a', 'b'], 3)
+    const oneSet = deriveLearningStagePresentation(plan, 0)
+
+    expect(getLearningSetContextLabel(oneSet, 2, 'countries')).toBe('2 countries')
+    expect(getLearningSetContextLabel(oneSet, 1, 'capitals')).toBe('1 country–capital pair')
+    expect(getLearningSetCompletionLabel(oneSet)).toBe('Practice complete')
 
     expect(deriveLearningStagePresentation(plan, 0)).toMatchObject({
       kind: 'set',
@@ -83,6 +88,15 @@ describe('buildLearningPlan', () => {
       currentSetIds: [],
       upcomingSetIds: [],
     })
+  })
+
+  it('retains Set context and completion identity for multi-Set plans', () => {
+    const plan = buildLearningPlan(['a', 'b', 'c', 'd'], 3)
+    const firstSet = deriveLearningStagePresentation(plan, 0)
+
+    expect(formatLearningScopeCount(3, 'countries')).toBe('3 countries')
+    expect(getLearningSetContextLabel(firstSet, 2, 'countries')).toBe('Set 1 · 2 countries')
+    expect(getLearningSetCompletionLabel(firstSet)).toBe('Set 1 complete')
   })
 
   it('derives cumulative Combined and full Final scopes without Set distinctions', () => {

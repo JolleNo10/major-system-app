@@ -3,6 +3,8 @@ import type { Continent, Country } from '@/features/world-countries/data/countri
 import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
 import {
   deriveLearningStagePresentation,
+  getLearningSetCompletionLabel,
+  getLearningSetContextLabel,
   getNextLearningStageDescription,
   getNextLearningStageLabel,
   rebuildLearningPlanAfterCountryOrderSave,
@@ -13,7 +15,6 @@ import {
   backStagedCountry,
   createStagedCountryLearningFlow,
   currentStagedCountryIds,
-  currentStagedCountrySetNumber,
   keepStagedCountryPractising,
   moveStagedCountryWalkthrough,
   skipStagedCountry,
@@ -176,7 +177,7 @@ export function CountryLearningFlow({
       case 'location-practice': return <LearningHeader label="Find the countries" title={`Find ${flow.location ? stageEntries.find(entry => entry.id === flow.location?.currentKey)?.country ?? 'the Country' : 'the Country'}`} meta={learningSetContext(flow, stageEntries.length)} onExit={onExit} />
       case 'location-ready': return <LearningHeader label="Find the countries" title="Find complete" meta={learningSetContext(flow, stageEntries.length)} onExit={onExit} />
       case 'practice': return <LearningHeader label="Recall the countries" title="Name the country" meta={learningSetContext(flow, stageEntries.length)} onExit={onExit} />
-      case 'set-ready': return <LearningHeader label="Set complete" title={`Set ${currentStagedCountrySetNumber(flow)} complete`} onExit={onExit} />
+      case 'set-ready': return <LearningHeader label="Practice complete" title={getLearningSetCompletionLabel(stagePresentation)} onExit={onExit} />
       case 'combined-practice': return <LearningHeader label="Mix what you've learned" title="Name the country" meta={`${stageEntries.length} ${stageEntries.length === 1 ? 'country' : 'countries'}`} onExit={onExit} />
       case 'combined-ready': return <LearningHeader label="Mixed practice complete" title="Mixed practice complete" onExit={onExit} />
       case 'final-gate': return <LearningHeader label="Final recall" title="Final recall" onExit={onExit} />
@@ -192,7 +193,7 @@ export function CountryLearningFlow({
   const activeTask: WorldCountriesActivityTask | undefined = (() => {
     switch (flow.phase) {
       case 'walkthrough':
-        return { direction: 'Meet the countries', cue: walkthroughCountry?.country ?? 'Country', sessionContext: `Meet the countries · Set ${currentStagedCountrySetNumber(flow)}`, progress: { label: 'Country', current: flow.walkthroughIndex + 1, total: stageEntries.length } }
+        return { direction: 'Meet the countries', cue: walkthroughCountry?.country ?? 'Country', sessionContext: `Meet the countries · ${learningSetContext(flow, stageEntries.length)}`, progress: { label: 'Country', current: flow.walkthroughIndex + 1, total: stageEntries.length } }
       case 'location-practice': {
         const current = flow.location ? stageEntries.find(entry => entry.id === flow.location?.currentKey) : undefined
         return { direction: 'Find the countries', cue: current ? `Find ${current.country}` : 'Find the Country', sessionContext: learningSetContext(flow, stageEntries.length), answerKind: 'country', progress: practiceProgress ? { label: 'Find', current: practiceProgress.atTarget, total: practiceProgress.total, percent: practiceProgress.pct * 100 } : undefined }
@@ -246,7 +247,7 @@ export function CountryLearningFlow({
        content = flow.practice ? <SchedulerPracticeStep continent={continent} entries={stageEntries.length ? stageEntries : allPresentationEntries} session={flow.practice} stepLabel={flow.phase === 'combined-practice' ? `${stageEntries.length} ${stageEntries.length === 1 ? 'country' : 'countries'}` : learningSetContext(flow, stageEntries.length)} questionLabel={flow.phase === 'combined-practice' ? 'Mix what you\'ve learned' : 'Recall the countries'} questionTitle="Name the country" answerLabel="Type the country name" placeholder="Type the country…" showCountryName={false} answerKind="country" showMap={flow.phase !== 'combined-practice'} promptText="Name the country" evaluateAnswer={(answer, country) => evaluateCountryAnswer(answer, country, fuzzyMatching, allPresentationEntries)} formatFeedback={formatCountryFeedback} onSubmit={updatePractice} onBack={() => run(backStagedCountry)} onExit={onExit} allowIncorrectSpellingPractice={allowIncorrectSpellingPractice} surface /> : null
       break
     case 'set-ready':
-      content = <StagedLearningReadyStep title={`Set ${currentStagedCountrySetNumber(flow)} complete`} summary={`You recalled all ${stageEntries.length} ${stageEntries.length === 1 ? 'country' : 'countries'} in this practice.`} nextDescription={getNextLearningStageDescription(flow.plan, flow.stageIndex, 'countries')} nextLabel={getNextLearningStageLabel(flow.plan, flow.stageIndex)} onNext={() => run(advanceStagedCountryPlan)} onKeepPractising={() => run(keepStagedCountryPractising)} onBack={() => run(backStagedCountry)} onExit={onExit} surface />
+      content = <StagedLearningReadyStep title={getLearningSetCompletionLabel(stagePresentation)} summary={`You recalled all ${stageEntries.length} ${stageEntries.length === 1 ? 'country' : 'countries'} in this practice.`} nextDescription={getNextLearningStageDescription(flow.plan, flow.stageIndex, 'countries')} nextLabel={getNextLearningStageLabel(flow.plan, flow.stageIndex)} onNext={() => run(advanceStagedCountryPlan)} onKeepPractising={() => run(keepStagedCountryPractising)} onBack={() => run(backStagedCountry)} onExit={onExit} surface />
       break
     case 'combined-ready':
       content = <StagedLearningReadyStep title="Mixed practice complete" summary={`You recalled all ${stageEntries.length} introduced countries together.`} nextDescription={getNextLearningStageDescription(flow.plan, flow.stageIndex, 'countries')} nextLabel={getNextLearningStageLabel(flow.plan, flow.stageIndex)} onNext={() => run(advanceStagedCountryPlan)} onKeepPractising={() => run(keepStagedCountryPractising)} onBack={() => run(backStagedCountry)} onExit={onExit} surface />
@@ -266,6 +267,5 @@ export function CountryLearningFlow({
 }
 
 function learningSetContext(flow: StagedCountryLearningFlowState, count: number): string {
-  const noun = count === 1 ? 'country' : 'countries'
-  return `Set ${currentStagedCountrySetNumber(flow)} · ${count} ${noun}`
+  return getLearningSetContextLabel(deriveLearningStagePresentation(flow.plan, flow.stageIndex), count, 'countries')
 }

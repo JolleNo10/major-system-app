@@ -105,13 +105,15 @@ function renderLeftRail() {
 describe('CapitalLearningFlow orchestration', () => {
   it('reports the actual completed Capital Set outcome', () => {
     const container = renderFlow(() => undefined)
+    expect(container.textContent).not.toContain('Set 1')
 
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-practice"]')!.click())
-    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0]).toMatchObject({ task: { direction: 'Recall the capitals', sessionContext: 'Set 1 · 1 pair' } })
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0]).toMatchObject({ task: { direction: 'Recall the capitals', sessionContext: '1 country–capital pair' } })
     expect(container.textContent).not.toMatch(/Step [23]/)
     for (let attempt = 0; attempt < 20 && container.querySelector('[data-testid="submit-correct"]'); attempt += 1) act(() => container.querySelector<HTMLButtonElement>('[data-testid="submit-correct"]')!.click())
 
-    expect(container.querySelector('[data-testid="ready-copy"]')?.textContent).toContain('Set 1 complete')
+    expect(container.querySelector('[data-testid="ready-copy"]')?.textContent).toContain('Practice complete')
+    expect(container.querySelector('[data-testid="ready-copy"]')?.textContent).not.toContain('Set 1')
     expect(container.querySelector('[data-testid="ready-copy"]')?.textContent).toContain('You recalled all 1 country–capital pair in this practice.')
     expect(container.querySelector('[data-testid="ready-copy"]')?.textContent).toContain('Start final recall')
   })
@@ -141,6 +143,13 @@ describe('CapitalLearningFlow orchestration', () => {
     expect(container.textContent).toContain('Norway ↔ Oslo')
     expect(task).toMatchObject({ direction: 'Meet the capitals', cue: 'Norway ↔ Oslo' })
     expect(container.textContent).not.toMatch(/Step [23]/)
+  })
+
+  it('retains Set identity when a Capital plan has multiple Sets', () => {
+    const container = renderFlow(() => undefined, fullEntries)
+
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-practice"]')!.click())
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].task).toMatchObject({ sessionContext: 'Set 1 · 2 country–capital pairs' })
   })
 
   it('identifies the current Capital Set within the full Subregion', () => {

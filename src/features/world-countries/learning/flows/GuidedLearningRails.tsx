@@ -11,7 +11,7 @@ import { CountryCapitalMnemonicPanel } from '@/features/world-countries/mnemonic
 import type { LearningPracticeProgress } from '@/features/world-countries/learning/learningPracticeProgress'
 import { InlineOrderEditor, type InlineOrderClickState } from '@/features/world-countries/ui/InlineOrderEditor'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
-import type { LearningStagePresentation } from '@/features/world-countries/learning/stagedLearningPlan'
+import { formatLearningScopeCount, type LearningStagePresentation } from '@/features/world-countries/learning/stagedLearningPlan'
 import type { StagedCountryLearningPhase } from '@/features/world-countries/learning/stagedCountryLearningFlow'
 import type { StagedCapitalLearningPhase } from '@/features/world-countries/learning/stagedCapitalLearningFlow'
 
@@ -113,7 +113,7 @@ export function GuidedLearningRails({
   ), [editingMnemonic])
 
   const stageKind = stagePresentation?.kind
-  const stageLabel = getLearningStageLabel(stagePresentation)
+  const stageLabel = getLearningStageLabel(stagePresentation, track)
   const stageScopeLabel = getLearningStageScopeLabel(stagePresentation, entries.length)
   const walkthroughStageLabel = getWalkthroughStageLabel(stagePresentation, entries.length, track)
   const walkthroughStageScopeLabel = getWalkthroughStageScopeLabel(stagePresentation, entries.length, track)
@@ -158,10 +158,10 @@ export function GuidedLearningRails({
             <span className="text-zinc-500">World</span><span className="text-zinc-700">/</span><span className="text-zinc-500">{continent}</span><span className="text-zinc-700">/</span><span id="world-countries-guided-context-heading" className="text-cyan-300">{learningScopeLabel}</span>
           </nav>
           {!subregion && <p className="rounded-lg border border-violet-500/20 bg-violet-500/5 p-3 text-xs leading-relaxed text-violet-200">Temporary proficiency scope. Completing this run does not change your guided journey.</p>}
-          <section aria-labelledby="guided-learning-stage-heading" data-learning-stage={stageKind ?? 'scope'} className={`rounded-lg border p-3 ${finalPhase ? 'border-zinc-800/60 bg-zinc-950/30' : 'border-zinc-800 bg-zinc-900'}`}>
+          <div role="group" aria-labelledby="guided-learning-stage-heading" data-learning-stage={stageKind ?? 'scope'} className="space-y-1">
             <h2 id="guided-learning-stage-heading" data-learning-stage-label className="text-sm font-semibold text-zinc-100">{stageLabel}</h2>
-            <p data-learning-stage-scope className="mt-1 text-xs text-zinc-400">{stageScopeLabel}</p>
-          </section>
+            {stageScopeLabel && <p data-learning-stage-scope className="text-xs text-zinc-400">{stageScopeLabel}</p>}
+          </div>
           <LearningOrderSection
             entries={entries}
             activeCountries={activeCountries}
@@ -280,22 +280,22 @@ function LearningOrderSection({
   </section>
 }
 
-function getLearningStageLabel(stagePresentation: LearningStagePresentation<Country['id']> | null): string {
+function getLearningStageLabel(stagePresentation: LearningStagePresentation<Country['id']> | null, track: 'countries' | 'capitals' = 'countries'): string {
   if (!stagePresentation) return 'Learning scope'
   if (stagePresentation.kind === 'set') {
     return stagePresentation.setCount > 1 && stagePresentation.setNumber !== null
       ? `Set ${stagePresentation.setNumber} of ${stagePresentation.setCount}`
-      : 'Learning set'
+      : formatLearningScopeCount(stagePresentation.scopeIds.length, track)
   }
   return stagePresentation.kind === 'combined' ? 'Mix what you\'ve learned' : 'Final recall'
 }
 
-function getLearningStageScopeLabel(stagePresentation: LearningStagePresentation<Country['id']> | null, totalCount: number): string {
+function getLearningStageScopeLabel(stagePresentation: LearningStagePresentation<Country['id']> | null, totalCount: number): string | null {
   if (!stagePresentation) return `${totalCount} ${totalCount === 1 ? 'Country' : 'Countries'}`
   if (stagePresentation.kind === 'set') {
     return stagePresentation.setCount > 1
       ? `${stagePresentation.scopeIds.length} of ${totalCount} Countries in this Set`
-      : `${totalCount} ${totalCount === 1 ? 'Country' : 'Countries'} in this Learning set`
+      : null
   }
   if (stagePresentation.kind === 'combined') return `${stagePresentation.scopeIds.length} of ${totalCount} Countries introduced`
   return `All ${totalCount} ${totalCount === 1 ? 'Country' : 'Countries'}`
@@ -312,9 +312,4 @@ function getWalkthroughStageScopeLabel(stagePresentation: LearningStagePresentat
     return formatLearningScopeCount(stagePresentation.scopeIds.length, track)
   }
   return getLearningStageScopeLabel(stagePresentation, totalCount)
-}
-
-function formatLearningScopeCount(count: number, track: 'countries' | 'capitals'): string {
-  if (track === 'capitals') return `${count} ${count === 1 ? 'country–capital pair' : 'country–capital pairs'}`
-  return `${count} ${count === 1 ? 'country' : 'countries'}`
 }

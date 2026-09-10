@@ -176,6 +176,10 @@ describe('GuidedLearningRails contextual authoring visibility', () => {
     expect(mount.textContent).not.toContain('Edit mnemonics')
     expect(mount.textContent).not.toContain('Learning progress')
     expect(mount.textContent).not.toContain('Learning context')
+    const stage = mount.querySelector<HTMLElement>('[data-learning-stage]')
+    expect(stage?.getAttribute('role')).toBe('group')
+    expect(stage?.getAttribute('aria-labelledby')).toBe('guided-learning-stage-heading')
+    expect(stage?.querySelector('section')).toBeNull()
     expect(onOrderDraftChanged).toHaveBeenCalledWith(null)
   })
 

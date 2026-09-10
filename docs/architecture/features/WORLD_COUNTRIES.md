@@ -179,6 +179,13 @@ then scheduled/overdue review. Interleaving prefers unseen Countries, a
 different skill, and a different Subregion within the active tier before using
 the existing due-candidate rank, so variety never displaces more urgent work.
 
+The plan also derives the underlying curriculum recommendation independently
+of review priority. Home uses that recommendation, or the first incomplete
+core-recall Subregion in effective order once curriculum introduction is
+complete, as a non-persisted journey focus; review/consolidation queue order
+does not choose the journey region. Home presents total due work separately
+from the bounded review block that the Today action will launch.
+
 World Countries review spacing is also derived from retained raw attempts. The
 fixed `1, 3, 7, 14, 30, 60` day ladder advances on clean typed-recall days and
 regresses one level for an isolated lapse or two levels for repeated
@@ -282,8 +289,9 @@ Combined stage.
 Active Learning keeps its context rail registered from walkthrough through
 in-session Location, Practice, Combined, and Final recall phases. The
 walkthrough rail is the rich authoring presentation; later in-session phases
-use a reduced, non-authoring presentation with the geography, staged scope,
-and full ordered Subregion visible. Set-local phases identify and emphasize
+use a reduced, non-authoring inline orientation with the geography, staged
+scope, and full ordered Subregion visible rather than a nested stage card.
+Set-local phases identify and emphasize
 the current Set, mark preceding Sets as completed for this Learning pass, and
 keep upcoming Countries subdued. Combined phases present the cumulative
 introduced scope without a current-Set claim, while Final phases present the
@@ -323,14 +331,16 @@ non-persisted Countries / Capitals / Mastery summary; the six-stage derivation
 remains authoritative for supporting progress surfaces. Guided primary labels
 are action-specific (including bounded review/consolidation counts or an
 authoritative staged Country count when available), while Today remains the
-owner of the action meaning and priority. The attached Today task dock also
-identifies the guided Subregion when the learner is inspecting another
-Subregion. The compact journey derives its own `Next in journey:` text only
+owner of the action meaning and priority. The attached Today task dock
+identifies its action scope and the inspected-vs-guided distinction when the
+learner is inspecting another Subregion. The compact journey derives its own `Next in journey:` text only
 from the displayed Subregion's journey; map and geography selection inspect
 progress and do not change the planner-authoritative guided path.
 
 Guided Learning presents the internal staged phases with learner-facing
-language: Meet, Find, Recall, Mix, and Final recall. The walkthrough rail keeps
+language: Meet, Find, Recall, Mix, and Final recall. One-Set learner-facing
+context uses the item or pair count without meaningless Set 1 ceremony;
+multi-Set plans retain truthful Set identity. The walkthrough rail keeps
 geography, Set/count context, the full order, order authoring, and eligible
 mnemonic support in one compact orientation surface. It does not expose
 implementation-shaped numbered steps or duplicate progress/stage narration;

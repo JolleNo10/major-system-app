@@ -132,15 +132,17 @@ function expectCountryWalkthrough(container: HTMLDivElement, task: unknown, coun
 describe('CountryLearningFlow scheduler progress wiring', () => {
   it('reports the actual completed Set outcome and truthful next stage', () => {
     const container = renderFlow(entries)
+    expect(container.textContent).not.toContain('Set 1')
 
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-location"]')!.click())
     for (let attempt = 0; attempt < 20 && container.querySelector('[data-testid="location-submit"]'); attempt += 1) act(() => container.querySelector<HTMLButtonElement>('[data-testid="location-submit"]')!.click())
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
-    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].task).toMatchObject({ direction: 'Recall the countries', sessionContext: 'Set 1 · 1 country' })
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].task).toMatchObject({ direction: 'Recall the countries', sessionContext: '1 country' })
     expect(container.textContent).not.toMatch(/Step [23]/)
     for (let attempt = 0; attempt < 20 && container.querySelector('[data-testid="practice-submit"]'); attempt += 1) act(() => container.querySelector<HTMLButtonElement>('[data-testid="practice-submit"]')!.click())
 
-    expect(container.querySelector('[data-testid="ready-copy"]')?.textContent).toContain('Set 1 complete')
+    expect(container.querySelector('[data-testid="ready-copy"]')?.textContent).toContain('Practice complete')
+    expect(container.querySelector('[data-testid="ready-copy"]')?.textContent).not.toContain('Set 1')
     expect(container.querySelector('[data-testid="ready-copy"]')?.textContent).toContain('You recalled all 1 country in this practice.')
     expect(container.querySelector('[data-testid="ready-copy"]')?.textContent).toContain('Start final recall')
   })
@@ -158,6 +160,13 @@ describe('CountryLearningFlow scheduler progress wiring', () => {
 
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="walkthrough-previous"]')!.click())
     expectCountryWalkthrough(container, latestTask(), fullWalkthroughEntries[0]!)
+  })
+
+  it('retains Set identity when a Learning plan has multiple Sets', () => {
+    const container = renderFlow(fullWalkthroughEntries)
+
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-location"]')!.click())
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].task).toMatchObject({ sessionContext: 'Set 1 · 2 countries' })
   })
 
   it('seeds Country progress from existing durable state on a fresh flow', () => {
@@ -277,7 +286,7 @@ describe('CountryLearningFlow scheduler progress wiring', () => {
     })
 
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-location"]')!.click())
-    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0]).toMatchObject({ task: { answerKind: 'country', direction: 'Find the countries', sessionContext: 'Set 1 · 1 country' }, cameraIntent: { kind: 'subregion-learning', subregionId: 'northern-europe' } })
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0]).toMatchObject({ task: { answerKind: 'country', direction: 'Find the countries', sessionContext: '1 country' }, cameraIntent: { kind: 'subregion-learning', subregionId: 'northern-europe' } })
     expect(container.textContent).not.toMatch(/Step [23]/)
   })
 

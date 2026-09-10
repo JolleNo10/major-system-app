@@ -3,9 +3,12 @@ import { countries } from '@/features/world-countries/data/countries'
 import { deriveWorldCountriesRecallHistory } from '@/features/world-countries/learning/recallHistory'
 import { buildWorldCountriesTodayPlan } from './todayPlan'
 
-function historyFor(attempts: readonly { itemId: string; at: number; ok: boolean; evidenceKind?: 'recall' | 'recognition'; localDate?: string }[]) {
+function historyFor(
+  attempts: readonly { itemId: string; at: number; ok: boolean; evidenceKind?: 'recall' | 'recognition'; localDate?: string }[],
+  countryIds: readonly string[] = ['NO'],
+) {
   return deriveWorldCountriesRecallHistory({
-    countryIds: ['NO'],
+    countryIds,
     skills: ['location-to-country', 'country-to-capital'],
   }, attempts.map(attempt => ({ ms: 100, ...attempt })))
 }
@@ -168,6 +171,55 @@ describe('World Countries Today plan', () => {
     expect(plan.action.kind).toBe('complete')
   })
 
+  it('keeps the curriculum journey focus while due review owns Today priority', () => {
+    const northern = countries.find(country => country.subregionId === 'northern-europe')!
+    const southern = countries.find(country => country.subregionId === 'southern-europe')!
+    const plan = buildWorldCountriesTodayPlan({
+      activeCountries: [northern, southern],
+      effectiveCountries: [northern, southern],
+      effectiveSubregionIds: ['northern-europe', 'southern-europe'],
+      history: historyFor([
+        { itemId: `world-countries:location-to-country:${southern.id}`, at: 1, ok: true, localDate: '2026-08-18' },
+        { itemId: `world-countries:location-to-country:${southern.id}`, at: 2, ok: false, localDate: '2026-08-19' },
+      ], [northern.id, southern.id]),
+      localDate: '2026-08-19',
+    })
+
+    expect(plan.action.kind).toBe('review')
+    expect(plan.nextLearning).toBeNull()
+    expect(plan.curriculumRecommendation?.subregionId).toBe('northern-europe')
+    expect(plan.journeyFocusSubregionId).toBe('northern-europe')
+  })
+
+  it('does not use the first review candidate when the bounded block spans Subregions', () => {
+    const northern = countries.find(country => country.subregionId === 'northern-europe')!
+    const southern = countries.find(country => country.subregionId === 'southern-europe')!
+    const history = historyFor([
+      ...[northern, southern].flatMap(country => [
+        { itemId: `world-countries:location-to-country:${country.id}`, at: country.id === northern.id ? 20 : 1, ok: true, localDate: '2026-08-18' },
+        { itemId: `world-countries:location-to-country:${country.id}`, at: country.id === northern.id ? 21 : 2, ok: false, localDate: '2026-08-19' },
+        { itemId: `world-countries:country-to-capital:${country.id}`, at: country.id === northern.id ? 30 : 3, ok: true, localDate: '2026-08-19' },
+      ]),
+    ], [northern.id, southern.id])
+    const plan = buildWorldCountriesTodayPlan({
+      activeCountries: [northern, southern],
+      effectiveCountries: [southern, northern],
+      effectiveSubregionIds: ['northern-europe', 'southern-europe'],
+      learningStates: [
+        { subregionId: 'northern-europe', countriesLearnedAt: 1, capitalsLearnedAt: 2 },
+        { subregionId: 'southern-europe', countriesLearnedAt: 1, capitalsLearnedAt: 2 },
+      ],
+      history,
+      localDate: '2026-08-19',
+    })
+
+    expect(plan.curriculumRecommendation).toBeNull()
+    expect(plan.action.kind).toBe('review')
+    expect(plan.reviewQueue.length).toBeGreaterThan(1)
+    expect(plan.reviewQueue[0]?.country.subregionId).toBe('southern-europe')
+    expect(plan.journeyFocusSubregionId).toBe('northern-europe')
+  })
+
   it('prioritizes due review, then Learning, then bounded consolidation, then completion', () => {
     const country = countries.find(entry => entry.id === 'NO')!
     const due = buildWorldCountriesTodayPlan({
@@ -208,6 +260,7 @@ describe('World Countries Today plan', () => {
       localDate: '2026-08-11',
     })
     expect(complete.scopeComplete).toBe(true)
+    expect(complete.journeyFocusSubregionId).toBeNull()
     expect(complete.action.kind).toBe('complete')
   })
 

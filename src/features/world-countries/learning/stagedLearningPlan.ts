@@ -28,6 +28,36 @@ export interface LearningStagePresentation<TId = CountryId> {
   upcomingSetIds: readonly TId[]
 }
 
+export type LearningPresentationTrack = 'countries' | 'capitals'
+
+/** Format the learner-facing count without exposing staged-plan terminology. */
+export function formatLearningScopeCount(count: number, track: LearningPresentationTrack): string {
+  if (track === 'capitals') return `${count} ${count === 1 ? 'country–capital pair' : 'country–capital pairs'}`
+  return `${count} ${count === 1 ? 'country' : 'countries'}`
+}
+
+/** Set identity is useful only when the plan has multiple Sets. */
+export function getLearningSetContextLabel(
+  stagePresentation: LearningStagePresentation | null,
+  count: number,
+  track: LearningPresentationTrack,
+): string {
+  const countLabel = formatLearningScopeCount(count, track)
+  return stagePresentation?.kind === 'set'
+    && stagePresentation.setCount > 1
+    && stagePresentation.setNumber !== null
+    ? `Set ${stagePresentation.setNumber} · ${countLabel}`
+    : countLabel
+}
+
+export function getLearningSetCompletionLabel(stagePresentation: LearningStagePresentation | null): string {
+  return stagePresentation?.kind === 'set'
+    && stagePresentation.setCount > 1
+    && stagePresentation.setNumber !== null
+    ? `Set ${stagePresentation.setNumber} complete`
+    : 'Practice complete'
+}
+
 /** Derive Set status for the active staged Set without adding curriculum state. */
 export function deriveLearningSetPresentation<TId>(
   plan: readonly LearningPlanStage<TId>[],

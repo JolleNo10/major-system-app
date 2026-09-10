@@ -252,6 +252,67 @@ describe('World Countries Today', () => {
     }))
   })
 
+  it('keeps the curriculum journey focus when a Southern Europe review has Today priority', async () => {
+    const northernEntries = countries.filter(country => country.subregionId === 'northern-europe').slice(0, 3)
+    const southernEntry = countries.find(country => country.subregionId === 'southern-europe')!
+    activeCountries = [...northernEntries, southernEntry]
+    const reviewCandidates = [{ country: southernEntry }, { country: southernEntry }]
+    buildPlanMock.mockReturnValue({
+      dueCandidates: reviewCandidates,
+      reviewQueue: reviewCandidates,
+      consolidationCandidates: [],
+      consolidationQueue: [],
+      dueCount: 20,
+      dueCountryCount: 15,
+      introductions: new Map(),
+      curriculumRecommendation: {
+        track: 'learn-countries',
+        subregionId: 'northern-europe',
+        continent: 'Europe',
+        subregionLabel: 'Northern Europe',
+        countryIds: northernEntries.map(country => country.id),
+      },
+      journeyFocusSubregionId: 'northern-europe',
+      nextLearning: null,
+      incompleteCountryCount: activeCountries.length,
+      incompleteSubregionLabels: ['Northern Europe', 'Southern Europe'],
+      scopeComplete: false,
+      caughtUpForToday: false,
+      action: { kind: 'review', candidates: reviewCandidates },
+    })
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(WorldCountriesToday, { answerMode: 'typing', continent: 'Europe', onNavigate: vi.fn() }))
+      await Promise.resolve()
+    })
+
+    const renderLatestRails = () => {
+      act(() => railRoot?.unmount())
+      const config = useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1]?.[0] as { left?: ReactNode; right?: ReactNode } | undefined
+      const railMount = document.createElement('div')
+      document.body.append(railMount)
+      railRoot = createRoot(railMount)
+      act(() => railRoot?.render(createElement('div', null, config?.left, config?.right)))
+      return railMount
+    }
+
+    let railMount = renderLatestRails()
+    expect(railMount.textContent).toContain('Your journey · Northern Europe')
+    act(() => [...railMount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent?.startsWith('Southern Europe'))?.click())
+    railMount = renderLatestRails()
+
+    expect(railMount.textContent).toContain("You're viewing Southern Europe")
+    expect(railMount.textContent).toContain('Your guided next action remains in Northern Europe')
+    expect(railMount.textContent).toContain('20 reviews due in total')
+    expect(railMount.textContent).toContain('15 countries')
+    expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Review 2 items')
+    expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('Next review · 2 items in Southern Europe')
+    expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain("You're inspecting Southern Europe")
+  })
+
   it('offers the latest post-milestone learn-capitals action and launches it directly', async () => {
     const country = activeCountries[0]
     const initialPlan = {
