@@ -7,6 +7,7 @@ dist/
 
 # RepoWise local index
 .repowise/
+.repowise-backup/
 
 # Local Claude Code configuration
 .claude/
