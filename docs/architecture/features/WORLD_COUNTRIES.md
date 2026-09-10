@@ -336,32 +336,33 @@ Capital, and Combined scopes each start fresh scheduler state. Only the
 whole-Subregion ordered Final recall writes the owning Learning milestone;
 journey and scheduler state are not persisted.
 
-The learner-facing six-stage journey (Meet the countries, Practice the
-countries, Countries established, Add the capitals, Put it all together, Master
-the region) is derived presentation over existing Subregion milestones and
-recall/proficiency evidence. No journey-step, current-Continent, or curriculum
-focus field is persisted. The Country Learning milestone satisfies Countries
-established and is sufficient to layer Capital Learning on top; fully mastered
-Country recall is a non-persisted fallback for already-known Countries, while
-partial target practice is not. Capital Learning is likewise established by
-its durable milestone or fully mastered Country-to-Capital recall, while
-incidental Capital practice remains insufficient. Capital learning extends
-existing Country knowledge and does not reset Country evidence. Each stage status is derived
-independently enough to distinguish a completed Learning milestone from
-developing or mastered recall; after both milestones, incomplete core evidence
-belongs to Put it all together, and a fully mastered core scope renders the
-final Master the region stage complete. On a Continent hub, a transiently
-inspected Subregion supplies the displayed journey/progress while the guided
-recommendation and consolidation scope continue to come from Today planning.
-Default Home and Continent rails project this derived truth into a compact,
-non-persisted Countries / Capitals / Mastery summary; the six-stage derivation
-remains authoritative for supporting progress surfaces. The attached Today
-task dock owns the Journey continuation and identifies its scope, while the
-right rail owns the independent Review/weak-spot opportunity. The Journey
-panel is orientation only and does not repeat a specific next action. The
-inspected-vs-guided distinction remains explicit when the learner is inspecting
-another Subregion; map and geography selection inspect progress and do not
-change the planner-authoritative guided path.
+The learner-facing Journey is a derived presentation over existing Subregion
+milestones and recall/proficiency evidence. Its guided learning path is
+Countries -> Capitals -> Region learned; long-term Mastery is a separate
+recall outcome built through Review and practice. No journey-step,
+current-Continent, or curriculum focus field is persisted. The Country
+Learning milestone satisfies the Countries layer and is sufficient to layer
+Capital Learning on top; fully mastered Country recall is a non-persisted
+fallback for already-known Countries, while partial target practice is not.
+Capital Learning is likewise established by its durable milestone or fully
+mastered Country-to-Capital recall, while incidental Capital practice remains
+insufficient. Capital learning extends existing Country knowledge and does not
+reset Country evidence. Once both layers are established, Region learned is
+complete even when core recall is still developing; Mastery becomes Mastered
+only when the existing core recall evidence is complete. On a Continent hub, a
+transiently inspected Subregion supplies the displayed journey/progress while
+the guided recommendation and consolidation scope continue to come from Today
+planning. Default Home and Continent rails project this derived truth into a
+compact, non-persisted Countries / Capitals / Region learned summary with
+Mastery separate. Guided Capital completion can expose a planner-derived next
+region handoff while keeping an explicit return action; it never auto-starts
+that recommendation. The attached Today task dock owns the Journey
+continuation and identifies its scope, while the right rail owns the
+independent Review/weak-spot opportunity. The Journey panel is orientation only
+and does not repeat a specific next action. The inspected-vs-guided distinction
+remains explicit when the learner is inspecting another Subregion; map and
+geography selection inspect progress and do not change the planner-authoritative
+guided path.
 
 Guided Learning presents the internal staged phases with learner-facing
 language: Meet, Find, Recall, Mix, and Final recall. One-Set learner-facing

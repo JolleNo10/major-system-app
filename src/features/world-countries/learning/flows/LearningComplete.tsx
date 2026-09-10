@@ -5,6 +5,14 @@ export interface LearningCompletionHandoff {
   description: string
   label: string
   onContinue: () => void
+  stopLabel?: string
+  onStop?: () => void
+}
+
+export type LearningMasteryStatus = 'building' | 'mastered'
+
+export interface LearningRegionCompletion {
+  masteryStatus: LearningMasteryStatus
 }
 
 export interface LearningCompleteProps {
@@ -43,7 +51,8 @@ export function LearningComplete({
     <TaskDock variant="completion" status={status} tone="ready" enableEnterPrimary>
       <div className="flex w-full gap-2 xl:w-auto">
         <button type="button" data-primary-action onClick={completionHandoff?.onContinue ?? onDone} className="flex-1 whitespace-nowrap rounded-[9px] border border-violet-500 bg-violet-600 px-3.5 py-2.5 text-sm font-bold text-white hover:bg-violet-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 xl:flex-none">{completionHandoff?.label ?? doneLabel}<span aria-label="Enter" className="ml-2 inline-flex min-w-[22px] items-center justify-center rounded-[5px] border border-white/25 border-b-2 px-1.5 py-px text-[11px]">↵</span></button>
-        <button type="button" onClick={onRestart} className="flex-1 whitespace-nowrap rounded-[9px] border border-zinc-600 bg-zinc-800 px-3.5 py-2.5 text-sm text-zinc-200 hover:border-violet-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 xl:flex-none">{restartLabel}</button>
+        {completionHandoff?.onStop && completionHandoff.stopLabel && <button type="button" data-completion-stop onClick={completionHandoff.onStop} className="flex-1 whitespace-nowrap rounded-[9px] border border-zinc-600 bg-zinc-800 px-3.5 py-2.5 text-sm font-semibold text-zinc-200 hover:border-violet-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 xl:flex-none">{completionHandoff.stopLabel}</button>}
+        <button type="button" data-completion-restart onClick={onRestart} className={`flex-1 whitespace-nowrap rounded-[9px] border border-zinc-600 px-3.5 py-2.5 text-sm text-zinc-300 hover:border-violet-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 xl:flex-none ${completionHandoff?.onStop ? 'bg-transparent text-xs' : 'bg-zinc-800'}`}>{restartLabel}</button>
       </div>
     </TaskDock>
   )

@@ -167,9 +167,13 @@ describe('Guided World Countries home rails', () => {
   it('keeps Journey orientation separate from its specific next action', () => {
     const journey: WorldCountriesJourneyPresentation = {
       subregionId: 'northern-europe',
-      currentStageId: 'add-capitals',
+      currentStageId: 'capitals',
       complete: false,
-      stages: WORLD_COUNTRIES_JOURNEY_STAGES.map(stage => ({ ...stage, status: stage.id === 'add-capitals' ? 'current' : 'upcoming', detail: 'Detail' })),
+      stages: WORLD_COUNTRIES_JOURNEY_STAGES.map(stage => ({ ...stage, status: stage.id === 'countries' ? 'complete' : stage.id === 'capitals' ? 'current' : 'upcoming', detail: 'Detail' })),
+      regionLearned: false,
+      masteryStatus: 'building',
+      hasCountryPractice: true,
+      hasCapitalPractice: false,
       countriesLearned: true,
       countriesEstablished: true,
       capitalsLearned: false,
@@ -189,16 +193,20 @@ describe('Guided World Countries home rails', () => {
     expect(mount.textContent).not.toContain('Next in journey')
     expect(mount.querySelector('[data-journey-milestone="countries"]')?.getAttribute('data-journey-status')).toBe('complete')
     expect(mount.querySelector('[data-journey-milestone="capitals"]')?.getAttribute('data-journey-status')).toBe('current')
-    expect(mount.querySelector('[data-journey-milestone="mastery"]')?.getAttribute('data-journey-status')).toBe('upcoming')
+    expect(mount.querySelector('[data-journey-milestone="region-learned"]')?.getAttribute('data-journey-status')).toBe('upcoming')
   })
 
   it('keeps an inspected Subregion separate from the guided Journey focus', () => {
     const onFocusGuidedSubregion = vi.fn()
     const journey: WorldCountriesJourneyPresentation = {
       subregionId: 'southern-europe',
-      currentStageId: 'meet-countries',
+      currentStageId: 'countries',
       complete: false,
-      stages: WORLD_COUNTRIES_JOURNEY_STAGES.map(stage => ({ ...stage, status: stage.id === 'meet-countries' ? 'current' : 'upcoming', detail: 'Progress detail' })),
+      stages: WORLD_COUNTRIES_JOURNEY_STAGES.map(stage => ({ ...stage, status: stage.id === 'countries' ? 'current' : 'upcoming', detail: 'Progress detail' })),
+      regionLearned: false,
+      masteryStatus: 'building',
+      hasCountryPractice: false,
+      hasCapitalPractice: false,
       countriesLearned: false,
       countriesEstablished: false,
       capitalsLearned: false,

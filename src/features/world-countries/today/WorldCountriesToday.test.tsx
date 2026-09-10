@@ -2,7 +2,7 @@ import { act, createElement, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { countries } from '@/features/world-countries/data/countries'
-import { markSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningStore'
+import { markSubregionCapitalsLearned, markSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningStore'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -13,6 +13,7 @@ const countryLearningFlowMock = vi.hoisted(() => vi.fn())
 const capitalLearningFlowMock = vi.hoisted(() => vi.fn())
 let activeCountries = [countries[0]]
 let milestoneWritten = false
+let capitalMilestoneWritten = false
 
 vi.mock('@/app/settings/SettingsContext', () => ({
   useSettings: () => ({ settings: { worldCountriesFuzzyAnswerMatching: false, worldCountriesNewItemsPerSet: 3 } }),
@@ -62,7 +63,38 @@ vi.mock('@/features/world-countries/learning/flows/CountryLearningFlow', () => (
 vi.mock('@/features/world-countries/learning/flows/CapitalLearningFlow', () => ({
   CapitalLearningFlow: (props: Record<string, unknown>) => {
     capitalLearningFlowMock(props)
-    return createElement('div', { 'data-testid': 'capital-learning-flow' }, 'Capital Learning flow')
+    const handoff = props.completionHandoff as { description: string; label: string; onContinue: () => void; stopLabel?: string; onStop?: () => void } | undefined
+    const regionCompletion = props.regionCompletion as { masteryStatus: string } | undefined
+    return createElement('div', { 'data-testid': 'capital-learning-flow' }, [
+      createElement('button', {
+        key: 'complete',
+        type: 'button',
+        'data-testid': 'complete-capital-learning',
+        onClick: () => {
+          capitalMilestoneWritten = true
+          markSubregionCapitalsLearned(props.subregion as typeof countries[number]['subregionId'], Date.now(), activeCountries)
+        },
+      }, 'Finish Capital Learning'),
+      regionCompletion ? createElement('p', { key: 'region', 'data-testid': 'region-completion' }, `Region learned · Mastery ${regionCompletion.masteryStatus}`) : null,
+      handoff ? createElement('button', {
+        key: 'handoff',
+        type: 'button',
+        'data-testid': 'capital-learning-handoff',
+        onClick: handoff.onContinue,
+      }, `${handoff.description} ${handoff.label}`) : null,
+      handoff?.onStop && handoff.stopLabel ? createElement('button', {
+        key: 'stop',
+        type: 'button',
+        'data-testid': 'capital-learning-stop',
+        onClick: handoff.onStop,
+      }, handoff.stopLabel) : null,
+      createElement('button', {
+        key: 'done',
+        type: 'button',
+        'data-testid': 'capital-learning-done',
+        onClick: props.onDone as () => void,
+      }, 'Back to Home'),
+    ])
   },
 }))
 vi.mock('./todayPlan', async importOriginal => ({
@@ -108,15 +140,16 @@ afterEach(() => {
   useRailsMock.mockReset()
   activeCountries = [countries[0]]
   milestoneWritten = false
+  capitalMilestoneWritten = false
   localStorage.clear()
 })
 
-function recommendation(track: 'learn-countries' | 'learn-capitals', countryIds: readonly string[] = [countries[0].id]) {
+function recommendation(track: 'learn-countries' | 'learn-capitals', countryIds: readonly string[] = [countries[0].id], country = countries.find(candidate => candidate.id === countryIds[0]) ?? countries[0]) {
   return {
     track,
-    subregionId: countries[0].subregionId,
-    continent: countries[0].continent,
-    subregionLabel: 'Northern Europe',
+    subregionId: country.subregionId,
+    continent: country.continent,
+    subregionLabel: country.subregion,
     countryIds,
   }
 }
@@ -478,6 +511,81 @@ describe('World Countries Today', () => {
     expect(mount.textContent).not.toContain('Review 1 item')
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="country-learning-handoff"]')?.click())
     expect(capitalLearningFlowMock).toHaveBeenCalledWith(expect.objectContaining({ subregion: country.subregionId }))
+  })
+
+  it('presents a learned Capital region before offering the exact next planner recommendation', async () => {
+    const northern = countries.find(country => country.subregionId === 'northern-europe')!
+    const western = countries.find(country => country.subregionId === 'western-europe')!
+    activeCountries = [northern, western]
+    markSubregionCountriesLearned(northern.subregionId, Date.now(), activeCountries)
+    const initialPlan = plan({
+      curriculumRecommendation: recommendation('learn-capitals', [northern.id], northern),
+      journeyFocusSubregionId: northern.subregionId,
+    })
+    const nextRecommendation = recommendation('learn-countries', [western.id], western)
+    const postMilestonePlan = plan({
+      curriculumRecommendation: nextRecommendation,
+      journeyFocusSubregionId: western.subregionId,
+    })
+    buildPlanMock.mockImplementation(() => capitalMilestoneWritten ? postMilestonePlan : initialPlan)
+    const mount = await renderToday({ continent: 'Europe' })
+
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-primary-action]')?.click()
+      await Promise.resolve()
+    })
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-testid="complete-capital-learning"]')?.click()
+      await Promise.resolve()
+    })
+
+    expect(mount.querySelector('[data-testid="region-completion"]')?.textContent).toContain('Region learned')
+    expect(mount.textContent).toContain('Start Western Europe')
+    expect(mount.textContent).toContain('Back to Europe')
+    expect(mount.textContent).not.toContain('Learn 1 country')
+    expect(countryLearningFlowMock).not.toHaveBeenCalled()
+
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="capital-learning-handoff"]')?.click())
+    expect(countryLearningFlowMock).toHaveBeenCalledWith(expect.objectContaining({
+      subregion: western.subregionId,
+      entries: [western],
+    }))
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-testid="country-learning-done"]')?.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(mount.querySelector('[data-testid="country-learning-flow"]')).toBeNull()
+    expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('Western Europe')
+  })
+
+  it('keeps a learned Capital region truthful when no next recommendation exists', async () => {
+    const northern = countries.find(country => country.subregionId === 'northern-europe')!
+    activeCountries = [northern]
+    markSubregionCountriesLearned(northern.subregionId, Date.now(), activeCountries)
+    buildPlanMock.mockImplementation(() => capitalMilestoneWritten
+      ? plan({ curriculumRecommendation: null, journeyFocusSubregionId: null })
+      : plan({ curriculumRecommendation: recommendation('learn-capitals', [northern.id], northern), journeyFocusSubregionId: northern.subregionId }))
+    const mount = await renderToday({ continent: 'Europe' })
+
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-primary-action]')?.click()
+      await Promise.resolve()
+    })
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-testid="complete-capital-learning"]')?.click()
+      await Promise.resolve()
+    })
+
+    expect(mount.querySelector('[data-testid="region-completion"]')).not.toBeNull()
+    expect(mount.querySelector('[data-testid="capital-learning-handoff"]')).toBeNull()
+    expect(mount.textContent).not.toContain('Start Western Europe')
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-testid="capital-learning-done"]')?.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(mount.querySelector('[data-testid="capital-learning-flow"]')).toBeNull()
   })
 
   it('passes recall-derived Country establishment into Capital Learning', async () => {

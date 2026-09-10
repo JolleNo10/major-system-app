@@ -22,11 +22,16 @@ afterEach(() => {
   document.body.replaceChildren()
 })
 
-function renderProgress(scopeLabel: 'World' | Continent, scopeCountries: typeof countries) {
+function renderProgress(
+  scopeLabel: 'World' | Continent,
+  scopeCountries: typeof countries,
+  learningStates: readonly { subregionId: typeof countries[number]['subregionId']; countriesLearnedAt?: number; capitalsLearnedAt?: number }[] = [],
+  attempts: readonly { itemId: string; at: number; ok: boolean; ms: number; evidenceKind: 'recall'; localDate: string }[] = [],
+) {
   const recallProgress = deriveWorldCountriesRecallProgress({
     countryIds: scopeCountries.map(country => country.id),
     skills: ['location-to-country', 'country-to-capital'],
-  }, [])
+  }, attempts)
   const progress = deriveWorldCountriesScopeProgressForCountries(
     scopeLabel === 'World' ? 'world' : `continent:${scopeLabel}`,
     scopeCountries,
@@ -42,7 +47,7 @@ function renderProgress(scopeLabel: 'World' | Continent, scopeCountries: typeof 
       scopeCountries,
       progress,
       recallProgress,
-      learningStates: [],
+      learningStates,
       onBack: vi.fn(),
     }))
   })
@@ -73,5 +78,37 @@ describe('World Countries progress hierarchy', () => {
     expect(mount.textContent).toContain('Meet the countries')
     expect(mount.querySelector('[aria-label="Northern Europe core recall distribution"]')).not.toBeNull()
     expect(mount.textContent).not.toContain('Africa')
+  })
+
+  it('separates learned Journey completion from developing Mastery', () => {
+    const northern = countries.find(country => country.subregionId === 'northern-europe')!
+    const mount = renderProgress('Europe', [northern], [{ subregionId: northern.subregionId, countriesLearnedAt: 1, capitalsLearnedAt: 2 }])
+
+    expect(mount.textContent).toContain('Journey · Region learned')
+    expect(mount.textContent).toContain('Mastery · Building')
+    expect(mount.textContent).not.toContain('Put it all together')
+    expect(mount.textContent).not.toContain('Master the region')
+  })
+
+  it('keeps in-progress Country recall wording in Progress', () => {
+    const northern = countries.find(country => country.subregionId === 'northern-europe')!
+    const attempts = [{ itemId: `world-countries:location-to-country:${northern.id}`, at: 1, ok: false, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-10' }]
+    const mount = renderProgress('Europe', [northern], [], attempts)
+
+    expect(mount.textContent).toContain('Journey · Recall the countries')
+  })
+
+  it('shows Mastered separately when core recall is complete', () => {
+    const northern = countries.find(country => country.subregionId === 'northern-europe')!
+    const attempts = [
+      { itemId: `world-countries:location-to-country:${northern.id}`, at: 1, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-10' },
+      { itemId: `world-countries:location-to-country:${northern.id}`, at: 2, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-11' },
+      { itemId: `world-countries:country-to-capital:${northern.id}`, at: 3, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-10' },
+      { itemId: `world-countries:country-to-capital:${northern.id}`, at: 4, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-11' },
+    ]
+    const mount = renderProgress('Europe', [northern], [{ subregionId: northern.subregionId, countriesLearnedAt: 1, capitalsLearnedAt: 2 }], attempts)
+
+    expect(mount.textContent).toContain('Journey · Region learned')
+    expect(mount.textContent).toContain('Mastery · Mastered')
   })
 })

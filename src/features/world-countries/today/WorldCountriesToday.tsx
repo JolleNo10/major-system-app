@@ -18,7 +18,7 @@ import { deriveWorldCountriesScopeProgressForCountries } from '@/features/world-
 import { getCountryProgressColor, getCountryProgressState } from '@/features/world-countries/learning/progressPresentation'
 import { CountryLearningFlow } from '@/features/world-countries/learning/flows/CountryLearningFlow'
 import { CapitalLearningFlow } from '@/features/world-countries/learning/flows/CapitalLearningFlow'
-import type { LearningCompletionHandoff } from '@/features/world-countries/learning/flows/LearningComplete'
+import type { LearningCompletionHandoff, LearningRegionCompletion } from '@/features/world-countries/learning/flows/LearningComplete'
 import { buildLearningPlan, type LearningSetMaximum } from '@/features/world-countries/learning/stagedLearningPlan'
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
 import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
@@ -92,6 +92,8 @@ function createCompletionHandoff(
   nextRecommendation: WorldCountriesTodayLearningRecommendation | null,
   newItemsPerSet: LearningSetMaximum | undefined,
   onContinue: () => void,
+  onStop: () => void,
+  originatingScopeLabel: string,
 ): LearningCompletionHandoff | undefined {
   if (!nextRecommendation || isSameLearningRecommendation(currentRecommendation, nextRecommendation)) return undefined
   const nextLabel = getJourneyActionLabel(nextRecommendation, newItemsPerSet)
@@ -100,6 +102,15 @@ function createCompletionHandoff(
     && nextRecommendation.subregionId === currentRecommendation.subregionId
   return isCountryToCapital
     ? { description: 'Next: add the capitals to these countries.', label: 'Add the capitals', onContinue }
+    : currentRecommendation.track === 'learn-capitals'
+      && nextRecommendation.subregionId !== currentRecommendation.subregionId
+      ? {
+          description: `Next region: ${nextRecommendation.subregionLabel}`,
+          label: `Start ${nextRecommendation.subregionLabel}`,
+          onContinue,
+          stopLabel: `Back to ${originatingScopeLabel}`,
+          onStop,
+        }
     : {
         description: `Next: ${(nextLabel ?? (nextRecommendation.track === 'learn-capitals' ? 'Add the capitals' : 'Learn the countries')).toLowerCase()} in ${nextRecommendation.subregionLabel}.`,
         label: nextLabel ?? (nextRecommendation.track === 'learn-capitals' ? 'Add the capitals' : 'Learn the countries'),
@@ -286,6 +297,15 @@ export function WorldCountriesToday({
       recallProgress: recallProgress ?? new Map(),
     })
   }, [displaySubregionId, evidence.status, learningStates, recallProgress, scopedCountries])
+  const completedLearningJourney = useMemo<WorldCountriesJourneyPresentation | null>(() => {
+    if (!learningRun || evidence.status !== 'ready') return null
+    return deriveWorldCountriesJourneyPresentation({
+      subregionId: learningRun.recommendation.subregionId,
+      entries: scopedCountries,
+      learningState: learningStates.find(state => state.subregionId === learningRun.recommendation.subregionId),
+      recallProgress: recallProgress ?? new Map(),
+    })
+  }, [evidence.status, learningRun, learningStates, recallProgress, scopedCountries])
   const scopeSummaries = useMemo(() => {
     void geographyRevision
     if (!recallProgress) return []
@@ -319,7 +339,11 @@ export function WorldCountriesToday({
   const scopeLabel = continent ?? 'World'
   const navigateWorld = onWorld ?? (() => undefined)
   const completionHandoff = learningRun && evidence.status === 'ready' && journeyLearning
-    ? createCompletionHandoff(learningRun.recommendation, journeyLearning, settings.worldCountriesNewItemsPerSet as LearningSetMaximum | undefined, () => launchLearningRecommendation(journeyLearning))
+    ? createCompletionHandoff(learningRun.recommendation, journeyLearning, settings.worldCountriesNewItemsPerSet as LearningSetMaximum | undefined, () => launchLearningRecommendation(journeyLearning), finishLearning, continent ?? 'World')
+    : undefined
+  const regionCompletion: LearningRegionCompletion | undefined = learningRun?.recommendation.track === 'learn-capitals'
+    && completedLearningJourney?.regionLearned
+    ? { masteryStatus: completedLearningJourney.masteryStatus }
     : undefined
 
   if (showProgress) {
@@ -378,6 +402,7 @@ export function WorldCountriesToday({
       onDone={finishLearning}
       doneLabel={`Back to ${continent ?? 'World'}`}
       completionHandoff={completionHandoff}
+      regionCompletion={regionCompletion}
       recordCompletion={true}
     />
   }

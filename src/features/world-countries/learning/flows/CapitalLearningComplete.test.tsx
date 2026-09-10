@@ -72,6 +72,51 @@ describe('CapitalLearningComplete', () => {
     expect(onDone).not.toHaveBeenCalled()
   })
 
+  it('presents a completed region with separate developing Mastery and a stopping action', () => {
+    const onDone = vi.fn()
+    const onContinue = vi.fn()
+    const onRestart = vi.fn()
+    const onStop = vi.fn()
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement(CapitalLearningComplete, {
+        subregion: 'balkans',
+        onDone,
+        onRestart,
+        regionCompletion: { masteryStatus: 'building' },
+        completionHandoff: {
+          description: 'Next region: Eastern Europe',
+          label: 'Start Eastern Europe',
+          onContinue,
+          stopLabel: 'Back to Europe',
+          onStop,
+        },
+        surface: true,
+      }))
+    })
+
+    expect(mount.textContent).toContain('Region learned')
+    expect(mount.textContent).toContain('Balkans ✓')
+    expect(mount.textContent).toContain('Countries ✓')
+    expect(mount.textContent).toContain('Capitals ✓')
+    expect(mount.textContent).toContain('Mastery Building')
+    expect(mount.textContent).toContain("You've learned the countries and capitals in Balkans")
+    expect(mount.textContent).toContain('Review will bring them back later')
+    expect(mount.textContent).toContain('Start Eastern Europe')
+    expect(mount.textContent).toContain('Back to Europe')
+    expect(mount.querySelectorAll('button')).toHaveLength(3)
+    expect(mount.textContent).not.toContain('Mastery Mastered')
+
+    act(() => mount.querySelector<HTMLButtonElement>('[data-primary-action]')?.click())
+    act(() => mount.querySelector<HTMLButtonElement>('[data-completion-stop]')?.click())
+    expect(onContinue).toHaveBeenCalledOnce()
+    expect(onStop).toHaveBeenCalledOnce()
+    expect(onDone).not.toHaveBeenCalled()
+  })
+
   it('keeps temporary proficiency completion explicitly non-milestone', () => {
     const mount = document.createElement('div')
     document.body.append(mount)
@@ -80,6 +125,7 @@ describe('CapitalLearningComplete', () => {
       root = createRoot(mount)
       root.render(createElement(CapitalLearningComplete, {
         scopeLabel: 'Proficiency scope',
+        regionCompletion: { masteryStatus: 'building' },
         onDone: () => undefined,
         onRestart: () => undefined,
       }))
@@ -87,6 +133,7 @@ describe('CapitalLearningComplete', () => {
 
     expect(mount.textContent).toContain('Learning complete')
     expect(mount.textContent).toContain("doesn't change your guided region progress")
+    expect(mount.textContent).not.toContain('Region learned')
     expect(mount.textContent).not.toContain('Countries established')
     expect(mount.textContent).not.toContain('Capitals established')
     expect(mount.textContent).not.toContain('Capitals learned')

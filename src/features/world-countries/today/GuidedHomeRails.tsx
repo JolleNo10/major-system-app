@@ -218,26 +218,21 @@ export function GuidedHomeRails({
 
 function CompactJourneyPath({ journey }: { journey: WorldCountriesJourneyPresentation }) {
   const subregionLabel = getSubregionDefinition(journey.subregionId).label
-  const milestones = [
-    { id: 'countries', label: 'Countries', complete: journey.countriesEstablished, current: !journey.countriesEstablished },
-    { id: 'capitals', label: 'Capitals', complete: journey.capitalsEstablished, current: journey.countriesEstablished && !journey.capitalsEstablished },
-    { id: 'mastery', label: 'Mastery', complete: journey.coreRecallComplete, current: journey.countriesEstablished && journey.capitalsEstablished && !journey.coreRecallComplete },
-  ].map(milestone => ({
-    ...milestone,
-    status: milestone.complete ? 'complete' : milestone.current ? 'current' : 'upcoming' as const,
-    statusLabel: milestone.complete ? 'Complete' : milestone.current ? 'Current' : 'Upcoming',
-  }))
   return (
     <section className="space-y-2" aria-labelledby="world-countries-journey-heading">
       <p id="world-countries-journey-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Your journey · {subregionLabel}</p>
       <ol className="space-y-2">
-        {milestones.map(stage => (
+        {journey.stages.map(stage => (
           <li key={stage.id} className="flex items-start gap-2" data-journey-milestone={stage.id} data-journey-status={stage.status}>
             <span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border text-[10px] font-bold ${stage.status === 'complete' ? 'border-green-500/40 bg-green-500/10 text-green-300' : stage.status === 'current' ? 'border-violet-400 bg-violet-600 text-white' : 'border-zinc-700 text-zinc-500'}`} aria-hidden="true">{stage.status === 'complete' ? '✓' : stage.status === 'current' ? '•' : '○'}</span>
-            <span className="min-w-0"><span className={`block text-xs font-semibold ${stage.status === 'current' ? 'text-violet-100' : 'text-zinc-300'}`}>{stage.label}</span><span className="mt-0.5 block text-[11px] text-zinc-500">{stage.statusLabel}</span></span>
+            <span className="min-w-0"><span className={`block text-xs font-semibold ${stage.status === 'current' ? 'text-violet-100' : 'text-zinc-300'}`}>{stage.label}</span><span className="mt-0.5 block text-[11px] text-zinc-500">{stage.status === 'complete' ? 'Complete' : stage.status === 'current' ? 'Current' : 'Upcoming'}</span></span>
           </li>
         ))}
       </ol>
+      <div className="border-t border-zinc-800 pt-3" aria-label="Mastery status">
+        <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Mastery</p>
+        <p className="mt-1 text-xs text-zinc-400">{journey.masteryStatus === 'mastered' ? '✓ Mastered' : journey.regionLearned ? 'Building through Review' : 'Builds through Review'}</p>
+      </div>
     </section>
   )
 }

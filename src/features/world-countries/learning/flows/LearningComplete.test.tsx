@@ -70,4 +70,34 @@ describe('LearningComplete', () => {
     expect(onContinue).toHaveBeenCalledOnce()
     expect(onDone).not.toHaveBeenCalled()
   })
+
+  it('supports a caller-supplied stopping action beside a guided handoff', () => {
+    const onStop = vi.fn()
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement(LearningComplete, {
+        eyebrow: 'Region learned',
+        title: 'Northern Europe ✓',
+        summary: 'Region completion summary',
+        onDone: vi.fn(),
+        onRestart: vi.fn(),
+        completionHandoff: {
+          description: 'Next region: Western Europe',
+          label: 'Start Western Europe',
+          onContinue: vi.fn(),
+          stopLabel: 'Back to Europe',
+          onStop,
+        },
+      }))
+    })
+
+    expect(mount.querySelectorAll('button')).toHaveLength(3)
+    expect(mount.textContent).toContain('Back to Europe')
+    expect(mount.textContent).toContain('Learn again')
+    act(() => mount.querySelector<HTMLButtonElement>('[data-completion-stop]')?.click())
+    expect(onStop).toHaveBeenCalledOnce()
+  })
 })

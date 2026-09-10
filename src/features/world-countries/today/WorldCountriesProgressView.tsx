@@ -19,7 +19,10 @@ interface ProgressRowData {
   label: string
   progress: WorldCountriesScopeProgress
   regionSummary?: string
-  journeyPosition?: string
+  journeyPosition?: {
+    journey: string
+    mastery?: string
+  }
 }
 
 export function WorldCountriesProgressView({
@@ -106,7 +109,7 @@ export function WorldCountriesProgressView({
 
 function ProgressRow({ label, progress, regionSummary, journeyPosition }: ProgressRowData) {
   const percentage = Math.round(progress.completionRatio * 100)
-  return <WorldCountriesPanel as="article" className="space-y-3"><div className="flex items-center justify-between gap-3"><h2 className="font-semibold text-zinc-100">{label}</h2><span className="text-xs tabular-nums text-cyan-300">{percentage}%</span></div><div className="h-1.5 overflow-hidden rounded-full bg-zinc-800" aria-hidden="true"><div className="h-full rounded-full bg-cyan-500" style={{ width: `${percentage}%` }} /></div><p className="text-sm font-semibold text-zinc-200">{progress.completeCountries} of {progress.totalCountries} countries complete</p><ProgressStateDistribution label={label} progress={progress} />{regionSummary && <p className="text-xs text-zinc-400">{regionSummary}</p>}{journeyPosition && <p data-journey-position className="text-xs text-violet-200"><span className="font-semibold uppercase tracking-wider text-violet-300">Journey</span> · {journeyPosition}</p>}</WorldCountriesPanel>
+  return <WorldCountriesPanel as="article" className="space-y-3"><div className="flex items-center justify-between gap-3"><h2 className="font-semibold text-zinc-100">{label}</h2><span className="text-xs tabular-nums text-cyan-300">{percentage}%</span></div><div className="h-1.5 overflow-hidden rounded-full bg-zinc-800" aria-hidden="true"><div className="h-full rounded-full bg-cyan-500" style={{ width: `${percentage}%` }} /></div><p className="text-sm font-semibold text-zinc-200">{progress.completeCountries} of {progress.totalCountries} countries complete</p><ProgressStateDistribution label={label} progress={progress} />{regionSummary && <p className="text-xs text-zinc-400">{regionSummary}</p>}{journeyPosition && <><p data-journey-position className="text-xs text-violet-200"><span className="font-semibold uppercase tracking-wider text-violet-300">Journey</span> · {journeyPosition.journey}</p>{journeyPosition.mastery && <p data-mastery-position className="text-xs text-violet-200"><span className="font-semibold uppercase tracking-wider text-violet-300">Mastery</span> · {journeyPosition.mastery}</p>}</>}</WorldCountriesPanel>
 }
 
 function ProgressStateDistribution({ label, progress }: { label: string; progress: WorldCountriesScopeProgress }) {
@@ -119,14 +122,17 @@ function ProgressStateDistribution({ label, progress }: { label: string; progres
   return <section aria-label={`${label} core recall distribution`} className="space-y-1.5"><div className="flex h-2 overflow-hidden rounded-full bg-zinc-800" aria-hidden="true">{distribution.filter(entry => entry.count > 0).map(entry => <span key={entry.state} className="h-full" style={{ width: `${(entry.count / Math.max(1, progress.totalCountries)) * 100}%`, backgroundColor: getCountryProgressColor(entry.state) }} />)}</div><p className="sr-only">{accessibleSummary}</p><ul aria-label={`${label} core recall state counts`} className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-zinc-400">{distribution.map(entry => <li key={entry.state} data-progress-state={entry.state} className="tabular-nums">{entry.label} {entry.count}</li>)}</ul></section>
 }
 
-function getJourneyProgressLabel(journey: WorldCountriesJourneyPresentation): string {
-  if (journey.complete) return 'Core recall complete'
+function getJourneyProgressLabel(journey: WorldCountriesJourneyPresentation): ProgressRowData['journeyPosition'] {
+  if (journey.regionLearned) {
+    return {
+      journey: 'Region learned',
+      mastery: journey.masteryStatus === 'mastered' ? 'Mastered' : 'Building',
+    }
+  }
   switch (journey.currentStageId) {
-    case 'meet-countries': return 'Meet the countries'
-    case 'practice-countries': return 'Recall the countries'
-    case 'countries-established': return 'Countries learned'
-    case 'add-capitals': return 'Add the capitals'
-    case 'put-it-together': return 'Put it all together'
-    case 'master-region': return 'Master the region'
+    case 'countries': return { journey: journey.hasCountryPractice ? 'Recall the countries' : 'Meet the countries' }
+    case 'capitals': return { journey: 'Add the capitals' }
+    case 'region-learned': return { journey: 'Region learned' }
+    case null: return undefined
   }
 }
