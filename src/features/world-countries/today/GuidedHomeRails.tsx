@@ -63,10 +63,10 @@ export function GuidedHomeRails({
   onOpenProgress: () => void
 }) {
   const whyTodayItems = [
-    reviewReasonSummary.mistakes > 0 && `${reviewReasonSummary.mistakes} ${reviewReasonSummary.mistakes === 1 ? 'mistake' : 'mistakes'}`,
+    reviewReasonSummary.mistakes > 0 && `${reviewReasonSummary.mistakes} recent ${reviewReasonSummary.mistakes === 1 ? 'mistake' : 'mistakes'}`,
     reviewReasonSummary.firstRecall > 0 && `${reviewReasonSummary.firstRecall} first recall`,
-    reviewReasonSummary.firstReviewAfterLearning > 0 && `${reviewReasonSummary.firstReviewAfterLearning} first review after Learning`,
-    reviewReasonSummary.spaced > 0 && `${reviewReasonSummary.spaced} spaced`,
+    reviewReasonSummary.firstReviewAfterLearning > 0 && `${reviewReasonSummary.firstReviewAfterLearning} first ${reviewReasonSummary.firstReviewAfterLearning === 1 ? 'review' : 'reviews'}`,
+    reviewReasonSummary.spaced > 0 && `${reviewReasonSummary.spaced} ready to revisit`,
   ].filter((item): item is string => Boolean(item))
   const whyTodayText = whyTodayItems.join(' · ')
   const scopeName = continent ?? 'World'
@@ -75,37 +75,37 @@ export function GuidedHomeRails({
   const isInspectingOtherSubregion = Boolean(journey && (!guidedSubregionId || journey.subregionId !== guidedSubregionId))
   const scopeIsComplete = scopeComplete || scopeProgress?.complete === true
   const completionSummary = scopeProgress
-    ? `${scopeProgress.completeCountries} / ${scopeProgress.totalCountries} complete`
-    : 'core recall is still incomplete'
+    ? `${scopeProgress.completeCountries} of ${scopeProgress.totalCountries} countries complete`
+    : 'Some countries still need practice'
   const unfinishedGeography = incompleteSubregionLabels.length > 0
-    ? `Unfinished: ${incompleteSubregionLabels.slice(0, 3).join(', ')}${incompleteSubregionLabels.length > 3 ? '…' : ''}.`
+    ? `${incompleteSubregionLabels.slice(0, 3).join(', ')}${incompleteSubregionLabels.length > 3 ? '…' : ''} ${incompleteSubregionLabels.length === 1 ? 'remains' : 'remain'}.`
     : null
   const statusHeading = activeCountryCount === 0
-    ? '0 Countries active'
+    ? 'No countries in this scope'
     : evidenceStatus === 'error'
-      ? 'Guided status unavailable'
+      ? 'Progress unavailable'
       : evidenceStatus === 'loading'
-        ? 'Guided status loading'
+        ? 'Loading your progress'
         : dueCount > 0
-          ? `${dueCount} core reviews due`
+          ? `${dueCount} ${dueCount === 1 ? 'review' : 'reviews'} ready`
           : caughtUp
-            ? scopeIsComplete ? 'Complete' : 'Caught up for today · unfinished'
+            ? scopeIsComplete ? 'Complete' : 'Caught up for today'
             : 'Ready for the next step'
   const statusExplanation = activeCountryCount === 0
-    ? `No active Countries are available in ${scopeName}.`
+    ? `There are no countries to learn in ${scopeName}.`
     : evidenceStatus === 'loading'
-      ? 'Retained recall evidence is loading; the map will keep its stable shell.'
+      ? 'Your saved progress is loading; the map will stay visible.'
       : evidenceStatus === 'error'
-        ? 'Guided status could not load. Freeform Play remains available.'
+        ? "We couldn't load your progress. Play remains available."
         : dueCount > 0
           ? nextLearning
-            ? `Continue review first. Next: Learn ${trackLabel(nextLearning.track)} · ${nextLearning.subregionLabel}`
-            : 'Continue review before introducing more core material.'
+            ? `Review first. Then ${learningStepDescription(nextLearning.track, nextLearning.subregionLabel)}.`
+            : "Review what you've learned before adding something new."
           : nextLearning
-            ? `Continue with Learn ${trackLabel(nextLearning.track)} · ${nextLearning.subregionLabel}`
+            ? `Next: ${learningStepDescription(nextLearning.track, nextLearning.subregionLabel)}.`
             : scopeIsComplete
-              ? 'Core recall is complete for this scope. Play and progress remain available.'
-              : `No scheduled review is due, but ${scopeName} is still unfinished (${completionSummary}).`
+              ? "You've completed the guided Country and Capital recall for this scope. Play and progress remain available."
+              : `Nothing needs reviewing right now. ${scopeName} is still in progress.`
 
   const rails = useMemo(() => ({
     left: (
@@ -116,12 +116,8 @@ export function GuidedHomeRails({
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">{scopeName} geography</p>
           <h2 id="world-countries-guided-geography-heading" className="mt-1 text-lg font-bold text-zinc-100">{level === 'world' ? 'Explore the world' : 'Learning regions'}</h2>
-          <p className="mt-2 text-sm leading-relaxed text-zinc-400">Select geography to inspect its progress. Selection does not start a session.</p>
+          <p className="mt-2 text-sm leading-relaxed text-zinc-400">{level === 'world' ? 'Choose a continent to see your progress.' : 'Choose a region to see where you are in the journey.'}</p>
         </div>
-        <p className="rounded-lg border border-zinc-800 bg-zinc-900 p-3 text-sm text-zinc-300">
-          <span className="block text-xs uppercase tracking-wider text-zinc-500">Population</span>
-          <span className="mt-1 block font-semibold tabular-nums text-zinc-100">{activeCountryCount} active {activeCountryCount === 1 ? 'Country' : 'Countries'}</span>
-        </p>
         {scopeSummaries.length > 0 && (
           <div className="space-y-2" aria-label={level === 'world' ? 'Continents' : 'Subregions'}>
             {scopeSummaries.map(summary => (
@@ -139,7 +135,7 @@ export function GuidedHomeRails({
                 <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-zinc-800" aria-hidden="true">
                   <span className="block h-full rounded-full bg-cyan-500" style={{ width: `${Math.round(summary.progress.completionRatio * 100)}%` }} />
                 </span>
-                <span className="mt-1 block text-xs text-zinc-500">{summary.status ?? `${summary.progress.completeCountries} / ${summary.progress.totalCountries} complete`}</span>
+                <span className="mt-1 block text-xs text-zinc-500">{summary.status ?? `${summary.progress.completeCountries} of ${summary.progress.totalCountries} countries complete`}</span>
               </button>
             ))}
           </div>
@@ -155,34 +151,34 @@ export function GuidedHomeRails({
         </div>
         {evidenceStatus === 'ready' && activeCountryCount > 0 && dueCount > 0 && (
           <dl className="grid grid-cols-2 gap-2 text-sm">
-            <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3"><dt className="text-xs uppercase tracking-wider text-zinc-500">Due reviews</dt><dd className="mt-1 font-semibold tabular-nums text-zinc-100">{dueCount}</dd></div>
-            <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3"><dt className="text-xs uppercase tracking-wider text-zinc-500">Due Countries</dt><dd className="mt-1 font-semibold tabular-nums text-zinc-100">{dueCountryCount}</dd></div>
+            <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3"><dt className="text-xs uppercase tracking-wider text-zinc-500">Reviews</dt><dd className="mt-1 font-semibold tabular-nums text-zinc-100">{dueCount}</dd></div>
+            <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3"><dt className="text-xs uppercase tracking-wider text-zinc-500">Countries</dt><dd className="mt-1 font-semibold tabular-nums text-zinc-100">{dueCountryCount}</dd></div>
           </dl>
         )}
         {dueCount > 0 && whyTodayText.length > 0 && (
           <section className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3 text-sm" aria-labelledby="world-countries-guided-why-heading">
             <p id="world-countries-guided-why-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Why now</p>
             <p className="mt-1 leading-relaxed text-zinc-300">{whyTodayText}</p>
-            {reviewReasonSummary.repeated > 0 && <p className="mt-1 text-xs font-semibold text-amber-300">{reviewReasonSummary.repeated} repeated difficulty</p>}
+            {reviewReasonSummary.repeated > 0 && <p className="mt-1 text-xs font-semibold text-amber-300">{reviewReasonSummary.repeated} {reviewReasonSummary.repeated === 1 ? 'item needs' : 'items need'} extra practice</p>}
           </section>
         )}
         {caughtUp && !scopeIsComplete && evidenceStatus === 'ready' && activeCountryCount > 0 && (
           <section className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-sm" aria-labelledby="world-countries-guided-consolidation-heading">
-            <p id="world-countries-guided-consolidation-heading" className="text-xs font-semibold uppercase tracking-wider text-amber-300">Unfinished guided knowledge</p>
-            <p className="mt-1 text-zinc-300">{completionSummary}. {unfinishedGeography ?? 'Some core recall still needs practice.'}</p>
+            <p id="world-countries-guided-consolidation-heading" className="text-xs font-semibold uppercase tracking-wider text-amber-300">Still in progress</p>
+            <p className="mt-1 text-zinc-300">{completionSummary}. {unfinishedGeography ?? 'Some countries still need practice.'}</p>
           </section>
         )}
         {journey && (
           <>
             {isInspectingOtherSubregion && (
               <section className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-sm">
-                <p className="text-xs font-semibold uppercase tracking-wider text-amber-300">Inspecting {inspectedSubregionLabel}</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-amber-300">You're viewing {inspectedSubregionLabel}</p>
                 <p className="mt-1 text-zinc-300">{nextLearning
-                  ? `Continue still follows ${guidedSubregionLabel ?? 'the guided recommendation'}.`
+                  ? `Your next step is still in ${guidedSubregionLabel ?? 'the guided area'}.`
                   : consolidationAvailable
-                    ? 'No new Learning is scheduled; targeted guided practice remains available for this scope.'
-                    : 'No guided action is currently scheduled; this inspection does not change the guided path.'}</p>
-                {onFocusGuidedSubregion && <button type="button" onClick={onFocusGuidedSubregion} className="mt-2 text-xs font-semibold text-cyan-300 hover:text-cyan-200">{guidedSubregionId ? 'Return to guided Subregion' : 'Clear inspection'}</button>}
+                    ? 'There is nothing new to learn here right now, but you can keep practising unfinished recall.'
+                    : 'Your guided path stays the same.'}</p>
+                {onFocusGuidedSubregion && <button type="button" onClick={onFocusGuidedSubregion} className="mt-2 text-xs font-semibold text-cyan-300 hover:text-cyan-200">{guidedSubregionLabel ? `Back to ${guidedSubregionLabel}` : 'Back to the guided view'}</button>}
               </section>
             )}
             <JourneyPath journey={journey} />
@@ -195,12 +191,12 @@ export function GuidedHomeRails({
             <button type="button" onClick={onOpenProgress} className="rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">View progress</button>
           </div>
           {level === 'continent' && <button type="button" onClick={onWorld} className="w-full rounded-lg border border-zinc-800 bg-zinc-950/40 px-3 py-2 text-sm font-semibold text-zinc-400 hover:border-zinc-600 hover:text-zinc-100">Back to World</button>}
-          {refreshing && <p className="text-xs text-zinc-500">Refreshing guided status…</p>}
+          {refreshing && <p className="text-xs text-zinc-500">Updating your progress…</p>}
         </div>
       </WorldCountriesPanel>
     ),
     leftLabel: 'Geography',
-    rightLabel: 'Guided journey',
+    rightLabel: 'Learning journey',
   }), [activeCountryCount, caughtUp, completionSummary, consolidationAvailable, continent, dueCount, dueCountryCount, evidenceStatus, guidedSubregionId, guidedSubregionLabel, inspectedSubregionLabel, isInspectingOtherSubregion, journey, level, nextLearning, onFocusGuidedSubregion, onOpenPlay, onOpenProgress, onWorld, refreshing, reviewReasonSummary, scopeIsComplete, scopeName, scopeSummaries, statusExplanation, statusHeading, unfinishedGeography, whyTodayText])
   useRails(rails)
   return null
@@ -223,6 +219,8 @@ function JourneyPath({ journey }: { journey: WorldCountriesJourneyPresentation }
   )
 }
 
-function trackLabel(track: WorldCountriesTodayLearningTrack): string {
-  return track === 'learn-countries' ? 'Countries' : 'Capitals'
+function learningStepDescription(track: WorldCountriesTodayLearningTrack, subregionLabel: string): string {
+  return track === 'learn-countries'
+    ? `learn the countries in ${subregionLabel}`
+    : `add the capitals in ${subregionLabel}`
 }

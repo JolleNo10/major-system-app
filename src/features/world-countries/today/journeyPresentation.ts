@@ -147,51 +147,49 @@ function detailFor(
 ): string {
   if (state.complete) {
     return stage === 'master-region'
-      ? 'Core Country and Capital recall complete'
-      : 'Core recall is already complete for this scope'
+      ? "You've completed the full Country and Capital recall."
+      : 'This part of the journey is complete.'
   }
   switch (stage) {
     case 'meet-countries':
       return state.countriesLearned
-        ? 'Guided Country milestone recorded'
+        ? "You've met the countries and their locations."
         : state.countriesEstablished
-          ? 'Country recall is already complete'
-          : state.hasCountryPractice
-          ? 'Country recall practice started'
-          : 'Guided introduction'
+          ? 'Country recall is ready for the next step.'
+        : state.hasCountryPractice
+          ? "You've started recalling the countries."
+          : 'Get familiar with their names and locations.'
     case 'practice-countries':
       return state.countriesLearned
-        ? 'Country Learning milestone completed'
+        ? 'The countries are learned; recall their names from the map.'
         : state.countriesEstablished
-          ? 'Country recall is complete; no redundant Country gate is needed'
-          : 'Recall and map practice'
+          ? 'Country recall is strong enough to move on.'
+          : state.hasCountryPractice
+            ? 'Keep recalling their names from the map.'
+            : 'Recall their names from the map.'
     case 'countries-established':
       return state.countriesLearned
         ? state.countryRecallMastered
-          ? 'Country Learning is complete; Country recall is strong'
-          : 'Country Learning is complete; recall can keep strengthening'
+          ? 'The countries are learned and recall is strong.'
+          : 'The countries are learned; recall can keep strengthening.'
         : state.countriesEstablished
-          ? 'Country recall is mastered; Capitals can be layered without a new milestone'
-        : 'Complete guided Country Learning to establish the Countries'
+          ? 'Country recall is strong enough for the next step.'
+        : 'Learn the countries before adding capitals.'
     case 'add-capitals':
       return state.capitalsLearned
-        ? 'Capital Learning milestone recorded'
+        ? 'The capitals are learned; recall can keep strengthening.'
         : state.capitalRecallMastered
-          ? 'Capital recall is mastered; no redundant Capital gate is needed'
+          ? 'Capital recall is strong enough for the next step.'
         : state.hasCapitalPractice
-          ? 'Capital recall attempted; guided Capital Learning is not complete'
+          ? "You've started recalling the capitals."
           : state.countriesEstablished
-            ? 'Add Country-to-Capital associations'
-            : 'Available when Country Learning is ready'
+            ? 'Learn the capital for each country.'
+            : 'Learn the countries before adding capitals.'
     case 'put-it-together':
-      return state.complete
-        ? 'Combined core recall complete'
-        : state.capitalsEstablished
-          ? 'Combined recall is still developing'
-          : 'Mixed recall follows Capital Learning'
+      return state.capitalsEstablished
+        ? 'Practice countries and capitals together.'
+        : 'This comes next after the capitals are learned.'
     case 'master-region':
-      return state.complete && state.coreRecallComplete
-        ? 'Core Country and Capital recall complete'
-        : 'Derived finish line after combined recall'
+      return 'Complete the full Country and Capital recall.'
   }
 }

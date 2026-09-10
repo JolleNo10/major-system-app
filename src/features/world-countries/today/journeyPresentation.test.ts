@@ -185,6 +185,25 @@ describe('World Countries learner journey presentation', () => {
     expect(journey.stages.every(stage => stage.status === 'complete')).toBe(true)
   })
 
+  it('describes journey details in learner-facing language', () => {
+    const journey = deriveWorldCountriesJourneyPresentation({
+      subregionId: 'northern-europe',
+      entries: norway,
+      learningState: { subregionId: 'northern-europe', countriesLearnedAt: 1, capitalsLearnedAt: 2 },
+      recallProgress: progressFor([
+        ...countryRecallAttempts(),
+        { itemId: 'world-countries:country-to-capital:NO', at: 3, ok: false },
+      ]),
+    })
+    const details = journey.stages.map(stage => stage.detail)
+    const detailText = details.join(' ')
+
+    expect(detailText).toContain('countries are learned and recall is strong')
+    expect(detailText).toContain('capitals are learned; recall can keep strengthening')
+    expect(detailText).toContain('Practice countries and capitals together')
+    expect(detailText).not.toMatch(/milestone|gate|derived|scheduler|spaced|targeted/i)
+  })
+
   it('treats complete core recall as the terminal presentation even without milestone metadata', () => {
     const journey = deriveWorldCountriesJourneyPresentation({
       subregionId: 'northern-europe',

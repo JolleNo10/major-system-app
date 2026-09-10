@@ -295,8 +295,8 @@ export function WorldCountriesToday({
         progress: deriveWorldCountriesScopeProgressForCountries(`subregion:${subregion.id}`, entries, recallProgress),
         onSelect: () => setFocusedSubregionId(subregion.id),
         status: subregion.id === focusedSubregionId
-          ? subregion.id === guidedSubregionId ? 'Current guided unit · Inspecting' : 'Inspected Subregion'
-          : subregion.id === guidedSubregionId ? 'Current guided unit' : undefined,
+          ? subregion.id === guidedSubregionId ? 'Your next step' : "You're viewing this region"
+          : subregion.id === guidedSubregionId ? 'Next in your journey' : undefined,
       }
     })
   }, [continent, focusedSubregionId, geographyRevision, guidedSubregionId, onSelectContinent, recallProgress, scopedCountries])
@@ -383,7 +383,7 @@ export function WorldCountriesToday({
   const canContinue = Boolean(plan && evidence.status === 'ready' && scopedCountries.length > 0 && (plan.action.kind === 'review' || plan.action.kind === 'learn' || plan.action.kind === 'consolidate'))
   const hasDue = Boolean(plan && plan.dueCount > 0)
   const caughtUp = evidence.status === 'ready' && scopedCountries.length > 0 && Boolean(plan?.caughtUpForToday)
-  const mapDescriptions = new Map(scopedCountries.map(country => [country.id, `${scopeLabel} core mastery is shown in the progress summary.`] as const))
+  const mapDescriptions = new Map(scopedCountries.map(country => [country.id, `Progress for ${scopeLabel} is shown in the progress summary.`] as const))
 
   return (
     <section className="space-y-4 animate-fade-in" aria-labelledby="world-countries-today-heading">
@@ -418,7 +418,7 @@ export function WorldCountriesToday({
             <div className="px-1">
               <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World Countries · {continent ? 'Continent hub' : 'Home'}</p>
               <h1 id="world-countries-today-heading" className="mt-1 text-2xl font-black text-zinc-100">{continent ? `${continent} learning hub` : 'Your world'}</h1>
-              <p className="mt-1 text-sm text-zinc-500">The map is both progress overview and geographic navigation.</p>
+              <p className="mt-1 text-sm text-zinc-500">Explore the map to see your progress and choose where to learn.</p>
             </div>
           )}
           map={(
