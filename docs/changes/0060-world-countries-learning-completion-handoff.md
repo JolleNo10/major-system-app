@@ -28,14 +28,14 @@ You completed Country Learning for Northern Europe.
 The countries are established; recall can keep strengthening over time.
 ```
 
-For a real Subregion Capital Learning completion, present **Capitals established** without claiming the region is mastered:
+For a real Subregion Capital Learning completion, present **Capitals added** without claiming the region is mastered:
 
 ```text
-Capitals established
-Northern Europe capitals established ✓
+Capitals added
+Northern Europe capitals added ✓
 
 You completed Capital Learning for Northern Europe.
-The country–capital layer is established; recall can keep strengthening over time.
+You've added the country–capital associations; recall can keep strengthening over time.
 ```
 
 Exact copy may be refined to fit the existing completion component, but milestone completion and long-term recall mastery must remain distinct.
@@ -84,7 +84,7 @@ The completion presentation can use clearer achievement language, but must not i
 
 ### Temporary proficiency scope stays non-milestone
 
-A temporary proficiency Learning run (`subregion` absent / `recordCompletion=false`) must not say `Countries established`, `Capitals established`, `learned Subregion`, or otherwise imply a durable journey milestone.
+A temporary proficiency Learning run (`subregion` absent / `recordCompletion=false`) must not say `Countries established`, `Capitals added`, `Capitals established`, `learned Subregion`, or otherwise imply a durable journey milestone.
 
 Use scope-neutral completion language, for example:
 
@@ -119,7 +119,7 @@ When the latest guided plan recommends `learn-capitals` for the same Subregion, 
 
 ### Capital Learning — durable Subregion completion
 
-The completion surface identifies **Capitals established**. Do not display `Master region` unless existing derived journey/core recall truth independently supports completion.
+The completion surface identifies **Capitals added**. Do not display `Master region` unless existing derived journey/core recall truth independently supports completion.
 
 The guided primary action follows the latest Today plan rather than a hard-coded Capital follow-up.
 
@@ -205,7 +205,7 @@ Exit/back behavior remains caller-owned. A guided next action must not remove th
 ## Acceptance criteria
 
 - [x] Durable Country Learning completion is presented as Countries established without claiming long-term mastery.
-- [x] Durable Capital Learning completion is presented as Capitals established without claiming Master region/core mastery.
+- [x] Durable Capital Learning completion is presented as Capitals added without claiming Master region/core mastery.
 - [x] Temporary proficiency completion uses non-milestone language and does not fabricate a Subregion journey state.
 - [x] Guided completion uses the latest post-milestone Today plan as the source of its next action.
 - [x] The common guided Country -> same-Subregion Capital transition can continue directly with an explicit Add the capitals action.

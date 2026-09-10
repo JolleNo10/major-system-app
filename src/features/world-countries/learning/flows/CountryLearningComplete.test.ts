@@ -31,6 +31,7 @@ describe('CountryLearningComplete', () => {
     })
 
     expect(mount.textContent).toContain('Countries established')
+    expect(mount.textContent).toContain('Balkans countries established ✓')
     expect(mount.textContent).toContain('The countries are established')
     expect(mount.textContent).not.toContain('mastery')
   })
