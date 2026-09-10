@@ -323,13 +323,25 @@ non-persisted Countries / Capitals / Mastery summary; the six-stage derivation
 remains authoritative for supporting progress surfaces. Guided primary labels
 are action-specific (including bounded review/consolidation counts or an
 authoritative staged Country count when available), while Today remains the
-owner of the action meaning and priority.
+owner of the action meaning and priority. The attached Today task dock also
+identifies the guided Subregion when the learner is inspecting another
+Subregion. The compact journey derives its own `Next in journey:` text only
+from the displayed Subregion's journey; map and geography selection inspect
+progress and do not change the planner-authoritative guided path.
+
+Guided Learning presents the internal staged phases with learner-facing
+language: Meet, Find, Recall, Mix, and Final recall. The walkthrough rail keeps
+geography, Set/count context, the full order, order authoring, and eligible
+mnemonic support in one compact orientation surface. It does not expose
+implementation-shaped numbered steps or duplicate progress/stage narration;
+active and Final phases retain a quiet, read-only context rail.
 World Progress summarizes Continents; Continent Progress summarizes
 Subregions.
 
 During active scheduler-driven Learning Practice, the flows expose temporary
-scheduler progress through the feature-local progress seam in the right rail.
-The progress section is session-scoped and phase-specific. Active Drill,
+scheduler progress through the feature-local task-context seam on the shared
+map surface. The progress section is session-scoped and phase-specific; the
+Learning context rail does not duplicate it. Active Drill,
 Practice, Recite, Today Review, and map-backed Learning phases also provide
 semantic task/context/progress data to the shared World Countries map-activity
 surface; setup, overview, readiness, and completion screens retain their own

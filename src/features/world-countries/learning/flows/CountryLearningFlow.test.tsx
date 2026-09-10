@@ -126,6 +126,7 @@ function expectCountryWalkthrough(container: HTMLDivElement, task: unknown, coun
   expect(container.textContent).not.toContain('Country ↔ Capital')
   expect(task).toMatchObject({ direction: 'Meet the countries', cue: country.country })
   expect(task).not.toHaveProperty('answerKind')
+  expect(container.textContent).not.toMatch(/Step [23]/)
 }
 
 describe('CountryLearningFlow scheduler progress wiring', () => {
@@ -135,6 +136,8 @@ describe('CountryLearningFlow scheduler progress wiring', () => {
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-location"]')!.click())
     for (let attempt = 0; attempt < 20 && container.querySelector('[data-testid="location-submit"]'); attempt += 1) act(() => container.querySelector<HTMLButtonElement>('[data-testid="location-submit"]')!.click())
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].task).toMatchObject({ direction: 'Recall the countries', sessionContext: 'Set 1 · 1 country' })
+    expect(container.textContent).not.toMatch(/Step [23]/)
     for (let attempt = 0; attempt < 20 && container.querySelector('[data-testid="practice-submit"]'); attempt += 1) act(() => container.querySelector<HTMLButtonElement>('[data-testid="practice-submit"]')!.click())
 
     expect(container.querySelector('[data-testid="ready-copy"]')?.textContent).toContain('Set 1 complete')
@@ -161,8 +164,8 @@ describe('CountryLearningFlow scheduler progress wiring', () => {
     const container = renderFlow(entries, true)
     const leftRail = renderLeftRail()
 
-    expect(leftRail.textContent).toContain('Countries learned')
-    expect(leftRail.textContent).not.toContain('Countries are next')
+    expect(leftRail.textContent).toContain('Meet the countries')
+    expect(leftRail.textContent).not.toContain('Learning progress')
     expect(container.querySelector('[data-testid="start-location"]')).not.toBeNull()
   })
 
@@ -205,7 +208,7 @@ describe('CountryLearningFlow scheduler progress wiring', () => {
     finishSet()
 
     const combinedRail = renderLeftRail()
-    expect(combinedRail.textContent).toContain('Combined practice')
+    expect(combinedRail.textContent).toContain("Mix what you've learned")
     expect(combinedRail.textContent).toContain('4 of 4 Countries introduced')
     expect(combinedRail.querySelectorAll('[data-learning-set="introduced"]')).toHaveLength(4)
     expect(combinedRail.querySelector('[data-learning-current-set]')).toBeNull()
@@ -226,7 +229,7 @@ describe('CountryLearningFlow scheduler progress wiring', () => {
     expect(finalRecallRail.textContent).not.toContain('Upcoming')
   })
 
-  it('shows location scheduler progress only after Location Practice starts', () => {
+  it('keeps location scheduler progress on the center task surface', () => {
     const container = document.createElement('div')
     document.body.append(container)
     act(() => {
@@ -250,9 +253,8 @@ describe('CountryLearningFlow scheduler progress wiring', () => {
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-location"]')!.click())
 
     const locationRail = renderRail()
-    expect(locationRail.textContent).toContain('Practice progress')
-    expect(locationRail.textContent).toContain('0%')
-    expect(locationRail.textContent).toContain('0 / 1 at target')
+    expect(locationRail.textContent).not.toContain('Practice progress')
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].task.progress).toMatchObject({ label: 'Find', current: 0, total: 1 })
   })
 
   it('passes Country answer semantics to the shared map surface for active location practice', () => {
@@ -275,7 +277,8 @@ describe('CountryLearningFlow scheduler progress wiring', () => {
     })
 
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-location"]')!.click())
-    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0]).toMatchObject({ task: { answerKind: 'country' }, cameraIntent: { kind: 'subregion-learning', subregionId: 'northern-europe' } })
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0]).toMatchObject({ task: { answerKind: 'country', direction: 'Find the countries', sessionContext: 'Set 1 · 1 country' }, cameraIntent: { kind: 'subregion-learning', subregionId: 'northern-europe' } })
+    expect(container.textContent).not.toMatch(/Step [23]/)
   })
 
   it('returns from Location Practice to Meet the countries with journey-consistent wording', () => {
@@ -291,7 +294,7 @@ describe('CountryLearningFlow scheduler progress wiring', () => {
 
   it('keeps established Country progress after completing and restarting Learning', () => {
     const container = renderFlow()
-    expect(renderLeftRail().textContent).toContain('Countries are next')
+    expect(renderLeftRail().textContent).toContain('Meet the countries')
 
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-location"]')!.click())
     for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -310,7 +313,7 @@ describe('CountryLearningFlow scheduler progress wiring', () => {
 
     expect(container.querySelector('[data-testid="start-location"]')).not.toBeNull()
     const restartedRail = renderLeftRail()
-    expect(restartedRail.textContent).toContain('Countries learned')
-    expect(restartedRail.textContent).not.toContain('Countries are next')
+    expect(restartedRail.textContent).toContain('Meet the countries')
+    expect(restartedRail.textContent).not.toContain('Learning progress')
   })
 })

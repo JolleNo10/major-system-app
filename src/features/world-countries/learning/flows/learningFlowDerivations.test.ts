@@ -36,7 +36,7 @@ describe('staged learning flow derivations', () => {
       { kind: 'combined', ids: ['NO', 'SE', 'FI'] },
     ]
 
-    expect(getNextLearningStageLabel(plan, 0)).toBe('Practise all 3 together')
+    expect(getNextLearningStageLabel(plan, 0)).toBe('Mix all 3 together')
   })
 
   it('labels the next Final stage as Final recall', () => {
@@ -63,7 +63,7 @@ describe('staged learning flow derivations', () => {
       { kind: 'set', set: { index: 1, ids: ['SE'] } },
     ]
 
-    expect(getNextLearningStageDescription(plan, 0, 'capitals')).toBe('Next: add the capitals in Set 2.')
+    expect(getNextLearningStageDescription(plan, 0, 'capitals')).toBe('Next: meet the capitals in Set 2.')
   })
 
   it('describes the cumulative next Combined stage for both tracks', () => {
@@ -72,8 +72,8 @@ describe('staged learning flow derivations', () => {
       { kind: 'combined', ids: ['NO', 'SE', 'FI'] },
     ]
 
-    expect(getNextLearningStageDescription(plan, 0, 'countries')).toBe('Next: practise all 3 introduced countries together.')
-    expect(getNextLearningStageDescription(plan, 0, 'capitals')).toBe('Next: practise all 3 introduced country–capital pairs together.')
+    expect(getNextLearningStageDescription(plan, 0, 'countries')).toBe('Next: mix all 3 introduced countries together.')
+    expect(getNextLearningStageDescription(plan, 0, 'capitals')).toBe('Next: mix all 3 introduced country–capital pairs together.')
   })
 
   it('describes the next Final stage with scope-neutral wording', () => {

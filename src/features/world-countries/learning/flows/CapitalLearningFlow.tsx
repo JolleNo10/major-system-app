@@ -104,7 +104,6 @@ export function CapitalLearningFlow({
   const ids = useMemo(() => entries.map(country => country.id), [entries])
   const [flow, setFlow] = useState<StagedCapitalLearningFlowState>(() => createStagedCapitalLearningFlow({ countryIds: ids, maximum: newItemsPerSet, schedulerSettings }))
   const completionReporter = useRef(subregion && recordCompletion ? createSubregionCapitalCompletionReporter(subregion, activeCountries) : null)
-  const [capitalLearningCompleted, setCapitalLearningCompleted] = useState(false)
   const [orderDraft, setOrderDraft] = useState<readonly Country[] | null>(null)
   const [editingOrder, setEditingOrder] = useState(false)
   const [hoveredCountryId, setHoveredCountryId] = useState<string | null>(null)
@@ -114,8 +113,6 @@ export function CapitalLearningFlow({
   const currentPlanStage = flow.plan[flow.stageIndex]
   const stageSetNumber = currentPlanStage?.kind === 'set' ? currentPlanStage.set.index + 1 : 0
   const stagePresentation = deriveLearningStagePresentation(flow.plan, flow.stageIndex)
-  const effectiveCountriesEstablished = countriesEstablished
-  const effectiveCapitalsEstablished = capitalsEstablished || capitalLearningCompleted
 
   const transition = (next: StagedCapitalLearningFlowState) => {
     if (next.phase !== flow.phase) onPhaseChange(next.phase)
@@ -131,7 +128,6 @@ export function CapitalLearningFlow({
   const updateFinal = (correct: boolean) => {
     const result = submitStagedCapitalFinalAnswer(flow, correct)
     transition(result.state)
-    if (result.result.completedNow) setCapitalLearningCompleted(true)
     completionReporter.current?.report(result.result.completedNow)
   }
   const onOrderSaved = (draft: readonly Country[]) => {
@@ -170,10 +166,10 @@ export function CapitalLearningFlow({
 
   const context = (() => {
     switch (flow.phase) {
-      case 'walkthrough': return <LearningHeader label="Add the capitals" title={walkthroughCountry ? `${walkthroughCountry.country} ↔ ${walkthroughCountry.capital}` : 'Country ↔ Capital'} meta={`${flow.walkthroughIndex + 1} / ${stageEntries.length}`} onExit={onExit} />
-      case 'practice': return <LearningHeader label={`Set ${stageSetNumber} · Step 2 - Practice`} title="Name the capital" onExit={onExit} />
+      case 'walkthrough': return <LearningHeader label="Meet the capitals" title={walkthroughCountry ? `${walkthroughCountry.country} ↔ ${walkthroughCountry.capital}` : 'Country ↔ Capital'} meta={`${flow.walkthroughIndex + 1} / ${stageEntries.length}`} onExit={onExit} />
+      case 'practice': return <LearningHeader label="Recall the capitals" title="Name the capital" meta={capitalSetContext(stageSetNumber, stageEntries.length)} onExit={onExit} />
       case 'set-ready': return <LearningHeader label="Set complete" title={`Set ${stageSetNumber} complete`} onExit={onExit} />
-      case 'combined-practice': return <LearningHeader label="Combined practice" title="Name the capital" onExit={onExit} />
+      case 'combined-practice': return <LearningHeader label="Mix what you've learned" title="Name the capital" meta={`${stageEntries.length} ${stageEntries.length === 1 ? 'pair' : 'pairs'}`} onExit={onExit} />
       case 'combined-ready': return <LearningHeader label="Mixed practice complete" title="Mixed practice complete" onExit={onExit} />
       case 'final-gate': return <LearningHeader label="Final recall" title="Final recall" onExit={onExit} />
       case 'final-recall': return <LearningHeader label="Final recall" title={`${(flow.ordered?.currentIndex ?? 0) + 1} / ${flow.ordered?.order.length ?? entries.length}`} onExit={onExit} />
@@ -187,12 +183,12 @@ export function CapitalLearningFlow({
   const activeTask: WorldCountriesActivityTask | undefined = (() => {
     switch (flow.phase) {
       case 'walkthrough':
-        return { direction: 'Add the capitals', cue: walkthroughCountry ? `${walkthroughCountry.country} ↔ ${walkthroughCountry.capital}` : 'Country ↔ Capital', sessionContext: `Country ↔ Capital · Set ${stageSetNumber}`, progress: { label: 'Country', current: flow.walkthroughIndex + 1, total: stageEntries.length } }
+        return { direction: 'Meet the capitals', cue: walkthroughCountry ? `${walkthroughCountry.country} ↔ ${walkthroughCountry.capital}` : 'Country ↔ Capital', sessionContext: `Meet the capitals · Set ${stageSetNumber}`, progress: { label: 'Country', current: flow.walkthroughIndex + 1, total: stageEntries.length } }
       case 'practice':
       case 'combined-practice':
-        return { direction: 'Country → Capital', cue: 'Name the capital', sessionContext: flow.phase === 'combined-practice' ? 'Combined practice' : `Set ${stageSetNumber} · Practice`, answerKind: 'capital', progress: practiceProgress ? { label: 'Practice', current: practiceProgress.atTarget, total: practiceProgress.total, percent: practiceProgress.pct * 100 } : undefined }
+        return { direction: flow.phase === 'combined-practice' ? 'Mix what you\'ve learned' : 'Recall the capitals', cue: 'Name the capital', sessionContext: flow.phase === 'combined-practice' ? `${stageEntries.length} ${stageEntries.length === 1 ? 'pair' : 'pairs'}` : capitalSetContext(stageSetNumber, stageEntries.length), answerKind: 'capital', progress: practiceProgress ? { label: 'Recall', current: practiceProgress.atTarget, total: practiceProgress.total, percent: practiceProgress.pct * 100 } : undefined }
       case 'final-recall':
-        return { direction: 'Country → Capital', cue: 'Name the capital', sessionContext: flow.ordered?.mode === 'repair' ? 'Repair traversal' : 'Final recall', answerKind: 'capital', progress: { label: 'Country', current: (flow.ordered?.currentIndex ?? 0) + 1, total: flow.ordered?.order.length ?? entries.length } }
+        return { direction: 'Final recall', cue: 'Name the capital', sessionContext: flow.ordered?.mode === 'repair' ? 'Repair traversal' : 'Final recall', answerKind: 'capital', progress: { label: 'Country', current: (flow.ordered?.currentIndex ?? 0) + 1, total: flow.ordered?.order.length ?? entries.length } }
       default:
         return undefined
     }
@@ -207,8 +203,6 @@ export function CapitalLearningFlow({
     phase={flow.phase}
     track="capitals"
     stagePresentation={stagePresentation}
-    countriesEstablished={effectiveCountriesEstablished}
-    capitalsEstablished={effectiveCapitalsEstablished}
     onCountryHover={setHoveredCountryId}
     onOrderDraftChanged={setOrderDraft}
     onOrderEditingChange={setEditingOrder}
@@ -219,7 +213,7 @@ export function CapitalLearningFlow({
     backLabel={backLabel}
     onExit={onExit}
     onSkip={['walkthrough', 'practice', 'set-ready', 'combined-practice', 'combined-ready'].includes(flow.phase) ? skip : undefined}
-    skipLabel={flow.phase === 'walkthrough' ? 'Skip to Practice' : 'Next'}
+    skipLabel={flow.phase === 'walkthrough' ? 'Skip to Recall' : 'Next'}
     walkthroughCountryId={flow.phase === 'walkthrough' ? currentStagedCapitalIds(flow)[flow.walkthroughIndex] ?? null : null}
     practiceProgress={practiceProgress}
   />
@@ -227,11 +221,11 @@ export function CapitalLearningFlow({
   let content: ReactNode
   switch (flow.phase) {
     case 'walkthrough':
-      content = <StagedWalkthroughStep entries={stageEntries} index={flow.walkthroughIndex} onMove={offset => run(state => moveStagedCapitalWalkthrough(state, offset))} onContinue={() => run(startStagedCapitalPractice)} continueLabel="Continue to Practice" />
+       content = <StagedWalkthroughStep entries={stageEntries} index={flow.walkthroughIndex} onMove={offset => run(state => moveStagedCapitalWalkthrough(state, offset))} onContinue={() => run(startStagedCapitalPractice)} continueLabel="Continue to Recall" />
       break
     case 'practice':
     case 'combined-practice':
-      content = flow.practice ? <SchedulerPracticeStep continent={continent} entries={stageEntries.length ? stageEntries : allPresentationEntries} session={flow.practice} stepLabel={flow.phase === 'combined-practice' ? 'Combined practice' : `Set ${stageSetNumber} · Step 2 - Practice`} questionLabel="Country → Capital" questionTitle="Name the capital" answerLabel="Type the capital" placeholder="Type the capital…" showCountryName answerKind="capital" surface promptText="Name the capital" evaluateAnswer={(answer, country) => evaluateCapitalAnswer(answer, country, fuzzyMatching, allPresentationEntries)} formatFeedback={formatCapitalFeedback} onSubmit={updatePractice} onBack={() => run(backStagedCapital)} onExit={onExit} allowIncorrectSpellingPractice={allowIncorrectSpellingPractice} /> : null
+      content = flow.practice ? <SchedulerPracticeStep continent={continent} entries={stageEntries.length ? stageEntries : allPresentationEntries} session={flow.practice} stepLabel={flow.phase === 'combined-practice' ? `${stageEntries.length} ${stageEntries.length === 1 ? 'pair' : 'pairs'}` : capitalSetContext(stageSetNumber, stageEntries.length)} questionLabel={flow.phase === 'combined-practice' ? 'Mix what you\'ve learned' : 'Recall the capitals'} questionTitle="Name the capital" answerLabel="Type the capital" placeholder="Type the capital…" showCountryName answerKind="capital" surface promptText="Name the capital" evaluateAnswer={(answer, country) => evaluateCapitalAnswer(answer, country, fuzzyMatching, allPresentationEntries)} formatFeedback={formatCapitalFeedback} onSubmit={updatePractice} onBack={() => run(backStagedCapital)} onExit={onExit} allowIncorrectSpellingPractice={allowIncorrectSpellingPractice} /> : null
       break
     case 'set-ready':
       content = <StagedLearningReadyStep title={`Set ${stageSetNumber} complete`} summary={`You recalled all ${stageEntries.length} ${stageEntries.length === 1 ? 'country–capital pair' : 'country–capital pairs'} in this practice.`} nextDescription={getNextLearningStageDescription(flow.plan, flow.stageIndex, 'capitals')} nextLabel={getNextLearningStageLabel(flow.plan, flow.stageIndex)} onNext={() => run(advanceStagedCapitalPlan)} onKeepPractising={() => run(keepStagedCapitalPractising)} onBack={() => run(backStagedCapital)} onExit={onExit} surface />
@@ -251,4 +245,8 @@ export function CapitalLearningFlow({
   }
   const dockPlacement = ['practice', 'combined-practice', 'final-recall'].includes(flow.phase) ? 'stacked' : 'attached'
   return <>{rails}<LearningMapSurface continent={continent} scopeCountries={mapEntries} cameraIntent={subregion && !editingOrder ? { kind: 'subregion-learning', subregionId: subregion } : { kind: 'default' }} presentation={mapPresentation} presentationKey={presentationKey} context={context} task={activeTask} mapMeta={mapMeta} dockPlacement={dockPlacement}>{content}</LearningMapSurface></>
+}
+
+function capitalSetContext(setNumber: number, count: number): string {
+  return `Set ${setNumber} · ${count} ${count === 1 ? 'pair' : 'pairs'}`
 }

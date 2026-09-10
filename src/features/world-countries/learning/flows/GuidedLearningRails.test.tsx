@@ -87,8 +87,6 @@ function renderRails(phase: StagedCountryLearningPhase = 'walkthrough', track: '
       stagePresentation,
       phase,
       track,
-      countriesEstablished: false,
-      capitalsEstablished: false,
       onOrderDraftChanged,
       walkthroughCountryId,
       practiceProgress,
@@ -104,8 +102,11 @@ describe('GuidedLearningRails contextual authoring visibility', () => {
     act(() => root?.render(createElement('div', null, config.left)))
     expect(mount.textContent).toContain('Edit order')
     expect(mount.textContent).not.toContain('Edit mnemonics')
-    expect(mount.textContent).toContain('Learning progress')
-    expect(mount.textContent).toContain('Countries are next')
+    expect(mount.textContent).not.toContain('Learning progress')
+    expect(mount.textContent).toContain('Meet the countries')
+    expect(mount.textContent).toContain('Learning order')
+    expect(mount.querySelector('[data-learning-stage-label]')?.textContent).toBe('2 countries')
+    expect(mount.textContent).not.toContain('Learning set')
     expect(mount.textContent).not.toContain('Learning Readiness')
     expect(mount.querySelector('.rounded-xl.border.border-zinc-800.bg-zinc-900')).not.toBeNull()
 
@@ -207,8 +208,6 @@ describe('GuidedLearningRails contextual authoring visibility', () => {
       activeCountries: entries,
       stagePresentation: defaultStagePresentation,
       track: 'countries' as const,
-      countriesEstablished: false,
-      capitalsEstablished: false,
       onOrderDraftChanged,
       onCountryHover,
       onOrderEditingChange,
@@ -238,7 +237,7 @@ describe('GuidedLearningRails contextual authoring visibility', () => {
     expect(mount.textContent).not.toContain('Countries are next')
     expect(mount.textContent).not.toContain('Learning context')
     expect(mount.querySelector('[data-learning-stage]')?.getAttribute('data-learning-stage')).toBe('combined')
-    expect(mount.querySelector('[data-learning-stage-label]')?.textContent).toBe('Combined practice')
+    expect(mount.querySelector('[data-learning-stage-label]')?.textContent).toBe("Mix what you've learned")
     expect(mount.querySelector('[data-learning-stage-scope]')?.textContent).toBe('1 of 2 Countries introduced')
     expect(mount.querySelectorAll('[data-learning-set="introduced"]')).toHaveLength(1)
     expect(mount.querySelectorAll('[data-learning-set="upcoming"]')).toHaveLength(1)
@@ -320,7 +319,7 @@ describe('GuidedLearningRails contextual authoring visibility', () => {
       root = createRoot(mount)
       root.render(createElement(GuidedLearningRails, {
         continent: 'Europe', subregion: 'northern-europe', entries, activeCountries: entries,
-        phase: 'location-practice', track: 'countries', stagePresentation: defaultStagePresentation, countriesEstablished: false, capitalsEstablished: false,
+        phase: 'location-practice', track: 'countries', stagePresentation: defaultStagePresentation,
         onOrderDraftChanged, onBack, backLabel: 'Back to Meet countries', onSkip, skipLabel: 'Next: Practice', onExit,
       }))
     })
@@ -332,17 +331,15 @@ describe('GuidedLearningRails contextual authoring visibility', () => {
     ])
   })
 
-  it('places Practice progress before existing Learning actions', () => {
+  it('keeps scheduler progress in the center task surface rather than the Learning rail', () => {
     const onBack = vi.fn()
     const { mount, config } = renderRails('location-practice', 'countries', undefined, { pct: 2 / 3, atTarget: 4, total: 6 }, onBack)
 
     act(() => root?.render(createElement('div', null, config.right)))
 
-    const progressHeading = mount.querySelector('#scheduler-practice-progress-heading')
     const actionsHeading = mount.querySelector('#guided-learning-actions-heading')
 
-    expect(progressHeading).not.toBeNull()
+    expect(mount.querySelector('#scheduler-practice-progress-heading')).toBeNull()
     expect(actionsHeading).not.toBeNull()
-    expect(progressHeading!.compareDocumentPosition(actionsHeading!) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0)
   })
 })

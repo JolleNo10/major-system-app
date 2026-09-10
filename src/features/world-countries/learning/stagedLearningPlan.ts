@@ -81,7 +81,7 @@ export function getNextLearningStageLabel<TId>(
   const next = plan[stageIndex + 1]
   if (!next) return 'Start final recall'
   if (next.kind === 'set') return `Continue to Set ${next.set.index + 1}`
-  if (next.kind === 'combined') return `Practise all ${next.ids.length} together`
+  if (next.kind === 'combined') return `Mix all ${next.ids.length} together`
   return 'Start final recall'
 }
 
@@ -95,11 +95,11 @@ export function getNextLearningStageDescription<TId>(
   if (next.kind === 'set') {
     return track === 'countries'
       ? `Next: meet the countries in Set ${next.set.index + 1}.`
-      : `Next: add the capitals in Set ${next.set.index + 1}.`
+      : `Next: meet the capitals in Set ${next.set.index + 1}.`
   }
   return track === 'countries'
-    ? `Next: practise all ${next.ids.length} introduced countries together.`
-    : `Next: practise all ${next.ids.length} introduced country–capital pairs together.`
+    ? `Next: mix all ${next.ids.length} introduced countries together.`
+    : `Next: mix all ${next.ids.length} introduced country–capital pairs together.`
 }
 
 export function rebuildLearningPlanAfterCountryOrderSave<TId>(

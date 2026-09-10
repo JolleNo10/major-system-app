@@ -26,7 +26,6 @@ export function GuidedHomeRails({
   dueCountryCount,
   reviewReasonSummary,
   nextLearning,
-  primaryActionLabel,
   journey,
   guidedSubregionId,
   onFocusGuidedSubregion,
@@ -49,7 +48,6 @@ export function GuidedHomeRails({
   dueCountryCount: number
   reviewReasonSummary: WorldCountriesTodayReviewReasonSummary
   nextLearning: { track: WorldCountriesTodayLearningTrack; subregionLabel: string } | null
-  primaryActionLabel?: string | null
   journey: WorldCountriesJourneyPresentation | null
   guidedSubregionId?: SubregionId | null
   onFocusGuidedSubregion?: () => void
@@ -76,6 +74,9 @@ export function GuidedHomeRails({
   const guidedSubregionLabel = guidedSubregionId ? getSubregionDefinition(guidedSubregionId).label : null
   const isInspectingOtherSubregion = Boolean(journey && (!guidedSubregionId || journey.subregionId !== guidedSubregionId))
   const scopeIsComplete = scopeComplete || scopeProgress?.complete === true
+  const hasActionableToday = evidenceStatus === 'ready'
+    && activeCountryCount > 0
+    && (dueCount > 0 || Boolean(nextLearning) || consolidationAvailable)
   const completionSummary = scopeProgress
     ? `${scopeProgress.completeCountries} of ${scopeProgress.totalCountries} countries complete`
     : 'Some countries still need practice'
@@ -118,7 +119,7 @@ export function GuidedHomeRails({
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">{scopeName} geography</p>
           <h2 id="world-countries-guided-geography-heading" className="mt-1 text-lg font-bold text-zinc-100">{level === 'world' ? 'Explore the world' : 'Learning regions'}</h2>
-          <p className="mt-2 text-sm leading-relaxed text-zinc-400">{level === 'world' ? 'Choose a continent to see your progress.' : 'Choose a region to see where you are in the journey.'}</p>
+          <p className="mt-2 text-sm leading-relaxed text-zinc-400">{level === 'world' ? 'Choose a continent to inspect your progress.' : 'Choose a region to inspect its learning journey.'}</p>
         </div>
         {scopeSummaries.length > 0 && (
           <div className="space-y-2" aria-label={level === 'world' ? 'Continents' : 'Subregions'}>
@@ -146,21 +147,16 @@ export function GuidedHomeRails({
     ),
     right: (
       <WorldCountriesPanel className="space-y-4" aria-labelledby="world-countries-guided-status-heading">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Continue</p>
+        {!hasActionableToday && <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Today</p>
           <h2 id="world-countries-guided-status-heading" className="mt-1 text-lg font-bold text-zinc-100">{statusHeading}</h2>
           <p role="status" aria-live="polite" className="mt-2 text-sm text-zinc-400">{statusExplanation}</p>
-        </div>
-        {evidenceStatus === 'ready' && activeCountryCount > 0 && dueCount > 0 && (
-          <dl className="grid grid-cols-2 gap-2 text-sm">
-            <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3"><dt className="text-xs uppercase tracking-wider text-zinc-500">Reviews</dt><dd className="mt-1 font-semibold tabular-nums text-zinc-100">{dueCount}</dd></div>
-            <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3"><dt className="text-xs uppercase tracking-wider text-zinc-500">Countries</dt><dd className="mt-1 font-semibold tabular-nums text-zinc-100">{dueCountryCount}</dd></div>
-          </dl>
-        )}
-        {dueCount > 0 && whyTodayText.length > 0 && (
-          <section className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3 text-sm" aria-labelledby="world-countries-guided-why-heading">
-            <p id="world-countries-guided-why-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Why now</p>
-            <p className="mt-1 leading-relaxed text-zinc-300">{whyTodayText}</p>
+        </div>}
+        {dueCount > 0 && (
+          <section className="border-t border-zinc-800 pt-3 text-sm" aria-labelledby="world-countries-guided-why-heading">
+            <p id="world-countries-guided-why-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Why review now</p>
+            <p className="mt-1 leading-relaxed text-zinc-300">{dueCount} {dueCount === 1 ? 'review' : 'reviews'} ready · {dueCountryCount} {dueCountryCount === 1 ? 'country' : 'countries'}</p>
+            {whyTodayText.length > 0 && <p className="mt-1 leading-relaxed text-zinc-400">{whyTodayText}</p>}
             {reviewReasonSummary.repeated > 0 && <p className="mt-1 text-xs font-semibold text-amber-300">{reviewReasonSummary.repeated} {reviewReasonSummary.repeated === 1 ? 'item needs' : 'items need'} extra practice</p>}
           </section>
         )}
@@ -183,7 +179,7 @@ export function GuidedHomeRails({
                 {onFocusGuidedSubregion && <button type="button" onClick={onFocusGuidedSubregion} className="mt-2 text-xs font-semibold text-cyan-300 hover:text-cyan-200">{guidedSubregionLabel ? `Back to ${guidedSubregionLabel}` : 'Back to the guided view'}</button>}
               </section>
             )}
-            <CompactJourneyPath journey={journey} nextActionLabel={primaryActionLabel} />
+            <CompactJourneyPath journey={journey} />
           </>
         )}
         <div className="space-y-2" aria-label="World Countries secondary actions">
@@ -199,12 +195,12 @@ export function GuidedHomeRails({
     ),
     leftLabel: 'Geography',
     rightLabel: 'Learning journey',
-  }), [activeCountryCount, caughtUp, completionSummary, consolidationAvailable, continent, dueCount, dueCountryCount, evidenceStatus, guidedSubregionLabel, inspectedSubregionLabel, isInspectingOtherSubregion, journey, level, nextLearning, onFocusGuidedSubregion, onOpenPlay, onOpenProgress, onWorld, primaryActionLabel, refreshing, reviewReasonSummary, scopeIsComplete, scopeName, scopeSummaries, statusExplanation, statusHeading, unfinishedGeography, whyTodayText])
+  }), [activeCountryCount, caughtUp, completionSummary, consolidationAvailable, continent, dueCount, dueCountryCount, evidenceStatus, guidedSubregionLabel, hasActionableToday, inspectedSubregionLabel, isInspectingOtherSubregion, journey, level, nextLearning, onFocusGuidedSubregion, onOpenPlay, onOpenProgress, onWorld, refreshing, reviewReasonSummary, scopeIsComplete, scopeName, scopeSummaries, statusExplanation, statusHeading, unfinishedGeography, whyTodayText])
   useRails(rails)
   return null
 }
 
-function CompactJourneyPath({ journey, nextActionLabel }: { journey: WorldCountriesJourneyPresentation; nextActionLabel?: string | null }) {
+function CompactJourneyPath({ journey }: { journey: WorldCountriesJourneyPresentation }) {
   const subregionLabel = getSubregionDefinition(journey.subregionId).label
   const milestones = [
     { id: 'countries', label: 'Countries', complete: journey.countriesEstablished, current: !journey.countriesEstablished },
@@ -225,7 +221,7 @@ function CompactJourneyPath({ journey, nextActionLabel }: { journey: WorldCountr
         : null
   return (
     <section className="space-y-2" aria-labelledby="world-countries-journey-heading">
-      <p id="world-countries-journey-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Journey · {subregionLabel}</p>
+      <p id="world-countries-journey-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Your journey · {subregionLabel}</p>
       <ol className="space-y-2">
         {milestones.map((stage, index) => (
           <li key={stage.id} className="flex items-start gap-2" data-journey-milestone={stage.id} data-journey-status={stage.status}>
@@ -234,7 +230,7 @@ function CompactJourneyPath({ journey, nextActionLabel }: { journey: WorldCountr
           </li>
         ))}
       </ol>
-      {(nextActionLabel ?? fallbackNextAction) && <p className="pt-1 text-xs font-semibold text-violet-200">Next: {nextActionLabel ?? fallbackNextAction}</p>}
+      {fallbackNextAction && <p className="pt-1 text-xs font-semibold text-violet-200">Next in journey: {fallbackNextAction}</p>}
     </section>
   )
 }

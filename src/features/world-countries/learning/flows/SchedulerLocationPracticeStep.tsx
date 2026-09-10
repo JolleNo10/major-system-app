@@ -59,7 +59,7 @@ export function SchedulerLocationPracticeStep({ continent, entries, session, lab
   if (surface) return dock
 
   const activityTask: WorldCountriesActivityTask = {
-    direction: 'Location → Country',
+    direction: 'Find the countries',
     cue: `Find ${expected.country}`,
     sessionContext: label,
     answerKind: 'country',

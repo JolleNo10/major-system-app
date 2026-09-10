@@ -57,7 +57,7 @@ export function StagedFinalRecallStep({
   }, [current?.id, showCountryName])
   if (!current) return null
   const activityTask: WorldCountriesActivityTask = {
-    direction: showCountryName ? 'Location → Country' : answerKind === 'capital' ? 'Country → Capital' : 'Location → Country',
+    direction: 'Final recall',
     cue: showCountryName ? current.country : answerKind === 'capital' ? `Capital of ${current.country}` : 'Name the country',
     sessionContext: ordered.mode === 'repair' ? 'Repair traversal' : stepLabel,
     answerKind,

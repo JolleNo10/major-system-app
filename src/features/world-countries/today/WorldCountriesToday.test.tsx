@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, createElement } from 'react'
+import { act, createElement, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { countries } from '@/features/world-countries/data/countries'
@@ -10,19 +10,21 @@ import { markSubregionCountriesLearned } from '@/features/world-countries/learni
 
 const loadHistoryMock = vi.hoisted(() => vi.fn(() => Promise.resolve(new Map())))
 const buildPlanMock = vi.hoisted(() => vi.fn())
+const useRailsMock = vi.hoisted(() => vi.fn())
+const countryLearningFlowMock = vi.hoisted(() => vi.fn())
 const capitalLearningFlowMock = vi.hoisted(() => vi.fn())
-const activeCountries = [countries[0]]
+let activeCountries = [countries[0]]
 let milestoneWritten = false
 
 vi.mock('@/app/settings/SettingsContext', () => ({
   useSettings: () => ({ settings: { worldCountriesFuzzyAnswerMatching: false, worldCountriesNewItemsPerSet: 3 } }),
 }))
-vi.mock('@/app/layout/PageLayoutContext', () => ({ usePageLayoutPresentation: vi.fn(), useRails: vi.fn() }))
+vi.mock('@/app/layout/PageLayoutContext', () => ({ usePageLayoutPresentation: vi.fn(), useRails: useRailsMock }))
 vi.mock('@/features/world-countries/WorldCountriesPopulationContext', () => ({
   useWorldCountriesPopulation: () => activeCountries,
 }))
 vi.mock('@/features/world-countries/geography/effectiveOrder', () => ({
-  getWorldCountriesInEffectiveOrder: () => ({ countries: activeCountries, subregionIds: [countries[0].subregionId] }),
+  getWorldCountriesInEffectiveOrder: () => ({ countries: activeCountries, subregionIds: [...new Set(activeCountries.map(country => country.subregionId))] }),
 }))
 vi.mock('@/features/world-countries/learning/recallHistory', async importOriginal => ({
   ...await importOriginal<typeof import('@/features/world-countries/learning/recallHistory')>(),
@@ -32,6 +34,7 @@ vi.mock('@/features/world-countries/maps/GeographyOverviewMap', () => ({ Geograp
 vi.mock('@/features/world-countries/ui/WorldMasterySummary', () => ({ WorldMasterySummary: () => null }))
 vi.mock('@/features/world-countries/learning/flows/CountryLearningFlow', () => ({
   CountryLearningFlow: (props: Record<string, unknown>) => {
+    countryLearningFlowMock(props)
     const handoff = props.completionHandoff as { description: string; label: string; onContinue: () => void } | undefined
     return createElement('div', { 'data-testid': 'country-learning-flow' }, [
       createElement('button', {
@@ -79,14 +82,20 @@ vi.mock('./TodayReviewSession', () => ({
 import { WorldCountriesToday } from './WorldCountriesToday'
 
 let root: Root | null = null
+let railRoot: Root | null = null
 
 afterEach(() => {
   act(() => root?.unmount())
+  act(() => railRoot?.unmount())
   root = null
+  railRoot = null
   document.body.replaceChildren()
   loadHistoryMock.mockClear()
   buildPlanMock.mockReset()
   capitalLearningFlowMock.mockReset()
+  countryLearningFlowMock.mockReset()
+  useRailsMock.mockReset()
+  activeCountries = [countries[0]]
   milestoneWritten = false
   localStorage.clear()
 })
@@ -168,6 +177,79 @@ describe('World Countries Today', () => {
     })
 
     expect(mount.querySelector('[data-testid="country-learning-flow"]')).not.toBeNull()
+  })
+
+  it('keeps an inspected region separate from the real guided action and launch scope', async () => {
+    const northernEntries = countries.filter(country => country.subregionId === 'northern-europe').slice(0, 3)
+    const southernEntry = countries.find(country => country.subregionId === 'southern-europe')!
+    activeCountries = [...northernEntries, southernEntry]
+    buildPlanMock.mockReturnValue({
+      dueCandidates: [],
+      reviewQueue: [],
+      consolidationCandidates: [],
+      consolidationQueue: [],
+      dueCount: 0,
+      dueCountryCount: 0,
+      introductions: new Map(),
+      nextLearning: {
+        track: 'learn-countries',
+        subregionId: 'northern-europe',
+        continent: 'Europe',
+        subregionLabel: 'Northern Europe',
+      },
+      incompleteCountryCount: activeCountries.length,
+      incompleteSubregionLabels: ['Northern Europe', 'Southern Europe'],
+      scopeComplete: false,
+      caughtUpForToday: false,
+      action: { kind: 'learn', recommendation: {
+        track: 'learn-countries',
+        subregionId: 'northern-europe',
+        continent: 'Europe',
+        subregionLabel: 'Northern Europe',
+        countryIds: northernEntries.map(country => country.id),
+      } },
+    })
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(WorldCountriesToday, { answerMode: 'typing', continent: 'Europe', onNavigate: vi.fn() }))
+      await Promise.resolve()
+    })
+    const renderLatestRails = () => {
+      act(() => railRoot?.unmount())
+      const config = useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1]?.[0] as { left?: ReactNode; right?: ReactNode } | undefined
+      const railMount = document.createElement('div')
+      document.body.append(railMount)
+      railRoot = createRoot(railMount)
+      act(() => railRoot?.render(createElement('div', null, config?.left, config?.right)))
+      return railMount
+    }
+
+    let railMount = renderLatestRails()
+    act(() => [...railMount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent?.startsWith('Southern Europe'))?.click())
+    railMount = renderLatestRails()
+
+    expect(railMount.textContent).toContain("You're viewing Southern Europe")
+    expect(railMount.textContent).toContain('Your next step is still in Northern Europe')
+    expect(railMount.textContent).toContain('Next in journey: Learn the countries')
+    expect(railMount.textContent).not.toContain('Next in journey: Learn 3 countries')
+    expect(mount.textContent).toContain("what you've learned and what's still ahead")
+    expect(mount.textContent).not.toContain('choose where to learn')
+    expect(mount.querySelector('[data-primary-action]')?.textContent).toContain('Learn 3 countries')
+    expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('Northern Europe is next')
+    expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain("You're inspecting Southern Europe")
+
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-primary-action]')?.click()
+      await Promise.resolve()
+    })
+
+    expect(countryLearningFlowMock).toHaveBeenCalledWith(expect.objectContaining({
+      subregion: 'northern-europe',
+      entries: northernEntries,
+    }))
   })
 
   it('offers the latest post-milestone learn-capitals action and launches it directly', async () => {

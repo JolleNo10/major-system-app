@@ -50,7 +50,7 @@ describe('StagedFinalRecallStep', () => {
       root.render(createElement(PageLayoutProvider, null, createElement(LearningMapSurface, {
         continent: 'Europe', scopeCountries: [country], presentation: { ariaLabel: 'Final recall map' }, presentationKey: 'final',
         context: createElement('h1', null, 'Final recall'),
-        task: { direction: 'Country → Capital', cue: 'Norway', progress: { label: 'Country', current: 1, total: 1 } },
+        task: { direction: 'Final recall', cue: 'Norway', progress: { label: 'Country', current: 1, total: 1 } },
         children: createElement(StagedFinalRecallStep, {
         continent: 'Europe', entries: [country],
         ordered: createOrderedRecallSession({ order: [country.id], rewindOnError: 1 }),
@@ -68,7 +68,7 @@ describe('StagedFinalRecallStep', () => {
     act(() => mount.querySelector('form')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
 
     expect(input.disabled).toBe(true)
-    expect(mount.querySelector('[data-world-countries-task-direction]')?.textContent).toBe('Country → Capital')
+    expect(mount.querySelector('[data-world-countries-task-direction]')?.textContent).toBe('Final recall')
     expect(mount.textContent).toContain('Spelling: Oslo')
 
     act(() => vi.advanceTimersByTime(1800))
@@ -137,7 +137,7 @@ describe('StagedFinalRecallStep', () => {
         presentation: { ariaLabel: 'Final recall map' },
         presentationKey: 'final',
         context: createElement('h1', null, 'Final recall'),
-        task: { direction: 'Country → Capital', cue: 'Norway', progress: { label: 'Country', current: 1, total: 2 } },
+        task: { direction: 'Final recall', cue: 'Norway', progress: { label: 'Country', current: 1, total: 2 } },
         children: createElement(OrderedRecallHarness),
       })))
     })

@@ -107,6 +107,8 @@ describe('CapitalLearningFlow orchestration', () => {
     const container = renderFlow(() => undefined)
 
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-practice"]')!.click())
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0]).toMatchObject({ task: { direction: 'Recall the capitals', sessionContext: 'Set 1 · 1 pair' } })
+    expect(container.textContent).not.toMatch(/Step [23]/)
     for (let attempt = 0; attempt < 20 && container.querySelector('[data-testid="submit-correct"]'); attempt += 1) act(() => container.querySelector<HTMLButtonElement>('[data-testid="submit-correct"]')!.click())
 
     expect(container.querySelector('[data-testid="ready-copy"]')?.textContent).toContain('Set 1 complete')
@@ -119,8 +121,8 @@ describe('CapitalLearningFlow orchestration', () => {
     const leftRail = renderLeftRail()
 
     expect(container.textContent).toContain('Norway')
-    expect(leftRail.textContent).toContain('Adding capitals')
-    expect(leftRail.textContent).not.toContain('Not learned')
+    expect(leftRail.textContent).toContain('Meet the capitals')
+    expect(leftRail.textContent).not.toContain('Learning progress')
   })
 
   it('seeds established Country and Capital progress on a fresh flow', () => {
@@ -128,8 +130,8 @@ describe('CapitalLearningFlow orchestration', () => {
     const leftRail = renderLeftRail()
 
     expect(container.textContent).toContain('Norway')
-    expect(leftRail.textContent).toContain('Countries and capitals are learned')
-    expect(leftRail.textContent).not.toContain('Adding capitals')
+    expect(leftRail.textContent).toContain('Meet the capitals')
+    expect(leftRail.textContent).not.toContain('Learning progress')
   })
 
   it('keeps Country ↔ Capital presentation in the Capital walkthrough', () => {
@@ -137,7 +139,8 @@ describe('CapitalLearningFlow orchestration', () => {
     const task = learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].task
 
     expect(container.textContent).toContain('Norway ↔ Oslo')
-    expect(task).toMatchObject({ direction: 'Add the capitals', cue: 'Norway ↔ Oslo' })
+    expect(task).toMatchObject({ direction: 'Meet the capitals', cue: 'Norway ↔ Oslo' })
+    expect(container.textContent).not.toMatch(/Step [23]/)
   })
 
   it('identifies the current Capital Set within the full Subregion', () => {
@@ -178,7 +181,7 @@ describe('CapitalLearningFlow orchestration', () => {
     finishSet()
 
     const combinedRail = renderLeftRail()
-    expect(combinedRail.textContent).toContain('Combined practice')
+    expect(combinedRail.textContent).toContain("Mix what you've learned")
     expect(combinedRail.textContent).toContain('4 of 4 Countries introduced')
     expect(combinedRail.querySelectorAll('[data-learning-set="introduced"]')).toHaveLength(4)
     expect(combinedRail.querySelector('[data-learning-current-set]')).toBeNull()
@@ -220,9 +223,8 @@ describe('CapitalLearningFlow orchestration', () => {
 
     act(() => [...container.querySelectorAll('button')].find(button => button.textContent === 'Learn again')?.click())
     expect(phases).toEqual(['practice', 'set-ready', 'final-gate', 'final-recall', 'complete', 'walkthrough'])
-    expect(renderLeftRail().textContent).toContain('Learn the countries first')
-    expect(renderLeftRail().textContent).not.toContain('Countries and capitals are learned')
-    expect(renderLeftRail().textContent).not.toContain('Adding capitals')
+    expect(renderLeftRail().textContent).toContain('Meet the capitals')
+    expect(renderLeftRail().textContent).not.toContain('Learning progress')
   })
 
   it('keeps Countries established when Capital Learning completes after Country Learning', () => {
@@ -238,11 +240,11 @@ describe('CapitalLearningFlow orchestration', () => {
 
     act(() => [...container.querySelectorAll('button')].find(button => button.textContent === 'Learn again')?.click())
 
-    expect(renderLeftRail().textContent).toContain('Countries and capitals are learned')
-    expect(renderLeftRail().textContent).not.toContain('Adding capitals')
+    expect(renderLeftRail().textContent).toContain('Meet the capitals')
+    expect(renderLeftRail().textContent).not.toContain('Learning progress')
   })
 
-  it('shows scheduler progress during Capital Set Practice', () => {
+  it('keeps Capital scheduler progress on the center task surface', () => {
     const container = renderFlow(() => undefined)
 
     expect(renderRail().querySelector('[role="progressbar"]')).toBeNull()
@@ -250,9 +252,8 @@ describe('CapitalLearningFlow orchestration', () => {
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-practice"]')!.click())
 
     const practiceRail = renderRail()
-    expect(practiceRail.textContent).toContain('Practice progress')
-    expect(practiceRail.textContent).toContain('0%')
-    expect(practiceRail.textContent).toContain('0 / 1 at target')
+    expect(practiceRail.textContent).not.toContain('Practice progress')
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].task.progress).toMatchObject({ label: 'Recall', current: 0, total: 1 })
   })
 
   it('passes Capital answer semantics to the shared map surface during practice and Final recall', () => {
@@ -270,7 +271,7 @@ describe('CapitalLearningFlow orchestration', () => {
     expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0]).toMatchObject({ task: { answerKind: 'capital' }, cameraIntent: { kind: 'subregion-learning', subregionId: 'northern-europe' } })
   })
 
-  it('hides progress at Ready and resumes retained progress when practising continues', () => {
+  it('hides progress at Ready and resumes retained progress on the center task surface', () => {
     const container = renderFlow(() => undefined)
 
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-practice"]')!.click())
@@ -283,7 +284,7 @@ describe('CapitalLearningFlow orchestration', () => {
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-keep"]')!.click())
 
     const resumedRail = renderRail()
-    expect(resumedRail.textContent).toContain('100%')
-    expect(resumedRail.textContent).toContain('1 / 1 at target')
+    expect(resumedRail.textContent).not.toContain('Practice progress')
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].task.progress).toMatchObject({ label: 'Recall', current: 1, total: 1, percent: 100 })
   })
 })

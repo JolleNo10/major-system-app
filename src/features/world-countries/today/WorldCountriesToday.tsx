@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { AnswerMode } from '@/core/types'
 import { useSettings } from '@/app/settings/SettingsContext'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
-import type { SubregionId } from '@/features/world-countries/data/subregions'
+import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
 import { useWorldCountriesPopulation } from '@/features/world-countries/WorldCountriesPopulationContext'
 import { getWorldCountriesInEffectiveOrder } from '@/features/world-countries/geography/effectiveOrder'
 import { getContinentsInEffectiveOrder, getSubregionsForContinentInEffectiveOrder } from '@/features/world-countries/geography/queries'
@@ -61,7 +61,8 @@ function isSameLearningRecommendation(
 }
 
 function formatCountedAction(prefix: string, count: number, singular: string): string {
-  return `${prefix} ${count} ${count === 1 ? singular : `${singular}s`}`
+  const plural = singular.endsWith('y') ? `${singular.slice(0, -1)}ies` : `${singular}s`
+  return `${prefix} ${count} ${count === 1 ? singular : plural}`
 }
 
 function isLearningSetMaximum(value: unknown): value is LearningSetMaximum {
@@ -91,6 +92,31 @@ function getTodayActionLabel(
     }
     case 'consolidate':
       return formatCountedAction('Strengthen', action.candidates.length, 'item')
+    case 'complete':
+    case 'unavailable':
+      return null
+  }
+}
+
+function getActionRegionLabel(candidates: readonly { country?: Country }[]): string | null {
+  const labels = [...new Set(candidates.flatMap(candidate => candidate.country ? [getSubregionDefinition(candidate.country.subregionId).label] : []))]
+  return labels.length === 1 ? labels[0]! : labels.length > 1 ? 'multiple regions' : null
+}
+
+function getTodayActionStatus(action: WorldCountriesTodayPlan['action']): string | null {
+  switch (action.kind) {
+    case 'learn':
+      return `${action.recommendation.subregionLabel} is next`
+    case 'review': {
+      const scope = getActionRegionLabel(action.candidates)
+      const suffix = scope ? scope === 'multiple regions' ? ` across ${scope}` : ` in ${scope}` : ''
+      return `${action.candidates.length} ${action.candidates.length === 1 ? 'review' : 'reviews'} ready${suffix}`
+    }
+    case 'consolidate': {
+      const scope = getActionRegionLabel(action.candidates)
+      const suffix = scope ? scope === 'multiple regions' ? ` across ${scope}` : ` in ${scope}` : ''
+      return `Strengthening ${action.candidates.length} ${action.candidates.length === 1 ? 'item' : 'items'}${suffix}`
+    }
     case 'complete':
     case 'unavailable':
       return null
@@ -423,6 +449,11 @@ export function WorldCountriesToday({
   const primaryActionLabel = canContinue && plan
     ? getTodayActionLabel(plan.action, settings.worldCountriesNewItemsPerSet as LearningSetMaximum | undefined)
     : null
+  const primaryActionStatusBase = canContinue && plan ? getTodayActionStatus(plan.action) : null
+  const inspectedSubregionLabel = focusedSubregionId ? getSubregionDefinition(focusedSubregionId).label : null
+  const primaryActionStatus = primaryActionStatusBase
+    ? `${primaryActionStatusBase}${inspectedSubregionLabel && focusedSubregionId !== guidedSubregionId ? ` · You're inspecting ${inspectedSubregionLabel}` : ''}`
+    : null
   const caughtUp = evidence.status === 'ready' && scopedCountries.length > 0 && Boolean(plan?.caughtUpForToday)
   const mapDescriptions = new Map(scopedCountries.map(country => [country.id, `Progress for ${scopeLabel} is shown in the progress summary.`] as const))
 
@@ -437,7 +468,6 @@ export function WorldCountriesToday({
         dueCountryCount={plan?.dueCountryCount ?? 0}
         reviewReasonSummary={plan?.reviewReasonSummary ?? EMPTY_REVIEW_REASON_SUMMARY}
         nextLearning={nextLearning ? { track: nextLearning.track, subregionLabel: nextLearning.subregionLabel } : null}
-        primaryActionLabel={primaryActionLabel}
         refreshing={refreshing}
         caughtUp={caughtUp}
         scopeComplete={plan?.scopeComplete ?? false}
@@ -460,7 +490,7 @@ export function WorldCountriesToday({
             <div className="px-1">
               <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World Countries · {continent ? 'Continent hub' : 'Home'}</p>
               <h1 id="world-countries-today-heading" className="mt-1 text-2xl font-black text-zinc-100">{continent ? `${continent} learning hub` : 'Your world'}</h1>
-              <p className="mt-1 text-sm text-zinc-500">Explore the map to see your progress and choose where to learn.</p>
+              <p className="mt-1 text-sm text-zinc-500">Explore the map to see what you&apos;ve learned and what&apos;s still ahead.</p>
             </div>
           )}
           map={(
@@ -477,7 +507,7 @@ export function WorldCountriesToday({
             />
           )}
           dock={canContinue ? (
-            <TaskDock variant="navigation" focusPrimary={Boolean(checkpoint) && !refreshing}>
+            <TaskDock variant="navigation" focusPrimary={Boolean(checkpoint) && !refreshing} status={primaryActionStatus ? <span data-task-scope-context>{primaryActionStatus}</span> : undefined}>
               <button type="button" data-primary-action disabled={refreshing} onClick={startPrimary} className="w-full rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white hover:bg-violet-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-40">
                 {primaryActionLabel}
               </button>
