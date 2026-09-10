@@ -178,7 +178,7 @@ fallback may treat every active `country-to-capital` target with two-date
 mastery as already known without writing a synthetic milestone.
 
 Today exposes all derived due candidates for urgency/counts, then snapshots at
-most 12 candidates into a deterministic interleaved review block. Priority
+most 8 candidates into a deterministic interleaved review block. Priority
 tiers remain authoritative: latest failures, missing successful typed recall,
 then scheduled/overdue review. Interleaving prefers unseen Countries, a
 different skill, and a different Subregion within the active tier before using
@@ -191,6 +191,27 @@ complete, as a non-persisted journey focus; review/consolidation queue order
 does not choose the journey region. The Review opportunity exposes the bounded
 block that will launch, while Home support copy distinguishes it from total due
 work when those values differ.
+
+The 8-item Review/consolidation block is a repeatable learner choice rather
+than a daily or visit gate. After a completed block, Today refreshes retained
+evidence and can expose the next scheduler-derived block immediately while
+work remains; blocks never auto-chain. Within-block delayed retries remain
+owned by the existing Review queue.
+
+Guided Country and Capital Learning retain their staged Meet, Find/Recall,
+Mix, and Final recall pedagogy. The normal forward action from a completed
+practice checkpoint starts Final recall directly; the final-gate state remains
+available for legitimate Back/resume navigation. Learning and Review
+completion surfaces use existing milestone/evidence truth. Checkpoint docks
+own completion and next-action narration while map context remains scope
+orientation. Completed Review counters are transient Home feedback rather than
+another progress authority.
+
+The derived Progress view keeps World -> Continent and Continent -> Subregion
+hierarchy. Its rows combine complete-country totals, the existing core recall
+state distribution, and, for Subregions, the existing Journey presentation;
+Continent rows also show a core-recall-complete region rollup. Progress rails
+explain scope and state semantics and do not choose Review or Journey actions.
 
 World Countries review spacing is also derived from retained raw attempts. The
 fixed `1, 3, 7, 14, 30, 60` day ladder advances on clean typed-recall days and

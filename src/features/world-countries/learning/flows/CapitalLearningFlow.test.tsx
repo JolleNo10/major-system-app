@@ -198,15 +198,12 @@ describe('CapitalLearningFlow orchestration', () => {
     for (let attempt = 0; attempt < 20 && container.querySelector('[data-testid="submit-correct"]'); attempt += 1) act(() => container.querySelector<HTMLButtonElement>('[data-testid="submit-correct"]')!.click())
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
 
-    const finalGateRail = renderLeftRail()
-    expect(finalGateRail.textContent).toContain('Final recall')
-    expect(finalGateRail.textContent).toContain('All 4 Countries')
-    expect(finalGateRail.querySelectorAll('[data-learning-set="active-scope"]')).toHaveLength(4)
-    expect(finalGateRail.querySelector('[data-learning-current-set]')).toBeNull()
-    expect(finalGateRail.querySelector('[data-learning-previous-set]')).toBeNull()
-
-    act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-start"]')!.click())
     const finalRecallRail = renderLeftRail()
+    expect(finalRecallRail.textContent).toContain('Final recall')
+    expect(finalRecallRail.textContent).toContain('All 4 Countries')
+    expect(finalRecallRail.querySelectorAll('[data-learning-set="active-scope"]')).toHaveLength(4)
+    expect(finalRecallRail.querySelector('[data-learning-current-set]')).toBeNull()
+    expect(finalRecallRail.querySelector('[data-learning-previous-set]')).toBeNull()
     expect(finalRecallRail.textContent).toContain('All 4 Countries')
     expect(finalRecallRail.textContent).not.toContain('Upcoming')
   })
@@ -223,15 +220,14 @@ describe('CapitalLearningFlow orchestration', () => {
     expect(getSubregionLearningState('northern-europe')).toBeNull()
 
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
-    act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-start"]')!.click())
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-submit"]')!.click())
 
-    expect(phases).toEqual(['practice', 'set-ready', 'final-gate', 'final-recall', 'complete'])
+    expect(phases).toEqual(['practice', 'set-ready', 'final-recall', 'complete'])
     expect(getSubregionLearningState('northern-europe')).toMatchObject({ capitalsLearnedAt: expect.any(Number) })
     expect(getSubregionLearningState('northern-europe')).not.toHaveProperty('countriesLearnedAt')
 
     act(() => [...container.querySelectorAll('button')].find(button => button.textContent === 'Learn again')?.click())
-    expect(phases).toEqual(['practice', 'set-ready', 'final-gate', 'final-recall', 'complete', 'walkthrough'])
+    expect(phases).toEqual(['practice', 'set-ready', 'final-recall', 'complete', 'walkthrough'])
     expect(renderLeftRail().textContent).toContain('Meet the capitals')
     expect(renderLeftRail().textContent).not.toContain('Learning progress')
   })
@@ -244,7 +240,6 @@ describe('CapitalLearningFlow orchestration', () => {
       act(() => container.querySelector<HTMLButtonElement>('[data-testid="submit-correct"]')!.click())
     }
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
-    act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-start"]')!.click())
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-submit"]')!.click())
 
     act(() => [...container.querySelectorAll('button')].find(button => button.textContent === 'Learn again')?.click())
@@ -275,7 +270,6 @@ describe('CapitalLearningFlow orchestration', () => {
       act(() => container.querySelector<HTMLButtonElement>('[data-testid="submit-correct"]')!.click())
     }
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
-    act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-start"]')!.click())
 
     expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0]).toMatchObject({ task: { answerKind: 'capital' }, cameraIntent: { kind: 'subregion-learning', subregionId: 'northern-europe' } })
   })

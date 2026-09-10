@@ -34,7 +34,7 @@ describe('staged country learning flow', () => {
     expect(flow.practice?.currentKey).toBe('A')
   })
 
-  it('requires the final Combined scope before the Final recall gate', () => {
+  it('requires the final Combined scope before starting Final recall', () => {
     let flow = createStagedCountryLearningFlow({ countryIds: ['A', 'B', 'C', 'D'], maximum: 3, schedulerSettings: settings })
     expect(flow.plan.map(stage => stage.kind)).toEqual(['set', 'set', 'combined', 'final'])
     flow = skipStagedCountry(flow)
@@ -56,7 +56,7 @@ describe('staged country learning flow', () => {
     expect(flow.phase).toBe('complete')
   })
 
-  it('makes a ready final Set go directly to the final gate when there is one Set', () => {
+  it('starts Final recall directly when the one-Set plan is ready', () => {
     let flow = createStagedCountryLearningFlow({ countryIds: ['A'], maximum: 3, schedulerSettings: settings })
     flow = skipStagedCountry(flow)
     flow = answerUntilReady(flow, current => submitStagedCountryLocation(current, true, 100, () => 0))
@@ -64,7 +64,7 @@ describe('staged country learning flow', () => {
     while (flow.phase === 'practice') flow = submitStagedCountryPractice(flow, true, 100, () => 0).state
     expect(flow.phase).toBe('set-ready')
     flow = advanceStagedCountryPlan(flow)
-    expect(flow.phase).toBe('final-gate')
+    expect(flow.phase).toBe('final-recall')
     expect(flow.finalScopeReady).toBe(true)
   })
 

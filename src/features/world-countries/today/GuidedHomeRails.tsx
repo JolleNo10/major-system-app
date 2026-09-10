@@ -7,6 +7,7 @@ import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountrie
 import type { WorldCountriesJourneyPresentation } from './journeyPresentation'
 import type { WorldCountriesTodayReviewOpportunity } from './todayPlan'
 import type { WorldCountriesTodayReviewReasonSummary } from './reviewReason'
+import type { WorldCountriesTodayReviewCheckpoint } from './TodayReviewSession'
 
 export interface GuidedHomeScopeSummary {
   id: string
@@ -29,6 +30,7 @@ export function GuidedHomeRails({
   dueCountryCount,
   reviewOpportunity,
   reviewReasonSummary,
+  reviewCompletion,
   onStartReview,
   focusReviewActionRequest = 0,
   journey,
@@ -48,6 +50,7 @@ export function GuidedHomeRails({
   dueCountryCount: number
   reviewOpportunity: WorldCountriesTodayReviewOpportunity
   reviewReasonSummary: WorldCountriesTodayReviewReasonSummary
+  reviewCompletion?: WorldCountriesTodayReviewCheckpoint | null
   onStartReview: () => void
   focusReviewActionRequest?: number
   journey: WorldCountriesJourneyPresentation | null
@@ -88,6 +91,7 @@ export function GuidedHomeRails({
   const reviewScopeLabel = reviewOpportunity?.kind === 'review'
     ? getReviewScopeLabel(reviewOpportunity.candidates)
     : null
+  const reviewResultText = reviewCompletion ? formatReviewCompletion(reviewCompletion) : null
 
   const reviewPanel = useMemo(() => (
     <WorldCountriesPanel className="space-y-3" aria-labelledby="world-countries-review-opportunity-heading">
@@ -117,6 +121,7 @@ export function GuidedHomeRails({
             <p className="mt-1 text-sm text-zinc-400">See what stuck.</p>
           </div>
           <button ref={reviewActionRef} type="button" data-review-action onClick={onStartReview} disabled={refreshing} className="w-full rounded-lg border border-green-500/45 bg-green-500/10 px-3 py-2.5 text-sm font-bold text-green-200 hover:bg-green-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 disabled:cursor-not-allowed disabled:opacity-40">Review {opportunityCount} {opportunityCount === 1 ? 'item' : 'items'}</button>
+          {reviewResultText && <p data-review-completion className="text-xs leading-relaxed text-zinc-300">Last review: {reviewResultText}</p>}
           {reviewScopeLabel && <p className="text-xs text-zinc-500">Review scope: {reviewScopeLabel}</p>}
           {reviewSupportSummary && <p className="text-xs leading-relaxed text-zinc-400">{reviewSupportSummary}</p>}
           {whyTodayText.length > 0 && <p className="text-xs leading-relaxed text-zinc-500">{whyTodayText}</p>}
@@ -128,17 +133,19 @@ export function GuidedHomeRails({
             <h2 id="world-countries-review-opportunity-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Reviews caught up</h2>
             <p className="mt-1 text-lg font-bold text-zinc-100">{opportunityCount} weak {opportunityCount === 1 ? 'spot' : 'spots'} available</p>
           </div>
+          {reviewResultText && <p data-review-completion className="text-xs leading-relaxed text-zinc-300">Last review: {reviewResultText}</p>}
           <button ref={reviewActionRef} type="button" data-review-action onClick={onStartReview} disabled={refreshing} className="w-full rounded-lg border border-zinc-700 px-3 py-2.5 text-sm font-bold text-green-200 hover:border-green-500/60 hover:bg-green-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 disabled:cursor-not-allowed disabled:opacity-40">Strengthen weak spots</button>
         </>
       ) : (
         <div>
           <h2 id="world-countries-review-opportunity-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Reviews caught up</h2>
+          {reviewResultText && <p data-review-completion className="mt-2 text-xs leading-relaxed text-zinc-300">{reviewResultText}</p>}
           <p className="mt-1 text-lg font-bold text-zinc-100">Nothing needs your attention right now.</p>
-          <p className="mt-1 text-xs leading-relaxed text-zinc-500">Come back when something is ready to revisit.</p>
+          <p className="mt-1 text-xs leading-relaxed text-zinc-500">Nothing else is ready right now.</p>
         </div>
       )}
     </WorldCountriesPanel>
-  ), [activeCountryCount, evidenceStatus, onStartReview, opportunityCount, refreshing, reviewActionRef, reviewOpportunity, reviewReasonSummary, reviewScopeLabel, reviewSupportSummary, whyTodayText])
+  ), [activeCountryCount, evidenceStatus, onStartReview, opportunityCount, refreshing, reviewActionRef, reviewOpportunity, reviewReasonSummary, reviewResultText, reviewScopeLabel, reviewSupportSummary, whyTodayText])
 
   const rails = useMemo(() => ({
     left: (
@@ -241,4 +248,14 @@ function getReviewScopeLabel(candidates: readonly { country?: { subregionId: Sub
     candidate.country ? [getSubregionDefinition(candidate.country.subregionId).label] : []
   )))]
   return labels.length === 1 ? labels[0]! : labels.length > 1 ? 'multiple regions' : null
+}
+
+function formatReviewCompletion(checkpoint: WorldCountriesTodayReviewCheckpoint): string {
+  const parts = [
+    `${checkpoint.reviewed} reviewed`,
+    `${checkpoint.correctFirstTry} first try`,
+    `${checkpoint.recoveredOnRetry} recovered`,
+  ]
+  if (checkpoint.stillNeedsWork > 0) parts.push(`${checkpoint.stillNeedsWork} still needs work`)
+  return parts.join(' · ')
 }

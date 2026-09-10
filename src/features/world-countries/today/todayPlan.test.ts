@@ -25,7 +25,75 @@ function completeCoreHistory(countryIds: readonly string[] = ['NO']) {
   )
 }
 
+function dueHistoryFor(countryIds: readonly string[]) {
+  return deriveWorldCountriesRecallHistory(
+    { countryIds, skills: ['location-to-country', 'country-to-capital'] },
+    countryIds.flatMap((countryId, index) => [
+      {
+        itemId: `world-countries:location-to-country:${countryId}`,
+        at: index + 1,
+        ok: true,
+        ms: 100,
+        evidenceKind: 'recall' as const,
+        localDate: '2026-08-10',
+      },
+      {
+        itemId: `world-countries:location-to-country:${countryId}`,
+        at: index + 100,
+        ok: false,
+        ms: 100,
+        evidenceKind: 'recall' as const,
+        localDate: '2026-08-11',
+      },
+    ]),
+  )
+}
+
 describe('World Countries Today plan', () => {
+  it.each([
+    [1, 1],
+    [7, 7],
+    [8, 8],
+    [10, 8],
+  ])('bounds a %i-item due population to %i initial Review candidates', (readyCount, expectedBlockSize) => {
+    const entries = countries.slice(0, readyCount)
+    const plan = buildWorldCountriesTodayPlan({
+      activeCountries: entries,
+      effectiveCountries: entries,
+      effectiveSubregionIds: [...new Set(entries.map(country => country.subregionId))],
+      history: dueHistoryFor(entries.map(country => country.id)),
+      localDate: '2026-08-19',
+    })
+
+    expect(plan.dueCount).toBe(readyCount)
+    expect(plan.reviewQueue).toHaveLength(expectedBlockSize)
+    expect(plan.reviewOpportunity).toMatchObject({ kind: 'review' })
+  })
+
+  it('uses the same eight-item bound for weak-spot practice', () => {
+    const entries = countries.slice(0, 10)
+    const history = deriveWorldCountriesRecallHistory(
+      { countryIds: entries.map(country => country.id), skills: ['location-to-country', 'country-to-capital'] },
+      entries.flatMap((country, index) => [
+        { itemId: `world-countries:location-to-country:${country.id}`, at: index + 1, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-19' },
+        { itemId: `world-countries:country-to-capital:${country.id}`, at: index + 100, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-19' },
+      ]),
+    )
+    const plan = buildWorldCountriesTodayPlan({
+      activeCountries: entries,
+      effectiveCountries: entries,
+      effectiveSubregionIds: [...new Set(entries.map(country => country.subregionId))],
+      learningStates: [...new Set(entries.map(country => country.subregionId))].map(subregionId => ({ subregionId, countriesLearnedAt: 1, capitalsLearnedAt: 2 })),
+      history,
+      localDate: '2026-08-19',
+    })
+
+    expect(plan.dueCount).toBe(0)
+    expect(plan.consolidationCandidates.length).toBeGreaterThan(8)
+    expect(plan.consolidationQueue).toHaveLength(8)
+    expect(plan.reviewOpportunity).toMatchObject({ kind: 'consolidate' })
+  })
+
   it('keeps a scoped plan inside the supplied active Country population', () => {
     const scopedHistory = deriveWorldCountriesRecallHistory({
       countryIds: ['NO', 'IN'],

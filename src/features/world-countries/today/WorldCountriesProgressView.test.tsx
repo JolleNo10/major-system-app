@@ -56,6 +56,10 @@ describe('World Countries progress hierarchy', () => {
 
     expect(mount.textContent).toContain('Africa')
     expect(mount.textContent).toContain('Europe')
+    expect(mount.textContent).toContain('countries complete')
+    expect(mount.textContent).toContain('regions with complete recall')
+    expect(mount.textContent).toContain('Unpractised')
+    expect(mount.querySelector('[aria-label="Africa core recall distribution"]')).not.toBeNull()
     expect(mount.textContent).not.toContain('Northern Europe')
   })
 
@@ -65,6 +69,9 @@ describe('World Countries progress hierarchy', () => {
 
     expect(mount.textContent).toContain('Northern Europe')
     expect(mount.textContent).toContain('Western Europe')
+    expect(mount.textContent).toContain('Journey')
+    expect(mount.textContent).toContain('Meet the countries')
+    expect(mount.querySelector('[aria-label="Northern Europe core recall distribution"]')).not.toBeNull()
     expect(mount.textContent).not.toContain('Africa')
   })
 })

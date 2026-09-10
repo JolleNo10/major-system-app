@@ -175,12 +175,12 @@ export function CountryLearningFlow({
     switch (flow.phase) {
       case 'walkthrough': return <LearningHeader label="Meet the countries" title={walkthroughCountry?.country ?? 'Country'} meta={`${flow.walkthroughIndex + 1} / ${stageEntries.length}`} onExit={onExit} />
       case 'location-practice': return <LearningHeader label="Find the countries" title={`Find ${flow.location ? stageEntries.find(entry => entry.id === flow.location?.currentKey)?.country ?? 'the Country' : 'the Country'}`} meta={learningSetContext(flow, stageEntries.length)} onExit={onExit} />
-      case 'location-ready': return <LearningHeader label="Find the countries" title="Find complete" meta={learningSetContext(flow, stageEntries.length)} onExit={onExit} />
+      case 'location-ready': return <LearningHeader label="Learning context" title={learningScopeLabel} meta={learningSetContext(flow, stageEntries.length)} onExit={onExit} />
       case 'practice': return <LearningHeader label="Recall the countries" title="Name the country" meta={learningSetContext(flow, stageEntries.length)} onExit={onExit} />
-      case 'set-ready': return <LearningHeader label="Practice complete" title={getLearningSetCompletionLabel(stagePresentation)} onExit={onExit} />
+      case 'set-ready': return <LearningHeader label="Learning context" title={learningScopeLabel} meta={learningSetContext(flow, stageEntries.length)} onExit={onExit} />
       case 'combined-practice': return <LearningHeader label="Mix what you've learned" title="Name the country" meta={`${stageEntries.length} ${stageEntries.length === 1 ? 'country' : 'countries'}`} onExit={onExit} />
-      case 'combined-ready': return <LearningHeader label="Mixed practice complete" title="Mixed practice complete" onExit={onExit} />
-      case 'final-gate': return <LearningHeader label="Final recall" title="Final recall" onExit={onExit} />
+      case 'combined-ready': return <LearningHeader label="Learning context" title={learningScopeLabel} meta={`${stageEntries.length} ${stageEntries.length === 1 ? 'country' : 'countries'} introduced`} onExit={onExit} />
+      case 'final-gate': return <LearningHeader label="Learning context" title={learningScopeLabel} meta={`All ${entries.length} ${entries.length === 1 ? 'country' : 'countries'}`} onExit={onExit} />
       case 'final-recall': return <LearningHeader label="Final recall" title={`${(flow.ordered?.currentIndex ?? 0) + 1} / ${flow.ordered?.order.length ?? entries.length}`} onExit={onExit} />
       case 'complete': return <LearningHeader label="Learning complete" title={learningScopeLabel} onExit={onExit} />
     }

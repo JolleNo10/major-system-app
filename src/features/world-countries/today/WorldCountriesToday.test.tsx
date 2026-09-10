@@ -258,6 +258,7 @@ describe('World Countries Today', () => {
     expect(reviewAction).not.toBeNull()
     expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Continue learning')
     expect(document.activeElement).toBe(reviewAction)
+    expect(railMount.textContent).toContain('Last review: 1 reviewed · 1 first try · 0 recovered')
   })
 
   it('does not focus Journey when Review completion leaves no Review opportunity', async () => {
@@ -321,6 +322,7 @@ describe('World Countries Today', () => {
     const reviewAction = railMount.querySelector<HTMLButtonElement>('[data-review-action]')
     expect(reviewAction).not.toBeNull()
     expect(document.activeElement).toBe(reviewAction)
+    expect(railMount.querySelector('[data-review-completion]')).toBeNull()
   })
 
   it('launches the Journey recommendation from the map dock', async () => {

@@ -116,14 +116,36 @@ describe('Guided World Countries home rails', () => {
     const mount = renderRails({
       dueCount: 20,
       dueCountryCount: 15,
-      reviewOpportunity: makeReviewOpportunity('review', 12),
+      reviewOpportunity: makeReviewOpportunity('review', 8),
     })
 
-    expect(mount.textContent).toContain('12 items')
-    expect(mount.textContent).toContain('Review 12 items')
+    expect(mount.textContent).toContain('8 items')
+    expect(mount.textContent).toContain('Review 8 items')
     expect(mount.textContent).toContain('20 ready overall')
     expect(mount.textContent).toContain('15 countries')
     expect(mount.textContent).not.toContain('20 reviews ready')
+  })
+
+  it('shows completed Review counters as compact transient feedback', () => {
+    const mount = renderRails({
+      dueCount: 15,
+      dueCountryCount: 9,
+      reviewOpportunity: makeReviewOpportunity('review', 8),
+      reviewCompletion: { reviewed: 8, correctFirstTry: 6, recoveredOnRetry: 1, stillNeedsWork: 1 },
+    })
+
+    expect(mount.textContent).toContain('Last review: 8 reviewed · 6 first try · 1 recovered · 1 still needs work')
+    expect(mount.textContent).toContain('Review 8 items')
+  })
+
+  it('keeps the completed Review result with the caught-up state', () => {
+    const mount = renderRails({
+      reviewCompletion: { reviewed: 8, correctFirstTry: 7, recoveredOnRetry: 1, stillNeedsWork: 0 },
+    })
+
+    expect(mount.querySelector('[aria-labelledby="world-countries-review-opportunity-heading"] h2')?.textContent).toBe('Reviews caught up')
+    expect(mount.textContent).toContain('8 reviewed · 7 first try · 1 recovered')
+    expect(mount.textContent).toContain('Nothing else is ready right now.')
   })
 
   it('offers weak-spot practice only after scheduled reviews are caught up', () => {

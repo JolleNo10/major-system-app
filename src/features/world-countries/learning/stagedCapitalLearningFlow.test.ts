@@ -17,6 +17,7 @@ describe('staged capital learning flow', () => {
     expect(flow.phase).toBe('final-gate')
     expect(flow.finalScopeReady).toBe(false)
     flow = startStagedCapitalFinalRecall(flow)
+    expect(flow.phase).toBe('final-recall')
     expect(flow.ordered?.order).toEqual(['A'])
     flow = submitStagedCapitalFinalAnswer(flow, true).state
     expect(flow.phase).toBe('complete')

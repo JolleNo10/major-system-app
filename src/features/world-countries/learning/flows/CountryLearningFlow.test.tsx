@@ -225,15 +225,12 @@ describe('CountryLearningFlow scheduler progress wiring', () => {
     for (let attempt = 0; attempt < 20 && container.querySelector('[data-testid="practice-submit"]'); attempt += 1) act(() => container.querySelector<HTMLButtonElement>('[data-testid="practice-submit"]')!.click())
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
 
-    const finalGateRail = renderLeftRail()
-    expect(finalGateRail.textContent).toContain('Final recall')
-    expect(finalGateRail.textContent).toContain('All 4 Countries')
-    expect(finalGateRail.querySelectorAll('[data-learning-set="active-scope"]')).toHaveLength(4)
-    expect(finalGateRail.querySelector('[data-learning-current-set]')).toBeNull()
-    expect(finalGateRail.querySelector('[data-learning-previous-set]')).toBeNull()
-
-    act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-start"]')!.click())
     const finalRecallRail = renderLeftRail()
+    expect(finalRecallRail.textContent).toContain('Final recall')
+    expect(finalRecallRail.textContent).toContain('All 4 Countries')
+    expect(finalRecallRail.querySelectorAll('[data-learning-set="active-scope"]')).toHaveLength(4)
+    expect(finalRecallRail.querySelector('[data-learning-current-set]')).toBeNull()
+    expect(finalRecallRail.querySelector('[data-learning-previous-set]')).toBeNull()
     expect(finalRecallRail.textContent).toContain('All 4 Countries')
     expect(finalRecallRail.textContent).not.toContain('Upcoming')
   })
@@ -314,7 +311,6 @@ describe('CountryLearningFlow scheduler progress wiring', () => {
       act(() => container.querySelector<HTMLButtonElement>('[data-testid="practice-submit"]')!.click())
     }
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
-    act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-start"]')!.click())
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-submit"]')!.click())
 
     expect(getSubregionLearningState('northern-europe')).toMatchObject({ countriesLearnedAt: expect.any(Number) })

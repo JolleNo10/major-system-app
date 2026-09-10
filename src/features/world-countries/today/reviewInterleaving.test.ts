@@ -22,13 +22,13 @@ function candidate(
 }
 
 describe('World Countries Today review interleaving', () => {
-  it('represents twelve distinct Countries when more than twelve are due in one tier', () => {
+  it('represents eight distinct Countries when more than eight are due in one tier', () => {
     const queue = interleaveWorldCountriesTodayReviewCandidates(
       countries.slice(0, 14).map(country => candidate(country.id)),
     )
 
-    expect(queue).toHaveLength(12)
-    expect(new Set(queue.map(entry => entry.country.id)).size).toBe(12)
+    expect(queue).toHaveLength(8)
+    expect(new Set(queue.map(entry => entry.country.id)).size).toBe(8)
   })
 
   it('consumes a complete higher-priority tier before entering a lower one', () => {
@@ -41,7 +41,7 @@ describe('World Countries Today review interleaving', () => {
 
     const queue = interleaveWorldCountriesTodayReviewCandidates(input)
     expect(queue.slice(0, 3).every(entry => entry.schedule.priorityTier === 1)).toBe(true)
-    expect(queue).toHaveLength(12)
+    expect(queue).toHaveLength(8)
   })
 
   it('separates the same Country skills while unseen Countries remain', () => {

@@ -58,6 +58,10 @@ function enterStage(state: StagedCapitalLearningFlowState, stageIndex: number, r
   return { ...state, stageIndex, phase: 'final-gate' as const, ordered: null }
 }
 
+function enterFinalRecall(state: StagedCapitalLearningFlowState, stageIndex: number) {
+  return { ...state, stageIndex, phase: 'final-recall' as const, ordered: createOrderedRecallSession({ order: state.countryIds, rewindOnError: state.rewindOnError }) }
+}
+
 function currentStage(state: StagedCapitalLearningFlowState) {
   return state.plan[state.stageIndex]
 }
@@ -118,17 +122,19 @@ export function submitStagedCapitalCombined(
   }
 }
 
-export function advanceStagedCapitalPlan(state: StagedCapitalLearningFlowState, random: () => number = Math.random) {
+export function advanceStagedCapitalPlan(state: StagedCapitalLearningFlowState, random: () => number = Math.random, startFinalRecall = true) {
   const next = state.plan[state.stageIndex + 1]
-  return next?.kind === 'final'
-    ? enterStage({ ...state, finalScopeReady: state.phase === 'set-ready' || state.finalScopeReady }, state.stageIndex + 1, random)
-    : enterStage({ ...state, finalScopeReady: state.finalScopeReady }, state.stageIndex + 1, random)
+  if (next?.kind === 'final') {
+    const nextState = { ...state, finalScopeReady: state.phase === 'set-ready' || state.finalScopeReady }
+    return startFinalRecall ? enterFinalRecall(nextState, state.stageIndex + 1) : enterStage({ ...nextState, finalScopeReady: false }, state.stageIndex + 1, random)
+  }
+  return enterStage({ ...state, finalScopeReady: state.finalScopeReady }, state.stageIndex + 1, random)
 }
 
 export function skipStagedCapital(state: StagedCapitalLearningFlowState, random: () => number = Math.random) {
   if (state.phase === 'walkthrough') return startStagedCapitalPractice(state, random)
   if (state.phase === 'practice' || state.phase === 'set-ready' || state.phase === 'combined-ready' || state.phase === 'combined-practice') {
-    return advanceStagedCapitalPlan({ ...state, finalScopeReady: false }, random)
+    return advanceStagedCapitalPlan({ ...state, finalScopeReady: false }, random, false)
   }
   return state
 }

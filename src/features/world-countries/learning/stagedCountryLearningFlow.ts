@@ -84,6 +84,15 @@ function enterStage(
   return { ...state, stageIndex, phase: 'final-gate', ordered: null }
 }
 
+function enterFinalRecall(state: StagedCountryLearningFlowState, stageIndex: number): StagedCountryLearningFlowState {
+  return {
+    ...state,
+    stageIndex,
+    phase: 'final-recall',
+    ordered: createOrderedRecallSession({ order: state.countryIds, rewindOnError: state.rewindOnError }),
+  }
+}
+
 export function createStagedCountryLearningFlow(
   config: StagedCountryLearningConfig,
 ): StagedCountryLearningFlowState {
@@ -203,11 +212,15 @@ export function submitStagedCountryCombined(
 export function advanceStagedCountryPlan(
   state: StagedCountryLearningFlowState,
   random: () => number = Math.random,
+  startFinalRecall = true,
 ): StagedCountryLearningFlowState {
   const nextIndex = state.stageIndex + 1
   const next = state.plan[nextIndex]
   if (!next) return { ...state, phase: 'final-gate', ordered: null, finalScopeReady: state.phase === 'set-ready' || state.finalScopeReady }
-  if (next.kind === 'final') return enterStage({ ...state, finalScopeReady: state.phase === 'set-ready' || state.finalScopeReady }, nextIndex, random)
+  if (next.kind === 'final') {
+    const nextState = { ...state, finalScopeReady: state.phase === 'set-ready' || state.finalScopeReady }
+    return startFinalRecall ? enterFinalRecall(nextState, nextIndex) : enterStage({ ...nextState, finalScopeReady: false }, nextIndex, random)
+  }
   return enterStage(state, nextIndex, random)
 }
 
@@ -219,9 +232,9 @@ export function skipStagedCountry(
   if (state.phase === 'location-ready') return startStagedCountryPractice(state, random)
   if (state.phase === 'location-practice') return startStagedCountryPractice(state, random)
   if (state.phase === 'practice' || state.phase === 'set-ready' || state.phase === 'combined-ready') {
-    return advanceStagedCountryPlan({ ...state, finalScopeReady: false }, random)
+    return advanceStagedCountryPlan({ ...state, finalScopeReady: false }, random, false)
   }
-  if (state.phase === 'combined-practice') return advanceStagedCountryPlan({ ...state, finalScopeReady: false }, random)
+  if (state.phase === 'combined-practice') return advanceStagedCountryPlan({ ...state, finalScopeReady: false }, random, false)
   return state
 }
 

@@ -56,7 +56,7 @@ function selectFromTier(
  */
 export function interleaveWorldCountriesTodayReviewCandidates(
   candidates: readonly WorldCountriesTodayReviewCandidate[],
-  limit = 12,
+  limit = 8,
 ): WorldCountriesTodayReviewCandidate[] {
   if (limit <= 0 || candidates.length === 0) return []
 

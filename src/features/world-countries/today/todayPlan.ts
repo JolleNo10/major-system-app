@@ -21,7 +21,7 @@ import {
 } from './reviewReason'
 import { interleaveWorldCountriesTodayReviewCandidates } from './reviewInterleaving'
 
-export const WORLD_COUNTRIES_TODAY_REVIEW_BLOCK_SIZE = 12
+export const WORLD_COUNTRIES_TODAY_REVIEW_BLOCK_SIZE = 8
 
 export type WorldCountriesTodayLearningTrack = 'learn-countries' | 'learn-capitals'
 

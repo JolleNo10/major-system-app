@@ -23,7 +23,7 @@ import { buildLearningPlan, type LearningSetMaximum } from '@/features/world-cou
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
 import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
 import { WorldMasterySummary } from '@/features/world-countries/ui/WorldMasterySummary'
-import { TodayReviewSession } from './TodayReviewSession'
+import { TodayReviewSession, type WorldCountriesTodayReviewCheckpoint } from './TodayReviewSession'
 import type { WorldCountriesGuidedRecallMode } from './TodayRails'
 import { GuidedHomeRails } from './GuidedHomeRails'
 import { WorldCountriesProgressView } from './WorldCountriesProgressView'
@@ -138,6 +138,7 @@ export function WorldCountriesToday({
   const [reviewMode, setReviewMode] = useState<WorldCountriesGuidedRecallMode>('review')
   const [reviewing, setReviewing] = useState(false)
   const [reviewFocusRequest, setReviewFocusRequest] = useState(0)
+  const [reviewCompletion, setReviewCompletion] = useState<WorldCountriesTodayReviewCheckpoint | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [learningRun, setLearningRun] = useState<LearningRun | null>(null)
   const [focusedSubregionId, setFocusedSubregionId] = useState<SubregionId | null>(null)
@@ -161,7 +162,10 @@ export function WorldCountriesToday({
   }, [scopedCountries])
 
   useEffect(() => { void loadEvidence() }, [loadEvidence])
-  useEffect(() => { setFocusedSubregionId(null) }, [continent])
+  useEffect(() => {
+    setFocusedSubregionId(null)
+    setReviewCompletion(null)
+  }, [continent])
 
   const learningStates = useMemo(() => {
     void learningRevision
@@ -217,11 +221,13 @@ export function WorldCountriesToday({
 
   const finishLearning = () => {
     setLearningRun(null)
+    setReviewCompletion(null)
     void refreshAfterActivity()
   }
 
   const launchReviewOpportunity = (opportunity: Exclude<WorldCountriesTodayReviewOpportunity, null>) => {
     setLearningRun(null)
+    setReviewCompletion(null)
     setReviewCandidates(opportunity.candidates)
     setReviewMode(opportunity.kind === 'consolidate' ? 'consolidation' : 'review')
     setReviewing(true)
@@ -235,6 +241,7 @@ export function WorldCountriesToday({
     if (countryEntries.length !== recommendation.countryIds.length) return
     setReviewing(false)
     setReviewCandidates(null)
+    setReviewCompletion(null)
     setLearningRun({ recommendation, countryEntries })
   }
 
@@ -248,10 +255,11 @@ export function WorldCountriesToday({
     launchLearningRecommendation(plan.curriculumRecommendation)
   }
 
-  const finishReview = async () => {
+  const finishReview = async (checkpoint: WorldCountriesTodayReviewCheckpoint) => {
     setReviewing(false)
     setReviewCandidates(null)
     setReviewMode('review')
+    setReviewCompletion(checkpoint)
     await refreshAfterReview()
   }
 
@@ -259,6 +267,7 @@ export function WorldCountriesToday({
     setReviewing(false)
     setReviewCandidates(null)
     setReviewMode('review')
+    setReviewCompletion(null)
     await refreshAfterReview()
   }
 
@@ -401,6 +410,7 @@ export function WorldCountriesToday({
         dueCountryCount={plan?.dueCountryCount ?? 0}
         reviewOpportunity={plan?.reviewOpportunity ?? null}
         reviewReasonSummary={plan?.reviewReasonSummary ?? EMPTY_REVIEW_REASON_SUMMARY}
+        reviewCompletion={reviewCompletion}
         onStartReview={startReview}
         focusReviewActionRequest={reviewFocusRequest}
         refreshing={refreshing}
