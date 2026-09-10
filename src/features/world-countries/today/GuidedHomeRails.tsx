@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef } from 'react'
 import { useRails } from '@/app/layout/PageLayoutContext'
 import type { Continent } from '@/features/world-countries/data/countries'
-import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
+import { getSubregionDefinition } from '@/features/world-countries/data/subregions'
 import { GeographyBreadcrumbs } from '@/features/world-countries/ui/GeographyBreadcrumbs'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
 import type { WorldCountriesJourneyPresentation } from './journeyPresentation'
@@ -17,6 +17,7 @@ export interface GuidedHomeScopeSummary {
     completionRatio: number
   }
   onSelect?: () => void
+  selected?: boolean
   status?: string
 }
 
@@ -30,9 +31,7 @@ export function GuidedHomeRails({
   onStartReview,
   focusReviewActionRequest = 0,
   journey,
-  guidedSubregionId,
-  curriculumRecommendationAvailable = true,
-  onFocusGuidedSubregion,
+  activeLearningAvailable = true,
   refreshing,
   scopeSummaries,
   scopeProgress,
@@ -48,9 +47,7 @@ export function GuidedHomeRails({
   onStartReview: () => void
   focusReviewActionRequest?: number
   journey: WorldCountriesJourneyPresentation | null
-  guidedSubregionId?: SubregionId | null
-  curriculumRecommendationAvailable?: boolean
-  onFocusGuidedSubregion?: () => void
+  activeLearningAvailable?: boolean
   refreshing: boolean
   scopeSummaries: readonly GuidedHomeScopeSummary[]
   scopeProgress: GuidedHomeScopeSummary['progress'] | null
@@ -64,9 +61,6 @@ export function GuidedHomeRails({
     lastFocusedReviewRequest.current = focusReviewActionRequest
     button.focus()
   }, [focusReviewActionRequest])
-  const inspectedSubregionLabel = journey ? getSubregionDefinition(journey.subregionId).label : null
-  const guidedSubregionLabel = guidedSubregionId ? getSubregionDefinition(guidedSubregionId).label : null
-  const isInspectingOtherSubregion = Boolean(journey && (!guidedSubregionId || journey.subregionId !== guidedSubregionId))
   const opportunityCount = reviewOpportunity?.candidates.length ?? 0
   const reviewResultText = reviewCompletion ? formatReviewCompletion(reviewCompletion) : null
 
@@ -130,7 +124,7 @@ export function GuidedHomeRails({
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">{scopeName} geography</p>
           <h2 id="world-countries-guided-geography-heading" className="mt-1 text-lg font-bold text-zinc-100">{level === 'world' ? 'Explore the world' : 'Learning regions'}</h2>
-          <p className="mt-2 text-sm leading-relaxed text-zinc-400">{level === 'world' ? 'Choose a continent to inspect your progress.' : 'Choose a region to inspect its learning journey.'}</p>
+          <p className="mt-2 text-sm leading-relaxed text-zinc-400">{level === 'world' ? 'Choose a continent to explore.' : 'Choose a region to set your learning focus.'}</p>
         </div>
         {scopeSummaries.length > 0 && (
           <div className="space-y-2" aria-label={level === 'world' ? 'Continents' : 'Subregions'}>
@@ -140,7 +134,9 @@ export function GuidedHomeRails({
                 type="button"
                 onClick={summary.onSelect}
                 disabled={!summary.onSelect}
-                className="w-full rounded-lg border border-transparent px-2 py-2 text-left text-zinc-300 transition-colors enabled:hover:border-zinc-700 enabled:hover:bg-zinc-800 disabled:cursor-default"
+                aria-current={summary.selected ? 'true' : undefined}
+                data-active-focus={summary.selected ? 'true' : undefined}
+                className={`w-full rounded-lg border px-2 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70 disabled:cursor-default ${summary.selected ? 'border-cyan-500/70 bg-cyan-500/10 text-cyan-100' : 'border-transparent text-zinc-300 enabled:hover:border-zinc-700 enabled:hover:bg-zinc-800'}`}
               >
                 <span className="flex items-center justify-between gap-2 text-sm font-semibold">
                   <span>{summary.label}</span>
@@ -172,17 +168,8 @@ export function GuidedHomeRails({
       <div className="space-y-4">
         {reviewPanel}
         {journey && (
-          <WorldCountriesPanel className="space-y-4" aria-labelledby="world-countries-journey-heading">
-            {isInspectingOtherSubregion && (
-              <section className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-sm">
-                <p className="text-xs font-semibold uppercase tracking-wider text-amber-300">You&apos;re viewing {inspectedSubregionLabel}</p>
-                <p className="mt-1 text-zinc-300">{guidedSubregionLabel
-                  ? `Your journey is still focused on ${guidedSubregionLabel}.`
-                  : 'Your journey focus stays the same.'}</p>
-                {onFocusGuidedSubregion && <button type="button" onClick={onFocusGuidedSubregion} className="mt-2 text-xs font-semibold text-cyan-300 hover:text-cyan-200">{guidedSubregionLabel ? `Back to ${guidedSubregionLabel}` : 'Back to the guided view'}</button>}
-              </section>
-            )}
-            <CompactJourneyPath journey={journey} curriculumRecommendationAvailable={curriculumRecommendationAvailable} />
+          <WorldCountriesPanel className="space-y-4" aria-labelledby="world-countries-journey-heading" data-active-subregion={journey.subregionId}>
+            <CompactJourneyPath journey={journey} learningAvailable={activeLearningAvailable} />
           </WorldCountriesPanel>
         )}
         {refreshing && <p role="status" aria-live="polite" className="text-xs text-zinc-500">Updating your progress…</p>}
@@ -190,16 +177,16 @@ export function GuidedHomeRails({
     ),
     leftLabel: 'Geography',
     rightLabel: 'Review and journey',
-  }), [continent, curriculumRecommendationAvailable, evidenceStatus, guidedSubregionLabel, inspectedSubregionLabel, isInspectingOtherSubregion, journey, level, onFocusGuidedSubregion, onOpenProgress, onWorld, refreshing, reviewPanel, scopeName, scopeProgress, scopeSummaries])
+  }), [activeLearningAvailable, continent, evidenceStatus, journey, level, onOpenProgress, onWorld, refreshing, reviewPanel, scopeName, scopeProgress, scopeSummaries])
   useRails(rails)
   return null
 }
 
-function CompactJourneyPath({ journey, curriculumRecommendationAvailable }: { journey: WorldCountriesJourneyPresentation; curriculumRecommendationAvailable: boolean }) {
+function CompactJourneyPath({ journey, learningAvailable }: { journey: WorldCountriesJourneyPresentation; learningAvailable: boolean }) {
   const subregionLabel = getSubregionDefinition(journey.subregionId).label
   return (
     <section className="space-y-2" aria-labelledby="world-countries-journey-heading">
-      <p id="world-countries-journey-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">{curriculumRecommendationAvailable ? 'Your journey' : 'Learning complete'} · {subregionLabel}</p>
+      <p id="world-countries-journey-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">{learningAvailable ? 'Your journey' : 'Learning complete'} · {subregionLabel}</p>
       <ol className="space-y-2">
         {journey.stages.map(stage => (
           <li key={stage.id} className="flex items-start gap-2" data-journey-milestone={stage.id} data-journey-status={stage.status}>

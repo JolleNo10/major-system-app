@@ -36,7 +36,7 @@ export interface GeographyOverviewMapProps {
   continent?: Continent
   /** A temporary geographic focus, such as Memo's selected Subregion. */
   focusedSubregionId?: SubregionId | null
-  /** When supplied, the map presents these Subregions as the current selection. */
+  /** When supplied, the map presents these Subregions as the current selection at World or Continent scope. */
   selectedSubregionIds?: readonly SubregionId[]
   /** When supplied, the map presents these Countries as the current scope. */
   selectedCountryIds?: readonly CountryId[]
@@ -127,7 +127,7 @@ export function GeographyOverviewMap({
       const selected = new Set(selectedCountryIds)
       return visibleCountries.filter(country => selected.has(country.id))
     }
-    if (level !== 'continent' || selectedSubregionIds === undefined || !continent) return []
+    if (selectedSubregionIds === undefined || (level === 'continent' && !continent)) return []
     const selected = new Set(selectedSubregionIds)
     return visibleCountries.filter(country => selected.has(country.subregionId))
   }, [continent, level, selectedCountryIds, selectedSubregionIds, visibleCountries])
@@ -196,7 +196,7 @@ export function GeographyOverviewMap({
   const hasContinentScope = level === 'continent'
   const hasSelectedCountries = selectedCountryIds !== undefined
   const hasSelectedSubregions = selectedSubregionIds !== undefined && selectedSubregionIds.length > 0
-  const hasGeographicSelection = hasContinentScope && selectedCountryIds === undefined && selectedSubregionIds !== undefined
+  const hasGeographicSelection = selectedCountryIds === undefined && selectedSubregionIds !== undefined
   const hasHoveredSubregionScope = level === 'continent' && Boolean(activeHoveredGroupId)
   const scopedSvgIds = useMemo(() => focusedSubregionId
     ? focusSvgIds
@@ -256,16 +256,34 @@ export function GeographyOverviewMap({
     [hoveredGroupSvgIds],
   )
   const selectedGroupIds = useMemo(() => {
-    if (!hasGeographicSelection) return new Set<string>()
+    if (!hasContinentScope || !hasGeographicSelection) return new Set<string>()
     const selectedIds = new Set(selectedSvgIds)
     return new Set(
       hoverGroups
         .filter(group => group.countryIds.some(countryId => selectedIds.has(countryId)))
         .map(group => group.id),
     )
-  }, [hasGeographicSelection, hoverGroups, selectedSvgIds])
+  }, [hasContinentScope, hasGeographicSelection, hoverGroups, selectedSvgIds])
+  const selectedSubregionOutlines = useMemo<readonly SvgMapGroupOutline[]>(() => {
+    if (level !== 'world' || selectedSubregionIds === undefined) return []
+    return selectedSubregionIds.flatMap(subregionId => {
+      const countryIds = resolveCountriesToSvgIds(
+        visibleCountries.filter(country => country.subregionId === subregionId),
+        mapCountryIds,
+      )
+      return countryIds.length > 0
+        ? [{
+            id: `subregion-${subregionId}`,
+            countryIds,
+            stroke: GEOGRAPHY_OVERVIEW_SELECTION_STROKE,
+            strokeWidth: GEOGRAPHY_OVERVIEW_HOVER_STROKE_WIDTH,
+            visible: true,
+          }]
+        : []
+    })
+  }, [level, mapCountryIds, selectedSubregionIds, visibleCountries])
   const groupOutlines = useMemo<readonly SvgMapGroupOutline[]>(
-    () => hoverGroups.map(group => {
+    () => [...hoverGroups.map(group => {
       const selected = selectedGroupIds.has(group.id)
       return {
         id: group.id,
@@ -274,8 +292,8 @@ export function GeographyOverviewMap({
         strokeWidth: GEOGRAPHY_OVERVIEW_HOVER_STROKE_WIDTH,
         visible: selected || group.id === activeHoveredGroupId,
       }
-    }),
-    [activeHoveredGroupId, hoverGroups, selectedGroupIds],
+    }), ...selectedSubregionOutlines],
+    [activeHoveredGroupId, hoverGroups, selectedGroupIds, selectedSubregionOutlines],
   )
   const taskAssistance = useMemo(() => {
     if (taskTargetCountryId === null) return null

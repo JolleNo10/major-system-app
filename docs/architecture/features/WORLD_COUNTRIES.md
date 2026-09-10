@@ -191,14 +191,16 @@ different skill, and a different Subregion within the active tier before using
 the existing due-candidate rank, so variety never displaces more urgent work.
 
 The plan also derives the underlying curriculum recommendation independently
-of review priority. Home uses that recommendation, or the first incomplete
-core-recall Subregion in effective order once curriculum introduction is
-complete, as a non-persisted journey focus. When no curriculum recommendation
-exists, that fallback is recall orientation only and is not presented as
-unfinished Journey curriculum; review/consolidation queue order does not
-choose the journey region. The Review opportunity exposes the bounded block
-that will launch, while Home support copy distinguishes it from total due work
-when those values differ.
+of review priority. It computes the same readiness-based next action for each
+active Subregion, then chooses the first available action in effective order
+as the planner recommendation. Home/Continent resolves one transient active
+Subregion: an explicit learner selection wins while it remains in the active
+population, otherwise the planner-derived focus is used. When no curriculum
+recommendation exists, the first incomplete core-recall Subregion remains
+recall orientation only and is not presented as unfinished Journey curriculum;
+review/consolidation queue order does not choose the active focus. The Review
+opportunity exposes the bounded block that will launch, while Home support copy
+distinguishes it from total due work when those values differ.
 
 The 8-item Review/consolidation block is a repeatable learner choice rather
 than a daily or visit gate. After a completed block, Today refreshes retained
@@ -349,7 +351,8 @@ The learner-facing Journey is a derived presentation over existing Subregion
 milestones and recall/proficiency evidence. Its guided learning path is
 Countries -> Capitals -> Region learned; long-term Mastery is a separate
 recall outcome built through Review and practice. No journey-step,
-current-Continent, or curriculum focus field is persisted. The Country
+current-Continent, curriculum focus, or active Subregion selection field is
+persisted. The Country
 Learning milestone satisfies the Countries layer and is sufficient to layer
 Capital Learning on top; fully mastered Country recall is a non-persisted
 fallback for already-known Countries, while partial target practice is not.
@@ -358,23 +361,23 @@ mastered Country-to-Capital recall, while incidental Capital practice remains
 insufficient. Capital learning extends existing Country knowledge and does not
 reset Country evidence. Once both layers are established, Region learned is
 complete even when core recall is still developing; Mastery becomes Mastered
-only when the existing core recall evidence is complete. On a Continent hub, a
-transiently inspected Subregion supplies the displayed journey/progress while
-the guided recommendation and consolidation scope continue to come from Today
-planning. Default Home and Continent rails project this derived truth into a
-compact, non-persisted Countries / Capitals / Region learned summary with
-Mastery separate. Durable guided Learning completion can expose a
-planner-derived next-region handoff when the post-milestone region truth is
-learned and the latest recommendation moves to another Subregion, regardless
-of whether Country or Capital Learning supplied the final layer; it keeps an
-explicit return action and never auto-starts that recommendation. The
-attached Today task dock owns the Journey continuation and identifies its
-scope, while the right rail owns the
-independent Review/weak-spot opportunity. The Journey panel is orientation only
-and does not repeat a specific next action. The inspected-vs-guided distinction
-remains explicit when the learner is inspecting another Subregion; map and
-geography selection inspect progress and do not change the planner-authoritative
-guided path.
+only when the existing core recall evidence is complete. On Home and the
+Continent hub, Today resolves one active Subregion from the transient explicit
+selection or the planner-derived default. That same focus drives the geography
+rail selection, Journey presentation, map outline, dock action, and Learning
+launch. A selected learned Subregion remains active and shows its completed
+Journey/Mastery state without a curriculum CTA; it does not silently fall back
+to another planner region. The selection is not persisted and is cleared or
+ignored when it leaves the active scope/population. World Home associates the
+active Subregion with its containing Continent row while preserving the same
+map progress fills. Durable guided Learning completion can expose a
+same-focus Country-to-Capital handoff before a later planner-derived
+next-region handoff; it keeps an explicit return action and never auto-starts
+that recommendation. The attached Today task dock owns the active Journey
+continuation and identifies its scope, while the right rail owns the
+independent Review/weak-spot opportunity. Review remains independent of the
+active Learning focus, and the Journey panel remains orientation rather than a
+second next-action authority.
 
 Guided Learning presents the internal staged phases with learner-facing
 language: Meet, Find, Recall, Mix, and Final recall. One-Set learner-facing

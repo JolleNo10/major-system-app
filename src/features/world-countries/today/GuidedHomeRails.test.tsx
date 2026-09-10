@@ -207,8 +207,8 @@ describe('Guided World Countries home rails', () => {
     expect(mount.querySelector('[data-journey-milestone="region-learned"]')?.getAttribute('data-journey-status')).toBe('upcoming')
   })
 
-  it('keeps an inspected Subregion separate from the guided Journey focus', () => {
-    const onFocusGuidedSubregion = vi.fn()
+  it('marks the active Subregion with one semantic selected state', () => {
+    const onSelect = vi.fn()
     const journey: WorldCountriesJourneyPresentation = {
       subregionId: 'southern-europe',
       currentStageId: 'countries',
@@ -228,16 +228,28 @@ describe('Guided World Countries home rails', () => {
     const mount = renderRails({
       continent: 'Europe',
       journey,
-      guidedSubregionId: 'northern-europe',
-      onFocusGuidedSubregion,
+      scopeSummaries: [{
+        id: 'southern-europe',
+        label: 'Southern Europe',
+        progress: { completeCountries: 1, totalCountries: 2, completionRatio: 0.5 },
+        onSelect,
+        selected: true,
+        status: 'Selected focus',
+      }],
     })
 
-    expect(mount.textContent).toContain("You're viewing Southern Europe")
-    expect(mount.textContent).toContain('Your journey is still focused on Northern Europe')
+    expect(mount.textContent).toContain('Your journey · Southern Europe')
+    expect(mount.textContent).not.toContain("You're viewing")
+    expect(mount.textContent).not.toContain('journey is still focused')
     expect(mount.textContent).not.toContain('next action')
     expect(mount.textContent).not.toContain('next step')
-    act(() => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Back to Northern Europe')?.click())
-    expect(onFocusGuidedSubregion).toHaveBeenCalledOnce()
+    const selectedRow = [...mount.querySelectorAll<HTMLButtonElement>('button')]
+      .find(button => button.textContent?.includes('Southern Europe'))
+    expect(selectedRow?.getAttribute('aria-current')).toBe('true')
+    expect(selectedRow?.getAttribute('data-active-focus')).toBe('true')
+    expect(selectedRow?.className).toContain('border-cyan-500')
+    act(() => selectedRow?.click())
+    expect(onSelect).toHaveBeenCalledOnce()
   })
 
   it('presents a fully learned region as mastery orientation after curriculum Learning is complete', () => {
@@ -257,7 +269,7 @@ describe('Guided World Countries home rails', () => {
       capitalRecallMastered: false,
       coreRecallComplete: false,
     }
-    const mount = renderRails({ journey, curriculumRecommendationAvailable: false })
+    const mount = renderRails({ journey, activeLearningAvailable: false })
 
     expect(mount.textContent).toContain('Learning complete')
     expect(mount.textContent).toContain('Mastery')
@@ -299,7 +311,8 @@ describe('Guided World Countries home rails', () => {
         label: 'Northern Europe',
         progress: { completeCountries: 9, totalCountries: 20, completionRatio: 0.45 },
         onSelect: vi.fn(),
-        status: 'Journey focus',
+        selected: true,
+        status: 'Selected focus',
       }],
       scopeProgress: { completeCountries: 12, totalCountries: 48, completionRatio: 0.25 },
     })

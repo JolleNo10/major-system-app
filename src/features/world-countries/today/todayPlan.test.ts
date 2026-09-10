@@ -217,6 +217,23 @@ describe('World Countries Today plan', () => {
     expect(plan.curriculumRecommendation?.track).toBe('learn-capitals')
   })
 
+  it('derives the selected Subregion action with the same Country and Capital readiness rules', () => {
+    const northern = countries.find(country => country.id === 'NO')!
+    const central = countries.find(country => country.subregionId === 'central-europe')!
+    const plan = buildWorldCountriesTodayPlan({
+      activeCountries: [northern, central],
+      effectiveCountries: [northern, central],
+      effectiveSubregionIds: ['northern-europe', 'central-europe'],
+      learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: 1 }],
+      history: historyFor([], [northern.id, central.id]),
+      localDate: '2026-08-18',
+    })
+
+    expect(plan.curriculumRecommendation?.subregionId).toBe('northern-europe')
+    expect(plan.curriculumRecommendationsBySubregion.get('northern-europe')?.track).toBe('learn-capitals')
+    expect(plan.curriculumRecommendationsBySubregion.get('central-europe')?.track).toBe('learn-countries')
+  })
+
   it('does not require redundant Capital Learning when every Capital target is mastered', () => {
     const entries = countries.filter(country => country.id === 'NO' || country.id === 'SE')
     const history = deriveWorldCountriesRecallHistory(
@@ -256,7 +273,7 @@ describe('World Countries Today plan', () => {
     expect(plan.reviewOpportunity?.kind).toBe('review')
     expect(plan.curriculumRecommendation?.track).toBe('learn-countries')
     expect(plan.curriculumRecommendation?.subregionId).toBe('northern-europe')
-    expect(plan.journeyFocusSubregionId).toBe('northern-europe')
+    expect(plan.plannerFocusSubregionId).toBe('northern-europe')
   })
 
   it('does not use the first review candidate when the bounded block spans Subregions', () => {
@@ -285,7 +302,7 @@ describe('World Countries Today plan', () => {
     expect(plan.reviewOpportunity?.kind).toBe('review')
     expect(plan.reviewQueue.length).toBeGreaterThan(1)
     expect(plan.reviewQueue[0]?.country.subregionId).toBe('southern-europe')
-    expect(plan.journeyFocusSubregionId).toBe('northern-europe')
+    expect(plan.plannerFocusSubregionId).toBe('northern-europe')
   })
 
   it('derives due Review, Journey Learning, and fallback consolidation independently', () => {
@@ -330,7 +347,7 @@ describe('World Countries Today plan', () => {
       localDate: '2026-08-11',
     })
     expect(complete.scopeComplete).toBe(true)
-    expect(complete.journeyFocusSubregionId).toBeNull()
+    expect(complete.plannerFocusSubregionId).toBeNull()
     expect(complete.reviewOpportunity).toBeNull()
   })
 

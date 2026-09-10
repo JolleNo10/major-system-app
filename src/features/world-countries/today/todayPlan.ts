@@ -59,8 +59,10 @@ export interface WorldCountriesTodayPlan {
   introductions: ReadonlyMap<string, WorldCountriesTargetIntroduction>
   /** The current whole-Subregion curriculum recommendation, independent of Review. */
   curriculumRecommendation: WorldCountriesTodayLearningRecommendation | null
-  /** Derived Home journey focus; never persisted and never sourced from queue position. */
-  journeyFocusSubregionId: SubregionId | null
+  /** The planner-derived default Home focus; never persisted or sourced from queue position. */
+  plannerFocusSubregionId: SubregionId | null
+  /** The same readiness-derived curriculum action for every active Subregion. */
+  curriculumRecommendationsBySubregion: ReadonlyMap<SubregionId, WorldCountriesTodayLearningRecommendation | null>
   /** Independent Review-area opportunity: scheduled review first, weak spots second. */
   reviewOpportunity: WorldCountriesTodayReviewOpportunity
 }
@@ -170,43 +172,86 @@ function compareConsolidationCandidates(
   return skillIndex(left.target.skill) - skillIndex(right.target.skill)
 }
 
-function recommendationFor(
+function groupCountriesBySubregion(
   countriesInOrder: readonly Country[],
-  introductions: ReadonlyMap<string, WorldCountriesTargetIntroduction>,
-  subregionIds: readonly SubregionId[],
-  learningStates: readonly SubregionLearningState[],
-  progressByTarget: ReadonlyMap<string, ReturnType<typeof deriveWorldCountriesAtomicProgress>>,
-): WorldCountriesTodayLearningRecommendation | null {
+): ReadonlyMap<SubregionId, readonly Country[]> {
   const bySubregion = new Map<SubregionId, Country[]>()
   for (const country of countriesInOrder) {
     const entries = bySubregion.get(country.subregionId) ?? []
     entries.push(country)
     bySubregion.set(country.subregionId, entries)
   }
+  return bySubregion
+}
 
-  for (const subregionId of subregionIds) {
-    const entries = bySubregion.get(subregionId)
-    if (!entries?.length) continue
-    const hasUnintroducedCountries = entries.some(country => !introductions.get(
-      recallTargetIdFor(country.id, 'location-to-country'),
-    )?.introduced)
-    const learningState = learningStates.find(state => state.subregionId === subregionId)
-    const countriesEstablished = isWorldCountriesCountryLayerEstablished(entries, subregionId, learningState, progressByTarget)
-    const capitalsEstablished = isWorldCountriesCapitalLayerEstablished(entries, subregionId, learningState, progressByTarget)
-    if (!hasUnintroducedCountries && countriesEstablished && capitalsEstablished) continue
+function recommendationForSubregion({
+  countriesBySubregion,
+  introductions,
+  subregionId,
+  learningStates,
+  progressByTarget,
+}: {
+  countriesBySubregion: ReadonlyMap<SubregionId, readonly Country[]>
+  introductions: ReadonlyMap<string, WorldCountriesTargetIntroduction>
+  subregionId: SubregionId
+  learningStates: readonly SubregionLearningState[]
+  progressByTarget: ReadonlyMap<string, ReturnType<typeof deriveWorldCountriesAtomicProgress>>
+}): WorldCountriesTodayLearningRecommendation | null {
+  const entries = countriesBySubregion.get(subregionId)
+  if (!entries?.length) return null
+  const hasUnintroducedCountries = entries.some(country => !introductions.get(
+    recallTargetIdFor(country.id, 'location-to-country'),
+  )?.introduced)
+  const learningState = learningStates.find(state => state.subregionId === subregionId)
+  const countriesEstablished = isWorldCountriesCountryLayerEstablished(entries, subregionId, learningState, progressByTarget)
+  const capitalsEstablished = isWorldCountriesCapitalLayerEstablished(entries, subregionId, learningState, progressByTarget)
+  if (!hasUnintroducedCountries && countriesEstablished && capitalsEstablished) return null
 
-    const track: WorldCountriesTodayLearningTrack = hasUnintroducedCountries || !countriesEstablished
-      ? 'learn-countries'
-      : 'learn-capitals'
-    return {
-      track,
-      subregionId,
-      subregionLabel: getSubregionDefinition(subregionId).label,
-      continent: entries[0].continent,
-      countryIds: entries.map(country => country.id),
-    }
+  const track: WorldCountriesTodayLearningTrack = hasUnintroducedCountries || !countriesEstablished
+    ? 'learn-countries'
+    : 'learn-capitals'
+  return {
+    track,
+    subregionId,
+    subregionLabel: getSubregionDefinition(subregionId).label,
+    continent: entries[0].continent,
+    countryIds: entries.map(country => country.id),
   }
-  return null
+}
+
+function deriveCurriculumRecommendations({
+  countriesInOrder,
+  introductions,
+  subregionIds,
+  learningStates,
+  progressByTarget,
+  incompleteCountries,
+}: {
+  countriesInOrder: readonly Country[]
+  introductions: ReadonlyMap<string, WorldCountriesTargetIntroduction>
+  subregionIds: readonly SubregionId[]
+  learningStates: readonly SubregionLearningState[]
+  progressByTarget: ReadonlyMap<string, ReturnType<typeof deriveWorldCountriesAtomicProgress>>
+  incompleteCountries: ReadonlySet<CountryId>
+}): {
+  curriculumRecommendation: WorldCountriesTodayLearningRecommendation | null
+  plannerFocusSubregionId: SubregionId | null
+  curriculumRecommendationsBySubregion: ReadonlyMap<SubregionId, WorldCountriesTodayLearningRecommendation | null>
+} {
+  const countriesBySubregion = groupCountriesBySubregion(countriesInOrder)
+  const curriculumRecommendationsBySubregion = new Map(
+    subregionIds.map(subregionId => [
+      subregionId,
+      recommendationForSubregion({ countriesBySubregion, introductions, subregionId, learningStates, progressByTarget }),
+    ] as const),
+  )
+  const curriculumRecommendation = subregionIds
+    .map(subregionId => curriculumRecommendationsBySubregion.get(subregionId) ?? null)
+    .find(Boolean) ?? null
+  const plannerFocusSubregionId = curriculumRecommendation?.subregionId
+    ?? subregionIds.find(subregionId => countriesBySubregion.get(subregionId)?.some(country => incompleteCountries.has(country.id)))
+    ?? null
+  return { curriculumRecommendation, plannerFocusSubregionId, curriculumRecommendationsBySubregion }
 }
 
 /** Derive independent Journey Learning and Review-area opportunities. */
@@ -250,16 +295,18 @@ export function buildWorldCountriesTodayPlan(
     ...effectiveCountries.map(country => country.subregionId),
   ].filter((id, index, values) => values.indexOf(id) === index)
 
-  const curriculumRecommendation = recommendationFor(
-    effectiveCountries,
+  const {
+    curriculumRecommendation,
+    plannerFocusSubregionId,
+    curriculumRecommendationsBySubregion,
+  } = deriveCurriculumRecommendations({
+    countriesInOrder: effectiveCountries,
     introductions,
     subregionIds,
-    input.learningStates ?? [],
+    learningStates: input.learningStates ?? [],
     progressByTarget,
-  )
-  const journeyFocusSubregionId = curriculumRecommendation?.subregionId
-    ?? subregionIds.find(subregionId => effectiveCountries.some(country => country.subregionId === subregionId && incompleteCountries.has(country.id)))
-    ?? null
+    incompleteCountries,
+  })
   const incompleteSubregionLabels = [...new Set(effectiveCountries
     .filter(country => incompleteCountries.has(country.id))
     .map(country => getSubregionDefinition(country.subregionId).label))]
@@ -289,7 +336,8 @@ export function buildWorldCountriesTodayPlan(
     scopeComplete: effectiveCountries.length > 0 && incompleteCountries.size === 0,
     introductions,
     curriculumRecommendation,
-    journeyFocusSubregionId,
+    plannerFocusSubregionId,
+    curriculumRecommendationsBySubregion,
     reviewOpportunity,
   }
 }

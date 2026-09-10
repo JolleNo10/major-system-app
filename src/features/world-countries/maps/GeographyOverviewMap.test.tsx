@@ -267,6 +267,31 @@ describe('GeographyOverviewMap', () => {
     expect(mount.textContent).toContain('Countries learned')
   })
 
+  it('outlines a selected World Subregion without selecting its containing Continent or replacing progress fills', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g><g><path id="France"/><text id="France_label">France</text></g></svg>' })))
+    const onCountryClick = vi.fn()
+    const mount = document.createElement('div'); document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(GeographyOverviewMap, {
+        level: 'world',
+        selectedSubregionIds: ['northern-europe'],
+        countryColorsById: new Map([['NO', '#71717a']]),
+        onCountryClick,
+        ariaLabel: 'World map',
+      }))
+      await Promise.resolve(); await Promise.resolve()
+    })
+
+    expect(mount.querySelector('[data-svg-map-group-outline="subregion-northern-europe"]')).not.toBeNull()
+    expect(mount.querySelector('[data-svg-map-group-outline="continent-europe"]')).toBeNull()
+    expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toBe('#71717a')
+
+    await act(async () => { mount.querySelector('path#France')?.dispatchEvent(new Event('click', { bubbles: true })) })
+    expect(onCountryClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'FR', subregionId: 'western-europe' }))
+  })
+
   it('prioritizes caller highlights over semantic Country colors', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g></svg>' })))
     const mount = document.createElement('div'); document.body.append(mount)

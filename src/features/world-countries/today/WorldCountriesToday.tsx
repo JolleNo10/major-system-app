@@ -78,6 +78,15 @@ function getJourneyActionLabel(
   return count === null ? 'Learn the countries' : formatCountedAction('Learn', count, 'country')
 }
 
+function getCurriculumRecommendationForSubregion(
+  plan: WorldCountriesTodayPlan | null,
+  subregionId: SubregionId | null,
+): WorldCountriesTodayLearningRecommendation | null {
+  if (!plan || !subregionId) return null
+  return plan.curriculumRecommendationsBySubregion?.get(subregionId)
+    ?? (plan.curriculumRecommendation?.subregionId === subregionId ? plan.curriculumRecommendation : null)
+}
+
 function createCompletionHandoff({
   currentRecommendation,
   nextRecommendation,
@@ -150,7 +159,7 @@ export function WorldCountriesToday({
   const [reviewCompletion, setReviewCompletion] = useState<WorldCountriesTodayReviewCompletion | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [learningRun, setLearningRun] = useState<LearningRun | null>(null)
-  const [focusedSubregionId, setFocusedSubregionId] = useState<SubregionId | null>(null)
+  const [selectedSubregionId, setSelectedSubregionId] = useState<SubregionId | null>(null)
   const [showProgress, setShowProgress] = useState(false)
 
   const loadEvidence = useCallback(async () => {
@@ -172,9 +181,9 @@ export function WorldCountriesToday({
 
   useEffect(() => { void loadEvidence() }, [loadEvidence])
   useEffect(() => {
-    setFocusedSubregionId(null)
+    setSelectedSubregionId(current => current && scopedCountries.some(country => country.subregionId === current) ? current : null)
     setReviewCompletion(null)
-  }, [continent])
+  }, [continent, scopedCountries])
 
   const learningStates = useMemo(() => {
     void learningRevision
@@ -242,7 +251,10 @@ export function WorldCountriesToday({
     setReviewing(true)
   }
 
-  const launchLearningRecommendation = (recommendation: WorldCountriesTodayLearningRecommendation) => {
+  const launchLearningRecommendation = (
+    recommendation: WorldCountriesTodayLearningRecommendation,
+    options: { focusSubregion?: boolean } = {},
+  ) => {
     const countriesById = new Map(geographicOrder.countries.map(country => [country.id, country]))
     const countryEntries = recommendation.countryIds
       .map(countryId => countriesById.get(countryId))
@@ -251,6 +263,7 @@ export function WorldCountriesToday({
     setReviewing(false)
     setReviewCandidates(null)
     setReviewCompletion(null)
+    if (options.focusSubregion && continent) setSelectedSubregionId(recommendation.subregionId)
     setLearningRun({ recommendation, countryEntries })
   }
 
@@ -260,8 +273,8 @@ export function WorldCountriesToday({
   }
 
   const startJourney = () => {
-    if (!plan?.curriculumRecommendation || evidence.status !== 'ready' || scopedCountries.length === 0) return
-    launchLearningRecommendation(plan.curriculumRecommendation)
+    if (!activeLearningRecommendation || evidence.status !== 'ready' || scopedCountries.length === 0) return
+    launchLearningRecommendation(activeLearningRecommendation)
   }
 
   const finishReview = async (checkpoint: WorldCountriesTodayReviewCheckpoint) => {
@@ -281,20 +294,26 @@ export function WorldCountriesToday({
     await refreshAfterReview()
   }
 
-  const journeyLearning = plan?.curriculumRecommendation ?? null
-  const guidedSubregionId = plan?.journeyFocusSubregionId
-    ?? journeyLearning?.subregionId
+  const plannerFocusSubregionId = plan?.plannerFocusSubregionId
+    ?? plan?.curriculumRecommendation?.subregionId
     ?? null
-  const displaySubregionId = focusedSubregionId ?? guidedSubregionId
+  const validSelectedSubregionId = selectedSubregionId && scopedCountries.some(country => country.subregionId === selectedSubregionId)
+    ? selectedSubregionId
+    : null
+  const activeSubregionId = validSelectedSubregionId ?? plannerFocusSubregionId
+  const selectedLearningRecommendation = getCurriculumRecommendationForSubregion(plan, activeSubregionId)
+  const activeLearningRecommendation = validSelectedSubregionId
+    ? selectedLearningRecommendation
+    : plan?.curriculumRecommendation ?? null
   const journey = useMemo<WorldCountriesJourneyPresentation | null>(() => {
-    if (evidence.status !== 'ready' || !displaySubregionId) return null
+    if (evidence.status !== 'ready' || !activeSubregionId) return null
     return deriveWorldCountriesJourneyPresentation({
-      subregionId: displaySubregionId,
+      subregionId: activeSubregionId,
       entries: scopedCountries,
-      learningState: learningStates.find(state => state.subregionId === displaySubregionId),
+      learningState: learningStates.find(state => state.subregionId === activeSubregionId),
       recallProgress: recallProgress ?? new Map(),
     })
-  }, [displaySubregionId, evidence.status, learningStates, recallProgress, scopedCountries])
+  }, [activeSubregionId, evidence.status, learningStates, recallProgress, scopedCountries])
   const completedLearningJourney = useMemo<WorldCountriesJourneyPresentation | null>(() => {
     if (!learningRun || evidence.status !== 'ready') return null
     return deriveWorldCountriesJourneyPresentation({
@@ -310,39 +329,53 @@ export function WorldCountriesToday({
     if (!continent) {
       return getContinentsInEffectiveOrder(scopedCountries, getWorldMetadata()).map(candidate => {
         const entries = scopedCountries.filter(country => country.continent === candidate)
+        const isSelected = Boolean(activeSubregionId && entries.some(country => country.subregionId === activeSubregionId))
         return {
           id: candidate,
           label: candidate,
           progress: deriveWorldCountriesScopeProgressForCountries(`continent:${candidate}`, entries, recallProgress),
           onSelect: onSelectContinent ? () => onSelectContinent(candidate) : undefined,
+          selected: isSelected,
+          status: isSelected && activeSubregionId
+            ? `Focus · ${getSubregionDefinition(activeSubregionId).label}`
+            : undefined,
         }
       })
     }
     return getSubregionsForContinentInEffectiveOrder(continent, scopedCountries, getContinentMetadata(continent)).map(subregion => {
       const entries = scopedCountries.filter(country => country.subregionId === subregion.id)
+      const isSelected = subregion.id === activeSubregionId
       return {
         id: subregion.id,
         label: subregion.label,
         progress: deriveWorldCountriesScopeProgressForCountries(`subregion:${subregion.id}`, entries, recallProgress),
-        onSelect: () => setFocusedSubregionId(subregion.id),
-        status: journeyLearning && subregion.id === guidedSubregionId
-          ? 'Journey focus'
-          : subregion.id === focusedSubregionId ? "You're viewing this region" : undefined,
+        onSelect: () => setSelectedSubregionId(subregion.id),
+        selected: isSelected,
+        status: isSelected ? 'Selected focus' : undefined,
       }
     })
-  }, [continent, focusedSubregionId, geographyRevision, guidedSubregionId, journeyLearning, onSelectContinent, recallProgress, scopedCountries])
-  const highlightedCountryIds = focusedSubregionId
-    ? scopedCountries.filter(country => country.subregionId === focusedSubregionId).map(country => country.id)
-    : []
+  }, [activeSubregionId, continent, geographyRevision, onSelectContinent, recallProgress, scopedCountries])
   const scopeLabel = continent ?? 'World'
   const navigateWorld = onWorld ?? (() => undefined)
-  const completionHandoff = learningRun && evidence.status === 'ready' && journeyLearning
+  const plannerNextRecommendation = plan?.curriculumRecommendation ?? null
+  const continuationRecommendation = learningRun
+    && validSelectedSubregionId
+    && learningRun.recommendation.subregionId === validSelectedSubregionId
+    ? selectedLearningRecommendation ?? plannerNextRecommendation
+    : plannerNextRecommendation
+  const completionHandoff = learningRun && evidence.status === 'ready' && continuationRecommendation
     ? createCompletionHandoff({
         currentRecommendation: learningRun.recommendation,
-        nextRecommendation: journeyLearning,
+        nextRecommendation: continuationRecommendation,
         newItemsPerSet: settings.worldCountriesNewItemsPerSet as LearningSetMaximum | undefined,
         regionLearned: Boolean(completedLearningJourney?.regionLearned),
-        onContinue: () => launchLearningRecommendation(journeyLearning),
+        onContinue: () => launchLearningRecommendation(continuationRecommendation, {
+          focusSubregion: Boolean(
+            continent
+            && validSelectedSubregionId
+            && continuationRecommendation.subregionId !== validSelectedSubregionId,
+          ),
+        }),
         onStop: finishLearning,
         originatingScopeLabel: continent ?? 'World',
       })
@@ -424,11 +457,11 @@ export function WorldCountriesToday({
     />
   }
 
-  const canContinue = Boolean(journeyLearning && evidence.status === 'ready' && scopedCountries.length > 0)
-  const journeyActionLabel = journeyLearning
-    ? getJourneyActionLabel(journeyLearning, settings.worldCountriesNewItemsPerSet as LearningSetMaximum | undefined)
+  const canContinue = Boolean(activeLearningRecommendation && evidence.status === 'ready' && scopedCountries.length > 0)
+  const journeyActionLabel = activeLearningRecommendation
+    ? getJourneyActionLabel(activeLearningRecommendation, settings.worldCountriesNewItemsPerSet as LearningSetMaximum | undefined)
     : null
-  const inspectedSubregionLabel = focusedSubregionId ? getSubregionDefinition(focusedSubregionId).label : null
+  const activeSubregionLabel = activeSubregionId ? getSubregionDefinition(activeSubregionId).label : null
   const mapDescriptions = new Map(scopedCountries.map(country => [country.id, `Progress for ${scopeLabel} is shown in the map legend and geography rail.`] as const))
 
   return (
@@ -446,9 +479,7 @@ export function WorldCountriesToday({
         scopeSummaries={scopeSummaries}
         scopeProgress={progress}
         journey={journey}
-        guidedSubregionId={guidedSubregionId}
-        curriculumRecommendationAvailable={Boolean(journeyLearning)}
-        onFocusGuidedSubregion={() => setFocusedSubregionId(null)}
+        activeLearningAvailable={Boolean(activeLearningRecommendation)}
         onWorld={navigateWorld}
         onOpenProgress={() => {
           if (evidence.status !== 'ready' || !progress) return
@@ -463,6 +494,7 @@ export function WorldCountriesToday({
             <div className="px-1">
               <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World Countries · {continent ? 'Continent hub' : 'Home'}</p>
               <h1 id="world-countries-today-heading" className="mt-1 text-2xl font-black text-zinc-100">{continent ? `${continent} learning hub` : 'Your world'}</h1>
+              {activeSubregionLabel && <p data-active-subregion className="mt-2 text-sm font-semibold text-cyan-200">Learning focus · {activeSubregionLabel}</p>}
               <p className="mt-1 text-sm text-zinc-500">Explore the map to see what you&apos;ve learned and what&apos;s still ahead.</p>
               <div className="mt-3">
                 <WorldCountriesMapLegend />
@@ -475,20 +507,19 @@ export function WorldCountriesToday({
               continent={continent ?? undefined}
               countryPopulation={scopedCountries}
               countryColorsById={countryColorsById}
-              highlightedCountryIds={highlightedCountryIds}
+              selectedSubregionIds={activeSubregionId ? [activeSubregionId] : undefined}
               countryAccessibleDescriptionsById={mapDescriptions}
               interactive
-              onCountryClick={country => continent ? setFocusedSubregionId(country.subregionId) : onSelectContinent?.(country.continent)}
+              onCountryClick={country => continent ? setSelectedSubregionId(country.subregionId) : onSelectContinent?.(country.continent)}
               ariaLabel={continent ? `${continent} learning map` : 'World Countries learning map'}
             />
           )}
           dock={canContinue ? (
             <TaskDock variant="navigation" status={(
-              <div data-task-scope-context>
-                <p className="text-xs font-semibold uppercase tracking-wider text-violet-300">Continue your journey</p>
-                <p className="mt-1 font-semibold text-zinc-100">{journeyActionLabel} · {journeyLearning?.subregionLabel}</p>
-                {inspectedSubregionLabel && focusedSubregionId !== guidedSubregionId && <p className="mt-1 text-xs text-zinc-400">You&apos;re inspecting {inspectedSubregionLabel}</p>}
-              </div>
+                <div data-task-scope-context>
+                 <p className="text-xs font-semibold uppercase tracking-wider text-violet-300">Continue your journey</p>
+                 <p className="mt-1 font-semibold text-zinc-100">{journeyActionLabel} · {activeLearningRecommendation?.subregionLabel}</p>
+                </div>
             )}>
               <button type="button" data-primary-action disabled={refreshing} onClick={startJourney} className="w-full rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white hover:bg-violet-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-40">
                 {journeyActionLabel}

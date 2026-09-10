@@ -11,6 +11,7 @@ import { WORLD_COUNTRIES_COUNTRY_CORE_STATES } from '@/features/world-countries/
 const loadHistoryMock = vi.hoisted(() => vi.fn(() => Promise.resolve(new Map())))
 const buildPlanMock = vi.hoisted(() => vi.fn())
 const useRailsMock = vi.hoisted(() => vi.fn())
+const geographyOverviewMapMock = vi.hoisted(() => vi.fn())
 const countryLearningFlowMock = vi.hoisted(() => vi.fn())
 const capitalLearningFlowMock = vi.hoisted(() => vi.fn())
 let activeCountries = [countries[0]]
@@ -31,7 +32,12 @@ vi.mock('@/features/world-countries/learning/recallHistory', async importOrigina
   ...await importOriginal<typeof import('@/features/world-countries/learning/recallHistory')>(),
   loadWorldCountriesRecallHistory: loadHistoryMock,
 }))
-vi.mock('@/features/world-countries/maps/GeographyOverviewMap', () => ({ GeographyOverviewMap: () => null }))
+vi.mock('@/features/world-countries/maps/GeographyOverviewMap', () => ({
+  GeographyOverviewMap: (props: Record<string, unknown>) => {
+    geographyOverviewMapMock(props)
+    return null
+  },
+}))
 vi.mock('@/features/world-countries/learning/flows/CountryLearningFlow', () => ({
   CountryLearningFlow: (props: Record<string, unknown>) => {
     countryLearningFlowMock(props)
@@ -145,6 +151,7 @@ afterEach(() => {
   loadHistoryMock.mockClear()
   loadHistoryMock.mockImplementation(() => Promise.resolve(new Map()))
   buildPlanMock.mockReset()
+  geographyOverviewMapMock.mockReset()
   capitalLearningFlowMock.mockReset()
   countryLearningFlowMock.mockReset()
   useRailsMock.mockReset()
@@ -165,6 +172,7 @@ function recommendation(track: 'learn-countries' | 'learn-capitals', countryIds:
 }
 
 function plan(overrides: Record<string, unknown> = {}) {
+  const curriculumRecommendation = overrides.curriculumRecommendation ?? null
   return {
     dueCandidates: [],
     reviewQueue: [],
@@ -173,8 +181,11 @@ function plan(overrides: Record<string, unknown> = {}) {
     dueCount: 0,
     dueCountryCount: 0,
     introductions: new Map(),
-    curriculumRecommendation: null,
-    journeyFocusSubregionId: null,
+    curriculumRecommendation,
+    plannerFocusSubregionId: null,
+    curriculumRecommendationsBySubregion: curriculumRecommendation
+      ? new Map([[(curriculumRecommendation as { subregionId: string }).subregionId, curriculumRecommendation]])
+      : new Map(),
     incompleteCountryCount: 1,
     incompleteSubregionLabels: ['Northern Europe'],
     scopeComplete: false,
@@ -265,6 +276,25 @@ describe('World Countries Today', () => {
     expect(mount.querySelector('#world-countries-progress-heading')?.textContent).toBe('Europe progress')
   })
 
+  it('names the planner-derived World focus and associates its Continent rail row', async () => {
+    const northern = countries.find(country => country.subregionId === 'northern-europe')!
+    activeCountries = [northern]
+    const northernRecommendation = recommendation('learn-countries', [northern.id], northern)
+    buildPlanMock.mockReturnValue(plan({
+      curriculumRecommendation: northernRecommendation,
+      plannerFocusSubregionId: northern.subregionId,
+    }))
+
+    const mount = await renderToday()
+    const railMount = renderLatestRails()
+    const mapProps = geographyOverviewMapMock.mock.calls[geographyOverviewMapMock.mock.calls.length - 1]?.[0] as { selectedSubregionIds?: readonly string[] } | undefined
+
+    expect(mount.querySelector('[data-active-subregion]')?.textContent).toContain('Northern Europe')
+    expect(railMount.querySelector('[data-active-focus="true"]')?.textContent).toContain('Europe')
+    expect(railMount.querySelector('[data-active-focus="true"]')?.textContent).toContain('Focus · Northern Europe')
+    expect(mapProps?.selectedSubregionIds).toEqual(['northern-europe'])
+  })
+
   it('shows Review and Continue Learning independently when both are available', async () => {
     const northernEntries = countries.filter(country => country.subregionId === 'northern-europe').slice(0, 3)
     const southernEntry = countries.find(country => country.subregionId === 'southern-europe')!
@@ -276,7 +306,7 @@ describe('World Countries Today', () => {
       dueCount: 20,
       dueCountryCount: 15,
       curriculumRecommendation: recommendation('learn-countries', northernEntries.map(country => country.id)),
-      journeyFocusSubregionId: 'northern-europe',
+      plannerFocusSubregionId: 'northern-europe',
       incompleteCountryCount: activeCountries.length,
       incompleteSubregionLabels: ['Northern Europe', 'Southern Europe'],
       reviewOpportunity: { kind: 'review', candidates: reviewCandidates },
@@ -341,7 +371,7 @@ describe('World Countries Today', () => {
       dueCount: 1,
       dueCountryCount: 1,
       curriculumRecommendation: recommendation('learn-countries'),
-      journeyFocusSubregionId: 'northern-europe',
+      plannerFocusSubregionId: 'northern-europe',
       reviewOpportunity: { kind: 'review', candidates: [candidate] },
     }))
     const mount = await renderToday()
@@ -372,12 +402,12 @@ describe('World Countries Today', () => {
       dueCount: 1,
       dueCountryCount: 1,
       curriculumRecommendation: recommendation('learn-countries'),
-      journeyFocusSubregionId: 'northern-europe',
+      plannerFocusSubregionId: 'northern-europe',
       reviewOpportunity: { kind: 'review', candidates: [candidate] },
     })
     const caughtUpPlan = plan({
       curriculumRecommendation: recommendation('learn-countries'),
-      journeyFocusSubregionId: 'northern-europe',
+      plannerFocusSubregionId: 'northern-europe',
     })
     buildPlanMock.mockImplementation(() => reviewCompleted ? caughtUpPlan : initialPlan)
     const mount = await renderToday()
@@ -406,7 +436,7 @@ describe('World Countries Today', () => {
       dueCount: 1,
       dueCountryCount: 1,
       curriculumRecommendation: recommendation('learn-countries'),
-      journeyFocusSubregionId: 'northern-europe',
+      plannerFocusSubregionId: 'northern-europe',
       reviewOpportunity: { kind: 'review', candidates: [candidate] },
     }))
     const mount = await renderToday()
@@ -432,7 +462,7 @@ describe('World Countries Today', () => {
     activeCountries = countries.filter(country => countryIds.includes(country.id))
     buildPlanMock.mockReturnValue(plan({
       curriculumRecommendation: recommendation('learn-countries', countryIds),
-      journeyFocusSubregionId: 'northern-europe',
+      plannerFocusSubregionId: 'northern-europe',
     }))
     const mount = await renderToday()
 
@@ -446,9 +476,11 @@ describe('World Countries Today', () => {
     }))
   })
 
-  it('keeps inspected geography local while the dock continues the guided Journey', async () => {
+  it('uses one selected Subregion for the rail, Journey, dock, and Learning launch', async () => {
     const northernEntries = countries.filter(country => country.subregionId === 'northern-europe').slice(0, 3)
     const southernEntry = countries.find(country => country.subregionId === 'southern-europe')!
+    const northernRecommendation = recommendation('learn-countries', northernEntries.map(country => country.id))
+    const southernRecommendation = recommendation('learn-countries', [southernEntry.id], southernEntry)
     activeCountries = [...northernEntries, southernEntry]
     const reviewCandidates = [{ country: southernEntry }, { country: southernEntry }]
     buildPlanMock.mockReturnValue(plan({
@@ -456,8 +488,12 @@ describe('World Countries Today', () => {
       reviewQueue: reviewCandidates,
       dueCount: 20,
       dueCountryCount: 15,
-      curriculumRecommendation: recommendation('learn-countries', northernEntries.map(country => country.id)),
-      journeyFocusSubregionId: 'northern-europe',
+      curriculumRecommendation: northernRecommendation,
+      curriculumRecommendationsBySubregion: new Map([
+        ['northern-europe', northernRecommendation],
+        ['southern-europe', southernRecommendation],
+      ]),
+      plannerFocusSubregionId: 'northern-europe',
       incompleteCountryCount: activeCountries.length,
       incompleteSubregionLabels: ['Northern Europe', 'Southern Europe'],
       reviewOpportunity: { kind: 'review', candidates: reviewCandidates },
@@ -467,25 +503,66 @@ describe('World Countries Today', () => {
     act(() => [...railMount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent?.startsWith('Southern Europe'))?.click())
     railMount = renderLatestRails()
 
-    expect(railMount.textContent).toContain("You're viewing Southern Europe")
-    expect(railMount.textContent).toContain('Your journey is still focused on Northern Europe')
-    expect(railMount.textContent).toContain('Journey focus')
+    const mapProps = geographyOverviewMapMock.mock.calls[geographyOverviewMapMock.mock.calls.length - 1]?.[0] as { selectedSubregionIds?: readonly string[] } | undefined
+    expect(railMount.textContent).toContain('Your journey · Southern Europe')
+    expect(railMount.textContent).not.toContain("You're viewing")
+    expect(railMount.textContent).not.toContain('Journey focus')
+    expect(railMount.querySelector('[data-active-focus="true"]')?.textContent).toContain('Southern Europe')
+    expect(mapProps?.selectedSubregionIds).toEqual(['southern-europe'])
     expect(railMount.querySelector('[aria-labelledby="world-countries-review-opportunity-heading"]')?.textContent).not.toContain('Review scope: Southern Europe')
-    expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('Learn 3 countries · Northern Europe')
-    expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain("You're inspecting Southern Europe")
+    expect(mount.querySelector('[data-active-subregion]')?.textContent).toContain('Southern Europe')
+    expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('Learn 1 country · Southern Europe')
 
     await act(async () => {
       mount.querySelector<HTMLButtonElement>('[data-primary-action]')?.click()
       await Promise.resolve()
     })
-    expect(countryLearningFlowMock).toHaveBeenCalledWith(expect.objectContaining({ subregion: 'northern-europe' }))
+    expect(countryLearningFlowMock).toHaveBeenCalledWith(expect.objectContaining({ subregion: 'southern-europe' }))
+  })
+
+  it('falls back to the planner focus when the selected Subregion leaves the active population', async () => {
+    const northern = countries.find(country => country.subregionId === 'northern-europe')!
+    const central = countries.find(country => country.subregionId === 'central-europe')!
+    activeCountries = [northern, central]
+    buildPlanMock.mockImplementation(() => {
+      const first = activeCountries[0]!
+      const firstRecommendation = recommendation('learn-countries', [first.id], first)
+      return plan({
+        curriculumRecommendation: firstRecommendation,
+        plannerFocusSubregionId: first.subregionId,
+        curriculumRecommendationsBySubregion: new Map(activeCountries.map(country => [
+          country.subregionId,
+          recommendation('learn-countries', [country.id], country),
+        ])),
+      })
+    })
+
+    const mount = await renderToday({ continent: 'Europe' })
+    let railMount = renderLatestRails()
+    act(() => [...railMount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent?.startsWith('Central Europe'))?.click())
+    railMount = renderLatestRails()
+    expect(railMount.textContent).toContain('Your journey · Central Europe')
+
+    await act(async () => {
+      activeCountries = [northern]
+      root?.render(createElement(WorldCountriesToday, { answerMode: 'typing', onNavigate: vi.fn(), continent: 'Europe' }))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    railMount = renderLatestRails()
+
+    expect(railMount.textContent).toContain('Your journey · Northern Europe')
+    expect(railMount.textContent).not.toContain('Central Europe')
+    const mapProps = geographyOverviewMapMock.mock.calls[geographyOverviewMapMock.mock.calls.length - 1]?.[0] as { selectedSubregionIds?: readonly string[] } | undefined
+    expect(mapProps?.selectedSubregionIds).toEqual(['northern-europe'])
+    expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('Northern Europe')
   })
 
   it('shows weak-spot practice alongside Journey Learning when reviews are caught up', async () => {
     const candidate = { country: countries[0] }
     buildPlanMock.mockReturnValue(plan({
       curriculumRecommendation: recommendation('learn-countries'),
-      journeyFocusSubregionId: 'northern-europe',
+      plannerFocusSubregionId: 'northern-europe',
       consolidationCandidates: [candidate],
       consolidationQueue: [candidate],
       reviewOpportunity: { kind: 'consolidate', candidates: [candidate] },
@@ -526,7 +603,7 @@ describe('World Countries Today', () => {
   it('shows a caught-up Review state while keeping Journey Learning available', async () => {
     buildPlanMock.mockReturnValue(plan({
       curriculumRecommendation: recommendation('learn-countries'),
-      journeyFocusSubregionId: 'northern-europe',
+      plannerFocusSubregionId: 'northern-europe',
     }))
     const mount = await renderToday()
     const railMount = renderLatestRails()
@@ -549,11 +626,38 @@ describe('World Countries Today', () => {
     expect(mount.querySelector('[data-primary-action]')).toBeNull()
   })
 
+  it('keeps a selected learned Subregion active without fabricating a Learning CTA', async () => {
+    const northern = countries.find(country => country.subregionId === 'northern-europe')!
+    const central = countries.find(country => country.subregionId === 'central-europe')!
+    activeCountries = [northern, central]
+    markSubregionCountriesLearned(northern.subregionId, Date.now(), activeCountries)
+    markSubregionCapitalsLearned(northern.subregionId, Date.now(), activeCountries)
+    const centralRecommendation = recommendation('learn-countries', [central.id], central)
+    buildPlanMock.mockReturnValue(plan({
+      curriculumRecommendation: centralRecommendation,
+      plannerFocusSubregionId: central.subregionId,
+      curriculumRecommendationsBySubregion: new Map([
+        [central.subregionId, centralRecommendation],
+        [northern.subregionId, null],
+      ]),
+    }))
+
+    const mount = await renderToday({ continent: 'Europe' })
+    let railMount = renderLatestRails()
+    act(() => [...railMount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent?.startsWith('Northern Europe'))?.click())
+    railMount = renderLatestRails()
+
+    expect(railMount.textContent).toContain('Learning complete · Northern Europe')
+    expect(railMount.querySelector('[data-active-focus="true"]')?.textContent).toContain('Northern Europe')
+    expect(mount.querySelector('[data-primary-action]')).toBeNull()
+    expect(mount.querySelector('[data-task-scope-context]')).toBeNull()
+  })
+
   it('hands Learning completion to the next Journey recommendation, not Review', async () => {
     const country = activeCountries[0]
     const initialPlan = plan({
       curriculumRecommendation: recommendation('learn-countries'),
-      journeyFocusSubregionId: 'northern-europe',
+      plannerFocusSubregionId: 'northern-europe',
     })
     const postMilestonePlan = plan({
       dueCandidates: [{ country: countries[0] }],
@@ -561,7 +665,7 @@ describe('World Countries Today', () => {
       dueCount: 1,
       dueCountryCount: 1,
       curriculumRecommendation: recommendation('learn-capitals'),
-      journeyFocusSubregionId: 'northern-europe',
+      plannerFocusSubregionId: 'northern-europe',
       reviewOpportunity: { kind: 'review', candidates: [{ country: countries[0] }] },
     })
     buildPlanMock.mockImplementation(() => milestoneWritten ? postMilestonePlan : initialPlan)
@@ -582,6 +686,51 @@ describe('World Countries Today', () => {
     expect(capitalLearningFlowMock).toHaveBeenCalledWith(expect.objectContaining({ subregion: country.subregionId }))
   })
 
+  it('keeps Country to Capital continuation inside an out-of-order selected Subregion', async () => {
+    const northern = countries.find(country => country.subregionId === 'northern-europe')!
+    const central = countries.find(country => country.subregionId === 'central-europe')!
+    activeCountries = [northern, central]
+    const northernRecommendation = recommendation('learn-countries', [northern.id], northern)
+    const centralCountryRecommendation = recommendation('learn-countries', [central.id], central)
+    const centralCapitalRecommendation = recommendation('learn-capitals', [central.id], central)
+    const initialPlan = plan({
+      curriculumRecommendation: northernRecommendation,
+      plannerFocusSubregionId: northern.subregionId,
+      curriculumRecommendationsBySubregion: new Map([
+        [northern.subregionId, northernRecommendation],
+        [central.subregionId, centralCountryRecommendation],
+      ]),
+    })
+    const postCountryPlan = plan({
+      curriculumRecommendation: northernRecommendation,
+      plannerFocusSubregionId: northern.subregionId,
+      curriculumRecommendationsBySubregion: new Map([
+        [northern.subregionId, northernRecommendation],
+        [central.subregionId, centralCapitalRecommendation],
+      ]),
+    })
+    buildPlanMock.mockImplementation(() => milestoneWritten ? postCountryPlan : initialPlan)
+
+    const mount = await renderToday({ continent: 'Europe' })
+    let railMount = renderLatestRails()
+    act(() => [...railMount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent?.startsWith('Central Europe'))?.click())
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-primary-action]')?.click()
+      await Promise.resolve()
+    })
+    expect(countryLearningFlowMock).toHaveBeenCalledWith(expect.objectContaining({ subregion: central.subregionId }))
+
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-testid="complete-country-learning"]')?.click()
+      await Promise.resolve()
+    })
+
+    expect(mount.textContent).toContain('Next: add the capitals to these countries.')
+    expect(mount.textContent).not.toContain('Start Northern Europe')
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="country-learning-handoff"]')?.click())
+    expect(capitalLearningFlowMock).toHaveBeenCalledWith(expect.objectContaining({ subregion: central.subregionId }))
+  })
+
   it('presents a learned Capital region before offering the exact next planner recommendation', async () => {
     const northern = countries.find(country => country.subregionId === 'northern-europe')!
     const western = countries.find(country => country.subregionId === 'western-europe')!
@@ -589,12 +738,12 @@ describe('World Countries Today', () => {
     markSubregionCountriesLearned(northern.subregionId, Date.now(), activeCountries)
     const initialPlan = plan({
       curriculumRecommendation: recommendation('learn-capitals', [northern.id], northern),
-      journeyFocusSubregionId: northern.subregionId,
+      plannerFocusSubregionId: northern.subregionId,
     })
     const nextRecommendation = recommendation('learn-countries', [western.id], western)
     const postMilestonePlan = plan({
       curriculumRecommendation: nextRecommendation,
-      journeyFocusSubregionId: western.subregionId,
+      plannerFocusSubregionId: western.subregionId,
     })
     buildPlanMock.mockImplementation(() => capitalMilestoneWritten ? postMilestonePlan : initialPlan)
     const mount = await renderToday({ continent: 'Europe' })
@@ -639,12 +788,12 @@ describe('World Countries Today', () => {
     ]]])))
     const initialPlan = plan({
       curriculumRecommendation: recommendation('learn-countries', [northern.id], northern),
-      journeyFocusSubregionId: northern.subregionId,
+      plannerFocusSubregionId: northern.subregionId,
     })
     const nextRecommendation = recommendation('learn-countries', [western.id], western)
     const postMilestonePlan = plan({
       curriculumRecommendation: nextRecommendation,
-      journeyFocusSubregionId: western.subregionId,
+      plannerFocusSubregionId: western.subregionId,
     })
     buildPlanMock.mockImplementation(() => milestoneWritten ? postMilestonePlan : initialPlan)
     const mount = await renderToday({ continent: 'Europe' })
@@ -678,7 +827,7 @@ describe('World Countries Today', () => {
     markSubregionCapitalsLearned(northern.subregionId, Date.now(), activeCountries)
     buildPlanMock.mockReturnValue(plan({
       curriculumRecommendation: null,
-      journeyFocusSubregionId: northern.subregionId,
+      plannerFocusSubregionId: northern.subregionId,
       scopeComplete: true,
     }))
     const mount = await renderToday({ continent: 'Europe' })
@@ -697,8 +846,8 @@ describe('World Countries Today', () => {
     activeCountries = [northern]
     markSubregionCountriesLearned(northern.subregionId, Date.now(), activeCountries)
     buildPlanMock.mockImplementation(() => capitalMilestoneWritten
-      ? plan({ curriculumRecommendation: null, journeyFocusSubregionId: null })
-      : plan({ curriculumRecommendation: recommendation('learn-capitals', [northern.id], northern), journeyFocusSubregionId: northern.subregionId }))
+      ? plan({ curriculumRecommendation: null, plannerFocusSubregionId: null })
+      : plan({ curriculumRecommendation: recommendation('learn-capitals', [northern.id], northern), plannerFocusSubregionId: northern.subregionId }))
     const mount = await renderToday({ continent: 'Europe' })
 
     await act(async () => {
@@ -743,7 +892,7 @@ describe('World Countries Today', () => {
   })
 
   it('returns Home after Learning when no further Journey recommendation exists', async () => {
-    const initialPlan = plan({ curriculumRecommendation: recommendation('learn-countries'), journeyFocusSubregionId: 'northern-europe' })
+    const initialPlan = plan({ curriculumRecommendation: recommendation('learn-countries'), plannerFocusSubregionId: 'northern-europe' })
     const postMilestonePlan = plan({
       dueCandidates: [{ country: countries[0] }],
       reviewQueue: [{ country: countries[0] }],
@@ -751,7 +900,7 @@ describe('World Countries Today', () => {
       dueCountryCount: 1,
       reviewOpportunity: { kind: 'review', candidates: [{ country: countries[0] }] },
       curriculumRecommendation: null,
-      journeyFocusSubregionId: null,
+      plannerFocusSubregionId: null,
     })
     buildPlanMock.mockImplementation(() => milestoneWritten ? postMilestonePlan : initialPlan)
     const mount = await renderToday()
