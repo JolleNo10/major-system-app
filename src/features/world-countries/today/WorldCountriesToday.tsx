@@ -28,7 +28,6 @@ import type { WorldCountriesGuidedRecallMode } from './TodayRails'
 import { GuidedHomeRails } from './GuidedHomeRails'
 import { WorldCountriesProgressView } from './WorldCountriesProgressView'
 import { deriveWorldCountriesJourneyPresentation, type WorldCountriesJourneyPresentation } from './journeyPresentation'
-import type { WorldCountriesTodayReviewReasonSummary } from './reviewReason'
 import { buildWorldCountriesTodayPlan, type WorldCountriesTodayLearningRecommendation, type WorldCountriesTodayPlan, type WorldCountriesTodayReviewOpportunity } from './todayPlan'
 
 type TodayArea = 'drill' | 'recite'
@@ -40,14 +39,6 @@ type EvidenceState =
 interface LearningRun {
   recommendation: WorldCountriesTodayLearningRecommendation
   countryEntries: readonly Country[]
-}
-
-const EMPTY_REVIEW_REASON_SUMMARY: WorldCountriesTodayReviewReasonSummary = {
-  mistakes: 0,
-  firstRecall: 0,
-  firstReviewAfterLearning: 0,
-  spaced: 0,
-  repeated: 0,
 }
 
 function isSameLearningRecommendation(
@@ -432,10 +423,7 @@ export function WorldCountriesToday({
         continent={continent ?? undefined}
         activeCountryCount={scopedCountries.length}
         evidenceStatus={evidence.status}
-        dueCount={plan?.dueCount ?? 0}
-        dueCountryCount={plan?.dueCountryCount ?? 0}
         reviewOpportunity={plan?.reviewOpportunity ?? null}
-        reviewReasonSummary={plan?.reviewReasonSummary ?? EMPTY_REVIEW_REASON_SUMMARY}
         reviewCompletion={reviewCompletion}
         onStartReview={startReview}
         focusReviewActionRequest={reviewFocusRequest}

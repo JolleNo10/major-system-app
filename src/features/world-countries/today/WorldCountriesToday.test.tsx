@@ -217,8 +217,8 @@ describe('World Countries Today', () => {
     const railMount = renderLatestRails()
 
     expect(railMount.textContent).toContain('Review ready')
-    expect(railMount.textContent).toContain('Review 2 items')
-    expect(railMount.textContent).toContain('20 ready overall')
+    expect(railMount.querySelector('[data-review-action]')?.textContent).toBe('Review now')
+    expect(railMount.textContent).not.toContain('20 ready overall')
     expect(railMount.textContent).toContain('Your journey · Northern Europe')
     expect(railMount.textContent).not.toContain('Next in journey')
     expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Continue learning')
@@ -240,9 +240,9 @@ describe('World Countries Today', () => {
     const mount = await renderToday()
     const railMount = renderLatestRails()
 
-    expect(railMount.textContent).toContain('Review 3 items')
-    expect(railMount.textContent).toContain('2 countries')
-    expect(railMount.textContent).toContain('recent mistake')
+    expect(railMount.querySelector('[data-review-action]')?.textContent).toBe('Review now')
+    expect(railMount.textContent).not.toContain('2 countries')
+    expect(railMount.textContent).not.toContain('recent mistake')
     expect(railMount.textContent).not.toContain('3 reviews ready')
     expect(mount.querySelector('[data-primary-action]')).toBeNull()
   })
@@ -291,7 +291,7 @@ describe('World Countries Today', () => {
     expect(reviewAction).not.toBeNull()
     expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Continue learning')
     expect(document.activeElement).toBe(reviewAction)
-    expect(railMount.textContent).toContain('Last review: 1 reviewed · 1 first try · 0 recovered')
+    expect(railMount.querySelector('[data-review-completion]')).toBeNull()
   })
 
   it('does not focus Journey when Review completion leaves no Review opportunity', async () => {
@@ -401,7 +401,7 @@ describe('World Countries Today', () => {
     expect(railMount.textContent).toContain("You're viewing Southern Europe")
     expect(railMount.textContent).toContain('Your journey is still focused on Northern Europe')
     expect(railMount.textContent).toContain('Journey focus')
-    expect(railMount.textContent).toContain('Review scope: Southern Europe')
+    expect(railMount.querySelector('[aria-labelledby="world-countries-review-opportunity-heading"]')?.textContent).not.toContain('Review scope: Southern Europe')
     expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('Learn 3 countries · Northern Europe')
     expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain("You're inspecting Southern Europe")
 

@@ -38,10 +38,7 @@ function renderRails(overrides: Partial<Parameters<typeof GuidedHomeRails>[0]> =
     level: 'world',
     activeCountryCount: 1,
     evidenceStatus: 'ready',
-    dueCount: 0,
-    dueCountryCount: 0,
     reviewOpportunity: null,
-    reviewReasonSummary: { mistakes: 0, firstRecall: 0, firstReviewAfterLearning: 0, spaced: 0, repeated: 0 },
     onStartReview: vi.fn(),
     journey: null,
     refreshing: false,
@@ -93,49 +90,62 @@ describe('Guided World Countries home rails', () => {
     expect(mount.querySelector('[aria-labelledby="world-countries-review-opportunity-heading"] h2')?.textContent).toBe('Reviews caught up')
   })
 
-  it('presents scheduled Review as a positive independent opportunity', () => {
+  it('presents scheduled Review as a compact actionable opportunity', () => {
+    const onStartReview = vi.fn()
     const mount = renderRails({
-      dueCount: 3,
-      dueCountryCount: 2,
       reviewOpportunity: makeReviewOpportunity('review', 3),
-      reviewReasonSummary: { mistakes: 1, firstRecall: 0, firstReviewAfterLearning: 1, spaced: 2, repeated: 1 },
+      onStartReview,
     })
+    const reviewPanel = mount.querySelector('[aria-labelledby="world-countries-review-opportunity-heading"]')
 
-    expect(mount.textContent).toContain('Review ready')
-    expect(mount.textContent).toContain('3 items')
-    expect(mount.textContent).toContain('See what stuck.')
-    expect(mount.textContent).toContain('Review 3 items')
-    expect(mount.textContent).toContain('2 countries')
-    expect(mount.textContent).toContain('recent mistake')
-    expect(mount.textContent).not.toContain('Why review now')
-    expect(mount.textContent).not.toContain('Guided consolidation')
-    expect(mount.querySelector('[aria-labelledby="world-countries-review-opportunity-heading"] h2')?.textContent).toBe('Review ready')
+    expect(reviewPanel?.querySelector('[aria-hidden="true"]')?.textContent).toBe('✦')
+    expect(reviewPanel?.querySelector('h2')?.textContent).toBe('Review ready')
+    expect(reviewPanel?.querySelector('h2')?.className).toContain('uppercase')
+    expect(reviewPanel?.textContent).toContain('3 items')
+    expect(reviewPanel?.textContent).toContain('See what stuck.')
+    expect(reviewPanel?.querySelector('[data-review-action]')?.textContent).toBe('Review now')
+    expect(reviewPanel?.textContent).not.toContain('Review scope')
+    expect(reviewPanel?.textContent).not.toContain('countries')
+    expect(reviewPanel?.textContent).not.toContain('first review')
+    expect(reviewPanel?.textContent).not.toContain('recent mistake')
+    expect(reviewPanel?.textContent).not.toContain('extra practice')
+    expect(reviewPanel?.querySelector('[data-review-completion]')).toBeNull()
+
+    act(() => reviewPanel?.querySelector<HTMLButtonElement>('[data-review-action]')?.click())
+    expect(onStartReview).toHaveBeenCalledOnce()
   })
 
-  it('labels total due work separately from the bounded Review block', () => {
+  it('uses singular grammar for one ready item', () => {
+    const mount = renderRails({ reviewOpportunity: makeReviewOpportunity('review', 1) })
+    const reviewPanel = mount.querySelector('[aria-labelledby="world-countries-review-opportunity-heading"]')
+
+    expect(reviewPanel?.textContent).toContain('1 item')
+    expect(reviewPanel?.textContent).not.toContain('1 items')
+    expect(reviewPanel?.querySelector('[data-review-action]')?.textContent).toBe('Review now')
+  })
+
+  it('uses the bounded Review block count without extra due metadata', () => {
     const mount = renderRails({
-      dueCount: 20,
-      dueCountryCount: 15,
       reviewOpportunity: makeReviewOpportunity('review', 8),
     })
+    const reviewPanel = mount.querySelector('[aria-labelledby="world-countries-review-opportunity-heading"]')
 
-    expect(mount.textContent).toContain('8 items')
-    expect(mount.textContent).toContain('Review 8 items')
-    expect(mount.textContent).toContain('20 ready overall')
-    expect(mount.textContent).toContain('15 countries')
-    expect(mount.textContent).not.toContain('20 reviews ready')
+    expect(reviewPanel?.textContent).toContain('8 items')
+    expect(reviewPanel?.querySelector('[data-review-action]')?.textContent).toBe('Review now')
+    expect(reviewPanel?.textContent).not.toContain('ready overall')
+    expect(reviewPanel?.textContent).not.toContain('countries')
   })
 
-  it('shows completed Review counters as compact transient feedback', () => {
+  it('keeps the Review card compact after completion while an opportunity remains', () => {
     const mount = renderRails({
-      dueCount: 15,
-      dueCountryCount: 9,
       reviewOpportunity: makeReviewOpportunity('review', 8),
       reviewCompletion: { mode: 'review', checkpoint: { reviewed: 8, correctFirstTry: 6, recoveredOnRetry: 1, stillNeedsWork: 1 } },
     })
 
-    expect(mount.textContent).toContain('Last review: 8 reviewed · 6 first try · 1 recovered · 1 still needs work')
-    expect(mount.textContent).toContain('Review 8 items')
+    const reviewPanel = mount.querySelector('[aria-labelledby="world-countries-review-opportunity-heading"]')
+    expect(reviewPanel?.textContent).toContain('8 items')
+    expect(reviewPanel?.querySelector('[data-review-action]')?.textContent).toBe('Review now')
+    expect(reviewPanel?.querySelector('[data-review-completion]')).toBeNull()
   })
 
   it('keeps the completed Review result with the caught-up state', () => {
