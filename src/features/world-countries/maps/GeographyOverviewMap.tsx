@@ -38,6 +38,8 @@ export interface GeographyOverviewMapProps {
   focusedSubregionId?: SubregionId | null
   /** When supplied, the map presents these Subregions as the current selection at World or Continent scope. */
   selectedSubregionIds?: readonly SubregionId[]
+  /** How semantic geographic selection is presented; scoped selection mutes outside geometry by default. */
+  selectionPresentation?: 'scope' | 'outline-only'
   /** When supplied, the map presents these Countries as the current scope. */
   selectedCountryIds?: readonly CountryId[]
   /** Generic Country emphasis owned by the caller (for example learned Countries). */
@@ -84,6 +86,7 @@ export function GeographyOverviewMap({
   continent,
   focusedSubregionId = null,
   selectedSubregionIds,
+  selectionPresentation = 'scope',
   selectedCountryIds,
   coloredCountryIds = EMPTY_COUNTRY_IDS,
   countryColor = '#16a34a',
@@ -233,14 +236,14 @@ export function GeographyOverviewMap({
     onCountryClick?.(entry)
   }, [interactive, onCountryClick, restrictCountryClicks, scopedSvgIds, visibleCountries])
   const mutedSvgIds = useMemo(() => {
-    if (!hasScopedCountries) return []
+    if (!hasScopedCountries || selectionPresentation === 'outline-only') return []
     const activeIds = new Set(
       hasGeographicSelection
         ? [...scopedSvgIds, ...hoveredGroupSvgIds]
         : scopedSvgIds,
     )
     return mapCountryIds.filter(id => !activeIds.has(id))
-  }, [hasGeographicSelection, hasScopedCountries, hoveredGroupSvgIds, mapCountryIds, scopedSvgIds])
+  }, [hasGeographicSelection, hasScopedCountries, hoveredGroupSvgIds, mapCountryIds, scopedSvgIds, selectionPresentation])
   const countryColors = useMemo(() => {
     const colors: Array<readonly [string, string]> = []
     const colorableCountries = highlightedCountryIdSet.size

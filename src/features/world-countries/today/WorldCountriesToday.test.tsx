@@ -287,12 +287,13 @@ describe('World Countries Today', () => {
 
     const mount = await renderToday()
     const railMount = renderLatestRails()
-    const mapProps = geographyOverviewMapMock.mock.calls[geographyOverviewMapMock.mock.calls.length - 1]?.[0] as { selectedSubregionIds?: readonly string[] } | undefined
+    const mapProps = geographyOverviewMapMock.mock.calls[geographyOverviewMapMock.mock.calls.length - 1]?.[0] as { selectedSubregionIds?: readonly string[]; selectionPresentation?: string } | undefined
 
     expect(mount.querySelector('[data-active-subregion]')?.textContent).toContain('Northern Europe')
     expect(railMount.querySelector('[data-active-focus="true"]')?.textContent).toContain('Europe')
     expect(railMount.querySelector('[data-active-focus="true"]')?.textContent).toContain('Focus · Northern Europe')
     expect(mapProps?.selectedSubregionIds).toEqual(['northern-europe'])
+    expect(mapProps?.selectionPresentation).toBe('outline-only')
   })
 
   it('shows Review and Continue Learning independently when both are available', async () => {
@@ -503,12 +504,13 @@ describe('World Countries Today', () => {
     act(() => [...railMount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent?.startsWith('Southern Europe'))?.click())
     railMount = renderLatestRails()
 
-    const mapProps = geographyOverviewMapMock.mock.calls[geographyOverviewMapMock.mock.calls.length - 1]?.[0] as { selectedSubregionIds?: readonly string[] } | undefined
+    const mapProps = geographyOverviewMapMock.mock.calls[geographyOverviewMapMock.mock.calls.length - 1]?.[0] as { selectedSubregionIds?: readonly string[]; selectionPresentation?: string } | undefined
     expect(railMount.textContent).toContain('Your journey · Southern Europe')
     expect(railMount.textContent).not.toContain("You're viewing")
     expect(railMount.textContent).not.toContain('Journey focus')
     expect(railMount.querySelector('[data-active-focus="true"]')?.textContent).toContain('Southern Europe')
     expect(mapProps?.selectedSubregionIds).toEqual(['southern-europe'])
+    expect(mapProps?.selectionPresentation).toBe('outline-only')
     expect(railMount.querySelector('[aria-labelledby="world-countries-review-opportunity-heading"]')?.textContent).not.toContain('Review scope: Southern Europe')
     expect(mount.querySelector('[data-active-subregion]')?.textContent).toContain('Southern Europe')
     expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('Learn 1 country · Southern Europe')

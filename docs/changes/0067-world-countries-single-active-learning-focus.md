@@ -1,6 +1,6 @@
 # Change Spec 0067 - World Countries single active learning focus
 
-- **Status:** Ready
+- **Status:** Implemented
 - **Date:** 2026-09-10
 - **Issue:** None.
 - **Related ADRs:** None. This change refines transient guided Home focus and presentation inside the existing World Countries `today/` ownership model. It introduces no new persistence, ownership boundary, or cross-subsystem contract.
@@ -395,10 +395,9 @@ No SYSTEM-level ownership change is expected unless implementation reveals a rea
 
 ## Verification
 
-Complete this section when setting the status to `Implemented`.
-
-Use risk-proportionate automated evidence. At minimum, run the focused tests that cover the Today planner/recommendation seam, `WorldCountriesToday`, `GuidedHomeRails`, and any `GeographyOverviewMap` selection behavior changed by the implementation.
-
-Widen to the relevant World Countries slice only if the recommendation refactor or map selection extension has a materially broader blast radius or focused evidence is insufficient. Typecheck/lint/build are not automatic gates for this feature-local change.
-
-Do not start a dev server or perform browser/manual verification unless the user explicitly requests it for this task.
+- Implemented on 2026-09-11 based on sufficient, risk-proportionate evidence.
+- Evidence: `npx.cmd vitest run src/features/world-countries/maps/GeographyOverviewMap.test.tsx src/features/world-countries/today/GuidedHomeRails.test.tsx src/features/world-countries/today/WorldCountriesToday.test.tsx src/features/world-countries/today/todayPlan.test.ts` — 4 files, 85 tests passed.
+- Evidence: `npm.cmd run lint` passed.
+- Evidence: `git diff --check` passed for the implementation and documentation changes.
+- Residual verification risk: `npm.cmd run typecheck` remains blocked by the unrelated existing `src/features/world-countries/drill/DrillSetup.test.tsx:301` type error; broader repository tests/build were not run for this feature-local change.
+- Browser/manual verification was not requested and was not performed.

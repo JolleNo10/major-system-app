@@ -258,13 +258,25 @@ describe('GeographyOverviewMap', () => {
     expect(france?.style.fill).toBe(mutedFill)
   })
 
-  it('keeps readiness color separate from geographic selection', async () => {
+  it('preserves every Country readiness color with outline-only geographic selection', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => europeSvg })))
     const mount = document.createElement('div'); document.body.append(mount)
-    await act(async () => { root = createRoot(mount); root.render(createElement(GeographyOverviewMap, { level: 'continent', continent: 'Europe', selectedSubregionIds: ['northern-europe'], countryColorsById: new Map([['NO', '#71717a']]), countryAccessibleDescriptionsById: new Map([['NO', 'Learning Readiness: Countries learned.']]), ariaLabel: 'Europe map' })); await Promise.resolve(); await Promise.resolve() })
+    await act(async () => { root = createRoot(mount); root.render(createElement(GeographyOverviewMap, { level: 'continent', continent: 'Europe', selectedSubregionIds: ['northern-europe'], selectionPresentation: 'outline-only', countryColorsById: new Map([['NO', '#71717a'], ['FR', '#8b5cf6']]), countryAccessibleDescriptionsById: new Map([['NO', 'Learning Readiness: Countries learned.']]), ariaLabel: 'Europe map' })); await Promise.resolve(); await Promise.resolve() })
     expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toBe('#71717a')
+    expect((mount.querySelector('path#France') as SVGPathElement | null)?.style.fill).toBe('#8b5cf6')
+    expect(mount.querySelector('[data-svg-map-group-outline="subregion-northern-europe"]')).not.toBeNull()
+    expect(mount.querySelector('[data-svg-map-group-outline="subregion-western-europe"]')).toBeNull()
     expect(mount.textContent).toContain('Learning Readiness')
     expect(mount.textContent).toContain('Countries learned')
+
+    await act(async () => {
+      root?.render(createElement(GeographyOverviewMap, { level: 'continent', continent: 'Europe', selectedSubregionIds: ['western-europe'], selectionPresentation: 'outline-only', countryColorsById: new Map([['NO', '#71717a'], ['FR', '#8b5cf6']]), ariaLabel: 'Europe map' }))
+      await Promise.resolve(); await Promise.resolve()
+    })
+    expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toBe('#71717a')
+    expect((mount.querySelector('path#France') as SVGPathElement | null)?.style.fill).toBe('#8b5cf6')
+    expect(mount.querySelector('[data-svg-map-group-outline="subregion-northern-europe"]')).toBeNull()
+    expect(mount.querySelector('[data-svg-map-group-outline="subregion-western-europe"]')).not.toBeNull()
   })
 
   it('outlines a selected World Subregion without selecting its containing Continent or replacing progress fills', async () => {
@@ -277,7 +289,8 @@ describe('GeographyOverviewMap', () => {
       root.render(createElement(GeographyOverviewMap, {
         level: 'world',
         selectedSubregionIds: ['northern-europe'],
-        countryColorsById: new Map([['NO', '#71717a']]),
+        selectionPresentation: 'outline-only',
+        countryColorsById: new Map([['NO', '#71717a'], ['FR', '#8b5cf6']]),
         onCountryClick,
         ariaLabel: 'World map',
       }))
@@ -287,6 +300,23 @@ describe('GeographyOverviewMap', () => {
     expect(mount.querySelector('[data-svg-map-group-outline="subregion-northern-europe"]')).not.toBeNull()
     expect(mount.querySelector('[data-svg-map-group-outline="continent-europe"]')).toBeNull()
     expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toBe('#71717a')
+    expect((mount.querySelector('path#France') as SVGPathElement | null)?.style.fill).toBe('#8b5cf6')
+
+    await act(async () => {
+      root?.render(createElement(GeographyOverviewMap, {
+        level: 'world',
+        selectedSubregionIds: ['western-europe'],
+        selectionPresentation: 'outline-only',
+        countryColorsById: new Map([['NO', '#71717a'], ['FR', '#8b5cf6']]),
+        onCountryClick,
+        ariaLabel: 'World map',
+      }))
+      await Promise.resolve(); await Promise.resolve()
+    })
+    expect(mount.querySelector('[data-svg-map-group-outline="subregion-northern-europe"]')).toBeNull()
+    expect(mount.querySelector('[data-svg-map-group-outline="subregion-western-europe"]')).not.toBeNull()
+    expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toBe('#71717a')
+    expect((mount.querySelector('path#France') as SVGPathElement | null)?.style.fill).toBe('#8b5cf6')
 
     await act(async () => { mount.querySelector('path#France')?.dispatchEvent(new Event('click', { bubbles: true })) })
     expect(onCountryClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'FR', subregionId: 'western-europe' }))

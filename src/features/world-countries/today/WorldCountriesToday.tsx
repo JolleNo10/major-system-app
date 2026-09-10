@@ -508,6 +508,7 @@ export function WorldCountriesToday({
               countryPopulation={scopedCountries}
               countryColorsById={countryColorsById}
               selectedSubregionIds={activeSubregionId ? [activeSubregionId] : undefined}
+              selectionPresentation="outline-only"
               countryAccessibleDescriptionsById={mapDescriptions}
               interactive
               onCountryClick={country => continent ? setSelectedSubregionId(country.subregionId) : onSelectContinent?.(country.continent)}
