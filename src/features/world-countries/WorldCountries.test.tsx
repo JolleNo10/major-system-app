@@ -71,7 +71,9 @@ describe('World Countries guided shell', () => {
     expect(header?.textContent).toContain('Playground')
     expect(header?.textContent).not.toContain('Home')
     expect(header?.querySelector('[role="tablist"]')).toBeNull()
-    expect(header?.querySelector('[data-world-countries-playground]')?.getAttribute('aria-current')).toBeNull()
+    const playgroundButton = header?.querySelector<HTMLButtonElement>('[data-world-countries-playground]')
+    expect(playgroundButton?.textContent).toBe('Playground')
+    expect(playgroundButton?.getAttribute('aria-current')).toBeNull()
     expect(mount.querySelector('[data-testid="today-workflow"]')).not.toBeNull()
   })
 
@@ -96,6 +98,7 @@ describe('World Countries guided shell', () => {
     expect(mount.querySelector('#world-countries-play-heading')).not.toBeNull()
     expect(mount.querySelector('nav[aria-label="World Countries hierarchy"]')?.textContent).toMatch(/World\s*\/\s*Europe\s*\/\s*Playground/)
     expect(mount.textContent).toContain('Current guided scopeEurope')
+    expect(mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.textContent).toBe('Back to Europe')
 
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.click())
 
@@ -109,6 +112,7 @@ describe('World Countries guided shell', () => {
 
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.click())
     expect(mount.querySelector('#world-countries-play-heading')).not.toBeNull()
+    expect(mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.textContent).toBe('Back to World')
 
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.click())
 
@@ -127,6 +131,7 @@ describe('World Countries guided shell', () => {
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.click())
 
     expect(mount.querySelector('#world-countries-play-heading')).not.toBeNull()
+    expect(mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.textContent).toBe('Back to World')
     expect(mount.querySelector('[data-world-countries-playground]')?.getAttribute('aria-current')).toBe('page')
   })
 
