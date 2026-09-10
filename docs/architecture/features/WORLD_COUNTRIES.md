@@ -187,10 +187,12 @@ the existing due-candidate rank, so variety never displaces more urgent work.
 The plan also derives the underlying curriculum recommendation independently
 of review priority. Home uses that recommendation, or the first incomplete
 core-recall Subregion in effective order once curriculum introduction is
-complete, as a non-persisted journey focus; review/consolidation queue order
-does not choose the journey region. The Review opportunity exposes the bounded
-block that will launch, while Home support copy distinguishes it from total due
-work when those values differ.
+complete, as a non-persisted journey focus. When no curriculum recommendation
+exists, that fallback is recall orientation only and is not presented as
+unfinished Journey curriculum; review/consolidation queue order does not
+choose the journey region. The Review opportunity exposes the bounded block
+that will launch, while Home support copy distinguishes it from total due work
+when those values differ.
 
 The 8-item Review/consolidation block is a repeatable learner choice rather
 than a daily or visit gate. After a completed block, Today refreshes retained
@@ -354,10 +356,13 @@ transiently inspected Subregion supplies the displayed journey/progress while
 the guided recommendation and consolidation scope continue to come from Today
 planning. Default Home and Continent rails project this derived truth into a
 compact, non-persisted Countries / Capitals / Region learned summary with
-Mastery separate. Guided Capital completion can expose a planner-derived next
-region handoff while keeping an explicit return action; it never auto-starts
-that recommendation. The attached Today task dock owns the Journey
-continuation and identifies its scope, while the right rail owns the
+Mastery separate. Durable guided Learning completion can expose a
+planner-derived next-region handoff when the post-milestone region truth is
+learned and the latest recommendation moves to another Subregion, regardless
+of whether Country or Capital Learning supplied the final layer; it keeps an
+explicit return action and never auto-starts that recommendation. The
+attached Today task dock owns the Journey continuation and identifies its
+scope, while the right rail owns the
 independent Review/weak-spot opportunity. The Journey panel is orientation only
 and does not repeat a specific next action. The inspected-vs-guided distinction
 remains explicit when the learner is inspecting another Subregion; map and

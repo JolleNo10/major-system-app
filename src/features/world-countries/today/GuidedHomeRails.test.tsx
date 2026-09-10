@@ -178,7 +178,6 @@ describe('Guided World Countries home rails', () => {
     const journey: WorldCountriesJourneyPresentation = {
       subregionId: 'northern-europe',
       currentStageId: 'capitals',
-      complete: false,
       stages: WORLD_COUNTRIES_JOURNEY_STAGES.map(stage => ({ ...stage, status: stage.id === 'countries' ? 'complete' : stage.id === 'capitals' ? 'current' : 'upcoming', detail: 'Detail' })),
       regionLearned: false,
       masteryStatus: 'building',
@@ -211,7 +210,6 @@ describe('Guided World Countries home rails', () => {
     const journey: WorldCountriesJourneyPresentation = {
       subregionId: 'southern-europe',
       currentStageId: 'countries',
-      complete: false,
       stages: WORLD_COUNTRIES_JOURNEY_STAGES.map(stage => ({ ...stage, status: stage.id === 'countries' ? 'current' : 'upcoming', detail: 'Progress detail' })),
       regionLearned: false,
       masteryStatus: 'building',
@@ -238,6 +236,32 @@ describe('Guided World Countries home rails', () => {
     expect(mount.textContent).not.toContain('next step')
     act(() => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Back to Northern Europe')?.click())
     expect(onFocusGuidedSubregion).toHaveBeenCalledOnce()
+  })
+
+  it('presents a fully learned region as mastery orientation after curriculum Learning is complete', () => {
+    const journey: WorldCountriesJourneyPresentation = {
+      subregionId: 'northern-europe',
+      currentStageId: null,
+      stages: WORLD_COUNTRIES_JOURNEY_STAGES.map(stage => ({ ...stage, status: 'complete', detail: 'Complete' })),
+      regionLearned: true,
+      masteryStatus: 'building',
+      hasCountryPractice: true,
+      hasCapitalPractice: true,
+      countriesLearned: true,
+      countriesEstablished: true,
+      capitalsLearned: true,
+      capitalsEstablished: true,
+      countryRecallMastered: false,
+      capitalRecallMastered: false,
+      coreRecallComplete: false,
+    }
+    const mount = renderRails({ journey, curriculumRecommendationAvailable: false })
+
+    expect(mount.textContent).toContain('Learning complete')
+    expect(mount.textContent).toContain('Mastery')
+    expect(mount.textContent).toContain('Building through Review')
+    expect(mount.textContent).not.toContain('Your journey · Northern Europe')
+    expect(mount.textContent).not.toContain('Journey focus')
   })
 
   it('keeps geography choices and secondary actions available', () => {

@@ -24,6 +24,8 @@ export interface LearningCompleteProps {
   doneLabel?: string
   restartLabel?: string
   completionHandoff?: LearningCompletionHandoff
+  regionCompletion?: LearningRegionCompletion
+  regionLabel?: string
   surface?: boolean
 }
 
@@ -37,13 +39,23 @@ export function LearningComplete({
   doneLabel = 'Back to Learn & Practise',
   restartLabel = 'Learn again',
   completionHandoff,
+  regionCompletion,
+  regionLabel,
   surface = false,
 }: LearningCompleteProps) {
+  const regionSummary = regionCompletion && regionLabel
+    ? <>
+        {surface && <p className="font-semibold text-zinc-100">{regionLabel} ✓</p>}
+        <div className="space-y-1 text-sm"><p>Countries ✓</p><p>Capitals ✓</p><p>Mastery {regionCompletion.masteryStatus === 'mastered' ? 'Mastered' : 'Building'}</p></div>
+        <p className="mt-3">You&apos;ve learned the countries and capitals in {regionLabel}.</p>
+        <p className="mt-1">Review will bring them back later so they stick.</p>
+      </>
+    : null
   const status = (
     <div className="min-w-0">
-      <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.08em] text-green-400"><span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-green-500 shadow-[0_0_16px_rgba(34,197,94,0.8)]" />{eyebrow}</div>
-      {!surface && <h1 className="mt-1 text-lg font-bold text-zinc-100">{title}</h1>}
-      <div className="mt-1 text-sm text-zinc-200">{summary}</div>
+      <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.08em] text-green-400"><span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-green-500 shadow-[0_0_16px_rgba(34,197,94,0.8)]" />{regionSummary ? 'Region learned' : eyebrow}</div>
+      {!surface && <h1 className="mt-1 text-lg font-bold text-zinc-100">{regionSummary ? `${regionLabel} ✓` : title}</h1>}
+      <div className="mt-1 text-sm text-zinc-200">{regionSummary ?? summary}</div>
       {completionHandoff && <div className="mt-1 max-w-[360px] text-sm text-violet-200">{completionHandoff.description}</div>}
     </div>
   )

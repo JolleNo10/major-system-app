@@ -43,7 +43,7 @@ describe('World Countries learner journey presentation', () => {
     ])
     expect(journey.regionLearned).toBe(false)
     expect(journey.masteryStatus).toBe('building')
-    expect(journey.complete).toBe(false)
+    expect(journey.coreRecallComplete).toBe(false)
   })
 
   it('keeps Countries current while Country recall is in progress', () => {
@@ -144,7 +144,7 @@ describe('World Countries learner journey presentation', () => {
     expect(journey.capitalsEstablished).toBe(true)
     expect(journey.currentStageId).toBe(null)
     expect(journey.regionLearned).toBe(true)
-    expect(journey.complete).toBe(false)
+    expect(journey.coreRecallComplete).toBe(false)
     expect(journey.stages[0]?.status).toBe('complete')
     expect(journey.stages[1]?.status).toBe('complete')
     expect(journey.stages[2]).toMatchObject({ id: 'region-learned', status: 'complete' })
@@ -167,7 +167,7 @@ describe('World Countries learner journey presentation', () => {
     expect(journey.currentStageId).toBe(null)
     expect(journey.regionLearned).toBe(true)
     expect(journey.masteryStatus).toBe('mastered')
-    expect(journey.complete).toBe(true)
+    expect(journey.coreRecallComplete).toBe(true)
   })
 
   it('keeps Region learned complete while core recall develops', () => {
@@ -198,7 +198,7 @@ describe('World Countries learner journey presentation', () => {
     expect(journey.currentStageId).toBe(null)
     expect(journey.regionLearned).toBe(true)
     expect(journey.masteryStatus).toBe('mastered')
-    expect(journey.complete).toBe(true)
+    expect(journey.coreRecallComplete).toBe(true)
     expect(journey.stages.every(stage => stage.status === 'complete')).toBe(true)
   })
 
@@ -227,7 +227,7 @@ describe('World Countries learner journey presentation', () => {
       recallProgress: progressFor(completeRecallAttempts()),
     })
 
-    expect(journey.complete).toBe(true)
+    expect(journey.coreRecallComplete).toBe(true)
     expect(journey.currentStageId).toBe(null)
     expect(journey.regionLearned).toBe(true)
     expect(journey.masteryStatus).toBe('mastered')

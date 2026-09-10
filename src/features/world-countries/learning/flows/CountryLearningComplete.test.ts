@@ -54,4 +54,27 @@ describe('CountryLearningComplete', () => {
     expect(mount.textContent).toContain("doesn't change your guided region progress")
     expect(mount.textContent).not.toContain('Countries learned')
   })
+
+  it('presents Region learned when Country Learning establishes the final layer', async () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(CountryLearningComplete, {
+        subregion: 'balkans',
+        countryCount: 5,
+        regionCompletion: { masteryStatus: 'building' },
+        onDone: () => undefined,
+        onRestart: () => undefined,
+      }))
+    })
+
+    expect(mount.textContent).toContain('Region learned')
+    expect(mount.textContent).toContain('Balkans ✓')
+    expect(mount.textContent).toContain('Countries ✓')
+    expect(mount.textContent).toContain('Capitals ✓')
+    expect(mount.textContent).toContain('Mastery Building')
+    expect(mount.textContent).not.toContain('Countries learned')
+  })
 })

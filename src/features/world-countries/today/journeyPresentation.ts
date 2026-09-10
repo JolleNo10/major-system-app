@@ -24,7 +24,6 @@ export interface WorldCountriesJourneyStage {
 export interface WorldCountriesJourneyPresentation {
   subregionId: SubregionId
   currentStageId: WorldCountriesJourneyStageId | null
-  complete: boolean
   stages: readonly WorldCountriesJourneyStage[]
   regionLearned: boolean
   masteryStatus: WorldCountriesJourneyMasteryStatus
@@ -69,7 +68,6 @@ export function deriveWorldCountriesJourneyPresentation({
   const hasCapitalPractice = countryProgress.some(progress => (progress.skills.get('country-to-capital')?.attempts ?? 0) > 0)
   const regionLearned = countriesEstablished && capitalsEstablished
   const masteryStatus: WorldCountriesJourneyMasteryStatus = coreRecallComplete ? 'mastered' : 'building'
-  const complete = coreRecallComplete
 
   const currentStageId = !countriesEstablished
     ? 'countries'
@@ -102,7 +100,6 @@ export function deriveWorldCountriesJourneyPresentation({
   return {
     subregionId,
     currentStageId,
-    complete,
     stages,
     regionLearned,
     masteryStatus,

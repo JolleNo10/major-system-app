@@ -348,25 +348,25 @@ Preserve current caller-owned semantics. A temporary non-recording scope must no
 
 ## Acceptance criteria
 
-- [ ] Learner-facing compact Journey no longer presents Mastery as the third linear curriculum step after Capitals.
-- [ ] The compact learning path truthfully communicates Countries, Capitals, and Region learned, with Mastery displayed separately.
-- [ ] `Region learned` derives from existing established-layer truth; no new persisted region-completion state is introduced.
-- [ ] `Mastered` is shown only when existing core recall evidence supports current mastery/complete semantics.
-- [ ] Region learned with incomplete recall is presented as Mastery Building/strengthening rather than as unfinished curriculum.
-- [ ] Country Learning completion still hands directly to same-Subregion Capital Learning when that is the planner recommendation.
-- [ ] Guided Capital Learning completion presents the just-completed Subregion as Region learned before offering a different next Subregion.
-- [ ] A different next Subregion is named from the latest planner recommendation and uses `Start {Subregion}` as the region-boundary primary action.
-- [ ] Starting the next region launches the existing planner-supplied recommendation; completion code does not reconstruct geography/order/membership.
-- [ ] Region-boundary completion has an explicit secondary return/stopping action to the originating guided scope.
-- [ ] The next region never auto-starts.
-- [ ] `Learn again` does not displace the stopping action on guided region-boundary completion, while direct/non-Today restart behavior remains available.
-- [ ] After returning Home, guided Journey focus moves to the planner's next curriculum Subregion without a persisted cursor.
-- [ ] Inspecting a previously learned region shows Region learned plus truthful Mastery state without changing guided focus.
-- [ ] Continent Progress distinguishes `Journey · Region learned` from separate Mastery Building/Mastered state once both learning layers are established.
-- [ ] World/Continent scope completion does not claim mastery when only curriculum Learning is complete.
-- [ ] Review remains independent and can strengthen learned regions after Journey progression has moved on.
-- [ ] Accessibility and keyboard-primary semantics remain correct for completion and Journey states.
-- [ ] Current-state World Countries documentation is updated to reflect learning-path completion versus long-term Mastery.
+- [x] Learner-facing compact Journey no longer presents Mastery as the third linear curriculum step after Capitals.
+- [x] The compact learning path truthfully communicates Countries, Capitals, and Region learned, with Mastery displayed separately.
+- [x] `Region learned` derives from existing established-layer truth; no new persisted region-completion state is introduced.
+- [x] `Mastered` is shown only when existing core recall evidence supports current mastery/complete semantics.
+- [x] Region learned with incomplete recall is presented as Mastery Building/strengthening rather than as unfinished curriculum.
+- [x] Country Learning completion still hands directly to same-Subregion Capital Learning when that is the planner recommendation.
+- [x] Guided Capital Learning completion presents the just-completed Subregion as Region learned before offering a different next Subregion.
+- [x] A different next Subregion is named from the latest planner recommendation and uses `Start {Subregion}` as the region-boundary primary action.
+- [x] Starting the next region launches the existing planner-supplied recommendation; completion code does not reconstruct geography/order/membership.
+- [x] Region-boundary completion has an explicit secondary return/stopping action to the originating guided scope.
+- [x] The next region never auto-starts.
+- [x] `Learn again` does not displace the stopping action on guided region-boundary completion, while direct/non-Today restart behavior remains available.
+- [x] After returning Home, guided Journey focus moves to the planner's next curriculum Subregion without a persisted cursor.
+- [x] Inspecting a previously learned region shows Region learned plus truthful Mastery state without changing guided focus.
+- [x] Continent Progress distinguishes `Journey · Region learned` from separate Mastery Building/Mastered state once both learning layers are established.
+- [x] World/Continent scope completion does not claim mastery when only curriculum Learning is complete.
+- [x] Review remains independent and can strengthen learned regions after Journey progression has moved on.
+- [x] Accessibility and keyboard-primary semantics remain correct for completion and Journey states.
+- [x] Current-state World Countries documentation is updated to reflect learning-path completion versus long-term Mastery.
 
 ## Source anchors
 
@@ -402,6 +402,11 @@ Do not document transient component state or introduce a new persisted domain co
 - Focused Today and Learning completion/flow tests: 11 files passed, 102 tests passed.
 - World Countries feature slice: 115 files passed, 841 tests passed.
 - ESLint passed for all touched TypeScript/TSX files.
+- Follow-up focused tests passed: the six requested Journey/Today/Learning
+  completion files passed with 56 tests, and the broader Today/Learning-flows
+  slice passed with 23 files and 171 tests. This includes Country Learning
+  supplying the final established layer and curriculum-exhausted Home mastery
+  orientation regressions.
 - `npm run typecheck` remains blocked only by the unrelated existing
   `src/features/world-countries/drill/DrillSetup.test.tsx` `Map<any, any>` type
   error; no Drill code was changed.

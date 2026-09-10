@@ -31,6 +31,7 @@ export function GuidedHomeRails({
   focusReviewActionRequest = 0,
   journey,
   guidedSubregionId,
+  curriculumRecommendationAvailable = true,
   onFocusGuidedSubregion,
   refreshing,
   scopeSummaries,
@@ -48,6 +49,7 @@ export function GuidedHomeRails({
   focusReviewActionRequest?: number
   journey: WorldCountriesJourneyPresentation | null
   guidedSubregionId?: SubregionId | null
+  curriculumRecommendationAvailable?: boolean
   onFocusGuidedSubregion?: () => void
   refreshing: boolean
   scopeSummaries: readonly GuidedHomeScopeSummary[]
@@ -168,7 +170,7 @@ export function GuidedHomeRails({
                 {onFocusGuidedSubregion && <button type="button" onClick={onFocusGuidedSubregion} className="mt-2 text-xs font-semibold text-cyan-300 hover:text-cyan-200">{guidedSubregionLabel ? `Back to ${guidedSubregionLabel}` : 'Back to the guided view'}</button>}
               </section>
             )}
-            <CompactJourneyPath journey={journey} />
+            <CompactJourneyPath journey={journey} curriculumRecommendationAvailable={curriculumRecommendationAvailable} />
           </WorldCountriesPanel>
         )}
         <WorldCountriesPanel className="space-y-2" aria-label="World Countries secondary actions">
@@ -184,16 +186,16 @@ export function GuidedHomeRails({
     ),
     leftLabel: 'Geography',
     rightLabel: 'Review and journey',
-  }), [continent, guidedSubregionLabel, inspectedSubregionLabel, isInspectingOtherSubregion, journey, level, onFocusGuidedSubregion, onOpenPlay, onOpenProgress, onWorld, refreshing, reviewPanel, scopeName, scopeSummaries])
+  }), [continent, curriculumRecommendationAvailable, guidedSubregionLabel, inspectedSubregionLabel, isInspectingOtherSubregion, journey, level, onFocusGuidedSubregion, onOpenPlay, onOpenProgress, onWorld, refreshing, reviewPanel, scopeName, scopeSummaries])
   useRails(rails)
   return null
 }
 
-function CompactJourneyPath({ journey }: { journey: WorldCountriesJourneyPresentation }) {
+function CompactJourneyPath({ journey, curriculumRecommendationAvailable }: { journey: WorldCountriesJourneyPresentation; curriculumRecommendationAvailable: boolean }) {
   const subregionLabel = getSubregionDefinition(journey.subregionId).label
   return (
     <section className="space-y-2" aria-labelledby="world-countries-journey-heading">
-      <p id="world-countries-journey-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Your journey · {subregionLabel}</p>
+      <p id="world-countries-journey-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">{curriculumRecommendationAvailable ? 'Your journey' : 'Learning complete'} · {subregionLabel}</p>
       <ol className="space-y-2">
         {journey.stages.map(stage => (
           <li key={stage.id} className="flex items-start gap-2" data-journey-milestone={stage.id} data-journey-status={stage.status}>
