@@ -15,10 +15,10 @@ const entries: Country[] = [
 ]
 
 describe('staged learning flow derivations', () => {
-  it('labels an absent next stage as Continue to Final recall', () => {
+  it('labels an absent next stage as Start final recall', () => {
     const plan: LearningPlanStage<string>[] = [{ kind: 'set', set: { index: 0, ids: ['NO'] } }]
 
-    expect(getNextLearningStageLabel(plan, 0)).toBe('Continue to Final recall')
+    expect(getNextLearningStageLabel(plan, 0)).toBe('Start final recall')
   })
 
   it('labels the next Set with its one-based number', () => {
@@ -45,7 +45,7 @@ describe('staged learning flow derivations', () => {
       { kind: 'final', ids: ['NO'] },
     ]
 
-    expect(getNextLearningStageLabel(plan, 0)).toBe('Continue to Final recall')
+    expect(getNextLearningStageLabel(plan, 0)).toBe('Start final recall')
   })
 
   it('describes the next Set for Country Learning', () => {

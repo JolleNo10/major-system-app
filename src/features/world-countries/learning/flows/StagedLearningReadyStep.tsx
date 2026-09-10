@@ -39,8 +39,8 @@ export function StagedLearningReadyStep({
   const dock = (
     <TaskDock variant="checkpoint" status={status} tone="ready" focusPrimary enableEnterPrimary>
       <div className="flex w-full gap-2 xl:w-auto">
-        <button type="button" onClick={onKeepPractising} className="flex-1 whitespace-nowrap rounded-[9px] border border-zinc-600 bg-zinc-800 px-3.5 py-2.5 text-sm text-zinc-200 hover:border-cyan-400 xl:flex-none">Keep practising</button>
-        <button type="button" data-primary-action onClick={onNext} className="flex-1 whitespace-nowrap rounded-[9px] border border-cyan-600 bg-cyan-600 px-3.5 py-2.5 text-sm font-bold text-white hover:bg-cyan-500 xl:flex-none">{nextLabel}<EnterKey /></button>
+        <button type="button" onClick={onKeepPractising} className="flex-1 whitespace-nowrap rounded-[9px] border border-zinc-600 bg-zinc-800 px-3.5 py-2.5 text-sm text-zinc-200 hover:border-violet-400 xl:flex-none">Keep practising</button>
+        <button type="button" data-primary-action onClick={onNext} className="flex-1 whitespace-nowrap rounded-[9px] border border-violet-500 bg-violet-600 px-3.5 py-2.5 text-sm font-bold text-white hover:bg-violet-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 xl:flex-none">{nextLabel}<EnterKey /></button>
         {!surface && <button type="button" onClick={onBack} className="flex-1 whitespace-nowrap rounded-[9px] border border-zinc-700 bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-400 hover:text-zinc-200 xl:flex-none">Back</button>}
       </div>
     </TaskDock>
@@ -71,7 +71,7 @@ export function FinalRecallGate({
     <div className="min-w-0">
       <div className={`flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.08em] ${ready ? 'text-green-400' : 'text-zinc-400'}`}>
         <span aria-hidden="true" className={ready ? 'h-2 w-2 shrink-0 rounded-full bg-green-500 shadow-[0_0_16px_rgba(34,197,94,0.8)]' : 'h-2 w-2 shrink-0 rounded-full border border-zinc-500'} />
-        {ready ? 'Ready for final recall' : 'Final recall'}
+        Final recall
       </div>
       <div className="mt-1 text-lg font-bold text-zinc-100">{description}</div>
       <div className="mt-0.5 max-w-[360px] text-xs text-zinc-400">{nextDescription}</div>
@@ -80,11 +80,11 @@ export function FinalRecallGate({
   const dock = (
     <TaskDock variant="checkpoint" status={status} tone={ready ? 'ready' : 'neutral'} focusPrimary enableEnterPrimary>
       <div className="flex w-full gap-2 xl:w-auto">
-        {ready && <button type="button" onClick={onKeepPractising} className="flex-1 whitespace-nowrap rounded-[9px] border border-zinc-600 bg-zinc-800 px-3.5 py-2.5 text-sm text-zinc-200 hover:border-cyan-400 xl:flex-none">Keep practising</button>}
-        <button type="button" data-primary-action onClick={onStart} className="flex-1 whitespace-nowrap rounded-[9px] border border-cyan-600 bg-cyan-600 px-3.5 py-2.5 text-sm font-bold text-white hover:bg-cyan-500 xl:flex-none">Final recall<EnterKey /></button>
+        {ready && <button type="button" onClick={onKeepPractising} className="flex-1 whitespace-nowrap rounded-[9px] border border-zinc-600 bg-zinc-800 px-3.5 py-2.5 text-sm text-zinc-200 hover:border-violet-400 xl:flex-none">Keep practising</button>}
+        <button type="button" data-primary-action onClick={onStart} className="flex-1 whitespace-nowrap rounded-[9px] border border-violet-500 bg-violet-600 px-3.5 py-2.5 text-sm font-bold text-white hover:bg-violet-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 xl:flex-none">Start final recall<EnterKey /></button>
         {!surface && <button type="button" onClick={onBack} className="flex-1 whitespace-nowrap rounded-[9px] border border-zinc-700 bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-400 hover:text-zinc-200 xl:flex-none">Back</button>}
       </div>
     </TaskDock>
   )
-  return surface ? dock : <div className="space-y-4 animate-fade-in"><LearningHeader label="Final recall" title={ready ? 'Ready for Final recall' : 'Final recall'} onExit={onExit} />{dock}</div>
+  return surface ? dock : <div className="space-y-4 animate-fade-in"><LearningHeader label="Final recall" title="Final recall" onExit={onExit} />{dock}</div>
 }

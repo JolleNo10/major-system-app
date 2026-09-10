@@ -17,11 +17,11 @@ export function CountryLearningComplete({ subregion, scopeLabel, countryCount, o
   const durable = Boolean(subregion && recordCompletion)
   return (
     <LearningComplete
-      eyebrow={durable ? 'Countries established' : 'Learning complete'}
-      title={durable ? `${label} countries established ✓` : `${label} complete ✓`}
+      eyebrow={durable ? 'Countries learned' : 'Learning complete'}
+      title={durable ? `${label} countries learned ✓` : `${label} complete ✓`}
       summary={durable
-        ? <>You completed Country Learning for {label}. The countries are established ({countryCount} total); recall can keep strengthening over time.</>
-        : <>You completed final recall for this temporary scope. This does not establish a Subregion Learning milestone.</>}
+        ? <>You can now locate and recall all {countryCount} {countryCount === 1 ? 'country' : 'countries'}. We'll bring them back later so they stick.</>
+        : <>You finished this practice scope. This run doesn't change your guided region progress.</>}
       onDone={onDone}
       onRestart={onRestart}
       doneLabel={doneLabel}

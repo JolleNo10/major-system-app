@@ -28,7 +28,7 @@ vi.mock('./SchedulerPracticeStep', () => ({
   SchedulerPracticeStep: ({ onSubmit }: { onSubmit: (correct: boolean, latencyMs: number) => void }) => <button type="button" data-testid="practice-submit" onClick={() => onSubmit(true, 100)}>Correct Country</button>,
 }))
 vi.mock('./StagedLearningReadyStep', () => ({
-  StagedLearningReadyStep: ({ onNext }: { onNext: () => void }) => <button type="button" data-testid="ready-next" onClick={onNext}>Next</button>,
+  StagedLearningReadyStep: ({ title, summary, nextDescription, nextLabel, onNext }: { title: string; summary: string; nextDescription: string; nextLabel: string; onNext: () => void }) => <><div data-testid="ready-copy">{title} {summary} {nextDescription} {nextLabel}</div><button type="button" data-testid="ready-next" onClick={onNext}>Next</button></>,
   FinalRecallGate: ({ onStart }: { onStart: () => void }) => <button type="button" data-testid="final-start" onClick={onStart}>Final recall</button>,
 }))
 vi.mock('./StagedFinalRecallStep', () => ({ StagedFinalRecallStep: ({ onSubmit }: { onSubmit: (correct: boolean) => void }) => <button type="button" data-testid="final-submit" onClick={() => onSubmit(true)}>Correct final</button> }))
@@ -129,6 +129,19 @@ function expectCountryWalkthrough(container: HTMLDivElement, task: unknown, coun
 }
 
 describe('CountryLearningFlow scheduler progress wiring', () => {
+  it('reports the actual completed Set outcome and truthful next stage', () => {
+    const container = renderFlow(entries)
+
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-location"]')!.click())
+    for (let attempt = 0; attempt < 20 && container.querySelector('[data-testid="location-submit"]'); attempt += 1) act(() => container.querySelector<HTMLButtonElement>('[data-testid="location-submit"]')!.click())
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
+    for (let attempt = 0; attempt < 20 && container.querySelector('[data-testid="practice-submit"]'); attempt += 1) act(() => container.querySelector<HTMLButtonElement>('[data-testid="practice-submit"]')!.click())
+
+    expect(container.querySelector('[data-testid="ready-copy"]')?.textContent).toContain('Set 1 complete')
+    expect(container.querySelector('[data-testid="ready-copy"]')?.textContent).toContain('You recalled all 1 country in this practice.')
+    expect(container.querySelector('[data-testid="ready-copy"]')?.textContent).toContain('Start final recall')
+  })
+
   it('keeps the Country walkthrough focused on Country identity while moving between Countries', () => {
     const container = renderFlow(fullWalkthroughEntries)
     const latestTask = () => learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].task
@@ -148,8 +161,8 @@ describe('CountryLearningFlow scheduler progress wiring', () => {
     const container = renderFlow(entries, true)
     const leftRail = renderLeftRail()
 
-    expect(leftRail.textContent).toContain('Countries established')
-    expect(leftRail.textContent).not.toContain('Countries not established yet')
+    expect(leftRail.textContent).toContain('Countries learned')
+    expect(leftRail.textContent).not.toContain('Countries are next')
     expect(container.querySelector('[data-testid="start-location"]')).not.toBeNull()
   })
 
@@ -278,7 +291,7 @@ describe('CountryLearningFlow scheduler progress wiring', () => {
 
   it('keeps established Country progress after completing and restarting Learning', () => {
     const container = renderFlow()
-    expect(renderLeftRail().textContent).toContain('Countries not established yet')
+    expect(renderLeftRail().textContent).toContain('Countries are next')
 
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-location"]')!.click())
     for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -297,7 +310,7 @@ describe('CountryLearningFlow scheduler progress wiring', () => {
 
     expect(container.querySelector('[data-testid="start-location"]')).not.toBeNull()
     const restartedRail = renderLeftRail()
-    expect(restartedRail.textContent).toContain('Countries established')
-    expect(restartedRail.textContent).not.toContain('Countries not established yet')
+    expect(restartedRail.textContent).toContain('Countries learned')
+    expect(restartedRail.textContent).not.toContain('Countries are next')
   })
 })

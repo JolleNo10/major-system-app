@@ -105,7 +105,7 @@ describe('GuidedLearningRails contextual authoring visibility', () => {
     expect(mount.textContent).toContain('Edit order')
     expect(mount.textContent).not.toContain('Edit mnemonics')
     expect(mount.textContent).toContain('Learning progress')
-    expect(mount.textContent).toContain('Countries not established yet')
+    expect(mount.textContent).toContain('Countries are next')
     expect(mount.textContent).not.toContain('Learning Readiness')
     expect(mount.querySelector('.rounded-xl.border.border-zinc-800.bg-zinc-900')).not.toBeNull()
 
@@ -183,7 +183,7 @@ describe('GuidedLearningRails contextual authoring visibility', () => {
     act(() => root?.render(createElement('div', null, config.left)))
 
     expect(mount.textContent).not.toContain('Learning progress')
-    expect(mount.textContent).not.toContain('Countries not established yet')
+    expect(mount.textContent).not.toContain('Countries are next')
     expect(mount.textContent).not.toContain('Learning context')
     expect(mount.querySelector('[data-learning-stage-label]')?.textContent).toBe('Set 2 of 2')
     expect(mount.querySelector('[data-learning-stage-scope]')?.textContent).toBe('1 of 2 Countries in this Set')
@@ -235,7 +235,7 @@ describe('GuidedLearningRails contextual authoring visibility', () => {
     act(() => root?.render(createElement('div', null, config.left)))
 
     expect(mount.textContent).not.toContain('Learning progress')
-    expect(mount.textContent).not.toContain('Countries not established yet')
+    expect(mount.textContent).not.toContain('Countries are next')
     expect(mount.textContent).not.toContain('Learning context')
     expect(mount.querySelector('[data-learning-stage]')?.getAttribute('data-learning-stage')).toBe('combined')
     expect(mount.querySelector('[data-learning-stage-label]')?.textContent).toBe('Combined practice')
@@ -251,7 +251,7 @@ describe('GuidedLearningRails contextual authoring visibility', () => {
     act(() => root?.render(createElement('div', null, config.left)))
 
     expect(mount.textContent).not.toContain('Learning progress')
-    expect(mount.textContent).not.toContain('Countries not established yet')
+    expect(mount.textContent).not.toContain('Countries are next')
     expect(mount.textContent).not.toContain('Learning context')
     expect(mount.querySelector('[data-learning-stage]')?.getAttribute('data-learning-stage')).toBe('final')
     expect(mount.querySelector('[data-learning-stage-label]')?.textContent).toBe('Final recall')
@@ -267,7 +267,7 @@ describe('GuidedLearningRails contextual authoring visibility', () => {
     act(() => root?.render(createElement('div', null, config.left)))
 
     expect(mount.textContent).not.toContain('Learning progress')
-    expect(mount.textContent).not.toContain('Countries established')
+    expect(mount.textContent).not.toContain('Countries learned')
     expect(mount.querySelector('[data-learning-stage-label]')?.textContent).toBe('Final recall')
     expect(mount.querySelector('[data-learning-stage-scope]')?.textContent).toBe('All 2 Countries')
     expect(mount.querySelectorAll('[data-learning-set="active-scope"]')).toHaveLength(2)
@@ -304,7 +304,7 @@ describe('GuidedLearningRails contextual authoring visibility', () => {
     expect(mount.textContent).toContain('Weak Countries')
     expect(mount.textContent).toContain('Temporary proficiency scope. Completing this run does not change your guided journey.')
     expect(mount.textContent).not.toContain('Learning progress')
-    expect(mount.textContent).not.toContain('Countries not established yet')
+    expect(mount.textContent).not.toContain('Countries are next')
     expect(mount.textContent).not.toContain('Learning context')
     expect(mount.textContent).not.toContain('Northern Europe')
   })

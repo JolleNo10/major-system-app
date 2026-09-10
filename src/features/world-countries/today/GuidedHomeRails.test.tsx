@@ -124,12 +124,41 @@ describe('Guided World Countries home status', () => {
     expect(continentMount.textContent).toContain('where you are in the journey')
   })
 
-  it('keeps the next Learning recommendation in the Continue explanation only', () => {
+  it('keeps the next Learning recommendation in the Continue explanation without duplicating the action', () => {
     const mount = renderRails({ nextLearning: { track: 'learn-capitals', subregionLabel: 'Northern Europe' } })
 
-    expect(mount.textContent).toContain('Next: add the capitals in Northern Europe.')
+    expect(mount.textContent).toContain('The guided path continues in Northern Europe.')
     expect(mount.textContent).not.toContain('Learn Capitals')
     expect(mount.textContent).not.toContain('Learn Countries')
+  })
+
+  it('projects the detailed journey into three learner milestones', () => {
+    const journey: WorldCountriesJourneyPresentation = {
+      subregionId: 'northern-europe',
+      currentStageId: 'add-capitals',
+      complete: false,
+      stages: WORLD_COUNTRIES_JOURNEY_STAGES.map(stage => ({ ...stage, status: stage.id === 'add-capitals' ? 'current' : 'upcoming', detail: 'Detail' })),
+      countriesLearned: true,
+      countriesEstablished: true,
+      capitalsLearned: false,
+      capitalsEstablished: false,
+      countryRecallMastered: false,
+      capitalRecallMastered: false,
+      coreRecallComplete: false,
+    }
+    const mount = renderRails({ journey, primaryActionLabel: 'Add the capitals' })
+
+    expect(mount.textContent).toContain('Countries')
+    expect(mount.textContent).toContain('Capitals')
+    expect(mount.textContent).toContain('Mastery')
+    expect(mount.textContent).toContain('Complete')
+    expect(mount.textContent).toContain('Current')
+    expect(mount.textContent).toContain('Upcoming')
+    expect(mount.textContent).toContain('Next: Add the capitals')
+    expect(mount.querySelector('[data-journey-milestone="countries"]')?.getAttribute('data-journey-status')).toBe('complete')
+    expect(mount.querySelector('[data-journey-milestone="capitals"]')?.getAttribute('data-journey-status')).toBe('current')
+    expect(mount.querySelector('[data-journey-milestone="mastery"]')?.getAttribute('data-journey-status')).toBe('upcoming')
+    expect(mount.textContent).not.toContain('Meet the countries')
   })
 
   it('explains why review comes before new learning', () => {
@@ -195,7 +224,8 @@ describe('Guided World Countries home status', () => {
 
     expect(mount.textContent).toContain("You're viewing Southern Europe")
     expect(mount.textContent).toContain('Your next step is still in Northern Europe')
-    expect(mount.textContent).toContain('Next: learn the countries in Northern Europe.')
+    expect(mount.textContent).toContain('The guided path continues in Northern Europe.')
+    expect(mount.textContent).toContain('Next: Learn the countries')
     act(() => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Back to Northern Europe')?.click())
     expect(onFocusGuidedSubregion).toHaveBeenCalledOnce()
   })

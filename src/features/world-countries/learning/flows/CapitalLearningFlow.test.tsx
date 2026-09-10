@@ -18,7 +18,7 @@ vi.mock('./SchedulerPracticeStep', () => ({
   SchedulerPracticeStep: ({ onSubmit }: { onSubmit: (correct: boolean, latencyMs: number) => void }) => <button type="button" data-testid="submit-correct" onClick={() => onSubmit(true, 100)}>Correct</button>,
 }))
 vi.mock('./StagedLearningReadyStep', () => ({
-  StagedLearningReadyStep: ({ onNext, onKeepPractising }: { onNext: () => void; onKeepPractising?: () => void }) => <><button type="button" data-testid="ready-next" onClick={onNext}>Next</button>{onKeepPractising && <button type="button" data-testid="ready-keep" onClick={onKeepPractising}>Keep practising</button>}</>,
+  StagedLearningReadyStep: ({ title, summary, nextDescription, nextLabel, onNext, onKeepPractising }: { title: string; summary: string; nextDescription: string; nextLabel: string; onNext: () => void; onKeepPractising?: () => void }) => <><div data-testid="ready-copy">{title} {summary} {nextDescription} {nextLabel}</div><button type="button" data-testid="ready-next" onClick={onNext}>Next</button>{onKeepPractising && <button type="button" data-testid="ready-keep" onClick={onKeepPractising}>Keep practising</button>}</>,
   FinalRecallGate: ({ onStart }: { onStart: () => void }) => <button type="button" data-testid="final-start" onClick={onStart}>Final recall</button>,
 }))
 vi.mock('./StagedFinalRecallStep', () => ({
@@ -103,6 +103,17 @@ function renderLeftRail() {
 }
 
 describe('CapitalLearningFlow orchestration', () => {
+  it('reports the actual completed Capital Set outcome', () => {
+    const container = renderFlow(() => undefined)
+
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-practice"]')!.click())
+    for (let attempt = 0; attempt < 20 && container.querySelector('[data-testid="submit-correct"]'); attempt += 1) act(() => container.querySelector<HTMLButtonElement>('[data-testid="submit-correct"]')!.click())
+
+    expect(container.querySelector('[data-testid="ready-copy"]')?.textContent).toContain('Set 1 complete')
+    expect(container.querySelector('[data-testid="ready-copy"]')?.textContent).toContain('You recalled all 1 country–capital pair in this practice.')
+    expect(container.querySelector('[data-testid="ready-copy"]')?.textContent).toContain('Start final recall')
+  })
+
   it('shows derived Country readiness when Capital Learning follows mastered Country recall', () => {
     const container = renderFlow(() => undefined, entries, true)
     const leftRail = renderLeftRail()
@@ -117,7 +128,7 @@ describe('CapitalLearningFlow orchestration', () => {
     const leftRail = renderLeftRail()
 
     expect(container.textContent).toContain('Norway')
-    expect(leftRail.textContent).toContain('Countries + Capitals established')
+    expect(leftRail.textContent).toContain('Countries and capitals are learned')
     expect(leftRail.textContent).not.toContain('Adding capitals')
   })
 
@@ -209,8 +220,8 @@ describe('CapitalLearningFlow orchestration', () => {
 
     act(() => [...container.querySelectorAll('button')].find(button => button.textContent === 'Learn again')?.click())
     expect(phases).toEqual(['practice', 'set-ready', 'final-gate', 'final-recall', 'complete', 'walkthrough'])
-    expect(renderLeftRail().textContent).toContain('Countries not established yet')
-    expect(renderLeftRail().textContent).not.toContain('Countries + Capitals established')
+    expect(renderLeftRail().textContent).toContain('Learn the countries first')
+    expect(renderLeftRail().textContent).not.toContain('Countries and capitals are learned')
     expect(renderLeftRail().textContent).not.toContain('Adding capitals')
   })
 
@@ -227,7 +238,7 @@ describe('CapitalLearningFlow orchestration', () => {
 
     act(() => [...container.querySelectorAll('button')].find(button => button.textContent === 'Learn again')?.click())
 
-    expect(renderLeftRail().textContent).toContain('Countries + Capitals established')
+    expect(renderLeftRail().textContent).toContain('Countries and capitals are learned')
     expect(renderLeftRail().textContent).not.toContain('Adding capitals')
   })
 

@@ -26,6 +26,7 @@ export function GuidedHomeRails({
   dueCountryCount,
   reviewReasonSummary,
   nextLearning,
+  primaryActionLabel,
   journey,
   guidedSubregionId,
   onFocusGuidedSubregion,
@@ -48,6 +49,7 @@ export function GuidedHomeRails({
   dueCountryCount: number
   reviewReasonSummary: WorldCountriesTodayReviewReasonSummary
   nextLearning: { track: WorldCountriesTodayLearningTrack; subregionLabel: string } | null
+  primaryActionLabel?: string | null
   journey: WorldCountriesJourneyPresentation | null
   guidedSubregionId?: SubregionId | null
   onFocusGuidedSubregion?: () => void
@@ -101,8 +103,8 @@ export function GuidedHomeRails({
           ? nextLearning
             ? `Review first. Then ${learningStepDescription(nextLearning.track, nextLearning.subregionLabel)}.`
             : "Review what you've learned before adding something new."
-          : nextLearning
-            ? `Next: ${learningStepDescription(nextLearning.track, nextLearning.subregionLabel)}.`
+            : nextLearning
+              ? `The guided path continues in ${nextLearning.subregionLabel}.`
             : scopeIsComplete
               ? "You've completed the guided Country and Capital recall for this scope. Play and progress remain available."
               : `Nothing needs reviewing right now. ${scopeName} is still in progress.`
@@ -181,7 +183,7 @@ export function GuidedHomeRails({
                 {onFocusGuidedSubregion && <button type="button" onClick={onFocusGuidedSubregion} className="mt-2 text-xs font-semibold text-cyan-300 hover:text-cyan-200">{guidedSubregionLabel ? `Back to ${guidedSubregionLabel}` : 'Back to the guided view'}</button>}
               </section>
             )}
-            <JourneyPath journey={journey} />
+            <CompactJourneyPath journey={journey} nextActionLabel={primaryActionLabel} />
           </>
         )}
         <div className="space-y-2" aria-label="World Countries secondary actions">
@@ -197,24 +199,42 @@ export function GuidedHomeRails({
     ),
     leftLabel: 'Geography',
     rightLabel: 'Learning journey',
-  }), [activeCountryCount, caughtUp, completionSummary, consolidationAvailable, continent, dueCount, dueCountryCount, evidenceStatus, guidedSubregionId, guidedSubregionLabel, inspectedSubregionLabel, isInspectingOtherSubregion, journey, level, nextLearning, onFocusGuidedSubregion, onOpenPlay, onOpenProgress, onWorld, refreshing, reviewReasonSummary, scopeIsComplete, scopeName, scopeSummaries, statusExplanation, statusHeading, unfinishedGeography, whyTodayText])
+  }), [activeCountryCount, caughtUp, completionSummary, consolidationAvailable, continent, dueCount, dueCountryCount, evidenceStatus, guidedSubregionLabel, inspectedSubregionLabel, isInspectingOtherSubregion, journey, level, nextLearning, onFocusGuidedSubregion, onOpenPlay, onOpenProgress, onWorld, primaryActionLabel, refreshing, reviewReasonSummary, scopeIsComplete, scopeName, scopeSummaries, statusExplanation, statusHeading, unfinishedGeography, whyTodayText])
   useRails(rails)
   return null
 }
 
-function JourneyPath({ journey }: { journey: WorldCountriesJourneyPresentation }) {
+function CompactJourneyPath({ journey, nextActionLabel }: { journey: WorldCountriesJourneyPresentation; nextActionLabel?: string | null }) {
   const subregionLabel = getSubregionDefinition(journey.subregionId).label
+  const milestones = [
+    { id: 'countries', label: 'Countries', complete: journey.countriesEstablished, current: !journey.countriesEstablished },
+    { id: 'capitals', label: 'Capitals', complete: journey.capitalsEstablished, current: journey.countriesEstablished && !journey.capitalsEstablished },
+    { id: 'mastery', label: 'Mastery', complete: journey.coreRecallComplete, current: journey.countriesEstablished && journey.capitalsEstablished && !journey.coreRecallComplete },
+  ].map(milestone => ({
+    ...milestone,
+    status: milestone.complete ? 'complete' : milestone.current ? 'current' : 'upcoming' as const,
+    statusLabel: milestone.complete ? 'Complete' : milestone.current ? 'Current' : 'Upcoming',
+  }))
+  const nextMilestone = milestones.find(milestone => milestone.status !== 'complete')
+  const fallbackNextAction = nextMilestone?.id === 'countries'
+    ? 'Learn the countries'
+    : nextMilestone?.id === 'capitals'
+      ? 'Add the capitals'
+      : nextMilestone?.id === 'mastery'
+        ? 'Strengthen the full region'
+        : null
   return (
     <section className="space-y-2" aria-labelledby="world-countries-journey-heading">
       <p id="world-countries-journey-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Journey · {subregionLabel}</p>
       <ol className="space-y-2">
-        {journey.stages.map((stage, index) => (
-          <li key={stage.id} className="flex items-start gap-2" data-journey-stage={stage.id} data-journey-status={stage.status}>
-            <span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border text-[10px] font-bold ${stage.status === 'complete' ? 'border-green-500/40 bg-green-500/10 text-green-300' : stage.status === 'current' ? 'border-cyan-400 bg-cyan-600 text-white' : 'border-zinc-700 text-zinc-500'}`} aria-hidden="true">{stage.status === 'complete' ? '✓' : index + 1}</span>
-            <span className="min-w-0"><span className={`block text-xs font-semibold ${stage.status === 'current' ? 'text-zinc-100' : 'text-zinc-300'}`}>{stage.label}</span><span className="mt-0.5 block text-[11px] text-zinc-500">{stage.detail}</span></span>
+        {milestones.map((stage, index) => (
+          <li key={stage.id} className="flex items-start gap-2" data-journey-milestone={stage.id} data-journey-status={stage.status}>
+            <span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border text-[10px] font-bold ${stage.status === 'complete' ? 'border-green-500/40 bg-green-500/10 text-green-300' : stage.status === 'current' ? 'border-violet-400 bg-violet-600 text-white' : 'border-zinc-700 text-zinc-500'}`} aria-hidden="true">{stage.status === 'complete' ? '✓' : stage.status === 'current' ? '•' : '○'}</span>
+            <span className="min-w-0"><span className={`block text-xs font-semibold ${stage.status === 'current' ? 'text-violet-100' : 'text-zinc-300'}`}>{stage.label}</span><span className="mt-0.5 block text-[11px] text-zinc-500">{stage.statusLabel}</span></span>
           </li>
         ))}
       </ol>
+      {(nextActionLabel ?? fallbackNextAction) && <p className="pt-1 text-xs font-semibold text-violet-200">Next: {nextActionLabel ?? fallbackNextAction}</p>}
     </section>
   )
 }

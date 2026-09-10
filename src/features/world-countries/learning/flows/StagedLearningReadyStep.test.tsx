@@ -49,7 +49,7 @@ describe('Learning Ready task dock behavior', () => {
       }))
     })
 
-    expect(document.activeElement?.textContent).toContain('Final recall')
+    expect(document.activeElement?.textContent).toContain('Start final recall')
     const status = mount.querySelector('[role="status"]')?.textContent
     expect(status).toContain('Final recall')
     expect(status).toContain("Try the full recall when you're ready.")
@@ -73,9 +73,9 @@ describe('Learning Ready task dock behavior', () => {
       }))
     })
 
-    expect(document.activeElement?.textContent).toContain('Final recall')
+    expect(document.activeElement?.textContent).toContain('Start final recall')
     const status = mount.querySelector('[role="status"]')?.textContent
-    expect(status).toContain('Ready for final recall')
+    expect(status).toContain('Final recall')
     expect(status).toContain("One last pass through everything you've been learning.")
     expect(status).toContain('Recall the whole Learning order from start to finish.')
     expect(status).not.toMatch(/region|full-region/i)

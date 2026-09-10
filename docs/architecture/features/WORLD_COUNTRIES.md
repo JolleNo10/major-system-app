@@ -318,6 +318,12 @@ belongs to Put it all together, and a fully mastered core scope renders the
 final Master the region stage complete. On a Continent hub, a transiently
 inspected Subregion supplies the displayed journey/progress while the guided
 recommendation and consolidation scope continue to come from Today planning.
+Default Home and Continent rails project this derived truth into a compact,
+non-persisted Countries / Capitals / Mastery summary; the six-stage derivation
+remains authoritative for supporting progress surfaces. Guided primary labels
+are action-specific (including bounded review/consolidation counts or an
+authoritative staged Country count when available), while Today remains the
+owner of the action meaning and priority.
 World Progress summarizes Continents; Continent Progress summarizes
 Subregions.
 
@@ -329,9 +335,10 @@ semantic task/context/progress data to the shared World Countries map-activity
 surface; setup, overview, readiness, and completion screens retain their own
 presentation. Active Learning uses learner-facing progress language rather than
 exposing the internal Learning Readiness label. Home and Continent guided rails
-keep due counts only when review is due and let the Continue status carry the
-next-Learning recommendation without a duplicate card; the attached map dock
-remains the primary guided action.
+keep due counts only when review is due and keep the next action attached to the
+map dock without a duplicate recommendation card; the dock remains the primary
+guided action. The compact Learning context rail stays present through Final
+recall as a quiet, full-scope, read-only orientation surface.
 
 ## Learning Readiness
 
@@ -667,6 +674,9 @@ flowchart TD
   Proficiency Learning completion is temporary and does not create a partial
   Subregion milestone. Successful Learn Capitals completion never clears or
   fabricates Countries learning.
+- Durable Learning completion may be presented to learners as Countries learned
+  or Capitals learned; internal establishment/readiness names and milestone
+  semantics remain unchanged.
 - Active Drill recall suppresses map progress treatments until feedback.
 - Geography and proficiency scope sources are never combined. Selecting
   proficiency clears Subregions; selecting a Subregion, Entire Continent, or

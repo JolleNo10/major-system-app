@@ -16,7 +16,7 @@ afterEach(() => {
 })
 
 describe('CapitalLearningComplete', () => {
-  it('describes durable Capital Learning as capitals added without claiming Master region', () => {
+  it('describes durable Capital Learning as capitals learned without claiming Master region', () => {
     const onDone = vi.fn()
     const onRestart = vi.fn()
     const mount = document.createElement('div')
@@ -31,9 +31,9 @@ describe('CapitalLearningComplete', () => {
       }))
     })
 
-    expect(mount.textContent).toContain('Capitals added')
+    expect(mount.textContent).toContain('Capitals learned')
     expect(mount.textContent).not.toContain('Capitals established')
-    expect(mount.textContent).toContain("You've added the country–capital associations")
+    expect(mount.textContent).toContain("You've connected each country with its capital")
     expect(mount.textContent).not.toContain('Master region')
     expect(mount.textContent).toContain('Back to Learn & Practise')
     expect(mount.textContent).toContain('Learn again')
@@ -86,9 +86,9 @@ describe('CapitalLearningComplete', () => {
     })
 
     expect(mount.textContent).toContain('Learning complete')
-    expect(mount.textContent).toContain('does not establish a Subregion Learning milestone')
+    expect(mount.textContent).toContain("doesn't change your guided region progress")
     expect(mount.textContent).not.toContain('Countries established')
     expect(mount.textContent).not.toContain('Capitals established')
-    expect(mount.textContent).not.toContain('Capitals added')
+    expect(mount.textContent).not.toContain('Capitals learned')
   })
 })

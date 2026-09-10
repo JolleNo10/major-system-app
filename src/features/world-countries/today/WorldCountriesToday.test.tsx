@@ -15,7 +15,7 @@ const activeCountries = [countries[0]]
 let milestoneWritten = false
 
 vi.mock('@/app/settings/SettingsContext', () => ({
-  useSettings: () => ({ settings: { worldCountriesFuzzyAnswerMatching: false } }),
+  useSettings: () => ({ settings: { worldCountriesFuzzyAnswerMatching: false, worldCountriesNewItemsPerSet: 3 } }),
 }))
 vi.mock('@/app/layout/PageLayoutContext', () => ({ usePageLayoutPresentation: vi.fn(), useRails: vi.fn() }))
 vi.mock('@/features/world-countries/WorldCountriesPopulationContext', () => ({
@@ -92,7 +92,7 @@ afterEach(() => {
 })
 
 describe('World Countries Today', () => {
-  it('focuses Continue review after finishing a review block', async () => {
+  it('focuses the review action after finishing a review block', async () => {
     buildPlanMock.mockReturnValue({
       dueCandidates: [{}],
       reviewQueue: [{}],
@@ -116,8 +116,8 @@ describe('World Countries Today', () => {
       root.render(createElement(WorldCountriesToday, { answerMode: 'typing', onNavigate: vi.fn() }))
       await Promise.resolve()
     })
-    const continueReview = [...mount.querySelectorAll('button')].find(button => button.textContent === 'Continue review')
-    act(() => continueReview?.click())
+    const reviewAction = [...mount.querySelectorAll('button')].find(button => button.textContent === 'Review 1 item')
+    act(() => reviewAction?.click())
     await act(async () => {
       const finishReview = [...mount.querySelectorAll('button')].find(button => button.textContent === 'Finish review')
       finishReview?.click()
@@ -125,10 +125,10 @@ describe('World Countries Today', () => {
       await Promise.resolve()
     })
 
-    expect(document.activeElement?.textContent).toBe('Continue review')
+    expect(document.activeElement?.textContent).toBe('Review 1 item')
   })
 
-  it('delegates Continue learning to the recommended Country Learning flow', async () => {
+  it('delegates the specific Country Learning action to the recommended flow', async () => {
     buildPlanMock.mockReturnValue({
       dueCandidates: [],
       reviewQueue: [],
@@ -164,7 +164,7 @@ describe('World Countries Today', () => {
       await Promise.resolve()
     })
     await act(async () => {
-      [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Continue learning')?.click()
+      [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Learn 1 country')?.click()
     })
 
     expect(mount.querySelector('[data-testid="country-learning-flow"]')).not.toBeNull()
@@ -194,7 +194,7 @@ describe('World Countries Today', () => {
       await Promise.resolve()
     })
     await act(async () => {
-      [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Continue learning')?.click()
+      [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Learn 1 country')?.click()
     })
     await act(async () => {
       mount.querySelector<HTMLButtonElement>('[data-testid="complete-country-learning"]')?.click()
@@ -215,8 +215,8 @@ describe('World Countries Today', () => {
   })
 
   it.each([
-    ['review', 'Continue review', 'review'],
-    ['consolidate', 'Practice unfinished area', 'consolidation'],
+    ['review', 'Review 1 item', 'review'],
+    ['consolidate', 'Strengthen 1 item', 'consolidation'],
   ] as const)('replaces the completed Learning run before a %s handoff', async (kind, label, mode) => {
     const country = activeCountries[0]
     const initialPlan = {
@@ -246,7 +246,7 @@ describe('World Countries Today', () => {
       await Promise.resolve()
     })
     await act(async () => {
-      [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Continue learning')?.click()
+      [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Learn 1 country')?.click()
     })
     await act(async () => {
       mount.querySelector<HTMLButtonElement>('[data-testid="complete-country-learning"]')?.click()
@@ -285,7 +285,7 @@ describe('World Countries Today', () => {
       await Promise.resolve()
     })
     await act(async () => {
-      [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Continue learning')?.click()
+      [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Add the capitals')?.click()
     })
 
     expect(capitalLearningFlowMock).toHaveBeenCalledWith(expect.objectContaining({ countriesEstablished: true }))
@@ -316,10 +316,10 @@ describe('World Countries Today', () => {
       root.render(createElement(WorldCountriesToday, { answerMode: 'typing', onNavigate: vi.fn() }))
       await Promise.resolve()
     })
-    expect(mount.textContent).toContain('Practice unfinished area')
-    expect([...mount.querySelectorAll<HTMLButtonElement>('button')].filter(button => button.textContent === 'Practice unfinished area')).toHaveLength(1)
+    expect(mount.textContent).toContain('Strengthen 1 item')
+    expect([...mount.querySelectorAll<HTMLButtonElement>('button')].filter(button => button.textContent === 'Strengthen 1 item')).toHaveLength(1)
     await act(async () => {
-      [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Practice unfinished area')?.click()
+      [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Strengthen 1 item')?.click()
     })
 
     expect(mount.textContent).toContain('Finish review')

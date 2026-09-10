@@ -79,10 +79,10 @@ export function getNextLearningStageLabel<TId>(
   stageIndex: number,
 ): string {
   const next = plan[stageIndex + 1]
-  if (!next) return 'Continue to Final recall'
+  if (!next) return 'Start final recall'
   if (next.kind === 'set') return `Continue to Set ${next.set.index + 1}`
   if (next.kind === 'combined') return `Practise all ${next.ids.length} together`
-  return 'Continue to Final recall'
+  return 'Start final recall'
 }
 
 export function getNextLearningStageDescription<TId>(

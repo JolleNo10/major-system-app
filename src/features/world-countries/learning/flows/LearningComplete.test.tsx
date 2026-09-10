@@ -35,6 +35,7 @@ describe('LearningComplete', () => {
 
     expect(mount.querySelector('h1')?.textContent).toBe('Northern Europe complete ✓')
     expect(mount.textContent).toContain('Country completion summary')
+    expect(mount.textContent).not.toContain('map remains available')
     expect(mount.querySelectorAll('button')).toHaveLength(2)
     expect(mount.textContent).toContain('Back to Learn & Practise')
     expect(mount.textContent).toContain('Learn again')
@@ -50,8 +51,8 @@ describe('LearningComplete', () => {
     act(() => {
       root = createRoot(mount)
       root.render(createElement(LearningComplete, {
-        eyebrow: 'Countries established',
-        title: 'Northern Europe countries established ✓',
+        eyebrow: 'Countries learned',
+        title: 'Northern Europe countries learned ✓',
         summary: 'Country completion summary',
         onDone,
         onRestart,

@@ -19,7 +19,7 @@ import { getCountryProgressColor, getCountryProgressState } from '@/features/wor
 import { CountryLearningFlow } from '@/features/world-countries/learning/flows/CountryLearningFlow'
 import { CapitalLearningFlow } from '@/features/world-countries/learning/flows/CapitalLearningFlow'
 import type { LearningCompletionHandoff } from '@/features/world-countries/learning/flows/LearningComplete'
-import type { LearningSetMaximum } from '@/features/world-countries/learning/stagedLearningPlan'
+import { buildLearningPlan, type LearningSetMaximum } from '@/features/world-countries/learning/stagedLearningPlan'
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
 import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
 import { WorldMasterySummary } from '@/features/world-countries/ui/WorldMasterySummary'
@@ -60,19 +60,58 @@ function isSameLearningRecommendation(
     && current.countryIds.every((countryId, index) => countryId === next.countryIds[index])
 }
 
+function formatCountedAction(prefix: string, count: number, singular: string): string {
+  return `${prefix} ${count} ${count === 1 ? singular : `${singular}s`}`
+}
+
+function isLearningSetMaximum(value: unknown): value is LearningSetMaximum {
+  return value === 'all' || value === 3 || value === 4 || value === 5
+}
+
+function firstCountryLearningSetCount(
+  recommendation: WorldCountriesTodayLearningRecommendation,
+  newItemsPerSet: LearningSetMaximum | undefined,
+): number | null {
+  if (recommendation.track !== 'learn-countries' || !isLearningSetMaximum(newItemsPerSet)) return null
+  const firstStage = buildLearningPlan(recommendation.countryIds, newItemsPerSet)[0]
+  return firstStage?.kind === 'set' ? firstStage.set.ids.length : null
+}
+
+function getTodayActionLabel(
+  action: WorldCountriesTodayPlan['action'],
+  newItemsPerSet?: LearningSetMaximum,
+): string | null {
+  switch (action.kind) {
+    case 'review':
+      return formatCountedAction('Review', action.candidates.length, 'item')
+    case 'learn': {
+      if (action.recommendation.track === 'learn-capitals') return 'Add the capitals'
+      const count = firstCountryLearningSetCount(action.recommendation, newItemsPerSet)
+      return count === null ? 'Learn the countries' : formatCountedAction('Learn', count, 'country')
+    }
+    case 'consolidate':
+      return formatCountedAction('Strengthen', action.candidates.length, 'item')
+    case 'complete':
+    case 'unavailable':
+      return null
+  }
+}
+
 function createCompletionHandoff(
   action: WorldCountriesTodayPlan['action'],
   currentRecommendation: WorldCountriesTodayLearningRecommendation,
+  newItemsPerSet: LearningSetMaximum | undefined,
   returnLabel: string,
   onContinue: () => void,
 ): LearningCompletionHandoff | undefined {
   if (action.kind === 'learn' && isSameLearningRecommendation(currentRecommendation, action.recommendation)) return undefined
+  const nextLabel = getTodayActionLabel(action, newItemsPerSet)
 
   switch (action.kind) {
     case 'review':
-      return { description: 'Core review is due next for this guided scope.', label: 'Continue review', onContinue }
+      return { description: `Next: ${nextLabel?.toLowerCase() ?? 'review the next items'}.`, label: nextLabel ?? 'Review', onContinue }
     case 'consolidate':
-      return { description: 'Strengthen the unfinished recall in this guided scope next.', label: 'Practice unfinished area', onContinue }
+      return { description: `Next: ${nextLabel?.toLowerCase() ?? 'strengthen unfinished recall'}.`, label: nextLabel ?? 'Strengthen recall', onContinue }
     case 'learn': {
       const isCountryToCapital = currentRecommendation.track === 'learn-countries'
         && action.recommendation.track === 'learn-capitals'
@@ -80,8 +119,8 @@ function createCompletionHandoff(
       return isCountryToCapital
         ? { description: 'Next: add the capitals to these countries.', label: 'Add the capitals', onContinue }
         : {
-            description: `Next: learn ${action.recommendation.track === 'learn-countries' ? 'the countries' : 'the capitals'} in ${action.recommendation.subregionLabel}.`,
-            label: action.recommendation.track === 'learn-countries' ? 'Learn the countries' : 'Add the capitals',
+            description: `Next: ${(nextLabel ?? (action.recommendation.track === 'learn-capitals' ? 'Add the capitals' : 'Learn the countries')).toLowerCase()} in ${action.recommendation.subregionLabel}.`,
+            label: nextLabel ?? (action.recommendation.track === 'learn-capitals' ? 'Add the capitals' : 'Learn the countries'),
             onContinue,
           }
     }
@@ -306,7 +345,7 @@ export function WorldCountriesToday({
   const scopeLabel = continent ?? 'World'
   const navigateWorld = onWorld ?? (() => undefined)
   const completionHandoff = learningRun && evidence.status === 'ready' && plan
-    ? createCompletionHandoff(plan.action, learningRun.recommendation, `Back to ${continent ?? 'World'}`, () => launchAction(plan.action))
+    ? createCompletionHandoff(plan.action, learningRun.recommendation, settings.worldCountriesNewItemsPerSet as LearningSetMaximum | undefined, `Back to ${continent ?? 'World'}`, () => launchAction(plan.action))
     : undefined
 
   if (showProgress) {
@@ -381,7 +420,9 @@ export function WorldCountriesToday({
   }
 
   const canContinue = Boolean(plan && evidence.status === 'ready' && scopedCountries.length > 0 && (plan.action.kind === 'review' || plan.action.kind === 'learn' || plan.action.kind === 'consolidate'))
-  const hasDue = Boolean(plan && plan.dueCount > 0)
+  const primaryActionLabel = canContinue && plan
+    ? getTodayActionLabel(plan.action, settings.worldCountriesNewItemsPerSet as LearningSetMaximum | undefined)
+    : null
   const caughtUp = evidence.status === 'ready' && scopedCountries.length > 0 && Boolean(plan?.caughtUpForToday)
   const mapDescriptions = new Map(scopedCountries.map(country => [country.id, `Progress for ${scopeLabel} is shown in the progress summary.`] as const))
 
@@ -396,6 +437,7 @@ export function WorldCountriesToday({
         dueCountryCount={plan?.dueCountryCount ?? 0}
         reviewReasonSummary={plan?.reviewReasonSummary ?? EMPTY_REVIEW_REASON_SUMMARY}
         nextLearning={nextLearning ? { track: nextLearning.track, subregionLabel: nextLearning.subregionLabel } : null}
+        primaryActionLabel={primaryActionLabel}
         refreshing={refreshing}
         caughtUp={caughtUp}
         scopeComplete={plan?.scopeComplete ?? false}
@@ -436,8 +478,8 @@ export function WorldCountriesToday({
           )}
           dock={canContinue ? (
             <TaskDock variant="navigation" focusPrimary={Boolean(checkpoint) && !refreshing}>
-              <button type="button" data-primary-action disabled={refreshing} onClick={startPrimary} className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40">
-                {hasDue ? 'Continue review' : nextLearning ? 'Continue learning' : 'Practice unfinished area'}
+              <button type="button" data-primary-action disabled={refreshing} onClick={startPrimary} className="w-full rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white hover:bg-violet-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-40">
+                {primaryActionLabel}
               </button>
             </TaskDock>
           ) : undefined}

@@ -38,8 +38,8 @@ export function StagedWalkthroughStep({
       <div className="flex items-center justify-between gap-2">
         <button type="button" onClick={() => onMove(-1)} disabled={index === 0} className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-800/80 px-3 py-2 text-sm text-zinc-300 hover:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-30">← Previous</button>
         {index < entries.length - 1
-          ? <button type="button" data-primary-action onClick={() => onMove(1)} className="min-w-0 flex-1 rounded-lg bg-cyan-600 px-3 py-2 text-sm font-semibold text-white hover:bg-cyan-500">Next →</button>
-          : <button type="button" data-primary-action onClick={onContinue} className="min-w-0 flex-1 rounded-lg bg-cyan-600 px-3 py-2 text-sm font-semibold text-white hover:bg-cyan-500">{continueLabel}</button>}
+          ? <button type="button" data-primary-action onClick={() => onMove(1)} className="min-w-0 flex-1 rounded-lg bg-violet-600 px-3 py-2 text-sm font-semibold text-white hover:bg-violet-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400">Next →</button>
+          : <button type="button" data-primary-action onClick={onContinue} className="min-w-0 flex-1 rounded-lg bg-violet-600 px-3 py-2 text-sm font-semibold text-white hover:bg-violet-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400">{continueLabel}</button>}
       </div>
     </TaskDock>
   )

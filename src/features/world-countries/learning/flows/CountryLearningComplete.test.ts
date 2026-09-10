@@ -16,7 +16,7 @@ afterEach(() => {
 })
 
 describe('CountryLearningComplete', () => {
-  it('describes durable Country Learning as established without claiming mastery', async () => {
+  it('describes durable Country Learning as learned without claiming mastery', async () => {
     const mount = document.createElement('div')
     document.body.append(mount)
 
@@ -30,13 +30,13 @@ describe('CountryLearningComplete', () => {
       }))
     })
 
-    expect(mount.textContent).toContain('Countries established')
-    expect(mount.textContent).toContain('Balkans countries established ✓')
-    expect(mount.textContent).toContain('The countries are established')
+    expect(mount.textContent).toContain('Countries learned')
+    expect(mount.textContent).toContain('Balkans countries learned ✓')
+    expect(mount.textContent).toContain('You can now locate and recall all 5 countries')
     expect(mount.textContent).not.toContain('mastery')
   })
 
-  it('explains that a proficiency scope does not create a Subregion milestone', async () => {
+  it('explains that a proficiency scope does not change guided region progress', async () => {
     const mount = document.createElement('div')
     document.body.append(mount)
 
@@ -51,7 +51,7 @@ describe('CountryLearningComplete', () => {
     })
 
     expect(mount.textContent).toContain('Learning complete')
-    expect(mount.textContent).toContain('does not establish a Subregion Learning milestone')
-    expect(mount.textContent).not.toContain('Countries established')
+    expect(mount.textContent).toContain("doesn't change your guided region progress")
+    expect(mount.textContent).not.toContain('Countries learned')
   })
 })

@@ -7,11 +7,11 @@ export function CapitalLearningComplete({ subregion, scopeLabel, onDone, onResta
   const durable = Boolean(subregion && recordCompletion)
   return (
     <LearningComplete
-      eyebrow={durable ? 'Capitals added' : 'Learning complete'}
-      title={durable ? `${label} capitals added ✓` : `${label} complete ✓`}
+      eyebrow={durable ? 'Capitals learned' : 'Learning complete'}
+      title={durable ? `${label} capitals learned ✓` : `${label} complete ✓`}
       summary={durable
-        ? <>You completed Capital Learning for {label}. You've added the country–capital associations; recall can keep strengthening over time.</>
-        : <>You completed final recall for this temporary scope. This does not establish a Subregion Learning milestone.</>}
+        ? <>You've connected each country with its capital. We'll bring them back later so the links get stronger.</>
+        : <>You finished this practice scope. This run doesn't change your guided region progress.</>}
       onDone={onDone}
       onRestart={onRestart}
       doneLabel={doneLabel}
