@@ -64,6 +64,7 @@ describe('World Countries progress hierarchy', () => {
     expect(mount.textContent).toContain('countries complete')
     expect(mount.textContent).toContain('regions with complete recall')
     expect(mount.textContent).toContain('Unpractised')
+    expect(mount.querySelector('[data-testid="world-mastery-summary"]')).not.toBeNull()
     expect(mount.querySelector('[aria-label="Africa core recall distribution"]')).not.toBeNull()
     expect(mount.textContent).not.toContain('Northern Europe')
   })

@@ -3,6 +3,8 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { countries } from '@/features/world-countries/data/countries'
 import { markSubregionCapitalsLearned, markSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningStore'
+import { WORLD_COUNTRIES_PROGRESS_LABELS, getCountryProgressColor } from '@/features/world-countries/learning/progressPresentation'
+import { WORLD_COUNTRIES_COUNTRY_CORE_STATES } from '@/features/world-countries/learning/scopeProgress'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -30,7 +32,6 @@ vi.mock('@/features/world-countries/learning/recallHistory', async importOrigina
   loadWorldCountriesRecallHistory: loadHistoryMock,
 }))
 vi.mock('@/features/world-countries/maps/GeographyOverviewMap', () => ({ GeographyOverviewMap: () => null }))
-vi.mock('@/features/world-countries/ui/WorldMasterySummary', () => ({ WorldMasterySummary: () => null }))
 vi.mock('@/features/world-countries/learning/flows/CountryLearningFlow', () => ({
   CountryLearningFlow: (props: Record<string, unknown>) => {
     countryLearningFlowMock(props)
@@ -205,6 +206,24 @@ function renderLatestRails() {
 }
 
 describe('World Countries Today', () => {
+  it('uses a compact authoritative map legend instead of the large Home mastery summary', async () => {
+    const mount = await renderToday()
+    const legend = mount.querySelector('[data-testid="world-countries-map-legend"]')
+    const states = [...legend?.querySelectorAll<HTMLElement>('[data-progress-state]') ?? []]
+
+    expect(mount.querySelector('[data-testid="world-mastery-summary"]')).toBeNull()
+    expect(legend?.getAttribute('aria-label')).toBe('Map progress states')
+    expect(states.map(entry => entry.dataset.progressState)).toEqual([...WORLD_COUNTRIES_COUNTRY_CORE_STATES])
+    expect(states.map(entry => entry.textContent)).toEqual(WORLD_COUNTRIES_COUNTRY_CORE_STATES.map(state => WORLD_COUNTRIES_PROGRESS_LABELS[state]))
+    expect(states.map(entry => entry.querySelector<HTMLElement>('[aria-hidden="true"]')?.style.backgroundColor)).toEqual(
+      WORLD_COUNTRIES_COUNTRY_CORE_STATES.map(state => {
+        const expectedSwatch = document.createElement('span')
+        expectedSwatch.style.backgroundColor = getCountryProgressColor(state)
+        return expectedSwatch.style.backgroundColor
+      }),
+    )
+  })
+
   it('does not open Progress while recall evidence is unavailable', async () => {
     loadHistoryMock.mockRejectedValueOnce(new Error('storage unavailable'))
     const mount = await renderToday()
@@ -271,7 +290,7 @@ describe('World Countries Today', () => {
     expect(railMount.textContent).not.toContain('20 ready overall')
     expect(railMount.textContent).toContain('Your journey · Northern Europe')
     expect(railMount.textContent).not.toContain('Next in journey')
-    expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Continue learning')
+    expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Learn 3 countries')
     expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('Continue your journey')
     expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('Learn 3 countries · Northern Europe')
   })
@@ -339,7 +358,7 @@ describe('World Countries Today', () => {
 
     const reviewAction = railMount.querySelector<HTMLButtonElement>('[data-review-action]')
     expect(reviewAction).not.toBeNull()
-    expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Continue learning')
+    expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Learn 1 country')
     expect(document.activeElement).toBe(reviewAction)
     expect(railMount.querySelector('[data-review-completion]')).toBeNull()
   })
@@ -476,7 +495,7 @@ describe('World Countries Today', () => {
 
     expect(railMount.textContent).toContain('Reviews caught up')
     expect(railMount.textContent).toContain('Strengthen weak spots')
-    expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Continue learning')
+    expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Learn 1 country')
     act(() => railMount.querySelector<HTMLButtonElement>('[data-review-action]')?.click())
     expect(mount.querySelector('[data-testid="today-review"]')?.getAttribute('data-review-mode')).toBe('consolidation')
   })
@@ -514,7 +533,7 @@ describe('World Countries Today', () => {
 
     expect(railMount.textContent).toContain('Reviews caught up')
     expect(railMount.querySelector('[data-review-action]')).toBeNull()
-    expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Continue learning')
+    expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Learn 1 country')
   })
 
   it('does not render a fake Journey dock when only Review is available', async () => {
@@ -711,6 +730,8 @@ describe('World Countries Today', () => {
     ]]]))
     buildPlanMock.mockReturnValue(plan({ curriculumRecommendation: recommendation('learn-capitals') }))
     const mount = await renderToday()
+
+    expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Add the capitals')
 
     await act(async () => {
       mount.querySelector<HTMLButtonElement>('[data-primary-action]')?.click()

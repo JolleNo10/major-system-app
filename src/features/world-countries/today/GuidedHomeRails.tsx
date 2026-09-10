@@ -144,7 +144,7 @@ export function GuidedHomeRails({
               >
                 <span className="flex items-center justify-between gap-2 text-sm font-semibold">
                   <span>{summary.label}</span>
-                  <span className="text-xs tabular-nums text-zinc-500">{Math.round(summary.progress.completionRatio * 100)}%</span>
+                  <span className="text-xs tabular-nums text-zinc-500">Mastery {Math.round(summary.progress.completionRatio * 100)}%</span>
                 </span>
                 <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-zinc-800" aria-hidden="true">
                   <span className="block h-full rounded-full bg-cyan-500" style={{ width: `${Math.round(summary.progress.completionRatio * 100)}%` }} />
@@ -159,7 +159,7 @@ export function GuidedHomeRails({
           {scopeProgress ? (
             <p className="mt-1 flex items-baseline justify-between gap-2 text-sm text-zinc-300">
               <span className="font-semibold tabular-nums">{scopeProgress.completeCountries} / {scopeProgress.totalCountries} complete</span>
-              <span className="text-xs tabular-nums text-zinc-500">{Math.round(scopeProgress.completionRatio * 100)}%</span>
+              <span className="text-xs tabular-nums text-zinc-500">Mastery {Math.round(scopeProgress.completionRatio * 100)}%</span>
             </p>
           ) : (
             <p role="status" aria-live="polite" className="mt-2 text-xs text-zinc-500">{evidenceStatus === 'loading' ? 'Progress is loading.' : 'Progress is unavailable right now.'}</p>

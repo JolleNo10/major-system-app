@@ -22,7 +22,7 @@ import type { LearningCompletionHandoff, LearningRegionCompletion } from '@/feat
 import { buildLearningPlan, type LearningSetMaximum } from '@/features/world-countries/learning/stagedLearningPlan'
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
 import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
-import { WorldMasterySummary } from '@/features/world-countries/ui/WorldMasterySummary'
+import { WorldCountriesMapLegend } from '@/features/world-countries/ui/WorldCountriesMapLegend'
 import { TodayReviewSession, type WorldCountriesTodayReviewCheckpoint, type WorldCountriesTodayReviewCompletion } from './TodayReviewSession'
 import type { WorldCountriesGuidedRecallMode } from './TodayRails'
 import { GuidedHomeRails } from './GuidedHomeRails'
@@ -429,7 +429,7 @@ export function WorldCountriesToday({
     ? getJourneyActionLabel(journeyLearning, settings.worldCountriesNewItemsPerSet as LearningSetMaximum | undefined)
     : null
   const inspectedSubregionLabel = focusedSubregionId ? getSubregionDefinition(focusedSubregionId).label : null
-  const mapDescriptions = new Map(scopedCountries.map(country => [country.id, `Progress for ${scopeLabel} is shown in the progress summary.`] as const))
+  const mapDescriptions = new Map(scopedCountries.map(country => [country.id, `Progress for ${scopeLabel} is shown in the map legend and geography rail.`] as const))
 
   return (
     <section className="space-y-4 animate-fade-in" aria-labelledby="world-countries-today-heading">
@@ -458,13 +458,15 @@ export function WorldCountriesToday({
       />
 
       <div className="space-y-4">
-        <WorldMasterySummary progress={progress} scopeLabel={scopeLabel} />
         <MapSurface
           context={(
             <div className="px-1">
               <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World Countries · {continent ? 'Continent hub' : 'Home'}</p>
               <h1 id="world-countries-today-heading" className="mt-1 text-2xl font-black text-zinc-100">{continent ? `${continent} learning hub` : 'Your world'}</h1>
               <p className="mt-1 text-sm text-zinc-500">Explore the map to see what you&apos;ve learned and what&apos;s still ahead.</p>
+              <div className="mt-3">
+                <WorldCountriesMapLegend />
+              </div>
             </div>
           )}
           map={(
@@ -489,7 +491,7 @@ export function WorldCountriesToday({
               </div>
             )}>
               <button type="button" data-primary-action disabled={refreshing} onClick={startJourney} className="w-full rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white hover:bg-violet-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-40">
-                Continue learning
+                {journeyActionLabel}
               </button>
             </TaskDock>
           ) : undefined}

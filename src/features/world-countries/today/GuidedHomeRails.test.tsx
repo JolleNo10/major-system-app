@@ -291,4 +291,22 @@ describe('Guided World Countries home rails', () => {
     expect(continentMount.textContent).toContain('World')
     expect(continentMount.textContent).not.toContain('Back to World')
   })
+
+  it('labels geography row and scope footer percentages as Mastery', () => {
+    const mount = renderRails({
+      scopeSummaries: [{
+        id: 'northern-europe',
+        label: 'Northern Europe',
+        progress: { completeCountries: 9, totalCountries: 20, completionRatio: 0.45 },
+        onSelect: vi.fn(),
+        status: 'Journey focus',
+      }],
+      scopeProgress: { completeCountries: 12, totalCountries: 48, completionRatio: 0.25 },
+    })
+
+    const geographyRow = [...mount.querySelectorAll<HTMLButtonElement>('button')]
+      .find(button => button.textContent?.includes('Northern Europe'))
+    expect(geographyRow?.textContent).toContain('Mastery 45%')
+    expect(mount.querySelector('[data-progress-entry]')?.textContent).toContain('Mastery 25%')
+  })
 })
