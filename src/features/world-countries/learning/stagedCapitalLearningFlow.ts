@@ -133,7 +133,10 @@ export function advanceStagedCapitalPlan(state: StagedCapitalLearningFlowState, 
 
 export function skipStagedCapital(state: StagedCapitalLearningFlowState, random: () => number = Math.random) {
   if (state.phase === 'walkthrough') return startStagedCapitalPractice(state, random)
-  if (state.phase === 'practice' || state.phase === 'set-ready' || state.phase === 'combined-ready' || state.phase === 'combined-practice') {
+  if (state.phase === 'set-ready' || state.phase === 'combined-ready') {
+    return advanceStagedCapitalPlan(state, random)
+  }
+  if (state.phase === 'practice' || state.phase === 'combined-practice') {
     return advanceStagedCapitalPlan({ ...state, finalScopeReady: false }, random, false)
   }
   return state

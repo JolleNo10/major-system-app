@@ -398,6 +398,29 @@ describe('World Countries Today', () => {
     expect(mount.querySelector('[data-testid="today-review"]')?.getAttribute('data-review-mode')).toBe('consolidation')
   })
 
+  it('labels completed weak-spot practice as practice after returning Home', async () => {
+    const candidate = { country: countries[0] }
+    buildPlanMock.mockReturnValue(plan({
+      consolidationCandidates: [candidate],
+      consolidationQueue: [candidate],
+      reviewOpportunity: { kind: 'consolidate', candidates: [candidate] },
+    }))
+    const mount = await renderToday()
+    let railMount = renderLatestRails()
+
+    act(() => railMount.querySelector<HTMLButtonElement>('[data-review-action]')?.click())
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-testid="today-review"]')?.click()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    railMount = renderLatestRails()
+
+    expect(railMount.textContent).toContain('Last practice: 1 practised')
+    expect(railMount.textContent).not.toContain('Last review:')
+  })
+
   it('shows a caught-up Review state while keeping Journey Learning available', async () => {
     buildPlanMock.mockReturnValue(plan({
       curriculumRecommendation: recommendation('learn-countries'),

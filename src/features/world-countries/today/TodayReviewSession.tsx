@@ -34,6 +34,11 @@ export interface WorldCountriesTodayReviewCheckpoint {
   stillNeedsWork: number
 }
 
+export interface WorldCountriesTodayReviewCompletion {
+  checkpoint: WorldCountriesTodayReviewCheckpoint
+  mode: WorldCountriesGuidedRecallMode
+}
+
 export function TodayReviewSession({
   candidates,
   activeCountries,

@@ -131,7 +131,7 @@ describe('Guided World Countries home rails', () => {
       dueCount: 15,
       dueCountryCount: 9,
       reviewOpportunity: makeReviewOpportunity('review', 8),
-      reviewCompletion: { reviewed: 8, correctFirstTry: 6, recoveredOnRetry: 1, stillNeedsWork: 1 },
+      reviewCompletion: { mode: 'review', checkpoint: { reviewed: 8, correctFirstTry: 6, recoveredOnRetry: 1, stillNeedsWork: 1 } },
     })
 
     expect(mount.textContent).toContain('Last review: 8 reviewed · 6 first try · 1 recovered · 1 still needs work')
@@ -140,7 +140,7 @@ describe('Guided World Countries home rails', () => {
 
   it('keeps the completed Review result with the caught-up state', () => {
     const mount = renderRails({
-      reviewCompletion: { reviewed: 8, correctFirstTry: 7, recoveredOnRetry: 1, stillNeedsWork: 0 },
+      reviewCompletion: { mode: 'review', checkpoint: { reviewed: 8, correctFirstTry: 7, recoveredOnRetry: 1, stillNeedsWork: 0 } },
     })
 
     expect(mount.querySelector('[aria-labelledby="world-countries-review-opportunity-heading"] h2')?.textContent).toBe('Reviews caught up')

@@ -23,7 +23,7 @@ import { buildLearningPlan, type LearningSetMaximum } from '@/features/world-cou
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
 import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
 import { WorldMasterySummary } from '@/features/world-countries/ui/WorldMasterySummary'
-import { TodayReviewSession, type WorldCountriesTodayReviewCheckpoint } from './TodayReviewSession'
+import { TodayReviewSession, type WorldCountriesTodayReviewCheckpoint, type WorldCountriesTodayReviewCompletion } from './TodayReviewSession'
 import type { WorldCountriesGuidedRecallMode } from './TodayRails'
 import { GuidedHomeRails } from './GuidedHomeRails'
 import { WorldCountriesProgressView } from './WorldCountriesProgressView'
@@ -138,7 +138,7 @@ export function WorldCountriesToday({
   const [reviewMode, setReviewMode] = useState<WorldCountriesGuidedRecallMode>('review')
   const [reviewing, setReviewing] = useState(false)
   const [reviewFocusRequest, setReviewFocusRequest] = useState(0)
-  const [reviewCompletion, setReviewCompletion] = useState<WorldCountriesTodayReviewCheckpoint | null>(null)
+  const [reviewCompletion, setReviewCompletion] = useState<WorldCountriesTodayReviewCompletion | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [learningRun, setLearningRun] = useState<LearningRun | null>(null)
   const [focusedSubregionId, setFocusedSubregionId] = useState<SubregionId | null>(null)
@@ -256,10 +256,11 @@ export function WorldCountriesToday({
   }
 
   const finishReview = async (checkpoint: WorldCountriesTodayReviewCheckpoint) => {
+    const completionMode = reviewMode
     setReviewing(false)
     setReviewCandidates(null)
     setReviewMode('review')
-    setReviewCompletion(checkpoint)
+    setReviewCompletion({ checkpoint, mode: completionMode })
     await refreshAfterReview()
   }
 

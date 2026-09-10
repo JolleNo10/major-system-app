@@ -68,6 +68,27 @@ describe('staged country learning flow', () => {
     expect(flow.finalScopeReady).toBe(true)
   })
 
+  it('uses the same direct Final recall path when Next skips a ready one-Set checkpoint', () => {
+    let flow = createStagedCountryLearningFlow({ countryIds: ['A'], maximum: 3, schedulerSettings: settings })
+    flow = skipStagedCountry(flow)
+    flow = answerUntilReady(flow, current => submitStagedCountryLocation(current, true, 100, () => 0))
+    flow = startStagedCountryPractice(flow)
+    while (flow.phase === 'practice') flow = submitStagedCountryPractice(flow, true, 100, () => 0).state
+
+    expect(flow.phase).toBe('set-ready')
+    flow = skipStagedCountry(flow)
+    expect(flow.phase).toBe('final-recall')
+    expect(flow.finalScopeReady).toBe(true)
+  })
+
+  it('uses direct Final recall from a ready Combined checkpoint', () => {
+    let flow = createStagedCountryLearningFlow({ countryIds: ['A', 'B', 'C', 'D'], maximum: 3, schedulerSettings: settings })
+    flow = { ...flow, stageIndex: 2, phase: 'combined-ready', finalScopeReady: true }
+    flow = skipStagedCountry(flow)
+    expect(flow.phase).toBe('final-recall')
+    expect(flow.finalScopeReady).toBe(true)
+  })
+
   it('restarts Final recall after going Back from it', () => {
     let flow = createStagedCountryLearningFlow({ countryIds: ['A', 'B'], maximum: 3, schedulerSettings: settings })
     flow = skipStagedCountry(flow)

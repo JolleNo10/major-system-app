@@ -182,7 +182,7 @@ export function CountryLearningFlow({
       case 'combined-ready': return <LearningHeader label="Learning context" title={learningScopeLabel} meta={`${stageEntries.length} ${stageEntries.length === 1 ? 'country' : 'countries'} introduced`} onExit={onExit} />
       case 'final-gate': return <LearningHeader label="Learning context" title={learningScopeLabel} meta={`All ${entries.length} ${entries.length === 1 ? 'country' : 'countries'}`} onExit={onExit} />
       case 'final-recall': return <LearningHeader label="Final recall" title={`${(flow.ordered?.currentIndex ?? 0) + 1} / ${flow.ordered?.order.length ?? entries.length}`} onExit={onExit} />
-      case 'complete': return <LearningHeader label="Learning complete" title={learningScopeLabel} onExit={onExit} />
+      case 'complete': return <LearningHeader label="Learning context" title={learningScopeLabel} onExit={onExit} />
     }
   })()
 
@@ -240,7 +240,7 @@ export function CountryLearningFlow({
        content = flow.location ? <SchedulerLocationPracticeStep continent={continent} entries={stageEntries} session={flow.location} label={learningSetContext(flow, stageEntries.length)} onSelect={updateLocation} onBack={() => run(backStagedCountry)} onExit={onExit} surface /> : null
       break
     case 'location-ready':
-       content = <StagedLearningReadyStep title="Find complete" summary="You can now find the countries in this Set." nextDescription="Next: recall their names." nextLabel="Continue to Recall" onNext={() => run(startStagedCountryPractice)} onKeepPractising={() => run(startStagedCountryLocation)} onBack={() => run(backStagedCountry)} onExit={onExit} surface />
+       content = <StagedLearningReadyStep title="Find complete" summary={stagePresentation?.setCount === 1 ? `You found all ${stageEntries.length} ${stageEntries.length === 1 ? 'country' : 'countries'}.` : 'You can now find the countries in this Set.'} nextDescription="Next: recall their names." nextLabel="Continue to Recall" onNext={() => run(startStagedCountryPractice)} onKeepPractising={() => run(startStagedCountryLocation)} onBack={() => run(backStagedCountry)} onExit={onExit} surface />
       break
     case 'practice':
     case 'combined-practice':

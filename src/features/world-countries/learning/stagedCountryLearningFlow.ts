@@ -231,7 +231,10 @@ export function skipStagedCountry(
   if (state.phase === 'walkthrough') return startStagedCountryLocation(state, random)
   if (state.phase === 'location-ready') return startStagedCountryPractice(state, random)
   if (state.phase === 'location-practice') return startStagedCountryPractice(state, random)
-  if (state.phase === 'practice' || state.phase === 'set-ready' || state.phase === 'combined-ready') {
+  if (state.phase === 'set-ready' || state.phase === 'combined-ready') {
+    return advanceStagedCountryPlan(state, random)
+  }
+  if (state.phase === 'practice') {
     return advanceStagedCountryPlan({ ...state, finalScopeReady: false }, random, false)
   }
   if (state.phase === 'combined-practice') return advanceStagedCountryPlan({ ...state, finalScopeReady: false }, random, false)
