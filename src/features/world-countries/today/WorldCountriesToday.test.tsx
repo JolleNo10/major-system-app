@@ -4,6 +4,7 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { countries } from '@/features/world-countries/data/countries'
+import { markSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningStore'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -11,6 +12,7 @@ const loadHistoryMock = vi.hoisted(() => vi.fn(() => Promise.resolve(new Map()))
 const buildPlanMock = vi.hoisted(() => vi.fn())
 const capitalLearningFlowMock = vi.hoisted(() => vi.fn())
 const activeCountries = [countries[0]]
+let milestoneWritten = false
 
 vi.mock('@/app/settings/SettingsContext', () => ({
   useSettings: () => ({ settings: { worldCountriesFuzzyAnswerMatching: false } }),
@@ -29,7 +31,26 @@ vi.mock('@/features/world-countries/learning/recallHistory', async importOrigina
 vi.mock('@/features/world-countries/maps/GeographyOverviewMap', () => ({ GeographyOverviewMap: () => null }))
 vi.mock('@/features/world-countries/ui/WorldMasterySummary', () => ({ WorldMasterySummary: () => null }))
 vi.mock('@/features/world-countries/learning/flows/CountryLearningFlow', () => ({
-  CountryLearningFlow: () => createElement('div', { 'data-testid': 'country-learning-flow' }, 'Country Learning flow'),
+  CountryLearningFlow: (props: Record<string, unknown>) => {
+    const handoff = props.completionHandoff as { description: string; label: string; onContinue: () => void } | undefined
+    return createElement('div', { 'data-testid': 'country-learning-flow' }, [
+      createElement('button', {
+        key: 'complete',
+        type: 'button',
+        'data-testid': 'complete-country-learning',
+        onClick: () => {
+          milestoneWritten = true
+          markSubregionCountriesLearned(countries[0].subregionId, Date.now(), activeCountries)
+        },
+      }, 'Finish Country Learning'),
+      handoff ? createElement('button', {
+        key: 'handoff',
+        type: 'button',
+        'data-testid': 'country-learning-handoff',
+        onClick: handoff.onContinue,
+      }, `${handoff.description} ${handoff.label}`) : null,
+    ])
+  },
 }))
 vi.mock('@/features/world-countries/learning/flows/CapitalLearningFlow', () => ({
   CapitalLearningFlow: (props: Record<string, unknown>) => {
@@ -44,6 +65,8 @@ vi.mock('./todayPlan', async importOriginal => ({
 vi.mock('./TodayReviewSession', () => ({
   TodayReviewSession: (props: Record<string, unknown>) => createElement('button', {
     type: 'button',
+    'data-testid': 'today-review',
+    'data-review-mode': props.mode,
     onClick: () => (props.onDone as (checkpoint: Record<string, number>) => void)({
       reviewed: 1,
       correctFirstTry: 1,
@@ -64,6 +87,8 @@ afterEach(() => {
   loadHistoryMock.mockClear()
   buildPlanMock.mockReset()
   capitalLearningFlowMock.mockReset()
+  milestoneWritten = false
+  localStorage.clear()
 })
 
 describe('World Countries Today', () => {
@@ -143,6 +168,98 @@ describe('World Countries Today', () => {
     })
 
     expect(mount.querySelector('[data-testid="country-learning-flow"]')).not.toBeNull()
+  })
+
+  it('offers the latest post-milestone learn-capitals action and launches it directly', async () => {
+    const country = activeCountries[0]
+    const initialPlan = {
+      dueCandidates: [], reviewQueue: [], consolidationCandidates: [], consolidationQueue: [], dueCount: 0, dueCountryCount: 0,
+      introductions: new Map(),
+      nextLearning: { track: 'learn-countries', subregionId: country.subregionId, continent: country.continent, subregionLabel: 'Northern Europe' },
+      incompleteCountryCount: 1, incompleteSubregionLabels: ['Northern Europe'], scopeComplete: false, caughtUpForToday: false,
+      action: { kind: 'learn', recommendation: { track: 'learn-countries', subregionId: country.subregionId, continent: country.continent, subregionLabel: 'Northern Europe', countryIds: [country.id] } },
+    }
+    const postMilestonePlan = {
+      ...initialPlan,
+      nextLearning: { track: 'learn-capitals', subregionId: country.subregionId, continent: country.continent, subregionLabel: 'Northern Europe' },
+      action: { kind: 'learn', recommendation: { track: 'learn-capitals', subregionId: country.subregionId, continent: country.continent, subregionLabel: 'Northern Europe', countryIds: [country.id] } },
+    }
+    buildPlanMock.mockImplementation(() => milestoneWritten ? postMilestonePlan : initialPlan)
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(WorldCountriesToday, { answerMode: 'typing', onNavigate: vi.fn() }))
+      await Promise.resolve()
+    })
+    await act(async () => {
+      [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Continue learning')?.click()
+    })
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-testid="complete-country-learning"]')?.click()
+      await Promise.resolve()
+    })
+
+    expect(mount.textContent).toContain('Next: add the capitals to these countries.')
+    expect(mount.textContent).toContain('Add the capitals')
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-testid="country-learning-handoff"]')?.click()
+    })
+
+    expect(mount.querySelector('[data-testid="country-learning-flow"]')).toBeNull()
+    expect(capitalLearningFlowMock).toHaveBeenCalledWith(expect.objectContaining({
+      subregion: country.subregionId,
+      entries: [country],
+    }))
+  })
+
+  it.each([
+    ['review', 'Continue review', 'review'],
+    ['consolidate', 'Practice unfinished area', 'consolidation'],
+  ] as const)('replaces the completed Learning run before a %s handoff', async (kind, label, mode) => {
+    const country = activeCountries[0]
+    const initialPlan = {
+      dueCandidates: [], reviewQueue: [], consolidationCandidates: [], consolidationQueue: [], dueCount: 0, dueCountryCount: 0,
+      introductions: new Map(),
+      nextLearning: { track: 'learn-countries', subregionId: country.subregionId, continent: country.continent, subregionLabel: 'Northern Europe' },
+      incompleteCountryCount: 1, incompleteSubregionLabels: ['Northern Europe'], scopeComplete: false, caughtUpForToday: false,
+      action: { kind: 'learn', recommendation: { track: 'learn-countries', subregionId: country.subregionId, continent: country.continent, subregionLabel: 'Northern Europe', countryIds: [country.id] } },
+    }
+    const postMilestonePlan = {
+      ...initialPlan,
+      dueCandidates: kind === 'review' ? [{}] : [],
+      reviewQueue: kind === 'review' ? [{}] : [],
+      consolidationCandidates: kind === 'consolidate' ? [{}] : [],
+      consolidationQueue: kind === 'consolidate' ? [{}] : [],
+      dueCount: kind === 'review' ? 1 : 0,
+      caughtUpForToday: kind === 'consolidate',
+      action: kind === 'review' ? { kind: 'review', candidates: [{ country }] } : { kind: 'consolidate', candidates: [{ country }] },
+    }
+    buildPlanMock.mockImplementation(() => milestoneWritten ? postMilestonePlan : initialPlan)
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(WorldCountriesToday, { answerMode: 'typing', onNavigate: vi.fn() }))
+      await Promise.resolve()
+    })
+    await act(async () => {
+      [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Continue learning')?.click()
+    })
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-testid="complete-country-learning"]')?.click()
+      await Promise.resolve()
+    })
+
+    expect(mount.textContent).toContain(label)
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-testid="country-learning-handoff"]')?.click()
+    })
+
+    expect(mount.querySelector('[data-testid="country-learning-flow"]')).toBeNull()
+    expect(mount.querySelector('[data-testid="today-review"]')?.getAttribute('data-review-mode')).toBe(mode)
   })
 
   it('passes recall-derived Country establishment into Capital Learning presentation', async () => {

@@ -16,7 +16,7 @@ afterEach(() => {
 })
 
 describe('CapitalLearningComplete', () => {
-  it('keeps Capital-specific completion wording while using shared actions', () => {
+  it('describes durable Capital Learning as established without claiming Master region', () => {
     const mount = document.createElement('div')
     document.body.append(mount)
 
@@ -29,10 +29,28 @@ describe('CapitalLearningComplete', () => {
       }))
     })
 
-    expect(mount.textContent).toContain('Capitals learned')
-    expect(mount.textContent).toContain('capitals complete')
-    expect(mount.textContent).toContain('Final recall')
+    expect(mount.textContent).toContain('Capitals established')
+    expect(mount.textContent).toContain('The country-capital layer is established')
+    expect(mount.textContent).not.toContain('Master region')
     expect(mount.textContent).toContain('Back to Learn & Practise')
     expect(mount.textContent).toContain('Learn again')
+  })
+
+  it('keeps temporary proficiency completion explicitly non-milestone', () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement(CapitalLearningComplete, {
+        scopeLabel: 'Proficiency scope',
+        onDone: () => undefined,
+        onRestart: () => undefined,
+      }))
+    })
+
+    expect(mount.textContent).toContain('Learning complete')
+    expect(mount.textContent).toContain('does not establish a Subregion Learning milestone')
+    expect(mount.textContent).not.toContain('Capitals established')
   })
 })

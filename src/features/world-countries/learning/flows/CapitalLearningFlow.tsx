@@ -28,6 +28,7 @@ import {
 import { createSubregionCapitalCompletionReporter } from '@/features/world-countries/learning/capitalLearningCompletion'
 import { classifyRecallAnswer } from '@/features/world-countries/learning/recallAnswerMatching'
 import { CapitalLearningComplete } from './CapitalLearningComplete'
+import type { LearningCompletionHandoff } from './LearningComplete'
 import { GuidedLearningRails } from './GuidedLearningRails'
 import { LearningMapSurface } from './LearningMapSurface'
 import { SchedulerPracticeStep } from './SchedulerPracticeStep'
@@ -73,6 +74,7 @@ export function CapitalLearningFlow({
   onExit,
   onDone,
   doneLabel = 'Back to Learn & Practise',
+  completionHandoff,
   countriesEstablished = false,
   capitalsEstablished = false,
   onWalkthroughCountryChange,
@@ -91,6 +93,7 @@ export function CapitalLearningFlow({
   onExit: () => void
   onDone?: () => void
   doneLabel?: string
+  completionHandoff?: LearningCompletionHandoff
   countriesEstablished?: boolean
   capitalsEstablished?: boolean
   onWalkthroughCountryChange?: (countryId: string | null) => void
@@ -243,7 +246,7 @@ export function CapitalLearningFlow({
       content = flow.ordered ? <StagedFinalRecallStep continent={continent} entries={entries} ordered={flow.ordered} stepLabel="Final recall" answerLabel="Country → Capital" placeholder="Type the capital…" showCountryName answerKind="capital" evaluateAnswer={(answer, country) => evaluateCapitalAnswer(answer, country, fuzzyMatching, entries)} formatFeedback={formatCapitalFeedback} onSubmit={updateFinal} onBack={() => run(backStagedCapital)} onExit={onExit} allowIncorrectSpellingPractice={allowIncorrectSpellingPractice} surface /> : null
       break
     case 'complete':
-      content = <CapitalLearningComplete subregion={subregion} scopeLabel={learningScopeLabel} onDone={onDone ?? onExit} doneLabel={doneLabel} onRestart={() => { completionReporter.current?.reset(); transition(createStagedCapitalLearningFlow({ countryIds: ids, maximum: newItemsPerSet, schedulerSettings })) }} surface />
+      content = <CapitalLearningComplete subregion={subregion} scopeLabel={learningScopeLabel} onDone={onDone ?? onExit} doneLabel={doneLabel} completionHandoff={completionHandoff} recordCompletion={recordCompletion} onRestart={() => { completionReporter.current?.reset(); transition(createStagedCapitalLearningFlow({ countryIds: ids, maximum: newItemsPerSet, schedulerSettings })) }} surface />
       break
   }
   const dockPlacement = ['practice', 'combined-practice', 'final-recall'].includes(flow.phase) ? 'stacked' : 'attached'

@@ -134,6 +134,14 @@ Practice; Quiz is Practice and does not introduce an Assessment semantic.
 Today remains the owner of guided planning/review and delegation into the
 existing Learning flows even though its learner-facing presentation is now the
 Home/Continent guided surface.
+When Today launches Learning, the completed Learning surface can present a
+parent-provided next action: the flow writes its durable milestone first, Today
+observes the feature-local learning revision, and the latest derived Today plan
+remains authoritative for a direct review, Learning, or consolidation handoff.
+If that plan has no actionable continuation, completion returns to the current
+World/Continent guided surface. Direct Learn & Practise and temporary
+proficiency Learning remain caller-owned and do not receive a fabricated Today
+handoff.
 
 Mounted World Countries consumers subscribe directly to the external state they
 derive: geography metadata, durable Subregion learning, and World Countries

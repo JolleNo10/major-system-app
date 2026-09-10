@@ -16,7 +16,7 @@ afterEach(() => {
 })
 
 describe('CountryLearningComplete', () => {
-  it('shows the completed subregion country count', async () => {
+  it('describes durable Country Learning as established without claiming mastery', async () => {
     const mount = document.createElement('div')
     document.body.append(mount)
 
@@ -30,8 +30,9 @@ describe('CountryLearningComplete', () => {
       }))
     })
 
-    expect(mount.textContent).toContain('country #5')
-    expect(mount.textContent).not.toContain('country #N')
+    expect(mount.textContent).toContain('Countries established')
+    expect(mount.textContent).toContain('The countries are established')
+    expect(mount.textContent).not.toContain('mastery')
   })
 
   it('explains that a proficiency scope does not create a Subregion milestone', async () => {
@@ -48,6 +49,8 @@ describe('CountryLearningComplete', () => {
       }))
     })
 
-    expect(mount.textContent).toContain('does not count as a learned Subregion')
+    expect(mount.textContent).toContain('Learning complete')
+    expect(mount.textContent).toContain('does not establish a Subregion Learning milestone')
+    expect(mount.textContent).not.toContain('Countries established')
   })
 })

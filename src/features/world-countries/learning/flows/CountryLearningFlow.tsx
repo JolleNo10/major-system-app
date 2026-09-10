@@ -31,6 +31,7 @@ import {
 import { markSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningStore'
 import { classifyRecallAnswer } from '@/features/world-countries/learning/recallAnswerMatching'
 import { CountryLearningComplete } from './CountryLearningComplete'
+import type { LearningCompletionHandoff } from './LearningComplete'
 import { GuidedLearningRails } from './GuidedLearningRails'
 import { LearningMapSurface } from './LearningMapSurface'
 import { SchedulerLocationPracticeStep } from './SchedulerLocationPracticeStep'
@@ -78,6 +79,7 @@ export function CountryLearningFlow({
   onExit,
   onDone,
   doneLabel = 'Back to Learn & Practise',
+  completionHandoff,
   countriesEstablished = false,
   capitalsEstablished = false,
   recordCompletion = true,
@@ -95,6 +97,7 @@ export function CountryLearningFlow({
   onExit: () => void
   onDone?: () => void
   doneLabel?: string
+  completionHandoff?: LearningCompletionHandoff
   countriesEstablished?: boolean
   capitalsEstablished?: boolean
   recordCompletion?: boolean
@@ -260,7 +263,7 @@ export function CountryLearningFlow({
       content = flow.ordered ? <StagedFinalRecallStep continent={continent} entries={entries} ordered={flow.ordered} stepLabel="Final recall" answerLabel="Country name" placeholder="Type the country…" showCountryName={false} answerKind="country" evaluateAnswer={(answer, country) => evaluateCountryAnswer(answer, country, fuzzyMatching, entries)} formatFeedback={formatCountryFeedback} onSubmit={updateFinal} onBack={() => run(backStagedCountry)} onExit={onExit} allowIncorrectSpellingPractice={allowIncorrectSpellingPractice} surface /> : null
       break
     case 'complete':
-      content = <CountryLearningComplete subregion={subregion} scopeLabel={learningScopeLabel} countryCount={entries.length} onDone={onDone ?? onExit} doneLabel={doneLabel} onRestart={() => { completionReported.current = false; transition(createStagedCountryLearningFlow({ countryIds: ids, maximum: newItemsPerSet, schedulerSettings })) }} surface />
+      content = <CountryLearningComplete subregion={subregion} scopeLabel={learningScopeLabel} countryCount={entries.length} onDone={onDone ?? onExit} doneLabel={doneLabel} completionHandoff={completionHandoff} recordCompletion={recordCompletion} onRestart={() => { completionReported.current = false; transition(createStagedCountryLearningFlow({ countryIds: ids, maximum: newItemsPerSet, schedulerSettings })) }} surface />
       break
   }
   const dockPlacement = ['practice', 'combined-practice', 'final-recall'].includes(flow.phase) ? 'stacked' : 'attached'

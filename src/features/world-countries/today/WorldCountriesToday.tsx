@@ -18,6 +18,7 @@ import { deriveWorldCountriesScopeProgressForCountries } from '@/features/world-
 import { getCountryProgressColor, getCountryProgressState } from '@/features/world-countries/learning/progressPresentation'
 import { CountryLearningFlow } from '@/features/world-countries/learning/flows/CountryLearningFlow'
 import { CapitalLearningFlow } from '@/features/world-countries/learning/flows/CapitalLearningFlow'
+import type { LearningCompletionHandoff } from '@/features/world-countries/learning/flows/LearningComplete'
 import type { LearningSetMaximum } from '@/features/world-countries/learning/stagedLearningPlan'
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
 import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
@@ -47,6 +48,48 @@ const EMPTY_REVIEW_REASON_SUMMARY: WorldCountriesTodayReviewReasonSummary = {
   firstReviewAfterLearning: 0,
   spaced: 0,
   repeated: 0,
+}
+
+function isSameLearningRecommendation(
+  current: WorldCountriesTodayLearningRecommendation,
+  next: WorldCountriesTodayLearningRecommendation,
+): boolean {
+  return current.track === next.track
+    && current.subregionId === next.subregionId
+    && current.countryIds.length === next.countryIds.length
+    && current.countryIds.every((countryId, index) => countryId === next.countryIds[index])
+}
+
+function createCompletionHandoff(
+  action: WorldCountriesTodayPlan['action'],
+  currentRecommendation: WorldCountriesTodayLearningRecommendation,
+  returnLabel: string,
+  onContinue: () => void,
+): LearningCompletionHandoff | undefined {
+  if (action.kind === 'learn' && isSameLearningRecommendation(currentRecommendation, action.recommendation)) return undefined
+
+  switch (action.kind) {
+    case 'review':
+      return { description: 'Core review is due next for this guided scope.', label: 'Continue review', onContinue }
+    case 'consolidate':
+      return { description: 'Strengthen the unfinished recall in this guided scope next.', label: 'Practice unfinished area', onContinue }
+    case 'learn': {
+      const isCountryToCapital = currentRecommendation.track === 'learn-countries'
+        && action.recommendation.track === 'learn-capitals'
+        && action.recommendation.subregionId === currentRecommendation.subregionId
+      return isCountryToCapital
+        ? { description: 'Next: add the capitals to these countries.', label: 'Add the capitals', onContinue }
+        : {
+            description: `Next: learn ${action.recommendation.track === 'learn-countries' ? 'the countries' : 'the capitals'} in ${action.recommendation.subregionLabel}.`,
+            label: action.recommendation.track === 'learn-countries' ? 'Learn the countries' : 'Add the capitals',
+            onContinue,
+          }
+    }
+    case 'complete':
+      return { description: 'Core Country and Capital recall is complete for this guided scope.', label: returnLabel, onContinue }
+    case 'unavailable':
+      return { description: 'No further guided activity is available for this scope right now.', label: returnLabel, onContinue }
+  }
 }
 
 /** Map-centered Today orchestration for derived World Countries review. */
@@ -152,32 +195,50 @@ export function WorldCountriesToday({
     setRefreshing(false)
   }
 
-  const startPrimary = () => {
-    if (!plan || evidence.status !== 'ready' || scopedCountries.length === 0) return
-    const action = plan.action
+  const finishLearning = () => {
+    setLearningRun(null)
+    setCheckpoint(null)
+    void refreshAfterActivity()
+  }
+
+  const launchAction = (action: WorldCountriesTodayPlan['action']) => {
     switch (action.kind) {
       case 'review':
+        setLearningRun(null)
         setReviewCandidates(action.candidates)
         setReviewMode('review')
         setReviewing(true)
         setCheckpoint(null)
         return
       case 'consolidate':
+        setLearningRun(null)
         setReviewCandidates(action.candidates)
         setReviewMode('consolidation')
         setReviewing(true)
         setCheckpoint(null)
         return
       case 'learn': {
-        const countryEntries = geographicOrder.countries.filter(country => country.subregionId === action.recommendation.subregionId)
-        if (!countryEntries.length) return
+        const countriesById = new Map(geographicOrder.countries.map(country => [country.id, country]))
+        const countryEntries = action.recommendation.countryIds
+          .map(countryId => countriesById.get(countryId))
+          .filter((country): country is Country => Boolean(country))
+        if (countryEntries.length !== action.recommendation.countryIds.length) return
+        setReviewing(false)
+        setReviewCandidates(null)
+        setCheckpoint(null)
         setLearningRun({ recommendation: action.recommendation, countryEntries })
         return
       }
       case 'complete':
       case 'unavailable':
+        finishLearning()
         return
     }
+  }
+
+  const startPrimary = () => {
+    if (!plan || evidence.status !== 'ready' || scopedCountries.length === 0) return
+    launchAction(plan.action)
   }
 
   const finishReview = async (nextCheckpoint: WorldCountriesTodayReviewCheckpoint) => {
@@ -194,12 +255,6 @@ export function WorldCountriesToday({
     setReviewing(false)
     setReviewCandidates(null)
     setReviewMode('review')
-    void refreshAfterActivity()
-  }
-
-  const finishLearning = () => {
-    setLearningRun(null)
-    setCheckpoint(null)
     void refreshAfterActivity()
   }
 
@@ -250,6 +305,9 @@ export function WorldCountriesToday({
     : []
   const scopeLabel = continent ?? 'World'
   const navigateWorld = onWorld ?? (() => undefined)
+  const completionHandoff = learningRun && evidence.status === 'ready' && plan
+    ? createCompletionHandoff(plan.action, learningRun.recommendation, `Back to ${continent ?? 'World'}`, () => launchAction(plan.action))
+    : undefined
 
   if (showProgress) {
     return <WorldCountriesProgressView
@@ -287,6 +345,7 @@ export function WorldCountriesToday({
         onExit={finishLearning}
         onDone={finishLearning}
         doneLabel={`Back to ${continent ?? 'World'}`}
+        completionHandoff={completionHandoff}
         recordCompletion={true}
       />
     }
@@ -305,6 +364,7 @@ export function WorldCountriesToday({
       onExit={finishLearning}
       onDone={finishLearning}
       doneLabel={`Back to ${continent ?? 'World'}`}
+      completionHandoff={completionHandoff}
       recordCompletion={true}
     />
   }

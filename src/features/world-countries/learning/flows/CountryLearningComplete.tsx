@@ -1,28 +1,31 @@
 import type { SubregionId } from '@/features/world-countries/data/subregions'
 import { getSubregionDefinition } from '@/features/world-countries/data/subregions'
-import { LearningComplete } from './LearningComplete'
+import { LearningComplete, type LearningCompletionHandoff } from './LearningComplete'
 
-export function CountryLearningComplete({ subregion, scopeLabel, countryCount, onDone, onRestart, doneLabel, surface }: {
+export function CountryLearningComplete({ subregion, scopeLabel, countryCount, onDone, onRestart, doneLabel, completionHandoff, recordCompletion = true, surface }: {
   subregion?: SubregionId
   scopeLabel?: string
   countryCount: number
   onDone: () => void
   onRestart: () => void
   doneLabel?: string
+  completionHandoff?: LearningCompletionHandoff
+  recordCompletion?: boolean
   surface?: boolean
 }) {
   const label = scopeLabel ?? (subregion ? getSubregionDefinition(subregion).label : 'Learning scope')
-  const recordedSummary = subregion
-    ? 'This Learning result is now recorded for the Subregion.'
-    : 'This temporary proficiency scope does not count as a learned Subregion.'
+  const durable = Boolean(subregion && recordCompletion)
   return (
     <LearningComplete
-      eyebrow="Countries learned"
-      title={`${label} complete ✓`}
-      summary={<>You completed Final recall from country #1 through country #{countryCount}. {recordedSummary}</>}
+      eyebrow={durable ? 'Countries established' : 'Learning complete'}
+      title={durable ? `${label} countries established ✓` : `${label} complete ✓`}
+      summary={durable
+        ? <>You completed Country Learning for {label}. The countries are established ({countryCount} total); recall can keep strengthening over time.</>
+        : <>You completed final recall for this temporary scope. This does not establish a Subregion Learning milestone.</>}
       onDone={onDone}
       onRestart={onRestart}
       doneLabel={doneLabel}
+      completionHandoff={durable ? completionHandoff : undefined}
       surface={surface}
     />
   )

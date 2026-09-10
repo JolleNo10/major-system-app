@@ -39,4 +39,34 @@ describe('LearningComplete', () => {
     expect(mount.textContent).toContain('Back to Learn & Practise')
     expect(mount.textContent).toContain('Learn again')
   })
+
+  it('uses a supplied guided handoff for the primary action while keeping restart secondary', () => {
+    const onDone = vi.fn()
+    const onContinue = vi.fn()
+    const onRestart = vi.fn()
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement(LearningComplete, {
+        eyebrow: 'Countries established',
+        title: 'Northern Europe countries established ✓',
+        summary: 'Country completion summary',
+        onDone,
+        onRestart,
+        completionHandoff: {
+          description: 'Next: add the capitals to these countries.',
+          label: 'Add the capitals',
+          onContinue,
+        },
+      }))
+    })
+
+    expect(mount.textContent).toContain('Next: add the capitals to these countries.')
+    expect(mount.textContent).toContain('Add the capitals')
+    act(() => mount.querySelector('[data-primary-action]')?.dispatchEvent(new MouseEvent('click', { bubbles: true })))
+    expect(onContinue).toHaveBeenCalledOnce()
+    expect(onDone).not.toHaveBeenCalled()
+  })
 })
