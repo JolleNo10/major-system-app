@@ -455,10 +455,17 @@ export function WorldCountriesToday({
     : plan?.reviewOpportunity?.kind === 'consolidate'
       ? plan.consolidationCandidates.length
       : 0
+  const activeSubregionLabel = activeSubregionId ? getSubregionDefinition(activeSubregionId).label : null
+  const canDrillCompletedRegion = Boolean(
+    activeSubregionId
+      && evidence.status === 'ready'
+      && scopedCountries.length > 0
+      && journey?.regionLearned
+      && !activeLearningRecommendation,
+  )
   const journeyActionLabel = activeLearningRecommendation
     ? getJourneyActionLabel(activeLearningRecommendation)
     : null
-  const activeSubregionLabel = activeSubregionId ? getSubregionDefinition(activeSubregionId).label : null
   const mapDescriptions = new Map(scopedCountries.map(country => [country.id, `Progress for ${scopeLabel} is shown in the map legend and geography rail.`] as const))
 
   return (
@@ -522,6 +529,20 @@ export function WorldCountriesToday({
             )}>
               <button type="button" data-primary-action disabled={refreshing} onClick={startJourney} className="w-full rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white hover:bg-violet-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-40">
                 {journeyActionLabel}
+              </button>
+            </TaskDock>
+          ) : canDrillCompletedRegion ? (
+            <TaskDock variant="navigation" status={(
+                <div data-task-scope-context>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-cyan-300">Learning complete</p>
+                  <p className="mt-1 font-semibold text-zinc-100">{activeSubregionLabel}</p>
+                  <p className="mt-1 text-sm text-zinc-400">You can now drill this region whenever you want.</p>
+                </div>
+            )}>
+              <button type="button" data-primary-action disabled={refreshing} onClick={() => {
+                if (activeSubregionId) onNavigate({ area: 'drill', subregionId: activeSubregionId })
+              }} className="w-full rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-200 hover:border-cyan-400 hover:bg-cyan-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 disabled:cursor-not-allowed disabled:opacity-40">
+                Drill {activeSubregionLabel}
               </button>
             </TaskDock>
           ) : undefined}

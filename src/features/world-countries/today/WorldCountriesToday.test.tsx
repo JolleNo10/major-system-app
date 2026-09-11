@@ -679,14 +679,20 @@ describe('World Countries Today', () => {
     expect(mount.querySelector('[data-primary-action]')).toBeNull()
   })
 
-  it('keeps a selected learned Subregion active without fabricating a Learning CTA', async () => {
+  it('keeps a selected learned Subregion active and offers Drill without falling back to the planner', async () => {
     const northern = countries.find(country => country.subregionId === 'northern-europe')!
     const central = countries.find(country => country.subregionId === 'central-europe')!
     activeCountries = [northern, central]
     markSubregionCountriesLearned(northern.subregionId, Date.now(), activeCountries)
     markSubregionCapitalsLearned(northern.subregionId, Date.now(), activeCountries)
     const centralRecommendation = recommendation('learn-countries', [central.id], central)
+    const onNavigate = vi.fn()
     buildPlanMock.mockReturnValue(plan({
+      dueCandidates: [{ country: northern }],
+      reviewQueue: [{ country: northern }],
+      dueCount: 1,
+      dueCountryCount: 1,
+      reviewOpportunity: { kind: 'review', candidates: [{ country: northern }] },
       curriculumRecommendation: centralRecommendation,
       plannerFocusSubregionId: central.subregionId,
       curriculumRecommendationsBySubregion: new Map([
@@ -695,15 +701,21 @@ describe('World Countries Today', () => {
       ]),
     }))
 
-    const mount = await renderToday({ continent: 'Europe' })
+    const mount = await renderToday({ continent: 'Europe', onNavigate })
     let railMount = renderLatestRails()
     act(() => [...railMount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent?.startsWith('Northern Europe'))?.click())
     railMount = renderLatestRails()
 
     expect(railMount.textContent).toContain('Learning complete · Northern Europe')
     expect(railMount.querySelector('[data-active-focus="true"]')?.textContent).toContain('Northern Europe')
-    expect(mount.querySelector('[data-primary-action]')).toBeNull()
-    expect(mount.querySelector('[data-task-scope-context]')).toBeNull()
+    expect(railMount.querySelector('[data-review-action]')).not.toBeNull()
+    expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('Learning complete')
+    expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('You can now drill this region whenever you want.')
+    expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Drill Northern Europe')
+    expect(mount.querySelector('[data-task-scope-context]')?.textContent).not.toContain('Central Europe')
+
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-primary-action]')?.click())
+    expect(onNavigate).toHaveBeenCalledWith({ area: 'drill', subregionId: 'northern-europe' })
   })
 
   it('hands Learning completion to the next Journey recommendation, not Review', async () => {
@@ -891,7 +903,7 @@ describe('World Countries Today', () => {
     }))
     const mount = await renderToday({ continent: 'Europe' })
 
-    expect(mount.querySelector('[data-primary-action]')).toBeNull()
+    expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Drill Northern Europe')
     const railMount = renderLatestRails()
     expect(railMount.textContent).toContain('Learning complete')
     expect(railMount.textContent).toContain('Mastery')
