@@ -43,6 +43,7 @@ vi.mock('@/features/world-countries/learning/flows/CountryLearningFlow', () => (
     countryLearningFlowMock(props)
     const handoff = props.completionHandoff as { description: string; label: string; onContinue: () => void; stopLabel?: string; onStop?: () => void } | undefined
     const regionCompletion = props.regionCompletion as { masteryStatus: string } | undefined
+    const completedRegionAction = props.completedRegionAction as { label: string; onAction: () => void } | undefined
     return createElement('div', { 'data-testid': 'country-learning-flow' }, [
       createElement('button', {
         key: 'complete',
@@ -53,6 +54,7 @@ vi.mock('@/features/world-countries/learning/flows/CountryLearningFlow', () => (
           markSubregionCountriesLearned(props.subregion as typeof countries[number]['subregionId'], Date.now(), activeCountries)
         },
       }, 'Finish Country Learning'),
+      completedRegionAction ? createElement('button', { key: 'region-action', type: 'button', 'data-testid': 'country-learning-region-action', onClick: completedRegionAction.onAction }, completedRegionAction.label) : null,
       regionCompletion ? createElement('p', { key: 'region', 'data-testid': 'country-region-completion' }, `Region learned · Mastery ${regionCompletion.masteryStatus}`) : null,
       createElement('button', {
         key: 'done',
@@ -80,6 +82,7 @@ vi.mock('@/features/world-countries/learning/flows/CapitalLearningFlow', () => (
     capitalLearningFlowMock(props)
     const handoff = props.completionHandoff as { description: string; label: string; onContinue: () => void; stopLabel?: string; onStop?: () => void } | undefined
     const regionCompletion = props.regionCompletion as { masteryStatus: string } | undefined
+    const completedRegionAction = props.completedRegionAction as { label: string; onAction: () => void } | undefined
     return createElement('div', { 'data-testid': 'capital-learning-flow' }, [
       createElement('button', {
         key: 'complete',
@@ -90,6 +93,7 @@ vi.mock('@/features/world-countries/learning/flows/CapitalLearningFlow', () => (
           markSubregionCapitalsLearned(props.subregion as typeof countries[number]['subregionId'], Date.now(), activeCountries)
         },
       }, 'Finish Capital Learning'),
+      completedRegionAction ? createElement('button', { key: 'region-action', type: 'button', 'data-testid': 'capital-learning-region-action', onClick: completedRegionAction.onAction }, completedRegionAction.label) : null,
       regionCompletion ? createElement('p', { key: 'region', 'data-testid': 'region-completion' }, `Region learned · Mastery ${regionCompletion.masteryStatus}`) : null,
       handoff ? createElement('button', {
         key: 'handoff',
@@ -748,7 +752,8 @@ describe('World Countries Today', () => {
       plannerFocusSubregionId: western.subregionId,
     })
     buildPlanMock.mockImplementation(() => capitalMilestoneWritten ? postMilestonePlan : initialPlan)
-    const mount = await renderToday({ continent: 'Europe' })
+    const onNavigate = vi.fn()
+    const mount = await renderToday({ continent: 'Europe', onNavigate })
 
     await act(async () => {
       mount.querySelector<HTMLButtonElement>('[data-primary-action]')?.click()
@@ -762,8 +767,13 @@ describe('World Countries Today', () => {
     expect(mount.querySelector('[data-testid="region-completion"]')?.textContent).toContain('Region learned')
     expect(mount.textContent).toContain('Start Western Europe')
     expect(mount.textContent).toContain('Back to Europe')
+    expect(mount.querySelector('[data-testid="capital-learning-region-action"]')?.textContent).toBe('Drill Northern Europe')
+    expect(mount.textContent).not.toContain('Learn again')
     expect(mount.textContent).not.toContain('Learn 1 country')
     expect(countryLearningFlowMock).not.toHaveBeenCalled()
+
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="capital-learning-region-action"]')?.click())
+    expect(onNavigate).toHaveBeenCalledWith({ area: 'drill', subregionId: northern.subregionId })
 
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="capital-learning-handoff"]')?.click())
     expect(countryLearningFlowMock).toHaveBeenCalledWith(expect.objectContaining({
@@ -850,7 +860,8 @@ describe('World Countries Today', () => {
     buildPlanMock.mockImplementation(() => capitalMilestoneWritten
       ? plan({ curriculumRecommendation: null, plannerFocusSubregionId: null })
       : plan({ curriculumRecommendation: recommendation('learn-capitals', [northern.id], northern), plannerFocusSubregionId: northern.subregionId }))
-    const mount = await renderToday({ continent: 'Europe' })
+    const onNavigate = vi.fn()
+    const mount = await renderToday({ continent: 'Europe', onNavigate })
 
     await act(async () => {
       mount.querySelector<HTMLButtonElement>('[data-primary-action]')?.click()
@@ -863,7 +874,10 @@ describe('World Countries Today', () => {
 
     expect(mount.querySelector('[data-testid="region-completion"]')).not.toBeNull()
     expect(mount.querySelector('[data-testid="capital-learning-handoff"]')).toBeNull()
+    expect(mount.querySelector('[data-testid="capital-learning-region-action"]')?.textContent).toBe('Drill Northern Europe')
     expect(mount.textContent).not.toContain('Start Western Europe')
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="capital-learning-region-action"]')?.click())
+    expect(onNavigate).toHaveBeenCalledWith({ area: 'drill', subregionId: northern.subregionId })
     await act(async () => {
       mount.querySelector<HTMLButtonElement>('[data-testid="capital-learning-done"]')?.click()
       await Promise.resolve()

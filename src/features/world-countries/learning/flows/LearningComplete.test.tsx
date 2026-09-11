@@ -100,4 +100,40 @@ describe('LearningComplete', () => {
     act(() => mount.querySelector<HTMLButtonElement>('[data-completion-stop]')?.click())
     expect(onStop).toHaveBeenCalledOnce()
   })
+
+  it('replaces restart with the completed-region action for a learned region', () => {
+    const onAction = vi.fn()
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement(LearningComplete, {
+        eyebrow: 'Capitals learned',
+        title: 'Eastern Europe capitals learned',
+        summary: 'Capital completion summary',
+        onDone: vi.fn(),
+        onRestart: vi.fn(),
+        completionHandoff: {
+          description: 'Next region: Northern Europe',
+          label: 'Start Northern Europe',
+          onContinue: vi.fn(),
+          stopLabel: 'Back to Europe',
+          onStop: vi.fn(),
+        },
+        regionCompletion: { masteryStatus: 'building' },
+        regionLabel: 'Eastern Europe',
+        completedRegionAction: { label: 'Drill Eastern Europe', onAction },
+      }))
+    })
+
+    expect(mount.textContent).not.toContain('Learn again')
+    expect(mount.textContent).toContain('Start Northern Europe')
+    expect(mount.textContent).toContain('Back to Europe')
+    expect(mount.textContent).toContain('Drill Eastern Europe')
+    expect(mount.querySelectorAll('button')).toHaveLength(3)
+
+    act(() => mount.querySelector<HTMLButtonElement>('[data-completion-region-action]')?.click())
+    expect(onAction).toHaveBeenCalledOnce()
+  })
 })

@@ -1,8 +1,8 @@
 import type { SubregionId } from '@/features/world-countries/data/subregions'
 import { getSubregionDefinition } from '@/features/world-countries/data/subregions'
-import { LearningComplete, type LearningCompletionHandoff, type LearningRegionCompletion } from './LearningComplete'
+import { LearningComplete, type LearningCompletedRegionAction, type LearningCompletionHandoff, type LearningRegionCompletion } from './LearningComplete'
 
-export function CapitalLearningComplete({ subregion, scopeLabel, onDone, onRestart, doneLabel, completionHandoff, regionCompletion, recordCompletion = true, surface }: { subregion?: SubregionId; scopeLabel?: string; onDone: () => void; onRestart: () => void; doneLabel?: string; completionHandoff?: LearningCompletionHandoff; regionCompletion?: LearningRegionCompletion; recordCompletion?: boolean; surface?: boolean }) {
+export function CapitalLearningComplete({ subregion, scopeLabel, onDone, onRestart, doneLabel, completionHandoff, regionCompletion, completedRegionAction, recordCompletion = true, surface }: { subregion?: SubregionId; scopeLabel?: string; onDone: () => void; onRestart: () => void; doneLabel?: string; completionHandoff?: LearningCompletionHandoff; regionCompletion?: LearningRegionCompletion; completedRegionAction?: LearningCompletedRegionAction; recordCompletion?: boolean; surface?: boolean }) {
   const label = scopeLabel ?? (subregion ? getSubregionDefinition(subregion).label : 'Learning scope')
   const durable = Boolean(subregion && recordCompletion)
   return (
@@ -17,6 +17,7 @@ export function CapitalLearningComplete({ subregion, scopeLabel, onDone, onResta
       doneLabel={doneLabel}
       completionHandoff={durable ? completionHandoff : undefined}
       regionCompletion={durable ? regionCompletion : undefined}
+      completedRegionAction={durable ? completedRegionAction : undefined}
       regionLabel={label}
       surface={surface}
     />

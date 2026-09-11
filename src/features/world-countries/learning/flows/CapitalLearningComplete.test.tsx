@@ -94,6 +94,7 @@ describe('CapitalLearningComplete', () => {
           stopLabel: 'Back to Europe',
           onStop,
         },
+        completedRegionAction: { label: 'Drill Balkans', onAction: vi.fn() },
         surface: true,
       }))
     })
@@ -107,6 +108,8 @@ describe('CapitalLearningComplete', () => {
     expect(mount.textContent).toContain('Review will bring them back later')
     expect(mount.textContent).toContain('Start Eastern Europe')
     expect(mount.textContent).toContain('Back to Europe')
+    expect(mount.textContent).toContain('Drill Balkans')
+    expect(mount.textContent).not.toContain('Learn again')
     expect(mount.querySelectorAll('button')).toHaveLength(3)
     expect(mount.textContent).not.toContain('Mastery Mastered')
 

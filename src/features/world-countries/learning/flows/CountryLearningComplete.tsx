@@ -1,8 +1,8 @@
 import type { SubregionId } from '@/features/world-countries/data/subregions'
 import { getSubregionDefinition } from '@/features/world-countries/data/subregions'
-import { LearningComplete, type LearningCompletionHandoff, type LearningRegionCompletion } from './LearningComplete'
+import { LearningComplete, type LearningCompletedRegionAction, type LearningCompletionHandoff, type LearningRegionCompletion } from './LearningComplete'
 
-export function CountryLearningComplete({ subregion, scopeLabel, countryCount, onDone, onRestart, doneLabel, completionHandoff, regionCompletion, recordCompletion = true, surface }: {
+export function CountryLearningComplete({ subregion, scopeLabel, countryCount, onDone, onRestart, doneLabel, completionHandoff, regionCompletion, completedRegionAction, recordCompletion = true, surface }: {
   subregion?: SubregionId
   scopeLabel?: string
   countryCount: number
@@ -11,6 +11,7 @@ export function CountryLearningComplete({ subregion, scopeLabel, countryCount, o
   doneLabel?: string
   completionHandoff?: LearningCompletionHandoff
   regionCompletion?: LearningRegionCompletion
+  completedRegionAction?: LearningCompletedRegionAction
   recordCompletion?: boolean
   surface?: boolean
 }) {
@@ -28,6 +29,7 @@ export function CountryLearningComplete({ subregion, scopeLabel, countryCount, o
       doneLabel={doneLabel}
       completionHandoff={durable ? completionHandoff : undefined}
       regionCompletion={durable ? regionCompletion : undefined}
+      completedRegionAction={durable ? completedRegionAction : undefined}
       regionLabel={label}
       surface={surface}
     />

@@ -9,7 +9,7 @@ import { SettingsProvider } from '@/app/settings/SettingsContext'
 import { WorldCountries } from './WorldCountries'
 
 vi.mock('./drill/WorldCountriesDrill', () => ({
-  WorldCountriesDrill: ({ onExit, initialPurpose, initialLearnPracticeMode }: { onExit?: () => void; initialPurpose?: string; initialLearnPracticeMode?: string }) => createElement('div', { 'data-testid': 'drill-workflow' }, createElement('button', { type: 'button', onClick: onExit }, 'Exit Drill'), `Drill workflow ${initialPurpose ?? 'drill'} ${initialLearnPracticeMode ?? ''}`),
+  WorldCountriesDrill: ({ onExit, initialPurpose, initialLearnPracticeMode, initialSubregionId }: { onExit?: () => void; initialPurpose?: string; initialLearnPracticeMode?: string; initialSubregionId?: string }) => createElement('div', { 'data-testid': 'drill-workflow' }, createElement('button', { type: 'button', onClick: onExit }, 'Exit Drill'), `Drill workflow ${initialPurpose ?? 'drill'} ${initialLearnPracticeMode ?? ''} ${initialSubregionId ?? ''}`),
 }))
 
 vi.mock('./recite/WorldCountriesRecite', () => ({
@@ -17,9 +17,10 @@ vi.mock('./recite/WorldCountriesRecite', () => ({
 }))
 
 vi.mock('./today/WorldCountriesToday', () => ({
-  WorldCountriesToday: (props: { onSelectContinent?: (continent: 'Europe') => void; onWorld?: () => void }) => createElement('div', { 'data-testid': 'today-workflow' },
+  WorldCountriesToday: (props: { onNavigate?: (navigation: { area: 'drill'; subregionId: 'eastern-europe' }) => void; onSelectContinent?: (continent: 'Europe') => void; onWorld?: () => void }) => createElement('div', { 'data-testid': 'today-workflow' },
     createElement('button', { type: 'button', onClick: () => props.onSelectContinent?.('Europe') }, 'Open Europe'),
     createElement('button', { type: 'button', onClick: props.onWorld }, 'Back to World'),
+    createElement('button', { type: 'button', 'data-testid': 'open-completed-region-drill', onClick: () => props.onNavigate?.({ area: 'drill', subregionId: 'eastern-europe' }) }, 'Drill Eastern Europe'),
     'Guided home',
   ),
 }))
@@ -195,5 +196,14 @@ describe('World Countries guided shell', () => {
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-play-activity="custom-drill"]')?.click())
 
     expect(mount.querySelector('[data-testid="drill-workflow"]')?.textContent).toContain('Drill workflow drill')
+  })
+
+  it('routes a completed-region Drill action to setup with that region selected', async () => {
+    const mount = await renderShell()
+
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="open-completed-region-drill"]')?.click())
+
+    expect(mount.querySelector('[data-testid="drill-workflow"]')?.textContent).toContain('Drill workflow drill')
+    expect(mount.querySelector('[data-testid="drill-workflow"]')?.textContent).toContain('eastern-europe')
   })
 })

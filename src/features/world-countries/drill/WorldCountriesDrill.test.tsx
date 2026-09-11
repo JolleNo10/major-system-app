@@ -95,13 +95,13 @@ function createDeferred<T>() {
   return { promise, resolve }
 }
 
-function renderDrill() {
+function renderDrill(props: Partial<Parameters<typeof WorldCountriesDrill>[0]> = {}) {
   const mount = document.createElement('div')
   document.body.append(mount)
   act(() => {
     root = createRoot(mount)
     root.render(createElement(SettingsProvider, null,
-      createElement(WorldCountriesDrill, { answerMode: 'typing' }),
+      createElement(WorldCountriesDrill, { answerMode: 'typing', ...props }),
     ))
   })
   return mount
@@ -178,6 +178,15 @@ describe('WorldCountriesDrill learning integration', () => {
 
     expect(drillSetupProps.current?.purpose).toBe('drill')
     expect(drillSetupProps.current?.mode).toBe('countries-capitals')
+  })
+
+  it('opens Drill setup focused on a requested Subregion without starting a session', () => {
+    renderDrill({ initialSubregionId: 'eastern-europe' })
+
+    expect(drillSetupProps.current?.purpose).toBe('drill')
+    expect(drillSetupProps.current?.setupContinent).toBe('Europe')
+    expect((drillSetupProps.current?.selection as { subregionIds: readonly string[] }).subregionIds).toEqual(['eastern-europe'])
+    expect(drillSessionProps.current).toBeNull()
   })
 
   it('starts Country for Shape with shape evidence and the full active map population', () => {

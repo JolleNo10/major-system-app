@@ -15,6 +15,11 @@ export interface LearningRegionCompletion {
   masteryStatus: LearningMasteryStatus
 }
 
+export interface LearningCompletedRegionAction {
+  label: string
+  onAction: () => void
+}
+
 export interface LearningCompleteProps {
   eyebrow: string
   title: string
@@ -25,6 +30,7 @@ export interface LearningCompleteProps {
   restartLabel?: string
   completionHandoff?: LearningCompletionHandoff
   regionCompletion?: LearningRegionCompletion
+  completedRegionAction?: LearningCompletedRegionAction
   regionLabel?: string
   surface?: boolean
 }
@@ -40,9 +46,12 @@ export function LearningComplete({
   restartLabel = 'Learn again',
   completionHandoff,
   regionCompletion,
+  completedRegionAction,
   regionLabel,
   surface = false,
 }: LearningCompleteProps) {
+  const isCompletedRegion = Boolean(regionCompletion && regionLabel)
+  const completionAction = isCompletedRegion ? completedRegionAction : undefined
   const regionSummary = regionCompletion && regionLabel
     ? <>
         {surface && <p className="font-semibold text-zinc-100">{regionLabel} ✓</p>}
@@ -64,7 +73,8 @@ export function LearningComplete({
       <div className="flex w-full gap-2 xl:w-auto">
         <button type="button" data-primary-action onClick={completionHandoff?.onContinue ?? onDone} className="flex-1 whitespace-nowrap rounded-[9px] border border-violet-500 bg-violet-600 px-3.5 py-2.5 text-sm font-bold text-white hover:bg-violet-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 xl:flex-none">{completionHandoff?.label ?? doneLabel}<span aria-label="Enter" className="ml-2 inline-flex min-w-[22px] items-center justify-center rounded-[5px] border border-white/25 border-b-2 px-1.5 py-px text-[11px]">↵</span></button>
         {completionHandoff?.onStop && completionHandoff.stopLabel && <button type="button" data-completion-stop onClick={completionHandoff.onStop} className="flex-1 whitespace-nowrap rounded-[9px] border border-zinc-600 bg-zinc-800 px-3.5 py-2.5 text-sm font-semibold text-zinc-200 hover:border-violet-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 xl:flex-none">{completionHandoff.stopLabel}</button>}
-        <button type="button" data-completion-restart onClick={onRestart} className={`flex-1 whitespace-nowrap rounded-[9px] border border-zinc-600 px-3.5 py-2.5 text-sm text-zinc-300 hover:border-violet-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 xl:flex-none ${completionHandoff?.onStop ? 'bg-transparent text-xs' : 'bg-zinc-800'}`}>{restartLabel}</button>
+        {!isCompletedRegion && <button type="button" data-completion-restart onClick={onRestart} className={`flex-1 whitespace-nowrap rounded-[9px] border border-zinc-600 px-3.5 py-2.5 text-sm text-zinc-300 hover:border-violet-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 xl:flex-none ${completionHandoff?.onStop ? 'bg-transparent text-xs' : 'bg-zinc-800'}`}>{restartLabel}</button>}
+        {completionAction && <button type="button" data-completion-region-action onClick={completionAction.onAction} className="flex-1 whitespace-nowrap rounded-[9px] border border-zinc-600 bg-transparent px-3.5 py-2.5 text-sm font-semibold text-zinc-200 hover:border-violet-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 xl:flex-none">{completionAction.label}</button>}
       </div>
     </TaskDock>
   )

@@ -2,7 +2,7 @@
 
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CountryLearningComplete } from './CountryLearningComplete'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -58,6 +58,7 @@ describe('CountryLearningComplete', () => {
   it('presents Region learned when Country Learning establishes the final layer', async () => {
     const mount = document.createElement('div')
     document.body.append(mount)
+    const onAction = vi.fn()
 
     await act(async () => {
       root = createRoot(mount)
@@ -65,6 +66,7 @@ describe('CountryLearningComplete', () => {
         subregion: 'balkans',
         countryCount: 5,
         regionCompletion: { masteryStatus: 'building' },
+        completedRegionAction: { label: 'Drill Balkans', onAction },
         onDone: () => undefined,
         onRestart: () => undefined,
       }))
@@ -76,5 +78,10 @@ describe('CountryLearningComplete', () => {
     expect(mount.textContent).toContain('Capitals ✓')
     expect(mount.textContent).toContain('Mastery Building')
     expect(mount.textContent).not.toContain('Countries learned')
+    expect(mount.textContent).toContain('Drill Balkans')
+    expect(mount.textContent).not.toContain('Learn again')
+
+    act(() => mount.querySelector<HTMLButtonElement>('[data-completion-region-action]')?.click())
+    expect(onAction).toHaveBeenCalledOnce()
   })
 })

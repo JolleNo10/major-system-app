@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { AnswerMode } from '@/core/types'
 import { useSettings } from '@/app/settings/SettingsContext'
 import type { Continent, CountryId } from '@/features/world-countries/data/countries'
-import type { SubregionId } from '@/features/world-countries/data/subregions'
+import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
 import { useWorldCountriesPopulation } from '@/features/world-countries/WorldCountriesPopulationContext'
 import { useWorldCountriesGeographyRevision } from '@/features/world-countries/geography/geographyRefresh'
 import { readWorldCountriesGeography } from '@/features/world-countries/geography/worldScope'
@@ -64,16 +64,19 @@ type ActiveDrillRun = {
 }
 
 /** Coordinator for setup, the four Drill modes, durable Learning, and non-recording Practice. */
-export function WorldCountriesDrill({ answerMode, onExit, initialPurpose = 'drill', initialLearnPracticeMode = 'learn-countries' }: { answerMode: AnswerMode; onExit?: () => void; initialPurpose?: 'drill' | 'learn-practise'; initialLearnPracticeMode?: WorldCountriesLearnPracticeMode }) {
+export function WorldCountriesDrill({ answerMode, onExit, initialPurpose = 'drill', initialLearnPracticeMode = 'learn-countries', initialSubregionId }: { answerMode: AnswerMode; onExit?: () => void; initialPurpose?: 'drill' | 'learn-practise'; initialLearnPracticeMode?: WorldCountriesLearnPracticeMode; initialSubregionId?: SubregionId }) {
   const { settings } = useSettings()
   const activeCountries = useWorldCountriesPopulation()
-  const [preferences, setPreferences] = useState<WorldCountriesDrillPreferences>(loadDrillPreferences)
+  const [preferences, setPreferences] = useState<WorldCountriesDrillPreferences>(() => {
+    const loaded = loadDrillPreferences()
+    return initialSubregionId ? { ...loaded, subregionIds: [initialSubregionId] } : loaded
+  })
   const [phase, setPhase] = useState<DrillPhase>('setup')
   const [purpose, setPurpose] = useState<ActivityPurpose | null>(initialPurpose)
   const [learnPracticeMode, setLearnPracticeMode] = useState<WorldCountriesLearnPracticeMode>(initialLearnPracticeMode)
   const [proficiencySelection, setProficiencySelection] = useState<WorldCountriesProficiencySelection>([])
   const [learningRun, setLearningRun] = useState<DrillLearningRun | null>(null)
-  const [setupContinent, setSetupContinent] = useState<Continent | null>(null)
+  const [setupContinent, setSetupContinent] = useState<Continent | null>(() => initialSubregionId ? getSubregionDefinition(initialSubregionId).continent : null)
   const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null)
   const [activeRun, setActiveRun] = useState<ActiveDrillRun | null>(null)
   const launchGeneration = useRef(0)

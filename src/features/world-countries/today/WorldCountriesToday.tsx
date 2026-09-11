@@ -18,7 +18,7 @@ import { deriveWorldCountriesScopeProgressForCountries } from '@/features/world-
 import { getCountryProgressColor, getCountryProgressState } from '@/features/world-countries/learning/progressPresentation'
 import { CountryLearningFlow } from '@/features/world-countries/learning/flows/CountryLearningFlow'
 import { CapitalLearningFlow } from '@/features/world-countries/learning/flows/CapitalLearningFlow'
-import type { LearningCompletionHandoff, LearningRegionCompletion } from '@/features/world-countries/learning/flows/LearningComplete'
+import type { LearningCompletedRegionAction, LearningCompletionHandoff, LearningRegionCompletion } from '@/features/world-countries/learning/flows/LearningComplete'
 import { buildLearningPlan, type LearningSetMaximum } from '@/features/world-countries/learning/stagedLearningPlan'
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
 import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
@@ -31,6 +31,9 @@ import { deriveWorldCountriesJourneyPresentation, type WorldCountriesJourneyPres
 import { buildWorldCountriesTodayPlan, type WorldCountriesTodayLearningRecommendation, type WorldCountriesTodayPlan, type WorldCountriesTodayReviewOpportunity } from './todayPlan'
 
 type TodayArea = 'drill' | 'recite'
+export type WorldCountriesTodayNavigation =
+  | { area: 'drill'; subregionId: SubregionId }
+  | { area: 'recite' }
 type EvidenceState =
   | { status: 'loading' }
   | { status: 'ready'; history: WorldCountriesRecallHistory }
@@ -137,7 +140,7 @@ export function WorldCountriesToday({
   onOpenProgress,
 }: {
   answerMode: AnswerMode
-  onNavigate: (area: TodayArea) => void
+  onNavigate: (navigation: WorldCountriesTodayNavigation) => void
   continent?: Continent | null
   onSelectContinent?: (continent: Continent) => void
   onWorld?: () => void
@@ -383,6 +386,12 @@ export function WorldCountriesToday({
   const regionCompletion: LearningRegionCompletion | undefined = completedLearningJourney?.regionLearned
     ? { masteryStatus: completedLearningJourney.masteryStatus }
     : undefined
+  const completedRegionAction: LearningCompletedRegionAction | undefined = learningRun && regionCompletion
+    ? {
+        label: `Drill ${learningRun.recommendation.subregionLabel}`,
+        onAction: () => onNavigate({ area: 'drill', subregionId: learningRun.recommendation.subregionId }),
+      }
+    : undefined
 
   if (showProgress) {
     return <WorldCountriesProgressView
@@ -422,6 +431,7 @@ export function WorldCountriesToday({
         doneLabel={`Back to ${continent ?? 'World'}`}
         completionHandoff={completionHandoff}
         regionCompletion={regionCompletion}
+        completedRegionAction={completedRegionAction}
         recordCompletion={true}
       />
     }
@@ -442,6 +452,7 @@ export function WorldCountriesToday({
       doneLabel={`Back to ${continent ?? 'World'}`}
       completionHandoff={completionHandoff}
       regionCompletion={regionCompletion}
+      completedRegionAction={completedRegionAction}
       recordCompletion={true}
     />
   }

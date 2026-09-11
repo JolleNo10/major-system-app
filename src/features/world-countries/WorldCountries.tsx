@@ -3,12 +3,14 @@ import type { AnswerMode } from '@/core/types'
 import { useLayoutHeader } from '@/app/layout/PageLayoutContext'
 import { useSettings } from '@/app/settings/SettingsContext'
 import type { Continent } from './data/countries'
+import type { SubregionId } from './data/subregions'
 import { countries } from './data/countries'
 import { countryClassifications } from './data/countryClassification'
 import { normalizeWorldCountriesIncludedEntityGroups, resolveCountrySet } from './geography/countrySet'
 import { WorldCountriesDrill } from '@/features/world-countries/drill/WorldCountriesDrill'
 import { WorldCountriesRecite } from '@/features/world-countries/recite/WorldCountriesRecite'
 import { WorldCountriesToday } from '@/features/world-countries/today/WorldCountriesToday'
+import type { WorldCountriesTodayNavigation } from '@/features/world-countries/today/WorldCountriesToday'
 import { WorldCountriesQuiz } from '@/features/world-countries/practice/WorldCountriesQuiz'
 import { WorldCountriesPlay } from './WorldCountriesPlay'
 import { WorldCountriesPopulationProvider } from './WorldCountriesPopulationContext'
@@ -18,6 +20,7 @@ type WorldCountriesArea = 'home' | 'continent' | 'play' | 'drill' | 'recite' | '
 type DrillEntry = {
   purpose: 'drill' | 'learn-practise'
   learnPracticeMode?: WorldCountriesLearnPracticeMode
+  subregionId?: SubregionId
 }
 
 /** World Countries composition boundary for Home, geography hubs, Playground, and existing workflows. */
@@ -57,6 +60,13 @@ export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
     setDrillEntry(entry)
     setArea('drill')
   }
+  const openTodayNavigation = (navigation: WorldCountriesTodayNavigation) => {
+    if (navigation.area === 'drill') {
+      openDrillEntry({ purpose: 'drill', subregionId: navigation.subregionId })
+      return
+    }
+    openWorkflow(navigation.area)
+  }
 
   const header = useMemo(() => (
     <nav aria-label="World Countries navigation" className="flex w-full min-w-0 items-center justify-between gap-3 py-2">
@@ -79,10 +89,10 @@ export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
 
   return (
     <WorldCountriesPopulationProvider countries={activeCountries}>
-      {area === 'home' && <WorldCountriesToday answerMode={answerMode} onNavigate={openWorkflow} onSelectContinent={goToContinent} />}
-      {area === 'continent' && continent && <WorldCountriesToday answerMode={answerMode} continent={continent} onNavigate={openWorkflow} onSelectContinent={goToContinent} onWorld={goHome} />}
+      {area === 'home' && <WorldCountriesToday answerMode={answerMode} onNavigate={openTodayNavigation} onSelectContinent={goToContinent} />}
+      {area === 'continent' && continent && <WorldCountriesToday answerMode={answerMode} continent={continent} onNavigate={openTodayNavigation} onSelectContinent={goToContinent} onWorld={goHome} />}
       {area === 'play' && <WorldCountriesPlay scopeLabel={continent ?? 'World'} scopeContinent={continent ?? undefined} onBack={goToScope} onOpenRecite={() => openWorkflow('recite')} onOpenQuiz={() => openWorkflow('quiz')} onOpenLocateCountries={() => openDrillEntry({ purpose: 'learn-practise', learnPracticeMode: 'locate-countries' })} onOpenLocateCapitals={() => openDrillEntry({ purpose: 'learn-practise', learnPracticeMode: 'locate-capitals' })} onOpenCapitalPractice={() => openDrillEntry({ purpose: 'learn-practise', learnPracticeMode: 'capitals' })} onOpenCustomDrill={() => openDrillEntry({ purpose: 'drill' })} />}
-      {area === 'drill' && <WorldCountriesDrill answerMode={answerMode} onExit={goToScope} initialPurpose={drillEntry?.purpose} initialLearnPracticeMode={drillEntry?.learnPracticeMode} />}
+      {area === 'drill' && <WorldCountriesDrill answerMode={answerMode} onExit={goToScope} initialPurpose={drillEntry?.purpose} initialLearnPracticeMode={drillEntry?.learnPracticeMode} initialSubregionId={drillEntry?.subregionId} />}
       {area === 'recite' && <WorldCountriesRecite answerMode={answerMode} onExit={goToScope} />}
       {area === 'quiz' && <WorldCountriesQuiz answerMode={answerMode} onExit={goToScope} />}
     </WorldCountriesPopulationProvider>
