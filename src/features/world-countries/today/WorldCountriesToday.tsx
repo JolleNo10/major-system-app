@@ -30,7 +30,6 @@ import { WorldCountriesProgressView } from './WorldCountriesProgressView'
 import { deriveWorldCountriesJourneyPresentation, type WorldCountriesJourneyPresentation } from './journeyPresentation'
 import { buildWorldCountriesTodayPlan, type WorldCountriesTodayLearningRecommendation, type WorldCountriesTodayPlan, type WorldCountriesTodayReviewOpportunity } from './todayPlan'
 
-type TodayArea = 'drill' | 'recite'
 export type WorldCountriesTodayNavigation =
   | { area: 'drill'; subregionId: SubregionId }
   | { area: 'recite' }
