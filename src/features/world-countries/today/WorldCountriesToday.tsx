@@ -19,7 +19,7 @@ import { getCountryProgressColor, getCountryProgressState } from '@/features/wor
 import { CountryLearningFlow } from '@/features/world-countries/learning/flows/CountryLearningFlow'
 import { CapitalLearningFlow } from '@/features/world-countries/learning/flows/CapitalLearningFlow'
 import type { LearningCompletedRegionAction, LearningCompletionHandoff, LearningRegionCompletion } from '@/features/world-countries/learning/flows/LearningComplete'
-import { buildLearningPlan, type LearningSetMaximum } from '@/features/world-countries/learning/stagedLearningPlan'
+import type { LearningSetMaximum } from '@/features/world-countries/learning/stagedLearningPlan'
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
 import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
 import { WorldCountriesMapLegend } from '@/features/world-countries/ui/WorldCountriesMapLegend'
@@ -58,26 +58,11 @@ function formatCountedAction(prefix: string, count: number, singular: string): s
   return `${prefix} ${count} ${count === 1 ? singular : plural}`
 }
 
-function isLearningSetMaximum(value: unknown): value is LearningSetMaximum {
-  return value === 'all' || value === 3 || value === 4 || value === 5
-}
-
-function firstCountryLearningSetCount(
-  recommendation: WorldCountriesTodayLearningRecommendation,
-  newItemsPerSet: LearningSetMaximum | undefined,
-): number | null {
-  if (recommendation.track !== 'learn-countries' || !isLearningSetMaximum(newItemsPerSet)) return null
-  const firstStage = buildLearningPlan(recommendation.countryIds, newItemsPerSet)[0]
-  return firstStage?.kind === 'set' ? firstStage.set.ids.length : null
-}
-
 function getJourneyActionLabel(
   recommendation: WorldCountriesTodayLearningRecommendation,
-  newItemsPerSet?: LearningSetMaximum,
 ): string | null {
   if (recommendation.track === 'learn-capitals') return 'Add the capitals'
-  const count = firstCountryLearningSetCount(recommendation, newItemsPerSet)
-  return count === null ? 'Learn the countries' : formatCountedAction('Learn', count, 'country')
+  return formatCountedAction('Learn', recommendation.countryIds.length, 'country')
 }
 
 function getCurriculumRecommendationForSubregion(
@@ -92,7 +77,6 @@ function getCurriculumRecommendationForSubregion(
 function createCompletionHandoff({
   currentRecommendation,
   nextRecommendation,
-  newItemsPerSet,
   regionLearned,
   onContinue,
   onStop,
@@ -100,14 +84,13 @@ function createCompletionHandoff({
 }: {
   currentRecommendation: WorldCountriesTodayLearningRecommendation
   nextRecommendation: WorldCountriesTodayLearningRecommendation | null
-  newItemsPerSet: LearningSetMaximum | undefined
   regionLearned: boolean
   onContinue: () => void
   onStop: () => void
   originatingScopeLabel: string
 }): LearningCompletionHandoff | undefined {
   if (!nextRecommendation || isSameLearningRecommendation(currentRecommendation, nextRecommendation)) return undefined
-  const nextLabel = getJourneyActionLabel(nextRecommendation, newItemsPerSet)
+  const nextLabel = getJourneyActionLabel(nextRecommendation)
   if (regionLearned && nextRecommendation.subregionId !== currentRecommendation.subregionId) {
     return {
       description: `Next region: ${nextRecommendation.subregionLabel}`,
@@ -369,7 +352,6 @@ export function WorldCountriesToday({
     ? createCompletionHandoff({
         currentRecommendation: learningRun.recommendation,
         nextRecommendation: continuationRecommendation,
-        newItemsPerSet: settings.worldCountriesNewItemsPerSet as LearningSetMaximum | undefined,
         regionLearned: Boolean(completedLearningJourney?.regionLearned),
         onContinue: () => launchLearningRecommendation(continuationRecommendation, {
           focusSubregion: Boolean(
@@ -474,7 +456,7 @@ export function WorldCountriesToday({
       ? plan.consolidationCandidates.length
       : 0
   const journeyActionLabel = activeLearningRecommendation
-    ? getJourneyActionLabel(activeLearningRecommendation, settings.worldCountriesNewItemsPerSet as LearningSetMaximum | undefined)
+    ? getJourneyActionLabel(activeLearningRecommendation)
     : null
   const activeSubregionLabel = activeSubregionId ? getSubregionDefinition(activeSubregionId).label : null
   const mapDescriptions = new Map(scopedCountries.map(country => [country.id, `Progress for ${scopeLabel} is shown in the map legend and geography rail.`] as const))

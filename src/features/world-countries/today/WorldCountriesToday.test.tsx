@@ -302,7 +302,7 @@ describe('World Countries Today', () => {
   })
 
   it('shows Review and Continue Learning independently when both are available', async () => {
-    const northernEntries = countries.filter(country => country.subregionId === 'northern-europe').slice(0, 3)
+    const northernEntries = countries.filter(country => country.subregionId === 'northern-europe').slice(0, 5)
     const southernEntry = countries.find(country => country.subregionId === 'southern-europe')!
     activeCountries = [...northernEntries, southernEntry]
     const reviewCandidates = [{ country: southernEntry }, { country: southernEntry }]
@@ -328,9 +328,9 @@ describe('World Countries Today', () => {
     expect(railMount.textContent).not.toContain('20 ready overall')
     expect(railMount.textContent).toContain('Your journey · Northern Europe')
     expect(railMount.textContent).not.toContain('Next in journey')
-    expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Learn 3 countries')
+    expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Learn 5 countries')
     expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('Continue your journey')
-    expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('Learn 3 countries · Northern Europe')
+    expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('Learn 5 countries · Northern Europe')
   })
 
   it('keeps equal total and bounded Review counts from duplicating the item count across Home surfaces', async () => {
@@ -489,7 +489,7 @@ describe('World Countries Today', () => {
   })
 
   it('launches the Journey recommendation from the map dock', async () => {
-    const countryIds = countries.filter(country => country.subregionId === 'northern-europe').slice(0, 3).map(country => country.id)
+    const countryIds = countries.filter(country => country.subregionId === 'northern-europe').slice(0, 5).map(country => country.id)
     activeCountries = countries.filter(country => countryIds.includes(country.id))
     buildPlanMock.mockReturnValue(plan({
       curriculumRecommendation: recommendation('learn-countries', countryIds),
@@ -504,6 +504,7 @@ describe('World Countries Today', () => {
     expect(countryLearningFlowMock).toHaveBeenCalledWith(expect.objectContaining({
       subregion: 'northern-europe',
       entries: countryIds.map(countryId => countries.find(country => country.id === countryId)),
+      newItemsPerSet: 3,
     }))
   })
 
