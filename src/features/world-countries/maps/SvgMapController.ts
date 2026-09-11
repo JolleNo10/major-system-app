@@ -138,6 +138,9 @@ interface OriginalStyle {
 
 interface InternalCountry extends SvgMapCountry {
   path: SVGPathElement
+  paths: readonly SVGPathElement[]
+  pathStates: readonly CountryPathState[]
+  group: SVGGElement
   label: SVGTextElement
   originalFill: OriginalStyle
   originalStroke: OriginalStyle
@@ -146,6 +149,9 @@ interface InternalCountry extends SvgMapCountry {
   originalTransition: OriginalStyle
   originalVisibility: OriginalStyle
   originalPointerEvents: OriginalStyle
+  originalGroupTabIndex: string | null
+  originalGroupRole: string | null
+  originalGroupAriaLabel: string | null
   originalLabelDisplay: OriginalStyle
   originalLabelPointerEvents: OriginalStyle
   originalLabelTextNodes: Array<{ node: Text; value: string }>
@@ -154,6 +160,17 @@ interface InternalCountry extends SvgMapCountry {
     element: SVGElement
     originalFill: OriginalStyle
   }>
+}
+
+interface CountryPathState {
+  path: SVGPathElement
+  originalFill: OriginalStyle
+  originalStroke: OriginalStyle
+  originalStrokeWidth: OriginalStyle
+  originalFilter: OriginalStyle
+  originalTransition: OriginalStyle
+  originalVisibility: OriginalStyle
+  originalPointerEvents: OriginalStyle
 }
 
 interface HoverListeners {
@@ -198,6 +215,11 @@ function restoreStyle(element: SVGElement, property: string, original: OriginalS
   else element.style.removeProperty(property)
 }
 
+function restoreAttribute(element: Element, name: string, original: string | null): void {
+  if (original === null) element.removeAttribute(name)
+  else element.setAttribute(name, original)
+}
+
 function setOverride(element: SVGElement, property: string, value: string | null, original: OriginalStyle): void {
   if (value === null) restoreStyle(element, property, original)
   else element.style.setProperty(property, value, 'important')
@@ -218,6 +240,11 @@ function collectTextNodes(element: Element): Text[] {
 
 function uniqueStrings(values: Iterable<string>): string[] {
   return [...new Set(Array.from(values, value => value.trim()).filter(Boolean))]
+}
+
+interface KeyboardListener {
+  group: SVGGElement
+  keydown: EventListener
 }
 
 function isFinitePositiveViewBox(bounds: SvgViewBoxRect): boolean {
@@ -262,6 +289,7 @@ export class SvgMapController {
   private hoveredNameOverride: boolean | null = null
   private hoveredIds = new Set<string>()
   private listeners: HoverListeners[] = []
+  private keyboardListeners: KeyboardListener[] = []
   private readonly taskAssistance: SvgTaskAssistanceRuntime
   private renderBatchDepth = 0
   private renderPending = false
@@ -820,6 +848,13 @@ export class SvgMapController {
     return { activeIds: [...this.hoveredIds], unknownIds: [] }
   }
 
+  /** Return the complete map-layer geometry bounds for one semantic country. */
+  getCountryGeometry(countryId: string): SvgViewBoxRect | null {
+    this.assertUsable()
+    const country = this.countries.get(countryId)
+    return country ? this.getBoundsUnion(this.getCountryBoxes([countryId])) : null
+  }
+
   destroy(): void {
     if (this.destroyed) return
     this.destroyed = true
@@ -880,21 +915,48 @@ export class SvgMapController {
       const paths = [...parent.children].filter(
         (child): child is SVGPathElement => child.localName.toLowerCase() === 'path',
       )
-      if (paths.length !== 1 || paths[0] !== path || this.countries.has(definition.id)) continue
+      if (paths.length === 0 || !paths.includes(path) || this.countries.has(definition.id)) continue
 
       const labelPaintElements = [label, ...label.querySelectorAll<SVGElement>('tspan')]
       const originalLabelTextNodes = collectTextNodes(label).map(node => ({ node, value: node.data }))
+      const pathStates = paths.map(countryPath => ({
+        path: countryPath,
+        originalFill: captureStyle(countryPath, 'fill'),
+        originalStroke: captureStyle(countryPath, 'stroke'),
+        originalStrokeWidth: captureStyle(countryPath, 'stroke-width'),
+        originalFilter: captureStyle(countryPath, 'filter'),
+        originalTransition: captureStyle(countryPath, 'transition'),
+        originalVisibility: captureStyle(countryPath, 'visibility'),
+        originalPointerEvents: captureStyle(countryPath, 'pointer-events'),
+      }))
+      const primaryPathState = pathStates[0]
+      if (!primaryPathState) continue
+      const group = parent as unknown as SVGGElement
+      const originalGroupTabIndex = group.getAttribute('tabindex')
+      const originalGroupRole = group.getAttribute('role')
+      const originalGroupAriaLabel = group.getAttribute('aria-label')
+      if (paths.length > 1) {
+        group.setAttribute('tabindex', '0')
+        group.setAttribute('role', 'button')
+        group.setAttribute('aria-label', definition.name)
+      }
       this.countries.set(definition.id, {
         ...definition,
         path,
+        paths,
+        pathStates,
+        group,
         label,
-        originalFill: captureStyle(path, 'fill'),
-        originalStroke: captureStyle(path, 'stroke'),
-        originalStrokeWidth: captureStyle(path, 'stroke-width'),
-        originalFilter: captureStyle(path, 'filter'),
-        originalTransition: captureStyle(path, 'transition'),
-        originalVisibility: captureStyle(path, 'visibility'),
-        originalPointerEvents: captureStyle(path, 'pointer-events'),
+        originalFill: primaryPathState.originalFill,
+        originalStroke: primaryPathState.originalStroke,
+        originalStrokeWidth: primaryPathState.originalStrokeWidth,
+        originalFilter: primaryPathState.originalFilter,
+        originalTransition: primaryPathState.originalTransition,
+        originalVisibility: primaryPathState.originalVisibility,
+        originalPointerEvents: primaryPathState.originalPointerEvents,
+        originalGroupTabIndex,
+        originalGroupRole,
+        originalGroupAriaLabel,
         originalLabelDisplay: captureStyle(label, 'display'),
         originalLabelPointerEvents: captureStyle(label, 'pointer-events'),
         originalLabelTextNodes,
@@ -925,8 +987,9 @@ export class SvgMapController {
       const paths = [...parent.children].filter(
         (child): child is SVGPathElement => child.localName.toLowerCase() === 'path',
       )
-      if (paths.length !== 1) continue
-      const path = paths[0]
+      if (paths.length === 0) continue
+      const path = paths.find(candidate => candidate.id.trim())
+      if (!path) continue
       const id = path.id.trim()
       const labelId = label.id.trim()
       const name = (label.textContent ?? '').replace(/\s+/g, ' ').trim()
@@ -957,10 +1020,22 @@ export class SvgMapController {
         if (this.taskAssistance.isAnswerSelectionConfigured()) return
         if (this.isSelectable(country.id)) this.countryClickHandler?.(country.id)
       }
-      country.path.addEventListener('pointerenter', enter)
-      country.path.addEventListener('pointerleave', leave)
-      country.path.addEventListener('click', click)
-      this.listeners.push({ path: country.path, enter, leave, click })
+      for (const countryPath of country.paths) {
+        countryPath.addEventListener('pointerenter', enter)
+        countryPath.addEventListener('pointerleave', leave)
+        countryPath.addEventListener('click', click)
+        this.listeners.push({ path: countryPath, enter, leave, click })
+      }
+      if (country.paths.length > 1) {
+        const keydown: EventListener = event => {
+          const keyboardEvent = event as KeyboardEvent
+          if (keyboardEvent.key !== 'Enter' && keyboardEvent.key !== ' ') return
+          keyboardEvent.preventDefault()
+          if (this.isSelectable(country.id)) this.countryClickHandler?.(country.id)
+        }
+        country.group.addEventListener('keydown', keydown)
+        this.keyboardListeners.push({ group: country.group, keydown })
+      }
     }
   }
 
@@ -971,6 +1046,8 @@ export class SvgMapController {
       path.removeEventListener('click', click)
     }
     this.listeners = []
+    for (const { group, keydown } of this.keyboardListeners) group.removeEventListener('keydown', keydown)
+    this.keyboardListeners = []
   }
 
   private setHoveredCountry(id: string | null, showName?: boolean): void {
@@ -1107,14 +1184,17 @@ export class SvgMapController {
           ? this.settings.highlightStrokeWidth
           : null
 
-      setOverride(country.path, 'fill', fill, country.originalFill)
-      setOverride(country.path, 'stroke', stroke, country.originalStroke)
-      setOverride(country.path, 'stroke-width', strokeWidth, country.originalStrokeWidth)
-      country.path.style.setProperty('transition', transition)
-      restoreStyle(country.path, 'filter', country.originalFilter)
       const hidden = this.hiddenCountries.has(country.id)
-      setOverride(country.path, 'visibility', hidden ? 'hidden' : null, country.originalVisibility)
-      setOverride(country.path, 'pointer-events', hidden ? 'none' : null, country.originalPointerEvents)
+      for (const pathState of country.pathStates) {
+        setOverride(pathState.path, 'fill', fill, pathState.originalFill)
+        setOverride(pathState.path, 'stroke', stroke, pathState.originalStroke)
+        setOverride(pathState.path, 'stroke-width', strokeWidth, pathState.originalStrokeWidth)
+        pathState.path.style.setProperty('transition', transition)
+        restoreStyle(pathState.path, 'filter', pathState.originalFilter)
+        setOverride(pathState.path, 'visibility', hidden ? 'hidden' : null, pathState.originalVisibility)
+        setOverride(pathState.path, 'pointer-events', hidden ? 'none' : null, pathState.originalPointerEvents)
+      }
+      if (country.paths.length > 1) country.group.setAttribute('tabindex', hidden ? '-1' : '0')
 
       this.renderCountryLabel(country, this.countryLabelOverrides.get(country.id) ?? null)
       const showHoverName = this.hoveredNameOverride ?? this.settings.hoverShowName
@@ -1213,10 +1293,17 @@ export class SvgMapController {
       for (const countryId of outline.countryIds) {
         const country = this.countries.get(countryId)
         if (!country) continue
-        const use = document.createElementNS('http://www.w3.org/2000/svg', 'use')
-        use.setAttribute('href', `#${country.pathId}`)
-        use.setAttributeNS(XLINK_NS, 'href', `#${country.pathId}`)
-        outlineGroup.append(use)
+        for (const pathState of country.pathStates) {
+          const pathId = pathState.path.id.trim()
+          if (pathId) {
+            const use = document.createElementNS('http://www.w3.org/2000/svg', 'use')
+            use.setAttribute('href', `#${pathId}`)
+            use.setAttributeNS(XLINK_NS, 'href', `#${pathId}`)
+            outlineGroup.append(use)
+          } else {
+            outlineGroup.append(pathState.path.cloneNode(true))
+          }
+        }
       }
       layer.append(outlineGroup)
     }
@@ -1257,6 +1344,25 @@ export class SvgMapController {
     return selection
       ? this.getTargetCentricCountryBoundsFromSelection(selection)
       : null
+  }
+
+  private restoreCountryState(country: InternalCountry): void {
+    for (const pathState of country.pathStates) {
+      restoreStyle(pathState.path, 'fill', pathState.originalFill)
+      restoreStyle(pathState.path, 'stroke', pathState.originalStroke)
+      restoreStyle(pathState.path, 'stroke-width', pathState.originalStrokeWidth)
+      restoreStyle(pathState.path, 'filter', pathState.originalFilter)
+      restoreStyle(pathState.path, 'transition', pathState.originalTransition)
+      restoreStyle(pathState.path, 'visibility', pathState.originalVisibility)
+      restoreStyle(pathState.path, 'pointer-events', pathState.originalPointerEvents)
+    }
+    restoreStyle(country.label, 'display', country.originalLabelDisplay)
+    restoreStyle(country.label, 'pointer-events', country.originalLabelPointerEvents)
+    restoreAttribute(country.group, 'tabindex', country.originalGroupTabIndex)
+    restoreAttribute(country.group, 'role', country.originalGroupRole)
+    restoreAttribute(country.group, 'aria-label', country.originalGroupAriaLabel)
+    for (const paint of country.labelPaint) restoreStyle(paint.element, 'fill', paint.originalFill)
+    for (const textNode of country.originalLabelTextNodes) textNode.node.data = textNode.value
   }
 
   private getTargetCentricCountryBoundsFromSelection(
@@ -1312,12 +1418,15 @@ export class SvgMapController {
     const contextAssociations = contextIds.flatMap(id => {
       const country = this.countries.get(id)
       if (!country) return []
-      const component = this.findClosestTargetComponent(targetComponents, country.path)
-      return component ? [{ path: country.path, component }] : []
+      const closest = country.pathStates.reduce((current, pathState) => {
+        const candidate = this.findClosestTargetComponent(targetComponents, pathState.path)
+        if (!candidate || (current && candidate.distance >= current.distance)) return current
+        return { path: pathState.path, component: candidate.component, distance: candidate.distance }
+      }, null as (TargetContextAssociation & { distance: number }) | null)
+      return closest ? [{ path: closest.path, component: closest.component }] : []
     })
     // One closest component is the deterministic representative for each
-    // required neighbour ID. Adding every nearby component would retain
-    // redundant remote geometry instead of the smallest useful target set.
+    // required neighbour ID, including multipart neighbour Countries.
     const selectedKeys = new Set(contextAssociations.map(association => association.component.key))
     for (const point of this.getTaskTargetPoints(targetIds)) {
       const closest = targetComponents.reduce((current, candidate) => {
@@ -1375,31 +1484,33 @@ export class SvgMapController {
     return targetIds.flatMap(countryId => {
       const country = this.countries.get(countryId)
       if (!country) return []
-      const pathData = country.path.getAttribute('d') ?? ''
-      const sourceComponents = readSvgPathGeometryComponents(pathData)
-      const expectedComponents = countDrawnPathComponents(pathData)
-      if (expectedComponents > sourceComponents.length) return []
-      const components = sourceComponents.flatMap((component, index) => {
-        const bounds = this.transformBoundsToMap(country.path, component.bounds)
-        if (!bounds) return []
-        return [{
-          key: `${countryId}:${index}`,
-          bounds,
-        }]
-      })
-      if (components.length > 0) return components
+      return country.pathStates.flatMap((pathState, pathIndex) => {
+        const pathData = pathState.path.getAttribute('d') ?? ''
+        const sourceComponents = readSvgPathGeometryComponents(pathData)
+        const expectedComponents = countDrawnPathComponents(pathData)
+        if (expectedComponents > sourceComponents.length) return []
+        const components = sourceComponents.flatMap((component, componentIndex) => {
+          const bounds = this.transformBoundsToMap(pathState.path, component.bounds)
+          if (!bounds) return []
+          return [{
+            key: `${countryId}:${pathIndex}:${componentIndex}`,
+            bounds,
+          }]
+        })
+        if (components.length > 0) return components
 
-      const bounds = this.getCountryBoxInLayer(country.path)
-      return bounds
-        ? [{ key: `${countryId}:fallback`, bounds }]
-        : []
+        const bounds = this.getCountryBoxInLayer(pathState.path)
+        return bounds
+          ? [{ key: `${countryId}:${pathIndex}:fallback`, bounds }]
+          : []
+      })
     })
   }
 
   private findClosestTargetComponent(
     components: readonly TargetGeometryComponent[],
     contextPath: SVGPathElement,
-  ): TargetGeometryComponent | null {
+  ): { component: TargetGeometryComponent; distance: number } | null {
     const samples = this.samplePathPoints(contextPath)
     const contextBounds = this.getCountryBoxInLayer(contextPath)
     if (samples.length === 0 && !contextBounds) return null
@@ -1412,7 +1523,7 @@ export class SvgMapController {
       return candidateDistance < closest.distance
         ? { component: candidate, distance: candidateDistance }
         : closest
-    }, null as { component: TargetGeometryComponent; distance: number } | null)?.component ?? null
+    }, null as { component: TargetGeometryComponent; distance: number } | null)
   }
 
   private getLocalContextBounds(
@@ -1546,7 +1657,7 @@ export class SvgMapController {
     return countryIds.flatMap(id => {
       const country = this.countries.get(id)
       if (!country) return []
-      return this.getCountryBox(country.path)
+      return country.pathStates.flatMap(pathState => this.getCountryBox(pathState.path))
     })
   }
 
@@ -1632,6 +1743,7 @@ export class SvgMapController {
     this.resizeObserver = null
     this.taskAssistance.reset()
     this.detachHoverListeners()
+    for (const country of this.countries.values()) this.restoreCountryState(country)
     this.countries.clear()
     this.highlighted.clear()
     this.countryColors.clear()

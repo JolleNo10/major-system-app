@@ -14,6 +14,12 @@ const TEST_MAP = `
   <path id="Unlabelled" style="fill:#737373"/>
 </svg>`
 
+const MULTIPART_MAP = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
+  <g><path id="Single" d="M 10 10 h 5 v 5 h -5 z" style="fill:#737373;stroke:#252525"/><text id="Single_label">SINGLE</text></g>
+  <g tabindex="2" role="presentation" aria-label="original multipart group"><path id="Multipart" d="M 20 10 h 5 v 5 h -5 z" style="fill:#737373;stroke:#252525"/><path id="Multipart_fragment" d="M 70 30 h 10 v 10 h -10 z" style="fill:#737373;stroke:#252525;stroke-width:1px;filter:url(#shadow);transition:opacity 1s;visibility:visible;pointer-events:all"/><text id="Multipart_label">MULTIPART</text></g>
+</svg>`
+
 const controllers: SvgMapController[] = []
 
 function makeController() {
@@ -116,10 +122,11 @@ describe('SvgMapController loading and discovery', () => {
   })
 
   it('discovers the MapChart export, including its non-matching Switzerland label ID', async () => {
-    const { controller } = makeController()
+    const { mount, controller } = makeController()
     const countries = await controller.load({ markup: europeSvg })
 
     expect(countries).toHaveLength(65)
+    expect(countries.some(country => country.id === 'France')).toBe(true)
     expect(countries).toContainEqual({
       id: 'Switzerland',
       name: 'SWITZ.',
@@ -127,6 +134,115 @@ describe('SvgMapController loading and discovery', () => {
       labelId: 'Switz._label',
     })
     expect(countries.some(country => country.id === 'Andorra')).toBe(true)
+
+    const clicked: string[] = []
+    controller.setCountryClickHandler(id => clicked.push(id))
+    mount.querySelector<SVGPathElement>('#France')?.dispatchEvent(new MouseEvent('click'))
+    expect(clicked).toEqual(['France'])
+  })
+
+  it('discovers a multipart semantic country once', async () => {
+    const { mount, controller } = makeController()
+    const countries = await controller.load({ markup: MULTIPART_MAP })
+
+    expect(countries).toContainEqual({
+      id: 'Multipart',
+      name: 'MULTIPART',
+      pathId: 'Multipart',
+      labelId: 'Multipart_label',
+    })
+    expect(countries.filter(country => country.id === 'Multipart')).toHaveLength(1)
+
+    const fragments = [path(mount, 'Multipart'), path(mount, 'Multipart_fragment')]
+    setBBox(mount, 'Multipart', { x: 20, y: 10, width: 5, height: 5 })
+    setBBox(mount, 'Multipart_fragment', { x: 70, y: 30, width: 10, height: 10 })
+    expect(controller.getCountryGeometry('Multipart')).toEqual({ x: 20, y: 10, width: 60, height: 30 })
+
+    const clicked: string[] = []
+    const hovered: Array<string | null> = []
+    controller.setCountryClickHandler(id => clicked.push(id))
+    controller.setCountryHoverHandler(id => hovered.push(id))
+    controller.setCountryColors({ Multipart: '#22c55e' })
+    controller.updateSettings({
+      hoverHighlight: true,
+      hoverStroke: '#d4d4d8',
+      hoverStrokeWidth: '2px',
+      highlightStroke: '#facc15',
+      highlightStrokeWidth: '3px',
+    })
+
+    for (const fragment of fragments) {
+      expect(fragment.style.getPropertyValue('fill')).toBe('#22c55e')
+    }
+    fragments[1].dispatchEvent(new Event('pointerenter'))
+    expect(hovered).toEqual(['Multipart'])
+    for (const fragment of fragments) {
+      expect(fragment.style.getPropertyValue('fill')).toBe('#22c55e')
+      expect(fragment.style.getPropertyValue('stroke')).toBe('#d4d4d8')
+      expect(fragment.style.getPropertyValue('stroke-width')).toBe('2px')
+    }
+    fragments[1].dispatchEvent(new Event('pointerleave'))
+    expect(hovered).toEqual(['Multipart', null])
+
+    controller.setHighlighted(['Multipart'])
+    for (const fragment of fragments) {
+      expect(fragment.style.getPropertyValue('stroke')).toBe('#facc15')
+      expect(fragment.style.getPropertyValue('stroke-width')).toBe('3px')
+    }
+
+    controller.setGroupOutlines([{ id: 'multipart-outline', countryIds: ['Multipart'] }])
+    controller.setGroupOutlinesVisible(['multipart-outline'])
+    expect(mount.querySelectorAll('[data-svg-map-group-outline="multipart-outline"] use')).toHaveLength(2)
+
+    fragments[0].dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    fragments[1].dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(clicked).toEqual(['Multipart', 'Multipart'])
+
+    const group = fragments[0].parentElement
+    expect(group?.getAttribute('role')).toBe('button')
+    expect(group?.getAttribute('tabindex')).toBe('0')
+    expect(fragments.filter(fragment => fragment.hasAttribute('tabindex'))).toHaveLength(0)
+    expect(mount.querySelectorAll('[tabindex="0"]')).toHaveLength(1)
+    group?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+    group?.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true }))
+    expect(clicked).toEqual(['Multipart', 'Multipart', 'Multipart', 'Multipart'])
+
+    setSvgRect(mount, { width: 100, height: 50 })
+    controller.setTaskAssistance({ answerSelectionIds: ['Multipart'] })
+    expect(mount.querySelectorAll('[data-svg-map-task-interaction-marker^="Multipart:"]')).toHaveLength(2)
+    const svg = mount.querySelector<SVGSVGElement>('svg')
+    svg?.dispatchEvent(new MouseEvent('pointermove', { clientX: 75, clientY: 35, bubbles: true }))
+    for (const fragment of fragments) expect(fragment.style.getPropertyValue('fill')).toBe('#22d3ee')
+    svg?.dispatchEvent(new MouseEvent('click', { clientX: 75, clientY: 35, bubbles: true }))
+    expect(clicked).toEqual(['Multipart', 'Multipart', 'Multipart', 'Multipart', 'Multipart'])
+    controller.setTaskAssistance(null)
+
+    controller.setHiddenCountries(['Multipart'])
+    expect(group?.getAttribute('tabindex')).toBe('-1')
+    for (const fragment of fragments) {
+      expect(fragment.style.getPropertyValue('visibility')).toBe('hidden')
+      expect(fragment.style.getPropertyValue('pointer-events')).toBe('none')
+    }
+    controller.destroy()
+    for (const fragment of fragments) {
+      expect(fragment.style.getPropertyValue('fill')).toBe('#737373')
+      expect(fragment.style.getPropertyValue('stroke')).toBe('#252525')
+      fragment.dispatchEvent(new MouseEvent('click'))
+    }
+    expect(fragments[0].style.getPropertyValue('stroke-width')).toBe('')
+    expect(fragments[0].style.getPropertyValue('filter')).toBe('')
+    expect(fragments[0].style.getPropertyValue('transition')).toBe('')
+    expect(fragments[0].style.getPropertyValue('visibility')).toBe('')
+    expect(fragments[0].style.getPropertyValue('pointer-events')).toBe('')
+    expect(fragments[1].style.getPropertyValue('stroke-width')).toBe('1px')
+    expect(fragments[1].style.getPropertyValue('filter')).toBe('url(#shadow)')
+    expect(fragments[1].style.getPropertyValue('transition')).toBe('opacity 1s')
+    expect(fragments[1].style.getPropertyValue('visibility')).toBe('visible')
+    expect(fragments[1].style.getPropertyValue('pointer-events')).toBe('all')
+    expect(group?.getAttribute('role')).toBe('presentation')
+    expect(group?.getAttribute('tabindex')).toBe('2')
+    expect(group?.getAttribute('aria-label')).toBe('original multipart group')
+    expect(clicked).toEqual(['Multipart', 'Multipart', 'Multipart', 'Multipart', 'Multipart'])
   })
 
   it('loads a URL and rejects invalid or embedded content', async () => {

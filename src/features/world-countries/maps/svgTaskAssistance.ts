@@ -11,7 +11,7 @@ import {
   transformSourcePointToLayer,
   type SvgPoint,
 } from './svgGeometry'
-import { parseViewBox } from './viewBoxFit'
+import { parseViewBox, type SvgViewBoxRect } from './viewBoxFit'
 import { createTaskInteractionMarkerElements, createTaskRepresentativeMarkerElements } from './svgTaskMarkers'
 
 export interface SvgMapLearningAnchor {
@@ -41,6 +41,8 @@ export interface SvgMapTaskAssistance {
 export interface SvgTaskAssistanceCountry {
   id: string
   path: SVGPathElement
+  /** All authored geometry fragments for this semantic Country. */
+  paths?: readonly SVGPathElement[]
   originalFill: Readonly<{ value: string }>
 }
 
@@ -67,6 +69,11 @@ export interface SvgTaskAssistanceMutationResult {
 
 interface AutomaticTaskAnchor {
   sourceFingerprint: string
+  point: SvgPoint
+}
+
+interface TaskSourcePoint {
+  path: SVGPathElement
   point: SvgPoint
 }
 
@@ -108,6 +115,32 @@ const TASK_MARKER_TARGET_RADIUS_PX = 5.5
 const TASK_MARKER_HOVER_SCALE = 1.25
 const TASK_HIT_RADIUS_PX = 12
 
+function getCountryPaths(country: SvgTaskAssistanceCountry): readonly SVGPathElement[] {
+  return country.paths?.length ? country.paths : [country.path]
+}
+
+function getPrimaryCountryPath(country: SvgTaskAssistanceCountry): SVGPathElement {
+  return getCountryPaths(country)[0] ?? country.path
+}
+
+function getCountrySourceFingerprint(country: SvgTaskAssistanceCountry): string {
+  return getCountryPaths(country).map(path => path.getAttribute('d') ?? '').join('\u0000')
+}
+
+function getCountryGeometryBounds(country: SvgTaskAssistanceCountry): SvgViewBoxRect | null {
+  const boxes = getCountryPaths(country)
+    .map(readSvgGeometryBounds)
+    .filter((box): box is SvgViewBoxRect => box !== null)
+  if (boxes.length === 0) return null
+  const minX = Math.min(...boxes.map(box => box.x))
+  const minY = Math.min(...boxes.map(box => box.y))
+  const maxX = Math.max(...boxes.map(box => box.x + box.width))
+  const maxY = Math.max(...boxes.map(box => box.y + box.height))
+  return maxX > minX && maxY > minY
+    ? { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
+    : null
+}
+
 /** Stateful, Maps-owned runtime for task-only SVG assistance and answer selection. */
 export class SvgTaskAssistanceRuntime {
   private readonly options: SvgTaskAssistanceRuntimeOptions
@@ -121,7 +154,7 @@ export class SvgTaskAssistanceRuntime {
   private taskAnchorDefinitions = new Map<string, SvgMapLearningAnchor>()
   private taskSyntheticDotDefinitions = new Map<string, SvgMapSyntheticDot>()
   private automaticTaskAnchors = new Map<string, AutomaticTaskAnchor | null>()
-  private automaticTaskInteractionPoints = new Map<string, { sourceFingerprint: string; points: readonly SvgPoint[] }>()
+  private automaticTaskInteractionPoints = new Map<string, { sourceFingerprint: string; points: readonly TaskSourcePoint[] }>()
   private taskPointerListeners: {
     svg: SVGSVGElement
     move: EventListener
@@ -251,7 +284,7 @@ export class SvgTaskAssistanceRuntime {
         const syntheticDot = this.taskSyntheticDotDefinitions.has(sourceSvgId)
         for (let index = 0; index < interactionPoints.length; index += 1) {
           const sourcePoint = interactionPoints[index]
-          const point = transformSourcePointToLayer(country.path, sourcePoint, this.svg)
+          const point = transformSourcePointToLayer(sourcePoint.path, sourcePoint.point, this.svg)
           if (!point) continue
           const scale = getRenderedSvgScale(this.svg)
           const smallestScale = Math.min(scale.x, scale.y)
@@ -272,7 +305,9 @@ export class SvgTaskAssistanceRuntime {
 
       if (taskTarget) {
         const anchor = this.resolveTaskAnchor(sourceSvgId, country)
-        const point = anchor ? transformSourcePointToLayer(country.path, anchor.point, this.svg) : null
+        const point = anchor
+          ? transformSourcePointToLayer(getPrimaryCountryPath(country), anchor.point, this.svg)
+          : null
         const scale = getRenderedSvgScale(this.svg)
         const smallestScale = Math.min(scale.x, scale.y)
         if (point && Number.isFinite(smallestScale) && smallestScale > 0) {
@@ -324,7 +359,9 @@ export class SvgTaskAssistanceRuntime {
     const country = this.getCountryMap().get(sourceSvgId)
     if (!country) return null
     const anchor = this.resolveTaskAnchor(sourceSvgId, country)
-    return anchor ? transformSourcePointToLayer(country.path, anchor.point, this.svg) : null
+    return anchor
+      ? transformSourcePointToLayer(getPrimaryCountryPath(country), anchor.point, this.svg)
+      : null
   }
 
   renderCountryTaskState(
@@ -365,25 +402,32 @@ export class SvgTaskAssistanceRuntime {
       && this.options.isSelectable(id)
   }
 
-  private resolveTaskInteractionPoints(sourceSvgId: string, country: SvgTaskAssistanceCountry): readonly SvgPoint[] {
+  private resolveTaskInteractionPoints(sourceSvgId: string, country: SvgTaskAssistanceCountry): readonly TaskSourcePoint[] {
     const syntheticDot = this.taskSyntheticDotDefinitions.get(sourceSvgId)
-    if (syntheticDot) return [syntheticDot.point]
+    if (syntheticDot) return [{ path: getPrimaryCountryPath(country), point: syntheticDot.point }]
 
-    const sourceFingerprint = country.path.getAttribute('d') ?? ''
-    const bounds = readSvgGeometryBounds(country.path)
+    const paths = getCountryPaths(country)
+    const sourceFingerprint = getCountrySourceFingerprint(country)
+    const bounds = getCountryGeometryBounds(country)
     if (!bounds) return []
-
-    if (isCompactUnambiguousSvgGeometry(country.path.getAttribute('d') ?? '', bounds)) {
-      const center = getSvgBoundsCenter(bounds)
-      return center ? [center] : []
-    }
 
     const cached = this.automaticTaskInteractionPoints.get(sourceSvgId)
     if (cached?.sourceFingerprint === sourceFingerprint) return cached.points
 
-    const components = readPathComponents(sourceFingerprint)
-    if (components.length < 2) return []
-    const points = components.map(component => component.start)
+    const points = paths.flatMap(path => {
+      const pathData = path.getAttribute('d') ?? ''
+      const pathBounds = readSvgGeometryBounds(path)
+      if (!pathBounds) return []
+      if (isCompactUnambiguousSvgGeometry(pathData, pathBounds)) {
+        const center = getSvgBoundsCenter(pathBounds)
+        return center ? [{ path, point: center }] : []
+      }
+      const components = readPathComponents(pathData)
+      return components.length >= 2
+        ? components.map(component => ({ path, point: component.start }))
+        : []
+    })
+    if (points.length === 0) return []
     this.automaticTaskInteractionPoints.set(sourceSvgId, { sourceFingerprint, points })
     return points
   }
@@ -393,14 +437,14 @@ export class SvgTaskAssistanceRuntime {
     if (explicit) {
       const point = explicit.kind === 'multi-dot-representative'
         ? explicit.point
-        : getSvgBoundsCenter(readSvgGeometryBounds(country.path))
+        : getSvgBoundsCenter(getCountryGeometryBounds(country))
       return point ? { kind: explicit.kind, point } : null
     }
 
     const syntheticDot = this.taskSyntheticDotDefinitions.get(sourceSvgId)
     if (syntheticDot) return { kind: 'single-dot', point: syntheticDot.point }
 
-    const sourceFingerprint = country.path.getAttribute('d') ?? ''
+    const sourceFingerprint = getCountrySourceFingerprint(country)
     if (this.automaticTaskAnchors.has(sourceSvgId)) {
       const cached = this.automaticTaskAnchors.get(sourceSvgId)
       if (cached === null || cached?.sourceFingerprint === sourceFingerprint) {
@@ -408,8 +452,10 @@ export class SvgTaskAssistanceRuntime {
       }
     }
 
-    const bounds = readSvgGeometryBounds(country.path)
-    const point = bounds && isCompactUnambiguousSvgGeometry(country.path.getAttribute('d') ?? '', bounds)
+    const bounds = getCountryGeometryBounds(country)
+    const primaryPath = getPrimaryCountryPath(country)
+    const point = bounds && getCountryPaths(country).length === 1
+      && isCompactUnambiguousSvgGeometry(primaryPath.getAttribute('d') ?? '', bounds)
       ? getSvgBoundsCenter(bounds)
       : null
     this.automaticTaskAnchors.set(sourceSvgId, point ? { sourceFingerprint, point } : null)
@@ -569,8 +615,9 @@ export class SvgTaskAssistanceRuntime {
     reducedMotion: boolean,
     settings: SvgTaskAssistanceSettings,
   ): void {
-    const sourceFill = country.path.style.getPropertyValue('fill')
-      || country.path.getAttribute('fill')
+    const primaryPath = getPrimaryCountryPath(country)
+    const sourceFill = primaryPath.style.getPropertyValue('fill')
+      || primaryPath.getAttribute('fill')
       || country.originalFill.value
       || settings.countryFill
       || '#52525b'
@@ -598,8 +645,9 @@ export class SvgTaskAssistanceRuntime {
     reducedMotion: boolean,
     settings: SvgTaskAssistanceSettings,
   ): void {
-    const sourceFill = country.path.style.getPropertyValue('fill')
-      || country.path.getAttribute('fill')
+    const primaryPath = getPrimaryCountryPath(country)
+    const sourceFill = primaryPath.style.getPropertyValue('fill')
+      || primaryPath.getAttribute('fill')
       || country.originalFill.value
       || settings.countryFill
       || '#52525b'
@@ -624,7 +672,7 @@ export class SvgTaskAssistanceRuntime {
 
   private validateTaskLearningAnchor(anchor: SvgMapLearningAnchor, country: SvgTaskAssistanceCountry): void {
     if (!this.svg) return
-    const sourceFingerprint = country.path.getAttribute('d') ?? ''
+    const sourceFingerprint = getPrimaryCountryPath(country).getAttribute('d') ?? ''
     if (sourceFingerprint !== anchor.sourceFingerprint) {
       throw new Error(`Stale task learning anchor source for ${anchor.sourceSvgId}`)
     }
@@ -635,8 +683,9 @@ export class SvgTaskAssistanceRuntime {
       throw new Error(`Single-dot task learning anchor ${anchor.sourceSvgId} must resolve from source geometry`)
     }
     if (!anchor.point) return
+    const primaryPath = getPrimaryCountryPath(country)
     const viewBox = parseViewBox(
-      country.path.ownerSVGElement?.getAttribute('viewBox') ?? this.svg.getAttribute('viewBox') ?? '',
+      primaryPath.ownerSVGElement?.getAttribute('viewBox') ?? this.svg.getAttribute('viewBox') ?? '',
     )
     const { x, y } = anchor.point
     if (!isSvgPointWithinViewBox({ x, y }, viewBox)) {
@@ -646,12 +695,13 @@ export class SvgTaskAssistanceRuntime {
 
   private validateTaskSyntheticDot(dot: SvgMapSyntheticDot, country: SvgTaskAssistanceCountry): void {
     if (!this.svg) return
-    const sourceFingerprint = country.path.getAttribute('d') ?? ''
+    const primaryPath = getPrimaryCountryPath(country)
+    const sourceFingerprint = primaryPath.getAttribute('d') ?? ''
     if (getSyntheticDotSourceFingerprint(sourceFingerprint) !== dot.sourceFingerprint) {
       throw new Error(`Stale task synthetic dot source for ${dot.sourceSvgId}`)
     }
     const viewBox = parseViewBox(
-      country.path.ownerSVGElement?.getAttribute('viewBox') ?? this.svg.getAttribute('viewBox') ?? '',
+      primaryPath.ownerSVGElement?.getAttribute('viewBox') ?? this.svg.getAttribute('viewBox') ?? '',
     )
     const { x, y } = dot.point
     if (!isSvgPointWithinViewBox({ x, y }, viewBox)) {
@@ -718,26 +768,30 @@ export class SvgTaskAssistanceRuntime {
     const matches: Array<{ id: string; area: number }> = []
     for (const country of this.options.getCountries()) {
       if (!this.isTaskCandidate(country.id)) continue
-      const localPoint = getLocalPointFromClient(country.path, point)
-      const bounds = readSvgGeometryBounds(country.path)
-      if (!localPoint) continue
-      if (!bounds) continue
-      const geometry = country.path as SVGGeometryElement & {
-        isPointInFill?: (candidate: { x: number; y: number }) => boolean
-      }
-      let contains = localPoint.x >= bounds.x
-        && localPoint.x <= bounds.x + bounds.width
-        && localPoint.y >= bounds.y
-        && localPoint.y <= bounds.y + bounds.height
-      if (typeof geometry.isPointInFill === 'function') {
-        try {
-          contains = geometry.isPointInFill(localPoint)
-        } catch {
-          // Keep the conservative bounding-box fallback for test DOMs and
-          // browsers that cannot evaluate the path at this moment.
+      for (const path of getCountryPaths(country)) {
+        const localPoint = getLocalPointFromClient(path, point)
+        const bounds = readSvgGeometryBounds(path)
+        if (!localPoint || !bounds) continue
+        const geometry = path as SVGGeometryElement & {
+          isPointInFill?: (candidate: { x: number; y: number }) => boolean
+        }
+        let contains = localPoint.x >= bounds.x
+          && localPoint.x <= bounds.x + bounds.width
+          && localPoint.y >= bounds.y
+          && localPoint.y <= bounds.y + bounds.height
+        if (typeof geometry.isPointInFill === 'function') {
+          try {
+            contains = geometry.isPointInFill(localPoint)
+          } catch {
+            // Keep the conservative bounding-box fallback for test DOMs and
+            // browsers that cannot evaluate the path at this moment.
+          }
+        }
+        if (contains) {
+          matches.push({ id: country.id, area: bounds.width * bounds.height })
+          break
         }
       }
-      if (contains) matches.push({ id: country.id, area: bounds.width * bounds.height })
     }
     return matches.sort((left, right) => left.area - right.area || left.id.localeCompare(right.id))[0]?.id ?? null
   }
