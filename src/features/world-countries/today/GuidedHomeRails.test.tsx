@@ -39,6 +39,7 @@ function renderRails(overrides: Partial<Parameters<typeof GuidedHomeRails>[0]> =
     activeCountryCount: 1,
     evidenceStatus: 'ready',
     reviewOpportunity: null,
+    reviewAvailableCount: overrides.reviewAvailableCount ?? (overrides.reviewOpportunity?.candidates.length ?? 0),
     onStartReview: vi.fn(),
     journey: null,
     refreshing: false,
@@ -126,15 +127,16 @@ describe('Guided World Countries home rails', () => {
     expect(reviewPanel?.querySelector('[data-review-action]')?.textContent).toBe('Review now')
   })
 
-  it('uses the bounded Review block count without extra due metadata', () => {
+  it('uses the full scheduled Review population count separately from the bounded block', () => {
     const mount = renderRails({
       reviewOpportunity: makeReviewOpportunity('review', 8),
+      reviewAvailableCount: 20,
     })
     const reviewPanel = mount.querySelector('[aria-labelledby="world-countries-review-opportunity-heading"]')
 
-    expect(reviewPanel?.textContent).toContain('8 items')
+    expect(reviewPanel?.textContent).toContain('20 items')
+    expect(reviewPanel?.textContent).not.toContain('8 items')
     expect(reviewPanel?.querySelector('[data-review-action]')?.textContent).toBe('Review now')
-    expect(reviewPanel?.textContent).not.toContain('ready overall')
     expect(reviewPanel?.textContent).not.toContain('countries')
   })
 
@@ -174,6 +176,18 @@ describe('Guided World Countries home rails', () => {
     expect(mount.querySelector('[aria-labelledby="world-countries-review-opportunity-heading"] h2')?.textContent).toBe('Reviews caught up')
     act(() => mount.querySelector<HTMLButtonElement>('[data-review-action]')?.click())
     expect(onStartReview).toHaveBeenCalledOnce()
+  })
+
+  it('uses the full weak-spot population count separately from the bounded block', () => {
+    const mount = renderRails({
+      reviewOpportunity: makeReviewOpportunity('consolidate', 8),
+      reviewAvailableCount: 20,
+    })
+    const reviewPanel = mount.querySelector('[aria-labelledby="world-countries-review-opportunity-heading"]')
+
+    expect(reviewPanel?.textContent).toContain('20 weak spots available')
+    expect(reviewPanel?.textContent).not.toContain('8 weak spots available')
+    expect(reviewPanel?.querySelector('[data-review-action]')?.textContent).toBe('Strengthen weak spots')
   })
 
   it('keeps Journey orientation separate from its specific next action', () => {

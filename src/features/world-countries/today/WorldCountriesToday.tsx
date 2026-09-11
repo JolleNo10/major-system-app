@@ -468,6 +468,11 @@ export function WorldCountriesToday({
   }
 
   const canContinue = Boolean(activeLearningRecommendation && evidence.status === 'ready' && scopedCountries.length > 0)
+  const reviewAvailableCount = plan?.reviewOpportunity?.kind === 'review'
+    ? plan.dueCount
+    : plan?.reviewOpportunity?.kind === 'consolidate'
+      ? plan.consolidationCandidates.length
+      : 0
   const journeyActionLabel = activeLearningRecommendation
     ? getJourneyActionLabel(activeLearningRecommendation, settings.worldCountriesNewItemsPerSet as LearningSetMaximum | undefined)
     : null
@@ -482,6 +487,7 @@ export function WorldCountriesToday({
         activeCountryCount={scopedCountries.length}
         evidenceStatus={evidence.status}
         reviewOpportunity={plan?.reviewOpportunity ?? null}
+        reviewAvailableCount={reviewAvailableCount}
         reviewCompletion={reviewCompletion}
         onStartReview={startReview}
         focusReviewActionRequest={reviewFocusRequest}

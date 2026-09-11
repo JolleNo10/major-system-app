@@ -122,6 +122,7 @@ vi.mock('./todayPlan', async importOriginal => ({
 }))
 vi.mock('./TodayReviewSession', () => ({
   TodayReviewSession: (props: Record<string, unknown>) => createElement('div', null,
+    createElement('span', { 'data-review-candidate-count': String((props.candidates as readonly unknown[]).length) }),
     createElement('button', {
       type: 'button',
       'data-testid': 'today-review',
@@ -321,6 +322,7 @@ describe('World Countries Today', () => {
     const railMount = renderLatestRails()
 
     expect(railMount.textContent).toContain('Review ready')
+    expect(railMount.textContent).toContain('20 items')
     expect(railMount.querySelector('[data-review-action]')?.textContent).toBe('Review now')
     expect(railMount.textContent).not.toContain('20 ready overall')
     expect(railMount.textContent).toContain('Your journey · Northern Europe')
@@ -345,6 +347,8 @@ describe('World Countries Today', () => {
     const railMount = renderLatestRails()
 
     expect(railMount.querySelector('[data-review-action]')?.textContent).toBe('Review now')
+    expect(railMount.textContent).toContain('3 items')
+    expect(railMount.textContent).not.toContain('8 items')
     expect(railMount.textContent).not.toContain('2 countries')
     expect(railMount.textContent).not.toContain('recent mistake')
     expect(railMount.textContent).not.toContain('3 reviews ready')
@@ -366,6 +370,26 @@ describe('World Countries Today', () => {
     act(() => railMount.querySelector<HTMLButtonElement>('[data-review-action]')?.click())
     expect(mount.querySelector('[data-testid="today-review"]')?.getAttribute('data-review-mode')).toBe('review')
     expect(mount.querySelector('[data-primary-action]')).toBeNull()
+  })
+
+  it('shows the full scheduled Review total while launching only the bounded block', async () => {
+    const candidate = { country: countries[0] }
+    const reviewQueue = Array.from({ length: 8 }, () => candidate)
+    buildPlanMock.mockReturnValue(plan({
+      dueCandidates: Array.from({ length: 20 }, () => candidate),
+      reviewQueue,
+      dueCount: 20,
+      dueCountryCount: 1,
+      reviewOpportunity: { kind: 'review', candidates: reviewQueue },
+    }))
+    const mount = await renderToday()
+    const railMount = renderLatestRails()
+
+    expect(railMount.textContent).toContain('20 items')
+    expect(railMount.textContent).not.toContain('8 items')
+
+    act(() => railMount.querySelector<HTMLButtonElement>('[data-review-action]')?.click())
+    expect(mount.querySelector('[data-review-candidate-count]')?.getAttribute('data-review-candidate-count')).toBe('8')
   })
 
   it('returns focus to the Review action after completion without focusing Journey', async () => {
@@ -581,6 +605,25 @@ describe('World Countries Today', () => {
     expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Learn 1 country')
     act(() => railMount.querySelector<HTMLButtonElement>('[data-review-action]')?.click())
     expect(mount.querySelector('[data-testid="today-review"]')?.getAttribute('data-review-mode')).toBe('consolidation')
+  })
+
+  it('shows the full weak-spot total while launching only the bounded consolidation block', async () => {
+    const candidate = { country: countries[0] }
+    const consolidationQueue = Array.from({ length: 8 }, () => candidate)
+    buildPlanMock.mockReturnValue(plan({
+      consolidationCandidates: Array.from({ length: 20 }, () => candidate),
+      consolidationQueue,
+      reviewOpportunity: { kind: 'consolidate', candidates: consolidationQueue },
+    }))
+    const mount = await renderToday()
+    const railMount = renderLatestRails()
+
+    expect(railMount.textContent).toContain('20 weak spots available')
+    expect(railMount.textContent).not.toContain('8 weak spots available')
+
+    act(() => railMount.querySelector<HTMLButtonElement>('[data-review-action]')?.click())
+    expect(mount.querySelector('[data-testid="today-review"]')?.getAttribute('data-review-mode')).toBe('consolidation')
+    expect(mount.querySelector('[data-review-candidate-count]')?.getAttribute('data-review-candidate-count')).toBe('8')
   })
 
   it('labels completed weak-spot practice as practice after returning Home', async () => {
