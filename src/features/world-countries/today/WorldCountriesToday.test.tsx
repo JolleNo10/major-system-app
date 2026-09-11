@@ -322,8 +322,9 @@ describe('World Countries Today', () => {
     const railMount = renderLatestRails()
 
     expect(railMount.textContent).toContain('Review ready')
-    expect(railMount.textContent).toContain('20 items')
-    expect(railMount.querySelector('[data-review-action]')?.textContent).toBe('Review now')
+    expect(railMount.textContent).toContain('20 items ready')
+    expect(railMount.textContent).toContain('Next review: 2 items')
+    expect(railMount.querySelector('[data-review-action]')?.textContent).toBe('Review 2 now')
     expect(railMount.textContent).not.toContain('20 ready overall')
     expect(railMount.textContent).toContain('Your journey · Northern Europe')
     expect(railMount.textContent).not.toContain('Next in journey')
@@ -335,20 +336,20 @@ describe('World Countries Today', () => {
   it('keeps equal total and bounded Review counts from duplicating the item count across Home surfaces', async () => {
     const candidate = { country: countries[0] }
     buildPlanMock.mockReturnValue(plan({
-      dueCandidates: [candidate, candidate, candidate],
-      reviewQueue: [candidate, candidate, candidate],
-      dueCount: 3,
+      dueCandidates: [candidate, candidate, candidate, candidate, candidate],
+      reviewQueue: [candidate, candidate, candidate, candidate, candidate],
+      dueCount: 5,
       dueCountryCount: 2,
       reviewReasonSummary: { mistakes: 1, firstRecall: 0, firstReviewAfterLearning: 0, spaced: 0, repeated: 0 },
-      reviewOpportunity: { kind: 'review', candidates: [candidate, candidate, candidate] },
+      reviewOpportunity: { kind: 'review', candidates: [candidate, candidate, candidate, candidate, candidate] },
     }))
 
     const mount = await renderToday()
     const railMount = renderLatestRails()
 
-    expect(railMount.querySelector('[data-review-action]')?.textContent).toBe('Review now')
-    expect(railMount.textContent).toContain('3 items')
-    expect(railMount.textContent).not.toContain('8 items')
+    expect(railMount.querySelector('[data-review-action]')?.textContent).toBe('Review 5 now')
+    expect(railMount.textContent).toContain('5 items ready')
+    expect(railMount.textContent).not.toContain('Next review:')
     expect(railMount.textContent).not.toContain('2 countries')
     expect(railMount.textContent).not.toContain('recent mistake')
     expect(railMount.textContent).not.toContain('3 reviews ready')
@@ -385,8 +386,9 @@ describe('World Countries Today', () => {
     const mount = await renderToday()
     const railMount = renderLatestRails()
 
-    expect(railMount.textContent).toContain('20 items')
-    expect(railMount.textContent).not.toContain('8 items')
+    expect(railMount.textContent).toContain('20 items ready')
+    expect(railMount.textContent).toContain('Next review: 8 items')
+    expect(railMount.querySelector('[data-review-action]')?.textContent).toBe('Review 8 now')
 
     act(() => railMount.querySelector<HTMLButtonElement>('[data-review-action]')?.click())
     expect(mount.querySelector('[data-review-candidate-count]')?.getAttribute('data-review-candidate-count')).toBe('8')
@@ -601,7 +603,7 @@ describe('World Countries Today', () => {
     const railMount = renderLatestRails()
 
     expect(railMount.textContent).toContain('Reviews caught up')
-    expect(railMount.textContent).toContain('Strengthen weak spots')
+    expect(railMount.textContent).toContain('Strengthen 1 now')
     expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Learn 1 country')
     act(() => railMount.querySelector<HTMLButtonElement>('[data-review-action]')?.click())
     expect(mount.querySelector('[data-testid="today-review"]')?.getAttribute('data-review-mode')).toBe('consolidation')
@@ -619,7 +621,8 @@ describe('World Countries Today', () => {
     const railMount = renderLatestRails()
 
     expect(railMount.textContent).toContain('20 weak spots available')
-    expect(railMount.textContent).not.toContain('8 weak spots available')
+    expect(railMount.textContent).toContain('Next practice: 8 items')
+    expect(railMount.querySelector('[data-review-action]')?.textContent).toBe('Strengthen 8 now')
 
     act(() => railMount.querySelector<HTMLButtonElement>('[data-review-action]')?.click())
     expect(mount.querySelector('[data-testid="today-review"]')?.getAttribute('data-review-mode')).toBe('consolidation')
