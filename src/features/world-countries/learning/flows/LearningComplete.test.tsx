@@ -132,6 +132,9 @@ describe('LearningComplete', () => {
     expect(mount.textContent).toContain('Back to Europe')
     expect(mount.textContent).toContain('Drill Eastern Europe')
     expect(mount.querySelectorAll('button')).toHaveLength(3)
+    expect(mount.querySelector('[data-completion-actions]')?.className).toContain('flex-wrap')
+    expect(mount.querySelector('[data-task-dock-content]')?.className).toContain('min-w-0')
+    expect(mount.querySelector('[data-primary-action]')?.className).toContain('flex-[1_1_12rem]')
 
     act(() => mount.querySelector<HTMLButtonElement>('[data-completion-region-action]')?.click())
     expect(onAction).toHaveBeenCalledOnce()

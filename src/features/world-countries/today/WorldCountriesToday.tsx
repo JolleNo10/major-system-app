@@ -528,11 +528,11 @@ export function WorldCountriesToday({
         <MapSurface
           context={(
             <div className="px-1">
-              <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World Countries · {continent ? 'Continent hub' : 'Home'}</p>
-              <h1 id="world-countries-today-heading" className="mt-1 text-2xl font-black text-zinc-100">{continent ? `${continent} learning hub` : 'Your world'}</h1>
-              {activeSubregionLabel && <p data-active-subregion className="mt-2 text-sm font-semibold text-cyan-200">Learning focus · {activeSubregionLabel}</p>}
-              <p className="mt-1 text-sm text-zinc-500">Explore the map to see what you&apos;ve learned and what&apos;s still ahead.</p>
-              <div className="mt-3">
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <h1 id="world-countries-today-heading" className="text-2xl font-black text-zinc-100">{continent ?? 'Your world'}</h1>
+                {activeSubregionLabel && <p data-active-subregion className="text-sm font-semibold text-cyan-200">Focus: {activeSubregionLabel}</p>}
+              </div>
+              <div className="mt-2">
                 <WorldCountriesMapLegend />
               </div>
             </div>

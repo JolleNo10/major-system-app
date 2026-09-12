@@ -253,6 +253,18 @@ describe('World Countries Today', () => {
     expect(legend?.textContent).not.toContain('Complete')
   })
 
+  it('keeps the center context concise on a Continent hub', async () => {
+    const mount = await renderToday({ continent: 'Africa' })
+    const heading = mount.querySelector('#world-countries-today-heading')
+
+    expect(heading?.textContent).toBe('Africa')
+    expect(mount.textContent).not.toContain('World Countries · Continent hub')
+    expect(mount.textContent).not.toContain('Africa learning hub')
+    expect(mount.textContent).not.toContain('Explore the map to see what you\'ve learned and what\'s still ahead.')
+    expect(mount.querySelector('[aria-label="Learning"]')).not.toBeNull()
+    expect(mount.querySelector('[aria-label="Recall health"]')).not.toBeNull()
+  })
+
   it('uses the neutral diagonal pattern while Countries learning is established', async () => {
     markSubregionCountriesLearned(countries[0].subregionId, Date.now(), activeCountries)
     await renderToday()
@@ -350,7 +362,7 @@ describe('World Countries Today', () => {
     const railMount = renderLatestRails()
     const mapProps = geographyOverviewMapMock.mock.calls[geographyOverviewMapMock.mock.calls.length - 1]?.[0] as { selectedSubregionIds?: readonly string[]; selectionPresentation?: string } | undefined
 
-    expect(mount.querySelector('[data-active-subregion]')?.textContent).toContain('Northern Europe')
+    expect(mount.querySelector('[data-active-subregion]')?.textContent).toContain('Focus: Northern Europe')
     expect(railMount.querySelector('[data-active-focus="true"]')?.textContent).toContain('Europe')
     expect(railMount.querySelector('[data-active-focus="true"]')?.textContent).toContain('Focus · Northern Europe')
     expect(mapProps?.selectedSubregionIds).toEqual(['northern-europe'])
