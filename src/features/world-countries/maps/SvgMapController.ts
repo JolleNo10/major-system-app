@@ -5,9 +5,11 @@ import {
 import {
   countDrawnPathComponents,
   readSvgGeometryBounds,
+  readSvgElementTransformToLayer,
   readSvgPathGeometryComponents,
   transformSourcePointToLayer,
   type SvgPoint,
+  type SvgAffineTransform,
 } from './svgGeometry'
 import { fitViewBoxToAspect, parseViewBox, type SvgViewBoxRect } from './viewBoxFit'
 
@@ -239,6 +241,31 @@ function captureCountryPathState(path: SVGPathElement): CountryPathState {
     originalVisibility: captureStyle(path, 'visibility'),
     originalPointerEvents: captureStyle(path, 'pointer-events'),
   }
+}
+
+function formatSvgMatrix(transform: SvgAffineTransform): string {
+  const values = [transform.a, transform.b, transform.c, transform.d, transform.e, transform.f]
+    .map(value => Number(value.toFixed(6)))
+  return `matrix(${values.join(' ')})`
+}
+
+function createOutlineGeometry(
+  path: SVGPathElement,
+  mapSvg: SVGSVGElement,
+  document: Document,
+): SVGPathElement {
+  const clone = path.cloneNode(true) as SVGPathElement
+  clone.removeAttribute('id')
+  clone.setAttribute('data-svg-map-group-outline-source', path.id.trim())
+  clone.setAttribute('pointer-events', 'none')
+  clone.style.setProperty('pointer-events', 'none', 'important')
+
+  const transform = readSvgElementTransformToLayer(path, mapSvg)
+  if (transform) {
+    clone.setAttribute('transform', formatSvgMatrix(transform))
+    clone.style.removeProperty('transform')
+  }
+  return clone
 }
 
 function collectTextNodes(element: Element): Text[] {
@@ -1320,15 +1347,7 @@ export class SvgMapController {
         const country = this.countries.get(countryId)
         if (!country) continue
         for (const pathState of country.pathStates) {
-          const pathId = pathState.path.id.trim()
-          if (pathId) {
-            const use = document.createElementNS('http://www.w3.org/2000/svg', 'use')
-            use.setAttribute('href', `#${pathId}`)
-            use.setAttributeNS(XLINK_NS, 'href', `#${pathId}`)
-            outlineGroup.append(use)
-          } else {
-            outlineGroup.append(pathState.path.cloneNode(true))
-          }
+          outlineGroup.append(createOutlineGeometry(pathState.path, mapSvg, document))
         }
       }
       layer.append(outlineGroup)

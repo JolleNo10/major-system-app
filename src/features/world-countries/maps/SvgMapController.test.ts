@@ -21,6 +21,14 @@ const MULTIPART_MAP = `
   <g tabindex="2" role="presentation" aria-label="original multipart group"><path id="Multipart" d="M 20 10 h 5 v 5 h -5 z" style="fill:#737373;stroke:#252525"/><path id="Multipart_fragment" d="M 70 30 h 10 v 10 h -10 z" style="fill:#737373;stroke:#252525;stroke-width:1px;filter:url(#shadow);transition:opacity 1s;visibility:visible;pointer-events:all"/><text id="Multipart_label">MULTIPART</text></g>
 </svg>`
 
+const TRANSFORMED_MAP = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80">
+  <g id="transformed-countries" transform="matrix(3 0 0 3 10 20)">
+    <g><path id="Transformed" d="M 10 10 h 5 v 5 h -5 z" transform="translate(2 4)" style="fill:#737373;stroke:#252525"/><text id="Transformed_label">TRANSFORMED</text></g>
+    <g><path id="Plain" d="M 50 10 h 5 v 5 h -5 z" style="fill:#737373;stroke:#252525"/><text id="Plain_label">PLAIN</text></g>
+  </g>
+</svg>`
+
 const controllers: SvgMapController[] = []
 
 function makeController() {
@@ -266,7 +274,7 @@ describe('SvgMapController loading and discovery', () => {
 
     controller.setGroupOutlines([{ id: 'multipart-outline', countryIds: ['Multipart'] }])
     controller.setGroupOutlinesVisible(['multipart-outline'])
-    expect(mount.querySelectorAll('[data-svg-map-group-outline="multipart-outline"] use')).toHaveLength(2)
+    expect(mount.querySelectorAll('[data-svg-map-group-outline="multipart-outline"] [data-svg-map-group-outline-source]')).toHaveLength(2)
 
     fragments[0].dispatchEvent(new MouseEvent('click', { bubbles: true }))
     fragments[1].dispatchEvent(new MouseEvent('click', { bubbles: true }))
@@ -919,13 +927,84 @@ describe('SvgMapController persistent state', () => {
     expect(controller.setGroupOutlinesVisible(['alpha-beta']).activeIds).toEqual(['alpha-beta'])
     const outline = mount.querySelector('[data-svg-map-group-outline="alpha-beta"]')
     expect(outline).not.toBeNull()
-    expect(outline?.querySelectorAll('use')).toHaveLength(2)
+    expect(outline?.querySelectorAll('[data-svg-map-group-outline-source]')).toHaveLength(2)
+    expect(outline?.querySelector('[data-svg-map-group-outline-source="Alpha"]')?.getAttribute('transform')).toBeNull()
+    expect(outline?.querySelector('[data-svg-map-group-outline-source="Alpha"]')?.getAttribute('pointer-events')).toBe('none')
     expect(outline?.getAttribute('filter')).toMatch(/^url\(#svg-map-group-outline-/)
     expect(mount.querySelector('feMorphology')?.getAttribute('operator')).toBe('dilate')
 
     controller.setGroupOutlinesVisible(['alpha-beta'], false)
     expect(mount.querySelector('[data-svg-map-group-outline="alpha-beta"]')).toBeNull()
     expect(mount.querySelector('filter[data-svg-map-group-outline-filter]')).toBeNull()
+  })
+
+  it('keeps real France outline copies pointer-transparent above authored pointer-events', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: europeSvg })
+
+    controller.setGroupOutlines([{
+      id: 'western-europe',
+      countryIds: ['France', 'Belgium', 'Netherlands', 'Luxembourg'],
+      visible: true,
+    }])
+    controller.setGroupOutlinesVisible(['western-europe'])
+
+    // JSDOM cannot perform SVG hit testing; this reproduces the browser
+    // stacking condition and asserts the generated geometry cannot be a hit.
+    expect(path(mount, 'France').getAttribute('pointer-events')).toBe('auto')
+    expect(path(mount, 'Belgium').getAttribute('pointer-events')).toBeNull()
+    const franceOutline = mount.querySelector<SVGPathElement>('[data-svg-map-group-outline="western-europe"] [data-svg-map-group-outline-source="France"]')
+    const belgiumOutline = mount.querySelector<SVGPathElement>('[data-svg-map-group-outline="western-europe"] [data-svg-map-group-outline-source="Belgium"]')
+    expect(franceOutline?.getAttribute('pointer-events')).toBe('none')
+    expect(franceOutline?.style.getPropertyValue('pointer-events')).toBe('none')
+    expect(belgiumOutline?.getAttribute('pointer-events')).toBe('none')
+  })
+
+  it('projects outline copies through authored ancestor transforms without double-applying path transforms', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TRANSFORMED_MAP })
+
+    controller.setGroupOutlines([{
+      id: 'transformed-outline',
+      countryIds: ['Transformed', 'Plain'],
+      visible: true,
+    }])
+    controller.setGroupOutlinesVisible(['transformed-outline'])
+
+    const outline = mount.querySelector('[data-svg-map-group-outline="transformed-outline"]')
+    const transformed = outline?.querySelector<SVGPathElement>('[data-svg-map-group-outline-source="Transformed"]')
+    const plain = outline?.querySelector<SVGPathElement>('[data-svg-map-group-outline-source="Plain"]')
+    expect(transformed?.getAttribute('transform')).toBe('matrix(3 0 0 3 16 32)')
+    expect(plain?.getAttribute('transform')).toBe('matrix(3 0 0 3 10 20)')
+    expect(transformed?.getAttribute('pointer-events')).toBe('none')
+    expect(plain?.getAttribute('pointer-events')).toBe('none')
+    expect(mount.querySelector('[data-svg-map-group-outlines]')?.getAttribute('pointer-events')).toBe('none')
+  })
+
+  it('projects real Oceania outlines through the authored country transform', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: oceaniaSvg })
+
+    controller.setGroupOutlines([{
+      id: 'australia-new-zealand',
+      countryIds: ['Australia', 'New_Zealand'],
+      stroke: '#22d3ee',
+      strokeWidth: '2px',
+      visible: true,
+    }])
+    controller.setGroupOutlinesVisible(['australia-new-zealand'])
+
+    const outline = mount.querySelector('[data-svg-map-group-outline="australia-new-zealand"]')
+    expect(outline?.querySelector('[data-svg-map-group-outline-source="Australia"]')?.getAttribute('transform'))
+      .toBe('matrix(3.15 0 0 3.15 -2103.5 -733.25)')
+    expect(outline?.querySelector('[data-svg-map-group-outline-source="New_Zealand"]')?.getAttribute('transform'))
+      .toBe('matrix(3.15 0 0 3.15 -2103.5 -733.25)')
+    expect(outline?.querySelector('[data-svg-map-group-outline-source="Australia_wrap"]')?.getAttribute('transform'))
+      .toBe('matrix(3.15 0 0 3.15 718.648 -733.25)')
+    expect(outline?.querySelectorAll('[data-svg-map-group-outline-source]')).toHaveLength(4)
+    expect([...outline?.querySelectorAll<SVGPathElement>('[data-svg-map-group-outline-source]') ?? []]
+      .every(element => element.getAttribute('pointer-events') === 'none'))
+      .toBe(true)
   })
 })
 

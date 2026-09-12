@@ -213,6 +213,34 @@ export function readSvgElementTransform(element: SVGGraphicsElement, screen = fa
   }
 }
 
+/** Read an element's full transform in a containing SVG coordinate space. */
+export function readSvgElementTransformToLayer(
+  element: SVGGraphicsElement,
+  layerSvg: SVGSVGElement,
+): SvgAffineTransform | null {
+  if (element.ownerSVGElement === layerSvg) return readSvgElementTransform(element)
+
+  const elementScreen = readSvgElementTransform(element, true)
+  const layerScreen = readSvgElementTransform(layerSvg, true)
+  if (elementScreen && layerScreen) {
+    const inverse = invertTransform(layerScreen)
+    if (inverse) return multiplyTransforms(inverse, elementScreen)
+  }
+
+  let current: Element | null = element
+  let result = IDENTITY_TRANSFORM
+  let found = false
+  while (current && current !== layerSvg) {
+    const transform = parseSvgTransform(current.getAttribute('transform'))
+    if (transform) {
+      result = multiplyTransforms(transform, result)
+      found = true
+    }
+    current = current.parentElement
+  }
+  return current === layerSvg && found ? result : null
+}
+
 export function readSvgClientRect(svg: SVGSVGElement): SvgClientRect | null {
   try {
     const rect = svg.getBoundingClientRect()
