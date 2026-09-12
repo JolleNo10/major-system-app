@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { deriveWorldCountriesCountryProgress, deriveWorldCountriesRecallProgress } from './recallProgress'
 import {
+  deriveWorldCountriesPrimaryStatus,
+  deriveWorldCountriesPrimaryStatusCounts,
   getCountryProgressColor,
   getCountryProgressState,
   getWorldCountriesProgressLegend,
@@ -31,5 +33,16 @@ describe('World Countries progress presentation semantics', () => {
     expect(getCountryProgressColor('mastered')).toBe('#16834f')
     expect(getWorldCountriesProgressLegend('core')).toBe('Early recall · Weak · Developing · Strong · Mastered')
     expect(getWorldCountriesProgressLegend('skill')).toBe('Early recall · Weak · Developing · Strong · Mastered')
+  })
+
+  it('keeps Early recall in Recall health instead of relabelling Learning states', () => {
+    const progress = deriveWorldCountriesCountryProgress('NO', new Map())
+    expect(deriveWorldCountriesPrimaryStatus('NOT_LEARNED', progress)).toEqual({ kind: 'learning', readiness: 'NOT_LEARNED' })
+    expect(deriveWorldCountriesPrimaryStatus('COUNTRIES_LEARNED', progress)).toEqual({ kind: 'learning', readiness: 'COUNTRIES_LEARNED' })
+    expect(deriveWorldCountriesPrimaryStatus('COUNTRIES_AND_CAPITALS_LEARNED', progress)).toEqual({ kind: 'recall', state: 'unpractised' })
+
+    const counts = deriveWorldCountriesPrimaryStatusCounts([{ id: 'NO', subregionId: 'northern-europe' }], [], new Map())
+    expect(counts.find(entry => entry.state === 'NOT_LEARNED')).toMatchObject({ label: 'Not learned', count: 1 })
+    expect(counts.find(entry => entry.state === 'unpractised')).toMatchObject({ label: 'Early recall', count: 0 })
   })
 })

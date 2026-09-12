@@ -19,11 +19,13 @@ import {
 import type { WorldCountriesRecallSkill } from '@/features/world-countries/learning/recallTargets'
 import type { ProgressMapLegendEntry } from '@/features/world-countries/learning/ProgressMapLegend'
 import {
+  createWorldCountriesLearningPattern,
   getLearningReadinessBySubregion,
+  getWorldCountriesLearningPatternKind,
   getWorldCountriesLearningReadinessDescription,
   getWorldCountriesLearningReadinessLabel,
+  WORLD_COUNTRIES_LEARNING_BASE,
   WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES,
-  WORLD_COUNTRIES_LEARNING_READINESS_COLORS,
 } from '@/features/world-countries/learning/learningReadiness'
 import type { WorldCountriesLearningStates, WorldCountriesLearningReadiness } from '@/features/world-countries/learning/learningReadiness'
 import type { WorldCountriesProgressState } from '@/features/world-countries/learning/progressPresentation'
@@ -75,11 +77,21 @@ export function createDrillProgressColors(
   const presentations = getDrillCountryPresentations(input)
   return new Map([...presentations].map(([countryId, presentation]) => {
     if (presentation.kind === 'learning') {
-      const readiness = presentation.readiness
-      return [countryId, WORLD_COUNTRIES_LEARNING_READINESS_COLORS[readiness]] as const
+      return [countryId, WORLD_COUNTRIES_LEARNING_BASE] as const
     }
     const state = presentation.state
     return [countryId, getCountryProgressColor(state)] as const
+  }))
+}
+
+export function createDrillProgressPatterns(
+  input: DrillProgressPresentationInput,
+): Map<CountryId, ReturnType<typeof createWorldCountriesLearningPattern>> {
+  const presentations = getDrillCountryPresentations(input)
+  return new Map([...presentations].flatMap(([countryId, presentation]) => {
+    if (presentation.kind !== 'learning') return []
+    const kind = getWorldCountriesLearningPatternKind(presentation.readiness)
+    return kind ? [[countryId, createWorldCountriesLearningPattern(kind)] as const] : []
   }))
 }
 

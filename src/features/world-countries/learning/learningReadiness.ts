@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import type { Country, CountryId } from '@/features/world-countries/data/countries'
 import type { SubregionId } from '@/features/world-countries/data/subregions'
 import { recallTargetIdFor, type WorldCountriesCoreRecallSkill } from './recallTargets'
@@ -15,11 +16,7 @@ export const WORLD_COUNTRIES_LEARNING_READINESS_STATES = [
 
 export type WorldCountriesLearningReadiness = typeof WORLD_COUNTRIES_LEARNING_READINESS_STATES[number]
 export type WorldCountriesLearningStates = readonly SubregionLearningState[] | ReadonlyMap<SubregionId, SubregionLearningState>
-export type WorldCountriesLearningEdgeTreatment = 'none' | 'outline' | 'halo'
 export type WorldCountriesLearningPatternKind = 'diagonal' | 'crosshatch'
-
-export const WORLD_COUNTRIES_LEARNING_EDGE_STROKE = '#22d3ee'
-export const WORLD_COUNTRIES_LEARNING_EDGE_STROKE_WIDTH = '2px'
 
 export function getWorldCountriesLearningStateList(
   states: WorldCountriesLearningStates,
@@ -27,13 +24,8 @@ export function getWorldCountriesLearningStateList(
   return Array.isArray(states) ? states : [...states.values()]
 }
 
-export const WORLD_COUNTRIES_LEARNING_READINESS_COLORS: Readonly<Record<WorldCountriesLearningReadiness, string>> = {
-  NOT_LEARNED: '#52525b',
-  COUNTRIES_LEARNED: '#71717a',
-  COUNTRIES_AND_CAPITALS_LEARNED: '#a1a1aa',
-}
-
-export const WORLD_COUNTRIES_LEARNING_PATTERN_BASE = WORLD_COUNTRIES_LEARNING_READINESS_COLORS.NOT_LEARNED
+export const WORLD_COUNTRIES_LEARNING_BASE = '#52525b'
+export const WORLD_COUNTRIES_LEARNING_PATTERN_BASE = WORLD_COUNTRIES_LEARNING_BASE
 export const WORLD_COUNTRIES_LEARNING_PATTERN_LINE = '#918779'
 export const WORLD_COUNTRIES_LEARNING_PATTERN_WIDTH = 2
 export const WORLD_COUNTRIES_LEARNING_PATTERN_PITCH = 16
@@ -45,6 +37,33 @@ export function createWorldCountriesLearningPattern(kind: WorldCountriesLearning
     lineColor: WORLD_COUNTRIES_LEARNING_PATTERN_LINE,
     lineWidth: WORLD_COUNTRIES_LEARNING_PATTERN_WIDTH,
     pitch: WORLD_COUNTRIES_LEARNING_PATTERN_PITCH,
+  }
+}
+
+export function getWorldCountriesLearningPatternKind(
+  readiness: WorldCountriesLearningReadiness,
+): WorldCountriesLearningPatternKind | null {
+  if (readiness === 'COUNTRIES_AND_CAPITALS_LEARNED') return 'crosshatch'
+  if (readiness === 'COUNTRIES_LEARNED') return 'diagonal'
+  return null
+}
+
+/** Derive the CSS swatch from the same descriptor used by the SVG map. */
+export function createWorldCountriesLearningPatternSwatchStyle(
+  kind: WorldCountriesLearningPatternKind,
+): CSSProperties {
+  const pattern = createWorldCountriesLearningPattern(kind)
+  const pitch = pattern.pitch ?? WORLD_COUNTRIES_LEARNING_PATTERN_PITCH
+  const lineWidth = pattern.lineWidth ?? WORLD_COUNTRIES_LEARNING_PATTERN_WIDTH
+  const lineStart = (pitch - lineWidth) / 2
+  const lineEnd = lineStart + lineWidth
+  const gradient = (angle: number) => `repeating-linear-gradient(${angle}deg, transparent 0 ${lineStart}px, ${pattern.lineColor} ${lineStart}px ${lineEnd}px, transparent ${lineEnd}px ${pitch}px)`
+  const gradients = kind === 'crosshatch' ? [gradient(135), gradient(45)] : [gradient(135)]
+
+  return {
+    backgroundColor: pattern.baseColor,
+    backgroundImage: gradients.join(', '),
+    backgroundSize: `${pitch}px ${pitch}px`,
   }
 }
 
@@ -61,11 +80,15 @@ const WORLD_COUNTRIES_LEARNING_READINESS_DESCRIPTIONS: Readonly<Record<WorldCoun
 }
 
 export const WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES: readonly ProgressMapLegendEntry[] = [
-  ...WORLD_COUNTRIES_LEARNING_READINESS_STATES.map(state => ({
-    state,
-    label: WORLD_COUNTRIES_LEARNING_READINESS_LABELS[state],
-    color: WORLD_COUNTRIES_LEARNING_READINESS_COLORS[state],
-  })),
+  ...WORLD_COUNTRIES_LEARNING_READINESS_STATES.map(state => {
+    const kind = getWorldCountriesLearningPatternKind(state)
+    return {
+      state,
+      label: WORLD_COUNTRIES_LEARNING_READINESS_LABELS[state],
+      color: WORLD_COUNTRIES_LEARNING_BASE,
+      ...(kind ? { swatchStyle: createWorldCountriesLearningPatternSwatchStyle(kind) } : {}),
+    }
+  }),
 ]
 
 export function getWorldCountriesLearningReadinessLabel(readiness: WorldCountriesLearningReadiness): string {
@@ -221,14 +244,6 @@ export function deriveWorldCountriesEstablishedLearningReadiness(
   )
 }
 
-export function getWorldCountriesLearningEdgeTreatment(
-  readiness: WorldCountriesLearningReadiness,
-): WorldCountriesLearningEdgeTreatment {
-  if (readiness === 'COUNTRIES_AND_CAPITALS_LEARNED') return 'halo'
-  if (readiness === 'COUNTRIES_LEARNED') return 'outline'
-  return 'none'
-}
-
 function getLearningState(
   states: WorldCountriesLearningStates,
   subregionId: SubregionId,
@@ -255,38 +270,11 @@ export function createWorldCountriesEstablishedLearningReadinessByCountry(
   }))
 }
 
-export function createWorldCountriesLearningEdgeTreatmentsByCountry(
-  entries: readonly Pick<Country, 'id' | 'subregionId'>[],
-  states: WorldCountriesLearningStates,
-  recallProgress: RecallProgress,
-): Map<CountryId, WorldCountriesLearningEdgeTreatment> {
-  const readinessByCountry = createWorldCountriesEstablishedLearningReadinessByCountry(
-    entries,
-    states,
-    recallProgress,
-  )
-  return new Map([...readinessByCountry].map(([countryId, readiness]) => [
-    countryId,
-    getWorldCountriesLearningEdgeTreatment(readiness),
-  ]))
-}
-
 export function getLearningReadinessForCountry(
   country: Pick<Country, 'subregionId'>,
   readinessBySubregion: ReadonlyMap<SubregionId, WorldCountriesLearningReadiness>,
 ): WorldCountriesLearningReadiness {
   return readinessBySubregion.get(country.subregionId) ?? 'NOT_LEARNED'
-}
-
-export function createWorldCountriesLearningReadinessColors(
-  entries: readonly Pick<Country, 'id' | 'subregionId'>[],
-  states: readonly SubregionLearningState[],
-): Map<CountryId, string> {
-  const readinessBySubregion = getLearningReadinessBySubregion(states)
-  return new Map(entries.map(country => {
-    const readiness = getLearningReadinessForCountry(country, readinessBySubregion)
-    return [country.id, WORLD_COUNTRIES_LEARNING_READINESS_COLORS[readiness]]
-  }))
 }
 
 export function createWorldCountriesLearningReadinessByCountry(
@@ -295,4 +283,14 @@ export function createWorldCountriesLearningReadinessByCountry(
 ): Map<CountryId, WorldCountriesLearningReadiness> {
   const readinessBySubregion = getLearningReadinessBySubregion(states)
   return new Map(entries.map(country => [country.id, getLearningReadinessForCountry(country, readinessBySubregion)]))
+}
+
+export function createWorldCountriesLearningPatternsByCountry(
+  entries: readonly Pick<Country, 'id' | 'subregionId'>[],
+  readinessByCountry: ReadonlyMap<CountryId, WorldCountriesLearningReadiness>,
+): Map<CountryId, SvgMapCountryPattern> {
+  return new Map(entries.flatMap(country => {
+    const kind = getWorldCountriesLearningPatternKind(readinessByCountry.get(country.id) ?? 'NOT_LEARNED')
+    return kind ? [[country.id, createWorldCountriesLearningPattern(kind)] as const] : []
+  }))
 }

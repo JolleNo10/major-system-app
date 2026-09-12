@@ -392,9 +392,13 @@ and an established Countries + Capitals layer is presented as solid Recall
 health. Early recall, Weak, Developing, Strong, and Mastered use the shared
 warm-to-green solid palette. The Learning patterns are derived from durable
 Subregion milestones or the existing historical established-layer fallback;
-they do not add per-Country flags or a new store. The Capital-completion
-surface may show the crosshatched Learning-complete payoff before the normal
-long-term map moves to solid Recall health. Durable guided Learning completion can expose a
+they do not add per-Country flags or a new store. While Capital Learning is
+active after the Country layer is established, the diagonal pattern remains
+the stable underlying status through walkthrough, practice, mix, and final
+recall. A rerun for a region whose Capital layer is already established uses
+the completed crosshatch treatment throughout. Capital completion may show
+the crosshatched Learning-complete payoff before the normal Home/Continent
+map moves to solid Recall health. Durable guided Learning completion can expose a
 same-focus Country-to-Capital handoff before a later planner-derived
 next-region handoff; it keeps an explicit return action and never auto-starts
 that recommendation. The attached Today task dock owns the active Journey
@@ -434,7 +438,9 @@ orientation surface.
 
 Durable Learning Readiness is derived from `countriesLearnedAt` and
 `capitalsLearnedAt` and has exactly three states: Not learned, Countries
-learned, and Countries + Capitals learned. A display-only Drill-evidence
+learned, and Countries + Capitals learned. Its map and legend presentation
+uses one `#52525b` base with `#918779` diagonal/crosshatch patterns; the
+learned states are not separate flat fill colors. A display-only Drill-evidence
 bridge may promote a Subregion to Countries learned when every active Country
 has current Location -> Country proficiency of Developing or better. It never
 writes a Learning milestone or changes Drill evidence. This Drill setup
@@ -445,7 +451,9 @@ above before recommending Capital Learning.
 Today map status uses the established-layer form of this truth: a durable
 layer is authoritative, while the existing all-active-Country historical
 `hasEverMastered` fallback may establish the display/planning signal without
-writing a milestone. Later failures can weaken current recall and increase
+writing a milestone. `Early recall` is a Recall-health label for internal
+`unpractised`, not a global synonym for an untouched Country; primary ladder
+surfaces gate it until both Learning layers are established. Later failures can weaken current recall and increase
 Review urgency, but do not reopen a Learning pattern. The legend and Country
 accessible descriptions expose the current status in text: Learning lists Not
 learned, Countries learned, and Countries + Capitals learned with real pattern

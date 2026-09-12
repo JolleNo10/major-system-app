@@ -1,23 +1,38 @@
 import { describe, expect, it } from 'vitest'
 import { deriveWorldCountriesRecallProgress } from './recallProgress'
 import { recallTargetIdFor } from './recallTargets'
-import { createWorldCountriesLearningEdgeTreatmentsByCountry, createWorldCountriesLearningPattern, createWorldCountriesLearningReadinessByCountry, deriveWorldCountriesLearningReadiness, getLearningReadinessBySubregion, getLearningReadinessBySubregionWithDrillEvidence, getLearningReadinessForCountry, isWorldCountriesCapitalLayerEstablished, isWorldCountriesCapitalRecallMastered, isWorldCountriesCountryLayerEstablished, isWorldCountriesCountryRecallMastered, WORLD_COUNTRIES_LEARNING_PATTERN_BASE, WORLD_COUNTRIES_LEARNING_PATTERN_LINE, WORLD_COUNTRIES_LEARNING_PATTERN_PITCH, WORLD_COUNTRIES_LEARNING_PATTERN_WIDTH, WORLD_COUNTRIES_LEARNING_READINESS_COLORS, WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES } from './learningReadiness'
+import { createWorldCountriesLearningPattern, createWorldCountriesLearningPatternsByCountry, createWorldCountriesLearningReadinessByCountry, deriveWorldCountriesLearningReadiness, getLearningReadinessBySubregion, getLearningReadinessBySubregionWithDrillEvidence, getLearningReadinessForCountry, isWorldCountriesCapitalLayerEstablished, isWorldCountriesCapitalRecallMastered, isWorldCountriesCountryLayerEstablished, isWorldCountriesCountryRecallMastered, WORLD_COUNTRIES_LEARNING_BASE, WORLD_COUNTRIES_LEARNING_PATTERN_BASE, WORLD_COUNTRIES_LEARNING_PATTERN_LINE, WORLD_COUNTRIES_LEARNING_PATTERN_PITCH, WORLD_COUNTRIES_LEARNING_PATTERN_WIDTH, WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES } from './learningReadiness'
 
 describe('World Countries Learning Readiness', () => {
-  it('keeps the canonical three-state palette and labels together', () => {
+  it('keeps the canonical three-state labels and shared base together', () => {
     expect(WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES).toEqual([
       { state: 'NOT_LEARNED', label: 'Not learned', color: '#52525b' },
-      { state: 'COUNTRIES_LEARNED', label: 'Countries learned', color: '#71717a' },
-      { state: 'COUNTRIES_AND_CAPITALS_LEARNED', label: 'Countries + Capitals learned', color: '#a1a1aa' },
+      expect.objectContaining({ state: 'COUNTRIES_LEARNED', label: 'Countries learned', color: '#52525b', swatchStyle: expect.objectContaining({ backgroundColor: '#52525b', backgroundSize: '16px 16px' }) }),
+      expect.objectContaining({ state: 'COUNTRIES_AND_CAPITALS_LEARNED', label: 'Countries + Capitals learned', color: '#52525b', swatchStyle: expect.objectContaining({ backgroundColor: '#52525b', backgroundSize: '16px 16px' }) }),
     ])
-    expect(WORLD_COUNTRIES_LEARNING_READINESS_COLORS).toEqual({ NOT_LEARNED: '#52525b', COUNTRIES_LEARNED: '#71717a', COUNTRIES_AND_CAPITALS_LEARNED: '#a1a1aa' })
   })
 
   it('shares the Not learned base with subtle pattern lines', () => {
-    expect(WORLD_COUNTRIES_LEARNING_PATTERN_BASE).toBe(WORLD_COUNTRIES_LEARNING_READINESS_COLORS.NOT_LEARNED)
+    expect(WORLD_COUNTRIES_LEARNING_PATTERN_BASE).toBe(WORLD_COUNTRIES_LEARNING_BASE)
     expect(WORLD_COUNTRIES_LEARNING_PATTERN_LINE).toBe('#918779')
     expect(createWorldCountriesLearningPattern('diagonal')).toMatchObject({ kind: 'diagonal', baseColor: '#52525b', lineColor: '#918779', lineWidth: WORLD_COUNTRIES_LEARNING_PATTERN_WIDTH, pitch: WORLD_COUNTRIES_LEARNING_PATTERN_PITCH })
     expect(createWorldCountriesLearningPattern('crosshatch').kind).toBe('crosshatch')
+  })
+
+  it('maps Learning Readiness to the matching pattern and leaves Not learned solid', () => {
+    const entries = [
+      { id: 'NO', subregionId: 'northern-europe' as const },
+      { id: 'SE', subregionId: 'northern-europe' as const },
+      { id: 'FI', subregionId: 'northern-europe' as const },
+    ]
+    expect(createWorldCountriesLearningPatternsByCountry(entries, new Map([
+      ['NO', 'NOT_LEARNED'],
+      ['SE', 'COUNTRIES_LEARNED'],
+      ['FI', 'COUNTRIES_AND_CAPITALS_LEARNED'],
+    ]))).toEqual(new Map([
+      ['SE', expect.objectContaining({ kind: 'diagonal', baseColor: '#52525b', lineColor: '#918779' })],
+      ['FI', expect.objectContaining({ kind: 'crosshatch', baseColor: '#52525b', lineColor: '#918779' })],
+    ]))
   })
 
   it.each([
@@ -161,36 +176,4 @@ describe('World Countries Learning Readiness', () => {
     expect(isWorldCountriesCapitalLayerEstablished(entries, 'northern-europe', undefined, progress)).toBe(true)
   })
 
-  it('derives Learning edge treatments from established layers, including historical fallback', () => {
-    const entries = [
-      { id: 'NO', subregionId: 'northern-europe' as const },
-      { id: 'SE', subregionId: 'northern-europe' as const },
-      { id: 'DK', subregionId: 'northern-europe' as const },
-    ]
-    const progress = deriveWorldCountriesRecallProgress({
-      countryIds: entries.map(entry => entry.id),
-      skills: ['location-to-country', 'country-to-capital'],
-    }, [
-      { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 1, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10' },
-      { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 2, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-11' },
-      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 3, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10' },
-      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 4, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-11' },
-    ])
-
-    expect(createWorldCountriesLearningEdgeTreatmentsByCountry(entries, [
-      { subregionId: 'northern-europe', countriesLearnedAt: 1 },
-    ], progress)).toEqual(new Map([
-      ['NO', 'outline'],
-      ['SE', 'outline'],
-      ['DK', 'outline'],
-    ]))
-
-    expect(createWorldCountriesLearningEdgeTreatmentsByCountry(entries, [
-      { subregionId: 'northern-europe', countriesLearnedAt: 1, capitalsLearnedAt: 2 },
-    ], new Map())).toEqual(new Map([
-      ['NO', 'halo'],
-      ['SE', 'halo'],
-      ['DK', 'halo'],
-    ]))
-  })
 })

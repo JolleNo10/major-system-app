@@ -121,12 +121,21 @@ Do not persist a new per-Country `mapStatus`, `recallStarted`, or phase flag.
 The implementation should derive the handoff from existing workflow context and evidence:
 
 - while the learner is still in guided Learning, use the applicable Learning pattern state;
+- after Countries are established, Capital Learning keeps the Countries-learned diagonal pattern through walkthrough, practice, mix, and final recall;
+- an intentional Capital rerun for an already Capital-established region uses the crosshatch completion treatment rather than regressing to Countries-only presentation;
 - the Capital-completion / Region-learned moment may show the crosshatch state as the visible completion payoff;
 - once the material is being presented as long-term retention rather than unfinished curriculum, use the current solid Recall-health state;
 - on ordinary Home/Continent/Progress views of an already learned region, Recall health is the long-term status surface rather than a permanent Learning pattern;
 - ordinary mistakes after Learning must only affect Recall health. They must never send a Country back into a Learning pattern.
 
 Prefer existing Journey/completion context and current recall evidence over inventing another durable handoff marker.
+
+`Early recall` is a Recall-health phase label for the internal `unpractised`
+state. It is not a global rename: an untouched Country remains Not learned,
+and a Countries-learned Country remains in its diagonal Learning state until
+both Learning layers are established. Dedicated Learning Readiness surfaces,
+including Learn & Practise and Drill's no-evidence fallback, use the same grey
+base with diagonal/crosshatch patterns.
 
 If repository inspection reveals more than one reasonable existing seam for this handoff, choose the one that preserves the current ownership model and report the choice in the implementation summary.
 
@@ -360,10 +369,13 @@ Implemented on 2026-09-12 on `world-countries-learning-journey`.
 
 Evidence: focused Vitest coverage for `SvgMapController`, `GeographyOverviewMap`,
 `geographyMapAdapter`, `CountryLearningMap`, `WorldCountriesToday`, and
-`progressPresentation`: 144 tests passed. Typecheck reached the changed modules
-without errors; the repository command still reports its existing missing
-Node.js test-type declarations and unrelated Drill test type error. Lint could
-not run because the local `eslint` executable is unavailable.
+`progressPresentation`: 144 tests passed in the original CS0069 delivery.
+The follow-up correction adds focused coverage for Learning Readiness patterns,
+Capital Learning continuity, gated Early recall, Progress distribution, and
+Drill readiness fallback. Final focused run: 14 test files, 238 tests passed.
+Typecheck reached the changed World Countries modules without errors; the
+repository command still reports the existing missing Node.js test-type
+declarations. No browser or dev-server verification was used.
 
 Use focused, risk-proportionate automated validation around:
 

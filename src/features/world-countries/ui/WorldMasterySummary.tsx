@@ -1,8 +1,12 @@
-import { getCountryProgressColor, WORLD_COUNTRIES_CORE_FINISH_LINE_EXPLANATION, WORLD_COUNTRIES_PROGRESS_LABELS } from '@/features/world-countries/learning/progressPresentation'
+import { deriveWorldCountriesPrimaryStatusCounts, getCountryProgressColor, WORLD_COUNTRIES_CORE_FINISH_LINE_EXPLANATION, WORLD_COUNTRIES_PROGRESS_LABELS } from '@/features/world-countries/learning/progressPresentation'
+import type { WorldCountriesPrimaryStatusCount } from '@/features/world-countries/learning/progressPresentation'
 import { WORLD_COUNTRIES_COUNTRY_CORE_STATES, type WorldCountriesScopeProgress } from '@/features/world-countries/learning/scopeProgress'
+import type { Country } from '@/features/world-countries/data/countries'
+import type { RecallProgress } from '@/features/world-countries/learning/recallProgress'
+import type { LearningStates } from '@/features/world-countries/learning/learningProgress'
 
 /** Workflow-neutral core mastery summary shared by guided and setup surfaces. */
-export function WorldMasterySummary({ progress, scopeLabel = 'World' }: { progress: WorldCountriesScopeProgress | null; scopeLabel?: string }) {
+export function WorldMasterySummary({ progress, scopeLabel = 'World', primaryStatusContext }: { progress: WorldCountriesScopeProgress | null; scopeLabel?: string; primaryStatusContext?: { countries: readonly Pick<Country, 'id' | 'subregionId'>[]; recallProgress: RecallProgress; learningStates: LearningStates } }) {
   const title = scopeLabel === 'World' ? 'World mastery' : `${scopeLabel} progress`
   return (
     <section
@@ -29,10 +33,10 @@ export function WorldMasterySummary({ progress, scopeLabel = 'World' }: { progre
         <>
           {progress.totalCountries === 0 && <p className="text-xs font-semibold text-zinc-300">0 Countries active</p>}
           <ul className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-zinc-300" aria-label="World mastery state counts">
-            {WORLD_COUNTRIES_COUNTRY_CORE_STATES.map(state => (
-              <li key={state} className="inline-flex items-center gap-1.5 tabular-nums">
-                <span className="h-2.5 w-2.5 rounded-sm border border-white/15" style={{ backgroundColor: getCountryProgressColor(state) }} aria-hidden="true" />
-                <span>{WORLD_COUNTRIES_PROGRESS_LABELS[state]} {progress.countryStateCounts[state]}</span>
+            {(primaryStatusContext ? deriveWorldCountriesPrimaryStatusCounts(primaryStatusContext.countries, primaryStatusContext.learningStates, primaryStatusContext.recallProgress) : WORLD_COUNTRIES_COUNTRY_CORE_STATES.map(state => ({ state, label: WORLD_COUNTRIES_PROGRESS_LABELS[state], count: progress.countryStateCounts[state], color: getCountryProgressColor(state) }))).map((entry: WorldCountriesPrimaryStatusCount) => (
+              <li key={entry.state} className="inline-flex items-center gap-1.5 tabular-nums">
+                <span className="h-2.5 w-2.5 rounded-sm border border-white/15" style={{ backgroundColor: entry.color }} aria-hidden="true" />
+                <span>{entry.label} {entry.count}</span>
               </li>
             ))}
           </ul>

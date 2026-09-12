@@ -63,7 +63,8 @@ describe('World Countries progress hierarchy', () => {
     expect(mount.textContent).toContain('Europe')
     expect(mount.textContent).toContain('Countries fully mastered')
     expect(mount.textContent).toContain('regions with complete recall')
-    expect(mount.textContent).toContain('Unpractised')
+    expect(mount.textContent).toContain('Not learned')
+    expect(mount.textContent).not.toContain('Early recall 1')
     expect(mount.querySelector('[data-testid="world-mastery-summary"]')).not.toBeNull()
     expect(mount.querySelector('[aria-label="Africa core recall distribution"]')).not.toBeNull()
     expect(mount.textContent).not.toContain('Northern Europe')
@@ -111,5 +112,15 @@ describe('World Countries progress hierarchy', () => {
 
     expect(mount.textContent).toContain('Journey · Region learned')
     expect(mount.textContent).toContain('Mastery · Mastered')
+  })
+
+  it('gates Early recall behind both Learning layers', () => {
+    const northern = countries.find(country => country.subregionId === 'northern-europe')!
+    const unlearned = renderProgress('Europe', [northern], [], [])
+    expect(unlearned.textContent).toContain('Not learned 1')
+    expect(unlearned.textContent).not.toContain('Early recall 1')
+
+    const learned = renderProgress('Europe', [northern], [{ subregionId: northern.subregionId, countriesLearnedAt: 1, capitalsLearnedAt: 2 }])
+    expect(learned.textContent).toContain('Early recall 1')
   })
 })

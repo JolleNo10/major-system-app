@@ -1,7 +1,10 @@
+import type { CSSProperties } from 'react'
+
 export interface ProgressMapLegendEntry {
   state: string
   label: string
   color: string
+  swatchStyle?: CSSProperties
 }
 
 export interface ProgressMapLegendGroup {
@@ -66,7 +69,7 @@ export function ProgressMapLegend({
                 >
                   <i
                     className="h-3 w-3 rounded-sm border border-white/15"
-                    style={{ backgroundColor: entry.color }}
+                    style={{ backgroundColor: entry.color, ...entry.swatchStyle }}
                     aria-hidden="true"
                   />
                   <span>{entry.label}</span>

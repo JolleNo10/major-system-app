@@ -5,9 +5,9 @@ import { WORLD_COUNTRIES_LEARNING_PATTERN_BASE, WORLD_COUNTRIES_LEARNING_PATTERN
 
 const entries = countries.slice(0, 2)
 
-function derive(completionPatternKind: 'diagonal' | 'crosshatch') {
+function derive(completionPatternKind: 'diagonal' | 'crosshatch', phase = 'complete', activeLearningPatternKind?: 'diagonal' | 'crosshatch') {
   return deriveLearningMapPresentation({
-    phase: 'complete',
+    phase,
     fullEntries: entries,
     stageEntries: entries,
     fallbackEntries: entries,
@@ -17,6 +17,7 @@ function derive(completionPatternKind: 'diagonal' | 'crosshatch') {
     hoveredCountryId: null,
     orderPresentation: {},
     completionPatternKind,
+    activeLearningPatternKind,
   })
 }
 
@@ -31,5 +32,11 @@ describe('Learning map completion presentation', () => {
     expect(derive('crosshatch').presentation.countryPatternsById?.get(entries[0].id)).toMatchObject({
       kind: 'crosshatch', baseColor: WORLD_COUNTRIES_LEARNING_PATTERN_BASE, lineColor: WORLD_COUNTRIES_LEARNING_PATTERN_LINE, lineWidth: 2, pitch: 16,
     })
+  })
+
+  it('keeps the established Country pattern during active Capital Learning', () => {
+    expect(derive('crosshatch', 'practice', 'diagonal').presentation.countryPatternsById?.get(entries[0].id)).toMatchObject({ kind: 'diagonal' })
+    expect(derive('crosshatch', 'final-recall', 'diagonal').presentation.countryPatternsById?.get(entries[0].id)).toMatchObject({ kind: 'diagonal' })
+    expect(derive('crosshatch', 'complete', 'diagonal').presentation.countryPatternsById?.get(entries[0].id)).toMatchObject({ kind: 'crosshatch' })
   })
 })

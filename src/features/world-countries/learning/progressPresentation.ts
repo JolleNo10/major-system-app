@@ -1,10 +1,23 @@
-import type { WorldCountriesCountryCoreState, WorldCountriesCountryProgress } from './recallProgress'
+import type { Country } from '@/features/world-countries/data/countries'
+import { deriveWorldCountriesCountryProgress, type WorldCountriesCountryCoreState, type WorldCountriesCountryProgress, type RecallProgress } from './recallProgress'
 import type { WorldCountriesProficiency } from './recallMastery'
 import type { WorldCountriesRecallSkill } from './recallTargets'
+import { createWorldCountriesEstablishedLearningReadinessByCountry, getWorldCountriesLearningReadinessLabel, getWorldCountriesLearningStateList, WORLD_COUNTRIES_LEARNING_BASE, type WorldCountriesLearningReadiness, type WorldCountriesLearningStates } from './learningReadiness'
 
 export type WorldCountriesProgressPerspective = 'core' | WorldCountriesRecallSkill
 export type WorldCountriesProgressState = WorldCountriesCountryCoreState | WorldCountriesProficiency
 export type WorldCountriesProgressLegendKind = 'core' | 'skill'
+
+export type WorldCountriesPrimaryStatus =
+  | { kind: 'learning'; readiness: WorldCountriesLearningReadiness }
+  | { kind: 'recall'; state: WorldCountriesProgressState }
+
+export interface WorldCountriesPrimaryStatusCount {
+  state: string
+  label: string
+  count: number
+  color: string
+}
 
 export const WORLD_COUNTRIES_PROGRESS_LABELS: Readonly<Record<WorldCountriesProgressState, string>> = {
   unpractised: 'Early recall',
@@ -40,6 +53,59 @@ export function getCountryProgressState(
 
 export function getCountryProgressColor(state: WorldCountriesProgressState): string {
   return WORLD_COUNTRIES_PROGRESS_COLORS[state]
+}
+
+/** Gate recall-health labels behind the durable Learning ladder. */
+export function deriveWorldCountriesPrimaryStatus(
+  readiness: WorldCountriesLearningReadiness,
+  progress: WorldCountriesCountryProgress,
+): WorldCountriesPrimaryStatus {
+  return readiness === 'COUNTRIES_AND_CAPITALS_LEARNED'
+    ? { kind: 'recall', state: progress.coreState }
+    : { kind: 'learning', readiness }
+}
+
+export function getWorldCountriesPrimaryStatusLabel(status: WorldCountriesPrimaryStatus): string {
+  return status.kind === 'learning'
+    ? getWorldCountriesLearningReadinessLabel(status.readiness)
+    : WORLD_COUNTRIES_PROGRESS_LABELS[status.state]
+}
+
+export function deriveWorldCountriesPrimaryStatusCounts(
+  countries: readonly Pick<Country, 'id' | 'subregionId'>[],
+  learningStates: WorldCountriesLearningStates,
+  recallProgress: RecallProgress,
+): readonly WorldCountriesPrimaryStatusCount[] {
+  const readinessByCountry = createWorldCountriesEstablishedLearningReadinessByCountry(
+    countries,
+    getWorldCountriesLearningStateList(learningStates),
+    recallProgress,
+  )
+  const statuses = new Map<string, WorldCountriesPrimaryStatusCount>()
+  const ensure = (state: string, label: string, color: string) => {
+    if (!statuses.has(state)) statuses.set(state, { state, label, count: 0, color })
+    return statuses.get(state)!
+  }
+  ensure('NOT_LEARNED', 'Not learned', WORLD_COUNTRIES_LEARNING_BASE)
+  ensure('COUNTRIES_LEARNED', 'Countries learned', WORLD_COUNTRIES_LEARNING_BASE)
+  for (const state of ['unpractised', 'weak', 'developing', 'strong', 'complete'] as const) {
+    ensure(state, WORLD_COUNTRIES_PROGRESS_LABELS[state], getCountryProgressColor(state))
+  }
+
+  for (const country of countries) {
+    const status = deriveWorldCountriesPrimaryStatus(
+      readinessByCountry.get(country.id) ?? 'NOT_LEARNED',
+      deriveWorldCountriesCountryProgress(country.id, recallProgress),
+    )
+    const key = status.kind === 'learning' ? status.readiness : status.state
+    const count = ensure(
+      key,
+      getWorldCountriesPrimaryStatusLabel(status),
+      status.kind === 'learning' ? WORLD_COUNTRIES_LEARNING_BASE : getCountryProgressColor(status.state),
+    )
+    count.count++
+  }
+  return [...statuses.values()]
 }
 
 export function getWorldCountriesProgressLegend(kind: WorldCountriesProgressLegendKind = 'core'): string {

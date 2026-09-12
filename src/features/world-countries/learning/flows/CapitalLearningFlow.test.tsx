@@ -125,6 +125,7 @@ describe('CapitalLearningFlow orchestration', () => {
     expect(container.textContent).toContain('Norway')
     expect(leftRail.textContent).toContain('Meet the capitals')
     expect(leftRail.textContent).not.toContain('Learning progress')
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].presentation.countryPatternsById?.get('NO')).toMatchObject({ kind: 'diagonal' })
   })
 
   it('seeds established Country and Capital progress on a fresh flow', () => {
@@ -134,6 +135,7 @@ describe('CapitalLearningFlow orchestration', () => {
     expect(container.textContent).toContain('Norway')
     expect(leftRail.textContent).toContain('Meet the capitals')
     expect(leftRail.textContent).not.toContain('Learning progress')
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].presentation.countryPatternsById?.get('NO')).toMatchObject({ kind: 'crosshatch' })
   })
 
   it('keeps Country ↔ Capital presentation in the Capital walkthrough', () => {
@@ -261,10 +263,11 @@ describe('CapitalLearningFlow orchestration', () => {
   })
 
   it('passes Capital answer semantics to the shared map surface during practice and Final recall', () => {
-    const container = renderFlow(() => undefined)
+    const container = renderFlow(() => undefined, entries, true)
 
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-practice"]')!.click())
     expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0]).toMatchObject({ task: { answerKind: 'capital' }, cameraIntent: { kind: 'subregion-learning', subregionId: 'northern-europe' } })
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].presentation.countryPatternsById?.get('NO')).toMatchObject({ kind: 'diagonal' })
 
     for (let attempt = 0; attempt < 3; attempt += 1) {
       act(() => container.querySelector<HTMLButtonElement>('[data-testid="submit-correct"]')!.click())
@@ -272,6 +275,7 @@ describe('CapitalLearningFlow orchestration', () => {
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
 
     expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0]).toMatchObject({ task: { answerKind: 'capital' }, cameraIntent: { kind: 'subregion-learning', subregionId: 'northern-europe' } })
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].presentation.countryPatternsById?.get('NO')).toMatchObject({ kind: 'diagonal' })
   })
 
   it('hides progress at Ready and resumes retained progress on the center task surface', () => {

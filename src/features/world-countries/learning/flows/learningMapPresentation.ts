@@ -25,6 +25,7 @@ export function deriveLearningMapPresentation({
   hoveredCountryId,
   orderPresentation,
   completionPatternKind,
+  activeLearningPatternKind,
 }: {
   phase: string
   fullEntries: readonly Country[]
@@ -36,6 +37,7 @@ export function deriveLearningMapPresentation({
   hoveredCountryId: string | null
   orderPresentation: LearningMapOverride
   completionPatternKind?: WorldCountriesLearningPatternKind
+  activeLearningPatternKind?: WorldCountriesLearningPatternKind
 }): {
   mapEntries: readonly Country[]
   presentation: LearningMapOverride
@@ -48,6 +50,7 @@ export function deriveLearningMapPresentation({
   const currentRecallId = ordered?.order[ordered.currentIndex] ?? null
   const currentPracticeId = practice?.currentKey ?? null
   const showOrderNumbers = phase === 'walkthrough' || phase === 'complete'
+  const patternKind = phase === 'complete' ? completionPatternKind : activeLearningPatternKind
   const presentation: LearningMapOverride = {
     showNames: phase === 'complete',
     showOrderNumbers,
@@ -60,14 +63,14 @@ export function deriveLearningMapPresentation({
     countryLabelsById: orderPresentation.countryLabelsById ?? (showOrderNumbers ? createLearningOrderLabels(fullEntries) : undefined),
     mapClassName: PRACTICE_MAP_PHASES.has(phase) ? '[&>svg]:max-h-[510px]' : undefined,
     ariaLabel: phase === 'final-recall' ? 'Highlighted Country for final recall' : 'World Countries Learning map',
-    ...(phase === 'complete' && completionPatternKind
-      ? { countryPatternsById: new Map(fullEntries.map(entry => [entry.id, createWorldCountriesLearningPattern(completionPatternKind)])) }
+    ...(patternKind
+      ? { countryPatternsById: new Map(fullEntries.map(entry => [entry.id, createWorldCountriesLearningPattern(patternKind)])) }
       : {}),
   }
   return {
     mapEntries,
     presentation,
-    presentationKey: `${phase}:${[...mapEntries].map(entry => entry.id).sort().join(',')}${showOrderNumbers ? `:${fullEntries.map(entry => entry.id).join(',')}` : ''}`,
+    presentationKey: `${phase}:${patternKind ?? 'solid'}:${[...mapEntries].map(entry => entry.id).sort().join(',')}${showOrderNumbers ? `:${fullEntries.map(entry => entry.id).join(',')}` : ''}`,
   }
 }
 

@@ -121,7 +121,7 @@ describe('DrillSetup activity boundary', () => {
     expect(mount.textContent).toContain('World mastery')
     expect(mount.textContent).toContain('1 / 4 Countries fully mastered')
     expect(mount.textContent).toContain('25%')
-    expect(mount.textContent).toContain('Unpractised 1')
+    expect(mount.textContent).toContain('Early recall 1')
     expect(mount.textContent).toContain('Weak 1')
     expect(mount.textContent).toContain('Developing 1')
     expect(mount.textContent).toContain('Strong 0')
@@ -144,7 +144,7 @@ describe('DrillSetup activity boundary', () => {
     })
   })
 
-  it('shows active Countries with no evidence as Unpractised', async () => {
+  it('shows active Countries with no evidence as Early recall', async () => {
     const entries = [
       { id: 'NO', country: 'Norway', capital: 'Oslo', continent: 'Europe' as const, subregionId: 'northern-europe' as const, subregion: 'Northern Europe' },
       { id: 'SE', country: 'Sweden', capital: 'Stockholm', continent: 'Europe' as const, subregionId: 'northern-europe' as const, subregion: 'Northern Europe' },
@@ -154,7 +154,7 @@ describe('DrillSetup activity boundary', () => {
 
     expect(mount.textContent).toContain('0 / 2 Countries fully mastered')
     expect(mount.textContent).toContain('0%')
-    expect(mount.textContent).toContain('Unpractised 2')
+    expect(mount.textContent).toContain('Early recall 2')
     expect(mount.textContent).toContain('Mastered 0')
   })
 
@@ -231,6 +231,8 @@ describe('DrillSetup activity boundary', () => {
     expect(legend?.querySelector('[data-progress-group="With Drill evidence"]')).not.toBeNull()
     expect(legend?.querySelector('[data-progress-summary]')?.textContent).toBe('Learning Readiness is used until a Country has relevant evidence for this Drill mode.')
     expect(legend?.querySelector('summary')?.textContent).toBe('How progress works')
+    expect(legend?.querySelector('[data-progress-group="No Drill evidence"] [data-progress-state="COUNTRIES_LEARNED"] i')?.getAttribute('style')).toContain('#918779')
+    expect(legend?.querySelector('[data-progress-group="No Drill evidence"] [data-progress-state="COUNTRIES_AND_CAPITALS_LEARNED"] i')?.getAttribute('style')).toContain('#918779')
   })
 
   it('confirms a single effective Subregion and keeps Start Drill enabled', () => {
@@ -298,7 +300,7 @@ describe('DrillSetup activity boundary', () => {
     const start = [...loadingMount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Loading proficiency…')
     expect(start?.disabled).toBe(true)
     expect(loadingMount.textContent).not.toContain('Choose at least one Subregion')
-    await act(async () => { resolveLoad?.(new Map()); await Promise.resolve() })
+    await act(async () => { resolveLoad?.(new Map<string, never>()); await Promise.resolve() })
   })
 
   it('does not present a proficiency scope when no Countries match', async () => {
@@ -383,6 +385,19 @@ describe('DrillSetup activity boundary', () => {
     const config = useRailsMock.mock.calls[0][0] as { right: ReactNode }
     act(() => root?.render(config.right))
     expect(mount.textContent).toContain('Practice')
+  })
+
+  it('uses the shared Learning patterns for readiness fallback maps', async () => {
+    renderSetup({ learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: 1 }] })
+    await act(async () => { await Promise.resolve(); await Promise.resolve() })
+    const mapProps = mapMock.mock.calls[mapMock.mock.calls.length - 1]?.[0] as { countryColorsById: Map<string, string>; countryPatternsById: Map<string, { kind: string; baseColor: string; lineColor: string }> }
+    expect(mapProps.countryColorsById.get('NO')).toBe('#52525b')
+    expect(mapProps.countryPatternsById.get('NO')).toMatchObject({ kind: 'diagonal', baseColor: '#52525b', lineColor: '#918779' })
+
+    act(() => root?.render(createElement(DrillSetup, createSetupProps({ learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: 1, capitalsLearnedAt: 2 }] }))))
+    await act(async () => { await Promise.resolve(); await Promise.resolve() })
+    const completeMapProps = mapMock.mock.calls[mapMock.mock.calls.length - 1]?.[0] as { countryPatternsById: Map<string, { kind: string }> }
+    expect(completeMapProps.countryPatternsById.get('NO')).toMatchObject({ kind: 'crosshatch' })
   })
 
   it('shows the Country count on each Subregion button', () => {
