@@ -12,10 +12,10 @@ export const WORLD_COUNTRIES_PROGRESS_LABELS: Readonly<Record<WorldCountriesProg
   developing: 'Developing',
   strong: 'Strong',
   mastered: 'Mastered',
-  complete: 'Complete',
+  complete: 'Mastered',
 }
 
-export const WORLD_COUNTRIES_CORE_FINISH_LINE_EXPLANATION = 'Complete requires both Location → Country and Country → Capital to be Mastered.'
+export const WORLD_COUNTRIES_CORE_FINISH_LINE_EXPLANATION = 'Mastered requires both Location → Country and Country → Capital to be Mastered.'
 
 export const WORLD_COUNTRIES_PROGRESS_COLORS: Readonly<Record<WorldCountriesProgressState, string>> = {
   unpractised: '#52525b',
@@ -26,7 +26,7 @@ export const WORLD_COUNTRIES_PROGRESS_COLORS: Readonly<Record<WorldCountriesProg
   complete: '#16834f',
 }
 
-const CORE_PROGRESS_LEGEND = 'Unpractised · Weak · Developing · Strong · Complete'
+const CORE_PROGRESS_LEGEND = 'Unpractised · Weak · Developing · Strong · Mastered'
 const SKILL_PROGRESS_LEGEND = 'Unpractised · Weak · Developing · Strong · Mastered'
 
 /** Return the semantic state a map should render for a Country. */

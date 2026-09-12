@@ -1,11 +1,14 @@
 import { countries, type Continent, type Country, type CountryId } from '@/features/world-countries/data/countries'
-import type { SvgMapHoverGroup } from '@/features/world-countries/maps/SvgMapController'
+import type { SvgMapGroupOutline, SvgMapHoverGroup } from '@/features/world-countries/maps/SvgMapController'
 import { countryToSvgIds } from '@/features/world-countries/maps/countryMapIds'
 import { getSubregionDefinition, type SubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
 import { getCountriesForContinent } from '@/features/world-countries/geography/queries'
 
 /** Return possible IDs without asserting that a given asset contains them. */
 export const getCountrySvgIdCandidates = countryToSvgIds
+
+/** Generic edge decoration requested by a workflow without coupling the SVG controller to it. */
+export type SvgMapCountryEdgeTreatment = 'none' | 'outline' | 'halo'
 
 function normalizeDiscoveredSvgIds(
   discoveredSvgIds: ReadonlySet<string> | readonly string[],
@@ -150,6 +153,39 @@ export function createCountryColorsById(
     return color === undefined
       ? []
       : resolveCountryToSvgIds(entry, discoveredSvgIds).map(id => [id, color] as const)
+  })
+}
+
+/** Translate per-Country edge decoration into grouped, multipart-safe SVG outlines. */
+export function createCountryEdgeOutlines(
+  entries: readonly Country[],
+  treatmentsByCountryId: ReadonlyMap<CountryId, SvgMapCountryEdgeTreatment>,
+  discoveredSvgIds: ReadonlySet<string> | readonly string[],
+  stroke = '#22d3ee',
+  strokeWidth = '2px',
+): SvgMapGroupOutline[] {
+  const countryIdsByTreatment = new Map<Exclude<SvgMapCountryEdgeTreatment, 'none'>, string[]>()
+  for (const entry of entries) {
+    const treatment = treatmentsByCountryId.get(entry.id)
+    if (treatment === undefined || treatment === 'none') continue
+    const countryIds = countryIdsByTreatment.get(treatment) ?? []
+    countryIds.push(...resolveCountryToSvgIds(entry, discoveredSvgIds))
+    countryIdsByTreatment.set(treatment, countryIds)
+  }
+
+  return (['outline', 'halo'] as const).flatMap(treatment => {
+    const countryIds = [...new Set(countryIdsByTreatment.get(treatment) ?? [])]
+    return countryIds.length
+      ? [{
+          id: `country-edge-${treatment}`,
+          countryIds,
+          effect: treatment,
+          placement: 'underlay',
+          stroke,
+          strokeWidth,
+          visible: true,
+        }]
+      : []
   })
 }
 

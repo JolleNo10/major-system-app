@@ -143,6 +143,9 @@ describe('World Countries scope progress', () => {
       totalCountries: 2,
       completeCountries: 1,
       completionRatio: 0.5,
+      coreMasteredSkills: 2,
+      coreSkillCount: 4,
+      coreMasteryRatio: 0.5,
       complete: false,
       countryStateCounts: {
         unpractised: 0,

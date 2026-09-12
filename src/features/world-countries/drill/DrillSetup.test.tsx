@@ -119,14 +119,14 @@ describe('DrillSetup activity boundary', () => {
 
     expect(mount.querySelector('[aria-labelledby="world-mastery-heading"]')).not.toBeNull()
     expect(mount.textContent).toContain('World mastery')
-    expect(mount.textContent).toContain('1 / 4 complete')
+    expect(mount.textContent).toContain('1 / 4 Countries fully mastered')
     expect(mount.textContent).toContain('25%')
     expect(mount.textContent).toContain('Unpractised 1')
     expect(mount.textContent).toContain('Weak 1')
     expect(mount.textContent).toContain('Developing 1')
     expect(mount.textContent).toContain('Strong 0')
-    expect(mount.textContent).toContain('Complete 1')
-    expect(mount.textContent).toContain('Complete requires both Location → Country and Country → Capital to be Mastered.')
+    expect(mount.textContent).toContain('Mastered 1')
+    expect(mount.textContent).toContain('Mastered requires both Location → Country and Country → Capital to be Mastered.')
   })
 
   it('keeps World mastery neutral while evidence is loading', async () => {
@@ -152,10 +152,10 @@ describe('DrillSetup activity boundary', () => {
     const mount = renderSetup({ level: 'world', entries })
     await act(async () => { await Promise.resolve(); await Promise.resolve() })
 
-    expect(mount.textContent).toContain('0 / 2 complete')
+    expect(mount.textContent).toContain('0 / 2 Countries fully mastered')
     expect(mount.textContent).toContain('0%')
     expect(mount.textContent).toContain('Unpractised 2')
-    expect(mount.textContent).toContain('Complete 0')
+    expect(mount.textContent).toContain('Mastered 0')
   })
 
   it('keeps the World summary stable across purpose, mode, and Country order changes', async () => {
@@ -196,9 +196,9 @@ describe('DrillSetup activity boundary', () => {
     await act(async () => { await Promise.resolve(); await Promise.resolve() })
 
     expect(mount.textContent).toContain('0 Countries active')
-    expect(mount.textContent).toContain('0 / 0 complete')
+    expect(mount.textContent).toContain('0 / 0 Countries fully mastered')
     expect(mount.textContent).toContain('0%')
-    expect(mount.textContent).toContain('Complete 0')
+    expect(mount.textContent).toContain('Mastered 0')
   })
 
   it('does not show World mastery in Continent setup', async () => {

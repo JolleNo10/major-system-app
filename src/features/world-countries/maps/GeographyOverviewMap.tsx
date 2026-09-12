@@ -7,11 +7,13 @@ import {
   createContinentHoverGroups,
   createCountryColors,
   createCountryColorsById,
+  createCountryEdgeOutlines,
   createSubregionHoverGroups,
   getCountryForSvgId,
   resolveCountryIdsToSvgIds,
   resolveCountriesToSvgIds,
   resolveSvgIdsOutsideCountryPopulation,
+  type SvgMapCountryEdgeTreatment,
 } from './geographyMapAdapter'
 import { getMapLearningAnchors } from './learningAnchors'
 import { getMemoMapDefinition, MEMO_MAP_DEFINITIONS } from './mapDefinitions'
@@ -47,6 +49,10 @@ export interface GeographyOverviewMapProps {
   countryColor?: string
   /** Caller-resolved semantic progress colors; this map does not interpret them. */
   countryColorsById?: ReadonlyMap<CountryId, string>
+  /** Caller-resolved persistent Country edge/halo treatment; this map only adapts it to SVG. */
+  countryEdgeTreatmentsById?: ReadonlyMap<CountryId, SvgMapCountryEdgeTreatment>
+  countryEdgeStroke?: string
+  countryEdgeStrokeWidth?: string
   /** Caller-owned Country IDs to emphasize with the map's highlight treatment. */
   highlightedCountryIds?: readonly CountryId[]
   /** Caller-controlled fill for highlighted Country geometry. */
@@ -91,6 +97,9 @@ export function GeographyOverviewMap({
   coloredCountryIds = EMPTY_COUNTRY_IDS,
   countryColor = '#16a34a',
   countryColorsById,
+  countryEdgeTreatmentsById,
+  countryEdgeStroke = '#22d3ee',
+  countryEdgeStrokeWidth = '2px',
   highlightedCountryIds = EMPTY_COUNTRY_IDS,
   highlightFill,
   namedCountryIds = EMPTY_COUNTRY_IDS,
@@ -285,8 +294,20 @@ export function GeographyOverviewMap({
         : []
     })
   }, [level, mapCountryIds, selectedSubregionIds, visibleCountries])
+  const countryEdgeOutlines = useMemo(
+    () => countryEdgeTreatmentsById
+      ? createCountryEdgeOutlines(
+        visibleCountries,
+        countryEdgeTreatmentsById,
+        mapCountryIds,
+        countryEdgeStroke,
+        countryEdgeStrokeWidth,
+      )
+      : [],
+    [countryEdgeStroke, countryEdgeStrokeWidth, countryEdgeTreatmentsById, mapCountryIds, visibleCountries],
+  )
   const groupOutlines = useMemo<readonly SvgMapGroupOutline[]>(
-    () => [...hoverGroups.map(group => {
+    () => [...countryEdgeOutlines, ...hoverGroups.map(group => {
       const selected = selectedGroupIds.has(group.id)
       return {
         id: group.id,
@@ -296,7 +317,7 @@ export function GeographyOverviewMap({
         visible: selected || group.id === activeHoveredGroupId,
       }
     }), ...selectedSubregionOutlines],
-    [activeHoveredGroupId, hoverGroups, selectedGroupIds, selectedSubregionOutlines],
+    [activeHoveredGroupId, countryEdgeOutlines, hoverGroups, selectedGroupIds, selectedSubregionOutlines],
   )
   const taskAssistance = useMemo(() => {
     if (taskTargetCountryId === null) return null

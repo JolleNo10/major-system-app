@@ -14,6 +14,10 @@ export const WORLD_COUNTRIES_LEARNING_READINESS_STATES = [
 
 export type WorldCountriesLearningReadiness = typeof WORLD_COUNTRIES_LEARNING_READINESS_STATES[number]
 export type WorldCountriesLearningStates = readonly SubregionLearningState[] | ReadonlyMap<SubregionId, SubregionLearningState>
+export type WorldCountriesLearningEdgeTreatment = 'none' | 'outline' | 'halo'
+
+export const WORLD_COUNTRIES_LEARNING_EDGE_STROKE = '#22d3ee'
+export const WORLD_COUNTRIES_LEARNING_EDGE_STROKE_WIDTH = '2px'
 
 export function getWorldCountriesLearningStateList(
   states: WorldCountriesLearningStates,
@@ -181,6 +185,73 @@ export function isWorldCountriesCapitalLayerEstablished(
 ): boolean {
   return isSubregionCapitalsLearned(state)
     || isWorldCountriesCapitalRecallMastered(entries, subregionId, recallProgress)
+}
+
+/**
+ * Derive the stable Learning signal for map presentation. Established-layer
+ * fallback is intentionally the same historical evidence used by Today and
+ * Drill planning; it never writes a synthetic durable milestone.
+ */
+export function deriveWorldCountriesEstablishedLearningReadiness(
+  entries: readonly Pick<Country, 'id' | 'subregionId'>[],
+  subregionId: SubregionId,
+  state: SubregionLearningState | null | undefined,
+  recallProgress: RecallProgress,
+): WorldCountriesLearningReadiness {
+  return deriveWorldCountriesLearningReadinessFromTracks(
+    isWorldCountriesCountryLayerEstablished(entries, subregionId, state, recallProgress),
+    isWorldCountriesCapitalLayerEstablished(entries, subregionId, state, recallProgress),
+  )
+}
+
+export function getWorldCountriesLearningEdgeTreatment(
+  readiness: WorldCountriesLearningReadiness,
+): WorldCountriesLearningEdgeTreatment {
+  if (readiness === 'COUNTRIES_AND_CAPITALS_LEARNED') return 'halo'
+  if (readiness === 'COUNTRIES_LEARNED') return 'outline'
+  return 'none'
+}
+
+function getLearningState(
+  states: WorldCountriesLearningStates,
+  subregionId: SubregionId,
+): SubregionLearningState | undefined {
+  if (Array.isArray(states)) return states.find(state => state.subregionId === subregionId)
+  return (states as ReadonlyMap<SubregionId, SubregionLearningState>).get(subregionId)
+}
+
+export function createWorldCountriesEstablishedLearningReadinessByCountry(
+  entries: readonly Pick<Country, 'id' | 'subregionId'>[],
+  states: WorldCountriesLearningStates,
+  recallProgress: RecallProgress,
+): Map<CountryId, WorldCountriesLearningReadiness> {
+  return new Map([...new Set(entries.map(entry => entry.subregionId))].flatMap(subregionId => {
+    const readiness = deriveWorldCountriesEstablishedLearningReadiness(
+      entries,
+      subregionId,
+      getLearningState(states, subregionId),
+      recallProgress,
+    )
+    return entries
+      .filter(entry => entry.subregionId === subregionId)
+      .map(entry => [entry.id, readiness] as const)
+  }))
+}
+
+export function createWorldCountriesLearningEdgeTreatmentsByCountry(
+  entries: readonly Pick<Country, 'id' | 'subregionId'>[],
+  states: WorldCountriesLearningStates,
+  recallProgress: RecallProgress,
+): Map<CountryId, WorldCountriesLearningEdgeTreatment> {
+  const readinessByCountry = createWorldCountriesEstablishedLearningReadinessByCountry(
+    entries,
+    states,
+    recallProgress,
+  )
+  return new Map([...readinessByCountry].map(([countryId, readiness]) => [
+    countryId,
+    getWorldCountriesLearningEdgeTreatment(readiness),
+  ]))
 }
 
 export function getLearningReadinessForCountry(

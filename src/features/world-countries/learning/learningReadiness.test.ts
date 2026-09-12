@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { deriveWorldCountriesRecallProgress } from './recallProgress'
 import { recallTargetIdFor } from './recallTargets'
-import { createWorldCountriesLearningReadinessByCountry, deriveWorldCountriesLearningReadiness, getLearningReadinessBySubregion, getLearningReadinessBySubregionWithDrillEvidence, getLearningReadinessForCountry, isWorldCountriesCapitalLayerEstablished, isWorldCountriesCapitalRecallMastered, isWorldCountriesCountryLayerEstablished, isWorldCountriesCountryRecallMastered, WORLD_COUNTRIES_LEARNING_READINESS_COLORS, WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES } from './learningReadiness'
+import { createWorldCountriesLearningEdgeTreatmentsByCountry, createWorldCountriesLearningReadinessByCountry, deriveWorldCountriesLearningReadiness, getLearningReadinessBySubregion, getLearningReadinessBySubregionWithDrillEvidence, getLearningReadinessForCountry, isWorldCountriesCapitalLayerEstablished, isWorldCountriesCapitalRecallMastered, isWorldCountriesCountryLayerEstablished, isWorldCountriesCountryRecallMastered, WORLD_COUNTRIES_LEARNING_READINESS_COLORS, WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES } from './learningReadiness'
 
 describe('World Countries Learning Readiness', () => {
   it('keeps the canonical three-state palette and labels together', () => {
@@ -102,7 +102,7 @@ describe('World Countries Learning Readiness', () => {
       ],
     )
 
-    expect(progress.get(recallTargetIdFor('NO', 'location-to-country'))?.proficiency).toBe('weak')
+    expect(progress.get(recallTargetIdFor('NO', 'location-to-country'))?.proficiency).toBe('strong')
     expect(isWorldCountriesCountryRecallMastered(entries, 'northern-europe', progress)).toBe(true)
     expect(isWorldCountriesCountryLayerEstablished(entries, 'northern-europe', undefined, progress)).toBe(true)
   })
@@ -149,8 +149,41 @@ describe('World Countries Learning Readiness', () => {
       ],
     )
 
-    expect(progress.get(recallTargetIdFor('NO', 'country-to-capital'))?.proficiency).toBe('weak')
+    expect(progress.get(recallTargetIdFor('NO', 'country-to-capital'))?.proficiency).toBe('strong')
     expect(isWorldCountriesCapitalRecallMastered(entries, 'northern-europe', progress)).toBe(true)
     expect(isWorldCountriesCapitalLayerEstablished(entries, 'northern-europe', undefined, progress)).toBe(true)
+  })
+
+  it('derives Learning edge treatments from established layers, including historical fallback', () => {
+    const entries = [
+      { id: 'NO', subregionId: 'northern-europe' as const },
+      { id: 'SE', subregionId: 'northern-europe' as const },
+      { id: 'DK', subregionId: 'northern-europe' as const },
+    ]
+    const progress = deriveWorldCountriesRecallProgress({
+      countryIds: entries.map(entry => entry.id),
+      skills: ['location-to-country', 'country-to-capital'],
+    }, [
+      { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 1, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10' },
+      { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 2, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-11' },
+      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 3, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10' },
+      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 4, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-11' },
+    ])
+
+    expect(createWorldCountriesLearningEdgeTreatmentsByCountry(entries, [
+      { subregionId: 'northern-europe', countriesLearnedAt: 1 },
+    ], progress)).toEqual(new Map([
+      ['NO', 'outline'],
+      ['SE', 'outline'],
+      ['DK', 'outline'],
+    ]))
+
+    expect(createWorldCountriesLearningEdgeTreatmentsByCountry(entries, [
+      { subregionId: 'northern-europe', countriesLearnedAt: 1, capitalsLearnedAt: 2 },
+    ], new Map())).toEqual(new Map([
+      ['NO', 'halo'],
+      ['SE', 'halo'],
+      ['DK', 'halo'],
+    ]))
   })
 })

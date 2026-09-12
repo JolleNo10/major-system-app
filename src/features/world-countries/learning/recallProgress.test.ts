@@ -95,7 +95,7 @@ describe('World Countries recall progress', () => {
     expect(progress.hasEverMastered).toBe(false)
   })
 
-  it('starts a new mastery boundary after any incorrect attempt', () => {
+  it('degrades an isolated lapse from Mastered to Strong and starts a new mastery boundary', () => {
     const progress = deriveWorldCountriesRecallProgress({
       countryIds: ['NO'],
       skills: ['country-to-capital'],
@@ -106,8 +106,53 @@ describe('World Countries recall progress', () => {
       attempt('NO', 'country-to-capital', 4, true, '2026-08-16'),
     ]).get(recallTargetIdFor('NO', 'country-to-capital'))!
 
-    expect(progress.proficiency).toBe('developing')
+    expect(progress.proficiency).toBe('strong')
     expect(progress.mastered).toBe(false)
+  })
+
+  it('steps repeated difficulty from Strong through Developing to Weak', () => {
+    const progress = deriveWorldCountriesRecallProgress({
+      countryIds: ['NO'],
+      skills: ['country-to-capital'],
+    }, [
+      attempt('NO', 'country-to-capital', 1, true, '2026-08-10'),
+      attempt('NO', 'country-to-capital', 2, true, '2026-08-11'),
+      attempt('NO', 'country-to-capital', 3, false, '2026-08-12'),
+      attempt('NO', 'country-to-capital', 4, true, '2026-08-12'),
+      attempt('NO', 'country-to-capital', 5, false, '2026-08-13'),
+    ]).get(recallTargetIdFor('NO', 'country-to-capital'))!
+
+    expect(progress.proficiency).toBe('developing')
+
+    const weak = deriveWorldCountriesRecallProgress({
+      countryIds: ['NO'],
+      skills: ['country-to-capital'],
+    }, [
+      attempt('NO', 'country-to-capital', 1, true, '2026-08-10'),
+      attempt('NO', 'country-to-capital', 2, true, '2026-08-11'),
+      attempt('NO', 'country-to-capital', 3, false, '2026-08-12'),
+      attempt('NO', 'country-to-capital', 4, true, '2026-08-12'),
+      attempt('NO', 'country-to-capital', 5, false, '2026-08-13'),
+      attempt('NO', 'country-to-capital', 6, false, '2026-08-14'),
+    ]).get(recallTargetIdFor('NO', 'country-to-capital'))!
+
+    expect(weak.proficiency).toBe('weak')
+  })
+
+  it('does not instantly restore Mastered after a same-session retry', () => {
+    const progress = deriveWorldCountriesRecallProgress({
+      countryIds: ['NO'],
+      skills: ['country-to-capital'],
+    }, [
+      attempt('NO', 'country-to-capital', 1, true, '2026-08-10'),
+      attempt('NO', 'country-to-capital', 2, true, '2026-08-11'),
+      attempt('NO', 'country-to-capital', 3, false, '2026-08-12'),
+      attempt('NO', 'country-to-capital', 4, true, '2026-08-12'),
+    ]).get(recallTargetIdFor('NO', 'country-to-capital'))!
+
+    expect(progress.proficiency).toBe('strong')
+    expect(progress.mastered).toBe(false)
+    expect(progress.hasEverMastered).toBe(true)
   })
 
   it('retains historical mastery evidence while current mastery regresses after a failure', () => {
@@ -120,7 +165,7 @@ describe('World Countries recall progress', () => {
       attempt('NO', 'country-to-capital', 3, false, '2026-08-12'),
     ]).get(recallTargetIdFor('NO', 'country-to-capital'))!
 
-    expect(progress.proficiency).toBe('weak')
+    expect(progress.proficiency).toBe('strong')
     expect(progress.mastered).toBe(false)
     expect(progress.hasEverMastered).toBe(true)
   })
@@ -161,6 +206,22 @@ describe('World Countries recall progress', () => {
       attempt('NO', 'country-to-capital', 5, true, '2026-08-14'),
     ]).get(recallTargetIdFor('NO', 'country-to-capital'))!
     expect(failed.proficiency).toBe('mastered')
+  })
+
+  it('degrades only the atomic skill that was answered incorrectly', () => {
+    const progress = deriveWorldCountriesRecallProgress({
+      countryIds: ['NO'],
+      skills: ['location-to-country', 'country-to-capital'],
+    }, [
+      attempt('NO', 'location-to-country', 1, true, '2026-08-10'),
+      attempt('NO', 'location-to-country', 2, true, '2026-08-11'),
+      attempt('NO', 'country-to-capital', 3, true, '2026-08-10'),
+      attempt('NO', 'country-to-capital', 4, true, '2026-08-11'),
+      attempt('NO', 'location-to-country', 5, false, '2026-08-12'),
+    ])
+
+    expect(progress.get(recallTargetIdFor('NO', 'location-to-country'))?.proficiency).toBe('strong')
+    expect(progress.get(recallTargetIdFor('NO', 'country-to-capital'))?.proficiency).toBe('mastered')
   })
 
   it('counts successful evidence between qualifying dates and preserves response-time statistics separately', () => {

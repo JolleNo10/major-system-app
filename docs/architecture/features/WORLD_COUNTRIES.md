@@ -223,8 +223,13 @@ another progress authority.
 
 The derived Progress view keeps World -> Continent and Continent -> Subregion
 hierarchy. Its rows combine complete-country totals, the existing core recall
-state distribution, and, for Subregions, the existing Journey presentation;
-Continent rows also show a core-recall-complete region rollup. Progress rails
+state distribution, and, for Subregions, the existing Journey presentation.
+Scope progress also derives the primary Mastery percentage from currently
+mastered atomic core skills divided by active atomic core skills. The strict
+complete-Country count remains supporting context rather than the percentage
+denominator; for example, 9/10 mastered core skills can accompany 4/5 fully
+mastered Countries. Continent rows also show a core-recall-complete region
+rollup. Progress rails
 explain scope and state semantics and do not choose Review or Journey actions.
 
 World Countries review spacing is also derived from retained raw attempts. The
@@ -234,7 +239,13 @@ difficulty. Multiple attempts on one local date count as one event; difficulty
 is not persisted and clears after two clean recall days. The guided Home
 presents the resulting reason as concise `Why now` summary counts and the
 Review flow gives a per-prompt `Why now` explanation, including repeated
-difficulty and useful overdue wording.
+difficulty and useful overdue wording. Current atomic recall proficiency is
+also projected from this retained history: an isolated failure lowers one
+band (Mastered -> Strong), repeated difficulty can lower it further through
+Developing to Weak, and a retry cannot restore Mastered without two new
+qualifying explicit-recall dates. `hasEverMastered` remains historical
+evidence for the established-layer fallback and is never cleared by a later
+mistake.
 
 Continent, Playground, and Progress are transient views within the Home
 composition. Existing workflow entry points remain reachable from Playground,
@@ -375,7 +386,14 @@ Journey/Mastery state without a curriculum CTA; it does not silently fall back
 to another planner region. The selection is not persisted and is cleared or
 ignored when it leaves the active scope/population. World Home associates the
 active Subregion with its containing Continent row while preserving the same
-map progress fills. Durable guided Learning completion can expose a
+map progress fills. Normal Home/Continent maps use two simultaneous signals:
+recall proficiency is the Country fill and established Learning is the Country
+edge. The Countries learned state renders a persistent cyan outline; the
+Countries + Capitals learned state adds a restrained halo through the generic
+SVG group-outline layer.
+These edges are derived from durable Subregion milestones or the existing
+historical established-layer fallback; they do not add per-Country flags or a
+new store. Durable guided Learning completion can expose a
 same-focus Country-to-Capital handoff before a later planner-derived
 next-region handoff; it keeps an explicit return action and never auto-starts
 that recommendation. The attached Today task dock owns the active Journey
@@ -422,6 +440,15 @@ writes a Learning milestone or changes Drill evidence. This Drill setup
 readiness is not the Today curriculum gate: the guided planner requires the
 durable Country milestone or the separate complete-recall fallback described
 above before recommending Capital Learning.
+
+Today map edges use the established-layer form of this truth: a durable layer
+is authoritative, while the existing all-active-Country historical
+`hasEverMastered` fallback may establish the display/planning signal without
+writing a milestone. Later failures can weaken current recall and increase
+Review urgency, but do not remove an established edge. The legend and Country
+accessible descriptions expose both channels in text: Recall / fill uses
+Unpractised, Weak, Developing, Strong, and Mastered; Learning / edge uses Not
+learned, Countries learned, and Countries + Capitals learned.
 
 The standalone Learn Capitals flow remains runnable from its intentional
 non-Today entry points. The Today guided recommendation uses the Country
@@ -625,6 +652,13 @@ target-local and Country-fit cameras respectively.
   dots use the same task interaction/presentation pipeline; synthetic dots are
   task-scoped map presentation and never alter canonical geography or ordinary
   map rendering.
+- The generic `SvgMapGroupOutline` presentation seam also supports an optional
+  outline/halo effect and underlay/overlay placement. Geography adapters
+  translate caller-owned per-Country edge treatments into grouped,
+  multipart-safe underlays. Persistent edge layers render below source Country
+  paths while existing transient hover, selection, task, and answer styling
+  remains in the overlay layer; hidden or muted Countries are omitted and the
+  declarative render reconstructs the edge and recall fill after interaction.
 - For the same map source, Continent, effective scope membership, and
   intentional zoom behavior, Learning updates map highlights, names, hover,
   and sequence annotations declaratively. Workflow phase alone must not

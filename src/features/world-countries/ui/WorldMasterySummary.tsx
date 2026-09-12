@@ -19,7 +19,7 @@ export function WorldMasterySummary({ progress, scopeLabel = 'World' }: { progre
           <p role="status" aria-live="polite" className="text-sm text-zinc-400">Loading mastery…</p>
         ) : (
           <p className="font-semibold tabular-nums text-zinc-100">
-            {progress.completeCountries} / {progress.totalCountries} complete
+            {progress.coreMasteredSkills} / {progress.coreSkillCount} core skills mastered
             <span className="ml-3 text-cyan-300">{formatCompletionPercentage(progress)}%</span>
           </p>
         )}
@@ -36,6 +36,7 @@ export function WorldMasterySummary({ progress, scopeLabel = 'World' }: { progre
               </li>
             ))}
           </ul>
+          <p className="text-xs text-zinc-400">{progress.completeCountries} / {progress.totalCountries} Countries fully mastered.</p>
           <p className="text-xs text-zinc-400">{WORLD_COUNTRIES_CORE_FINISH_LINE_EXPLANATION}</p>
         </>
       )}
@@ -44,7 +45,5 @@ export function WorldMasterySummary({ progress, scopeLabel = 'World' }: { progre
 }
 
 function formatCompletionPercentage(progress: WorldCountriesScopeProgress): number {
-  if (progress.totalCountries === 0) return 0
-  if (progress.complete) return 100
-  return Math.min(99, Math.round(progress.completionRatio * 100))
+  return Math.round(progress.coreMasteryRatio * 100)
 }

@@ -228,7 +228,7 @@ describe('World Countries Today', () => {
     const states = [...legend?.querySelectorAll<HTMLElement>('[data-progress-state]') ?? []]
 
     expect(mount.querySelector('[data-testid="world-mastery-summary"]')).toBeNull()
-    expect(legend?.getAttribute('aria-label')).toBe('Map progress states')
+    expect(legend?.getAttribute('aria-label')).toBe('Map legend: recall fill and learning edge')
     expect(states.map(entry => entry.dataset.progressState)).toEqual([...WORLD_COUNTRIES_COUNTRY_CORE_STATES])
     expect(states.map(entry => entry.textContent)).toEqual(WORLD_COUNTRIES_COUNTRY_CORE_STATES.map(state => WORLD_COUNTRIES_PROGRESS_LABELS[state]))
     expect(states.map(entry => entry.querySelector<HTMLElement>('[aria-hidden="true"]')?.style.backgroundColor)).toEqual(
@@ -238,6 +238,26 @@ describe('World Countries Today', () => {
         return expectedSwatch.style.backgroundColor
       }),
     )
+    expect(legend?.textContent).toContain('Recall / fill')
+    expect(legend?.textContent).toContain('Learning / edge')
+    expect(legend?.textContent).toContain('Not learned')
+    expect(legend?.textContent).toContain('Countries learned')
+    expect(legend?.textContent).toContain('Countries + Capitals learned')
+    expect(legend?.textContent).toContain('Mastered')
+    expect(legend?.textContent).not.toContain('Complete')
+  })
+
+  it('exposes both recall and Learning dimensions in Country map descriptions', async () => {
+    await renderToday()
+    const mapProps = [...geographyOverviewMapMock.mock.calls].pop()?.[0] as {
+      countryAccessibleDescriptionsById?: ReadonlyMap<string, string>
+      countryEdgeTreatmentsById?: ReadonlyMap<string, string>
+    } | undefined
+
+    expect(mapProps?.countryAccessibleDescriptionsById?.get(countries[0].id)).toBe(
+      'Recall: Unpractised. Learning: Not learned.',
+    )
+    expect(mapProps?.countryEdgeTreatmentsById?.get(countries[0].id)).toBe('none')
   })
 
   it('does not open Progress while recall evidence is unavailable', async () => {
@@ -259,7 +279,7 @@ describe('World Countries Today', () => {
     const progressEntry = railMount.querySelector('[data-progress-entry]')
 
     expect(progressEntry?.textContent).toContain('World progress')
-    expect(progressEntry?.textContent).toContain('0 / 1 complete')
+    expect(progressEntry?.textContent).toContain('0 / 1 Countries fully mastered')
     expect(progressEntry?.textContent).toContain('0%')
     expect(railMount.querySelector('[aria-label="World Countries secondary actions"]')).toBeNull()
 
@@ -274,7 +294,7 @@ describe('World Countries Today', () => {
     const railMount = renderLatestRails()
 
     expect(railMount.querySelector('[data-progress-entry]')?.textContent).toContain('Europe progress')
-    expect(railMount.querySelector('[data-progress-entry]')?.textContent).toContain('0 / 2 complete')
+    expect(railMount.querySelector('[data-progress-entry]')?.textContent).toContain('0 / 2 Countries fully mastered')
 
     await act(async () => railMount.querySelector<HTMLButtonElement>('[data-progress-action]')?.click())
 

@@ -301,7 +301,7 @@ describe('Guided World Countries home rails', () => {
     expect(worldMount.textContent).toContain('Explore the world')
     expect(worldMount.textContent).toContain('Choose a continent')
     expect(worldMount.textContent).toContain('World progress')
-    expect(worldMount.textContent).toContain('1 / 1 complete')
+    expect(worldMount.textContent).toContain('1 / 1 Countries fully mastered')
     expect(worldMount.querySelector('[aria-label="World Countries secondary actions"]')).toBeNull()
 
     act(() => worldMount.querySelector<HTMLButtonElement>('[data-progress-action]')?.click())
@@ -338,5 +338,21 @@ describe('Guided World Countries home rails', () => {
       .find(button => button.textContent?.includes('Northern Europe'))
     expect(geographyRow?.textContent).toContain('Mastery 45%')
     expect(mount.querySelector('[data-progress-entry]')?.textContent).toContain('Mastery 25%')
+  })
+
+  it('uses atomic core mastery for the primary percentage while keeping strict Country context', () => {
+    const mount = renderRails({
+      scopeProgress: {
+        completeCountries: 1,
+        totalCountries: 2,
+        completionRatio: 0.5,
+        coreMasteredSkills: 3,
+        coreSkillCount: 4,
+        coreMasteryRatio: 0.75,
+      },
+    })
+
+    expect(mount.querySelector('[data-progress-entry]')?.textContent).toContain('Mastery 75%')
+    expect(mount.querySelector('[data-progress-entry]')?.textContent).toContain('1 / 2 Countries fully mastered')
   })
 })

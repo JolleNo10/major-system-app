@@ -969,6 +969,70 @@ describe('SvgMapController persistent state', () => {
     expect(belgiumOutline?.getAttribute('pointer-events')).toBe('none')
   })
 
+  it('keeps persistent Country edges below transient hover styling and restores them after interaction', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+
+    controller.setGroupOutlines([
+      {
+        id: 'learning-outline',
+        countryIds: ['Alpha'],
+        stroke: '#22d3ee',
+        strokeWidth: '2px',
+        effect: 'outline',
+        placement: 'underlay',
+        visible: true,
+      },
+      {
+        id: 'learning-halo',
+        countryIds: ['Beta'],
+        stroke: '#22d3ee',
+        strokeWidth: '3px',
+        effect: 'halo',
+        placement: 'underlay',
+        visible: true,
+      },
+    ])
+    controller.updateSettings({
+      hoverHighlight: true,
+      hoverStroke: '#f4f4f5',
+      hoverStrokeWidth: '4px',
+    })
+
+    expect(mount.querySelector('[data-svg-map-group-outline="learning-outline"]')).not.toBeNull()
+    expect(mount.querySelector('[data-svg-map-group-outline="learning-halo"]')?.getAttribute('data-svg-map-group-outline-effect')).toBe('halo')
+    expect(mount.querySelector('feGaussianBlur')).not.toBeNull()
+    expect(mount.querySelector('[data-svg-map-group-outlines]')?.compareDocumentPosition(path(mount, 'Alpha'))).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+
+    path(mount, 'Alpha').dispatchEvent(new Event('pointerenter'))
+    expect(path(mount, 'Alpha').style.getPropertyValue('stroke')).toBe('#f4f4f5')
+    expect(path(mount, 'Alpha').style.getPropertyValue('stroke-width')).toBe('4px')
+    expect(mount.querySelector('[data-svg-map-group-outline="learning-outline"]')).not.toBeNull()
+
+    path(mount, 'Alpha').dispatchEvent(new Event('pointerleave'))
+    expect(path(mount, 'Alpha').style.getPropertyValue('stroke')).toBe('#252525')
+    expect(mount.querySelector('[data-svg-map-group-outline="learning-outline"]')).not.toBeNull()
+
+    setBBox(mount, 'Alpha', { x: 10, y: 10, width: 10, height: 10 })
+    enableTaskAssistance(controller, ['Alpha'], [alphaAnchor])
+    const taskHit = mount.querySelector<SVGCircleElement>('[data-svg-map-task-hit-target="Alpha"]')
+    if (!taskHit) throw new Error('Missing task hit target')
+    mount.querySelector('svg')?.dispatchEvent(new MouseEvent('pointermove', { clientX: 11, clientY: 11 }))
+    expect(path(mount, 'Alpha').style.getPropertyValue('fill')).toBe('#22d3ee')
+    expect(mount.querySelector('[data-svg-map-group-outline="learning-outline"]')).not.toBeNull()
+    mount.querySelector('svg')?.dispatchEvent(new MouseEvent('pointerleave'))
+    controller.setTaskAssistance(null)
+    expect(path(mount, 'Alpha').style.getPropertyValue('fill')).toBe('#737373')
+    expect(mount.querySelector('[data-svg-map-group-outline="learning-outline"]')).not.toBeNull()
+
+    controller.setMutedCountries(['Alpha'])
+    expect(mount.querySelector('[data-svg-map-group-outline="learning-outline"] [data-svg-map-group-outline-source="Alpha"]')).toBeNull()
+    controller.clearMutedCountries()
+    expect(mount.querySelector('[data-svg-map-group-outline="learning-outline"] [data-svg-map-group-outline-source="Alpha"]')).not.toBeNull()
+  })
+
   it('projects outline copies through authored ancestor transforms without double-applying path transforms', async () => {
     const { mount, controller } = makeController()
     await controller.load({ markup: TRANSFORMED_MAP })

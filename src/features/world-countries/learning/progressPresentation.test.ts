@@ -28,7 +28,7 @@ describe('World Countries progress presentation semantics', () => {
     expect(getCountryProgressColor('strong')).toBe('#45a66b')
     expect(getCountryProgressColor('complete')).toBe('#16834f')
     expect(getCountryProgressColor('mastered')).toBe('#16834f')
-    expect(getWorldCountriesProgressLegend('core')).toBe('Unpractised · Weak · Developing · Strong · Complete')
+    expect(getWorldCountriesProgressLegend('core')).toBe('Unpractised · Weak · Developing · Strong · Mastered')
     expect(getWorldCountriesProgressLegend('skill')).toBe('Unpractised · Weak · Developing · Strong · Mastered')
   })
 })

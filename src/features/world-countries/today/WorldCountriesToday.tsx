@@ -11,11 +11,18 @@ import { getWorldMetadata } from '@/features/world-countries/geography/worldMeta
 import { getAllSubregionLearningStates, useWorldCountriesSubregionLearningRevision } from '@/features/world-countries/learning/subregionLearningStore'
 import { useWorldCountriesGeographyRevision } from '@/features/world-countries/geography/geographyRefresh'
 import { deriveWorldCountriesCountryProgress, deriveWorldCountriesRecallProgress, type RecallProgress } from '@/features/world-countries/learning/recallProgress'
-import { isWorldCountriesCountryLayerEstablished } from '@/features/world-countries/learning/learningReadiness'
+import {
+  createWorldCountriesEstablishedLearningReadinessByCountry,
+  createWorldCountriesLearningEdgeTreatmentsByCountry,
+  getWorldCountriesLearningReadinessLabel,
+  isWorldCountriesCountryLayerEstablished,
+  WORLD_COUNTRIES_LEARNING_EDGE_STROKE,
+  WORLD_COUNTRIES_LEARNING_EDGE_STROKE_WIDTH,
+} from '@/features/world-countries/learning/learningReadiness'
 import { flattenWorldCountriesRecallHistory, loadWorldCountriesRecallHistory, type WorldCountriesRecallHistory } from '@/features/world-countries/learning/recallHistory'
 import { WORLD_COUNTRIES_CORE_RECALL_SKILLS } from '@/features/world-countries/learning/recallTargets'
 import { deriveWorldCountriesScopeProgressForCountries } from '@/features/world-countries/learning/scopeProgress'
-import { getCountryProgressColor, getCountryProgressState } from '@/features/world-countries/learning/progressPresentation'
+import { getCountryProgressColor, getCountryProgressState, WORLD_COUNTRIES_PROGRESS_LABELS } from '@/features/world-countries/learning/progressPresentation'
 import { CountryLearningFlow } from '@/features/world-countries/learning/flows/CountryLearningFlow'
 import { CapitalLearningFlow } from '@/features/world-countries/learning/flows/CapitalLearningFlow'
 import type { LearningCompletedRegionAction, LearningCompletionHandoff, LearningRegionCompletion } from '@/features/world-countries/learning/flows/LearningComplete'
@@ -195,6 +202,22 @@ export function WorldCountriesToday({
       skills: WORLD_COUNTRIES_CORE_RECALL_SKILLS,
     }, flattenWorldCountriesRecallHistory(evidence.history))
   }, [evidence, scopedCountries])
+  const learningReadinessByCountry = useMemo(
+    () => createWorldCountriesEstablishedLearningReadinessByCountry(
+      scopedCountries,
+      learningStates,
+      recallProgress ?? new Map(),
+    ),
+    [learningStates, recallProgress, scopedCountries],
+  )
+  const countryEdgeTreatmentsById = useMemo(
+    () => createWorldCountriesLearningEdgeTreatmentsByCountry(
+      scopedCountries,
+      learningStates,
+      recallProgress ?? new Map(),
+    ),
+    [learningStates, recallProgress, scopedCountries],
+  )
   const progress = useMemo(
     () => recallProgress ? deriveWorldCountriesScopeProgressForCountries(
       continent ? `continent:${continent}` : 'world',
@@ -466,7 +489,15 @@ export function WorldCountriesToday({
   const journeyActionLabel = activeLearningRecommendation
     ? getJourneyActionLabel(activeLearningRecommendation)
     : null
-  const mapDescriptions = new Map(scopedCountries.map(country => [country.id, `Progress for ${scopeLabel} is shown in the map legend and geography rail.`] as const))
+  const mapDescriptions = new Map(scopedCountries.map(country => {
+    const countryProgress = deriveWorldCountriesCountryProgress(country.id, recallProgress ?? new Map())
+    const recallState = getCountryProgressState(countryProgress)
+    const learningReadiness = learningReadinessByCountry.get(country.id) ?? 'NOT_LEARNED'
+    return [
+      country.id,
+      `Recall: ${WORLD_COUNTRIES_PROGRESS_LABELS[recallState]}. Learning: ${getWorldCountriesLearningReadinessLabel(learningReadiness)}.`,
+    ] as const
+  }))
 
   return (
     <section className="space-y-4 animate-fade-in" aria-labelledby="world-countries-today-heading">
@@ -512,6 +543,9 @@ export function WorldCountriesToday({
               continent={continent ?? undefined}
               countryPopulation={scopedCountries}
               countryColorsById={countryColorsById}
+              countryEdgeTreatmentsById={countryEdgeTreatmentsById}
+              countryEdgeStroke={WORLD_COUNTRIES_LEARNING_EDGE_STROKE}
+              countryEdgeStrokeWidth={WORLD_COUNTRIES_LEARNING_EDGE_STROKE_WIDTH}
               selectedSubregionIds={activeSubregionId ? [activeSubregionId] : undefined}
               selectionPresentation="outline-only"
               countryAccessibleDescriptionsById={mapDescriptions}

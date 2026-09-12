@@ -21,6 +21,9 @@ export interface WorldCountriesScopeProgress {
   totalCountries: number
   completeCountries: number
   completionRatio: number
+  coreMasteredSkills: number
+  coreSkillCount: number
+  coreMasteryRatio: number
   complete: boolean
   countryStateCounts: Readonly<Record<WorldCountriesCountryCoreState, number>>
   additionalMasteredSkills: number
@@ -47,6 +50,8 @@ export function deriveWorldCountriesScopeProgress(
   const uniqueCountryIds = [...new Set(countryIds)]
   const countryStates = emptyStateCounts()
   let completeCountries = 0
+  let coreMasteredSkills = 0
+  let coreSkillCount = 0
   let additionalMasteredSkills = 0
   let additionalSkillCount = 0
 
@@ -54,10 +59,13 @@ export function deriveWorldCountriesScopeProgress(
     const progress = countryProgress.get(countryId)
     if (!progress) {
       countryStates.unpractised++
+      coreSkillCount += 2
       continue
     }
     countryStates[progress.coreState]++
     if (progress.complete) completeCountries++
+    coreMasteredSkills += progress.coreMasteredSkills
+    coreSkillCount += progress.coreSkillCount
     additionalMasteredSkills += progress.additionalMasteredSkills
     additionalSkillCount += progress.additionalSkillCount
   }
@@ -69,6 +77,9 @@ export function deriveWorldCountriesScopeProgress(
     totalCountries,
     completeCountries,
     completionRatio: totalCountries ? completeCountries / totalCountries : 0,
+    coreMasteredSkills,
+    coreSkillCount,
+    coreMasteryRatio: coreSkillCount ? coreMasteredSkills / coreSkillCount : 0,
     complete: totalCountries > 0 && completeCountries === totalCountries,
     countryStateCounts: countryStates,
     additionalMasteredSkills,

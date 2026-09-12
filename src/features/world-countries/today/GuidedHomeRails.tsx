@@ -15,6 +15,10 @@ export interface GuidedHomeScopeSummary {
     completeCountries: number
     totalCountries: number
     completionRatio: number
+    /** Current derived atomic mastery; optional for legacy test/caller fixtures. */
+    coreMasteredSkills?: number
+    coreSkillCount?: number
+    coreMasteryRatio?: number
   }
   onSelect?: () => void
   selected?: boolean
@@ -146,12 +150,12 @@ export function GuidedHomeRails({
               >
                 <span className="flex items-center justify-between gap-2 text-sm font-semibold">
                   <span>{summary.label}</span>
-                  <span className="text-xs tabular-nums text-zinc-500">Mastery {Math.round(summary.progress.completionRatio * 100)}%</span>
+                  <span className="text-xs tabular-nums text-zinc-500">Mastery {Math.round(getMasteryRatio(summary.progress) * 100)}%</span>
                 </span>
                 <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-zinc-800" aria-hidden="true">
-                  <span className="block h-full rounded-full bg-cyan-500" style={{ width: `${Math.round(summary.progress.completionRatio * 100)}%` }} />
+                  <span className="block h-full rounded-full bg-cyan-500" style={{ width: `${Math.round(getMasteryRatio(summary.progress) * 100)}%` }} />
                 </span>
-                <span className="mt-1 block text-xs text-zinc-500">{summary.status ?? `${summary.progress.completeCountries} of ${summary.progress.totalCountries} countries complete`}</span>
+                <span className="mt-1 block text-xs text-zinc-500">{summary.status ?? `${summary.progress.completeCountries} / ${summary.progress.totalCountries} Countries fully mastered`}</span>
               </button>
             ))}
           </div>
@@ -160,8 +164,8 @@ export function GuidedHomeRails({
           <p id="world-countries-scope-progress-heading" className="text-xs font-semibold uppercase tracking-wider text-cyan-400">{scopeName} progress</p>
           {scopeProgress ? (
             <p className="mt-1 flex items-baseline justify-between gap-2 text-sm text-zinc-300">
-              <span className="font-semibold tabular-nums">{scopeProgress.completeCountries} / {scopeProgress.totalCountries} complete</span>
-              <span className="text-xs tabular-nums text-zinc-500">Mastery {Math.round(scopeProgress.completionRatio * 100)}%</span>
+              <span className="font-semibold tabular-nums">{scopeProgress.completeCountries} / {scopeProgress.totalCountries} Countries fully mastered</span>
+              <span className="text-xs tabular-nums text-zinc-500">Mastery {Math.round(getMasteryRatio(scopeProgress) * 100)}%</span>
             </p>
           ) : (
             <p role="status" aria-live="polite" className="mt-2 text-xs text-zinc-500">{evidenceStatus === 'loading' ? 'Progress is loading.' : 'Progress is unavailable right now.'}</p>
@@ -186,6 +190,10 @@ export function GuidedHomeRails({
   }), [activeLearningAvailable, continent, evidenceStatus, journey, level, onOpenProgress, onWorld, refreshing, reviewPanel, scopeName, scopeProgress, scopeSummaries])
   useRails(rails)
   return null
+}
+
+function getMasteryRatio(progress: GuidedHomeScopeSummary['progress']): number {
+  return progress.coreMasteryRatio ?? progress.completionRatio
 }
 
 function CompactJourneyPath({ journey, learningAvailable }: { journey: WorldCountriesJourneyPresentation; learningAvailable: boolean }) {

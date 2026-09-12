@@ -1,4 +1,5 @@
 import type { Attempt, ItemProgress, RecallItemId } from '@/core/learning'
+import { deriveWorldCountriesReviewDifficulty } from './reviewSchedule'
 
 /** Semantic proficiency for one atomic World Countries recall skill. */
 export type WorldCountriesProficiency =
@@ -19,13 +20,6 @@ function sortAttempts(input: readonly Attempt[]): Attempt[] {
     .map((attempt, index) => ({ attempt, index }))
     .sort((left, right) => left.attempt.at - right.attempt.at || left.index - right.index)
     .map(({ attempt }) => attempt)
-}
-
-function latestFailureIndex(attempts: readonly Attempt[]): number {
-  for (let index = attempts.length - 1; index >= 0; index--) {
-    if (!attempts[index].ok) return index
-  }
-  return -1
 }
 
 function isQualifyingRecallSuccess(attempt: Attempt): boolean {
@@ -66,6 +60,72 @@ function hasEverMasteryEvidence(attempts: readonly Attempt[]): boolean {
   return false
 }
 
+const PROFICIENCY_RANK: Readonly<Record<WorldCountriesProficiency, number>> = {
+  unpractised: 0,
+  weak: 1,
+  developing: 2,
+  strong: 3,
+  mastered: 4,
+}
+
+function strongerProficiency(
+  left: WorldCountriesProficiency,
+  right: WorldCountriesProficiency,
+): WorldCountriesProficiency {
+  return PROFICIENCY_RANK[left] >= PROFICIENCY_RANK[right] ? left : right
+}
+
+function lowerProficiency(proficiency: WorldCountriesProficiency): WorldCountriesProficiency {
+  switch (proficiency) {
+    case 'mastered': return 'strong'
+    case 'strong': return 'developing'
+    case 'developing': return 'weak'
+    case 'weak': return 'weak'
+    case 'unpractised': return 'weak'
+  }
+}
+
+/**
+ * Derive current proficiency as a sequence of lapse/recovery events. The
+ * scheduler supplies the shared dated lapse context, while the current band
+ * remains a projection of retained attempts rather than a stored state.
+ */
+function deriveCurrentProficiency(
+  attempts: readonly Attempt[],
+): { proficiency: WorldCountriesProficiency; mastered: boolean } {
+  let proficiency: WorldCountriesProficiency = 'unpractised'
+  let latestFailureIndex = -1
+
+  for (let index = 0; index < attempts.length; index += 1) {
+    const attempt = attempts[index]!
+    if (!attempt.ok) {
+      // Both lapse kinds move one current band. Repeated difficulty can keep
+      // stepping down because the preceding lapse already changed the band.
+      proficiency = lowerProficiency(proficiency)
+      latestFailureIndex = index
+      continue
+    }
+
+    const postFailureAttempts = attempts.slice(latestFailureIndex + 1, index + 1)
+    const postFailureSuccesses = postFailureAttempts.filter(candidate => candidate.ok).length
+    const successProficiency: WorldCountriesProficiency = postFailureSuccesses >= 2
+      ? 'strong'
+      : 'developing'
+    const mastered = hasMasteryEvidence(postFailureAttempts)
+    if (mastered) {
+      proficiency = 'mastered'
+      continue
+    }
+
+    const difficulty = deriveWorldCountriesReviewDifficulty(attempts.slice(0, index + 1))
+    proficiency = latestFailureIndex >= 0 && difficulty !== 'normal'
+      ? strongerProficiency(proficiency, successProficiency)
+      : strongerProficiency(successProficiency, proficiency)
+  }
+
+  return { proficiency, mastered: proficiency === 'mastered' }
+}
+
 /**
  * Derive World Countries proficiency from raw evidence after the latest
  * failure. Legacy success remains positive evidence, but cannot qualify as
@@ -83,23 +143,10 @@ export function deriveWorldCountriesAtomicProgress(
   for (let index = attempts.length - 1; index >= 0 && attempts[index].ok; index--) {
     consecutiveCorrect++
   }
-  const failureIndex = latestFailureIndex(attempts)
-  const postFailureAttempts = attempts.slice(failureIndex + 1)
   const lastAttempt = attempts.length ? attempts[attempts.length - 1] : undefined
-  const postFailureSuccesses = postFailureAttempts.filter(attempt => attempt.ok).length
   const hasEverMastered = hasEverMasteryEvidence(attempts)
-  const mastered = Boolean(
-    lastAttempt?.ok
-    && hasMasteryEvidence(postFailureAttempts),
-  )
-
-  let proficiency: WorldCountriesProficiency = 'unpractised'
-  if (attempts.length > 0) {
-    if (!lastAttempt?.ok) proficiency = 'weak'
-    else if (mastered) proficiency = 'mastered'
-    else if (postFailureSuccesses >= 2) proficiency = 'strong'
-    else proficiency = 'developing'
-  }
+  const current = deriveCurrentProficiency(attempts)
+  const mastered = Boolean(lastAttempt?.ok && current.mastered)
 
   const validLatencies = attempts
     .map(attempt => attempt.ms)
@@ -122,6 +169,6 @@ export function deriveWorldCountriesAtomicProgress(
         : (sortedLatencies[middle - 1] + sortedLatencies[middle]) / 2,
     mastered,
     hasEverMastered,
-    proficiency,
+    proficiency: current.proficiency,
   }
 }

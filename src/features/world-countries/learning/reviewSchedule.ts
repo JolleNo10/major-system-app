@@ -185,6 +185,17 @@ function deriveSpacing(attempts: readonly IndexedAttempt[]): DerivedSpacing {
   return { difficulty, spacingLevel, qualifyingRecallDates }
 }
 
+/**
+ * Share the scheduler's dated lapse interpretation with recall presentation.
+ * This remains a pure view over retained attempts; no schedule or difficulty
+ * state is persisted.
+ */
+export function deriveWorldCountriesReviewDifficulty(
+  inputAttempts: readonly Attempt[],
+): WorldCountriesReviewDifficulty {
+  return deriveSpacing(sortedAttempts(inputAttempts)).difficulty
+}
+
 /** Derive one feature-local temporal review schedule from retained evidence. */
 export function deriveWorldCountriesReviewSchedule(
   inputAttempts: readonly Attempt[],

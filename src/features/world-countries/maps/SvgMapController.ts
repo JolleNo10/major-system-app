@@ -39,6 +39,9 @@ export interface SvgMapHoverGroup {
 export interface SvgMapGroupOutline {
   id: string
   countryIds: readonly string[]
+  effect?: 'outline' | 'halo'
+  /** Underlays are for persistent decoration; the default preserves transient overlays. */
+  placement?: 'underlay' | 'overlay'
   stroke?: string
   strokeWidth?: string
   visible?: boolean
@@ -308,6 +311,8 @@ function copyOutline(outline: SvgMapGroupOutline): SvgMapGroupOutline {
   return {
     id: outline.id,
     countryIds: [...outline.countryIds],
+    ...(outline.effect === undefined ? {} : { effect: outline.effect }),
+    ...(outline.placement === undefined ? {} : { placement: outline.placement }),
     ...(outline.stroke === undefined ? {} : { stroke: outline.stroke }),
     ...(outline.strokeWidth === undefined ? {} : { strokeWidth: outline.strokeWidth }),
     ...(outline.visible === undefined ? {} : { visible: outline.visible }),
@@ -330,7 +335,7 @@ export class SvgMapController {
   private hoverGroups: SvgMapHoverGroup[] = []
   private groupOutlines: SvgMapGroupOutline[] = []
   private visibleGroupOutlines = new Set<string>()
-  private outlineLayer: SVGGElement | null = null
+  private outlineLayers: SVGGElement[] = []
   private outlineSequence = 0
   private hoveredCountryId: string | null = null
   private hoveredNameOverride: boolean | null = null
@@ -836,6 +841,8 @@ export class SvgMapController {
       normalized.set(groupId, {
         id: groupId,
         countryIds,
+        ...(outline.effect === undefined ? {} : { effect: outline.effect }),
+        ...(outline.placement === undefined ? {} : { placement: outline.placement }),
         ...(outline.stroke === undefined ? {} : { stroke: outline.stroke }),
         ...(outline.strokeWidth === undefined ? {} : { strokeWidth: outline.strokeWidth }),
         ...(outline.visible === undefined ? {} : { visible: outline.visible }),
@@ -1288,8 +1295,8 @@ export class SvgMapController {
   }
 
   private renderGroupOutlines(): void {
-    this.outlineLayer?.remove()
-    this.outlineLayer = null
+    this.outlineLayers.forEach(layer => layer.remove())
+    this.outlineLayers = []
 
     const firstPath = this.countries.values().next().value?.path
     const mapSvg = firstPath?.ownerSVGElement
@@ -1300,9 +1307,15 @@ export class SvgMapController {
     if (activeOutlines.length === 0) return
 
     const document = mapSvg.ownerDocument
-    const layer = document.createElementNS('http://www.w3.org/2000/svg', 'g')
-    layer.setAttribute('data-svg-map-group-outlines', '')
-    layer.setAttribute('pointer-events', 'none')
+    const createLayer = (placement: 'underlay' | 'overlay'): SVGGElement => {
+      const layer = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+      layer.setAttribute('data-svg-map-group-outlines', '')
+      layer.setAttribute('data-svg-map-group-outline-placement', placement)
+      layer.setAttribute('pointer-events', 'none')
+      return layer
+    }
+    const underlayLayer = createLayer('underlay')
+    const overlayLayer = createLayer('overlay')
 
     for (const outline of activeOutlines) {
       const filterId = `svg-map-group-outline-${this.outlineSequence++}`
@@ -1335,8 +1348,24 @@ export class SvgMapController {
       outside.setAttribute('in', 'outline')
       outside.setAttribute('in2', 'SourceAlpha')
       outside.setAttribute('operator', 'out')
+      outside.setAttribute('result', 'outside')
 
-      filter.append(dilated, flood, color, outside)
+      const effect = outline.effect ?? 'outline'
+      if (effect === 'halo') {
+        const blur = document.createElementNS('http://www.w3.org/2000/svg', 'feGaussianBlur')
+        blur.setAttribute('in', 'outside')
+        blur.setAttribute('stdDeviation', String(Math.max(1, radius * 1.5)))
+        blur.setAttribute('result', 'halo')
+        const merge = document.createElementNS('http://www.w3.org/2000/svg', 'feMerge')
+        const haloNode = document.createElementNS('http://www.w3.org/2000/svg', 'feMergeNode')
+        haloNode.setAttribute('in', 'halo')
+        const outlineNode = document.createElementNS('http://www.w3.org/2000/svg', 'feMergeNode')
+        outlineNode.setAttribute('in', 'outside')
+        merge.append(haloNode, outlineNode)
+        filter.append(dilated, flood, color, outside, blur, merge)
+      } else {
+        filter.append(dilated, flood, color, outside)
+      }
       const defs = mapSvg.querySelector('defs') ?? (() => {
         const created = document.createElementNS('http://www.w3.org/2000/svg', 'defs')
         mapSvg.insertBefore(created, mapSvg.firstChild)
@@ -1346,19 +1375,34 @@ export class SvgMapController {
 
       const outlineGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g')
       outlineGroup.setAttribute('data-svg-map-group-outline', outline.id)
+      outlineGroup.setAttribute('data-svg-map-group-outline-effect', effect)
+      outlineGroup.setAttribute('data-svg-map-group-outline-placement', outline.placement ?? 'overlay')
       outlineGroup.setAttribute('filter', `url(#${filterId})`)
       for (const countryId of outline.countryIds) {
         const country = this.countries.get(countryId)
-        if (!country) continue
+        if (!country || this.hiddenCountries.has(countryId) || this.mutedCountries.has(countryId)) continue
         for (const pathState of country.pathStates) {
           outlineGroup.append(createOutlineGeometry(pathState.path, mapSvg, document))
         }
       }
-      layer.append(outlineGroup)
+      if (outlineGroup.childElementCount > 0) {
+        const layer = outline.placement === 'underlay' ? underlayLayer : overlayLayer
+        layer.append(outlineGroup)
+      }
     }
 
-    mapSvg.append(layer)
-    this.outlineLayer = layer
+    let firstCountryElement: Element = firstPath
+    while (firstCountryElement.parentNode && firstCountryElement.parentNode !== mapSvg) {
+      firstCountryElement = firstCountryElement.parentNode as Element
+    }
+    if (underlayLayer.childElementCount > 0) {
+      mapSvg.insertBefore(underlayLayer, firstCountryElement)
+      this.outlineLayers.push(underlayLayer)
+    }
+    if (overlayLayer.childElementCount > 0) {
+      mapSvg.append(overlayLayer)
+      this.outlineLayers.push(overlayLayer)
+    }
   }
 
   private toColorEntries(colors: SvgMapCountryColors): Iterable<readonly [string, string | null]> {
@@ -1805,7 +1849,7 @@ export class SvgMapController {
     this.hoverGroups = []
     this.groupOutlines = []
     this.visibleGroupOutlines.clear()
-    this.outlineLayer = null
+    this.outlineLayers = []
     this.hoveredCountryId = null
     this.hoveredNameOverride = null
     this.hoveredIds.clear()
