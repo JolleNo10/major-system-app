@@ -66,11 +66,11 @@ Patterns belong only to Learning. Recall health is always a solid fill.
 
 Use one neutral visual family for both Learning states. The distinction comes from pattern geometry, not a second color vocabulary.
 
-Starting palette:
+Canonical palette:
 
 ```text
-Not learned / Learning base   #52525b
-Learning pattern line         #918779
+Not learned / Learning base   #5A5E66
+Learning pattern line         #3E3719
 ```
 
 Pattern treatment:
@@ -83,8 +83,9 @@ Countries learned
 
 Starting geometry:
 
-- stripe width around 2 px;
-- pitch around 16 px;
+- stripe width 1.8 px;
+- pitch 11 px;
+- line opacity 0.46;
 - pattern should remain legible at Continent and World scale without becoming visually dominant;
 - exact implementation may tune density slightly for real SVG scale, but keep the visual intent: a sparse diagonal.
 
@@ -95,11 +96,11 @@ Do not use cyan/blue for Learning. Cyan remains available for focus/selection an
 Update the learner-facing Recall palette to a clearer warm-to-green progression:
 
 ```text
-Early recall / internal unpractised   #b45309
-Weak                                  #d97706
-Developing                            #d9ad32
-Strong                                #69a95d
-Mastered                              #16834f
+Early recall / internal unpractised   #916F5F
+Weak                                  #C29161
+Developing                            #C6AA55
+Strong                                #769A70
+Mastered                              #3A7F70
 ```
 
 Keep internal type names where changing them would create unnecessary churn. In particular, the internal `unpractised` state may remain internal, but the learner-facing label should be **Early recall**.

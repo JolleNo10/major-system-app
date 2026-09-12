@@ -16,6 +16,25 @@ let root: Root | null = null
 afterEach(() => { act(() => root?.unmount()); root = null; document.body.replaceChildren(); vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
 describe('GeographyOverviewMap', () => {
+  it('uses the shared quiet base map treatment for Countries and labels', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect id="svg-background" width="100" height="100" fill="#252525"/><g><path id="Norway"/><text id="Norway_label"><tspan>Norway</tspan></text></g></svg>' })))
+    const mount = document.createElement('div'); document.body.append(mount)
+
+    await act(async () => { root = createRoot(mount); root.render(createElement(GeographyOverviewMap, { level: 'world', ariaLabel: 'World map' })); await Promise.resolve(); await Promise.resolve() })
+
+    const norway = mount.querySelector('path#Norway') as SVGPathElement
+    expect(norway.style.fill).toBe('#5A5E66')
+    expect(norway.style.stroke).toBe('#2A2D33')
+    expect(norway.style.strokeWidth).toBe('1.05px')
+    expect((mount.querySelector('#svg-background') as SVGElement).style.fill).toBe('#202326')
+    expect((mount.querySelector('svg') as SVGElement).style.backgroundColor).toBe('rgb(32, 35, 38)')
+    expect(mount.querySelector('.world-map-svg')?.getAttribute('style')).toContain('background-color: rgb(32, 35, 38)')
+    expect((mount.querySelector('#Norway_label') as SVGElement).style.fill).toBe('#DDE0E5')
+    expect((mount.querySelector('#Norway_label') as SVGElement).style.opacity).toBe('0.8')
+    expect((mount.querySelector('#Norway_label tspan') as SVGElement).style.fill).toBe('#DDE0E5')
+    expect((mount.querySelector('#Norway_label tspan') as SVGElement).style.opacity).toBe('')
+  })
+
   it('keeps real tiny Countries at source size without task semantics', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => europeSvg })))
     const andorra = countries.find(country => country.id === 'AD')
@@ -154,7 +173,7 @@ describe('GeographyOverviewMap', () => {
 
     const selectedOutline = () => mount.querySelector('[data-svg-map-group-outline="subregion-northern-europe"]')
     expect(selectedOutline()).not.toBeNull()
-    expect(mount.querySelector('feFlood')?.getAttribute('flood-color')).toBe('#22d3ee')
+    expect(mount.querySelector('feFlood')?.getAttribute('flood-color')).toBe('#73CDD4')
 
     const norway = mount.querySelector('path#Norway')
     await act(async () => { norway?.dispatchEvent(new Event('pointerenter', { bubbles: true })) })

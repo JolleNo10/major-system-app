@@ -22,6 +22,7 @@ import { getMapSyntheticDots } from './syntheticDots'
 import type { SvgMapCameraIntent, SvgMapCountryPattern, SvgMapGroupOutline } from './SvgMapController'
 import { SvgMapView, type SvgMapCountry, type SvgMapLoadState } from './SvgMapView'
 import { getSubregionLearningFrame } from './subregionLearningFrames'
+import { WORLD_COUNTRIES_MAP_COUNTRY_FILL, WORLD_COUNTRIES_MAP_SELECTION_STROKE } from './worldCountriesMapPalette'
 import {
   DEFAULT_WORLD_COUNTRIES_MAP_CAMERA_INTENT,
   getWorldCountriesMapCameraIntentSignature,
@@ -30,7 +31,7 @@ import {
 
 const GEOGRAPHY_OVERVIEW_HOVER_FILL = '#0f766e'
 const GEOGRAPHY_OVERVIEW_HOVER_STROKE = '#d4d4d8'
-const GEOGRAPHY_OVERVIEW_SELECTION_STROKE = '#22d3ee'
+const GEOGRAPHY_OVERVIEW_SELECTION_STROKE = WORLD_COUNTRIES_MAP_SELECTION_STROKE
 const GEOGRAPHY_OVERVIEW_HOVER_STROKE_WIDTH = '2px'
 const EMPTY_COUNTRY_IDS: readonly CountryId[] = []
 
@@ -408,7 +409,7 @@ export function GeographyOverviewMap({
   )
   const descriptions = countryDescriptions
   const mapSettings = useMemo(() => ({
-    countryFill: '#52525b',
+    countryFill: WORLD_COUNTRIES_MAP_COUNTRY_FILL,
     hoverHighlight: true,
     hoverShowName: level !== 'world',
     hoverScope: 'group' as const,

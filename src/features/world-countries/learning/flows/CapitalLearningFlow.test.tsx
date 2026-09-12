@@ -148,7 +148,7 @@ describe('CapitalLearningFlow orchestration', () => {
     expect(leftRail.textContent).toContain('Meet the capitals')
     expect(leftRail.textContent).not.toContain('Learning progress')
     expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].presentation.countryPatternsById).toBeUndefined()
-    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].presentation.countryColorsById?.get('NO')).toBe('#69a95d')
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].presentation.countryColorsById?.get('NO')).toBe('#769A70')
   })
 
   it('keeps Country ↔ Capital presentation in the Capital walkthrough', () => {
@@ -258,7 +258,7 @@ describe('CapitalLearningFlow orchestration', () => {
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-submit"]')!.click())
 
     expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].presentation.countryPatternsById).toBeUndefined()
-    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].presentation.countryColorsById?.get('NO')).toBe('#b45309')
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].presentation.countryColorsById?.get('NO')).toBe('#916F5F')
 
     act(() => [...container.querySelectorAll('button')].find(button => button.textContent === 'Learn again')?.click())
 

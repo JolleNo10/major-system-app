@@ -241,7 +241,7 @@ describe('World Countries Today', () => {
     const learningStates = [...legend?.querySelectorAll<HTMLElement>('[data-learning-state]') ?? []]
     expect(learningStates.map(entry => entry.textContent)).toEqual(['Not learned', 'Countries learned'])
     expect(learningStates[1]?.querySelector<HTMLElement>('[aria-hidden="true"]')?.style.backgroundImage).toContain('135deg')
-    expect(learningStates[1]?.querySelector<HTMLElement>('[aria-hidden="true"]')?.style.backgroundImage).toContain('#918779')
+    expect(learningStates[1]?.querySelector<HTMLElement>('[aria-hidden="true"]')?.style.backgroundImage).toContain('rgba(62, 55, 25, 0.46)')
     expect(learningStates[1]?.querySelector<HTMLElement>('[aria-hidden="true"]')?.style.backgroundImage).not.toContain('#d6c7ad')
     expect(legend?.textContent).toContain('Learning')
     expect(legend?.textContent).toContain('Recall health')
@@ -288,7 +288,7 @@ describe('World Countries Today', () => {
     } | undefined
 
     expect(mapProps?.countryPatternsById?.get(countries[0].id)).toBeUndefined()
-    expect(mapProps?.countryColorsById?.get(countries[0].id)).toBe('#b45309')
+    expect(mapProps?.countryColorsById?.get(countries[0].id)).toBe('#916F5F')
     expect(mapProps?.countryAccessibleDescriptionsById?.get(countries[0].id)).toBe('Recall health: Early recall.')
   })
 

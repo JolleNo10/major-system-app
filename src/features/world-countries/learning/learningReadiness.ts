@@ -25,17 +25,19 @@ export function getWorldCountriesLearningStateList(
   return Array.isArray(states) ? states : [...states.values()]
 }
 
-export const WORLD_COUNTRIES_LEARNING_BASE = '#52525b'
+export const WORLD_COUNTRIES_LEARNING_BASE = '#5A5E66'
 export const WORLD_COUNTRIES_LEARNING_PATTERN_BASE = WORLD_COUNTRIES_LEARNING_BASE
-export const WORLD_COUNTRIES_LEARNING_PATTERN_LINE = '#918779'
-export const WORLD_COUNTRIES_LEARNING_PATTERN_WIDTH = 2
-export const WORLD_COUNTRIES_LEARNING_PATTERN_PITCH = 16
+export const WORLD_COUNTRIES_LEARNING_PATTERN_LINE = '#3E3719'
+export const WORLD_COUNTRIES_LEARNING_PATTERN_OPACITY = 0.46
+export const WORLD_COUNTRIES_LEARNING_PATTERN_WIDTH = 1.8
+export const WORLD_COUNTRIES_LEARNING_PATTERN_PITCH = 11
 
 export function createWorldCountriesLearningPattern(kind: WorldCountriesLearningPatternKind): SvgMapCountryPattern {
   return {
     kind,
     baseColor: WORLD_COUNTRIES_LEARNING_PATTERN_BASE,
     lineColor: WORLD_COUNTRIES_LEARNING_PATTERN_LINE,
+    lineOpacity: WORLD_COUNTRIES_LEARNING_PATTERN_OPACITY,
     lineWidth: WORLD_COUNTRIES_LEARNING_PATTERN_WIDTH,
     pitch: WORLD_COUNTRIES_LEARNING_PATTERN_PITCH,
   }
@@ -57,12 +59,25 @@ export function createWorldCountriesLearningPatternSwatchStyle(
   const lineWidth = pattern.lineWidth ?? WORLD_COUNTRIES_LEARNING_PATTERN_WIDTH
   const lineStart = (pitch - lineWidth) / 2
   const lineEnd = lineStart + lineWidth
-  const gradient = (angle: number) => `repeating-linear-gradient(${angle}deg, transparent 0 ${lineStart}px, ${pattern.lineColor} ${lineStart}px ${lineEnd}px, transparent ${lineEnd}px ${pitch}px)`
+  const lineColor = pattern.lineOpacity === undefined
+    ? pattern.lineColor
+    : toCssColorWithOpacity(pattern.lineColor, pattern.lineOpacity)
+  const gradient = (angle: number) => `repeating-linear-gradient(${angle}deg, transparent 0 ${lineStart}px, ${lineColor} ${lineStart}px ${lineEnd}px, transparent ${lineEnd}px ${pitch}px)`
   return {
     backgroundColor: pattern.baseColor,
     backgroundImage: gradient(135),
     backgroundSize: `${pitch}px ${pitch}px`,
   }
+}
+
+function toCssColorWithOpacity(color: string, opacity: number): string {
+  const match = color.trim().match(/^#([\da-f]{6})$/i)
+  if (!match) return `color-mix(in srgb, ${color} ${opacity * 100}%, transparent)`
+  const value = match[1]
+  const red = Number.parseInt(value.slice(0, 2), 16)
+  const green = Number.parseInt(value.slice(2, 4), 16)
+  const blue = Number.parseInt(value.slice(4, 6), 16)
+  return `rgba(${red}, ${green}, ${blue}, ${opacity})`
 }
 
 const WORLD_COUNTRIES_LEARNING_READINESS_LABELS: Readonly<Record<WorldCountriesLearningReadiness, string>> = {

@@ -7,15 +7,15 @@ describe('World Countries Learning Readiness', () => {
   it('keeps the canonical three-state labels and shared base together', () => {
     expect(WORLD_COUNTRIES_LEARNING_READINESS_STATES).toEqual(['NOT_LEARNED', 'COUNTRIES_LEARNED', 'COUNTRIES_AND_CAPITALS_LEARNED'])
     expect(WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES).toEqual([
-      { state: 'NOT_LEARNED', label: 'Not learned', color: '#52525b' },
-      expect.objectContaining({ state: 'COUNTRIES_LEARNED', label: 'Countries learned', color: '#52525b', swatchStyle: expect.objectContaining({ backgroundColor: '#52525b', backgroundSize: '16px 16px' }) }),
+      { state: 'NOT_LEARNED', label: 'Not learned', color: '#5A5E66' },
+      expect.objectContaining({ state: 'COUNTRIES_LEARNED', label: 'Countries learned', color: '#5A5E66', swatchStyle: expect.objectContaining({ backgroundColor: '#5A5E66', backgroundImage: expect.stringContaining('rgba(62, 55, 25, 0.46)'), backgroundSize: '11px 11px' }) }),
     ])
   })
 
   it('shares the Not learned base with subtle pattern lines', () => {
     expect(WORLD_COUNTRIES_LEARNING_PATTERN_BASE).toBe(WORLD_COUNTRIES_LEARNING_BASE)
-    expect(WORLD_COUNTRIES_LEARNING_PATTERN_LINE).toBe('#918779')
-    expect(createWorldCountriesLearningPattern('diagonal')).toMatchObject({ kind: 'diagonal', baseColor: '#52525b', lineColor: '#918779', lineWidth: WORLD_COUNTRIES_LEARNING_PATTERN_WIDTH, pitch: WORLD_COUNTRIES_LEARNING_PATTERN_PITCH })
+    expect(WORLD_COUNTRIES_LEARNING_PATTERN_LINE).toBe('#3E3719')
+    expect(createWorldCountriesLearningPattern('diagonal')).toMatchObject({ kind: 'diagonal', baseColor: '#5A5E66', lineColor: '#3E3719', lineOpacity: 0.46, lineWidth: WORLD_COUNTRIES_LEARNING_PATTERN_WIDTH, pitch: WORLD_COUNTRIES_LEARNING_PATTERN_PITCH })
   })
 
   it('maps Learning Readiness to the matching pattern and leaves Not learned solid', () => {
@@ -29,7 +29,7 @@ describe('World Countries Learning Readiness', () => {
       ['SE', 'COUNTRIES_LEARNED'],
       ['FI', 'COUNTRIES_AND_CAPITALS_LEARNED'],
     ]))).toEqual(new Map([
-      ['SE', expect.objectContaining({ kind: 'diagonal', baseColor: '#52525b', lineColor: '#918779' })],
+      ['SE', expect.objectContaining({ kind: 'diagonal', baseColor: '#5A5E66', lineColor: '#3E3719', lineOpacity: 0.46 })],
     ]))
     expect(createWorldCountriesLearningPatternsByCountry(entries, new Map([
       ['FI', 'COUNTRIES_AND_CAPITALS_LEARNED'],

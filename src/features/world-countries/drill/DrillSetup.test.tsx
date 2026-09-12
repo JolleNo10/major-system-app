@@ -231,7 +231,7 @@ describe('DrillSetup activity boundary', () => {
     expect(legend?.querySelector('[data-progress-group="With Drill evidence"]')).not.toBeNull()
     expect(legend?.querySelector('[data-progress-summary]')?.textContent).toBe('Learning Readiness is used until a Country has relevant evidence for this Drill mode.')
     expect(legend?.querySelector('summary')?.textContent).toBe('How progress works')
-    expect(legend?.querySelector('[data-progress-group="No Drill evidence"] [data-progress-state="COUNTRIES_LEARNED"] i')?.getAttribute('style')).toContain('#918779')
+    expect(legend?.querySelector('[data-progress-group="No Drill evidence"] [data-progress-state="COUNTRIES_LEARNED"] i')?.getAttribute('style')).toContain('rgba(62, 55, 25, 0.46)')
     expect(legend?.querySelector('[data-progress-group="No Drill evidence"] [data-progress-state="COUNTRIES_AND_CAPITALS_LEARNED"]')).toBeNull()
   })
 
@@ -391,8 +391,8 @@ describe('DrillSetup activity boundary', () => {
     renderSetup({ learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: 1 }] })
     await act(async () => { await Promise.resolve(); await Promise.resolve() })
     const mapProps = mapMock.mock.calls[mapMock.mock.calls.length - 1]?.[0] as { countryColorsById: Map<string, string>; countryPatternsById: Map<string, { kind: string; baseColor: string; lineColor: string }> }
-    expect(mapProps.countryColorsById.get('NO')).toBe('#52525b')
-    expect(mapProps.countryPatternsById.get('NO')).toMatchObject({ kind: 'diagonal', baseColor: '#52525b', lineColor: '#918779' })
+    expect(mapProps.countryColorsById.get('NO')).toBe('#5A5E66')
+    expect(mapProps.countryPatternsById.get('NO')).toMatchObject({ kind: 'diagonal', baseColor: '#5A5E66', lineColor: '#3E3719', lineOpacity: 0.46 })
 
     act(() => root?.render(createElement(DrillSetup, createSetupProps({ learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: 1, capitalsLearnedAt: 2 }] }))))
     await act(async () => { await Promise.resolve(); await Promise.resolve() })

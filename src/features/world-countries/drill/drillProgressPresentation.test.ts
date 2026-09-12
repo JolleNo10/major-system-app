@@ -48,26 +48,26 @@ describe('World Countries Drill map precedence', () => {
     const colors = createColors('countries', new Map(), [
       { subregionId: 'northern-europe', countriesLearnedAt: 1, capitalsLearnedAt: 2 },
     ])
-    expect(colors.get('NO')).toBe('#52525b')
+    expect(colors.get('NO')).toBe('#5A5E66')
   })
 
   it('uses only the selected perspective evidence', () => {
     const colors = createColors('countries', progressFor('country-to-capital'), [
       { subregionId: 'northern-europe', countriesLearnedAt: 1 },
     ])
-    expect(colors.get('NO')).toBe('#52525b')
+    expect(colors.get('NO')).toBe('#5A5E66')
 
     const capitalColors = createColors('countries-from-capitals', progressFor('capital-to-country'), [
       { subregionId: 'northern-europe', countriesLearnedAt: 1 },
     ])
-    expect(capitalColors.get('NO')).toBe('#d97706')
+    expect(capitalColors.get('NO')).toBe('#C29161')
   })
 
   it('keeps Countries + Capitals at Learning Readiness until both core skills have evidence', () => {
     const colors = createColors('countries-capitals', progressFor('location-to-country', 'recall', true), [
       { subregionId: 'northern-europe', countriesLearnedAt: 1 },
     ])
-    expect(colors.get('NO')).toBe('#52525b')
+    expect(colors.get('NO')).toBe('#5A5E66')
   })
 
   it('uses Countries + Capitals progress after both core skills have evidence', () => {
@@ -93,14 +93,14 @@ describe('World Countries Drill map precedence', () => {
     const colors = createColors('countries-capitals', recallProgress, [
       { subregionId: 'northern-europe', countriesLearnedAt: 1 },
     ])
-    expect(colors.get('NO')).toBe('#d97706')
+    expect(colors.get('NO')).toBe('#C29161')
   })
 
   it('uses the Capital → Country perspective for Countries from Capitals', () => {
     const colors = createColors('countries-from-capitals', progressFor('capital-to-country'), [
       { subregionId: 'northern-europe', countriesLearnedAt: 1 },
     ])
-    expect(colors.get('NO')).toBe('#d97706')
+    expect(colors.get('NO')).toBe('#C29161')
   })
 
   it('activates Drill coloring for recognition evidence too', () => {
@@ -117,7 +117,7 @@ describe('World Countries Drill map precedence', () => {
     const colors = createColors('countries', progress, [
       { subregionId: 'northern-europe', countriesLearnedAt: 1 },
     ])
-    expect(colors.get('NO')).toBe('#d9ad32')
+    expect(colors.get('NO')).toBe('#C6AA55')
   })
 
   it('uses the shared Learning patterns only until relevant Drill evidence exists', () => {
@@ -127,7 +127,7 @@ describe('World Countries Drill map precedence', () => {
       recallProgress: new Map(),
       learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: 1 }],
     })
-    expect(learningPatterns.get('NO')).toMatchObject({ kind: 'diagonal', baseColor: '#52525b', lineColor: '#918779' })
+    expect(learningPatterns.get('NO')).toMatchObject({ kind: 'diagonal', baseColor: '#5A5E66', lineColor: '#3E3719', lineOpacity: 0.46 })
 
     const evidencePatterns = createDrillProgressPatterns({
       mode: 'countries',

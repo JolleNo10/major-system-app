@@ -52,6 +52,7 @@ export interface SvgMapCountryPattern {
   kind: 'diagonal' | 'crosshatch'
   baseColor: string
   lineColor: string
+  lineOpacity?: number
   lineWidth?: number
   pitch?: number
 }
@@ -90,10 +91,13 @@ export interface SvgMapPresentationState {
 }
 
 export interface SvgMapSettings {
+  backgroundFill: string | null
   countryFill: string | null
   mutedFill: string
   countryStroke: string | null
+  countryStrokeWidth: string | null
   labelFill: string | null
+  labelOpacity: number | null
   highlightFill: string
   hoverFill: string
   highlightStroke: string | null
@@ -132,10 +136,13 @@ export type SvgMapCountryPatterns =
   | Iterable<readonly [string, SvgMapCountryPattern | null]>
 
 export const DEFAULT_SVG_MAP_SETTINGS: Readonly<SvgMapSettings> = Object.freeze({
+  backgroundFill: null,
   countryFill: null,
   mutedFill: '#303036',
   countryStroke: null,
+  countryStrokeWidth: null,
   labelFill: null,
+  labelOpacity: null,
   highlightFill: '#0891b2',
   hoverFill: '#22d3ee',
   highlightStroke: null,
@@ -176,6 +183,7 @@ interface InternalCountry extends SvgMapCountry {
   originalGroupAriaLabel: string | null
   originalLabelDisplay: OriginalStyle
   originalLabelPointerEvents: OriginalStyle
+  originalLabelOpacity: OriginalStyle
   originalLabelTextNodes: Array<{ node: Text; value: string }>
   labelTextNodeIndex: number
   labelPaint: Array<{
@@ -364,6 +372,9 @@ export class SvgMapController {
   private countryClickHandler: ((countryId: string) => void) | null = null
   private countryHoverHandler: ((countryId: string | null) => void) | null = null
   private svg: SVGSVGElement | null = null
+  private backgroundElement: SVGElement | null = null
+  private originalBackgroundFill: OriginalStyle | null = null
+  private originalBackgroundColor: OriginalStyle | null = null
   private originalViewBox: string | null = null
   private presentation: SvgMapPresentation = 'standard'
   private zoomIntent: {
@@ -429,6 +440,9 @@ export class SvgMapController {
     imported.setAttribute('focusable', 'false')
     this.mount.replaceChildren(imported)
     this.svg = imported
+    this.backgroundElement = imported.querySelector<SVGElement>('#svg-background')
+    this.originalBackgroundFill = this.backgroundElement ? captureStyle(this.backgroundElement, 'fill') : null
+    this.originalBackgroundColor = captureStyle(imported, 'background-color')
     this.originalViewBox = imported.getAttribute('viewBox')
     this.syncLayoutAspectRatio()
     this.observeResize()
@@ -1053,6 +1067,7 @@ export class SvgMapController {
         originalGroupAriaLabel,
         originalLabelDisplay: captureStyle(label, 'display'),
         originalLabelPointerEvents: captureStyle(label, 'pointer-events'),
+        originalLabelOpacity: captureStyle(label, 'opacity'),
         originalLabelTextNodes,
         labelTextNodeIndex: Math.max(0, originalLabelTextNodes.findIndex(entry => entry.value.trim() !== '')),
         labelPaint: labelPaintElements.map(element => ({
@@ -1265,6 +1280,14 @@ export class SvgMapController {
       : `fill ${this.settings.transitionMs}ms ease, stroke ${this.settings.transitionMs}ms ease, stroke-width ${this.settings.transitionMs}ms ease`
 
     this.taskAssistance.sync()
+    if (this.settings.backgroundFill === null) {
+      if (this.backgroundElement && this.originalBackgroundFill) restoreStyle(this.backgroundElement, 'fill', this.originalBackgroundFill)
+      if (this.originalBackgroundColor) restoreStyle(this.svg, 'background-color', this.originalBackgroundColor)
+      else this.svg.style.removeProperty('background-color')
+    } else {
+      this.backgroundElement?.style.setProperty('fill', this.settings.backgroundFill, 'important')
+      this.svg.style.setProperty('background-color', this.settings.backgroundFill, 'important')
+    }
     this.svg.querySelectorAll('defs[data-svg-map-country-pattern-defs]').forEach(defs => defs.remove())
 
     for (const country of this.countries.values()) {
@@ -1295,11 +1318,14 @@ export class SvgMapController {
         : styled && this.settings.highlightStroke !== null
           ? this.settings.highlightStroke
           : this.settings.countryStroke
+      const transientStroke = taskHovered || hovered || this.highlighted.has(country.id)
       const strokeWidth = hovered && this.settings.hoverStrokeWidth !== null
         ? this.settings.hoverStrokeWidth
         : styled && this.settings.highlightStrokeWidth !== null
           ? this.settings.highlightStrokeWidth
-          : null
+          : transientStroke
+            ? null
+            : this.settings.countryStrokeWidth
 
       const hidden = this.hiddenCountries.has(country.id)
       for (const pathState of country.pathStates) {
@@ -1324,6 +1350,7 @@ export class SvgMapController {
       for (const paint of country.labelPaint) {
         setOverride(paint.element, 'fill', this.settings.labelFill, paint.originalFill)
       }
+      setOverride(country.label, 'opacity', this.settings.labelOpacity === null ? null : String(this.settings.labelOpacity), country.originalLabelOpacity)
       this.taskAssistance.renderCountryTaskState(country, fill, hidden, reducedMotion)
     }
     this.renderGroupOutlines()
@@ -1461,7 +1488,7 @@ export class SvgMapController {
   private getPatternUrl(pattern: SvgMapCountryPattern): string {
     const mapSvg = this.svg
     if (!mapSvg) return pattern.baseColor
-    const key = `${pattern.kind}|${pattern.baseColor}|${pattern.lineColor}|${pattern.lineWidth ?? 2}|${pattern.pitch ?? 16}`
+    const key = `${pattern.kind}|${pattern.baseColor}|${pattern.lineColor}|${pattern.lineOpacity ?? 1}|${pattern.lineWidth ?? 2}|${pattern.pitch ?? 16}`
     const encoded = [...key].map(char => char.codePointAt(0)?.toString(16) ?? '').join('')
     const id = `svg-map-country-pattern-${encoded}`
     let defs = mapSvg.querySelector<SVGDefsElement>('defs[data-svg-map-country-pattern-defs]')
@@ -1492,6 +1519,7 @@ export class SvgMapController {
           : `M-${pitch / 4},${pitch * 3 / 4} L${pitch / 4},${pitch * 5 / 4} M0,0 L${pitch},${pitch} M${pitch * 3 / 4},-${pitch / 4} L${pitch * 5 / 4},${pitch / 4}`)
         line.setAttribute('fill', 'none')
         line.setAttribute('stroke', pattern.lineColor)
+        if (pattern.lineOpacity !== undefined) line.setAttribute('stroke-opacity', String(pattern.lineOpacity))
         line.setAttribute('stroke-width', String(width))
         svgPattern.appendChild(line)
       }
@@ -1551,10 +1579,13 @@ export class SvgMapController {
     }
     restoreStyle(country.label, 'display', country.originalLabelDisplay)
     restoreStyle(country.label, 'pointer-events', country.originalLabelPointerEvents)
+    restoreStyle(country.label, 'opacity', country.originalLabelOpacity)
     restoreAttribute(country.group, 'tabindex', country.originalGroupTabIndex)
     restoreAttribute(country.group, 'role', country.originalGroupRole)
     restoreAttribute(country.group, 'aria-label', country.originalGroupAriaLabel)
-    for (const paint of country.labelPaint) restoreStyle(paint.element, 'fill', paint.originalFill)
+    for (const paint of country.labelPaint) {
+      restoreStyle(paint.element, 'fill', paint.originalFill)
+    }
     for (const textNode of country.originalLabelTextNodes) textNode.node.data = textNode.value
   }
 
@@ -1954,7 +1985,12 @@ export class SvgMapController {
     this.hoveredCountryId = null
     this.hoveredNameOverride = null
     this.hoveredIds.clear()
+    if (this.backgroundElement && this.originalBackgroundFill) restoreStyle(this.backgroundElement, 'fill', this.originalBackgroundFill)
+    if (this.svg && this.originalBackgroundColor) restoreStyle(this.svg, 'background-color', this.originalBackgroundColor)
     this.svg = null
+    this.backgroundElement = null
+    this.originalBackgroundFill = null
+    this.originalBackgroundColor = null
     this.originalViewBox = null
     this.zoomIntent = null
     this.mount.replaceChildren()

@@ -11,6 +11,7 @@ import {
   type SvgMapCameraIntent,
 } from './SvgMapController'
 import { useMapSurfacePresentation } from '@/features/world-countries/ui/MapSurface'
+import { WORLD_COUNTRIES_MAP_BACKGROUND, WORLD_COUNTRIES_MAP_COUNTRY_FILL, WORLD_COUNTRIES_MAP_COUNTRY_STROKE, WORLD_COUNTRIES_MAP_COUNTRY_STROKE_WIDTH, WORLD_COUNTRIES_MAP_LABEL_FILL, WORLD_COUNTRIES_MAP_LABEL_OPACITY } from './worldCountriesMapPalette'
 
 export type { SvgMapCountry } from './SvgMapController'
 
@@ -107,7 +108,12 @@ export function SvgMapView({
     let cancelled = false
     const viewportElement = mount.closest<HTMLElement>('[data-map-surface-map]') ?? undefined
     const controller = new SvgMapController(mount, {
-      countryFill: '#52525b',
+      backgroundFill: WORLD_COUNTRIES_MAP_BACKGROUND,
+      countryFill: WORLD_COUNTRIES_MAP_COUNTRY_FILL,
+      countryStroke: WORLD_COUNTRIES_MAP_COUNTRY_STROKE,
+      countryStrokeWidth: WORLD_COUNTRIES_MAP_COUNTRY_STROKE_WIDTH,
+      labelFill: WORLD_COUNTRIES_MAP_LABEL_FILL,
+      labelOpacity: WORLD_COUNTRIES_MAP_LABEL_OPACITY,
       showHighlightedNames: false,
       ...settings,
     }, viewportElement)
@@ -191,7 +197,8 @@ export function SvgMapView({
         ref={mountRef}
         onPointerLeave={clearMapHover}
         onPointerCancel={clearMapHover}
-        className={`world-map-svg overflow-hidden rounded-2xl border border-[#25252a] bg-[#252525] shadow-lg ${loading || error ? 'hidden' : ''} ${className}`}
+        className={`world-map-svg overflow-hidden rounded-2xl border border-[#25252a] shadow-lg ${loading || error ? 'hidden' : ''} ${className}`}
+        style={{ backgroundColor: WORLD_COUNTRIES_MAP_BACKGROUND }}
         role="img"
         aria-label={ariaLabel}
         aria-describedby={ariaDescribedBy}
@@ -221,10 +228,10 @@ function getCountryColorsSignature(colors: SvgMapCountryColors): string {
 
 function getCountryPatternsSignature(patterns: SvgMapCountryPatterns): string {
   const entries = Symbol.iterator in Object(patterns)
-    ? [...patterns as Iterable<readonly [string, { kind: string; baseColor: string; lineColor: string; lineWidth?: number; pitch?: number } | null]>]
+    ? [...patterns as Iterable<readonly [string, { kind: string; baseColor: string; lineColor: string; lineOpacity?: number; lineWidth?: number; pitch?: number } | null]>]
     : Object.entries(patterns)
   return entries
-    .map(([id, pattern]) => `${id}\u0000${pattern ? `${pattern.kind}|${pattern.baseColor}|${pattern.lineColor}|${pattern.lineWidth ?? 2}|${pattern.pitch ?? 16}` : 'null'}`)
+    .map(([id, pattern]) => `${id}\u0000${pattern ? `${pattern.kind}|${pattern.baseColor}|${pattern.lineColor}|${pattern.lineOpacity ?? 1}|${pattern.lineWidth ?? 2}|${pattern.pitch ?? 16}` : 'null'}`)
     .sort()
     .join('\u0001')
 }

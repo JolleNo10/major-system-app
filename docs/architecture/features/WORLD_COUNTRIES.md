@@ -443,14 +443,20 @@ Durable Learning Readiness is derived from `countriesLearnedAt` and
 `COUNTRIES_AND_CAPITALS_LEARNED`. The last is a curriculum milestone and
 handoff boundary, not a separate learner-facing map-status rung. Normal map
 presentation exposes only Not learned and Countries learned during Learning,
-using one `#52525b` base and a `#918779` diagonal pattern for Countries learned;
-both Learning layers complete then hands off to solid Recall health. A display-only Drill-evidence
+using `#5A5E66` as the neutral base and a `#3E3719` diagonal pattern at 0.46
+opacity, 1.8 width, and 11 pitch for Countries learned; both Learning layers
+complete then hand off to solid Recall health. A display-only Drill-evidence
 bridge may promote a Subregion to Countries learned when every active Country
 has current Location -> Country proficiency of Developing or better. It never
 writes a Learning milestone or changes Drill evidence. This Drill setup
 readiness is not the Today curriculum gate: the guided planner requires the
 durable Country milestone or the separate complete-recall fallback described
 above before recommending Capital Learning.
+
+World Countries maps use the shared quiet treatment of `#202326` background,
+`#2A2D33` / 1.05 Country borders, and `#DDE0E5` labels at 0.8 opacity.
+Geographic selection uses `#73CDD4`; answer-domain task accents remain owned by
+the existing Country/Capital answer semantics.
 
 Today map status uses the established-layer form of this truth: a durable
 layer is authoritative, while the existing all-active-Country historical

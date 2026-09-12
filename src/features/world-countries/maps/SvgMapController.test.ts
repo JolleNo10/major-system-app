@@ -382,8 +382,8 @@ describe('SvgMapController persistent state', () => {
   it('renders diagonal and crosshatch patterns declaratively and restores them after hover', async () => {
     const { mount, controller } = makeController()
     await controller.load({ markup: MULTIPART_MAP })
-    const diagonal = { kind: 'diagonal' as const, baseColor: '#52525b', lineColor: '#918779', lineWidth: 2, pitch: 16 }
-    const crosshatch = { kind: 'crosshatch' as const, baseColor: '#52525b', lineColor: '#918779', lineWidth: 2, pitch: 16 }
+    const diagonal = { kind: 'diagonal' as const, baseColor: '#5A5E66', lineColor: '#3E3719', lineOpacity: 0.46, lineWidth: 1.8, pitch: 11 }
+    const crosshatch = { kind: 'crosshatch' as const, baseColor: '#5A5E66', lineColor: '#3E3719', lineOpacity: 0.46, lineWidth: 1.8, pitch: 11 }
 
     controller.updatePresentation({
       presentation: 'standard', settings: {}, groupOutlines: [], hiddenIds: [], taskAssistance: null,
@@ -392,6 +392,7 @@ describe('SvgMapController persistent state', () => {
     })
     expect(path(mount, 'Multipart').style.fill).toMatch(/^url\(#svg-map-country-pattern-/)
     expect(mount.querySelector('pattern[data-svg-map-country-pattern="diagonal"]')).not.toBeNull()
+    expect(mount.querySelector('pattern[data-svg-map-country-pattern="diagonal"] path')?.getAttribute('stroke-opacity')).toBe('0.46')
     expect(path(mount, 'Multipart_fragment').style.fill).toBe(path(mount, 'Multipart').style.fill)
 
     controller.updatePresentation({
@@ -401,6 +402,25 @@ describe('SvgMapController persistent state', () => {
     })
     expect(path(mount, 'Multipart').style.fill).toMatch(/^url\(#svg-map-country-pattern-/)
     expect(mount.querySelector('pattern[data-svg-map-country-pattern="crosshatch"] path:nth-of-type(2)')).not.toBeNull()
+  })
+
+  it('updates pattern definitions when only line opacity changes', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    const translucent = { kind: 'diagonal' as const, baseColor: '#5A5E66', lineColor: '#3E3719', lineOpacity: 0.46, lineWidth: 1.8, pitch: 11 }
+    const opaque = { ...translucent, lineOpacity: 1 }
+    const update = (pattern: typeof translucent) => controller.updatePresentation({
+      presentation: 'standard', settings: {}, groupOutlines: [], hiddenIds: [], taskAssistance: null,
+      highlightedIds: [], mutedIds: [], countryColors: [], countryPatterns: [['Alpha', pattern]],
+      countryLabels: {}, namedIds: [], hoveredId: null,
+    })
+
+    update(translucent)
+    const translucentFill = path(mount, 'Alpha').style.fill
+    expect(mount.querySelector('pattern[data-svg-map-country-pattern="diagonal"] path')?.getAttribute('stroke-opacity')).toBe('0.46')
+    update(opaque)
+    expect(path(mount, 'Alpha').style.fill).not.toBe(translucentFill)
+    expect(mount.querySelector('pattern[data-svg-map-country-pattern="diagonal"] path')?.getAttribute('stroke-opacity')).toBe('1')
   })
 
   it('keeps the source layout aspect ratio while zooming and restoring the camera viewBox', async () => {
@@ -1766,6 +1786,7 @@ describe('SvgMapController task assistance', () => {
     controller.updateSettings({
       countryFill: '#111111',
       countryStroke: '#eeeeee',
+      countryStrokeWidth: '1.05px',
       labelFill: '#ffffff',
       highlightFill: '#ff0000',
       transitionMs: -10,
@@ -1775,6 +1796,8 @@ describe('SvgMapController task assistance', () => {
     expect(path(mount, 'Alpha').style.getPropertyValue('fill')).toBe('#ff0000')
     expect(path(mount, 'Beta').style.getPropertyValue('fill')).toBe('#111111')
     expect(path(mount, 'Beta').style.getPropertyValue('stroke')).toBe('#eeeeee')
+    expect(path(mount, 'Beta').style.getPropertyValue('stroke-width')).toBe('1.05px')
+    expect(path(mount, 'Alpha').style.getPropertyValue('stroke-width')).toBe('')
     expect(label(mount, 'Alpha_label').querySelector('tspan')?.style.getPropertyValue('fill')).toBe('#ffffff')
 
     controller.destroy()

@@ -22,9 +22,9 @@ function derive(completionPatternKind?: 'diagonal', phase = 'complete', activeLe
 }
 
 describe('Learning map completion presentation', () => {
-  it('uses diagonal warm-neutral Learning treatment for Country completion', () => {
+  it('uses the shared diagonal Learning treatment for Country completion', () => {
     expect(derive('diagonal').presentation.countryPatternsById?.get(entries[0].id)).toMatchObject({
-      kind: 'diagonal', baseColor: WORLD_COUNTRIES_LEARNING_PATTERN_BASE, lineColor: WORLD_COUNTRIES_LEARNING_PATTERN_LINE, lineWidth: 2, pitch: 16,
+      kind: 'diagonal', baseColor: WORLD_COUNTRIES_LEARNING_PATTERN_BASE, lineColor: WORLD_COUNTRIES_LEARNING_PATTERN_LINE, lineOpacity: 0.46, lineWidth: 1.8, pitch: 11,
     })
   })
 
