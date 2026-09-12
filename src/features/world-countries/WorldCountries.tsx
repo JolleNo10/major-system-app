@@ -14,12 +14,11 @@ import type { WorldCountriesTodayNavigation } from '@/features/world-countries/t
 import { WorldCountriesQuiz } from '@/features/world-countries/practice/WorldCountriesQuiz'
 import { WorldCountriesPlay } from './WorldCountriesPlay'
 import { WorldCountriesPopulationProvider } from './WorldCountriesPopulationContext'
-import type { WorldCountriesLearnPracticeMode } from './drill/learnPracticeSetupModes'
+import type { WorldCountriesSetupActivity } from './drill/setupActivity'
 
 type WorldCountriesArea = 'home' | 'continent' | 'play' | 'drill' | 'recite' | 'quiz'
 type DrillEntry = {
-  purpose: 'drill' | 'learn-practise'
-  learnPracticeMode?: WorldCountriesLearnPracticeMode
+  activity: WorldCountriesSetupActivity
   subregionId?: SubregionId
 }
 
@@ -62,7 +61,7 @@ export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
   }
   const openTodayNavigation = (navigation: WorldCountriesTodayNavigation) => {
     if (navigation.area === 'drill') {
-      openDrillEntry({ purpose: 'drill', subregionId: navigation.subregionId })
+      openDrillEntry({ activity: { kind: 'drill' }, subregionId: navigation.subregionId })
       return
     }
     openWorkflow(navigation.area)
@@ -91,8 +90,8 @@ export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
     <WorldCountriesPopulationProvider countries={activeCountries}>
       {area === 'home' && <WorldCountriesToday answerMode={answerMode} onNavigate={openTodayNavigation} onSelectContinent={goToContinent} />}
       {area === 'continent' && continent && <WorldCountriesToday answerMode={answerMode} continent={continent} onNavigate={openTodayNavigation} onSelectContinent={goToContinent} onWorld={goHome} />}
-      {area === 'play' && <WorldCountriesPlay scopeLabel={continent ?? 'World'} scopeContinent={continent ?? undefined} onBack={goToScope} onOpenRecite={() => openWorkflow('recite')} onOpenQuiz={() => openWorkflow('quiz')} onOpenLocateCountries={() => openDrillEntry({ purpose: 'learn-practise', learnPracticeMode: 'locate-countries' })} onOpenLocateCapitals={() => openDrillEntry({ purpose: 'learn-practise', learnPracticeMode: 'locate-capitals' })} onOpenCapitalPractice={() => openDrillEntry({ purpose: 'learn-practise', learnPracticeMode: 'capitals' })} onOpenCustomDrill={() => openDrillEntry({ purpose: 'drill' })} />}
-      {area === 'drill' && <WorldCountriesDrill answerMode={answerMode} onExit={goToScope} initialPurpose={drillEntry?.purpose} initialLearnPracticeMode={drillEntry?.learnPracticeMode} initialSubregionId={drillEntry?.subregionId} />}
+      {area === 'play' && <WorldCountriesPlay scopeLabel={continent ?? 'World'} scopeContinent={continent ?? undefined} onBack={goToScope} onOpenRecite={() => openWorkflow('recite')} onOpenQuiz={() => openWorkflow('quiz')} onOpenLocateCountries={() => openDrillEntry({ activity: { kind: 'practice', mode: 'locate-countries' } })} onOpenLocateCapitals={() => openDrillEntry({ activity: { kind: 'practice', mode: 'locate-capitals' } })} onOpenCapitalPractice={() => openDrillEntry({ activity: { kind: 'practice', mode: 'capitals' } })} onOpenCustomDrill={() => openDrillEntry({ activity: { kind: 'drill' } })} />}
+      {area === 'drill' && <WorldCountriesDrill answerMode={answerMode} onExit={goToScope} initialActivity={drillEntry?.activity} initialSubregionId={drillEntry?.subregionId} />}
       {area === 'recite' && <WorldCountriesRecite answerMode={answerMode} onExit={goToScope} />}
       {area === 'quiz' && <WorldCountriesQuiz answerMode={answerMode} onExit={goToScope} />}
     </WorldCountriesPopulationProvider>

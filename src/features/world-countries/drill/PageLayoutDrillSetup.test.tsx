@@ -42,23 +42,31 @@ describe('World Countries activity boundary', () => {
     await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Playground')?.click())
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-play-activity="custom-drill"]')?.click())
     expect(mount.textContent).toContain('Geography')
-    expect(mount.textContent).toContain('Purpose')
-    expect((mount.querySelector('input[value="drill"]') as HTMLInputElement | null)?.checked).toBe(true)
-    expect((mount.querySelector('input[value="learn-practise"]') as HTMLInputElement | null)?.checked).toBe(false)
+    expect(mount.textContent).not.toContain('Purpose')
+    expect(mount.textContent).not.toContain('Learn & Practise')
+    expect(mount.textContent).toContain('Drill mode')
+    expect(mount.querySelector('input[value="countries"]')).not.toBeNull()
+    expect(mount.textContent).toContain('Drill order')
     expect(mount.textContent).not.toContain('Start Drill')
   })
 
-  it('allows Drill setup to switch between four Learn & Practise modes', async () => {
+  it('opens each Playground Practice card in a fixed setup', async () => {
+    localStorage.setItem('world-countries-drill-preferences', JSON.stringify({ subregionIds: ['northern-europe'], mode: 'countries', order: 'ordered' }))
     const mount = await renderShell()
     await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Playground')?.click())
-    await act(async () => mount.querySelector<HTMLButtonElement>('[data-play-activity="custom-drill"]')?.click())
-    const europe = [...mount.querySelectorAll('button')].find(button => button.textContent?.includes('Europe'))
-    await act(async () => europe?.click())
-    const learnPractice = [...mount.querySelectorAll('input[type="radio"]')].find(input => (input as HTMLInputElement).value === 'learn-practise') as HTMLInputElement | undefined
-    await act(async () => learnPractice?.click())
-    expect(mount.textContent).toContain('Learn Countries')
-    expect(mount.textContent).toContain('Learn Capitals')
-    expect(mount.textContent).toContain('Locate Countries')
-    expect(mount.textContent).toContain('Capitals')
+    for (const [activity, label] of [
+      ['locate-countries', 'Locate Countries'],
+      ['locate-capitals', 'Locate Capitals'],
+      ['capital-practice', 'Capital Practice'],
+    ] as const) {
+      await act(async () => mount.querySelector<HTMLButtonElement>(`[data-play-activity="${activity}"]`)?.click())
+      expect(mount.textContent).toContain(label)
+      expect(mount.textContent).toContain(`Start ${label}`)
+      expect(mount.textContent).not.toContain('Purpose')
+      expect(mount.textContent).not.toContain('Learn & Practise')
+      expect(mount.textContent).not.toContain('Drill mode')
+      expect(mount.querySelector('input[type="radio"]')).toBeNull()
+      await act(async () => mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.click())
+    }
   })
 })

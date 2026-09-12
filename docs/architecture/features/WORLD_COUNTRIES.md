@@ -36,11 +36,12 @@ is contextual rather than a separate workflow:
 the active population, and continues to own the top-level Home/Continent/
 Playground composition. It composes those entry views with the existing Today,
 Drill, Recite, Quiz, Practice, and Learning owners; the underlying workflow
-semantics and ownership remain unchanged.
-`WorldCountriesDrill.tsx` owns the Drill setup coordinator, Drill and Learn &
-Practise purpose selection, active sessions, and results. Geography metadata
-changes reach mounted consumers through the feature-owned geography subscription
-signal rather than coordinator-owned refresh counters.
+semantics remain unchanged, while Playground selects the activity before setup.
+`WorldCountriesDrill.tsx` owns the shared Geography/proficiency setup
+coordinator, recorded Drill and fixed non-recording Practice entry, active
+sessions, and results. Geography metadata changes reach mounted consumers
+through the feature-owned geography subscription signal rather than
+coordinator-owned refresh counters.
 
 ## Ownership
 
@@ -60,9 +61,10 @@ signal rather than coordinator-owned refresh counters.
   their feature-local subscription signal, Learning Readiness, and reusable
   guided Learning flows.
 - `practice/` owns non-recording Practice execution and presentation reusable
-  outside the Drill entry point, including the map-backed Learn & Practise
-  path, transient Practice results, and the top-level Capitals and Neighbours
-  Quizzes. Quiz is a Practice-semantic user-facing area with transient
+  outside the Drill entry point, including fixed map-backed Locate Countries,
+  Locate Capitals, and Capital Practice runs, transient Practice results, and
+  the top-level Capitals and Neighbours Quizzes. Quiz is a Practice-semantic
+  user-facing area with transient
   randomized runs, scoring, miss review, and retry; it owns no evidence,
   milestones, preferences, scheduling, or other durable learner state.
 - `today/` owns the derived guided plan, independent curriculum and
@@ -92,13 +94,12 @@ signal rather than coordinator-owned refresh counters.
   adapters, backup behavior, read presentation, the reusable contextual
   Subregion mnemonic editor, and the feature-local mnemonic subscription over
   shared core mnemonic persistence.
-- `drill/` owns Drill selection, preferences, four Drill modes,
-  Learn & Practise purpose selection, recorded Drill sessions, Drill results,
-  and World/Continent order authoring in the existing Geography rails. It also
-  owns the feature-local, mutually exclusive
-  Geography/proficiency setup scope. It does not expose a Drill Subregion
-  detail or Country-order editor; it delegates non-recording Practice
-  execution and presentation to `practice/`.
+- `drill/` owns Drill selection, preferences, four Drill modes, recorded Drill
+  sessions, Drill results, and the shared World/Continent Geography and
+  proficiency setup used by recorded Drill and fixed Practice entries. It also
+  owns World/Continent order authoring in the existing Geography rails. It does
+  not expose a Drill Subregion detail or Country-order editor; it delegates
+  non-recording Practice execution and presentation to `practice/`.
 - `ui/` owns feature-local panels, breadcrumbs, hierarchy rows, inline reorder
   and opt-in Country click-sequence presentation, shared active map-task,
   task-context, and session-progress presentation, map-surface/dock
@@ -116,9 +117,8 @@ signal rather than coordinator-owned refresh counters.
   The form dock owns answer entry and does not repeat result copy.
   Fuzzy is the interactive feedback exception by default: its overlay owns
   Continue and transient mini spelling practice, initially focuses Mini
-  practise spelling, and creates no evidence. Drill-launched Learn & Practise
-  flows may opt eligible incorrect answers into the same transient remediation
-  controls; ordinary Drill, Today, and Recite incorrect answers retain their
+  practise spelling, and creates no evidence. Ordinary Drill, Today, and Recite
+  incorrect answers retain their
   existing correction/retry lifecycle.
 - `recite/` owns the ordered World Countries Recite setup, its three typed-recall
   modes, transient setup/session state, current-run outcomes, completion flow,
@@ -150,9 +150,8 @@ and the latest derived curriculum recommendation remains authoritative for a
 direct Country-to-Capital or later Journey continuation. Review and weak-spot
 practice remain independently selectable from Home rather than becoming a
 completion handoff. If there is no further Journey recommendation, completion
-returns to the current World/Continent guided surface. Direct Learn & Practise
-and temporary proficiency Learning remain caller-owned and do not receive a
-fabricated Today handoff.
+returns to the current World/Continent guided surface. Guided Learning remains
+caller-owned and does not receive a fabricated Today handoff.
 
 Mounted World Countries consumers subscribe directly to the external state they
 derive: geography metadata, durable Subregion learning, and World Countries
@@ -254,9 +253,8 @@ evidence for the established-layer fallback and is never cleared by a later
 mistake.
 
 Continent, Playground, and Progress are transient views within the Home
-composition. Existing workflow entry points remain reachable from Playground,
-and Drill has a
-non-persisted Purpose selector:
+composition. Playground selects the activity before entering the shared setup
+coordinator:
 
 - **Drill**: `Countries`, `Countries + Capitals`, `Countries from Capitals`,
   and `Country for Shape`. These are the only `WorldCountriesDrillMode` values
@@ -265,10 +263,10 @@ non-persisted Purpose selector:
   map adapter isolates the target's source geometry and explicitly fits it;
   incorrect feedback reveals the active Countries in that target's Subregion
   on the same mounted map and highlights the target.
-- **Learn & Practise**: Learning (`Learn Countries`, `Learn Capitals`) and
-  non-recording Practice (`Locate Countries`, `Locate Capitals`, `Capitals`). Learning writes
-  only the durable milestone owned by its active mode. Practice retains only
-  transient answers, accuracy, progress, and results.
+- **Practice**: `Locate Countries`, `Locate Capitals`, and `Capital Practice`
+  enter fixed non-recording Practice setup intents. Practice retains only
+  transient answers, accuracy, progress, and results; it does not select or
+  write Learning milestones.
 
 - **Quiz**: a top-level non-recording Practice experience with Capitals and
   Neighbours types. Capitals keeps its randomized Country → Capital flow.
@@ -314,25 +312,18 @@ configured selection while Recite keeps its setup selection transient.
 
 Geography-backed Drill, non-recording Practice, Learn Countries, and Learn
 Capitals may span multiple Continents. Ordered Country membership follows the
-effective World Continent, Subregion, and Country order, and Learning advances
-between selected Subregions with each flow receiving its active Continent.
+effective World Continent, Subregion, and Country order, and guided Learning
+advances between selected Subregions with each flow receiving its active
+Continent.
 Proficiency remains the mutually exclusive, Continent-scoped alternative
 scope source.
-
-Learn & Practise uses the derived Drill selection. Selected Subregions run
-sequentially in effective geographic order, and each uses its effective
-Country order from `geography/`. An already completed Subregion remains
-eligible for intentional repetition.
 
 At Continent setup, Geography and proficiency are alternative scope sources.
 Weak/Developing proficiency scope derives from the current Drill perspective,
 or from the skill exercised by the selected non-recording Practice activity.
 The resolved Country membership is ordered through `geography/` and snapshotted
-into the active Drill/Practice session when it starts. Learn Countries and Learn
-Capitals may also snapshot a non-empty proficiency Country scope for a temporary
-Learning run. That run never writes a Subregion milestone or reinterprets its
-Country set as a Subregion; durable Learning milestones still require complete
-Subregion scope.
+into the active Drill/Practice session when it starts. Guided Learning resolves
+its own scope and milestone semantics through `today/` and `learning/flows/`.
 
 World Countries Learning introduces items in bounded Sets. The persisted
 `New items per set` setting is snapshotted when a multi-Subregion Learning run
@@ -630,9 +621,7 @@ target-local and Country-fit cameras respectively.
   or Next action. Fuzzy remediation is the accepted-answer exception by
   default: its inline overlay practice requires two consecutive exact
   spellings, focuses the spelling input while open, then focuses Continue on
-  completion. Drill-launched Learn & Practise may expose the same remediation
-  choice after an incorrect answer; selecting it holds that feedback until
-  Continue or mini-practice completion. Today delayed-retry Skip and Recite
+  completion. Today delayed-retry Skip and Recite
   Reveal / Skip remain answerable-state actions owned by those workflows.
 - Active Drill, Practice, Recite, Today Review, and map-backed Learning tasks
   use the shared World Countries task/activity presentation: a direction when
@@ -772,8 +761,8 @@ flowchart TD
   the shape `{ subregionIds, mode, order }`; they do not persist setup
   navigation, derived Continent state, scope counts, or Country IDs. Reads
   continue to accept the legacy `{ continent, subregionIds, mode, order }`
-  shape and preserve all valid selected Subregions across the World. Purpose
-  state and Learn & Practise mode are not added to this schema.
+  shape and preserve all valid selected Subregions across the World. Setup
+  activity state is not added to this schema.
 - Proficiency filter selection and any resolved Country membership remain
   transient Drill setup/session state; no resolved Country list or new
   persistence key is stored.

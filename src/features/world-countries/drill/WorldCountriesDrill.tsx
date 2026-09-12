@@ -7,12 +7,8 @@ import { useWorldCountriesPopulation } from '@/features/world-countries/WorldCou
 import { useWorldCountriesGeographyRevision } from '@/features/world-countries/geography/geographyRefresh'
 import { readWorldCountriesGeography } from '@/features/world-countries/geography/worldScope'
 import { getAllSubregionLearningStates, useWorldCountriesSubregionLearningRevision } from '@/features/world-countries/learning/subregionLearningStore'
-import { CountryLearningFlow } from '@/features/world-countries/learning/flows/CountryLearningFlow'
-import { CapitalLearningFlow } from '@/features/world-countries/learning/flows/CapitalLearningFlow'
-import { isWorldCountriesLearningMode, type WorldCountriesLearningMode } from '@/features/world-countries/learning/learnPracticeModes'
 import type { WorldCountriesPracticeMode } from '@/features/world-countries/practice/practiceModes'
-import { loadWorldCountriesRecallProgress, recordWorldCountriesAttempt, type RecallProgress } from '@/features/world-countries/learning/recallProgress'
-import { WORLD_COUNTRIES_CORE_RECALL_SKILLS } from '@/features/world-countries/learning/recallTargets'
+import { recordWorldCountriesAttempt } from '@/features/world-countries/learning/recallProgress'
 import { DrillResults } from './DrillResults'
 import { PracticeResults } from '@/features/world-countries/practice/PracticeResults'
 import { PracticeSession, type PracticeSessionAnswer, type PracticeSessionInteraction } from '@/features/world-countries/practice/PracticeSession'
@@ -33,17 +29,9 @@ import { loadDrillPreferences, saveDrillPreferences, type WorldCountriesDrillPre
 import type { WorldCountriesProficiencySelection } from './drillProficiencyScope'
 import { getRetryableFailedDrillCountryIds } from './drillResultSummary'
 import { resolveDrillSessionLaunch, type WorldCountriesDrillSessionLaunch } from './drillSessionLaunch'
-import type { WorldCountriesLearnPracticeMode } from './learnPracticeSetupModes'
-import {
-  advanceDrillLearningRun,
-  deriveDrillLearningScope,
-  getDrillLearningRunDoneLabel,
-  resolveDrillLearningRunLaunch,
-  type DrillLearningRun,
-} from './drillLearningRun'
+import type { WorldCountriesSetupActivity } from './setupActivity'
 
-type DrillPhase = 'setup' | 'learning' | 'practice' | 'recall' | 'results'
-type ActivityPurpose = 'drill' | 'learn-practise'
+type DrillPhase = 'setup' | 'practice' | 'recall' | 'results'
 type StartSessionOptions = {
   persistPreferences?: boolean
   interaction?: PracticeSessionInteraction
@@ -64,8 +52,8 @@ type ActiveDrillRun = {
   answers: DrillAnswerRecord[]
 }
 
-/** Coordinator for setup, the four Drill modes, durable Learning, and non-recording Practice. */
-export function WorldCountriesDrill({ answerMode, onExit, initialPurpose = 'drill', initialLearnPracticeMode = 'learn-countries', initialSubregionId }: { answerMode: AnswerMode; onExit?: () => void; initialPurpose?: 'drill' | 'learn-practise'; initialLearnPracticeMode?: WorldCountriesLearnPracticeMode; initialSubregionId?: SubregionId }) {
+/** Coordinator for shared geography setup, recorded Drill, and non-recording Practice. */
+export function WorldCountriesDrill({ answerMode, onExit, initialActivity = { kind: 'drill' }, initialSubregionId }: { answerMode: AnswerMode; onExit?: () => void; initialActivity?: WorldCountriesSetupActivity; initialSubregionId?: SubregionId }) {
   const { settings } = useSettings()
   const activeCountries = useWorldCountriesPopulation()
   const [preferences, setPreferences] = useState<WorldCountriesDrillPreferences>(() => {
@@ -73,10 +61,7 @@ export function WorldCountriesDrill({ answerMode, onExit, initialPurpose = 'dril
     return initialSubregionId ? { ...loaded, subregionIds: [initialSubregionId] } : loaded
   })
   const [phase, setPhase] = useState<DrillPhase>('setup')
-  const [purpose, setPurpose] = useState<ActivityPurpose | null>(initialPurpose)
-  const [learnPracticeMode, setLearnPracticeMode] = useState<WorldCountriesLearnPracticeMode>(initialLearnPracticeMode)
   const [proficiencySelection, setProficiencySelection] = useState<WorldCountriesProficiencySelection>([])
-  const [learningRun, setLearningRun] = useState<DrillLearningRun | null>(null)
   const [setupContinent, setSetupContinent] = useState<Continent | null>(() => initialSubregionId ? getSubregionDefinition(initialSubregionId).continent : null)
   const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null)
   const [activeRun, setActiveRun] = useState<ActiveDrillRun | null>(null)
@@ -116,27 +101,6 @@ export function WorldCountriesDrill({ answerMode, onExit, initialPurpose = 'dril
     void learningRevision
     return getAllSubregionLearningStates(activeCountries)
   }, [activeCountries, learningRevision])
-  const learningScope = useMemo(
-    () => deriveDrillLearningScope(learningRun, activeCountries, learningStates, selectionMetadata.subregions ?? []),
-    [activeCountries, learningRun, learningStates, selectionMetadata.subregions],
-  )
-  const learningCountryKey = useMemo(() => [...new Set(learningScope.entries.map(country => country.id))].sort().join('|'), [learningScope.entries])
-  const learningCountryIds = useMemo(() => learningCountryKey ? learningCountryKey.split('|') : [], [learningCountryKey])
-  const [learningRecallProgress, setLearningRecallProgress] = useState<RecallProgress | null>(null)
-
-  useEffect(() => {
-    if (phase !== 'learning' || learningCountryIds.length === 0) {
-      setLearningRecallProgress(null)
-      return
-    }
-    let active = true
-    setLearningRecallProgress(null)
-    void loadWorldCountriesRecallProgress({ countryIds: learningCountryIds, skills: [...WORLD_COUNTRIES_CORE_RECALL_SKILLS] }).then(progress => {
-      if (active) setLearningRecallProgress(progress)
-    })
-    return () => { active = false }
-  }, [learningCountryIds, phase])
-
   useEffect(() => {
     if (phase !== 'recall' && phase !== 'practice' || !activeRun || activeRunMatchesPopulation) return
     setActiveRun(null)
@@ -174,7 +138,6 @@ export function WorldCountriesDrill({ answerMode, onExit, initialPurpose = 'dril
         ...(launch.practiceMode ? { practiceMode: launch.practiceMode } : {}),
         answers: [],
       })
-      setLearningRun(null)
       setPhase(launch.activity === 'practice' ? 'practice' : 'recall')
     }
 
@@ -196,7 +159,9 @@ export function WorldCountriesDrill({ answerMode, onExit, initialPurpose = 'dril
 
   const startDrill = useCallback(() => startSession(effectivePreferences), [effectivePreferences, startSession])
 
-  const startPractice = useCallback((practiceMode: WorldCountriesPracticeMode) => {
+  const startPractice = useCallback(() => {
+    if (initialActivity.kind !== 'practice') return
+    const practiceMode = initialActivity.mode
     const skill = practiceMode === 'locate-countries'
       ? 'location-to-country'
       : practiceMode === 'locate-capitals'
@@ -209,55 +174,16 @@ export function WorldCountriesDrill({ answerMode, onExit, initialPurpose = 'dril
       skills: [skill],
       interaction: practiceMode === 'capitals' ? 'recall' : 'location-click',
     })
-  }, [effectivePreferences, startSession])
-
-  const startLearning = useCallback((mode: WorldCountriesLearningMode) => {
-    const generation = ++launchGeneration.current
-    const launch = resolveDrillLearningRunLaunch({
-      mode,
-      selectedSubregionIds: effectivePreferences.subregionIds,
-      proficiencySelection,
-      proficiencyContinent: setupContinent,
-      activeCountries,
-      drillMode: effectivePreferences.mode,
-      newItemsPerSet: settings.worldCountriesNewItemsPerSet,
-      subregionMetadata: selectionMetadata.subregions ?? [],
-    })
-    const applyLaunch = (run: DrillLearningRun | null) => {
-      if (launchGeneration.current !== generation) return
-      if (!run) return
-      setLearningRun(run)
-      setPurpose('learn-practise')
-      setPhase('learning')
-    }
-    if (launch instanceof Promise) void launch.then(applyLaunch)
-    else applyLaunch(launch)
-  }, [activeCountries, effectivePreferences, proficiencySelection, selectionMetadata.subregions, settings.worldCountriesNewItemsPerSet, setupContinent])
-
-  const completeLearningSubregion = useCallback(() => {
-    if (!learningRun) return
-    const progression = advanceDrillLearningRun(learningRun)
-    if (progression.kind === 'advance') {
-      setLearningRun(progression.run)
-      return
-    }
-    setLearningRun(null)
-    setSetupContinent(null)
-    launchGeneration.current += 1
-    if (onExit) {
-      onExit()
-      return
-    }
-    setPhase('setup')
-  }, [learningRun, onExit])
+  }, [effectivePreferences, initialActivity, startSession])
 
   const restart = useCallback(() => {
     if (!activeRunActivity) return
     if (activeRunActivity === 'practice') {
       if (!activePracticeMode) return
-      startPractice(activePracticeMode)
+      if (initialActivity.kind !== 'practice' || initialActivity.mode !== activePracticeMode) return
+      startPractice()
     } else startDrill()
-  }, [activePracticeMode, activeRunActivity, startDrill, startPractice])
+  }, [activePracticeMode, activeRunActivity, initialActivity, startDrill, startPractice])
 
   const retryFailedCountryIds = useMemo(() => {
     if (phase !== 'results' || activeRunActivity !== 'drill' || !activeRun) return []
@@ -301,7 +227,6 @@ export function WorldCountriesDrill({ answerMode, onExit, initialPurpose = 'dril
       return
     }
     setActiveRun(null)
-    setLearningRun(null)
     setPhase('setup')
     setSetupContinent(null)
     setHoveredGroupId(null)
@@ -333,25 +258,6 @@ export function WorldCountriesDrill({ answerMode, onExit, initialPurpose = 'dril
   }, [preferences.mode, preferences.order, updatePreferences])
   const handleModeChange = useCallback((mode: WorldCountriesDrillMode) => updatePreferences({ ...preferences, mode }), [preferences, updatePreferences])
   const handleOrderChange = useCallback((order: WorldCountriesDrillOrder) => updatePreferences({ ...preferences, order }), [preferences, updatePreferences])
-  const handlePurposeChange = useCallback((nextPurpose: ActivityPurpose) => {
-    launchGeneration.current += 1
-    setPurpose(nextPurpose)
-  }, [])
-  const handleLearnPracticeModeChange = useCallback((mode: WorldCountriesLearnPracticeMode) => {
-    launchGeneration.current += 1
-    setLearnPracticeMode(mode)
-  }, [])
-  const learningContinent = learningScope.continent ?? setupContinent ?? null
-
-  if (phase === 'learning' && learningRun && learningScope.entries.length > 0 && learningContinent) {
-    const doneLabel = getDrillLearningRunDoneLabel(learningRun)
-    const onDone = completeLearningSubregion
-    if (learningRun.mode === 'learn-countries') {
-      return <CountryLearningFlow key={learningScope.subregionId ?? learningRun.countryIds?.join(',')} continent={learningContinent} subregion={learningScope.subregionId ?? undefined} scopeLabel={learningRun.scopeLabel} entries={learningScope.entries} activeCountries={activeCountries} newItemsPerSet={learningRun.newItemsPerSet} schedulerSettings={{ masteryLatencyFactor: settings.masteryLatencyFactor, sessionUnmasteredShare: settings.sessionUnmasteredShare }} countriesEstablished={Boolean(learningScope.state?.countriesLearnedAt)} capitalsEstablished={Boolean(learningScope.state?.capitalsLearnedAt)} recallProgress={learningRecallProgress ?? undefined} fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching} allowIncorrectSpellingPractice recordCompletion={learningRun.recordCompletion} onPhaseChange={() => undefined} onExit={exitToSetup} onDone={onDone} doneLabel={doneLabel} />
-    }
-    return <CapitalLearningFlow key={learningScope.subregionId ?? learningRun.countryIds?.join(',')} continent={learningContinent} subregion={learningScope.subregionId ?? undefined} scopeLabel={learningRun.scopeLabel} entries={learningScope.entries} activeCountries={activeCountries} newItemsPerSet={learningRun.newItemsPerSet} schedulerSettings={{ masteryLatencyFactor: settings.masteryLatencyFactor, sessionUnmasteredShare: settings.sessionUnmasteredShare }} countriesEstablished={Boolean(learningScope.state?.countriesLearnedAt)} capitalsEstablished={Boolean(learningScope.state?.capitalsLearnedAt)} recallProgress={learningRecallProgress ?? undefined} fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching} allowIncorrectSpellingPractice recordCompletion={learningRun.recordCompletion} onPhaseChange={() => undefined} onExit={exitToSetup} onDone={onDone} doneLabel={doneLabel} />
-  }
-
   if ((phase === 'recall' || phase === 'practice') && activeRun && activeRunMatchesPopulation) {
     if (activeRun.activity === 'practice') {
       return <PracticeSession answerMode={answerMode} fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching} state={activeRun.session} interaction={activeRun.interaction} learningStates={learningStates} proficiencySelection={proficiencySelection} selection={activeRun.selection} scopeLabel={activeRun.scopeLabel} entries={sessionEntries} onAnswer={answerPractice} onContinue={continueSession} onExit={exitToSetup} />
@@ -371,8 +277,7 @@ export function WorldCountriesDrill({ answerMode, onExit, initialPurpose = 'dril
     selection={effectivePreferences}
     mode={effectivePreferences.mode}
     order={effectivePreferences.order}
-    purpose={purpose}
-    learnPracticeMode={learnPracticeMode}
+    activity={initialActivity}
     proficiencySelection={proficiencySelection}
     learningStates={learningStates}
     hoveredGroupId={hoveredGroupId}
@@ -381,10 +286,7 @@ export function WorldCountriesDrill({ answerMode, onExit, initialPurpose = 'dril
     onProficiencySelectionChange={handleProficiencySelectionChange}
     onModeChange={handleModeChange}
     onOrderChange={handleOrderChange}
-    onPurposeChange={handlePurposeChange}
-    onLearnPracticeModeChange={handleLearnPracticeModeChange}
-    onStart={startDrill}
-    onLearnPracticeStart={mode => isWorldCountriesLearningMode(mode) ? startLearning(mode) : startPractice(mode)}
+    onStart={initialActivity.kind === 'drill' ? startDrill : startPractice}
     onWorld={goToWorld}
     onExit={onExit}
     onSelectContinent={selectContinent}

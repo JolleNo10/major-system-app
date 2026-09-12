@@ -137,7 +137,7 @@ export function getLearningReadinessBySubregion(
 }
 
 /**
- * Add the derived Drill signal used by Learn & Practise setup. A Subregion's
+ * Add the derived Drill signal used by the shared Practice setup. A Subregion's
  * Country learning is considered ready when every active Country has current
  * Location → Country proficiency of Developing or better. This does not write
  * or alter the durable Learning milestone.

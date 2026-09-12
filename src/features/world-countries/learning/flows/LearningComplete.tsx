@@ -42,7 +42,7 @@ export function LearningComplete({
   summary,
   onDone,
   onRestart,
-  doneLabel = 'Back to Learn & Practise',
+  doneLabel = 'Back to Learning',
   restartLabel = 'Learn again',
   completionHandoff,
   regionCompletion,

@@ -37,7 +37,7 @@ describe('LearningComplete', () => {
     expect(mount.textContent).toContain('Country completion summary')
     expect(mount.textContent).not.toContain('map remains available')
     expect(mount.querySelectorAll('button')).toHaveLength(2)
-    expect(mount.textContent).toContain('Back to Learn & Practise')
+    expect(mount.textContent).toContain('Back to Learning')
     expect(mount.textContent).toContain('Learn again')
   })
 

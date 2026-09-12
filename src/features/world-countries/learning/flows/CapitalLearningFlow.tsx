@@ -78,7 +78,7 @@ export function CapitalLearningFlow({
   onPhaseChange,
   onExit,
   onDone,
-  doneLabel = 'Back to Learn & Practise',
+  doneLabel = 'Back to Learning',
   completionHandoff,
   regionCompletion,
   completedRegionAction,

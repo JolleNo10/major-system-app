@@ -9,7 +9,7 @@ import { SettingsProvider } from '@/app/settings/SettingsContext'
 import { WorldCountries } from './WorldCountries'
 
 vi.mock('./drill/WorldCountriesDrill', () => ({
-  WorldCountriesDrill: ({ onExit, initialPurpose, initialLearnPracticeMode, initialSubregionId }: { onExit?: () => void; initialPurpose?: string; initialLearnPracticeMode?: string; initialSubregionId?: string }) => createElement('div', { 'data-testid': 'drill-workflow' }, createElement('button', { type: 'button', onClick: onExit }, 'Exit Drill'), `Drill workflow ${initialPurpose ?? 'drill'} ${initialLearnPracticeMode ?? ''} ${initialSubregionId ?? ''}`),
+  WorldCountriesDrill: ({ onExit, initialActivity, initialSubregionId }: { onExit?: () => void; initialActivity?: { kind: string; mode?: string }; initialSubregionId?: string }) => createElement('div', { 'data-testid': 'drill-workflow' }, createElement('button', { type: 'button', onClick: onExit }, 'Exit Drill'), `Drill workflow ${initialActivity?.kind ?? 'drill'} ${initialActivity?.mode ?? ''} ${initialSubregionId ?? ''}`),
 }))
 
 vi.mock('./recite/WorldCountriesRecite', () => ({
@@ -159,7 +159,7 @@ describe('World Countries guided shell', () => {
 
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.click())
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-play-activity="locate-countries"]')?.click())
-    expect(mount.querySelector('[data-testid="drill-workflow"]')?.textContent).toContain('learn-practise locate-countries')
+    expect(mount.querySelector('[data-testid="drill-workflow"]')?.textContent).toContain('practice locate-countries')
   })
 
   it('keeps Quiz transient state local when Playground leaves and re-enters it', async () => {
@@ -178,16 +178,16 @@ describe('World Countries guided shell', () => {
     expect(mount.querySelector('[data-testid="quiz-local-state"]')?.textContent).toBe('Quiz initial state')
   })
 
-  it('routes Locate Capitals and Capital Practice to their existing setup modes', async () => {
+  it('routes Locate Capitals and Capital Practice to fixed Practice setup modes', async () => {
     const mount = await renderShell()
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.click())
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-play-activity="locate-capitals"]')?.click())
-    expect(mount.querySelector('[data-testid="drill-workflow"]')?.textContent).toContain('learn-practise locate-capitals')
+    expect(mount.querySelector('[data-testid="drill-workflow"]')?.textContent).toContain('practice locate-capitals')
 
     await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Exit Drill')?.click())
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.click())
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-play-activity="capital-practice"]')?.click())
-    expect(mount.querySelector('[data-testid="drill-workflow"]')?.textContent).toContain('learn-practise capitals')
+    expect(mount.querySelector('[data-testid="drill-workflow"]')?.textContent).toContain('practice capitals')
   })
 
   it('routes Custom Drill to the recorded Drill owner', async () => {
@@ -196,6 +196,20 @@ describe('World Countries guided shell', () => {
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-play-activity="custom-drill"]')?.click())
 
     expect(mount.querySelector('[data-testid="drill-workflow"]')?.textContent).toContain('Drill workflow drill')
+  })
+
+  it('returns each Playground setup activity to its originating Continent scope', async () => {
+    const mount = await renderShell()
+    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Open Europe')?.click())
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.click())
+
+    for (const activity of ['custom-drill', 'locate-countries', 'locate-capitals', 'capital-practice']) {
+      await act(async () => mount.querySelector<HTMLButtonElement>(`[data-play-activity="${activity}"]`)?.click())
+      await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Exit Drill')?.click())
+      expect(mount.querySelector('[data-testid="today-workflow"]')).not.toBeNull()
+      expect(mount.querySelector('nav[aria-label="World Countries navigation"]')?.textContent).toContain('World / Europe')
+      if (activity !== 'capital-practice') await act(async () => mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.click())
+    }
   })
 
   it('routes a completed-region Drill action to setup with that region selected', async () => {

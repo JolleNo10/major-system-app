@@ -6,12 +6,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SettingsProvider } from '@/app/settings/SettingsContext'
 import { WorldCountriesPopulationProvider } from '@/features/world-countries/WorldCountriesPopulationContext'
 import type { Country } from '@/features/world-countries/data/countries'
-import { markSubregionCapitalsLearned, markSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningStore'
 import { WorldCountriesDrill } from './WorldCountriesDrill'
 import { getCurrentDrillStep, getDrillSessionSkills, type DrillAnswerRecord, type DrillSessionState } from './drillSessionState'
+import type { WorldCountriesSetupActivity } from './setupActivity'
 
-const capitalFlowProps = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }))
-const countryFlowProps = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }))
 const drillSessionProps = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }))
 const drillResultsProps = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }))
 const practiceResultsProps = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }))
@@ -23,15 +21,12 @@ const resolveProficiencyScopeMock = vi.hoisted(() => vi.fn(() => ({ counts: { we
 vi.mock('./DrillSetup', () => ({
   DrillSetup: (props: Record<string, unknown>) => {
     drillSetupProps.current = props
-    const { onLearnPracticeStart, onProficiencySelectionChange } = props as { onLearnPracticeStart: (mode: string) => void; onProficiencySelectionChange: (selection: readonly string[]) => void }
     return createElement(
       'div',
       null,
       createElement('button', { type: 'button', 'data-testid': 'start-drill', onClick: () => (props.onStart as () => void)() }, 'Start Drill'),
-      createElement('button', { type: 'button', 'data-testid': 'select-proficiency', onClick: () => onProficiencySelectionChange(['weak']) }, 'Select weak'),
-      createElement('button', { type: 'button', 'data-testid': 'start-country-learning', onClick: () => onLearnPracticeStart('learn-countries') }, 'Start country learning'),
-      createElement('button', { type: 'button', 'data-testid': 'start-capital-learning', onClick: () => onLearnPracticeStart('learn-capitals') }, 'Start capital learning'),
-      createElement('button', { type: 'button', 'data-testid': 'start-locate-capitals', onClick: () => onLearnPracticeStart('locate-capitals') }, 'Start Locate Capitals'),
+      createElement('button', { type: 'button', 'data-testid': 'select-proficiency', onClick: () => (props.onProficiencySelectionChange as (selection: readonly string[]) => void)(['weak']) }, 'Select weak'),
+      createElement('button', { type: 'button', 'data-testid': 'start-practice', onClick: () => (props.onStart as () => void)() }, 'Start Practice'),
     )
   },
 }))
@@ -71,20 +66,6 @@ vi.mock('@/features/world-countries/learning/recallProgress', async importOrigin
 }))
 vi.mock('./drillProficiencyScope', async importOriginal => ({ ...await importOriginal<typeof import('./drillProficiencyScope')>(), resolveDrillProficiencyScope: resolveProficiencyScopeMock }))
 
-vi.mock('@/features/world-countries/learning/flows/CapitalLearningFlow', () => ({
-  CapitalLearningFlow: (props: Record<string, unknown>) => {
-    capitalFlowProps.current = props
-    return createElement('div', { 'data-testid': 'capital-learning' })
-  },
-}))
-
-vi.mock('@/features/world-countries/learning/flows/CountryLearningFlow', () => ({
-  CountryLearningFlow: (props: Record<string, unknown>) => {
-    countryFlowProps.current = props
-    return createElement('div', { 'data-testid': 'country-learning' })
-  },
-}))
-
 let root: Root | null = null
 
 function createDeferred<T>() {
@@ -110,8 +91,6 @@ function renderDrill(props: Partial<Parameters<typeof WorldCountriesDrill>[0]> =
 afterEach(() => {
   act(() => root?.unmount())
   root = null
-  capitalFlowProps.current = null
-  countryFlowProps.current = null
   drillSessionProps.current = null
   drillResultsProps.current = null
   practiceResultsProps.current = null
@@ -124,7 +103,7 @@ afterEach(() => {
   localStorage.clear()
 })
 
-describe('WorldCountriesDrill learning integration', () => {
+describe('WorldCountriesDrill activity integration', () => {
   it('toggles the effective World geography from partial to complete and back to empty', () => {
     localStorage.setItem('world-countries-drill-preferences', JSON.stringify({
       subregionIds: ['northern-europe'], mode: 'countries', order: 'ordered',
@@ -176,14 +155,14 @@ describe('WorldCountriesDrill learning integration', () => {
       ))
     })
 
-    expect(drillSetupProps.current?.purpose).toBe('drill')
+    expect(drillSetupProps.current?.activity).toEqual({ kind: 'drill' })
     expect(drillSetupProps.current?.mode).toBe('countries-capitals')
   })
 
   it('opens Drill setup focused on a requested Subregion without starting a session', () => {
     renderDrill({ initialSubregionId: 'eastern-europe' })
 
-    expect(drillSetupProps.current?.purpose).toBe('drill')
+    expect(drillSetupProps.current?.activity).toEqual({ kind: 'drill' })
     expect(drillSetupProps.current?.setupContinent).toBe('Europe')
     expect((drillSetupProps.current?.selection as { subregionIds: readonly string[] }).subregionIds).toEqual(['eastern-europe'])
     expect(drillSessionProps.current).toBeNull()
@@ -214,7 +193,11 @@ describe('WorldCountriesDrill learning integration', () => {
     expect(recordWorldCountriesAttemptMock).toHaveBeenCalledWith('NO', 'shape-to-country', expect.objectContaining({ ok: true }))
   })
 
-  it('starts Locate Capitals as non-recording capital-to-country map practice', () => {
+  it.each([
+    { mode: 'locate-countries', skill: 'location-to-country', interaction: 'location-click' },
+    { mode: 'locate-capitals', skill: 'capital-to-country', interaction: 'location-click' },
+    { mode: 'capitals', skill: 'country-to-capital', interaction: 'recall' },
+  ] as const)('starts $mode as non-recording Practice', ({ mode, skill, interaction }) => {
     localStorage.setItem('world-countries-drill-preferences', JSON.stringify({
       continent: 'Europe', subregionIds: ['northern-europe'], mode: 'countries', order: 'ordered',
     }))
@@ -224,85 +207,18 @@ describe('WorldCountriesDrill learning integration', () => {
     act(() => {
       root = createRoot(mount)
       root.render(createElement(SettingsProvider, null,
-        createElement(WorldCountriesDrill, { answerMode: 'multiple-choice' }),
+        createElement(WorldCountriesDrill, { answerMode: 'multiple-choice', initialActivity: { kind: 'practice', mode } }),
       ))
     })
 
-    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="start-locate-capitals"]')!.click())
+    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="start-practice"]')!.click())
 
     expect(mount.querySelector('[data-testid="practice-session"]')).not.toBeNull()
     expect(drillSessionProps.current?.activity).toBeUndefined()
-    expect(drillSessionProps.current?.interaction).toBe('location-click')
-    expect((drillSessionProps.current?.state as { skills?: readonly string[] }).skills).toEqual(['capital-to-country'])
-  })
-
-  it('passes durable Country readiness into Capital Learning', () => {
-    localStorage.setItem('world-countries-drill-preferences', JSON.stringify({
-      continent: 'Europe', subregionIds: ['northern-europe'], mode: 'countries', order: 'ordered',
-    }))
-    markSubregionCountriesLearned('northern-europe', 123)
-
-    const mount = document.createElement('div')
-    document.body.append(mount)
-    act(() => {
-      root = createRoot(mount)
-      root.render(createElement(SettingsProvider, null,
-        createElement(WorldCountriesDrill, { answerMode: 'typing' }),
-      ))
-    })
-
-    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="start-capital-learning"]')!.click())
-
-    expect(mount.querySelector('[data-testid="capital-learning"]')).not.toBeNull()
-    expect(capitalFlowProps.current?.countriesEstablished).toBe(true)
-  })
-
-  it('passes existing durable Country and Capital state into fresh Country Learning', () => {
-    localStorage.setItem('world-countries-drill-preferences', JSON.stringify({
-      continent: 'Europe', subregionIds: ['northern-europe'], mode: 'countries', order: 'ordered',
-    }))
-    markSubregionCountriesLearned('northern-europe', 123)
-    markSubregionCapitalsLearned('northern-europe', 456)
-
-    const mount = document.createElement('div')
-    document.body.append(mount)
-    act(() => {
-      root = createRoot(mount)
-      root.render(createElement(SettingsProvider, null,
-        createElement(WorldCountriesDrill, { answerMode: 'typing' }),
-      ))
-    })
-
-    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="start-country-learning"]')!.click())
-
-    expect(countryFlowProps.current).toEqual(expect.objectContaining({ countriesEstablished: true, capitalsEstablished: true }))
-  })
-
-  it('starts proficiency Learning as a temporary Country scope', async () => {
-    resolveProficiencyScopeMock.mockReturnValue({ counts: { weak: 1, developing: 0 }, countryIds: ['AL'], countries: [{ id: 'AL' }] } as never)
-    localStorage.setItem('world-countries-drill-preferences', JSON.stringify({
-      continent: 'Europe', subregionIds: [], mode: 'countries', order: 'ordered',
-    }))
-
-    const mount = document.createElement('div')
-    document.body.append(mount)
-    act(() => {
-      root = createRoot(mount)
-      root.render(createElement(SettingsProvider, null,
-        createElement(WorldCountriesDrill, { answerMode: 'typing' }),
-      ))
-    })
-
-    act(() => (drillSetupProps.current?.onSelectContinent as (continent: string) => void)('Europe'))
-    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="select-proficiency"]')!.click())
-    await act(async () => {
-      mount.querySelector<HTMLButtonElement>('[data-testid="start-capital-learning"]')!.click()
-      await Promise.resolve()
-    })
-
-    expect(capitalFlowProps.current?.scopeLabel).toBe('Proficiency scope')
-    expect(capitalFlowProps.current?.recordCompletion).toBe(false)
-    expect((capitalFlowProps.current?.entries as readonly { id: string }[]).map(entry => entry.id)).toEqual(['AL'])
+    expect(drillSessionProps.current?.interaction).toBe(interaction)
+    expect((drillSessionProps.current?.state as { skills?: readonly string[] }).skills).toEqual([skill])
+    act(() => (drillSessionProps.current?.onAnswer as (record: Record<string, unknown>) => void)({ countryId: 'NO', skill, answer: 'Norway', correct: true }))
+    expect(recordWorldCountriesAttemptMock).not.toHaveBeenCalled()
   })
 
   it('starts a proficiency Drill scope after clearing the complete geographic selection', async () => {
@@ -344,14 +260,14 @@ describe('WorldCountriesDrill learning integration', () => {
     act(() => {
       root = createRoot(mount)
       root.render(createElement(SettingsProvider, null,
-        createElement(WorldCountriesDrill, { answerMode: 'typing' }),
+        createElement(WorldCountriesDrill, { answerMode: 'typing', initialActivity: { kind: 'practice', mode: 'locate-capitals' } }),
       ))
     })
 
     act(() => (drillSetupProps.current?.onSelectContinent as (continent: string) => void)('Europe'))
     act(() => mount.querySelector<HTMLButtonElement>('[data-testid="select-proficiency"]')!.click())
     await act(async () => {
-      mount.querySelector<HTMLButtonElement>('[data-testid="start-locate-capitals"]')!.click()
+      mount.querySelector<HTMLButtonElement>('[data-testid="start-practice"]')!.click()
       await Promise.resolve()
     })
 
@@ -371,11 +287,11 @@ describe('WorldCountriesDrill learning integration', () => {
       .mockReturnValueOnce({ counts: { weak: 1, developing: 0 }, countryIds: ['BE'], countries: [{ id: 'BE' }] } as never)
       .mockReturnValueOnce({ counts: { weak: 1, developing: 0 }, countryIds: ['AL'], countries: [{ id: 'AL' }] } as never)
 
-    const mount = renderDrill()
+    const mount = renderDrill({ initialActivity: { kind: 'practice', mode: 'locate-capitals' } })
     act(() => (drillSetupProps.current?.onSelectContinent as (continent: string) => void)('Europe'))
     act(() => mount.querySelector<HTMLButtonElement>('[data-testid="select-proficiency"]')!.click())
-    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="start-drill"]')!.click())
-    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="start-locate-capitals"]')!.click())
+    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="start-practice"]')!.click())
+    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="start-practice"]')!.click())
 
     await act(async () => {
       newerProgress.resolve(new Map<string, never>())
@@ -402,11 +318,11 @@ describe('WorldCountriesDrill learning integration', () => {
       .mockReturnValueOnce({ counts: { weak: 1, developing: 0 }, countryIds: ['BE'], countries: [{ id: 'BE' }] } as never)
       .mockReturnValueOnce({ counts: { weak: 1, developing: 0 }, countryIds: ['AL'], countries: [{ id: 'AL' }] } as never)
 
-    const mount = renderDrill()
+    const mount = renderDrill({ initialActivity: { kind: 'practice', mode: 'locate-capitals' } })
     act(() => (drillSetupProps.current?.onSelectContinent as (continent: string) => void)('Europe'))
     act(() => mount.querySelector<HTMLButtonElement>('[data-testid="select-proficiency"]')!.click())
-    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="start-drill"]')!.click())
-    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="start-drill"]')!.click())
+    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="start-practice"]')!.click())
+    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="start-practice"]')!.click())
 
     await act(async () => {
       newerProgress.resolve(new Map<string, never>())
@@ -419,38 +335,6 @@ describe('WorldCountriesDrill learning integration', () => {
       await olderProgress.promise
     })
     expect((drillSessionProps.current?.state as DrillSessionState).countryIds).toEqual(['BE'])
-  })
-
-  it('does not let an older proficiency Drill replace a newer Learning launch', async () => {
-    const olderProgress = createDeferred<Map<string, never>>()
-    const newerProgress = createDeferred<Map<string, never>>()
-    loadRecallProgressMock
-      .mockImplementationOnce(() => olderProgress.promise)
-      .mockImplementationOnce(() => newerProgress.promise)
-    resolveProficiencyScopeMock
-      .mockReturnValueOnce({ counts: { weak: 1, developing: 0 }, countryIds: ['BE'], countries: [{ id: 'BE' }] } as never)
-      .mockReturnValueOnce({ counts: { weak: 1, developing: 0 }, countryIds: ['AL'], countries: [{ id: 'AL' }] } as never)
-
-    const mount = renderDrill()
-    act(() => (drillSetupProps.current?.onSelectContinent as (continent: string) => void)('Europe'))
-    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="select-proficiency"]')!.click())
-    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="start-drill"]')!.click())
-    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="start-capital-learning"]')!.click())
-
-    await act(async () => {
-      newerProgress.resolve(new Map<string, never>())
-      await newerProgress.promise
-    })
-    expect(mount.querySelector('[data-testid="capital-learning"]')).not.toBeNull()
-    expect((capitalFlowProps.current?.entries as readonly { id: string }[]).map(entry => entry.id)).toEqual(['BE'])
-
-    await act(async () => {
-      olderProgress.resolve(new Map<string, never>())
-      await olderProgress.promise
-    })
-    expect(mount.querySelector('[data-testid="capital-learning"]')).not.toBeNull()
-    expect((capitalFlowProps.current?.entries as readonly { id: string }[]).map(entry => entry.id)).toEqual(['BE'])
-    expect(mount.querySelector('[data-testid="practice-session"]')).toBeNull()
   })
 
   it('does not resurrect an abandoned proficiency launch after returning to World setup', async () => {
@@ -470,33 +354,8 @@ describe('WorldCountriesDrill learning integration', () => {
     })
     expect(mount.querySelector('[data-testid="start-drill"]')).not.toBeNull()
     expect(mount.querySelector('[data-testid="practice-session"]')).toBeNull()
-    expect(mount.querySelector('[data-testid="capital-learning"]')).toBeNull()
   })
 
-  it('keeps a World-wide selection while navigating and advances Learning across Continents', () => {
-    localStorage.setItem('world-countries-drill-preferences', JSON.stringify({
-      subregionIds: ['northern-europe', 'south-asia'], mode: 'countries', order: 'ordered',
-    }))
-
-    const mount = document.createElement('div')
-    document.body.append(mount)
-    act(() => {
-      root = createRoot(mount)
-      root.render(createElement(SettingsProvider, null,
-        createElement(WorldCountriesDrill, { answerMode: 'typing' }),
-      ))
-    })
-
-    act(() => (drillSetupProps.current?.onSelectContinent as (continent: string) => void)('Europe'))
-    expect(JSON.parse(localStorage.getItem('world-countries-drill-preferences')!)).toEqual({
-      subregionIds: ['northern-europe', 'south-asia'], mode: 'countries', order: 'ordered',
-    })
-
-    act(() => mount.querySelector<HTMLButtonElement>('[data-testid="start-capital-learning"]')!.click())
-    expect(capitalFlowProps.current?.continent).toBe('Europe')
-    act(() => (capitalFlowProps.current?.onDone as () => void)())
-    expect(capitalFlowProps.current?.continent).toBe('Asia')
-  })
 })
 
 const retryCountries = [
@@ -510,7 +369,7 @@ const multiContinentRetryCountries = [
   { id: 'IN', country: 'India', capital: 'New Delhi', continent: 'Asia', subregionId: 'south-asia', subregion: 'South Asia' },
 ] satisfies readonly Country[]
 
-function renderRetryDrill(runCountries: readonly Country[] = retryCountries) {
+function renderActivity(runCountries: readonly Country[] = retryCountries, initialActivity: WorldCountriesSetupActivity = { kind: 'drill' }) {
   const mount = document.createElement('div')
   document.body.append(mount)
   act(() => {
@@ -518,7 +377,7 @@ function renderRetryDrill(runCountries: readonly Country[] = retryCountries) {
     root.render(createElement(SettingsProvider, null,
       createElement(WorldCountriesPopulationProvider, {
         countries: runCountries,
-        children: createElement(WorldCountriesDrill, { answerMode: 'typing' }),
+        children: createElement(WorldCountriesDrill, { answerMode: 'typing', initialActivity }),
       }),
     ))
   })
@@ -567,9 +426,9 @@ describe('WorldCountriesDrill Practice lifecycle', () => {
     localStorage.setItem('world-countries-drill-preferences', JSON.stringify({
       subregionIds: ['northern-europe'], mode: 'countries', order: 'ordered',
     }))
-    renderRetryDrill()
+    renderActivity(retryCountries, { kind: 'practice', mode: 'locate-capitals' })
 
-    act(() => document.querySelector<HTMLButtonElement>('[data-testid="start-locate-capitals"]')!.click())
+    act(() => document.querySelector<HTMLButtonElement>('[data-testid="start-practice"]')!.click())
     expect(drillSessionProps.current?.interaction).toBe('location-click')
     expect((drillSessionProps.current?.state as DrillSessionState).skills).toEqual(['capital-to-country'])
 
@@ -593,7 +452,7 @@ describe('WorldCountriesDrill failed-Country retry', () => {
       subregionIds: ['northern-europe'], mode: 'countries-capitals', order: 'ordered',
     }
     localStorage.setItem('world-countries-drill-preferences', JSON.stringify(storedPreferences))
-    renderRetryDrill()
+    renderActivity()
 
     act(() => document.querySelector<HTMLButtonElement>('[data-testid="start-drill"]')!.click())
     const initialState = drillSessionProps.current?.state as DrillSessionState
@@ -632,7 +491,7 @@ describe('WorldCountriesDrill failed-Country retry', () => {
       subregionIds: ['northern-europe', 'south-asia'], mode: 'countries-capitals', order: 'ordered',
     }
     localStorage.setItem('world-countries-drill-preferences', JSON.stringify(storedPreferences))
-    renderRetryDrill(multiContinentRetryCountries)
+    renderActivity(multiContinentRetryCountries)
 
     act(() => document.querySelector<HTMLButtonElement>('[data-testid="start-drill"]')!.click())
     expect((drillSessionProps.current?.state as DrillSessionState).countryIds).toEqual(['NO', 'SE', 'FI', 'IN'])
@@ -650,7 +509,7 @@ describe('WorldCountriesDrill failed-Country retry', () => {
     localStorage.setItem('world-countries-drill-preferences', JSON.stringify({
       continent: 'Europe', subregionIds: ['northern-europe'], mode: 'countries-from-shape', order: 'ordered',
     }))
-    renderRetryDrill()
+    renderActivity()
 
     act(() => document.querySelector<HTMLButtonElement>('[data-testid="start-drill"]')!.click())
     completeDrillRun(step => step.countryId === 'NO')
@@ -669,7 +528,7 @@ describe('WorldCountriesDrill failed-Country retry', () => {
       subregionIds: ['northern-europe'], mode: 'countries', order: 'ordered',
     }
     localStorage.setItem('world-countries-drill-preferences', JSON.stringify(storedPreferences))
-    const mount = renderRetryDrill()
+    const mount = renderActivity()
 
     act(() => mount.querySelector<HTMLButtonElement>('[data-testid="start-drill"]')!.click())
     expect((drillSessionProps.current?.state as DrillSessionState).countryIds).toEqual(['NO', 'SE', 'FI'])

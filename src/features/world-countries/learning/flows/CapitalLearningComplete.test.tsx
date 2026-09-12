@@ -35,10 +35,10 @@ describe('CapitalLearningComplete', () => {
     expect(mount.textContent).not.toContain('Capitals established')
     expect(mount.textContent).toContain("You've connected each country with its capital")
     expect(mount.textContent).not.toContain('Master region')
-    expect(mount.textContent).toContain('Back to Learn & Practise')
+    expect(mount.textContent).toContain('Back to Learning')
     expect(mount.textContent).toContain('Learn again')
 
-    act(() => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent?.startsWith('Back to Learn & Practise'))?.click())
+    act(() => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent?.startsWith('Back to Learning'))?.click())
     act(() => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Learn again')?.click())
     expect(onDone).toHaveBeenCalledOnce()
     expect(onRestart).toHaveBeenCalledOnce()

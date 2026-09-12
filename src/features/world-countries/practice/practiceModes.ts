@@ -17,7 +17,7 @@ export const WORLD_COUNTRIES_PRACTICE_MODES: readonly {
   },
   {
     id: 'capitals',
-    label: 'Capitals',
+    label: 'Capital Practice',
     description: 'Practise Country-to-Capital recall without recording progress.',
   },
 ]

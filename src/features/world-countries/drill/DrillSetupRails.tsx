@@ -1,12 +1,8 @@
-import { useId, useMemo, type ReactNode } from 'react'
+import { useId, useMemo } from 'react'
 import { useRails } from '@/app/layout/PageLayoutContext'
 import { countries, type Continent, type Country } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition, type SubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
 import { getContinents, getSubregionDefinitionsForContinent } from '@/features/world-countries/geography/queries'
-import { getContinentSubregionScopeCounts } from '@/features/world-countries/geography/subregionScope'
-import { deriveWorldCountriesLearningReadiness, getWorldCountriesLearningStateList, type WorldCountriesLearningReadiness } from '@/features/world-countries/learning/learningReadiness'
-import type { LearningStates } from '@/features/world-countries/learning/learningProgress'
-import type { SubregionLearningState } from '@/features/world-countries/learning/subregionLearningState'
 import { getContinentHoverGroupId, getSubregionHoverGroupId } from '@/features/world-countries/maps/geographyMapAdapter'
 import { sortSubregionsByMemoMapPosition } from '@/features/world-countries/maps/memoMapOrdering'
 import { GeographySelectionRail } from '@/features/world-countries/ui/GeographySelectionRail'
@@ -15,15 +11,9 @@ import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountrie
 import { WORLD_COUNTRIES_DRILL_MODES, type WorldCountriesDrillMode } from './drillModes'
 import { getContinentSelectionState, getDrillSelectionCounts, type DrillSelectionMetadata, type WorldCountriesDrillSelection, type WorldCountriesDrillSelectionCounts } from './drillSelection'
 import type { WorldCountriesDrillOrder } from './drillOrder'
-import { isWorldCountriesLearningMode, WORLD_COUNTRIES_LEARNING_MODES } from '@/features/world-countries/learning/learnPracticeModes'
-import { WORLD_COUNTRIES_PRACTICE_MODES } from '@/features/world-countries/practice/practiceModes'
+import { WORLD_COUNTRIES_PRACTICE_MODES, type WorldCountriesPracticeMode } from '@/features/world-countries/practice/practiceModes'
 import type { WorldCountriesProficiencyScope, WorldCountriesProficiencySelection, WorldCountriesProficiencyFilter } from './drillProficiencyScope'
-import type { WorldCountriesLearnPracticeMode } from './learnPracticeSetupModes'
-
-const PURPOSES = [
-  { id: 'drill' as const, label: 'Drill', description: 'Recording recall that contributes to Drill proficiency.' },
-  { id: 'learn-practise' as const, label: 'Learn & Practise', description: 'Durable Learning milestones or non-recording Practice.' },
-]
+import type { WorldCountriesSetupActivity } from './setupActivity'
 
 export function DrillSetupRails({
   level,
@@ -32,13 +22,10 @@ export function DrillSetupRails({
   selectionMetadata,
   mode,
   order,
-  purpose,
-  learnPracticeMode,
+  activity,
   proficiencySelection,
   proficiencyScope,
   proficiencyLoading,
-  learningStates,
-  learningReadinessBySubregion,
   hoveredGroupId,
   onHoverGroup,
   onWorld,
@@ -51,9 +38,6 @@ export function DrillSetupRails({
   onModeChange,
   onOrderChange,
   onStart,
-  onPurposeChange,
-  onLearnPracticeModeChange,
-  onLearnPracticeStart,
   onExit,
   entries = countries,
   worldOrder,
@@ -72,13 +56,10 @@ export function DrillSetupRails({
   selectionMetadata: DrillSelectionMetadata
   mode: WorldCountriesDrillMode
   order: WorldCountriesDrillOrder
-  purpose: 'drill' | 'learn-practise' | null
-  learnPracticeMode: WorldCountriesLearnPracticeMode
+  activity: WorldCountriesSetupActivity
   proficiencySelection: WorldCountriesProficiencySelection
   proficiencyScope: WorldCountriesProficiencyScope
   proficiencyLoading: boolean
-  learningStates: LearningStates
-  learningReadinessBySubregion?: ReadonlyMap<SubregionId, WorldCountriesLearningReadiness>
   hoveredGroupId: string | null
   onHoverGroup: (groupId: string | null) => void
   onWorld: () => void
@@ -91,9 +72,6 @@ export function DrillSetupRails({
   onModeChange: (mode: WorldCountriesDrillMode) => void
   onOrderChange: (order: WorldCountriesDrillOrder) => void
   onStart: () => void
-  onPurposeChange: (purpose: 'drill' | 'learn-practise') => void
-  onLearnPracticeModeChange: (mode: WorldCountriesLearnPracticeMode) => void
-  onLearnPracticeStart: (mode: WorldCountriesLearnPracticeMode) => void
   onExit?: () => void
   entries?: readonly Country[]
   worldOrder: readonly Continent[]
@@ -108,15 +86,8 @@ export function DrillSetupRails({
 }) {
   const continent = setupContinent
   const subregions = subregionOrder
-  const purposeGroupName = `world-countries-purpose-${useId()}`
   const modeGroupName = `world-countries-mode-${useId()}`
-  const stateList = getWorldCountriesLearningStateList(learningStates)
-  const selectedStates = selection.subregionIds.map(id => stateList.find(state => state.subregionId === id))
-  const countriesIncomplete = selection.subregionIds.some(id => (learningReadinessBySubregion?.get(id) ?? deriveWorldCountriesLearningReadiness(stateList.find(state => state.subregionId === id))) === 'NOT_LEARNED')
   const selectionCounts = getDrillSelectionCounts(selection, entries, selectionMetadata)
-  const selectedCount = level === 'continent' && continent
-    ? getContinentSubregionScopeCounts(selection, continent, entries, selectionMetadata).selectedSubregions
-    : selectionCounts.subregions
   const proficiencySelected = proficiencySelection.length > 0
   const canStart = proficiencySelected
     ? !proficiencyLoading && proficiencyScope.countries.length > 0
@@ -168,22 +139,12 @@ export function DrillSetupRails({
         {level === 'continent' && <ProficiencyScopePanel selection={proficiencySelection} scope={proficiencyScope} loading={proficiencyLoading} onChange={onProficiencySelectionChange} />}
       </section>
     ),
-    right: <div className="space-y-3"><ActivityPurposePanel purpose={purpose} groupName={purposeGroupName} onChange={onPurposeChange}>{purpose === 'drill' ? <CurrentDrillPanel mode={mode} order={order} groupName={modeGroupName} onModeChange={onModeChange} onOrderChange={onOrderChange} scopeSummary={scopeSummary} canStart={canStart} noMatching={noMatching} disabledButtonLabel={disabledButtonLabel} onStart={onStart} /> : purpose === 'learn-practise' ? <LearnPracticePanel selectedCount={selectedCount} selectedCountryCount={selectionCounts.countries} level={level} selectedStates={selectedStates} countriesIncomplete={countriesIncomplete} mode={learnPracticeMode} proficiencySelected={proficiencySelected} proficiencyLoading={proficiencyLoading} proficiencyCountryCount={proficiencyScope.countries.length} onModeChange={onLearnPracticeModeChange} onStart={onLearnPracticeStart} /> : null}</ActivityPurposePanel>{onExit && <button type="button" onClick={onExit} className="w-full rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Back to guided home</button>}</div>,
+    right: <div className="space-y-3"><WorldCountriesPanel className="space-y-3">{activity.kind === 'drill' ? <CurrentDrillPanel mode={mode} order={order} groupName={modeGroupName} onModeChange={onModeChange} onOrderChange={onOrderChange} scopeSummary={scopeSummary} canStart={canStart} noMatching={noMatching} disabledButtonLabel={disabledButtonLabel} onStart={onStart} /> : <FixedPracticePanel mode={activity.mode} scopeSummary={scopeSummary} canStart={canStart} noMatching={noMatching} disabledButtonLabel={disabledButtonLabel} onStart={onStart} />}</WorldCountriesPanel>{onExit && <button type="button" onClick={onExit} className="w-full rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Back to guided home</button>}</div>,
     leftLabel: 'Geography',
-    rightLabel: purpose === 'drill' ? 'Drill' : purpose === 'learn-practise' ? 'Learn & Practise' : 'Choose activity',
-  }), [canStart, continent, countriesIncomplete, disabledButtonLabel, editingOrder, entries, hoveredGroupId, learnPracticeMode, level, mode, modeGroupName, noMatching, onBeginOrderEdit, onCancelOrderEdit, onDraftSubregionOrder, onDraftWorldOrder, onExit, onHoverGroup, onLearnPracticeModeChange, onLearnPracticeStart, onModeChange, onOrderChange, onProficiencySelectionChange, onPurposeChange, onSaveSubregionOrder, onSaveWorldOrder, onSelectContinent, onSelectEntireContinent, onStart, onToggleContinent, onToggleSubregion, onToggleWorld, onWorld, order, purpose, purposeGroupName, proficiencyLoading, proficiencyScope, proficiencySelected, proficiencySelection, scopeSummary, selectedCount, selectedStates, selection, selectionCounts, selectionMetadata, subregions, worldOrder])
+    rightLabel: activity.kind === 'drill' ? 'Drill' : 'Practice',
+  }), [activity, canStart, continent, disabledButtonLabel, editingOrder, entries, hoveredGroupId, level, mode, modeGroupName, noMatching, onBeginOrderEdit, onCancelOrderEdit, onDraftSubregionOrder, onDraftWorldOrder, onExit, onHoverGroup, onModeChange, onOrderChange, onProficiencySelectionChange, onSaveSubregionOrder, onSaveWorldOrder, onSelectContinent, onSelectEntireContinent, onStart, onToggleContinent, onToggleSubregion, onToggleWorld, onWorld, order, proficiencyLoading, proficiencyScope, proficiencySelected, proficiencySelection, scopeSummary, selection, selectionCounts, selectionMetadata, subregions, worldOrder])
   useRails(rails)
   return null
-}
-
-function ActivityPurposePanel({ purpose, groupName, onChange, children }: { purpose: 'drill' | 'learn-practise' | null; groupName: string; onChange: (purpose: 'drill' | 'learn-practise') => void; children: ReactNode }) {
-  const compact = purpose !== null
-  return <WorldCountriesPanel className={compact ? 'space-y-3' : 'space-y-4'} aria-labelledby="world-countries-purpose-heading"><div className={compact ? 'space-y-2' : 'space-y-3'}><div><h2 id="world-countries-purpose-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Purpose</h2><p className={compact ? 'mt-1 text-xs text-zinc-500' : 'mt-1 text-sm leading-relaxed text-zinc-300'}>{compact ? 'Controls below follow this choice.' : 'Choose the activity; its controls appear below.'}</p></div><div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Activity purpose">{PURPOSES.map(candidate => <PurposeOption key={candidate.id} candidate={candidate} selected={purpose === candidate.id} compact={compact} onSelect={onChange} groupName={groupName} />)}</div></div>{children ? <div className={compact ? 'border-t border-zinc-800 pt-3' : undefined}>{children}</div> : null}</WorldCountriesPanel>
-}
-
-function PurposeOption({ candidate, selected, compact, onSelect, groupName }: { candidate: typeof PURPOSES[number]; selected: boolean; compact: boolean; onSelect: (purpose: 'drill' | 'learn-practise') => void; groupName: string }) {
-  const descriptionId = `${useId()}-description`
-  return <label title={candidate.description} className={`${compact ? 'flex min-h-[42px] items-center justify-center text-center' : 'flex min-h-[92px] flex-col items-start text-left'} w-full cursor-pointer rounded-lg border px-3 py-2.5 text-sm transition-colors focus-within:ring-2 focus-within:ring-cyan-400/70 ${selected ? 'border-cyan-500 bg-cyan-500/15 text-cyan-100' : 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-cyan-600 hover:text-zinc-100'}`}><input type="radio" name={groupName} value={candidate.id} checked={selected} onChange={() => onSelect(candidate.id)} aria-describedby={descriptionId} className="sr-only" /><span className="flex items-center gap-2 font-semibold">{selected && <span aria-hidden="true" className="text-cyan-400">✓</span>}{candidate.label}</span><span id={descriptionId} className={compact ? 'sr-only' : 'mt-1 text-xs leading-relaxed text-zinc-500'}>{candidate.description}</span></label>
 }
 
 function CurrentDrillPanel({ mode, order, groupName, onModeChange, onOrderChange, scopeSummary, canStart, noMatching, disabledButtonLabel, onStart }: { mode: WorldCountriesDrillMode; order: WorldCountriesDrillOrder; groupName: string; onModeChange: (mode: WorldCountriesDrillMode) => void; onOrderChange: (order: WorldCountriesDrillOrder) => void; scopeSummary?: string; canStart: boolean; noMatching: boolean; disabledButtonLabel: string; onStart: () => void }) {
@@ -210,14 +171,10 @@ function formatCountryCount(count: number): string {
   return `${count} ${count === 1 ? 'Country' : 'Countries'}`
 }
 
-function LearnPracticePanel({ level, selectedCount, selectedCountryCount, selectedStates, countriesIncomplete, mode, proficiencySelected, proficiencyLoading, proficiencyCountryCount, onModeChange, onStart }: { level: 'world' | 'continent'; selectedCount: number; selectedCountryCount: number; selectedStates: readonly (SubregionLearningState | undefined)[]; countriesIncomplete: boolean; mode: WorldCountriesLearnPracticeMode; proficiencySelected: boolean; proficiencyLoading: boolean; proficiencyCountryCount: number; onModeChange: (mode: WorldCountriesLearnPracticeMode) => void; onStart: (mode: WorldCountriesLearnPracticeMode) => void }) {
-  const learning = isWorldCountriesLearningMode(mode)
-  const groupName = `world-countries-learn-practice-${useId()}`
-  const canStart = proficiencySelected ? !proficiencyLoading && proficiencyCountryCount > 0 : selectedCountryCount > 0
-  const learningGuidance = proficiencySelected && learning ? 'Proficiency Learning is temporary: completing it does not mark a Subregion learned.' : null
-  const noMatching = proficiencySelected && !proficiencyLoading && proficiencyCountryCount === 0
-  const disabledLabel = learningGuidance ?? (noMatching ? 'No Countries currently match the selected proficiency' : proficiencySelected && proficiencyLoading ? 'Loading proficiency…' : getSelectionPrompt(level))
-  return <section className="space-y-3" aria-labelledby="world-countries-learn-practice-heading"><h2 id="world-countries-learn-practice-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Learn &amp; Practise</h2><div className="space-y-2"><p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Learning</p>{WORLD_COUNTRIES_LEARNING_MODES.map(candidate => <ModeOption key={candidate.id} candidate={candidate} selected={candidate.id === mode} onSelect={onModeChange} groupName={groupName} />)}<p className="pt-2 text-xs font-semibold uppercase tracking-wider text-violet-400">Practice</p>{WORLD_COUNTRIES_PRACTICE_MODES.map(candidate => <ModeOption key={candidate.id} candidate={candidate} selected={candidate.id === mode} onSelect={onModeChange} groupName={groupName} />)}</div>{mode === 'learn-capitals' && countriesIncomplete && <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs leading-relaxed text-amber-200" role="note">Recommendation: Learn Countries first for this selection. Learn Capitals is available now and will record Capitals learned, while Learning Readiness remains Not learned until Countries learning is complete.</p>}{learningGuidance && <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs leading-relaxed text-amber-200" role="note">{learningGuidance}</p>}{learning && selectedCount > 1 && <p className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3 text-xs leading-relaxed text-zinc-400" role="note">Learning is recommended one Subregion at a time. Continue will work through the selected Subregions in effective geographic order.</p>}{!learning && <p className="text-xs leading-relaxed text-zinc-500">Practice is non-recording: it never changes Learning Readiness, evidence, Drill proficiency, or preferences.</p>}{noMatching && <p className="text-sm text-amber-300" role="alert">No Countries currently match the selected proficiency.</p>}<button type="button" disabled={!canStart} onClick={() => onStart(mode)} className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40">{canStart ? `Start ${learning ? 'Learning' : 'Practice'}` : disabledLabel}</button></section>
+function FixedPracticePanel({ mode, scopeSummary, canStart, noMatching, disabledButtonLabel, onStart }: { mode: WorldCountriesPracticeMode; scopeSummary?: string; canStart: boolean; noMatching: boolean; disabledButtonLabel: string; onStart: () => void }) {
+  const definition = WORLD_COUNTRIES_PRACTICE_MODES.find(candidate => candidate.id === mode)
+  const label = definition?.label ?? 'Practice'
+  return <section className="space-y-3" aria-labelledby="world-countries-practice-heading"><div><p className="text-xs font-semibold uppercase tracking-wider text-violet-400">Practice</p><h2 id="world-countries-practice-heading" className="mt-1 text-lg font-bold text-zinc-100">{label}</h2><p className="mt-1 text-sm leading-relaxed text-zinc-400">{definition?.description}</p></div><p className="text-xs leading-relaxed text-zinc-500">Practice is non-recording and does not affect Learning Readiness, evidence, or Drill proficiency.</p>{noMatching && <p className="text-sm text-amber-300" role="alert">No Countries currently match the selected proficiency.</p>}{scopeSummary && <div role="group" aria-label="Practice scope" className="rounded-lg border border-zinc-800 bg-zinc-950/30 px-3 py-2"><h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Scope</h3><p className="mt-1 text-sm font-semibold text-zinc-200">{scopeSummary}</p></div>}<button type="button" disabled={!canStart} onClick={onStart} className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40">{canStart ? `Start ${label}` : disabledButtonLabel}</button></section>
 }
 
 function ProficiencyScopePanel({ selection, scope, loading, onChange }: { selection: WorldCountriesProficiencySelection; scope: WorldCountriesProficiencyScope; loading: boolean; onChange: (selection: WorldCountriesProficiencySelection) => void }) {

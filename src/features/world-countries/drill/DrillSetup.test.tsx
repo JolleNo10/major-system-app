@@ -23,7 +23,7 @@ let root: Root | null = null
 afterEach(() => { act(() => root?.unmount()); root = null; document.body.replaceChildren(); useRailsMock.mockReset(); mapMock.mockReset(); loadRecallProgressMock.mockClear(); loadRecallProgressMock.mockImplementation(async () => new Map()); proficiencyScopeMock.mockReset(); proficiencyScopeMock.mockImplementation(() => ({ counts: { weak: 0, developing: 0 }, countryIds: [], countries: [] })); localStorage.clear() })
 
 function createSetupProps(overrides: Record<string, unknown> = {}) {
-  return { level: 'continent', setupContinent: 'Europe', selection: createDrillSelection(['northern-europe']), selectionMetadata: {}, mode: 'countries', order: 'ordered', purpose: 'drill', learnPracticeMode: 'learn-countries', learningStates: [], onSelectionChange: vi.fn(), onModeChange: vi.fn(), onOrderChange: vi.fn(), onPurposeChange: vi.fn(), onLearnPracticeModeChange: vi.fn(), onStart: vi.fn(), onLearnPracticeStart: vi.fn(), onWorld: vi.fn(), onSelectContinent: vi.fn(), onToggleWorld: vi.fn(), hoveredGroupId: null, onHoverGroup: vi.fn(), ...overrides } as never
+  return { level: 'continent', setupContinent: 'Europe', selection: createDrillSelection(['northern-europe']), selectionMetadata: {}, mode: 'countries', order: 'ordered', activity: { kind: 'drill' }, learningStates: [], onSelectionChange: vi.fn(), onModeChange: vi.fn(), onOrderChange: vi.fn(), onStart: vi.fn(), onWorld: vi.fn(), onSelectContinent: vi.fn(), onToggleWorld: vi.fn(), hoveredGroupId: null, onHoverGroup: vi.fn(), ...overrides } as never
 }
 
 function renderSetup(overrides: Record<string, unknown> = {}) {
@@ -182,8 +182,7 @@ describe('DrillSetup activity boundary', () => {
         level: 'world',
         entries: [...entries].reverse(),
         mode: 'countries-from-capitals',
-        purpose: 'learn-practise',
-        learnPracticeMode: 'capitals',
+        activity: { kind: 'drill' },
       })))
     })
 
@@ -217,7 +216,7 @@ describe('DrillSetup activity boundary', () => {
     expect(mount.textContent).toContain('Countries from Capitals')
     expect(mount.textContent).toContain('Country for Shape')
     expect(mount.textContent).not.toContain('Learn Countries')
-    expect(mount.querySelectorAll('input[type="radio"]')).toHaveLength(6)
+    expect(mount.querySelectorAll('input[type="radio"]')).toHaveLength(4)
     expect(mount.textContent).toContain('Edit order')
     expect(mount.textContent).toContain('Start Drill')
   })
@@ -335,37 +334,36 @@ describe('DrillSetup activity boundary', () => {
     act(() => displayRoot.unmount())
   })
 
-  it('shows Learning and Practice as distinct categories under Learn & Practise', () => {
+  it('shows a fixed Practice activity without alternate setup choices', () => {
     const onStart = vi.fn()
-    const mount = renderSetup({ purpose: 'learn-practise', learnPracticeMode: 'learn-capitals', onLearnPracticeStart: onStart })
+    const mount = renderSetup({ activity: { kind: 'practice', mode: 'capitals' }, onStart })
     const config = useRailsMock.mock.calls[0][0] as { right: ReactNode }
     act(() => root?.render(config.right))
-    expect(mount.textContent).toContain('Learn Countries')
-    expect(mount.textContent).toContain('Learn Capitals')
-    expect(mount.textContent).toContain('Locate Countries')
-    expect(mount.textContent).toContain('Locate Capitals')
-    expect(mount.textContent).toContain('Capitals')
+    expect(mount.textContent).toContain('Capital Practice')
     expect(mount.textContent).toContain('non-recording')
     expect(mount.textContent).not.toContain('Drill order')
-    expect(mount.textContent).toContain('Recommendation: Learn Countries first')
-    const start = [...mount.querySelectorAll('button')].find(button => button.textContent === 'Start Learning')
+    expect(mount.textContent).not.toContain('Learn Countries')
+    expect(mount.textContent).not.toContain('Learn Capitals')
+    expect(mount.textContent).not.toContain('Locate Countries')
+    expect(mount.textContent).not.toContain('Locate Capitals')
+    expect(mount.querySelector('input[type="radio"]')).toBeNull()
+    const start = [...mount.querySelectorAll('button')].find(button => button.textContent === 'Start Capital Practice')
     act(() => start?.click())
-    expect(onStart).toHaveBeenCalledWith('learn-capitals')
+    expect(onStart).toHaveBeenCalledTimes(1)
   })
 
-  it('keeps Learning start enabled for a matching proficiency scope', async () => {
+  it('keeps fixed Practice start enabled for a matching proficiency scope', async () => {
     proficiencyScopeMock.mockReturnValue({ counts: { weak: 1, developing: 0 }, countryIds: ['albania'], countries: [{}] } as never)
     const onStart = vi.fn()
-    const mount = renderSetup({ purpose: 'learn-practise', proficiencySelection: ['weak'], onLearnPracticeStart: onStart })
+    const mount = renderSetup({ activity: { kind: 'practice', mode: 'locate-countries' }, proficiencySelection: ['weak'], onStart })
     await act(async () => { await Promise.resolve() })
     const config = useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1][0] as { right: ReactNode }
     act(() => root?.render(config.right))
 
-    const start = [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Start Learning')
+    const start = [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Start Locate Countries')
     expect(start?.disabled).toBe(false)
-    expect(mount.textContent).toContain('does not mark a Subregion learned')
     act(() => start?.click())
-    expect(onStart).toHaveBeenCalledWith('learn-countries')
+    expect(onStart).toHaveBeenCalledTimes(1)
   })
 
   it('explains that a Continent needs a Subregion before Drill can start', () => {
@@ -378,8 +376,8 @@ describe('DrillSetup activity boundary', () => {
     expect(mount.textContent).not.toContain('Choose a Continent first')
   })
 
-  it('uses Learning Readiness instead of Drill status for Learn & Practise maps', () => {
-    const mount = renderSetup({ purpose: 'learn-practise' })
+  it('uses Learning Readiness instead of Drill status for Practice maps', () => {
+    const mount = renderSetup({ activity: { kind: 'practice', mode: 'locate-countries' } })
     expect(mapMock.mock.calls[mapMock.mock.calls.length - 1]?.[0].countryColorsById).toBeInstanceOf(Map)
     expect(mount.textContent).toContain('Learning Readiness')
     const config = useRailsMock.mock.calls[0][0] as { right: ReactNode }
