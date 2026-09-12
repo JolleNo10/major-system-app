@@ -4,7 +4,7 @@ import type { WorldCountriesRecallHistory } from '@/features/world-countries/lea
 import { deriveWorldCountriesIntroducedness, type WorldCountriesTargetIntroduction } from '@/features/world-countries/learning/todayIntroduction'
 import { getSubregionDefinition } from '@/features/world-countries/data/subregions'
 import type { SubregionLearningState } from '@/features/world-countries/learning/subregionLearningState'
-import { isWorldCountriesCapitalLayerEstablished, isWorldCountriesCountryLayerEstablished } from '@/features/world-countries/learning/learningReadiness'
+import { createWorldCountriesEstablishedLearningReadinessByCountry, isWorldCountriesCapitalLayerEstablished, isWorldCountriesCountryLayerEstablished } from '@/features/world-countries/learning/learningReadiness'
 import {
   deriveWorldCountriesReviewSchedule,
   type WorldCountriesReviewSchedule,
@@ -100,11 +100,12 @@ function createCandidate(
   skill: WorldCountriesCoreRecallSkill,
   history: WorldCountriesRecallHistory,
   introductions: ReadonlyMap<string, WorldCountriesTargetIntroduction>,
+  reviewEligible: boolean,
   options: Pick<WorldCountriesTodayPlanInput, 'now' | 'localDate'>,
 ): WorldCountriesTodayReviewCandidate | null {
   const itemId = recallTargetIdFor(country.id, skill)
   const introduction = introductions.get(itemId)
-  if (!introduction?.introduced) return null
+  if (!reviewEligible || !introduction?.introduced) return null
   const schedule = deriveWorldCountriesReviewSchedule(history.get(itemId) ?? [], {
     now: options.now,
     localDate: options.localDate,
@@ -279,10 +280,26 @@ export function buildWorldCountriesTodayPlan(
       const progress = deriveWorldCountriesAtomicProgress(itemId, input.history.get(itemId) ?? [])
       progressByTarget.set(itemId, progress)
       if (!progress.mastered) incompleteCountries.add(country.id)
-      const candidate = createCandidate(country, skill, input.history, introductions, input)
+    }
+  }
+
+  const establishedReadinessByCountry = createWorldCountriesEstablishedLearningReadinessByCountry(
+    effectiveCountries,
+    input.learningStates ?? [],
+    progressByTarget,
+  )
+
+  for (const country of effectiveCountries) {
+    for (const skill of WORLD_COUNTRIES_CORE_RECALL_SKILLS) {
+      const itemId = recallTargetIdFor(country.id, skill)
+      const readiness = establishedReadinessByCountry.get(country.id) ?? 'NOT_LEARNED'
+      const reviewEligible = skill === 'location-to-country'
+        ? readiness !== 'NOT_LEARNED'
+        : readiness === 'COUNTRIES_AND_CAPITALS_LEARNED'
+      const candidate = createCandidate(country, skill, input.history, introductions, reviewEligible, input)
       if (!candidate) continue
       if (candidate.schedule.due) dueCandidates.push({ ...candidate, purpose: 'review' })
-      if (introductions.get(itemId)?.introduced && !progress.mastered) {
+      if (!progressByTarget.get(itemId)!.mastered) {
         consolidationCandidates.push({ ...candidate, purpose: 'consolidation' })
       }
     }

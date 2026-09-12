@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { countries } from '@/features/world-countries/data/countries'
 import { deriveWorldCountriesRecallHistory } from '@/features/world-countries/learning/recallHistory'
+import { deriveWorldCountriesRecallProgress } from '@/features/world-countries/learning/recallProgress'
 import { buildWorldCountriesTodayPlan } from './todayPlan'
 
 function historyFor(
@@ -61,6 +62,7 @@ describe('World Countries Today plan', () => {
       activeCountries: entries,
       effectiveCountries: entries,
       effectiveSubregionIds: [...new Set(entries.map(country => country.subregionId))],
+      learningStates: [...new Set(entries.map(country => country.subregionId))].map(subregionId => ({ subregionId, countriesLearnedAt: 1 })),
       history: dueHistoryFor(entries.map(country => country.id)),
       localDate: '2026-08-19',
     })
@@ -110,6 +112,7 @@ describe('World Countries Today plan', () => {
       history: scopedHistory,
       effectiveCountries: [india],
       effectiveSubregionIds: [india.subregionId],
+      learningStates: [{ subregionId: india.subregionId, countriesLearnedAt: 1 }],
       localDate: '2026-08-19',
     })
 
@@ -125,10 +128,153 @@ describe('World Countries Today plan', () => {
         { itemId: 'world-countries:location-to-country:NO', at: 2, ok: false, evidenceKind: 'recall', localDate: '2026-08-11' },
         { itemId: 'world-countries:capital-to-country:NO', at: 3, ok: false, evidenceKind: 'recall', localDate: '2026-08-11' },
       ]),
+      learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: 1 }],
       localDate: '2026-08-19',
     })
     expect(plan.dueCount).toBe(1)
     expect(plan.dueCandidates[0]?.target.skill).toBe('location-to-country')
+  })
+
+  it('retains successful Drill evidence without making an unestablished target reviewable', () => {
+    const country = countries.find(entry => entry.id === 'NO')!
+    const itemId = 'world-countries:location-to-country:NO'
+    const history = historyFor([
+      { itemId, at: 1, ok: true, evidenceKind: 'recall', localDate: '2026-08-18' },
+    ])
+    const progress = deriveWorldCountriesRecallProgress(
+      { countryIds: ['NO'], skills: ['location-to-country'] },
+      [...history.values()].flat(),
+    )
+    const plan = buildWorldCountriesTodayPlan({ activeCountries: [country], history, localDate: '2026-08-19' })
+
+    expect(progress.get(itemId)).toMatchObject({ attempts: 1, proficiency: 'developing' })
+    expect(plan.introductions.get(itemId)?.introduced).toBe(true)
+    expect(plan.dueCandidates).toEqual([])
+    expect(plan.consolidationCandidates).toEqual([])
+  })
+
+  it('does not let successful recognition create Review eligibility for an unestablished layer', () => {
+    const country = countries.find(entry => entry.id === 'NO')!
+    const itemId = 'world-countries:location-to-country:NO'
+    const history = historyFor([
+      { itemId, at: 1, ok: true, evidenceKind: 'recognition', localDate: '2026-08-18' },
+    ])
+    const plan = buildWorldCountriesTodayPlan({ activeCountries: [country], history, localDate: '2026-08-19' })
+
+    expect(plan.introductions.get(itemId)?.introduced).toBe(true)
+    expect(plan.dueCandidates).toEqual([])
+    expect(plan.consolidationCandidates).toEqual([])
+  })
+
+  it('does not let a latest failure bypass an unestablished layer', () => {
+    const country = countries.find(entry => entry.id === 'NO')!
+    const history = historyFor([
+      { itemId: 'world-countries:location-to-country:NO', at: 1, ok: true, evidenceKind: 'recall', localDate: '2026-08-18' },
+      { itemId: 'world-countries:location-to-country:NO', at: 2, ok: false, evidenceKind: 'recall', localDate: '2026-08-19' },
+    ])
+    const plan = buildWorldCountriesTodayPlan({ activeCountries: [country], history, localDate: '2026-08-19' })
+
+    expect(plan.dueCandidates).toEqual([])
+    expect(plan.consolidationCandidates).toEqual([])
+  })
+
+  it('gates Country and Capital candidates by their established Learning layers', () => {
+    const country = countries.find(entry => entry.id === 'NO')!
+    const history = historyFor([
+      { itemId: 'world-countries:location-to-country:NO', at: 1, ok: true, evidenceKind: 'recall', localDate: '2026-08-18' },
+      { itemId: 'world-countries:country-to-capital:NO', at: 2, ok: true, evidenceKind: 'recall', localDate: '2026-08-18' },
+    ])
+    const countryOnly = buildWorldCountriesTodayPlan({
+      activeCountries: [country],
+      history,
+      learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: 1 }],
+      localDate: '2026-08-19',
+    })
+    const bothLayers = buildWorldCountriesTodayPlan({
+      activeCountries: [country],
+      history,
+      learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: 1, capitalsLearnedAt: 2 }],
+      localDate: '2026-08-19',
+    })
+
+    expect(countryOnly.consolidationCandidates.map(candidate => candidate.target.skill)).toEqual(['location-to-country'])
+    expect(bothLayers.consolidationCandidates.map(candidate => candidate.target.skill)).toEqual([
+      'location-to-country',
+      'country-to-capital',
+    ])
+  })
+
+  it('uses whole-layer Country mastery evidence as a non-persisted eligibility fallback', () => {
+    const country = countries.find(entry => entry.id === 'NO')!
+    const history = historyFor([
+      { itemId: 'world-countries:location-to-country:NO', at: 1, ok: true, evidenceKind: 'recall', localDate: '2026-08-10' },
+      { itemId: 'world-countries:location-to-country:NO', at: 2, ok: true, evidenceKind: 'recall', localDate: '2026-08-11' },
+      { itemId: 'world-countries:location-to-country:NO', at: 3, ok: false, evidenceKind: 'recall', localDate: '2026-08-12' },
+    ])
+    const plan = buildWorldCountriesTodayPlan({ activeCountries: [country], history, localDate: '2026-08-12' })
+
+    expect(plan.curriculumRecommendation?.track).toBe('learn-capitals')
+    expect(plan.introductions.get('world-countries:location-to-country:NO')?.source).toBe('attempt')
+    expect(plan.dueCandidates).toEqual(expect.arrayContaining([
+      expect.objectContaining({ target: { countryId: 'NO', skill: 'location-to-country' } }),
+    ]))
+  })
+
+  it('uses whole-layer Capital mastery evidence when the combined readiness is established', () => {
+    const country = countries.find(entry => entry.id === 'NO')!
+    const history = historyFor([
+      { itemId: 'world-countries:location-to-country:NO', at: 1, ok: true, evidenceKind: 'recall', localDate: '2026-08-10' },
+      { itemId: 'world-countries:location-to-country:NO', at: 2, ok: true, evidenceKind: 'recall', localDate: '2026-08-11' },
+      { itemId: 'world-countries:country-to-capital:NO', at: 3, ok: true, evidenceKind: 'recall', localDate: '2026-08-10' },
+      { itemId: 'world-countries:country-to-capital:NO', at: 4, ok: true, evidenceKind: 'recall', localDate: '2026-08-11' },
+      { itemId: 'world-countries:country-to-capital:NO', at: 5, ok: false, evidenceKind: 'recall', localDate: '2026-08-12' },
+    ])
+    const plan = buildWorldCountriesTodayPlan({ activeCountries: [country], history, localDate: '2026-08-12' })
+
+    expect(plan.curriculumRecommendation).toBeNull()
+    expect(plan.dueCandidates).toEqual(expect.arrayContaining([
+      expect.objectContaining({ target: { countryId: 'NO', skill: 'country-to-capital' } }),
+    ]))
+  })
+
+  it('does not unlock a layer from partial whole-layer mastery evidence', () => {
+    const entries = countries.filter(entry => entry.id === 'NO' || entry.id === 'SE')
+    const history = deriveWorldCountriesRecallHistory(
+      { countryIds: entries.map(entry => entry.id), skills: ['location-to-country', 'country-to-capital'] },
+      [
+        { itemId: 'world-countries:location-to-country:NO', at: 1, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-10' },
+        { itemId: 'world-countries:location-to-country:NO', at: 2, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-11' },
+        { itemId: 'world-countries:location-to-country:NO', at: 3, ok: false, ms: 100, evidenceKind: 'recall', localDate: '2026-08-12' },
+        { itemId: 'world-countries:location-to-country:SE', at: 4, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-11' },
+      ],
+    )
+    const plan = buildWorldCountriesTodayPlan({ activeCountries: entries, history, localDate: '2026-08-12' })
+
+    expect(plan.dueCandidates).toEqual([])
+    expect(plan.consolidationCandidates).toEqual([])
+  })
+
+  it('activates retained evidence as soon as the corresponding layer becomes established', () => {
+    const country = countries.find(entry => entry.id === 'NO')!
+    const history = historyFor([
+      { itemId: 'world-countries:location-to-country:NO', at: 1, ok: true, evidenceKind: 'recall', localDate: '2026-08-10' },
+      { itemId: 'world-countries:location-to-country:NO', at: 2, ok: false, evidenceKind: 'recall', localDate: '2026-08-11' },
+    ])
+    const unestablished = buildWorldCountriesTodayPlan({ activeCountries: [country], history, localDate: '2026-08-11' })
+    const established = buildWorldCountriesTodayPlan({
+      activeCountries: [country],
+      history,
+      learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: 1 }],
+      localDate: '2026-08-11',
+    })
+
+    expect(unestablished.dueCandidates).toEqual([])
+    expect(established.dueCandidates).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        target: { countryId: 'NO', skill: 'location-to-country' },
+        schedule: expect.objectContaining({ reason: 'latest-failure' }),
+      }),
+    ]))
   })
 
   it('keeps Capital Learning behind Country establishment rather than target introduction', () => {
@@ -142,7 +288,7 @@ describe('World Countries Today plan', () => {
     })
     expect(partialCountryPractice.introductions.get('world-countries:location-to-country:NO')?.introduced).toBe(true)
     expect(partialCountryPractice.curriculumRecommendation?.track).toBe('learn-countries')
-    expect(partialCountryPractice.reviewOpportunity?.kind).toBe('consolidate')
+    expect(partialCountryPractice.reviewOpportunity).toBeNull()
 
     const countryEstablished = buildWorldCountriesTodayPlan({
       activeCountries: countries.filter(country => country.id === 'NO'),
@@ -303,6 +449,7 @@ describe('World Countries Today plan', () => {
       activeCountries: [northern, southern],
       effectiveCountries: [northern, southern],
       effectiveSubregionIds: ['northern-europe', 'southern-europe'],
+      learningStates: [{ subregionId: 'southern-europe', countriesLearnedAt: 1 }],
       history: historyFor([
         { itemId: `world-countries:location-to-country:${southern.id}`, at: 1, ok: true, localDate: '2026-08-18' },
         { itemId: `world-countries:location-to-country:${southern.id}`, at: 2, ok: false, localDate: '2026-08-19' },
@@ -341,7 +488,7 @@ describe('World Countries Today plan', () => {
     expect(plan.curriculumRecommendation).toBeNull()
     expect(plan.reviewOpportunity?.kind).toBe('review')
     expect(plan.reviewQueue.length).toBeGreaterThan(1)
-    expect(plan.reviewQueue[0]?.country.subregionId).toBe('southern-europe')
+    expect(plan.reviewQueue.some(candidate => candidate.country.subregionId === 'southern-europe')).toBe(true)
     expect(plan.plannerFocusSubregionId).toBe('northern-europe')
   })
 
@@ -349,6 +496,7 @@ describe('World Countries Today plan', () => {
     const country = countries.find(entry => entry.id === 'NO')!
     const due = buildWorldCountriesTodayPlan({
       activeCountries: [country],
+      learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: 1, capitalsLearnedAt: 2 }],
       history: historyFor([
         { itemId: 'world-countries:location-to-country:NO', at: 1, ok: true, localDate: '2026-08-18' },
         { itemId: 'world-countries:location-to-country:NO', at: 2, ok: false, localDate: '2026-08-19' },
@@ -356,7 +504,7 @@ describe('World Countries Today plan', () => {
       localDate: '2026-08-19',
     })
     expect(due.reviewOpportunity?.kind).toBe('review')
-    expect(due.curriculumRecommendation?.track).toBe('learn-countries')
+    expect(due.curriculumRecommendation).toBeNull()
 
     const learning = buildWorldCountriesTodayPlan({
       activeCountries: [country],

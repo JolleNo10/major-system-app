@@ -165,27 +165,32 @@ Today derives its plan from raw core evidence and applicable Learning
 milestones. It reviews only `location-to-country` and `country-to-capital`,
 derives the current whole-Subregion Learning recommendation independently of
 Review, and when no scheduled work is due it can expose a bounded, scope-local
-consolidation queue containing only introduced, non-mastered core targets. All
-queues, retry state, actions, and checkpoints remain transient; consolidation
-uses the same typed free-recall/evidence seam as guided review.
+consolidation queue containing only introduced, non-mastered core targets whose
+corresponding Learning layer is established. All queues, retry state, actions,
+and checkpoints remain transient; consolidation uses the same typed
+free-recall/evidence seam as guided review.
 
 Target introduction is intentionally separate from curriculum readiness:
-successful evidence can make an atomic target eligible for review or
-consolidation, but it does not by itself establish the whole-Subregion Country
-Learning layer. Today keeps recommending Country Learning until that layer has
-its durable `countriesLearnedAt` milestone, except when every active
-`location-to-country` target has historically satisfied the existing two-date
-explicit free-recall mastery evidence. That display/planning-only fallback
-avoids redundant Country Learning without writing a synthetic milestone; it
-uses historical qualification rather than current post-failure proficiency.
-Later failures therefore remain visible to current Mastery and Review without
-re-opening the Learning track. Once Countries are established by either route,
-Capital Learning may be layered on top; the durable milestone meaning remains
-unchanged. Capital Learning uses the same distinction: `capitalsLearnedAt`
-establishes the Capital layer, while a display/planning-only fallback may treat
-every active `country-to-capital` target with historical two-date explicit
-free-recall mastery evidence as already known without writing a synthetic
-milestone.
+successful evidence can make an atomic target introduced for curriculum
+planning and contributes to its recall evidence, but it does not by itself
+make the target eligible for Review or consolidation. Those queues require the
+corresponding established Learning layer. Today keeps recommending Country
+Learning until that layer has its durable `countriesLearnedAt` milestone,
+except when every active `location-to-country` target has historically
+satisfied the existing two-date explicit free-recall mastery evidence. That
+display/planning-only fallback avoids redundant Country Learning without
+writing a synthetic milestone; it uses historical qualification rather than
+current post-failure proficiency. Later failures therefore remain visible to
+current Mastery and Review without re-opening the Learning track. Once
+Countries are established by either route, Country targets become Review and
+consolidation eligible and Capital Learning may be layered on top; the durable
+milestone meaning remains unchanged. Capital Learning uses the same
+distinction: `capitalsLearnedAt` establishes the Capital layer, while a
+display/planning-only fallback may treat every active `country-to-capital`
+target with historical two-date explicit free-recall mastery evidence as
+already known without writing a synthetic milestone. Capital targets likewise
+remain outside Review and consolidation until the Capital layer is
+established.
 
 Today exposes all derived due candidates for urgency/counts, then snapshots at
 most 8 candidates into a bounded interleaved review block. Priority
