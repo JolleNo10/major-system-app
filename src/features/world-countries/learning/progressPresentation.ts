@@ -31,9 +31,9 @@ export const WORLD_COUNTRIES_PROGRESS_LABELS: Readonly<Record<WorldCountriesProg
 export const WORLD_COUNTRIES_CORE_FINISH_LINE_EXPLANATION = 'Mastered requires both Location → Country and Country → Capital to be Mastered.'
 
 export const WORLD_COUNTRIES_PROGRESS_COLORS: Readonly<Record<WorldCountriesProgressState, string>> = {
-  unpractised: '#916F5F',
-  weak: '#C29161',
-  developing: '#C6AA55',
+  unpractised: '#90796F',
+  weak: '#BC9C7B',
+  developing: '#B5A678',
   strong: '#769A70',
   mastered: '#3A7F70',
   complete: '#3A7F70',

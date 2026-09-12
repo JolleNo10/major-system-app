@@ -258,7 +258,7 @@ describe('CapitalLearningFlow orchestration', () => {
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-submit"]')!.click())
 
     expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].presentation.countryPatternsById).toBeUndefined()
-    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].presentation.countryColorsById?.get('NO')).toBe('#916F5F')
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].presentation.countryColorsById?.get('NO')).toBe('#90796F')
 
     act(() => [...container.querySelectorAll('button')].find(button => button.textContent === 'Learn again')?.click())
 

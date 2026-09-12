@@ -288,7 +288,7 @@ describe('World Countries Today', () => {
     } | undefined
 
     expect(mapProps?.countryPatternsById?.get(countries[0].id)).toBeUndefined()
-    expect(mapProps?.countryColorsById?.get(countries[0].id)).toBe('#916F5F')
+    expect(mapProps?.countryColorsById?.get(countries[0].id)).toBe('#90796F')
     expect(mapProps?.countryAccessibleDescriptionsById?.get(countries[0].id)).toBe('Recall health: Early recall.')
   })
 
