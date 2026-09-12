@@ -136,7 +136,8 @@ describe('CapitalLearningFlow orchestration', () => {
     expect(container.textContent).toContain('Norway')
     expect(leftRail.textContent).toContain('Meet the capitals')
     expect(leftRail.textContent).not.toContain('Learning progress')
-    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].presentation.countryPatternsById?.get('NO')).toMatchObject({ kind: 'diagonal' })
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].presentation.highlightedCountryId).toBe('NO')
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].presentation.countryPatternsById?.has('NO')).toBe(false)
   })
 
   it('seeds established Country and Capital progress on a fresh flow', () => {
@@ -295,7 +296,8 @@ describe('CapitalLearningFlow orchestration', () => {
 
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-practice"]')!.click())
     expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0]).toMatchObject({ task: { answerKind: 'capital' }, cameraIntent: { kind: 'subregion-learning', subregionId: 'northern-europe' } })
-    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].presentation.countryPatternsById?.get('NO')).toMatchObject({ kind: 'diagonal' })
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].presentation.highlightedCountryId).toBe('NO')
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].presentation.countryPatternsById?.has('NO')).toBe(false)
 
     for (let attempt = 0; attempt < 3; attempt += 1) {
       act(() => container.querySelector<HTMLButtonElement>('[data-testid="submit-correct"]')!.click())
@@ -303,7 +305,9 @@ describe('CapitalLearningFlow orchestration', () => {
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
 
     expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0]).toMatchObject({ task: { answerKind: 'capital' }, cameraIntent: { kind: 'subregion-learning', subregionId: 'northern-europe' } })
-    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].presentation.countryPatternsById?.get('NO')).toMatchObject({ kind: 'diagonal' })
+    const finalRecallPresentation = learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].presentation
+    expect(finalRecallPresentation.highlightedCountryId).toBe('NO')
+    expect(finalRecallPresentation.countryPatternsById?.has('NO')).toBe(false)
   })
 
   it('hides progress at Ready and resumes retained progress on the center task surface', () => {

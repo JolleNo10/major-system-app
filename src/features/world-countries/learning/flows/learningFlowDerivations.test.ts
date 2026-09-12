@@ -198,6 +198,6 @@ describe('learning map presentation derivation', () => {
       highlightedCountryId: null,
       mapClassName: '[&>svg]:max-h-[510px]',
     })
-    expect(result.presentationKey).toBe('practice:SE')
+    expect(result.presentationKey).toBe('practice:solid:SE')
   })
 })

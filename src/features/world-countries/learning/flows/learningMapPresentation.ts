@@ -51,6 +51,13 @@ export function deriveLearningMapPresentation({
   const walkthroughCountryId = stageEntries[walkthroughIndex]?.id ?? null
   const currentRecallId = ordered?.order[ordered.currentIndex] ?? null
   const currentPracticeId = practice?.currentKey ?? null
+  const activeTaskCountryId = phase === 'walkthrough'
+    ? walkthroughCountryId
+    : phase === 'final-recall'
+      ? currentRecallId
+      : PRACTICE_MAP_PHASES.has(phase)
+        ? currentPracticeId
+        : null
   const showOrderNumbers = phase === 'walkthrough' || phase === 'complete'
   const patternKind = phase === 'complete' ? completionPatternKind : activeLearningPatternKind
   const presentation: LearningMapOverride = {
@@ -67,13 +74,13 @@ export function deriveLearningMapPresentation({
     mapClassName: PRACTICE_MAP_PHASES.has(phase) ? '[&>svg]:max-h-[510px]' : undefined,
     ariaLabel: phase === 'final-recall' ? 'Highlighted Country for final recall' : 'World Countries Learning map',
     ...(patternKind
-      ? { countryPatternsById: new Map(fullEntries.map(entry => [entry.id, createWorldCountriesLearningPattern(patternKind)])) }
+      ? { countryPatternsById: new Map(fullEntries.filter(entry => entry.id !== activeTaskCountryId).map(entry => [entry.id, createWorldCountriesLearningPattern(patternKind)])) }
       : {}),
   }
   return {
     mapEntries,
     presentation,
-    presentationKey: `${phase}:${patternKind ?? 'solid'}:${[...mapEntries].map(entry => entry.id).sort().join(',')}${showOrderNumbers ? `:${fullEntries.map(entry => entry.id).join(',')}` : ''}`,
+    presentationKey: `${phase}:${patternKind ?? 'solid'}:${[...mapEntries].map(entry => entry.id).sort().join(',')}${showOrderNumbers ? `:${fullEntries.map(entry => entry.id).join(',')}` : ''}${patternKind ? `:${activeTaskCountryId ?? 'none'}` : ''}`,
   }
 }
 
