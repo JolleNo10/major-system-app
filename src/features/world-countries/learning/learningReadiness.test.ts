@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { deriveWorldCountriesRecallProgress } from './recallProgress'
 import { recallTargetIdFor } from './recallTargets'
-import { createWorldCountriesLearningEdgeTreatmentsByCountry, createWorldCountriesLearningReadinessByCountry, deriveWorldCountriesLearningReadiness, getLearningReadinessBySubregion, getLearningReadinessBySubregionWithDrillEvidence, getLearningReadinessForCountry, isWorldCountriesCapitalLayerEstablished, isWorldCountriesCapitalRecallMastered, isWorldCountriesCountryLayerEstablished, isWorldCountriesCountryRecallMastered, WORLD_COUNTRIES_LEARNING_READINESS_COLORS, WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES } from './learningReadiness'
+import { createWorldCountriesLearningEdgeTreatmentsByCountry, createWorldCountriesLearningPattern, createWorldCountriesLearningReadinessByCountry, deriveWorldCountriesLearningReadiness, getLearningReadinessBySubregion, getLearningReadinessBySubregionWithDrillEvidence, getLearningReadinessForCountry, isWorldCountriesCapitalLayerEstablished, isWorldCountriesCapitalRecallMastered, isWorldCountriesCountryLayerEstablished, isWorldCountriesCountryRecallMastered, WORLD_COUNTRIES_LEARNING_PATTERN_BASE, WORLD_COUNTRIES_LEARNING_PATTERN_LINE, WORLD_COUNTRIES_LEARNING_PATTERN_PITCH, WORLD_COUNTRIES_LEARNING_PATTERN_WIDTH, WORLD_COUNTRIES_LEARNING_READINESS_COLORS, WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES } from './learningReadiness'
 
 describe('World Countries Learning Readiness', () => {
   it('keeps the canonical three-state palette and labels together', () => {
@@ -11,6 +11,13 @@ describe('World Countries Learning Readiness', () => {
       { state: 'COUNTRIES_AND_CAPITALS_LEARNED', label: 'Countries + Capitals learned', color: '#a1a1aa' },
     ])
     expect(WORLD_COUNTRIES_LEARNING_READINESS_COLORS).toEqual({ NOT_LEARNED: '#52525b', COUNTRIES_LEARNED: '#71717a', COUNTRIES_AND_CAPITALS_LEARNED: '#a1a1aa' })
+  })
+
+  it('shares the Not learned base with subtle pattern lines', () => {
+    expect(WORLD_COUNTRIES_LEARNING_PATTERN_BASE).toBe(WORLD_COUNTRIES_LEARNING_READINESS_COLORS.NOT_LEARNED)
+    expect(WORLD_COUNTRIES_LEARNING_PATTERN_LINE).toBe('#918779')
+    expect(createWorldCountriesLearningPattern('diagonal')).toMatchObject({ kind: 'diagonal', baseColor: '#52525b', lineColor: '#918779', lineWidth: WORLD_COUNTRIES_LEARNING_PATTERN_WIDTH, pitch: WORLD_COUNTRIES_LEARNING_PATTERN_PITCH })
+    expect(createWorldCountriesLearningPattern('crosshatch').kind).toBe('crosshatch')
   })
 
   it.each([

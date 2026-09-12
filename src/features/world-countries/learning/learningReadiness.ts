@@ -20,20 +20,6 @@ export type WorldCountriesLearningPatternKind = 'diagonal' | 'crosshatch'
 
 export const WORLD_COUNTRIES_LEARNING_EDGE_STROKE = '#22d3ee'
 export const WORLD_COUNTRIES_LEARNING_EDGE_STROKE_WIDTH = '2px'
-export const WORLD_COUNTRIES_LEARNING_PATTERN_BASE = '#4a4742'
-export const WORLD_COUNTRIES_LEARNING_PATTERN_LINE = '#d6c7ad'
-export const WORLD_COUNTRIES_LEARNING_PATTERN_WIDTH = 2
-export const WORLD_COUNTRIES_LEARNING_PATTERN_PITCH = 16
-
-export function createWorldCountriesLearningPattern(kind: WorldCountriesLearningPatternKind): SvgMapCountryPattern {
-  return {
-    kind,
-    baseColor: WORLD_COUNTRIES_LEARNING_PATTERN_BASE,
-    lineColor: WORLD_COUNTRIES_LEARNING_PATTERN_LINE,
-    lineWidth: WORLD_COUNTRIES_LEARNING_PATTERN_WIDTH,
-    pitch: WORLD_COUNTRIES_LEARNING_PATTERN_PITCH,
-  }
-}
 
 export function getWorldCountriesLearningStateList(
   states: WorldCountriesLearningStates,
@@ -45,6 +31,21 @@ export const WORLD_COUNTRIES_LEARNING_READINESS_COLORS: Readonly<Record<WorldCou
   NOT_LEARNED: '#52525b',
   COUNTRIES_LEARNED: '#71717a',
   COUNTRIES_AND_CAPITALS_LEARNED: '#a1a1aa',
+}
+
+export const WORLD_COUNTRIES_LEARNING_PATTERN_BASE = WORLD_COUNTRIES_LEARNING_READINESS_COLORS.NOT_LEARNED
+export const WORLD_COUNTRIES_LEARNING_PATTERN_LINE = '#918779'
+export const WORLD_COUNTRIES_LEARNING_PATTERN_WIDTH = 2
+export const WORLD_COUNTRIES_LEARNING_PATTERN_PITCH = 16
+
+export function createWorldCountriesLearningPattern(kind: WorldCountriesLearningPatternKind): SvgMapCountryPattern {
+  return {
+    kind,
+    baseColor: WORLD_COUNTRIES_LEARNING_PATTERN_BASE,
+    lineColor: WORLD_COUNTRIES_LEARNING_PATTERN_LINE,
+    lineWidth: WORLD_COUNTRIES_LEARNING_PATTERN_WIDTH,
+    pitch: WORLD_COUNTRIES_LEARNING_PATTERN_PITCH,
+  }
 }
 
 const WORLD_COUNTRIES_LEARNING_READINESS_LABELS: Readonly<Record<WorldCountriesLearningReadiness, string>> = {

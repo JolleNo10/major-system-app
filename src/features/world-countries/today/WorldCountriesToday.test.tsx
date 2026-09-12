@@ -242,6 +242,8 @@ describe('World Countries Today', () => {
     expect(learningStates.map(entry => entry.textContent)).toEqual(['Not learned', 'Countries learned', 'Countries + Capitals learned'])
     expect(learningStates[1]?.querySelector<HTMLElement>('[aria-hidden="true"]')?.style.backgroundImage).toContain('135deg')
     expect(learningStates[2]?.querySelector<HTMLElement>('[aria-hidden="true"]')?.style.backgroundImage).toContain('45deg')
+    expect(learningStates[1]?.querySelector<HTMLElement>('[aria-hidden="true"]')?.style.backgroundImage).toContain('#918779')
+    expect(learningStates[1]?.querySelector<HTMLElement>('[aria-hidden="true"]')?.style.backgroundImage).not.toContain('#d6c7ad')
     expect(legend?.textContent).toContain('Learning')
     expect(legend?.textContent).toContain('Recall health')
     expect(legend?.textContent).toContain('Not learned')

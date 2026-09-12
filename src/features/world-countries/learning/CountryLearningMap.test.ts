@@ -5,6 +5,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Country } from '@/features/world-countries/data/countries'
 import { getSubregionLearningFrame } from '@/features/world-countries/maps/subregionLearningFrames'
+import { WORLD_COUNTRIES_LEARNING_PATTERN_BASE, WORLD_COUNTRIES_LEARNING_PATTERN_LINE } from './learningReadiness'
 import { CountryLearningMap, getCountryLearningMapDefaultZoomIds } from './CountryLearningMap'
 
 const mapProps = vi.hoisted(() => vi.fn())
@@ -124,7 +125,7 @@ describe('CountryLearningMap', () => {
   it('passes neutral Learning patterns through the declarative map boundary', () => {
     const mount = document.createElement('div')
     document.body.append(mount)
-    const pattern = { kind: 'diagonal' as const, baseColor: '#4a4742', lineColor: '#d6c7ad' }
+    const pattern = { kind: 'diagonal' as const, baseColor: WORLD_COUNTRIES_LEARNING_PATTERN_BASE, lineColor: WORLD_COUNTRIES_LEARNING_PATTERN_LINE }
 
     act(() => {
       root = createRoot(mount)

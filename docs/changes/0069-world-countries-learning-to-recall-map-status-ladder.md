@@ -60,9 +60,8 @@ Use one neutral visual family for both Learning states. The distinction comes fr
 Starting palette:
 
 ```text
-Not learned           #52525b
-Learning base         #4a4742
-Learning pattern      #d6c7ad
+Not learned / Learning base   #52525b
+Learning pattern line         #918779
 ```
 
 Pattern treatment:

@@ -6,7 +6,7 @@ import {
   WORLD_COUNTRIES_LEARNING_PATTERN_BASE,
   WORLD_COUNTRIES_LEARNING_PATTERN_LINE,
   WORLD_COUNTRIES_LEARNING_PATTERN_PITCH,
-  WORLD_COUNTRIES_LEARNING_PATTERN_WIDTH,
+  WORLD_COUNTRIES_LEARNING_READINESS_COLORS,
   WORLD_COUNTRIES_LEARNING_READINESS_STATES,
 } from '@/features/world-countries/learning/learningReadiness'
 
@@ -45,18 +45,16 @@ export function WorldCountriesMapLegend() {
 }
 
 function getLearningSwatchStyle(state: typeof WORLD_COUNTRIES_LEARNING_READINESS_STATES[number]): CSSProperties {
-  if (state === 'NOT_LEARNED') return { backgroundColor: '#52525b', borderColor: '#71717a' }
+  if (state === 'NOT_LEARNED') return { backgroundColor: WORLD_COUNTRIES_LEARNING_READINESS_COLORS.NOT_LEARNED }
   const gradients = state === 'COUNTRIES_AND_CAPITALS_LEARNED'
     ? [
-        'repeating-linear-gradient(135deg, transparent 0 6px, #d6c7ad 6px 8px, transparent 8px 16px)',
-        'repeating-linear-gradient(45deg, transparent 0 6px, #d6c7ad 6px 8px, transparent 8px 16px)',
+        `repeating-linear-gradient(135deg, transparent 0 6px, ${WORLD_COUNTRIES_LEARNING_PATTERN_LINE} 6px 8px, transparent 8px 16px)`,
+        `repeating-linear-gradient(45deg, transparent 0 6px, ${WORLD_COUNTRIES_LEARNING_PATTERN_LINE} 6px 8px, transparent 8px 16px)`,
       ]
-    : ['repeating-linear-gradient(135deg, transparent 0 6px, #d6c7ad 6px 8px, transparent 8px 16px)']
+    : [`repeating-linear-gradient(135deg, transparent 0 6px, ${WORLD_COUNTRIES_LEARNING_PATTERN_LINE} 6px 8px, transparent 8px 16px)`]
   return {
     backgroundColor: WORLD_COUNTRIES_LEARNING_PATTERN_BASE,
     backgroundImage: gradients.join(', '),
     backgroundSize: `${WORLD_COUNTRIES_LEARNING_PATTERN_PITCH}px ${WORLD_COUNTRIES_LEARNING_PATTERN_PITCH}px`,
-    borderColor: WORLD_COUNTRIES_LEARNING_PATTERN_LINE,
-    borderWidth: `${Math.max(1, WORLD_COUNTRIES_LEARNING_PATTERN_WIDTH / 2)}px`,
   }
 }

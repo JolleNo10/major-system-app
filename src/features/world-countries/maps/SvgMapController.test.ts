@@ -382,8 +382,8 @@ describe('SvgMapController persistent state', () => {
   it('renders diagonal and crosshatch patterns declaratively and restores them after hover', async () => {
     const { mount, controller } = makeController()
     await controller.load({ markup: MULTIPART_MAP })
-    const diagonal = { kind: 'diagonal' as const, baseColor: '#4a4742', lineColor: '#d6c7ad', lineWidth: 2, pitch: 16 }
-    const crosshatch = { kind: 'crosshatch' as const, baseColor: '#4a4742', lineColor: '#d6c7ad', lineWidth: 2, pitch: 16 }
+    const diagonal = { kind: 'diagonal' as const, baseColor: '#52525b', lineColor: '#918779', lineWidth: 2, pitch: 16 }
+    const crosshatch = { kind: 'crosshatch' as const, baseColor: '#52525b', lineColor: '#918779', lineWidth: 2, pitch: 16 }
 
     controller.updatePresentation({
       presentation: 'standard', settings: {}, groupOutlines: [], hiddenIds: [], taskAssistance: null,

@@ -195,7 +195,7 @@ describe('GeographyOverviewMap', () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g></svg>' })))
     const norway = countries.find(country => country.id === 'NO')!
     const mount = document.createElement('div'); document.body.append(mount)
-    const diagonal = { kind: 'diagonal' as const, baseColor: '#4a4742', lineColor: '#d6c7ad', lineWidth: 2, pitch: 16 }
+    const diagonal = { kind: 'diagonal' as const, baseColor: '#52525b', lineColor: '#918779', lineWidth: 2, pitch: 16 }
 
     await act(async () => {
       root = createRoot(mount)
