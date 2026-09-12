@@ -2,11 +2,11 @@ import { useId, useMemo, useState } from 'react'
 import { countriesToSvgIds } from '@/features/world-countries/maps/countryMapIds'
 import { SvgMapView, type SvgMapCountry } from '@/features/world-countries/maps/SvgMapView'
 import type { Continent, Country, CountryId } from '@/features/world-countries/data/countries'
-import { createCountryColorsById, createCountryEdgeOutlines, createCountryOrderLabels, getCountryForSvgId, resolveCountriesToSvgIds, type SvgMapCountryEdgeTreatment } from '@/features/world-countries/maps/geographyMapAdapter'
+import { createCountryColorsById, createCountryEdgeOutlines, createCountryOrderLabels, createCountryPatternsById, getCountryForSvgId, resolveCountriesToSvgIds, type SvgMapCountryEdgeTreatment } from '@/features/world-countries/maps/geographyMapAdapter'
 import { getMemoMapDefinition } from '@/features/world-countries/maps/mapDefinitions'
 import { getMapLearningAnchors } from '@/features/world-countries/maps/learningAnchors'
 import { getMapSyntheticDots } from '@/features/world-countries/maps/syntheticDots'
-import type { SvgMapCameraIntent, SvgMapLearningAnchor, SvgMapSyntheticDot } from '@/features/world-countries/maps/SvgMapController'
+import type { SvgMapCameraIntent, SvgMapCountryPattern, SvgMapLearningAnchor, SvgMapSyntheticDot } from '@/features/world-countries/maps/SvgMapController'
 import {
   DEFAULT_WORLD_COUNTRIES_MAP_CAMERA_INTENT,
   getWorldCountriesMapCameraIntentSignature,
@@ -29,6 +29,8 @@ export interface CountryLearningMapProps {
   mapClassName?: string
   /** Optional caller-owned result/overview progress colors. */
   countryColorsById?: ReadonlyMap<string, string>
+  /** Optional caller-owned neutral Learning patterns. */
+  countryPatternsById?: ReadonlyMap<CountryId, SvgMapCountryPattern>
   /** Optional persistent Country Learning edge/halo treatments. */
   countryEdgeTreatmentsById?: ReadonlyMap<CountryId, SvgMapCountryEdgeTreatment>
   countryEdgeStroke?: string
@@ -73,6 +75,7 @@ export function CountryLearningMap({
   showHighlightedNames = true,
   mapClassName,
   countryColorsById,
+  countryPatternsById,
   countryEdgeTreatmentsById,
   countryEdgeStroke = '#22d3ee',
   countryEdgeStrokeWidth = '2px',
@@ -253,6 +256,12 @@ export function CountryLearningMap({
       : [],
     [countryColorsById, discoveredIds, scopeCountries],
   )
+  const countryPatterns = useMemo(
+    () => countryPatternsById
+      ? createCountryPatternsById(scopeCountries, countryPatternsById, discoveredIds)
+      : [],
+    [countryPatternsById, discoveredIds, scopeCountries],
+  )
   const countryEdgeOutlines = useMemo(
     () => countryEdgeTreatmentsById
       ? createCountryEdgeOutlines(
@@ -288,6 +297,7 @@ export function CountryLearningMap({
         selectableIds={onCountryClick ? interactionSvgIds : []}
         countryLabels={countryLabels}
         countryColors={countryColors}
+        countryPatterns={countryPatterns}
         groupOutlines={countryEdgeOutlines}
         taskAssistance={taskAssistance}
         camera={camera}

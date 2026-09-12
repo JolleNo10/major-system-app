@@ -228,7 +228,7 @@ describe('World Countries Today', () => {
     const states = [...legend?.querySelectorAll<HTMLElement>('[data-progress-state]') ?? []]
 
     expect(mount.querySelector('[data-testid="world-mastery-summary"]')).toBeNull()
-    expect(legend?.getAttribute('aria-label')).toBe('Map legend: recall fill and learning edge')
+    expect(legend?.getAttribute('aria-label')).toBe('Map legend: learning and recall health')
     expect(states.map(entry => entry.dataset.progressState)).toEqual([...WORLD_COUNTRIES_COUNTRY_CORE_STATES])
     expect(states.map(entry => entry.textContent)).toEqual(WORLD_COUNTRIES_COUNTRY_CORE_STATES.map(state => WORLD_COUNTRIES_PROGRESS_LABELS[state]))
     expect(states.map(entry => entry.querySelector<HTMLElement>('[aria-hidden="true"]')?.style.backgroundColor)).toEqual(
@@ -238,8 +238,12 @@ describe('World Countries Today', () => {
         return expectedSwatch.style.backgroundColor
       }),
     )
-    expect(legend?.textContent).toContain('Recall / fill')
-    expect(legend?.textContent).toContain('Learning / edge')
+    const learningStates = [...legend?.querySelectorAll<HTMLElement>('[data-learning-state]') ?? []]
+    expect(learningStates.map(entry => entry.textContent)).toEqual(['Not learned', 'Countries learned', 'Countries + Capitals learned'])
+    expect(learningStates[1]?.querySelector<HTMLElement>('[aria-hidden="true"]')?.style.backgroundImage).toContain('135deg')
+    expect(learningStates[2]?.querySelector<HTMLElement>('[aria-hidden="true"]')?.style.backgroundImage).toContain('45deg')
+    expect(legend?.textContent).toContain('Learning')
+    expect(legend?.textContent).toContain('Recall health')
     expect(legend?.textContent).toContain('Not learned')
     expect(legend?.textContent).toContain('Countries learned')
     expect(legend?.textContent).toContain('Countries + Capitals learned')
@@ -247,17 +251,47 @@ describe('World Countries Today', () => {
     expect(legend?.textContent).not.toContain('Complete')
   })
 
+  it('uses the neutral diagonal pattern while Countries learning is established', async () => {
+    markSubregionCountriesLearned(countries[0].subregionId, Date.now(), activeCountries)
+    await renderToday()
+    const mapProps = [...geographyOverviewMapMock.mock.calls].pop()?.[0] as {
+      countryPatternsById?: ReadonlyMap<string, { kind: string }>
+      countryColorsById?: ReadonlyMap<string, string>
+    } | undefined
+
+    expect(mapProps?.countryPatternsById?.get(countries[0].id)?.kind).toBe('diagonal')
+    expect(mapProps?.countryColorsById?.get(countries[0].id)).toBeUndefined()
+  })
+
+  it('uses solid Early recall after both Learning layers are established', async () => {
+    const at = Date.now()
+    markSubregionCountriesLearned(countries[0].subregionId, at, activeCountries)
+    markSubregionCapitalsLearned(countries[0].subregionId, at + 1, activeCountries)
+    await renderToday()
+    const mapProps = [...geographyOverviewMapMock.mock.calls].pop()?.[0] as {
+      countryPatternsById?: ReadonlyMap<string, unknown>
+      countryColorsById?: ReadonlyMap<string, string>
+      countryAccessibleDescriptionsById?: ReadonlyMap<string, string>
+    } | undefined
+
+    expect(mapProps?.countryPatternsById?.get(countries[0].id)).toBeUndefined()
+    expect(mapProps?.countryColorsById?.get(countries[0].id)).toBe('#b45309')
+    expect(mapProps?.countryAccessibleDescriptionsById?.get(countries[0].id)).toBe('Recall health: Early recall.')
+  })
+
   it('exposes both recall and Learning dimensions in Country map descriptions', async () => {
     await renderToday()
     const mapProps = [...geographyOverviewMapMock.mock.calls].pop()?.[0] as {
       countryAccessibleDescriptionsById?: ReadonlyMap<string, string>
+      countryPatternsById?: ReadonlyMap<string, unknown>
       countryEdgeTreatmentsById?: ReadonlyMap<string, string>
     } | undefined
 
     expect(mapProps?.countryAccessibleDescriptionsById?.get(countries[0].id)).toBe(
-      'Recall: Unpractised. Learning: Not learned.',
+      'Learning: Not learned.',
     )
-    expect(mapProps?.countryEdgeTreatmentsById?.get(countries[0].id)).toBe('none')
+    expect(mapProps?.countryPatternsById?.get(countries[0].id)).toBeUndefined()
+    expect(mapProps?.countryEdgeTreatmentsById).toBeUndefined()
   })
 
   it('does not open Progress while recall evidence is unavailable', async () => {

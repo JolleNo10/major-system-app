@@ -5,6 +5,7 @@ import type { RecallProgress } from './recallProgress'
 import type { SubregionLearningState } from './subregionLearningState'
 import { isSubregionCountriesLearned, isSubregionCapitalsLearned } from './subregionLearningState'
 import type { ProgressMapLegendEntry } from './ProgressMapLegend'
+import type { SvgMapCountryPattern } from '@/features/world-countries/maps/SvgMapController'
 
 export const WORLD_COUNTRIES_LEARNING_READINESS_STATES = [
   'NOT_LEARNED',
@@ -15,9 +16,24 @@ export const WORLD_COUNTRIES_LEARNING_READINESS_STATES = [
 export type WorldCountriesLearningReadiness = typeof WORLD_COUNTRIES_LEARNING_READINESS_STATES[number]
 export type WorldCountriesLearningStates = readonly SubregionLearningState[] | ReadonlyMap<SubregionId, SubregionLearningState>
 export type WorldCountriesLearningEdgeTreatment = 'none' | 'outline' | 'halo'
+export type WorldCountriesLearningPatternKind = 'diagonal' | 'crosshatch'
 
 export const WORLD_COUNTRIES_LEARNING_EDGE_STROKE = '#22d3ee'
 export const WORLD_COUNTRIES_LEARNING_EDGE_STROKE_WIDTH = '2px'
+export const WORLD_COUNTRIES_LEARNING_PATTERN_BASE = '#4a4742'
+export const WORLD_COUNTRIES_LEARNING_PATTERN_LINE = '#d6c7ad'
+export const WORLD_COUNTRIES_LEARNING_PATTERN_WIDTH = 2
+export const WORLD_COUNTRIES_LEARNING_PATTERN_PITCH = 16
+
+export function createWorldCountriesLearningPattern(kind: WorldCountriesLearningPatternKind): SvgMapCountryPattern {
+  return {
+    kind,
+    baseColor: WORLD_COUNTRIES_LEARNING_PATTERN_BASE,
+    lineColor: WORLD_COUNTRIES_LEARNING_PATTERN_LINE,
+    lineWidth: WORLD_COUNTRIES_LEARNING_PATTERN_WIDTH,
+    pitch: WORLD_COUNTRIES_LEARNING_PATTERN_PITCH,
+  }
+}
 
 export function getWorldCountriesLearningStateList(
   states: WorldCountriesLearningStates,

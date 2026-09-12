@@ -13,11 +13,9 @@ import { useWorldCountriesGeographyRevision } from '@/features/world-countries/g
 import { deriveWorldCountriesCountryProgress, deriveWorldCountriesRecallProgress, type RecallProgress } from '@/features/world-countries/learning/recallProgress'
 import {
   createWorldCountriesEstablishedLearningReadinessByCountry,
-  createWorldCountriesLearningEdgeTreatmentsByCountry,
+  createWorldCountriesLearningPattern,
   getWorldCountriesLearningReadinessLabel,
   isWorldCountriesCountryLayerEstablished,
-  WORLD_COUNTRIES_LEARNING_EDGE_STROKE,
-  WORLD_COUNTRIES_LEARNING_EDGE_STROKE_WIDTH,
 } from '@/features/world-countries/learning/learningReadiness'
 import { flattenWorldCountriesRecallHistory, loadWorldCountriesRecallHistory, type WorldCountriesRecallHistory } from '@/features/world-countries/learning/recallHistory'
 import { WORLD_COUNTRIES_CORE_RECALL_SKILLS } from '@/features/world-countries/learning/recallTargets'
@@ -210,14 +208,6 @@ export function WorldCountriesToday({
     ),
     [learningStates, recallProgress, scopedCountries],
   )
-  const countryEdgeTreatmentsById = useMemo(
-    () => createWorldCountriesLearningEdgeTreatmentsByCountry(
-      scopedCountries,
-      learningStates,
-      recallProgress ?? new Map(),
-    ),
-    [learningStates, recallProgress, scopedCountries],
-  )
   const progress = useMemo(
     () => recallProgress ? deriveWorldCountriesScopeProgressForCountries(
       continent ? `continent:${continent}` : 'world',
@@ -228,11 +218,18 @@ export function WorldCountriesToday({
   )
   const countryColorsById = useMemo(() => {
     const currentProgress = recallProgress ?? new Map()
-    return new Map(scopedCountries.map(country => {
+    return new Map(scopedCountries.flatMap(country => {
+      const readiness = learningReadinessByCountry.get(country.id) ?? 'NOT_LEARNED'
+      if (readiness !== 'COUNTRIES_AND_CAPITALS_LEARNED') return []
       const state = getCountryProgressState(deriveWorldCountriesCountryProgress(country.id, currentProgress))
-      return [country.id, getCountryProgressColor(state)] as const
+      return [[country.id, getCountryProgressColor(state)] as const]
     }))
-  }, [recallProgress, scopedCountries])
+  }, [learningReadinessByCountry, recallProgress, scopedCountries])
+  const countryPatternsById = useMemo(() => new Map(scopedCountries.flatMap(country => (
+    learningReadinessByCountry.get(country.id) === 'COUNTRIES_LEARNED'
+      ? [[country.id, createWorldCountriesLearningPattern('diagonal')] as const]
+      : []
+  ))), [learningReadinessByCountry, scopedCountries])
 
   const refreshAfterActivity = async () => {
     setRefreshing(true)
@@ -490,12 +487,15 @@ export function WorldCountriesToday({
     ? getJourneyActionLabel(activeLearningRecommendation)
     : null
   const mapDescriptions = new Map(scopedCountries.map(country => {
+    const learningReadiness = learningReadinessByCountry.get(country.id) ?? 'NOT_LEARNED'
+    if (learningReadiness !== 'COUNTRIES_AND_CAPITALS_LEARNED') {
+      return [country.id, `Learning: ${getWorldCountriesLearningReadinessLabel(learningReadiness)}.`] as const
+    }
     const countryProgress = deriveWorldCountriesCountryProgress(country.id, recallProgress ?? new Map())
     const recallState = getCountryProgressState(countryProgress)
-    const learningReadiness = learningReadinessByCountry.get(country.id) ?? 'NOT_LEARNED'
     return [
       country.id,
-      `Recall: ${WORLD_COUNTRIES_PROGRESS_LABELS[recallState]}. Learning: ${getWorldCountriesLearningReadinessLabel(learningReadiness)}.`,
+      `Recall health: ${WORLD_COUNTRIES_PROGRESS_LABELS[recallState]}.`,
     ] as const
   }))
 
@@ -543,9 +543,7 @@ export function WorldCountriesToday({
               continent={continent ?? undefined}
               countryPopulation={scopedCountries}
               countryColorsById={countryColorsById}
-              countryEdgeTreatmentsById={countryEdgeTreatmentsById}
-              countryEdgeStroke={WORLD_COUNTRIES_LEARNING_EDGE_STROKE}
-              countryEdgeStrokeWidth={WORLD_COUNTRIES_LEARNING_EDGE_STROKE_WIDTH}
+              countryPatternsById={countryPatternsById}
               selectedSubregionIds={activeSubregionId ? [activeSubregionId] : undefined}
               selectionPresentation="outline-only"
               countryAccessibleDescriptionsById={mapDescriptions}

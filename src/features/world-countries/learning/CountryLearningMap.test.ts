@@ -121,6 +121,24 @@ describe('CountryLearningMap', () => {
     })
   })
 
+  it('passes neutral Learning patterns through the declarative map boundary', () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+    const pattern = { kind: 'diagonal' as const, baseColor: '#4a4742', lineColor: '#d6c7ad' }
+
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement(CountryLearningMap, {
+        continent: 'Europe',
+        scopeCountries: [norway],
+        countryPatternsById: new Map([['NO', pattern]]),
+        ariaLabel: 'Learning map',
+      }))
+    })
+
+    expect(mapProps.mock.calls[mapProps.mock.calls.length - 1]?.[0].countryPatterns).toEqual([['Norway', pattern]])
+  })
+
   it.each([
     ['#0891b2'],
     ['#8b5cf6'],

@@ -1,5 +1,5 @@
 import { countries, type Continent, type Country, type CountryId } from '@/features/world-countries/data/countries'
-import type { SvgMapGroupOutline, SvgMapHoverGroup } from '@/features/world-countries/maps/SvgMapController'
+import type { SvgMapCountryPattern, SvgMapGroupOutline, SvgMapHoverGroup } from '@/features/world-countries/maps/SvgMapController'
 import { countryToSvgIds } from '@/features/world-countries/maps/countryMapIds'
 import { getSubregionDefinition, type SubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
 import { getCountriesForContinent } from '@/features/world-countries/geography/queries'
@@ -153,6 +153,20 @@ export function createCountryColorsById(
     return color === undefined
       ? []
       : resolveCountryToSvgIds(entry, discoveredSvgIds).map(id => [id, color] as const)
+  })
+}
+
+/** Translate per-Country fill patterns to every discovered multipart SVG ID. */
+export function createCountryPatternsById(
+  entries: readonly Country[],
+  patternsByCountryId: ReadonlyMap<CountryId, SvgMapCountryPattern>,
+  discoveredSvgIds: ReadonlySet<string> | readonly string[],
+): Array<readonly [string, SvgMapCountryPattern]> {
+  return entries.flatMap(entry => {
+    const pattern = patternsByCountryId.get(entry.id)
+    return pattern === undefined
+      ? []
+      : resolveCountryToSvgIds(entry, discoveredSvgIds).map(id => [id, pattern] as const)
   })
 }
 

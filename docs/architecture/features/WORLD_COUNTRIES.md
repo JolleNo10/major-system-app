@@ -386,14 +386,15 @@ Journey/Mastery state without a curriculum CTA; it does not silently fall back
 to another planner region. The selection is not persisted and is cleared or
 ignored when it leaves the active scope/population. World Home associates the
 active Subregion with its containing Continent row while preserving the same
-map progress fills. Normal Home/Continent maps use two simultaneous signals:
-recall proficiency is the Country fill and established Learning is the Country
-edge. The Countries learned state renders a persistent cyan outline; the
-Countries + Capitals learned state adds a restrained halo through the generic
-SVG group-outline layer.
-These edges are derived from durable Subregion milestones or the existing
-historical established-layer fallback; they do not add per-Country flags or a
-new store. Durable guided Learning completion can expose a
+map progress. Normal Home/Continent maps use one primary status at a time:
+Not learned is neutral, Countries learned is a warm-neutral diagonal pattern,
+and an established Countries + Capitals layer is presented as solid Recall
+health. Early recall, Weak, Developing, Strong, and Mastered use the shared
+warm-to-green solid palette. The Learning patterns are derived from durable
+Subregion milestones or the existing historical established-layer fallback;
+they do not add per-Country flags or a new store. The Capital-completion
+surface may show the crosshatched Learning-complete payoff before the normal
+long-term map moves to solid Recall health. Durable guided Learning completion can expose a
 same-focus Country-to-Capital handoff before a later planner-derived
 next-region handoff; it keeps an explicit return action and never auto-starts
 that recommendation. The attached Today task dock owns the active Journey
@@ -441,14 +442,15 @@ readiness is not the Today curriculum gate: the guided planner requires the
 durable Country milestone or the separate complete-recall fallback described
 above before recommending Capital Learning.
 
-Today map edges use the established-layer form of this truth: a durable layer
-is authoritative, while the existing all-active-Country historical
+Today map status uses the established-layer form of this truth: a durable
+layer is authoritative, while the existing all-active-Country historical
 `hasEverMastered` fallback may establish the display/planning signal without
 writing a milestone. Later failures can weaken current recall and increase
-Review urgency, but do not remove an established edge. The legend and Country
-accessible descriptions expose both channels in text: Recall / fill uses
-Unpractised, Weak, Developing, Strong, and Mastered; Learning / edge uses Not
-learned, Countries learned, and Countries + Capitals learned.
+Review urgency, but do not reopen a Learning pattern. The legend and Country
+accessible descriptions expose the current status in text: Learning lists Not
+learned, Countries learned, and Countries + Capitals learned with real pattern
+swatches; Recall health lists Early recall, Weak, Developing, Strong, and
+Mastered with solid swatches.
 
 The standalone Learn Capitals flow remains runnable from its intentional
 non-Today entry points. The Today guided recommendation uses the Country
@@ -652,13 +654,20 @@ target-local and Country-fit cameras respectively.
   dots use the same task interaction/presentation pipeline; synthetic dots are
   task-scoped map presentation and never alter canonical geography or ordinary
   map rendering.
-- The generic `SvgMapGroupOutline` presentation seam also supports an optional
+- The generic `SvgMapGroupOutline` presentation seam supports optional
   outline/halo effect and underlay/overlay placement. Geography adapters
   translate caller-owned per-Country edge treatments into grouped,
   multipart-safe underlays. Persistent edge layers render below source Country
   paths while existing transient hover, selection, task, and answer styling
   remains in the overlay layer; hidden or muted Countries are omitted and the
   declarative render reconstructs the edge and recall fill after interaction.
+- The generic `SvgMapCountryPattern` presentation seam renders caller-owned
+  diagonal or crosshatch fills from SVG `<pattern>` definitions. Geography
+  adapters translate per-Country patterns to every authored multipart path;
+  muted, hidden, task, and focus treatments retain precedence and declarative
+  rerenders restore the semantic pattern or solid fill. World Countries uses
+  the seam for neutral Learning presentation while retaining group outlines
+  for generic focus/selection and other workflows.
 - For the same map source, Continent, effective scope membership, and
   intentional zoom behavior, Learning updates map highlights, names, hover,
   and sequence annotations declaratively. Workflow phase alone must not

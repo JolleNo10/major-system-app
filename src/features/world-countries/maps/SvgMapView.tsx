@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   SvgMapController,
   type SvgMapCountryColors,
+  type SvgMapCountryPatterns,
   type SvgMapCountry,
   type SvgMapGroupOutline,
   type SvgMapHoverGroup,
@@ -19,6 +20,7 @@ const EMPTY_COUNTRY_LABELS: Readonly<Record<string, string>> = {}
 const EMPTY_IDS: readonly string[] = []
 const EMPTY_GROUP_OUTLINES: readonly SvgMapGroupOutline[] = []
 const EMPTY_COUNTRY_COLORS: readonly (readonly [string, string | null])[] = []
+const EMPTY_COUNTRY_PATTERNS: readonly (readonly [string, null])[] = []
 const EMPTY_SETTINGS: Partial<SvgMapSettings> = {}
 const EMBEDDED_MAPCHART_CREDIT_ID = 'credit-text-svg'
 const DEFAULT_CAMERA: SvgMapCameraIntent = { kind: 'default' }
@@ -34,6 +36,7 @@ export interface SvgMapViewProps {
   groupOutlines?: readonly SvgMapGroupOutline[]
   hoveredId?: string | null
   countryColors?: SvgMapCountryColors
+  countryPatterns?: SvgMapCountryPatterns
   namedIds?: readonly string[]
   countryLabels?: Readonly<Record<string, string>>
   camera?: SvgMapCameraIntent
@@ -60,6 +63,7 @@ export function SvgMapView({
   groupOutlines = EMPTY_GROUP_OUTLINES,
   hoveredId = null,
   countryColors = EMPTY_COUNTRY_COLORS,
+  countryPatterns = EMPTY_COUNTRY_PATTERNS,
   namedIds = EMPTY_IDS,
   countryLabels = EMPTY_COUNTRY_LABELS,
   camera = DEFAULT_CAMERA,
@@ -84,9 +88,13 @@ export function SvgMapView({
   const [error, setError] = useState(false)
   const presentation = useMapSurfacePresentation()
   const countryColorsSignature = getCountryColorsSignature(countryColors)
+  const countryPatternsSignature = getCountryPatternsSignature(countryPatterns)
   // Country color presentation is keyed by semantic entries, not the caller's container identity.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const stableCountryColors = useMemo(() => countryColors, [countryColorsSignature])
+  // Pattern presentation is keyed by semantic entries, not the caller's container identity.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const stableCountryPatterns = useMemo(() => countryPatterns, [countryPatternsSignature])
 
   clickRef.current = onCountryClick
   hoverRef.current = onCountryHover
@@ -156,11 +164,12 @@ export function SvgMapView({
       highlightedIds,
       mutedIds,
       countryColors: stableCountryColors,
+      countryPatterns: stableCountryPatterns,
       countryLabels,
       namedIds,
       hoveredId,
     })
-  }, [countries, countryLabels, groupOutlines, hiddenIds, highlightedIds, hoverGroups, hoveredId, hoverableIds, mutedIds, namedIds, presentation, selectableIds, settings, stableCountryColors, taskAssistance])
+  }, [countries, countryLabels, countryPatternsSignature, groupOutlines, hiddenIds, highlightedIds, hoverGroups, hoveredId, hoverableIds, mutedIds, namedIds, presentation, selectableIds, settings, stableCountryColors, stableCountryPatterns, taskAssistance])
 
   useEffect(() => {
     const controller = controllerRef.current
@@ -206,6 +215,16 @@ function getCountryColorsSignature(colors: SvgMapCountryColors): string {
     : Object.entries(colors)
   return entries
     .map(([id, color]) => `${id}\u0000${color ?? 'null'}`)
+    .sort()
+    .join('\u0001')
+}
+
+function getCountryPatternsSignature(patterns: SvgMapCountryPatterns): string {
+  const entries = Symbol.iterator in Object(patterns)
+    ? [...patterns as Iterable<readonly [string, { kind: string; baseColor: string; lineColor: string; lineWidth?: number; pitch?: number } | null]>]
+    : Object.entries(patterns)
+  return entries
+    .map(([id, pattern]) => `${id}\u0000${pattern ? `${pattern.kind}|${pattern.baseColor}|${pattern.lineColor}|${pattern.lineWidth ?? 2}|${pattern.pitch ?? 16}` : 'null'}`)
     .sort()
     .join('\u0001')
 }

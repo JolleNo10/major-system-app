@@ -7,7 +7,7 @@ export type WorldCountriesProgressState = WorldCountriesCountryCoreState | World
 export type WorldCountriesProgressLegendKind = 'core' | 'skill'
 
 export const WORLD_COUNTRIES_PROGRESS_LABELS: Readonly<Record<WorldCountriesProgressState, string>> = {
-  unpractised: 'Unpractised',
+  unpractised: 'Early recall',
   weak: 'Weak',
   developing: 'Developing',
   strong: 'Strong',
@@ -18,16 +18,16 @@ export const WORLD_COUNTRIES_PROGRESS_LABELS: Readonly<Record<WorldCountriesProg
 export const WORLD_COUNTRIES_CORE_FINISH_LINE_EXPLANATION = 'Mastered requires both Location → Country and Country → Capital to be Mastered.'
 
 export const WORLD_COUNTRIES_PROGRESS_COLORS: Readonly<Record<WorldCountriesProgressState, string>> = {
-  unpractised: '#52525b',
-  weak: '#8a665b',
-  developing: '#a79566',
-  strong: '#45a66b',
+  unpractised: '#b45309',
+  weak: '#d97706',
+  developing: '#d9ad32',
+  strong: '#69a95d',
   mastered: '#16834f',
   complete: '#16834f',
 }
 
-const CORE_PROGRESS_LEGEND = 'Unpractised · Weak · Developing · Strong · Mastered'
-const SKILL_PROGRESS_LEGEND = 'Unpractised · Weak · Developing · Strong · Mastered'
+const CORE_PROGRESS_LEGEND = 'Early recall · Weak · Developing · Strong · Mastered'
+const SKILL_PROGRESS_LEGEND = 'Early recall · Weak · Developing · Strong · Mastered'
 
 /** Return the semantic state a map should render for a Country. */
 export function getCountryProgressState(

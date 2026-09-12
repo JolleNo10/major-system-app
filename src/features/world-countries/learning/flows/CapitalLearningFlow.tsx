@@ -167,6 +167,7 @@ export function CapitalLearningFlow({
     practice: flow.practice,
     hoveredCountryId,
     orderPresentation: orderMapPresentation,
+    completionPatternKind: 'crosshatch',
   })
   const mapMeta = <LearningMapMetadata scopeLabel={learningScopeLabel} fullEntries={allPresentationEntries} activeEntries={mapEntries} activeScopeLabel={currentPlanStage?.kind === 'set' ? 'Current Set' : currentPlanStage?.kind === 'combined' ? 'Introduced scope' : 'Full Subregion'} />
 

@@ -1,5 +1,6 @@
 import type { Country, CountryId } from '@/features/world-countries/data/countries'
 import type { LearningMapOverride } from './LearningMapSurface'
+import { createWorldCountriesLearningPattern, type WorldCountriesLearningPatternKind } from '@/features/world-countries/learning/learningReadiness'
 
 const FULL_SCOPE_PHASES = new Set(['final-gate', 'final-recall', 'complete'])
 const PRACTICE_MAP_PHASES = new Set(['practice', 'combined-practice'])
@@ -23,6 +24,7 @@ export function deriveLearningMapPresentation({
   practice,
   hoveredCountryId,
   orderPresentation,
+  completionPatternKind,
 }: {
   phase: string
   fullEntries: readonly Country[]
@@ -33,6 +35,7 @@ export function deriveLearningMapPresentation({
   practice: PracticeCountrySelection | null
   hoveredCountryId: string | null
   orderPresentation: LearningMapOverride
+  completionPatternKind?: WorldCountriesLearningPatternKind
 }): {
   mapEntries: readonly Country[]
   presentation: LearningMapOverride
@@ -57,6 +60,9 @@ export function deriveLearningMapPresentation({
     countryLabelsById: orderPresentation.countryLabelsById ?? (showOrderNumbers ? createLearningOrderLabels(fullEntries) : undefined),
     mapClassName: PRACTICE_MAP_PHASES.has(phase) ? '[&>svg]:max-h-[510px]' : undefined,
     ariaLabel: phase === 'final-recall' ? 'Highlighted Country for final recall' : 'World Countries Learning map',
+    ...(phase === 'complete' && completionPatternKind
+      ? { countryPatternsById: new Map(fullEntries.map(entry => [entry.id, createWorldCountriesLearningPattern(completionPatternKind)])) }
+      : {}),
   }
   return {
     mapEntries,

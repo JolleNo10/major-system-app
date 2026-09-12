@@ -47,6 +47,15 @@ export interface SvgMapGroupOutline {
   visible?: boolean
 }
 
+/** Generic declarative fill pattern; workflows provide the semantic colors. */
+export interface SvgMapCountryPattern {
+  kind: 'diagonal' | 'crosshatch'
+  baseColor: string
+  lineColor: string
+  lineWidth?: number
+  pitch?: number
+}
+
 export interface SvgMapZoomArea {
   id: string
   label: string
@@ -74,6 +83,7 @@ export interface SvgMapPresentationState {
   highlightedIds: readonly string[]
   mutedIds: readonly string[]
   countryColors: SvgMapCountryColors
+  countryPatterns?: SvgMapCountryPatterns
   countryLabels: Readonly<Record<string, string>>
   namedIds: readonly string[]
   hoveredId: string | null
@@ -116,6 +126,10 @@ export interface SvgMapGroupOutlineResult {
 export type SvgMapCountryColors =
   | Readonly<Record<string, string | null>>
   | Iterable<readonly [string, string | null]>
+
+export type SvgMapCountryPatterns =
+  | Readonly<Record<string, SvgMapCountryPattern | null>>
+  | Iterable<readonly [string, SvgMapCountryPattern | null]>
 
 export const DEFAULT_SVG_MAP_SETTINGS: Readonly<SvgMapSettings> = Object.freeze({
   countryFill: null,
@@ -326,6 +340,7 @@ export class SvgMapController {
   private countries = new Map<string, InternalCountry>()
   private highlighted = new Set<string>()
   private countryColors = new Map<string, string>()
+  private countryPatterns = new Map<string, SvgMapCountryPattern>()
   private mutedCountries = new Set<string>()
   private hiddenCountries = new Set<string>()
   private hoverableCountries: Set<string> | null = null
@@ -477,6 +492,8 @@ export class SvgMapController {
       this.setMutedCountries(state.mutedIds)
       this.clearColors()
       this.setCountryColors(state.countryColors)
+      this.clearPatterns()
+      if (state.countryPatterns !== undefined) this.setCountryPatterns(state.countryPatterns)
       const previouslyNamed = this.getNamedIds()
       this.clearCountryLabels()
       if (Object.keys(state.countryLabels).length > 0) this.setCountryLabels(state.countryLabels)
@@ -621,7 +638,10 @@ export class SvgMapController {
         continue
       }
       if (color === null) this.countryColors.delete(id)
-      else this.countryColors.set(id, color)
+      else {
+        this.countryPatterns.delete(id)
+        this.countryColors.set(id, color)
+      }
     }
     this.render()
     return { activeIds: [...this.countryColors.keys()], unknownIds: uniqueStrings(unknownIds) }
@@ -676,10 +696,38 @@ export class SvgMapController {
     return { activeIds: [], unknownIds: [] }
   }
 
+  setCountryPatterns(patterns: SvgMapCountryPatterns): SvgMapMutationResult {
+    this.assertUsable()
+    const unknownIds: string[] = []
+    for (const [rawId, pattern] of this.toPatternEntries(patterns)) {
+      const id = rawId.trim()
+      if (!id) continue
+      if (!this.countries.has(id)) {
+        unknownIds.push(id)
+        continue
+      }
+      if (pattern === null) this.countryPatterns.delete(id)
+      else {
+        this.countryColors.delete(id)
+        this.countryPatterns.set(id, { ...pattern })
+      }
+    }
+    this.render()
+    return { activeIds: [...this.countryPatterns.keys()], unknownIds: uniqueStrings(unknownIds) }
+  }
+
+  clearPatterns(): SvgMapMutationResult {
+    this.assertUsable()
+    this.countryPatterns.clear()
+    this.render()
+    return { activeIds: [], unknownIds: [] }
+  }
+
   clearHighlightsAndColors(): SvgMapMutationResult {
     this.assertUsable()
     this.highlighted.clear()
     this.countryColors.clear()
+    this.countryPatterns.clear()
     this.render()
     return { activeIds: [], unknownIds: [] }
   }
@@ -1217,16 +1265,21 @@ export class SvgMapController {
       : `fill ${this.settings.transitionMs}ms ease, stroke ${this.settings.transitionMs}ms ease, stroke-width ${this.settings.transitionMs}ms ease`
 
     this.taskAssistance.sync()
+    this.svg.querySelectorAll('defs[data-svg-map-country-pattern-defs]').forEach(defs => defs.remove())
 
     for (const country of this.countries.values()) {
       const hovered = this.hoveredIds.has(country.id)
       const taskHovered = this.taskAssistance.getHoveredCountryId() === country.id
+      const pattern = this.countryPatterns.get(country.id)
       const hasSemanticColor = this.countryColors.has(country.id)
+      const hasSemanticAppearance = hasSemanticColor || pattern !== undefined
       const baseFill = taskHovered
         ? this.settings.hoverFill
-        : hovered && this.settings.hoverHighlight && !hasSemanticColor
+        : hovered && this.settings.hoverHighlight && !hasSemanticAppearance
         ? this.settings.hoverFill
-        : this.countryColors.get(country.id)
+        : pattern
+          ? this.getPatternUrl(pattern)
+          : this.countryColors.get(country.id)
           ?? (this.highlighted.has(country.id)
             ? this.settings.highlightFill
             : this.settings.countryFill)
@@ -1236,7 +1289,7 @@ export class SvgMapController {
         ? this.settings.mutedFill
         : baseFill
 
-      const styled = this.highlighted.has(country.id) || hasSemanticColor
+      const styled = this.highlighted.has(country.id) || hasSemanticAppearance
       const stroke = (taskHovered || (hovered && this.settings.hoverHighlight)) && this.settings.hoverStroke !== null
         ? this.settings.hoverStroke
         : styled && this.settings.highlightStroke !== null
@@ -1405,9 +1458,56 @@ export class SvgMapController {
     }
   }
 
+  private getPatternUrl(pattern: SvgMapCountryPattern): string {
+    const mapSvg = this.svg
+    if (!mapSvg) return pattern.baseColor
+    const key = `${pattern.kind}|${pattern.baseColor}|${pattern.lineColor}|${pattern.lineWidth ?? 2}|${pattern.pitch ?? 16}`
+    const encoded = [...key].map(char => char.codePointAt(0)?.toString(16) ?? '').join('')
+    const id = `svg-map-country-pattern-${encoded}`
+    let defs = mapSvg.querySelector<SVGDefsElement>('defs[data-svg-map-country-pattern-defs]')
+    if (!defs) {
+      defs = mapSvg.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'defs')
+      defs.setAttribute('data-svg-map-country-pattern-defs', 'true')
+      mapSvg.insertBefore(defs, mapSvg.firstChild)
+    }
+    if (!defs.querySelector(`#${id}`)) {
+      const pitch = pattern.pitch ?? 16
+      const width = pattern.lineWidth ?? 2
+      const svgPattern = mapSvg.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'pattern')
+      svgPattern.setAttribute('id', id)
+      svgPattern.setAttribute('data-svg-map-country-pattern', pattern.kind)
+      svgPattern.setAttribute('patternUnits', 'userSpaceOnUse')
+      svgPattern.setAttribute('width', String(pitch))
+      svgPattern.setAttribute('height', String(pitch))
+      const background = mapSvg.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'rect')
+      background.setAttribute('width', String(pitch))
+      background.setAttribute('height', String(pitch))
+      background.setAttribute('fill', pattern.baseColor)
+      svgPattern.appendChild(background)
+      const directions = pattern.kind === 'crosshatch' ? ['forward', 'backward'] : ['forward']
+      for (const direction of directions) {
+        const line = mapSvg.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'path')
+        line.setAttribute('d', direction === 'forward'
+          ? `M-${pitch / 4},${pitch / 4} L${pitch / 4},-${pitch / 4} M0,${pitch} L${pitch},0 M${pitch * 3 / 4},${pitch * 5 / 4} L${pitch * 5 / 4},${pitch * 3 / 4}`
+          : `M-${pitch / 4},${pitch * 3 / 4} L${pitch / 4},${pitch * 5 / 4} M0,0 L${pitch},${pitch} M${pitch * 3 / 4},-${pitch / 4} L${pitch * 5 / 4},${pitch / 4}`)
+        line.setAttribute('fill', 'none')
+        line.setAttribute('stroke', pattern.lineColor)
+        line.setAttribute('stroke-width', String(width))
+        svgPattern.appendChild(line)
+      }
+      defs.appendChild(svgPattern)
+    }
+    return `url(#${id})`
+  }
+
   private toColorEntries(colors: SvgMapCountryColors): Iterable<readonly [string, string | null]> {
     if (Symbol.iterator in Object(colors)) return colors as Iterable<readonly [string, string | null]>
     return Object.entries(colors)
+  }
+
+  private toPatternEntries(patterns: SvgMapCountryPatterns): Iterable<readonly [string, SvgMapCountryPattern | null]> {
+    if (Symbol.iterator in Object(patterns)) return patterns as Iterable<readonly [string, SvgMapCountryPattern | null]>
+    return Object.entries(patterns)
   }
 
   private getPaddedCountryBounds(countryIds: readonly string[], padding: number): SvgViewBoxRect | null {
@@ -1840,6 +1940,7 @@ export class SvgMapController {
     this.countries.clear()
     this.highlighted.clear()
     this.countryColors.clear()
+    this.countryPatterns.clear()
     this.mutedCountries.clear()
     this.hiddenCountries.clear()
     this.hoverableCountries = null

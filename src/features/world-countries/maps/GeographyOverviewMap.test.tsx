@@ -191,6 +191,32 @@ describe('GeographyOverviewMap', () => {
     expect(mount.querySelector('[data-svg-map-group-outline="country-edge-halo"]')?.getAttribute('data-svg-map-group-outline-effect')).toBe('halo')
   })
 
+  it('transitions from a Learning pattern to solid Recall health without a Learning edge', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g></svg>' })))
+    const norway = countries.find(country => country.id === 'NO')!
+    const mount = document.createElement('div'); document.body.append(mount)
+    const diagonal = { kind: 'diagonal' as const, baseColor: '#4a4742', lineColor: '#d6c7ad', lineWidth: 2, pitch: 16 }
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(GeographyOverviewMap, {
+        level: 'world', countryPopulation: [norway], countryPatternsById: new Map([['NO', diagonal]]), ariaLabel: 'World progress map',
+      }))
+      await Promise.resolve(); await Promise.resolve()
+    })
+    expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toMatch(/^url\(#svg-map-country-pattern-/)
+    expect(mount.querySelector('[data-svg-map-group-outline^="country-edge-"]')).toBeNull()
+
+    await act(async () => {
+      root?.render(createElement(GeographyOverviewMap, {
+        level: 'world', countryPopulation: [norway], countryColorsById: new Map([['NO', '#16834f']]), ariaLabel: 'World progress map',
+      }))
+      await Promise.resolve(); await Promise.resolve()
+    })
+    expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toBe('#16834f')
+    expect(mount.querySelector('defs[data-svg-map-country-pattern-defs]')).toBeNull()
+  })
+
   it('uses the selected outline without persistently revealing member Country names', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g><g><path id="Sweden"/><text id="Sweden_label">Sweden</text></g><g><path id="France"/><text id="France_label">France</text></g></svg>' })))
     const mount = document.createElement('div'); document.body.append(mount)

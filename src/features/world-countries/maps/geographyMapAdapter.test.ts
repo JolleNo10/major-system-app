@@ -4,6 +4,7 @@ import {
   createContinentHoverGroups,
   createCountryOrderLabels,
   createCountryColors,
+  createCountryPatternsById,
   createSubregionHoverGroups,
   findUnresolvedCountries,
   getContinentHoverGroupId,
@@ -49,6 +50,13 @@ describe('World Countries geography map adapter', () => {
     ])
     expect(createCountryColors([norway], ['NO'], ['Norway'], '#22c55e')).toEqual([
       ['Norway', '#22c55e'],
+    ])
+  })
+
+  it('translates patterns to every multipart SVG ID', () => {
+    const pattern = { kind: 'crosshatch' as const, baseColor: '#4a4742', lineColor: '#d6c7ad' }
+    expect(createCountryPatternsById([unitedKingdom], new Map([['GB', pattern]]), ['England', 'Scotland', 'Wales'])).toEqual([
+      ['England', pattern], ['Scotland', pattern], ['Wales', pattern],
     ])
   })
 

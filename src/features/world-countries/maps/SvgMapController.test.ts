@@ -379,6 +379,30 @@ describe('SvgMapController persistent state', () => {
     expect(renderNow).toHaveBeenCalledTimes(1)
   })
 
+  it('renders diagonal and crosshatch patterns declaratively and restores them after hover', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: MULTIPART_MAP })
+    const diagonal = { kind: 'diagonal' as const, baseColor: '#4a4742', lineColor: '#d6c7ad', lineWidth: 2, pitch: 16 }
+    const crosshatch = { kind: 'crosshatch' as const, baseColor: '#4a4742', lineColor: '#d6c7ad', lineWidth: 2, pitch: 16 }
+
+    controller.updatePresentation({
+      presentation: 'standard', settings: {}, groupOutlines: [], hiddenIds: [], taskAssistance: null,
+      highlightedIds: [], mutedIds: [], countryColors: [], countryPatterns: [['Multipart', diagonal]],
+      countryLabels: {}, namedIds: [], hoveredId: null,
+    })
+    expect(path(mount, 'Multipart').style.fill).toMatch(/^url\(#svg-map-country-pattern-/)
+    expect(mount.querySelector('pattern[data-svg-map-country-pattern="diagonal"]')).not.toBeNull()
+    expect(path(mount, 'Multipart_fragment').style.fill).toBe(path(mount, 'Multipart').style.fill)
+
+    controller.updatePresentation({
+      presentation: 'standard', settings: {}, groupOutlines: [], hiddenIds: [], taskAssistance: null,
+      highlightedIds: [], mutedIds: [], countryColors: [], countryPatterns: [['Multipart', crosshatch]],
+      countryLabels: {}, namedIds: [], hoveredId: 'Multipart',
+    })
+    expect(path(mount, 'Multipart').style.fill).toMatch(/^url\(#svg-map-country-pattern-/)
+    expect(mount.querySelector('pattern[data-svg-map-country-pattern="crosshatch"] path:nth-of-type(2)')).not.toBeNull()
+  })
+
   it('keeps the source layout aspect ratio while zooming and restoring the camera viewBox', async () => {
     const { mount, controller } = makeController()
     await controller.load({ markup: TEST_MAP })
