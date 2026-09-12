@@ -167,6 +167,10 @@ interface InternalCountry extends SvgMapCountry {
   }>
 }
 
+function isMultipartCountry(country: Pick<InternalCountry, 'geometryPaths'>): boolean {
+  return country.geometryPaths.length > 1
+}
+
 interface CountryPathState {
   path: SVGPathElement
   originalFill: OriginalStyle
@@ -1079,7 +1083,7 @@ export class SvgMapController {
         countryPath.addEventListener('click', click)
         this.listeners.push({ path: countryPath, enter, leave, click })
       }
-      if (country.paths.length > 1) {
+      if (isMultipartCountry(country)) {
         const keydown: EventListener = event => {
           const keyboardEvent = event as KeyboardEvent
           if (keyboardEvent.key !== 'Enter' && keyboardEvent.key !== ' ') return
@@ -1247,7 +1251,7 @@ export class SvgMapController {
         setOverride(pathState.path, 'visibility', hidden ? 'hidden' : null, pathState.originalVisibility)
         setOverride(pathState.path, 'pointer-events', hidden ? 'none' : null, pathState.originalPointerEvents)
       }
-      if (country.paths.length > 1) country.group.setAttribute('tabindex', hidden ? '-1' : '0')
+      if (isMultipartCountry(country)) country.group.setAttribute('tabindex', hidden ? '-1' : '0')
 
       this.renderCountryLabel(country, this.countryLabelOverrides.get(country.id) ?? null)
       const showHoverName = this.hoveredNameOverride ?? this.settings.hoverShowName

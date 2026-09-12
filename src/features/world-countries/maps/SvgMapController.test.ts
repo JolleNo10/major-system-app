@@ -192,6 +192,14 @@ describe('SvgMapController loading and discovery', () => {
     controller.updateSettings({ hoverHighlight: true })
     controller.setCountryColors({ Australia: '#22c55e' })
 
+    // Wrapped copies are interaction/presentation paths, not additional
+    // canonical geometry that should create a keyboard-focusable group.
+    for (const [countryId] of wrappedPairs) {
+      const group = mount.querySelector<SVGGElement>(`#${countryId}_group`)
+      expect(group?.getAttribute('tabindex')).toBeNull()
+      expect(group?.getAttribute('role')).toBeNull()
+    }
+
     for (const [countryId, wrapperId] of wrappedPairs) {
       expect(mount.querySelector<SVGPathElement>(`#${wrapperId}`)?.style.getPropertyValue('fill')).toBe(
         countryId === 'Australia' ? '#22c55e' : 'rgb(115, 115, 115)',
@@ -219,6 +227,7 @@ describe('SvgMapController loading and discovery', () => {
     controller.setHiddenCountries(['Australia'])
     expect(mount.querySelector<SVGPathElement>('#Australia_wrap')?.style.visibility).toBe('hidden')
     expect(mount.querySelector<SVGPathElement>('#Australia_wrap')?.style.getPropertyValue('pointer-events')).toBe('none')
+    expect(mount.querySelector<SVGGElement>('#Australia_group')?.getAttribute('tabindex')).toBeNull()
     mount.querySelector<SVGPathElement>('#Australia_wrap')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     expect(clicked).toHaveLength(21)
   })
