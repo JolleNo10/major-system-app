@@ -91,7 +91,7 @@ export const COUNTRY_RECORDS: CountryRecordInput[] = [
   { id: 'SY', country: "Syria", capital: "Damascus", continent: "Asia", subregion: "West Asia" },
   { id: 'LB', country: "Lebanon", capital: "Beirut", continent: "Asia", subregion: "West Asia" },
   { id: 'IL', country: "Israel", capital: "Jerusalem", continent: "Asia", subregion: "West Asia" },
-  { id: 'PS', country: "Palestine", capital: "East Jerusalem", continent: "Asia", subregion: "West Asia", countryAliases: ["State of Palestine"] },
+  { id: 'PS', country: "Palestine", capital: "Jerusalem", continent: "Asia", subregion: "West Asia", countryAliases: ["State of Palestine"] },
   { id: 'JO', country: "Jordan", capital: "Amman", continent: "Asia", subregion: "West Asia" },
   { id: 'SA', country: "Saudi Arabia", capital: "Riyadh", continent: "Asia", subregion: "West Asia" },
   { id: 'YE', country: "Yemen", capital: "Sana'a", continent: "Asia", subregion: "West Asia" },
