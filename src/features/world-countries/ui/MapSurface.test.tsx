@@ -7,6 +7,7 @@ import { PageLayout } from '@/app/layout/PageLayout'
 import { PageLayoutProvider } from '@/app/layout/PageLayoutContext'
 import { Overlay } from '@/app/layout/Overlay'
 import { MapSurface, TaskDock } from './MapSurface'
+import { TaskDockMessage } from './TaskDockMessage'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -218,6 +219,25 @@ describe('MapSurface expanded presentation', () => {
 })
 
 describe('TaskDock content sizing', () => {
+  it('keeps message content and actions in distinct composition regions', () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement(TaskDockMessage, {
+        header: createElement('span', null, 'Ready'),
+        description: createElement('span', null, 'Next step'),
+        actions: createElement('button', { type: 'button' }, 'Continue'),
+      }))
+    })
+
+    expect(mount.querySelector('[data-task-dock-message-header]')?.textContent).toBe('Ready')
+    expect(mount.querySelector('[data-task-dock-message-description]')?.textContent).toBe('Next step')
+    expect(mount.querySelector('[data-task-dock-message-actions] button')?.textContent).toBe('Continue')
+    expect(mount.querySelector('[data-task-dock-message-description]')?.closest('[data-task-dock-message-actions]')).toBeNull()
+    expect(mount.querySelector('[data-task-dock-message-actions]')?.previousElementSibling?.hasAttribute('data-task-dock-message-content')).toBe(true)
+  })
+
   it('allows complex checkpoint content to shrink inside its parent', () => {
     const mount = document.createElement('div')
     document.body.append(mount)

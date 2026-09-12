@@ -180,11 +180,21 @@ describe('World Countries Recite workflow', () => {
       await Promise.resolve()
     })
     expect(mount.textContent).toContain('Recite complete')
+    expect(mount.querySelector('[data-task-dock-message-description]')?.textContent).toContain('This completed run is now the latest Recite status')
+    const actions = mount.querySelector('[data-task-dock-message-actions]')
+    expect(actions?.querySelectorAll('button')).toHaveLength(2)
+    expect(actions?.textContent).toContain('Recite again')
+    expect(actions?.textContent).toContain('Back to setup')
     expect(JSON.parse(localStorage.getItem(RECITE_PROGRESS_STORAGE_KEY) ?? '{}')).toMatchObject({
       version: 1,
       outcomes: { countries: { NO: { outcome: 'recovered' } } },
     })
     expect(localStorage.getItem('world-countries:capital-to-country:NO')).toBeNull()
+
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    })
+    expect(mount.textContent).not.toContain('Recite complete')
   })
 
   it('runs the Countries + Capitals prompts in order with automatic transitions', async () => {

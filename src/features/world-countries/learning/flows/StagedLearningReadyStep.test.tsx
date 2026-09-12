@@ -28,10 +28,13 @@ describe('Learning Ready task dock behavior', () => {
       }))
     })
 
-    expect(mount.querySelector('[role="status"]')?.textContent).toContain('You can now locate and name the countries in this Set.')
-    expect(mount.querySelector('[role="status"]')?.textContent).toContain('Next: meet the countries in Set 2.')
-    expect(mount.querySelector('[role="status"]')?.textContent).not.toContain('Next: Continue to Set 2')
-    expect(mount.querySelector('[role="status"]')?.textContent).not.toContain('threshold')
+    const message = mount.querySelector('[data-task-dock-message]')
+    expect(message?.querySelector('[data-task-dock-message-header]')?.textContent).toContain('Set 1 ready')
+    expect(message?.querySelector('[data-task-dock-message-description]')?.textContent).toContain('You can now locate and name the countries in this Set.')
+    expect(message?.querySelector('[data-task-dock-message-description]')?.textContent).toContain('Next: meet the countries in Set 2.')
+    expect(message?.querySelector('[data-task-dock-message-description]')?.textContent).not.toContain('Next: Continue to Set 2')
+    expect(message?.querySelector('[data-task-dock-message-description]')?.textContent).not.toContain('threshold')
+    expect(message?.querySelector('[data-task-dock-message-actions]')?.querySelectorAll('button')).toHaveLength(3)
     expect(document.activeElement?.textContent).toContain('Continue to Set 2')
 
     act(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })))
@@ -50,13 +53,15 @@ describe('Learning Ready task dock behavior', () => {
     })
 
     expect(document.activeElement?.textContent).toContain('Start final recall')
-    const status = mount.querySelector('[role="status"]')?.textContent
-    expect(status).toContain('Final recall')
+    const message = mount.querySelector('[data-task-dock-message]')
+    const status = message?.querySelector('[data-task-dock-message-description]')?.textContent
+    expect(message?.querySelector('[data-task-dock-message-header]')?.textContent).toContain('Final recall')
     expect(status).toContain("Try the full recall when you're ready.")
     expect(status).toContain('You can start now, or go back for more practice.')
     expect(status).not.toMatch(/region|full-region/i)
     expect(status).not.toMatch(/completion gate|learning flow|effective country order/i)
     expect(status).not.toContain('before starting')
+    expect(mount.querySelector('[data-task-dock-message-actions]')?.querySelectorAll('button')).toHaveLength(2)
 
     act(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })))
     expect(onStart).toHaveBeenCalledTimes(1)
@@ -74,12 +79,14 @@ describe('Learning Ready task dock behavior', () => {
     })
 
     expect(document.activeElement?.textContent).toContain('Start final recall')
-    const status = mount.querySelector('[role="status"]')?.textContent
-    expect(status).toContain('Final recall')
+    const message = mount.querySelector('[data-task-dock-message]')
+    const status = message?.querySelector('[data-task-dock-message-description]')?.textContent
+    expect(message?.querySelector('[data-task-dock-message-header]')?.textContent).toContain('Final recall')
     expect(status).toContain("One last pass through everything you've been learning.")
     expect(status).toContain('Recall the whole Learning order from start to finish.')
     expect(status).not.toMatch(/region|full-region/i)
     expect(status).not.toMatch(/completion gate|learning flow|effective country order/i)
+    expect(mount.querySelector('[data-task-dock-message-actions]')?.querySelectorAll('button')).toHaveLength(3)
 
     act(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })))
     expect(onStart).toHaveBeenCalledTimes(1)

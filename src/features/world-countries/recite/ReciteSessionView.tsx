@@ -3,6 +3,7 @@ import type { Continent, Country, CountryId } from '@/features/world-countries/d
 import type { SubregionId } from '@/features/world-countries/data/subregions'
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
 import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
+import { TaskDockMessage } from '@/features/world-countries/ui/TaskDockMessage'
 import { WorldCountriesMapActivitySurface, type WorldCountriesActivityTask } from '@/features/world-countries/ui/WorldCountriesActivity'
 import { getWorldCountriesTaskHighlightFill } from '@/features/world-countries/ui/WorldCountriesAnswerSemantics'
 import { WorldCountriesTypedAnswer, type WorldCountriesTypedAnswerEvaluation } from '@/features/world-countries/ui/WorldCountriesTypedAnswer'
@@ -136,15 +137,14 @@ export function ReciteSession({ run, phase, fuzzyMatching, onSubmit, onReveal, o
           map={map}
           dockPlacement="stacked"
           dock={(
-            <TaskDock variant="completion" tone="ready" status="This completed run is now the latest Recite status for each Country in this mode." enableEnterPrimary>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-md bg-green-500/10 px-2 py-1 text-xs text-green-300">Recalled {count('recalled')}</span>
-                <span className="rounded-md bg-amber-500/10 px-2 py-1 text-xs text-amber-300">Recovered {count('recovered')}</span>
-                <span className="rounded-md bg-orange-900/40 px-2 py-1 text-xs text-orange-300">Revealed {count('revealed')}</span>
-                <button type="button" data-primary-action onClick={onReciteAgain} className="ml-auto rounded-lg bg-cyan-600 px-3 py-2 text-sm font-semibold text-white hover:bg-cyan-500">Recite again</button>
-                <button type="button" onClick={onBackToSetup} className="rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Back to setup</button>
-              </div>
-            </TaskDock>
+            <TaskDockMessage
+              variant="completion"
+              tone="ready"
+              enableEnterPrimary
+              header={<span className="font-semibold text-green-300">Recite complete</span>}
+              description={<div className="flex flex-wrap items-center gap-x-3 gap-y-1"><span className="text-zinc-300">This completed run is now the latest Recite status for each Country in this mode.</span><span className="rounded-md bg-green-500/10 px-2 py-1 text-xs text-green-300">Recalled {count('recalled')}</span><span className="rounded-md bg-amber-500/10 px-2 py-1 text-xs text-amber-300">Recovered {count('recovered')}</span><span className="rounded-md bg-orange-900/40 px-2 py-1 text-xs text-orange-300">Revealed {count('revealed')}</span></div>}
+              actions={<><button type="button" data-primary-action onClick={onReciteAgain} className="rounded-lg bg-cyan-600 px-3 py-2 text-sm font-semibold text-white hover:bg-cyan-500">Recite again</button><button type="button" onClick={onBackToSetup} className="rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Back to setup</button></>}
+            />
           )}
         />
       </section>

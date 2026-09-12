@@ -101,7 +101,7 @@ describe('LearningComplete', () => {
     expect(onStop).toHaveBeenCalledOnce()
   })
 
-  it('replaces restart with the completed-region action for a learned region', () => {
+  it('uses concise region completion content and keeps every action in the shared action area', () => {
     const onAction = vi.fn()
     const mount = document.createElement('div')
     document.body.append(mount)
@@ -128,13 +128,19 @@ describe('LearningComplete', () => {
     })
 
     expect(mount.textContent).not.toContain('Learn again')
+    expect(mount.textContent).not.toContain("You've learned the countries and capitals in Eastern Europe")
+    expect(mount.textContent).not.toContain('Review will bring them back later')
     expect(mount.textContent).toContain('Start Northern Europe')
     expect(mount.textContent).toContain('Back to Europe')
     expect(mount.textContent).toContain('Drill Eastern Europe')
     expect(mount.querySelectorAll('button')).toHaveLength(3)
-    expect(mount.querySelector('[data-completion-actions]')?.className).toContain('flex-wrap')
-    expect(mount.querySelector('[data-task-dock-content]')?.className).toContain('min-w-0')
-    expect(mount.querySelector('[data-primary-action]')?.className).toContain('flex-[1_1_12rem]')
+    const description = mount.querySelector('[data-task-dock-message-description]')
+    const actions = mount.querySelector('[data-task-dock-message-actions]')
+    expect(description?.textContent).toContain('Eastern Europe ✓')
+    expect(description?.textContent).toContain('Next region: Northern Europe')
+    expect(actions?.querySelectorAll('button')).toHaveLength(3)
+    expect(actions?.querySelector('[data-primary-action]')?.textContent).toContain('Start Northern Europe')
+    expect(actions?.querySelector('[data-completion-region-action]')?.textContent).toContain('Drill Eastern Europe')
 
     act(() => mount.querySelector<HTMLButtonElement>('[data-completion-region-action]')?.click())
     expect(onAction).toHaveBeenCalledOnce()
