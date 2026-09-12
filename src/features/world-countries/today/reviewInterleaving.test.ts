@@ -36,10 +36,10 @@ describe('World Countries Today review interleaving', () => {
       candidate('NO', 'location-to-country', 1),
       candidate('SE', 'country-to-capital', 1),
       candidate('FI', 'location-to-country', 1),
-      ...countries.slice(3, 15).map(country => candidate(country.id, 'location-to-country', 2)),
+      ...['KE', 'GH', 'JP', 'TH', 'AU', 'BR', 'CA'].map(countryId => candidate(countryId, 'location-to-country', 2)),
     ]
 
-    const queue = interleaveWorldCountriesTodayReviewCandidates(input)
+    const queue = interleaveWorldCountriesTodayReviewCandidates(input, 8, () => 0)
     expect(queue.slice(0, 3).every(entry => entry.schedule.priorityTier === 1)).toBe(true)
     expect(queue).toHaveLength(8)
   })
@@ -49,7 +49,7 @@ describe('World Countries Today review interleaving', () => {
       candidate(country.id, 'location-to-country'),
       candidate(country.id, 'country-to-capital'),
     ])
-    const queue = interleaveWorldCountriesTodayReviewCandidates(input)
+    const queue = interleaveWorldCountriesTodayReviewCandidates(input, 8, () => 0)
 
     expect(queue.slice(0, 6).map(entry => entry.country.id)).toEqual(
       countries.slice(0, 6).map(country => country.id),
@@ -69,7 +69,7 @@ describe('World Countries Today review interleaving', () => {
       candidate('NO', 'location-to-country'),
       candidate('SE', 'location-to-country'),
       candidate('FI', 'country-to-capital'),
-    ])
+    ], 8, () => 0)
 
     expect(queue.map(entry => entry.country.id)).toEqual(['NO', 'FI', 'SE'])
   })
@@ -79,15 +79,54 @@ describe('World Countries Today review interleaving', () => {
       candidate('NO'),
       candidate('SE'),
       candidate('DE'),
-    ])
+    ], 8, () => 0)
 
     expect(queue.map(entry => entry.country.id)).toEqual(['NO', 'DE', 'SE'])
   })
 
-  it('is deterministic and falls back when diversity is impossible', () => {
+  it('prefers a different Continent when equally urgent alternatives exist', () => {
+    const input = ['FR', 'DE', 'NO', 'KE', 'GH', 'JP', 'TH', 'AU']
+      .map(countryId => candidate(countryId))
+    const queue = interleaveWorldCountriesTodayReviewCandidates(input, 8, () => 0)
+
+    expect(queue).toHaveLength(8)
+    expect(queue.every((entry, index) => index === 0 || entry.country.continent !== queue[index - 1].country.continent)).toBe(true)
+  })
+
+  it('keeps every selected candidate unique and in the supplied candidate set', () => {
+    const input = ['FR', 'DE', 'NO', 'KE', 'GH', 'JP', 'TH', 'AU', 'BR', 'CA']
+      .map(countryId => candidate(countryId))
+    const queue = interleaveWorldCountriesTodayReviewCandidates(input, 8, () => 0)
+
+    expect(queue).toHaveLength(8)
+    expect(new Set(queue.map(entry => entry.country.id)).size).toBe(queue.length)
+    expect(queue.every(entry => input.includes(entry))).toBe(true)
+  })
+
+  it('continues normally when all candidates share one Continent', () => {
+    const input = ['NO', 'SE', 'DE', 'FR', 'IT', 'ES', 'GR']
+      .map(countryId => candidate(countryId))
+    const queue = interleaveWorldCountriesTodayReviewCandidates(input, 8, () => 0)
+
+    expect(queue).toHaveLength(input.length)
+    expect(new Set(queue.map(entry => entry.country.continent))).toEqual(new Set(['Europe']))
+  })
+
+  it('uses supplied randomness for equivalent choices without changing membership or urgency', () => {
+    const input = ['FR', 'DE', 'NO', 'KE', 'GH', 'JP', 'TH', 'AU']
+      .map(countryId => candidate(countryId))
+    const first = interleaveWorldCountriesTodayReviewCandidates(input, 8, () => 0)
+    const second = interleaveWorldCountriesTodayReviewCandidates(input, 8, () => 0.999)
+
+    expect(second.map(entry => entry.country.id)).not.toEqual(first.map(entry => entry.country.id))
+    expect(new Set(second.map(entry => entry.country.id))).toEqual(new Set(first.map(entry => entry.country.id)))
+    expect(new Set(second.map(entry => entry.schedule.priorityTier))).toEqual(new Set([1]))
+  })
+
+  it('falls back when diversity is impossible', () => {
     const input = [candidate('NO'), candidate('NO', 'country-to-capital')]
-    const first = interleaveWorldCountriesTodayReviewCandidates(input)
-    const second = interleaveWorldCountriesTodayReviewCandidates(input)
+    const first = interleaveWorldCountriesTodayReviewCandidates(input, 8, () => 0)
+    const second = interleaveWorldCountriesTodayReviewCandidates(input, 8, () => 0)
 
     expect(first).toEqual(second)
     expect(first.map(entry => entry.target.skill)).toEqual([

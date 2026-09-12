@@ -14,12 +14,21 @@ function priorityTier(candidate: WorldCountriesTodayReviewCandidate): number {
 function selectFromTier(
   candidates: readonly RankedCandidate[],
   limit: number,
+  random: () => number,
 ): WorldCountriesTodayReviewCandidate[] {
   const remaining = [...candidates]
   const selected: WorldCountriesTodayReviewCandidate[] = []
   const representedCountries = new Set<CountryId>()
   let previousSkill: WorldCountriesCoreRecallSkill | undefined
   let previousSubregion: WorldCountriesTodayReviewCandidate['country']['subregionId'] | undefined
+  let previousContinent: WorldCountriesTodayReviewCandidate['country']['continent'] | undefined
+
+  const chooseFrom = (pool: readonly RankedCandidate[]): RankedCandidate => {
+    if (pool.length === 1) return pool[0]
+    const rankOrderedPool = [...pool].sort((left, right) => left.rank - right.rank)
+    const randomIndex = Math.min(rankOrderedPool.length - 1, Math.floor(random() * rankOrderedPool.length))
+    return rankOrderedPool[randomIndex]
+  }
 
   while (remaining.length > 0 && selected.length < limit) {
     let unseenCountryCandidates = remaining.filter(({ candidate }) => (
@@ -30,19 +39,24 @@ function selectFromTier(
       unseenCountryCandidates = remaining
     }
 
-    const skillAlternatives = previousSkill === undefined
+    const continentAlternatives = previousContinent === undefined
       ? unseenCountryCandidates
-      : unseenCountryCandidates.filter(({ candidate }) => candidate.target.skill !== previousSkill)
-    const skillCandidates = skillAlternatives.length > 0 ? skillAlternatives : unseenCountryCandidates
+      : unseenCountryCandidates.filter(({ candidate }) => candidate.country.continent !== previousContinent)
+    const continentCandidates = continentAlternatives.length > 0 ? continentAlternatives : unseenCountryCandidates
     const subregionAlternatives = previousSubregion === undefined
-      ? skillCandidates
-      : skillCandidates.filter(({ candidate }) => candidate.country.subregionId !== previousSubregion)
-    const bestPool = subregionAlternatives.length > 0 ? subregionAlternatives : skillCandidates
-    const best = bestPool.reduce((current, entry) => entry.rank < current.rank ? entry : current)
+      ? continentCandidates
+      : continentCandidates.filter(({ candidate }) => candidate.country.subregionId !== previousSubregion)
+    const subregionCandidates = subregionAlternatives.length > 0 ? subregionAlternatives : continentCandidates
+    const skillAlternatives = previousSkill === undefined
+      ? subregionCandidates
+      : subregionCandidates.filter(({ candidate }) => candidate.target.skill !== previousSkill)
+    const bestPool = skillAlternatives.length > 0 ? skillAlternatives : subregionCandidates
+    const best = chooseFrom(bestPool)
 
     selected.push(best.candidate)
     previousSkill = best.candidate.target.skill
     previousSubregion = best.candidate.country.subregionId
+    previousContinent = best.candidate.country.continent
     representedCountries.add(best.candidate.country.id)
     remaining.splice(remaining.indexOf(best), 1)
   }
@@ -57,6 +71,7 @@ function selectFromTier(
 export function interleaveWorldCountriesTodayReviewCandidates(
   candidates: readonly WorldCountriesTodayReviewCandidate[],
   limit = 8,
+  random: () => number = Math.random,
 ): WorldCountriesTodayReviewCandidate[] {
   if (limit <= 0 || candidates.length === 0) return []
 
@@ -67,7 +82,7 @@ export function interleaveWorldCountriesTodayReviewCandidates(
   for (const tier of tiers) {
     const tierCandidates = ranked.filter(entry => priorityTier(entry.candidate) === tier)
     const remainingSlots = limit - selected.length
-    selected.push(...selectFromTier(tierCandidates, remainingSlots))
+    selected.push(...selectFromTier(tierCandidates, remainingSlots, random))
     if (selected.length >= limit) break
   }
 

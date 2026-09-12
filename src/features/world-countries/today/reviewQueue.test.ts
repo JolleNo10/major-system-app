@@ -11,9 +11,9 @@ import {
 import { interleaveWorldCountriesTodayReviewCandidates } from './reviewInterleaving'
 import type { WorldCountriesTodayReviewCandidate } from './todayPlan'
 
-function candidates(count: number): WorldCountriesTodayReviewCandidate[] {
-  return Array.from({ length: count }, (_, index) => {
-    const country = countries[index]
+function candidatesFor(countryIds: readonly string[]): WorldCountriesTodayReviewCandidate[] {
+  return countryIds.map(countryId => {
+    const country = countries.find(entry => entry.id === countryId)!
     const skill = 'location-to-country' as const
     return {
       country,
@@ -21,6 +21,10 @@ function candidates(count: number): WorldCountriesTodayReviewCandidate[] {
       schedule: deriveWorldCountriesReviewSchedule([{ at: 1, ok: false, ms: 1 }], { localDate: '2026-08-19', milestoneAt: 1 }),
     }
   })
+}
+
+function candidates(count: number): WorldCountriesTodayReviewCandidate[] {
+  return candidatesFor(countries.slice(0, count).map(country => country.id))
 }
 
 describe('World Countries Today review queue', () => {
@@ -53,8 +57,12 @@ describe('World Countries Today review queue', () => {
   })
 
   it('keeps delayed retries working after the initial candidates are interleaved', () => {
+    const initialCandidates = candidatesFor(['NO', 'KE', 'JP'])
     const initial = createWorldCountriesTodayReviewQueue(
-      interleaveWorldCountriesTodayReviewCandidates(candidates(3)),
+      interleaveWorldCountriesTodayReviewCandidates(initialCandidates, 8, () => 0),
+    )
+    expect(new Set(initial.prompts.map(prompt => prompt.candidate.country.continent))).toEqual(
+      new Set(['Europe', 'Africa', 'Asia']),
     )
     const afterFirst = submitWorldCountriesTodayReviewPrompt(initial, 'incorrect')
     const afterSecond = submitWorldCountriesTodayReviewPrompt(afterFirst, 'correct')
@@ -62,5 +70,7 @@ describe('World Countries Today review queue', () => {
 
     expect(getCurrentWorldCountriesTodayReviewPrompt(afterThird)?.kind).toBe('retry')
     expect(afterThird.prompts).toHaveLength(4)
+    expect(afterThird.prompts.filter(prompt => prompt.kind === 'initial').map(prompt => prompt.candidate.country.id))
+      .toEqual(initial.prompts.map(prompt => prompt.candidate.country.id))
   })
 })

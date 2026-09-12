@@ -188,11 +188,12 @@ free-recall mastery evidence as already known without writing a synthetic
 milestone.
 
 Today exposes all derived due candidates for urgency/counts, then snapshots at
-most 8 candidates into a deterministic interleaved review block. Priority
+most 8 candidates into a bounded interleaved review block. Priority
 tiers remain authoritative: latest failures, missing successful typed recall,
 then scheduled/overdue review. Interleaving prefers unseen Countries, a
-different skill, and a different Subregion within the active tier before using
-the existing due-candidate rank, so variety never displaces more urgent work.
+different Continent, a different Subregion, and a different skill within the
+active tier before using the existing due-candidate rank, so variety never
+displaces more urgent work.
 
 The plan also derives the underlying curriculum recommendation independently
 of review priority. It computes the same readiness-based next action for each
