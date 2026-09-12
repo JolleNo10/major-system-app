@@ -312,7 +312,7 @@ describe('GuidedLearningRails contextual authoring visibility', () => {
     expect(mount.textContent).not.toContain('Northern Europe')
   })
 
-  it('keeps quiet-phase workflow actions in the right rail in Back, Skip, Exit order', () => {
+  it('renders the forward Learning action before Back and Exit', () => {
     const mount = document.createElement('div')
     document.body.append(mount)
     const onOrderDraftChanged = vi.fn()
@@ -324,15 +324,42 @@ describe('GuidedLearningRails contextual authoring visibility', () => {
       root.render(createElement(GuidedLearningRails, {
         continent: 'Europe', subregion: 'northern-europe', entries, activeCountries: entries,
         phase: 'location-practice', track: 'countries', stagePresentation: defaultStagePresentation,
-        onOrderDraftChanged, onBack, backLabel: 'Back to Meet countries', onSkip, skipLabel: 'Next: Practice', onExit,
+        onOrderDraftChanged, onBack, backLabel: 'Back to Meet countries', onSkip, skipLabel: 'Next: Recall', onExit,
       }))
     })
 
     const latestConfig = useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1]?.[0]
     act(() => root?.render(createElement('div', null, latestConfig?.right)))
-    expect([...mount.querySelectorAll('button')].map(button => button.textContent)).toEqual([
-      'Back to Meet countries', 'Next: Practice', 'Exit',
-    ])
+    const buttons = [...mount.querySelectorAll('button')]
+    expect(buttons.map(button => button.textContent)).toEqual(['Next: Recall', 'Back to Meet countries', 'Exit'])
+
+    act(() => buttons[0]?.click())
+    act(() => buttons[1]?.click())
+    act(() => buttons[2]?.click())
+    expect(onSkip).toHaveBeenCalledOnce()
+    expect(onBack).toHaveBeenCalledOnce()
+    expect(onExit).toHaveBeenCalledOnce()
+  })
+
+  it('keeps the forward-first order with the plain Next label', () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+    const onOrderDraftChanged = vi.fn()
+    const onBack = vi.fn()
+    const onSkip = vi.fn()
+    const onExit = vi.fn()
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement(GuidedLearningRails, {
+        continent: 'Europe', subregion: 'northern-europe', entries, activeCountries: entries,
+        phase: 'location-practice', track: 'countries', stagePresentation: defaultStagePresentation,
+        onOrderDraftChanged, onBack, onSkip, skipLabel: 'Next', onExit,
+      }))
+    })
+
+    const latestConfig = useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1]?.[0]
+    act(() => root?.render(createElement('div', null, latestConfig?.right)))
+    expect([...mount.querySelectorAll('button')].map(button => button.textContent)).toEqual(['Next', 'Back', 'Exit'])
   })
 
   it('keeps scheduler progress in the center task surface rather than the Learning rail', () => {
