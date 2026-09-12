@@ -41,8 +41,10 @@ export interface SvgMapTaskAssistance {
 export interface SvgTaskAssistanceCountry {
   id: string
   path: SVGPathElement
-  /** All authored geometry fragments for this semantic Country. */
+  /** All authored geometry fragments that can be the browser interaction target. */
   paths?: readonly SVGPathElement[]
+  /** Labelled-group geometry used for anchors, source fingerprints, and camera-independent bounds. */
+  geometryPaths?: readonly SVGPathElement[]
   originalFill: Readonly<{ value: string }>
 }
 
@@ -119,16 +121,20 @@ function getCountryPaths(country: SvgTaskAssistanceCountry): readonly SVGPathEle
   return country.paths?.length ? country.paths : [country.path]
 }
 
+function getCountryGeometryPaths(country: SvgTaskAssistanceCountry): readonly SVGPathElement[] {
+  return country.geometryPaths?.length ? country.geometryPaths : getCountryPaths(country)
+}
+
 function getPrimaryCountryPath(country: SvgTaskAssistanceCountry): SVGPathElement {
-  return getCountryPaths(country)[0] ?? country.path
+  return getCountryGeometryPaths(country)[0] ?? country.path
 }
 
 function getCountrySourceFingerprint(country: SvgTaskAssistanceCountry): string {
-  return getCountryPaths(country).map(path => path.getAttribute('d') ?? '').join('\u0000')
+  return getCountryGeometryPaths(country).map(path => path.getAttribute('d') ?? '').join('\u0000')
 }
 
 function getCountryGeometryBounds(country: SvgTaskAssistanceCountry): SvgViewBoxRect | null {
-  const boxes = getCountryPaths(country)
+  const boxes = getCountryGeometryPaths(country)
     .map(readSvgGeometryBounds)
     .filter((box): box is SvgViewBoxRect => box !== null)
   if (boxes.length === 0) return null
@@ -711,14 +717,13 @@ export class SvgTaskAssistanceRuntime {
 
   private updateTaskPointerIntent(event: Event): void {
     if (!this.taskAnswerSelectionConfigured) return
-    const point = this.getClientPoint(event)
-    this.setTaskPointerIntent(point ? this.resolveTaskPointerIntent(point) : null)
+    this.setTaskPointerIntent(this.resolveTaskPointerIntentFromEvent(event))
   }
 
   private handleTaskPointerClick(event: Event): void {
     if (!this.taskAnswerSelectionConfigured) return
-    const point = this.getClientPoint(event)
-    const intent = point ? this.resolveTaskPointerIntent(point) : this.taskPointerIntent
+    const intent = this.resolveTaskPointerIntentFromEvent(event)
+      ?? (this.getClientPoint(event) ? null : this.taskPointerIntent)
     if (intent && this.options.isSelectable(intent.countryId)) {
       this.setTaskPointerIntent(intent)
       this.options.dispatchCountryClick(intent.countryId)
@@ -739,6 +744,31 @@ export class SvgTaskAssistanceRuntime {
     const localPoint = this.findNearestInteractionPoint(point, null, true)
     if (localPoint) return { countryId: localPoint.countryId, interactionPointId: localPoint.id }
     if (sourceCountryId) return { countryId: sourceCountryId, interactionPointId: null }
+    return null
+  }
+
+  private resolveTaskPointerIntentFromEvent(event: Event): TaskPointerIntent | null {
+    const point = this.getClientPoint(event)
+    const targetCountryId = this.resolveSourceCountryFromTarget(event.target)
+    if (targetCountryId && this.isTaskCandidate(targetCountryId)) {
+      return {
+        countryId: targetCountryId,
+        interactionPointId: point ? this.findNearestInteractionPoint(point, targetCountryId, false)?.id ?? null : null,
+      }
+    }
+    return point ? this.resolveTaskPointerIntent(point) : null
+  }
+
+  /** Resolve a browser-selected authored path before falling back to geometry. */
+  private resolveSourceCountryFromTarget(target: EventTarget | null): string | null {
+    let element = target instanceof Element ? target : null
+    const countries = [...this.options.getCountries()]
+    while (element) {
+      for (const country of countries) {
+        if (getCountryPaths(country).includes(element as SVGPathElement)) return country.id
+      }
+      element = element.parentElement
+    }
     return null
   }
 

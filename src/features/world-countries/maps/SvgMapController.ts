@@ -138,6 +138,9 @@ interface OriginalStyle {
 
 interface InternalCountry extends SvgMapCountry {
   path: SVGPathElement
+  /** Authored paths in the labelled Country group; these drive camera geometry. */
+  geometryPaths: readonly SVGPathElement[]
+  /** All authored paths that represent the Country, including wrapped copies. */
   paths: readonly SVGPathElement[]
   pathStates: readonly CountryPathState[]
   group: SVGGElement
@@ -223,6 +226,19 @@ function restoreAttribute(element: Element, name: string, original: string | nul
 function setOverride(element: SVGElement, property: string, value: string | null, original: OriginalStyle): void {
   if (value === null) restoreStyle(element, property, original)
   else element.style.setProperty(property, value, 'important')
+}
+
+function captureCountryPathState(path: SVGPathElement): CountryPathState {
+  return {
+    path,
+    originalFill: captureStyle(path, 'fill'),
+    originalStroke: captureStyle(path, 'stroke'),
+    originalStrokeWidth: captureStyle(path, 'stroke-width'),
+    originalFilter: captureStyle(path, 'filter'),
+    originalTransition: captureStyle(path, 'transition'),
+    originalVisibility: captureStyle(path, 'visibility'),
+    originalPointerEvents: captureStyle(path, 'pointer-events'),
+  }
 }
 
 function collectTextNodes(element: Element): Text[] {
@@ -848,7 +864,7 @@ export class SvgMapController {
     return { activeIds: [...this.hoveredIds], unknownIds: [] }
   }
 
-  /** Return the complete map-layer geometry bounds for one semantic country. */
+  /** Return canonical labelled-group geometry bounds; wrapped copies stay out of camera geometry. */
   getCountryGeometry(countryId: string): SvgViewBoxRect | null {
     this.assertUsable()
     const country = this.countries.get(countryId)
@@ -919,16 +935,7 @@ export class SvgMapController {
 
       const labelPaintElements = [label, ...label.querySelectorAll<SVGElement>('tspan')]
       const originalLabelTextNodes = collectTextNodes(label).map(node => ({ node, value: node.data }))
-      const pathStates = paths.map(countryPath => ({
-        path: countryPath,
-        originalFill: captureStyle(countryPath, 'fill'),
-        originalStroke: captureStyle(countryPath, 'stroke'),
-        originalStrokeWidth: captureStyle(countryPath, 'stroke-width'),
-        originalFilter: captureStyle(countryPath, 'filter'),
-        originalTransition: captureStyle(countryPath, 'transition'),
-        originalVisibility: captureStyle(countryPath, 'visibility'),
-        originalPointerEvents: captureStyle(countryPath, 'pointer-events'),
-      }))
+      const pathStates = paths.map(captureCountryPathState)
       const primaryPathState = pathStates[0]
       if (!primaryPathState) continue
       const group = parent as unknown as SVGGElement
@@ -943,6 +950,7 @@ export class SvgMapController {
       this.countries.set(definition.id, {
         ...definition,
         path,
+        geometryPaths: paths,
         paths,
         pathStates,
         group,
@@ -966,6 +974,24 @@ export class SvgMapController {
           originalFill: captureStyle(element, 'fill'),
         })),
       })
+    }
+
+    this.bindWrappedCountryPaths(svg)
+  }
+
+  /** Associate MapChart's translated duplicate paths without promoting them to new Countries. */
+  private bindWrappedCountryPaths(svg: SVGSVGElement): void {
+    for (const wrappedPath of svg.querySelectorAll<SVGPathElement>('path[id$="_wrap"]')) {
+      const wrappedId = wrappedPath.id.trim()
+      const baseId = wrappedId.slice(0, -'_wrap'.length)
+      const country = this.countries.get(baseId)
+      if (!country || !baseId || country.paths.includes(wrappedPath)) continue
+      const wrappedData = wrappedPath.getAttribute('d')?.trim() ?? ''
+      const sourceData = country.path.getAttribute('d')?.trim() ?? ''
+      if (!sourceData || wrappedData !== sourceData) continue
+
+      country.paths = [...country.paths, wrappedPath]
+      country.pathStates = [...country.pathStates, captureCountryPathState(wrappedPath)]
     }
   }
 
@@ -1418,10 +1444,10 @@ export class SvgMapController {
     const contextAssociations = contextIds.flatMap(id => {
       const country = this.countries.get(id)
       if (!country) return []
-      const closest = country.pathStates.reduce((current, pathState) => {
-        const candidate = this.findClosestTargetComponent(targetComponents, pathState.path)
+      const closest = country.geometryPaths.reduce((current, geometryPath) => {
+        const candidate = this.findClosestTargetComponent(targetComponents, geometryPath)
         if (!candidate || (current && candidate.distance >= current.distance)) return current
-        return { path: pathState.path, component: candidate.component, distance: candidate.distance }
+        return { path: geometryPath, component: candidate.component, distance: candidate.distance }
       }, null as (TargetContextAssociation & { distance: number }) | null)
       return closest ? [{ path: closest.path, component: closest.component }] : []
     })
@@ -1484,13 +1510,13 @@ export class SvgMapController {
     return targetIds.flatMap(countryId => {
       const country = this.countries.get(countryId)
       if (!country) return []
-      return country.pathStates.flatMap((pathState, pathIndex) => {
-        const pathData = pathState.path.getAttribute('d') ?? ''
+      return country.geometryPaths.flatMap((geometryPath, pathIndex) => {
+        const pathData = geometryPath.getAttribute('d') ?? ''
         const sourceComponents = readSvgPathGeometryComponents(pathData)
         const expectedComponents = countDrawnPathComponents(pathData)
         if (expectedComponents > sourceComponents.length) return []
         const components = sourceComponents.flatMap((component, componentIndex) => {
-          const bounds = this.transformBoundsToMap(pathState.path, component.bounds)
+          const bounds = this.transformBoundsToMap(geometryPath, component.bounds)
           if (!bounds) return []
           return [{
             key: `${countryId}:${pathIndex}:${componentIndex}`,
@@ -1499,7 +1525,7 @@ export class SvgMapController {
         })
         if (components.length > 0) return components
 
-        const bounds = this.getCountryBoxInLayer(pathState.path)
+        const bounds = this.getCountryBoxInLayer(geometryPath)
         return bounds
           ? [{ key: `${countryId}:${pathIndex}:fallback`, bounds }]
           : []
@@ -1657,7 +1683,7 @@ export class SvgMapController {
     return countryIds.flatMap(id => {
       const country = this.countries.get(id)
       if (!country) return []
-      return country.pathStates.flatMap(pathState => this.getCountryBox(pathState.path))
+      return country.geometryPaths.flatMap(path => this.getCountryBox(path))
     })
   }
 

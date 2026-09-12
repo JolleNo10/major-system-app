@@ -19,6 +19,8 @@ import { InlineOrderEditor, type InlineOrderClickState } from '@/features/world-
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 const andorra = countries.find(country => country.id === 'AD') as Country
+const france = countries.find(country => country.id === 'FR') as Country
+const australia = countries.find(country => country.id === 'AU') as Country
 const sanMarino = countries.find(country => country.id === 'SM') as Country
 const vaticanCity = countries.find(country => country.id === 'VA') as Country
 const malta = countries.find(country => country.id === 'MT') as Country
@@ -146,6 +148,67 @@ beforeEach(() => {
 // tests keep the real workflow -> CountryLearningMap -> SvgMapView -> SVG
 // chain intact so both shared-map failures remain observable.
 describe('real bundled-map tiny Country selection', () => {
+  it('routes the real France path through the task map and feature callback', async () => {
+    const onCountryClick = vi.fn()
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(CountryLearningMap, {
+        continent: 'Europe',
+        scopeCountries: [france],
+        answerSelectionCountryIds: [france.id],
+        onCountryClick,
+        ariaLabel: 'France task map',
+      }))
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const francePath = mount.querySelector<SVGPathElement>('#France')
+    if (!francePath) throw new Error('Missing real France map path')
+    await act(async () => {
+      francePath.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      await Promise.resolve()
+    })
+
+    expect(onCountryClick).toHaveBeenCalledTimes(1)
+    expect(onCountryClick).toHaveBeenCalledWith(france.id)
+  })
+
+  it('routes the real Australia wrapped path through the task map and feature callback', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => oceaniaSvg })))
+    const onCountryClick = vi.fn()
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(CountryLearningMap, {
+        continent: 'Oceania',
+        scopeCountries: [australia],
+        answerSelectionCountryIds: [australia.id],
+        onCountryClick,
+        ariaLabel: 'Australia task map',
+      }))
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const australiaWrap = mount.querySelector<SVGPathElement>('#Australia_wrap')
+    if (!australiaWrap) throw new Error('Missing real Australia wrapped map path')
+    await act(async () => {
+      australiaWrap.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      await Promise.resolve()
+    })
+
+    expect(onCountryClick).toHaveBeenCalledTimes(1)
+    expect(onCountryClick).toHaveBeenCalledWith(australia.id)
+  })
+
   it('routes the full Learning order-authoring membership through one map/rail click sequence', async () => {
     const mount = document.createElement('div')
     document.body.append(mount)

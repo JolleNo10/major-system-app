@@ -2,6 +2,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import europeSvg from '@/features/world-countries/maps/assets/MapChart_Map_Europe.svg?raw'
+import oceaniaSvg from '@/features/world-countries/maps/assets/MapChart_Map_Oceania.svg?raw'
 import { SvgMapController } from '@/features/world-countries/maps/SvgMapController'
 import { getSyntheticDotSourceFingerprint } from './syntheticDots'
 
@@ -139,6 +140,79 @@ describe('SvgMapController loading and discovery', () => {
     controller.setCountryClickHandler(id => clicked.push(id))
     mount.querySelector<SVGPathElement>('#France')?.dispatchEvent(new MouseEvent('click'))
     expect(clicked).toEqual(['France'])
+  })
+
+  it('resolves a task click from the browser target for the real France path', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: europeSvg })
+
+    const clicked: string[] = []
+    controller.setCountryClickHandler(id => clicked.push(id))
+    controller.setSelectableCountries(['France'])
+    controller.setTaskAssistance({ answerSelectionIds: ['France'] })
+
+    // JSDOM does not perform SVG hit testing. This deliberately supplies the
+    // real authored path as event.target while omitting coordinates, proving
+    // the delegated task seam does not depend on a synthetic path dispatch
+    // or a test-only bounding box.
+    mount.querySelector<SVGPathElement>('#France')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    expect(clicked).toEqual(['France'])
+  })
+
+  it('binds authored wrapped copies to their labelled semantic Country', async () => {
+    const { mount, controller } = makeController()
+    const countries = await controller.load({ markup: oceaniaSvg })
+
+    expect(countries.filter(country => country.id === 'Australia')).toHaveLength(1)
+    expect(countries.some(country => country.id === 'Australia_wrap')).toBe(false)
+
+    const clicked: string[] = []
+    const hovered: Array<string | null> = []
+    controller.setCountryClickHandler(id => clicked.push(id))
+    controller.setCountryHoverHandler(id => hovered.push(id))
+    const wrappedPairs = [
+      ['Australia', 'Australia_wrap'],
+      ['Fiji', 'Fiji_wrap'],
+      ['Samoa', 'Samoa_wrap'],
+      ['Solomon_Islands', 'Solomon_Islands_wrap'],
+      ['Vanuatu', 'Vanuatu_wrap'],
+      ['Papua_New_Guinea', 'Papua_New_Guinea_wrap'],
+      ['New_Zealand', 'New_Zealand_wrap'],
+    ] as const
+    controller.setSelectableCountries(wrappedPairs.map(([countryId]) => countryId))
+    controller.updateSettings({ hoverHighlight: true })
+    controller.setCountryColors({ Australia: '#22c55e' })
+
+    for (const [countryId, wrapperId] of wrappedPairs) {
+      expect(mount.querySelector<SVGPathElement>(`#${wrapperId}`)?.style.getPropertyValue('fill')).toBe(
+        countryId === 'Australia' ? '#22c55e' : 'rgb(115, 115, 115)',
+      )
+    }
+    mount.querySelector<SVGPathElement>('#Australia_wrap')?.dispatchEvent(new Event('pointerenter'))
+    expect(hovered).toEqual(['Australia'])
+
+    for (const [countryId, wrapperId] of wrappedPairs) {
+      mount.querySelector<SVGPathElement>(`#${countryId}`)?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      mount.querySelector<SVGPathElement>(`#${wrapperId}`)?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    }
+
+    expect(clicked).toEqual(wrappedPairs.flatMap(([countryId]) => [countryId, countryId]))
+
+    controller.setTaskAssistance({ answerSelectionIds: wrappedPairs.map(([countryId]) => countryId) })
+    for (const [, wrapperId] of wrappedPairs) {
+      mount.querySelector<SVGPathElement>(`#${wrapperId}`)?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    }
+    expect(clicked).toEqual([
+      ...wrappedPairs.flatMap(([countryId]) => [countryId, countryId]),
+      ...wrappedPairs.map(([countryId]) => countryId),
+    ])
+
+    controller.setHiddenCountries(['Australia'])
+    expect(mount.querySelector<SVGPathElement>('#Australia_wrap')?.style.visibility).toBe('hidden')
+    expect(mount.querySelector<SVGPathElement>('#Australia_wrap')?.style.getPropertyValue('pointer-events')).toBe('none')
+    mount.querySelector<SVGPathElement>('#Australia_wrap')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(clicked).toHaveLength(21)
   })
 
   it('discovers a multipart semantic country once', async () => {
