@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { deriveWorldCountriesRecallProgress } from './recallProgress'
 import { recallTargetIdFor } from './recallTargets'
-import { createWorldCountriesLearningPattern, createWorldCountriesLearningPatternsByCountry, createWorldCountriesLearningReadinessByCountry, deriveWorldCountriesLearningReadiness, getLearningReadinessBySubregion, getLearningReadinessBySubregionWithDrillEvidence, getLearningReadinessForCountry, isWorldCountriesCapitalLayerEstablished, isWorldCountriesCapitalRecallMastered, isWorldCountriesCountryLayerEstablished, isWorldCountriesCountryRecallMastered, WORLD_COUNTRIES_LEARNING_BASE, WORLD_COUNTRIES_LEARNING_PATTERN_BASE, WORLD_COUNTRIES_LEARNING_PATTERN_LINE, WORLD_COUNTRIES_LEARNING_PATTERN_PITCH, WORLD_COUNTRIES_LEARNING_PATTERN_WIDTH, WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES } from './learningReadiness'
+import { createWorldCountriesLearningPattern, createWorldCountriesLearningPatternsByCountry, createWorldCountriesLearningReadinessByCountry, deriveWorldCountriesLearningReadiness, getLearningReadinessBySubregion, getLearningReadinessBySubregionWithDrillEvidence, getLearningReadinessForCountry, isWorldCountriesCapitalLayerEstablished, isWorldCountriesCapitalRecallMastered, isWorldCountriesCountryLayerEstablished, isWorldCountriesCountryRecallMastered, WORLD_COUNTRIES_LEARNING_BASE, WORLD_COUNTRIES_LEARNING_PATTERN_BASE, WORLD_COUNTRIES_LEARNING_PATTERN_LINE, WORLD_COUNTRIES_LEARNING_PATTERN_PITCH, WORLD_COUNTRIES_LEARNING_PATTERN_WIDTH, WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES, WORLD_COUNTRIES_LEARNING_READINESS_STATES } from './learningReadiness'
 
 describe('World Countries Learning Readiness', () => {
   it('keeps the canonical three-state labels and shared base together', () => {
+    expect(WORLD_COUNTRIES_LEARNING_READINESS_STATES).toEqual(['NOT_LEARNED', 'COUNTRIES_LEARNED', 'COUNTRIES_AND_CAPITALS_LEARNED'])
     expect(WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES).toEqual([
       { state: 'NOT_LEARNED', label: 'Not learned', color: '#52525b' },
       expect.objectContaining({ state: 'COUNTRIES_LEARNED', label: 'Countries learned', color: '#52525b', swatchStyle: expect.objectContaining({ backgroundColor: '#52525b', backgroundSize: '16px 16px' }) }),
-      expect.objectContaining({ state: 'COUNTRIES_AND_CAPITALS_LEARNED', label: 'Countries + Capitals learned', color: '#52525b', swatchStyle: expect.objectContaining({ backgroundColor: '#52525b', backgroundSize: '16px 16px' }) }),
     ])
   })
 
@@ -16,7 +16,6 @@ describe('World Countries Learning Readiness', () => {
     expect(WORLD_COUNTRIES_LEARNING_PATTERN_BASE).toBe(WORLD_COUNTRIES_LEARNING_BASE)
     expect(WORLD_COUNTRIES_LEARNING_PATTERN_LINE).toBe('#918779')
     expect(createWorldCountriesLearningPattern('diagonal')).toMatchObject({ kind: 'diagonal', baseColor: '#52525b', lineColor: '#918779', lineWidth: WORLD_COUNTRIES_LEARNING_PATTERN_WIDTH, pitch: WORLD_COUNTRIES_LEARNING_PATTERN_PITCH })
-    expect(createWorldCountriesLearningPattern('crosshatch').kind).toBe('crosshatch')
   })
 
   it('maps Learning Readiness to the matching pattern and leaves Not learned solid', () => {
@@ -31,8 +30,10 @@ describe('World Countries Learning Readiness', () => {
       ['FI', 'COUNTRIES_AND_CAPITALS_LEARNED'],
     ]))).toEqual(new Map([
       ['SE', expect.objectContaining({ kind: 'diagonal', baseColor: '#52525b', lineColor: '#918779' })],
-      ['FI', expect.objectContaining({ kind: 'crosshatch', baseColor: '#52525b', lineColor: '#918779' })],
     ]))
+    expect(createWorldCountriesLearningPatternsByCountry(entries, new Map([
+      ['FI', 'COUNTRIES_AND_CAPITALS_LEARNED'],
+    ])).has('FI')).toBe(false)
   })
 
   it.each([

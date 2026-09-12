@@ -5,7 +5,7 @@ import { WORLD_COUNTRIES_LEARNING_PATTERN_BASE, WORLD_COUNTRIES_LEARNING_PATTERN
 
 const entries = countries.slice(0, 2)
 
-function derive(completionPatternKind: 'diagonal' | 'crosshatch', phase = 'complete', activeLearningPatternKind?: 'diagonal' | 'crosshatch') {
+function derive(completionPatternKind?: 'diagonal', phase = 'complete', activeLearningPatternKind?: 'diagonal') {
   return deriveLearningMapPresentation({
     phase,
     fullEntries: entries,
@@ -28,15 +28,14 @@ describe('Learning map completion presentation', () => {
     })
   })
 
-  it('uses crosshatch warm-neutral Learning treatment for Capital completion', () => {
-    expect(derive('crosshatch').presentation.countryPatternsById?.get(entries[0].id)).toMatchObject({
-      kind: 'crosshatch', baseColor: WORLD_COUNTRIES_LEARNING_PATTERN_BASE, lineColor: WORLD_COUNTRIES_LEARNING_PATTERN_LINE, lineWidth: 2, pitch: 16,
-    })
+  it('does not add a separate pattern for Capital completion', () => {
+    expect(derive().presentation.countryPatternsById).toBeUndefined()
   })
 
   it('keeps the established Country pattern during active Capital Learning', () => {
-    expect(derive('crosshatch', 'practice', 'diagonal').presentation.countryPatternsById?.get(entries[0].id)).toMatchObject({ kind: 'diagonal' })
-    expect(derive('crosshatch', 'final-recall', 'diagonal').presentation.countryPatternsById?.get(entries[0].id)).toMatchObject({ kind: 'diagonal' })
-    expect(derive('crosshatch', 'complete', 'diagonal').presentation.countryPatternsById?.get(entries[0].id)).toMatchObject({ kind: 'crosshatch' })
+    expect(derive(undefined, 'walkthrough', 'diagonal').presentation.countryPatternsById?.get(entries[0].id)).toMatchObject({ kind: 'diagonal' })
+    expect(derive(undefined, 'practice', 'diagonal').presentation.countryPatternsById?.get(entries[0].id)).toMatchObject({ kind: 'diagonal' })
+    expect(derive(undefined, 'final-recall', 'diagonal').presentation.countryPatternsById?.get(entries[0].id)).toMatchObject({ kind: 'diagonal' })
+    expect(derive(undefined, 'complete', 'diagonal').presentation.countryPatternsById).toBeUndefined()
   })
 })

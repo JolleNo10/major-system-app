@@ -1,4 +1,4 @@
-import type { Country } from '@/features/world-countries/data/countries'
+import type { Country, CountryId } from '@/features/world-countries/data/countries'
 import { deriveWorldCountriesCountryProgress, type WorldCountriesCountryCoreState, type WorldCountriesCountryProgress, type RecallProgress } from './recallProgress'
 import type { WorldCountriesProficiency } from './recallMastery'
 import type { WorldCountriesRecallSkill } from './recallTargets'
@@ -53,6 +53,17 @@ export function getCountryProgressState(
 
 export function getCountryProgressColor(state: WorldCountriesProgressState): string {
   return WORLD_COUNTRIES_PROGRESS_COLORS[state]
+}
+
+/** Create solid core-recall colors for a map after Learning has handed off. */
+export function createWorldCountriesRecallColorsByCountry(
+  countries: readonly Pick<Country, 'id'>[],
+  recallProgress: RecallProgress,
+): Map<CountryId, string> {
+  return new Map(countries.map(country => [
+    country.id,
+    getCountryProgressColor(getCountryProgressState(deriveWorldCountriesCountryProgress(country.id, recallProgress))),
+  ]))
 }
 
 /** Gate recall-health labels behind the durable Learning ladder. */

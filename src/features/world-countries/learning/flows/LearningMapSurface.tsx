@@ -11,6 +11,7 @@ export type LearningMapOverride = Partial<Pick<CountryLearningMapProps,
   'highlightedCountryId' | 'hoveredCountryId' | 'showHighlightedNames' |
   'answerSelectionCountryIds' | 'taskTargetCountryId' |
   'countryLabelsById' |
+  'countryColorsById' |
   'countryPatternsById' |
   'highlightFill' |
   'cameraIntent' |

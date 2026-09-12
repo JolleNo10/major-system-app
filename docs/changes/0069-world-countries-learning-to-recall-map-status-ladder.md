@@ -16,7 +16,6 @@ The map should read as a progression:
 Learning
 Not learned
   -> Countries learned
-  -> Countries + Capitals learned
 
 then
 
@@ -29,6 +28,17 @@ Early recall
 ```
 
 Learning states use **neutral pattern fills**. Recall-health states use **solid colors with no pattern**. A Country has one primary status treatment at a time.
+
+The internal curriculum states remain:
+
+```text
+NOT_LEARNED
+COUNTRIES_LEARNED
+COUNTRIES_AND_CAPITALS_LEARNED
+```
+
+`COUNTRIES_AND_CAPITALS_LEARNED` is a curriculum milestone and handoff boundary,
+not a separate learner-facing map-status rung.
 
 This change replaces only the learner-facing map rendering model from Change Spec 0068. Preserve the established-layer fallback, historical `hasEverMastered` behavior, atomic mastery arithmetic, and lapse/recovery semantics already delivered there.
 
@@ -44,7 +54,6 @@ The normal learner-facing status vocabulary becomes:
 | --- | --- | --- |
 | Not learned | neutral solid | Country learning has not yet been established |
 | Countries learned | neutral diagonal pattern | Country/location layer is learned; Capitals are still pending |
-| Countries + Capitals learned | same neutral family, crosshatch pattern | both guided Learning layers have been completed |
 | Early recall | dark burnt-orange solid | Learning is complete and retention is only beginning / not yet well established |
 | Weak | amber-orange solid | recall is fragile or recent difficulty indicates reinforcement is needed |
 | Developing | gold/yellow solid | recall is working but retention is still being established |
@@ -70,9 +79,6 @@ Pattern treatment:
 Countries learned
   -> diagonal warm-neutral stripes
 
-Countries + Capitals learned
-  -> same base + same stripe color
-  -> add the opposite diagonal to form a crosshatch
 ```
 
 Starting geometry:
@@ -80,7 +86,7 @@ Starting geometry:
 - stripe width around 2 px;
 - pitch around 16 px;
 - pattern should remain legible at Continent and World scale without becoming visually dominant;
-- exact implementation may tune density slightly for real SVG scale, but keep the visual intent: sparse diagonal versus crosshatch.
+- exact implementation may tune density slightly for real SVG scale, but keep the visual intent: a sparse diagonal.
 
 Do not use cyan/blue for Learning. Cyan remains available for focus/selection and must not be confused with progress state.
 
@@ -111,7 +117,6 @@ The intended learner experience is:
 ```text
 Not learned
   -> Countries learned pattern
-  -> Countries + Capitals learned pattern
   -> Early recall solid
   -> Weak / Developing / Strong / Mastered solid
 ```
@@ -122,8 +127,7 @@ The implementation should derive the handoff from existing workflow context and 
 
 - while the learner is still in guided Learning, use the applicable Learning pattern state;
 - after Countries are established, Capital Learning keeps the Countries-learned diagonal pattern through walkthrough, practice, mix, and final recall;
-- an intentional Capital rerun for an already Capital-established region uses the crosshatch completion treatment rather than regressing to Countries-only presentation;
-- the Capital-completion / Region-learned moment may show the crosshatch state as the visible completion payoff;
+- when the Capital Learning milestone is completed, remove the Learning pattern and use the current Recall-health state;
 - once the material is being presented as long-term retention rather than unfinished curriculum, use the current solid Recall-health state;
 - on ordinary Home/Continent/Progress views of an already learned region, Recall health is the long-term status surface rather than a permanent Learning pattern;
 - ordinary mistakes after Learning must only affect Recall health. They must never send a Country back into a Learning pattern.
@@ -135,7 +139,9 @@ state. It is not a global rename: an untouched Country remains Not learned,
 and a Countries-learned Country remains in its diagonal Learning state until
 both Learning layers are established. Dedicated Learning Readiness surfaces,
 including Learn & Practise and Drill's no-evidence fallback, use the same grey
-base with diagonal/crosshatch patterns.
+base with a diagonal pattern only for Countries learned. They may retain
+explicit text such as `Countries + Capitals learned` for the internal
+curriculum milestone, but must not render it as a third map status.
 
 If repository inspection reveals more than one reasonable existing seam for this handoff, choose the one that preserves the current ownership model and report the choice in the implementation summary.
 
@@ -170,7 +176,7 @@ Conceptually:
 
 ```text
 LEARNING
-Not learned · Countries learned · Countries + Capitals learned
+Not learned · Countries learned
 
 RECALL HEALTH
 Early recall · Weak · Developing · Strong · Mastered
@@ -219,11 +225,8 @@ Current-state architecture documentation must no longer describe normal Home/Con
 - diagonal warm-neutral pattern;
 - Capitals remain an unfinished Journey step.
 
-### Countries + Capitals learned
-
-- same neutral Learning base and pattern color;
-- crosshatch pattern;
-- use as the completion/transition payoff for finishing both Learning layers.
+`COUNTRIES_AND_CAPITALS_LEARNED` remains an internal curriculum milestone. On
+normal progress maps it hands off directly to the current Recall-health state.
 
 ### Early recall
 
@@ -331,7 +334,7 @@ Reuse the current map presentation seams before adding a new abstraction. If a s
 
 - [x] Normal learner-facing map presentation follows one Learning -> Recall status ladder rather than simultaneous Learning edge + Recall fill.
 - [x] Countries learned uses a neutral diagonal pattern.
-- [x] Countries + Capitals learned uses the same neutral color family with a crosshatch completion pattern.
+- [x] `COUNTRIES_AND_CAPITALS_LEARNED` remains internal and is not a separate map rung.
 - [x] Cyan/blue is no longer used as the Learning progress color.
 - [x] Recall-health states use solid fills with no Learning pattern.
 - [x] Learner-facing `Unpractised` is replaced by `Early recall`.
@@ -368,14 +371,17 @@ Reuse the current map presentation seams before adding a new abstraction. If a s
 Implemented on 2026-09-12 on `world-countries-learning-journey`.
 
 Evidence: focused Vitest coverage for `SvgMapController`, `GeographyOverviewMap`,
-`geographyMapAdapter`, `CountryLearningMap`, `WorldCountriesToday`, and
-`progressPresentation`: 144 tests passed in the original CS0069 delivery.
-The follow-up correction adds focused coverage for Learning Readiness patterns,
+`geographyMapAdapter`, `CountryLearningFlow`, `CapitalLearningFlow`,
+`WorldCountriesToday`, `WorldCountriesProgressView`, Drill setup/presentation,
+`WorldCountriesDrill`, Learning Readiness, and `progressPresentation`. The original CS0069 delivery
+and prior correction remain covered; this simplified-ladder correction adds
+coverage for the two-entry Learning legend, no-pattern Capital completion,
 Capital Learning continuity, gated Early recall, Progress distribution, and
-Drill readiness fallback. Final focused run: 14 test files, 238 tests passed.
-Typecheck reached the changed World Countries modules without errors; the
-repository command still reports the existing missing Node.js test-type
-declarations. No browser or dev-server verification was used.
+Drill readiness fallback. Final focused run: 13 test files, 247 tests passed.
+`npm run typecheck` remains non-zero because the environment lacks Node.js test
+type declarations for unrelated settings, architecture, and practice tests; it
+reported no diagnostics in the changed World Countries modules. No browser or
+dev-server verification was used.
 
 Use focused, risk-proportionate automated validation around:
 

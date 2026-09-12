@@ -11,7 +11,8 @@ import { CountryLearningFlow } from '@/features/world-countries/learning/flows/C
 import { CapitalLearningFlow } from '@/features/world-countries/learning/flows/CapitalLearningFlow'
 import { isWorldCountriesLearningMode, type WorldCountriesLearningMode } from '@/features/world-countries/learning/learnPracticeModes'
 import type { WorldCountriesPracticeMode } from '@/features/world-countries/practice/practiceModes'
-import { recordWorldCountriesAttempt } from '@/features/world-countries/learning/recallProgress'
+import { loadWorldCountriesRecallProgress, recordWorldCountriesAttempt, type RecallProgress } from '@/features/world-countries/learning/recallProgress'
+import { WORLD_COUNTRIES_CORE_RECALL_SKILLS } from '@/features/world-countries/learning/recallTargets'
 import { DrillResults } from './DrillResults'
 import { PracticeResults } from '@/features/world-countries/practice/PracticeResults'
 import { PracticeSession, type PracticeSessionAnswer, type PracticeSessionInteraction } from '@/features/world-countries/practice/PracticeSession'
@@ -119,6 +120,22 @@ export function WorldCountriesDrill({ answerMode, onExit, initialPurpose = 'dril
     () => deriveDrillLearningScope(learningRun, activeCountries, learningStates, selectionMetadata.subregions ?? []),
     [activeCountries, learningRun, learningStates, selectionMetadata.subregions],
   )
+  const learningCountryKey = useMemo(() => [...new Set(learningScope.entries.map(country => country.id))].sort().join('|'), [learningScope.entries])
+  const learningCountryIds = useMemo(() => learningCountryKey ? learningCountryKey.split('|') : [], [learningCountryKey])
+  const [learningRecallProgress, setLearningRecallProgress] = useState<RecallProgress | null>(null)
+
+  useEffect(() => {
+    if (phase !== 'learning' || learningCountryIds.length === 0) {
+      setLearningRecallProgress(null)
+      return
+    }
+    let active = true
+    setLearningRecallProgress(null)
+    void loadWorldCountriesRecallProgress({ countryIds: learningCountryIds, skills: [...WORLD_COUNTRIES_CORE_RECALL_SKILLS] }).then(progress => {
+      if (active) setLearningRecallProgress(progress)
+    })
+    return () => { active = false }
+  }, [learningCountryIds, phase])
 
   useEffect(() => {
     if (phase !== 'recall' && phase !== 'practice' || !activeRun || activeRunMatchesPopulation) return
@@ -330,9 +347,9 @@ export function WorldCountriesDrill({ answerMode, onExit, initialPurpose = 'dril
     const doneLabel = getDrillLearningRunDoneLabel(learningRun)
     const onDone = completeLearningSubregion
     if (learningRun.mode === 'learn-countries') {
-      return <CountryLearningFlow key={learningScope.subregionId ?? learningRun.countryIds?.join(',')} continent={learningContinent} subregion={learningScope.subregionId ?? undefined} scopeLabel={learningRun.scopeLabel} entries={learningScope.entries} activeCountries={activeCountries} newItemsPerSet={learningRun.newItemsPerSet} schedulerSettings={{ masteryLatencyFactor: settings.masteryLatencyFactor, sessionUnmasteredShare: settings.sessionUnmasteredShare }} countriesEstablished={Boolean(learningScope.state?.countriesLearnedAt)} capitalsEstablished={Boolean(learningScope.state?.capitalsLearnedAt)} fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching} allowIncorrectSpellingPractice recordCompletion={learningRun.recordCompletion} onPhaseChange={() => undefined} onExit={exitToSetup} onDone={onDone} doneLabel={doneLabel} />
+      return <CountryLearningFlow key={learningScope.subregionId ?? learningRun.countryIds?.join(',')} continent={learningContinent} subregion={learningScope.subregionId ?? undefined} scopeLabel={learningRun.scopeLabel} entries={learningScope.entries} activeCountries={activeCountries} newItemsPerSet={learningRun.newItemsPerSet} schedulerSettings={{ masteryLatencyFactor: settings.masteryLatencyFactor, sessionUnmasteredShare: settings.sessionUnmasteredShare }} countriesEstablished={Boolean(learningScope.state?.countriesLearnedAt)} capitalsEstablished={Boolean(learningScope.state?.capitalsLearnedAt)} recallProgress={learningRecallProgress ?? undefined} fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching} allowIncorrectSpellingPractice recordCompletion={learningRun.recordCompletion} onPhaseChange={() => undefined} onExit={exitToSetup} onDone={onDone} doneLabel={doneLabel} />
     }
-    return <CapitalLearningFlow key={learningScope.subregionId ?? learningRun.countryIds?.join(',')} continent={learningContinent} subregion={learningScope.subregionId ?? undefined} scopeLabel={learningRun.scopeLabel} entries={learningScope.entries} activeCountries={activeCountries} newItemsPerSet={learningRun.newItemsPerSet} schedulerSettings={{ masteryLatencyFactor: settings.masteryLatencyFactor, sessionUnmasteredShare: settings.sessionUnmasteredShare }} countriesEstablished={Boolean(learningScope.state?.countriesLearnedAt)} capitalsEstablished={Boolean(learningScope.state?.capitalsLearnedAt)} fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching} allowIncorrectSpellingPractice recordCompletion={learningRun.recordCompletion} onPhaseChange={() => undefined} onExit={exitToSetup} onDone={onDone} doneLabel={doneLabel} />
+    return <CapitalLearningFlow key={learningScope.subregionId ?? learningRun.countryIds?.join(',')} continent={learningContinent} subregion={learningScope.subregionId ?? undefined} scopeLabel={learningRun.scopeLabel} entries={learningScope.entries} activeCountries={activeCountries} newItemsPerSet={learningRun.newItemsPerSet} schedulerSettings={{ masteryLatencyFactor: settings.masteryLatencyFactor, sessionUnmasteredShare: settings.sessionUnmasteredShare }} countriesEstablished={Boolean(learningScope.state?.countriesLearnedAt)} capitalsEstablished={Boolean(learningScope.state?.capitalsLearnedAt)} recallProgress={learningRecallProgress ?? undefined} fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching} allowIncorrectSpellingPractice recordCompletion={learningRun.recordCompletion} onPhaseChange={() => undefined} onExit={exitToSetup} onDone={onDone} doneLabel={doneLabel} />
   }
 
   if ((phase === 'recall' || phase === 'practice') && activeRun && activeRunMatchesPopulation) {

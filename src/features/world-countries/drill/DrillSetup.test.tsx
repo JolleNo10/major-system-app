@@ -232,7 +232,7 @@ describe('DrillSetup activity boundary', () => {
     expect(legend?.querySelector('[data-progress-summary]')?.textContent).toBe('Learning Readiness is used until a Country has relevant evidence for this Drill mode.')
     expect(legend?.querySelector('summary')?.textContent).toBe('How progress works')
     expect(legend?.querySelector('[data-progress-group="No Drill evidence"] [data-progress-state="COUNTRIES_LEARNED"] i')?.getAttribute('style')).toContain('#918779')
-    expect(legend?.querySelector('[data-progress-group="No Drill evidence"] [data-progress-state="COUNTRIES_AND_CAPITALS_LEARNED"] i')?.getAttribute('style')).toContain('#918779')
+    expect(legend?.querySelector('[data-progress-group="No Drill evidence"] [data-progress-state="COUNTRIES_AND_CAPITALS_LEARNED"]')).toBeNull()
   })
 
   it('confirms a single effective Subregion and keeps Start Drill enabled', () => {
@@ -397,7 +397,7 @@ describe('DrillSetup activity boundary', () => {
     act(() => root?.render(createElement(DrillSetup, createSetupProps({ learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: 1, capitalsLearnedAt: 2 }] }))))
     await act(async () => { await Promise.resolve(); await Promise.resolve() })
     const completeMapProps = mapMock.mock.calls[mapMock.mock.calls.length - 1]?.[0] as { countryPatternsById: Map<string, { kind: string }> }
-    expect(completeMapProps.countryPatternsById.get('NO')).toMatchObject({ kind: 'crosshatch' })
+    expect(completeMapProps.countryPatternsById.get('NO')).toBeUndefined()
   })
 
   it('shows the Country count on each Subregion button', () => {

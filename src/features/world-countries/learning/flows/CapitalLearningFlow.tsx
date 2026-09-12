@@ -12,6 +12,8 @@ import {
   type LearningSetMaximum,
 } from '@/features/world-countries/learning/stagedLearningPlan'
 import { deriveLearningPracticeProgress } from '@/features/world-countries/learning/learningPracticeProgress'
+import type { RecallProgress } from '@/features/world-countries/learning/recallProgress'
+import { createWorldCountriesRecallColorsByCountry } from '@/features/world-countries/learning/progressPresentation'
 import {
   advanceStagedCapitalPlan,
   backStagedCapital,
@@ -82,6 +84,7 @@ export function CapitalLearningFlow({
   completedRegionAction,
   countriesEstablished = false,
   capitalsEstablished = false,
+  recallProgress,
   onWalkthroughCountryChange,
   recordCompletion = true,
   allowIncorrectSpellingPractice = false,
@@ -103,6 +106,7 @@ export function CapitalLearningFlow({
   completedRegionAction?: LearningCompletedRegionAction
   countriesEstablished?: boolean
   capitalsEstablished?: boolean
+  recallProgress?: RecallProgress
   onWalkthroughCountryChange?: (countryId: string | null) => void
   recordCompletion?: boolean
   allowIncorrectSpellingPractice?: boolean
@@ -119,6 +123,12 @@ export function CapitalLearningFlow({
   const stageEntries = useMemo(() => stageIds.map(id => entries.find(entry => entry.id === id)).filter((entry): entry is Country => Boolean(entry)), [entries, stageIds])
   const currentPlanStage = flow.plan[flow.stageIndex]
   const stagePresentation = deriveLearningStagePresentation(flow.plan, flow.stageIndex)
+  const recallColorsById = useMemo(
+    () => countriesEstablished && recallProgress && (capitalsEstablished || (recordCompletion && flow.phase === 'complete'))
+      ? createWorldCountriesRecallColorsByCountry(allPresentationEntries, recallProgress)
+      : undefined,
+    [allPresentationEntries, capitalsEstablished, countriesEstablished, flow.phase, recallProgress, recordCompletion],
+  )
 
   const transition = (next: StagedCapitalLearningFlowState) => {
     if (next.phase !== flow.phase) onPhaseChange(next.phase)
@@ -167,8 +177,9 @@ export function CapitalLearningFlow({
     practice: flow.practice,
     hoveredCountryId,
     orderPresentation: orderMapPresentation,
-    completionPatternKind: 'crosshatch',
-    activeLearningPatternKind: capitalsEstablished ? 'crosshatch' : countriesEstablished ? 'diagonal' : undefined,
+    completionPatternKind: countriesEstablished && !recordCompletion ? 'diagonal' : undefined,
+    activeLearningPatternKind: countriesEstablished && !capitalsEstablished ? 'diagonal' : undefined,
+    countryColorsById: recallColorsById,
   })
   const mapMeta = <LearningMapMetadata scopeLabel={learningScopeLabel} fullEntries={allPresentationEntries} activeEntries={mapEntries} activeScopeLabel={currentPlanStage?.kind === 'set' ? 'Current Set' : currentPlanStage?.kind === 'combined' ? 'Introduced scope' : 'Full Subregion'} />
 

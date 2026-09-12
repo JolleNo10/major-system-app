@@ -11,6 +11,8 @@ import {
   type LearningSetMaximum,
 } from '@/features/world-countries/learning/stagedLearningPlan'
 import { deriveLearningPracticeProgress } from '@/features/world-countries/learning/learningPracticeProgress'
+import type { RecallProgress } from '@/features/world-countries/learning/recallProgress'
+import { createWorldCountriesRecallColorsByCountry } from '@/features/world-countries/learning/progressPresentation'
 import {
   backStagedCountry,
   createStagedCountryLearningFlow,
@@ -85,6 +87,7 @@ export function CountryLearningFlow({
   completedRegionAction,
   countriesEstablished = false,
   capitalsEstablished = false,
+  recallProgress,
   recordCompletion = true,
   allowIncorrectSpellingPractice = false,
 }: {
@@ -105,6 +108,7 @@ export function CountryLearningFlow({
   completedRegionAction?: LearningCompletedRegionAction
   countriesEstablished?: boolean
   capitalsEstablished?: boolean
+  recallProgress?: RecallProgress
   recordCompletion?: boolean
   allowIncorrectSpellingPractice?: boolean
 }) {
@@ -120,6 +124,12 @@ export function CountryLearningFlow({
   const stageEntries = useMemo(() => stageIds.map(id => entries.find(entry => entry.id === id)).filter((entry): entry is Country => Boolean(entry)), [entries, stageIds])
   const currentPlanStage = flow.plan[flow.stageIndex]
   const stagePresentation = deriveLearningStagePresentation(flow.plan, flow.stageIndex)
+  const recallColorsById = useMemo(
+    () => capitalsEstablished && recallProgress && (countriesEstablished || (recordCompletion && flow.phase === 'complete'))
+      ? createWorldCountriesRecallColorsByCountry(allPresentationEntries, recallProgress)
+      : undefined,
+    [allPresentationEntries, capitalsEstablished, countriesEstablished, flow.phase, recallProgress, recordCompletion],
+  )
 
   const transition = (next: StagedCountryLearningFlowState) => {
     if (next.phase !== flow.phase) onPhaseChange(next.phase)
@@ -172,8 +182,9 @@ export function CountryLearningFlow({
     practice: flow.practice,
     hoveredCountryId,
     orderPresentation: orderMapPresentation,
-    completionPatternKind: 'diagonal',
-    activeLearningPatternKind: capitalsEstablished ? 'crosshatch' : countriesEstablished ? 'diagonal' : undefined,
+    completionPatternKind: capitalsEstablished && recordCompletion ? undefined : 'diagonal',
+    activeLearningPatternKind: countriesEstablished && !capitalsEstablished ? 'diagonal' : undefined,
+    countryColorsById: recallColorsById,
   })
   const mapMeta = <LearningMapMetadata scopeLabel={learningScopeLabel} fullEntries={allPresentationEntries} activeEntries={mapEntries} activeScopeLabel={currentPlanStage?.kind === 'set' ? 'Current Set' : currentPlanStage?.kind === 'combined' ? 'Introduced scope' : 'Full Subregion'} />
 

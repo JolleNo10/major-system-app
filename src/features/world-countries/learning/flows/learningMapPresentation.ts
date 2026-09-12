@@ -26,6 +26,7 @@ export function deriveLearningMapPresentation({
   orderPresentation,
   completionPatternKind,
   activeLearningPatternKind,
+  countryColorsById,
 }: {
   phase: string
   fullEntries: readonly Country[]
@@ -38,6 +39,7 @@ export function deriveLearningMapPresentation({
   orderPresentation: LearningMapOverride
   completionPatternKind?: WorldCountriesLearningPatternKind
   activeLearningPatternKind?: WorldCountriesLearningPatternKind
+  countryColorsById?: LearningMapOverride['countryColorsById']
 }): {
   mapEntries: readonly Country[]
   presentation: LearningMapOverride
@@ -60,6 +62,7 @@ export function deriveLearningMapPresentation({
     showHighlightedNames: phase === 'walkthrough',
     showHoverNames: phase === 'final-recall',
     ...orderPresentation,
+    countryColorsById,
     countryLabelsById: orderPresentation.countryLabelsById ?? (showOrderNumbers ? createLearningOrderLabels(fullEntries) : undefined),
     mapClassName: PRACTICE_MAP_PHASES.has(phase) ? '[&>svg]:max-h-[510px]' : undefined,
     ariaLabel: phase === 'final-recall' ? 'Highlighted Country for final recall' : 'World Countries Learning map',

@@ -4,6 +4,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, createElement, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import type { Country } from '@/features/world-countries/data/countries'
+import { deriveWorldCountriesRecallProgress, type RecallProgress } from '@/features/world-countries/learning/recallProgress'
+import { WORLD_COUNTRIES_CORE_RECALL_SKILLS, recallTargetIdFor } from '@/features/world-countries/learning/recallTargets'
 import { getSubregionLearningState } from '@/features/world-countries/learning/subregionLearningStore'
 import { CapitalLearningFlow } from './CapitalLearningFlow'
 
@@ -56,7 +58,7 @@ afterEach(() => {
   learningMapSurfaceMock.mockReset()
 })
 
-function renderFlow(onPhaseChange: (phase: string) => void, flowEntries: readonly Country[] = entries, countriesEstablished = false, capitalsEstablished = false): HTMLDivElement {
+function renderFlow(onPhaseChange: (phase: string) => void, flowEntries: readonly Country[] = entries, countriesEstablished = false, capitalsEstablished = false, recallProgress?: RecallProgress, recordCompletion = true): HTMLDivElement {
   const container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
@@ -70,6 +72,8 @@ function renderFlow(onPhaseChange: (phase: string) => void, flowEntries: readonl
         schedulerSettings={{ masteryLatencyFactor: 1.4, sessionUnmasteredShare: 0.5 }}
         countriesEstablished={countriesEstablished}
         capitalsEstablished={capitalsEstablished}
+        recallProgress={recallProgress}
+        recordCompletion={recordCompletion}
         fuzzyMatching={false}
         onPhaseChange={onPhaseChange}
         onExit={() => undefined}
@@ -77,6 +81,13 @@ function renderFlow(onPhaseChange: (phase: string) => void, flowEntries: readonl
     )
   })
   return container
+}
+
+function strongRecallProgress(): RecallProgress {
+  return deriveWorldCountriesRecallProgress({ countryIds: ['NO'], skills: [...WORLD_COUNTRIES_CORE_RECALL_SKILLS] }, WORLD_COUNTRIES_CORE_RECALL_SKILLS.flatMap((skill, index) => [
+    { itemId: recallTargetIdFor('NO', skill), at: index * 2 + 1, ok: true, ms: 500, evidenceKind: 'recall' as const, localDate: '2026-08-10' },
+    { itemId: recallTargetIdFor('NO', skill), at: index * 2 + 2, ok: true, ms: 500, evidenceKind: 'recall' as const, localDate: '2026-08-10' },
+  ]))
 }
 
 function renderRail() {
@@ -129,13 +140,14 @@ describe('CapitalLearningFlow orchestration', () => {
   })
 
   it('seeds established Country and Capital progress on a fresh flow', () => {
-    const container = renderFlow(() => undefined, entries, true, true)
+    const container = renderFlow(() => undefined, entries, true, true, strongRecallProgress())
     const leftRail = renderLeftRail()
 
     expect(container.textContent).toContain('Norway')
     expect(leftRail.textContent).toContain('Meet the capitals')
     expect(leftRail.textContent).not.toContain('Learning progress')
-    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].presentation.countryPatternsById?.get('NO')).toMatchObject({ kind: 'crosshatch' })
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].presentation.countryPatternsById).toBeUndefined()
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].presentation.countryColorsById?.get('NO')).toBe('#69a95d')
   })
 
   it('keeps Country ↔ Capital presentation in the Capital walkthrough', () => {
@@ -235,7 +247,7 @@ describe('CapitalLearningFlow orchestration', () => {
   })
 
   it('keeps Countries established when Capital Learning completes after Country Learning', () => {
-    const container = renderFlow(() => undefined, entries, true)
+    const container = renderFlow(() => undefined, entries, true, false, new Map())
 
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-practice"]')!.click())
     for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -244,10 +256,26 @@ describe('CapitalLearningFlow orchestration', () => {
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-submit"]')!.click())
 
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].presentation.countryPatternsById).toBeUndefined()
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].presentation.countryColorsById?.get('NO')).toBe('#b45309')
+
     act(() => [...container.querySelectorAll('button')].find(button => button.textContent === 'Learn again')?.click())
 
     expect(renderLeftRail().textContent).toContain('Meet the capitals')
     expect(renderLeftRail().textContent).not.toContain('Learning progress')
+  })
+
+  it('keeps the Countries-learned pattern for non-durable Capital completion', () => {
+    const container = renderFlow(() => undefined, entries, true, false, new Map(), false)
+
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-practice"]')!.click())
+    for (let attempt = 0; attempt < 3; attempt += 1) act(() => container.querySelector<HTMLButtonElement>('[data-testid="submit-correct"]')!.click())
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-submit"]')!.click())
+
+    const presentation = learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].presentation
+    expect(presentation.countryPatternsById?.get('NO')).toMatchObject({ kind: 'diagonal' })
+    expect(presentation.countryColorsById).toBeUndefined()
   })
 
   it('keeps Capital scheduler progress on the center task surface', () => {

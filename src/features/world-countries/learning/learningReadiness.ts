@@ -13,10 +13,11 @@ export const WORLD_COUNTRIES_LEARNING_READINESS_STATES = [
   'COUNTRIES_LEARNED',
   'COUNTRIES_AND_CAPITALS_LEARNED',
 ] as const
+const WORLD_COUNTRIES_VISIBLE_LEARNING_STATES = ['NOT_LEARNED', 'COUNTRIES_LEARNED'] as const
 
 export type WorldCountriesLearningReadiness = typeof WORLD_COUNTRIES_LEARNING_READINESS_STATES[number]
 export type WorldCountriesLearningStates = readonly SubregionLearningState[] | ReadonlyMap<SubregionId, SubregionLearningState>
-export type WorldCountriesLearningPatternKind = 'diagonal' | 'crosshatch'
+export type WorldCountriesLearningPatternKind = 'diagonal'
 
 export function getWorldCountriesLearningStateList(
   states: WorldCountriesLearningStates,
@@ -43,7 +44,6 @@ export function createWorldCountriesLearningPattern(kind: WorldCountriesLearning
 export function getWorldCountriesLearningPatternKind(
   readiness: WorldCountriesLearningReadiness,
 ): WorldCountriesLearningPatternKind | null {
-  if (readiness === 'COUNTRIES_AND_CAPITALS_LEARNED') return 'crosshatch'
   if (readiness === 'COUNTRIES_LEARNED') return 'diagonal'
   return null
 }
@@ -58,11 +58,9 @@ export function createWorldCountriesLearningPatternSwatchStyle(
   const lineStart = (pitch - lineWidth) / 2
   const lineEnd = lineStart + lineWidth
   const gradient = (angle: number) => `repeating-linear-gradient(${angle}deg, transparent 0 ${lineStart}px, ${pattern.lineColor} ${lineStart}px ${lineEnd}px, transparent ${lineEnd}px ${pitch}px)`
-  const gradients = kind === 'crosshatch' ? [gradient(135), gradient(45)] : [gradient(135)]
-
   return {
     backgroundColor: pattern.baseColor,
-    backgroundImage: gradients.join(', '),
+    backgroundImage: gradient(135),
     backgroundSize: `${pitch}px ${pitch}px`,
   }
 }
@@ -80,7 +78,7 @@ const WORLD_COUNTRIES_LEARNING_READINESS_DESCRIPTIONS: Readonly<Record<WorldCoun
 }
 
 export const WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES: readonly ProgressMapLegendEntry[] = [
-  ...WORLD_COUNTRIES_LEARNING_READINESS_STATES.map(state => {
+  ...WORLD_COUNTRIES_VISIBLE_LEARNING_STATES.map(state => {
     const kind = getWorldCountriesLearningPatternKind(state)
     return {
       state,

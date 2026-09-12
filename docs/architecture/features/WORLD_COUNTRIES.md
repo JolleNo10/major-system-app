@@ -390,15 +390,16 @@ map progress. Normal Home/Continent maps use one primary status at a time:
 Not learned is neutral, Countries learned is a warm-neutral diagonal pattern,
 and an established Countries + Capitals layer is presented as solid Recall
 health. Early recall, Weak, Developing, Strong, and Mastered use the shared
-warm-to-green solid palette. The Learning patterns are derived from durable
+warm-to-green solid palette. The learner-facing map ladder therefore has seven
+states: Not learned, Countries learned, Early recall, Weak, Developing,
+Strong, and Mastered. The Learning patterns are derived from durable
 Subregion milestones or the existing historical established-layer fallback;
 they do not add per-Country flags or a new store. While Capital Learning is
 active after the Country layer is established, the diagonal pattern remains
 the stable underlying status through walkthrough, practice, mix, and final
-recall. A rerun for a region whose Capital layer is already established uses
-the completed crosshatch treatment throughout. Capital completion may show
-the crosshatched Learning-complete payoff before the normal Home/Continent
-map moves to solid Recall health. Durable guided Learning completion can expose a
+recall. When the Capital Learning milestone is completed, the Learning pattern
+is removed and the map moves directly to the current solid Recall-health state.
+Durable guided Learning completion can expose a
 same-focus Country-to-Capital handoff before a later planner-derived
 next-region handoff; it keeps an explicit return action and never auto-starts
 that recommendation. The attached Today task dock owns the active Journey
@@ -437,10 +438,13 @@ orientation surface.
 ## Learning Readiness
 
 Durable Learning Readiness is derived from `countriesLearnedAt` and
-`capitalsLearnedAt` and has exactly three states: Not learned, Countries
-learned, and Countries + Capitals learned. Its map and legend presentation
-uses one `#52525b` base with `#918779` diagonal/crosshatch patterns; the
-learned states are not separate flat fill colors. A display-only Drill-evidence
+`capitalsLearnedAt` and has exactly three internal curriculum states:
+`NOT_LEARNED`, `COUNTRIES_LEARNED`, and
+`COUNTRIES_AND_CAPITALS_LEARNED`. The last is a curriculum milestone and
+handoff boundary, not a separate learner-facing map-status rung. Normal map
+presentation exposes only Not learned and Countries learned during Learning,
+using one `#52525b` base and a `#918779` diagonal pattern for Countries learned;
+both Learning layers complete then hands off to solid Recall health. A display-only Drill-evidence
 bridge may promote a Subregion to Countries learned when every active Country
 has current Location -> Country proficiency of Developing or better. It never
 writes a Learning milestone or changes Drill evidence. This Drill setup
@@ -454,11 +458,12 @@ layer is authoritative, while the existing all-active-Country historical
 writing a milestone. `Early recall` is a Recall-health label for internal
 `unpractised`, not a global synonym for an untouched Country; primary ladder
 surfaces gate it until both Learning layers are established. Later failures can weaken current recall and increase
-Review urgency, but do not reopen a Learning pattern. The legend and Country
-accessible descriptions expose the current status in text: Learning lists Not
-learned, Countries learned, and Countries + Capitals learned with real pattern
-swatches; Recall health lists Early recall, Weak, Developing, Strong, and
-Mastered with solid swatches.
+Review urgency, but do not reopen a Learning pattern. The Home legend and
+Country accessible descriptions expose the current status in text: Learning
+lists Not learned and Countries learned with a real diagonal pattern swatch;
+Recall health lists Early recall, Weak, Developing, Strong, and Mastered with
+solid swatches. Dedicated readiness surfaces may use text to describe the
+internal Countries + Capitals milestone, but do not add a third map pattern.
 
 The standalone Learn Capitals flow remains runnable from its intentional
 non-Today entry points. The Today guided recommendation uses the Country
@@ -670,7 +675,9 @@ target-local and Country-fit cameras respectively.
   remains in the overlay layer; hidden or muted Countries are omitted and the
   declarative render reconstructs the edge and recall fill after interaction.
 - The generic `SvgMapCountryPattern` presentation seam renders caller-owned
-  diagonal or crosshatch fills from SVG `<pattern>` definitions. Geography
+  diagonal or crosshatch fills from SVG `<pattern>` definitions. World
+  Countries Learning uses only the diagonal variant; the generic seam retains
+  crosshatch capability for workflow-neutral callers. Geography
   adapters translate per-Country patterns to every authored multipart path;
   muted, hidden, task, and focus treatments retain precedence and declarative
   rerenders restore the semantic pattern or solid fill. World Countries uses

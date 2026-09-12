@@ -20,7 +20,7 @@ import {
 import { flattenWorldCountriesRecallHistory, loadWorldCountriesRecallHistory, type WorldCountriesRecallHistory } from '@/features/world-countries/learning/recallHistory'
 import { WORLD_COUNTRIES_CORE_RECALL_SKILLS } from '@/features/world-countries/learning/recallTargets'
 import { deriveWorldCountriesScopeProgressForCountries } from '@/features/world-countries/learning/scopeProgress'
-import { getCountryProgressColor, getCountryProgressState, WORLD_COUNTRIES_PROGRESS_LABELS } from '@/features/world-countries/learning/progressPresentation'
+import { deriveWorldCountriesPrimaryStatus, getCountryProgressColor, WORLD_COUNTRIES_PROGRESS_LABELS } from '@/features/world-countries/learning/progressPresentation'
 import { CountryLearningFlow } from '@/features/world-countries/learning/flows/CountryLearningFlow'
 import { CapitalLearningFlow } from '@/features/world-countries/learning/flows/CapitalLearningFlow'
 import type { LearningCompletedRegionAction, LearningCompletionHandoff, LearningRegionCompletion } from '@/features/world-countries/learning/flows/LearningComplete'
@@ -208,6 +208,13 @@ export function WorldCountriesToday({
     ),
     [learningStates, recallProgress, scopedCountries],
   )
+  const primaryStatusByCountry = useMemo(() => new Map(scopedCountries.map(country => [
+    country.id,
+    deriveWorldCountriesPrimaryStatus(
+      learningReadinessByCountry.get(country.id) ?? 'NOT_LEARNED',
+      deriveWorldCountriesCountryProgress(country.id, recallProgress ?? new Map()),
+    ),
+  ] as const)), [learningReadinessByCountry, recallProgress, scopedCountries])
   const progress = useMemo(
     () => recallProgress ? deriveWorldCountriesScopeProgressForCountries(
       continent ? `continent:${continent}` : 'world',
@@ -217,19 +224,17 @@ export function WorldCountriesToday({
     [continent, recallProgress, scopedCountries],
   )
   const countryColorsById = useMemo(() => {
-    const currentProgress = recallProgress ?? new Map()
-    return new Map(scopedCountries.flatMap(country => {
-      const readiness = learningReadinessByCountry.get(country.id) ?? 'NOT_LEARNED'
-      if (readiness !== 'COUNTRIES_AND_CAPITALS_LEARNED') return []
-      const state = getCountryProgressState(deriveWorldCountriesCountryProgress(country.id, currentProgress))
-      return [[country.id, getCountryProgressColor(state)] as const]
-    }))
-  }, [learningReadinessByCountry, recallProgress, scopedCountries])
-  const countryPatternsById = useMemo(() => new Map(scopedCountries.flatMap(country => (
-    learningReadinessByCountry.get(country.id) === 'COUNTRIES_LEARNED'
-      ? [[country.id, createWorldCountriesLearningPattern('diagonal')] as const]
+    return new Map([...primaryStatusByCountry].flatMap(([countryId, status]) => (
+      status.kind === 'recall'
+        ? [[countryId, getCountryProgressColor(status.state)] as const]
+        : []
+    )))
+  }, [primaryStatusByCountry])
+  const countryPatternsById = useMemo(() => new Map([...primaryStatusByCountry].flatMap(([countryId, status]) => (
+    status.kind === 'learning' && status.readiness === 'COUNTRIES_LEARNED'
+      ? [[countryId, createWorldCountriesLearningPattern('diagonal')] as const]
       : []
-  ))), [learningReadinessByCountry, scopedCountries])
+  ))), [primaryStatusByCountry])
 
   const refreshAfterActivity = async () => {
     setRefreshing(true)
@@ -426,6 +431,7 @@ export function WorldCountriesToday({
         fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching}
         countriesEstablished={countriesEstablished}
         capitalsEstablished={Boolean(learningState?.capitalsLearnedAt)}
+        recallProgress={recallProgress ?? new Map()}
         onPhaseChange={() => undefined}
         onExit={finishLearning}
         onDone={finishLearning}
@@ -446,6 +452,7 @@ export function WorldCountriesToday({
       schedulerSettings={schedulerSettings}
       countriesEstablished={countriesEstablished}
       capitalsEstablished={Boolean(learningState?.capitalsLearnedAt)}
+      recallProgress={recallProgress ?? new Map()}
       fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching}
       onPhaseChange={() => undefined}
       onExit={finishLearning}
@@ -486,18 +493,12 @@ export function WorldCountriesToday({
   const journeyActionLabel = activeLearningRecommendation
     ? getJourneyActionLabel(activeLearningRecommendation)
     : null
-  const mapDescriptions = new Map(scopedCountries.map(country => {
-    const learningReadiness = learningReadinessByCountry.get(country.id) ?? 'NOT_LEARNED'
-    if (learningReadiness !== 'COUNTRIES_AND_CAPITALS_LEARNED') {
-      return [country.id, `Learning: ${getWorldCountriesLearningReadinessLabel(learningReadiness)}.`] as const
-    }
-    const countryProgress = deriveWorldCountriesCountryProgress(country.id, recallProgress ?? new Map())
-    const recallState = getCountryProgressState(countryProgress)
-    return [
-      country.id,
-      `Recall health: ${WORLD_COUNTRIES_PROGRESS_LABELS[recallState]}.`,
-    ] as const
-  }))
+  const mapDescriptions = new Map([...primaryStatusByCountry].map(([countryId, status]) => [
+    countryId,
+    status.kind === 'learning'
+      ? `Learning: ${getWorldCountriesLearningReadinessLabel(status.readiness)}.`
+      : `Recall health: ${WORLD_COUNTRIES_PROGRESS_LABELS[status.state]}.`,
+  ] as const))
 
   return (
     <section className="space-y-4 animate-fade-in" aria-labelledby="world-countries-today-heading">
