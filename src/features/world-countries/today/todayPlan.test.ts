@@ -157,7 +157,7 @@ describe('World Countries Today plan', () => {
     expect(countryEstablished.reviewOpportunity?.kind).toBe('consolidate')
   })
 
-  it('uses fully mastered Country recall as a non-persisted fallback for already-known Countries', () => {
+  it('uses historically qualified Country recall as a non-persisted fallback for already-known Countries', () => {
     const plan = buildWorldCountriesTodayPlan({
       activeCountries: countries.filter(country => country.id === 'NO'),
       history: historyFor([
@@ -170,6 +170,46 @@ describe('World Countries Today plan', () => {
 
     expect(plan.curriculumRecommendation?.track).toBe('learn-capitals')
     expect(plan.reviewOpportunity).toBeNull()
+  })
+
+  it('does not recommend Learn Countries again after a failed recall', () => {
+    const plan = buildWorldCountriesTodayPlan({
+      activeCountries: countries.filter(country => country.id === 'NO'),
+      history: historyFor([
+        { itemId: 'world-countries:location-to-country:NO', at: 1, ok: true, evidenceKind: 'recall', localDate: '2026-08-10' },
+        { itemId: 'world-countries:location-to-country:NO', at: 2, ok: true, evidenceKind: 'recall', localDate: '2026-08-11' },
+        { itemId: 'world-countries:location-to-country:NO', at: 3, ok: false, evidenceKind: 'recall', localDate: '2026-08-12' },
+      ]),
+      localDate: '2026-08-12',
+      effectiveSubregionIds: ['northern-europe'],
+    })
+
+    expect(plan.curriculumRecommendation?.track).toBe('learn-capitals')
+    expect(plan.reviewOpportunity?.kind).toBe('review')
+    expect(plan.reviewQueue).toEqual(expect.arrayContaining([
+      expect.objectContaining({ target: { countryId: 'NO', skill: 'location-to-country' } }),
+    ]))
+  })
+
+  it('does not recommend Learn Capitals again after a failed Capital recall', () => {
+    const plan = buildWorldCountriesTodayPlan({
+      activeCountries: countries.filter(country => country.id === 'NO'),
+      history: historyFor([
+        { itemId: 'world-countries:location-to-country:NO', at: 1, ok: true, evidenceKind: 'recall', localDate: '2026-08-10' },
+        { itemId: 'world-countries:location-to-country:NO', at: 2, ok: true, evidenceKind: 'recall', localDate: '2026-08-11' },
+        { itemId: 'world-countries:country-to-capital:NO', at: 3, ok: true, evidenceKind: 'recall', localDate: '2026-08-10' },
+        { itemId: 'world-countries:country-to-capital:NO', at: 4, ok: true, evidenceKind: 'recall', localDate: '2026-08-11' },
+        { itemId: 'world-countries:country-to-capital:NO', at: 5, ok: false, evidenceKind: 'recall', localDate: '2026-08-12' },
+      ]),
+      localDate: '2026-08-12',
+      effectiveSubregionIds: ['northern-europe'],
+    })
+
+    expect(plan.curriculumRecommendation).toBeNull()
+    expect(plan.reviewOpportunity?.kind).toBe('review')
+    expect(plan.reviewQueue).toEqual(expect.arrayContaining([
+      expect.objectContaining({ target: { countryId: 'NO', skill: 'country-to-capital' } }),
+    ]))
   })
 
   it('does not let incidental Capital practice skip Capital Learning', () => {

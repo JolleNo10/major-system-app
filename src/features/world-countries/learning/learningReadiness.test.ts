@@ -91,6 +91,22 @@ describe('World Countries Learning Readiness', () => {
     expect(isWorldCountriesCountryLayerEstablished(entries, 'northern-europe', { subregionId: 'northern-europe', countriesLearnedAt: 1 }, partial)).toBe(true)
   })
 
+  it('keeps the Country fallback established after a later recall failure', () => {
+    const entries = [{ id: 'NO', subregionId: 'northern-europe' as const }]
+    const progress = deriveWorldCountriesRecallProgress(
+      { countryIds: ['NO'], skills: ['location-to-country'] },
+      [
+        { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 1, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10' },
+        { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 2, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-11' },
+        { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 3, ok: false, ms: 500, evidenceKind: 'recall', localDate: '2026-08-12' },
+      ],
+    )
+
+    expect(progress.get(recallTargetIdFor('NO', 'location-to-country'))?.proficiency).toBe('weak')
+    expect(isWorldCountriesCountryRecallMastered(entries, 'northern-europe', progress)).toBe(true)
+    expect(isWorldCountriesCountryLayerEstablished(entries, 'northern-europe', undefined, progress)).toBe(true)
+  })
+
   it('only treats complete Capital recall as the already-known curriculum fallback', () => {
     const entries = [
       { id: 'NO', subregionId: 'northern-europe' as const },
@@ -120,5 +136,21 @@ describe('World Countries Learning Readiness', () => {
     expect(isWorldCountriesCapitalLayerEstablished(entries, 'northern-europe', undefined, incidental)).toBe(false)
     expect(isWorldCountriesCapitalLayerEstablished(entries, 'northern-europe', { subregionId: 'northern-europe', capitalsLearnedAt: 1 }, incidental)).toBe(true)
     expect(isWorldCountriesCapitalLayerEstablished(entries, 'northern-europe', undefined, mastered)).toBe(true)
+  })
+
+  it('keeps the Capital fallback established after a later recall failure', () => {
+    const entries = [{ id: 'NO', subregionId: 'northern-europe' as const }]
+    const progress = deriveWorldCountriesRecallProgress(
+      { countryIds: ['NO'], skills: ['country-to-capital'] },
+      [
+        { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 1, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10' },
+        { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 2, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-11' },
+        { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 3, ok: false, ms: 500, evidenceKind: 'recall', localDate: '2026-08-12' },
+      ],
+    )
+
+    expect(progress.get(recallTargetIdFor('NO', 'country-to-capital'))?.proficiency).toBe('weak')
+    expect(isWorldCountriesCapitalRecallMastered(entries, 'northern-europe', progress)).toBe(true)
+    expect(isWorldCountriesCapitalLayerEstablished(entries, 'northern-europe', undefined, progress)).toBe(true)
   })
 })

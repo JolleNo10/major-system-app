@@ -35,3 +35,8 @@ about what was outside the request.
 - `Test-Path 'src/features/*/index.ts'` returns `True` through glob expansion and cannot show that a literal path exists. Use it only on concrete paths.
 - Prefer encoding a checkable claim as a test over asserting it in prose. `src/architecture/docCitations.test.ts` re-verifies every source path cited by current-state documentation on every run.
 - Do not recursively list `.repowise/` during configuration discovery; it contains large generated databases and vector-index trees. Read known small configuration files such as `.repowise/config.yaml`, or list only the directory's immediate children.
+
+# Current mastery is not historical Learning
+
+- A World Countries fallback initially used current post-failure mastery to decide whether a learner had already established a Learning layer, so a later mistake reopened the Journey. The root cause was conflating a current proficiency boundary with the historical fact that the two-date explicit free-recall requirement had been met before.
+- Keep cumulative Learning/Journey evidence and current Mastery/Review evidence as separate derived facts. Test both sides of every failure transition, including the recognition-only and same-day exclusions.

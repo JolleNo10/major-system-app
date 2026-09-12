@@ -88,7 +88,7 @@ describe('World Countries learner journey presentation', () => {
     expect(journey.stages[1]?.status).toBe('current')
   })
 
-  it('uses mastered Country recall as a non-persisted readiness fallback', () => {
+  it('uses historically qualified Country recall as a non-persisted readiness fallback', () => {
     const journey = deriveWorldCountriesJourneyPresentation({
       subregionId: 'northern-europe',
       entries: norway,
@@ -99,6 +99,26 @@ describe('World Countries learner journey presentation', () => {
     expect(journey.countriesEstablished).toBe(true)
     expect(journey.currentStageId).toBe('capitals')
     expect(journey.stages[0]).toMatchObject({ id: 'countries', status: 'complete' })
+  })
+
+  it('keeps both fallback-established layers complete after a later mistake', () => {
+    const journey = deriveWorldCountriesJourneyPresentation({
+      subregionId: 'northern-europe',
+      entries: norway,
+      recallProgress: progressFor([
+        ...completeRecallAttempts(),
+        { itemId: 'world-countries:country-to-capital:NO', at: 5, ok: false },
+      ]),
+    })
+
+    expect(journey.currentStageId).toBe(null)
+    expect(journey.regionLearned).toBe(true)
+    expect(journey.masteryStatus).toBe('building')
+    expect(journey.countriesLearned).toBe(false)
+    expect(journey.capitalsLearned).toBe(false)
+    expect(journey.stages.every(stage => stage.status === 'complete')).toBe(true)
+    expect(journey.capitalRecallMastered).toBe(true)
+    expect(journey.coreRecallComplete).toBe(false)
   })
 
   it('keeps Add the capitals current after a failed Capital attempt without its milestone', () => {
@@ -151,7 +171,7 @@ describe('World Countries learner journey presentation', () => {
     expect(journey.masteryStatus).toBe('building')
   })
 
-  it('uses fully mastered Capital recall as a non-persisted fallback', () => {
+  it('uses historically qualified Capital recall as a non-persisted fallback', () => {
     const journey = deriveWorldCountriesJourneyPresentation({
       subregionId: 'northern-europe',
       entries: norway,
@@ -184,6 +204,8 @@ describe('World Countries learner journey presentation', () => {
     expect(journey.currentStageId).toBe(null)
     expect(journey.regionLearned).toBe(true)
     expect(journey.masteryStatus).toBe('building')
+    expect(journey.countriesLearned).toBe(true)
+    expect(journey.capitalsLearned).toBe(true)
     expect(journey.stages.every(stage => stage.status === 'complete')).toBe(true)
   })
 

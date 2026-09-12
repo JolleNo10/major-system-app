@@ -122,9 +122,9 @@ export function getLearningReadinessBySubregionWithDrillEvidence(
 /**
  * A display/planning-only fallback for an already-known Country layer.
  *
- * This deliberately requires the existing atomic mastery rule for every
- * location -> Country target. It does not write or imply the durable
- * countriesLearnedAt milestone.
+ * This deliberately requires every location -> Country target to have
+ * previously met the existing atomic mastery evidence rule. It does not
+ * write or imply the durable countriesLearnedAt milestone.
  */
 export function isWorldCountriesCountryRecallMastered(
   entries: readonly Pick<Country, 'id' | 'subregionId'>[],
@@ -151,7 +151,7 @@ function isWorldCountriesRecallSkillMastered(
 ): boolean {
   const subregionEntries = entries.filter(entry => entry.subregionId === subregionId)
   return subregionEntries.length > 0 && subregionEntries.every(entry => (
-    recallProgress.get(recallTargetIdFor(entry.id, skill))?.proficiency === 'mastered'
+    recallProgress.get(recallTargetIdFor(entry.id, skill))?.hasEverMastered === true
   ))
 }
 

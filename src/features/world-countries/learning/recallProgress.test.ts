@@ -52,6 +52,7 @@ describe('World Countries recall progress', () => {
     ]).get(recallTargetIdFor('NO', 'country-to-capital'))!
     expect(sameDay.proficiency).toBe('strong')
     expect(sameDay.mastered).toBe(false)
+    expect(sameDay.hasEverMastered).toBe(false)
 
     const boundary = deriveWorldCountriesRecallProgress({
       countryIds: ['NO'],
@@ -62,6 +63,7 @@ describe('World Countries recall progress', () => {
     ]).get(recallTargetIdFor('NO', 'country-to-capital'))!
     expect(boundary.proficiency).toBe('mastered')
     expect(boundary.mastered).toBe(true)
+    expect(boundary.hasEverMastered).toBe(true)
   })
 
   it('lets recognition improve proficiency without establishing mastery', () => {
@@ -76,6 +78,7 @@ describe('World Countries recall progress', () => {
 
     expect(progress.proficiency).toBe('strong')
     expect(progress.mastered).toBe(false)
+    expect(progress.hasEverMastered).toBe(false)
   })
 
   it('treats legacy successful attempts as positive but not qualifying recall evidence', () => {
@@ -89,6 +92,7 @@ describe('World Countries recall progress', () => {
 
     expect(progress.proficiency).toBe('strong')
     expect(progress.mastered).toBe(false)
+    expect(progress.hasEverMastered).toBe(false)
   })
 
   it('starts a new mastery boundary after any incorrect attempt', () => {
@@ -104,6 +108,35 @@ describe('World Countries recall progress', () => {
 
     expect(progress.proficiency).toBe('developing')
     expect(progress.mastered).toBe(false)
+  })
+
+  it('retains historical mastery evidence while current mastery regresses after a failure', () => {
+    const progress = deriveWorldCountriesRecallProgress({
+      countryIds: ['NO'],
+      skills: ['country-to-capital'],
+    }, [
+      attempt('NO', 'country-to-capital', 1, true, '2026-08-10'),
+      attempt('NO', 'country-to-capital', 2, true, '2026-08-11'),
+      attempt('NO', 'country-to-capital', 3, false, '2026-08-12'),
+    ]).get(recallTargetIdFor('NO', 'country-to-capital'))!
+
+    expect(progress.proficiency).toBe('weak')
+    expect(progress.mastered).toBe(false)
+    expect(progress.hasEverMastered).toBe(true)
+  })
+
+  it('does not combine recall evidence across a failure for historical mastery', () => {
+    const progress = deriveWorldCountriesRecallProgress({
+      countryIds: ['NO'],
+      skills: ['location-to-country'],
+    }, [
+      attempt('NO', 'location-to-country', 1, true, '2026-08-10'),
+      attempt('NO', 'location-to-country', 2, false, '2026-08-11'),
+      attempt('NO', 'location-to-country', 3, true, '2026-08-12'),
+    ]).get(recallTargetIdFor('NO', 'location-to-country'))!
+
+    expect(progress.mastered).toBe(false)
+    expect(progress.hasEverMastered).toBe(false)
   })
 
   it('keeps mastery after later successes and recovers only with two new dates', () => {
