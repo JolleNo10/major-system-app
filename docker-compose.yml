@@ -3,11 +3,28 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
+
     ports:
       - "8080:5173"
+
     environment:
       VITE_USE_POLLING: "true"
       VITE_POLLING_INTERVAL: "5000"
+
     volumes:
-      - .:/app
+      # Application source
+      - ./src:/app/src
+      - ./public:/app/public
+
+      # Files Vite needs while developing
+      - ./index.html:/app/index.html
+      - ./vite.config.ts:/app/vite.config.ts
+      - ./tsconfig.json:/app/tsconfig.json
+      - ./package.json:/app/package.json
+
+      # Used by vite.config.ts for build/commit identity
+      - ./.git:/app/.git:ro
+
+      # Keep Linux node_modules inside Docker,
+      # rather than exposing host node_modules
       - /app/node_modules

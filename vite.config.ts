@@ -127,7 +127,21 @@ export default defineConfig({
       watch: {
         usePolling: true,
         interval: pollingInterval,
-        ignored: ['**/node_modules/**', '**/dist/**', '**/.git/**'],
+        ignored: [
+          '**/node_modules/**',
+          '**/dist/**',
+          '**/.vite/**',
+          '**/.git/**',
+
+          '**/.codex/**',
+          '**/.github/**',
+          '**/.impeccable/**',
+          '**/.vscode/**',
+          '**/.repowise/**',
+          '**/docs/**',
+
+          '**/*.md',
+        ],
       },
     } : {}),
   },
