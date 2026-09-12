@@ -110,6 +110,23 @@ describe('World Countries recall progress', () => {
     expect(progress.mastered).toBe(false)
   })
 
+  it('collapses repeated failures on one local date into one proficiency lapse', () => {
+    const progress = deriveWorldCountriesRecallProgress({
+      countryIds: ['NO'],
+      skills: ['country-to-capital'],
+    }, [
+      attempt('NO', 'country-to-capital', 1, true, '2026-08-10'),
+      attempt('NO', 'country-to-capital', 2, true, '2026-08-11'),
+      attempt('NO', 'country-to-capital', 3, false, '2026-08-15'),
+      attempt('NO', 'country-to-capital', 4, false, '2026-08-15'),
+      attempt('NO', 'country-to-capital', 5, false, '2026-08-15'),
+      attempt('NO', 'country-to-capital', 6, true, '2026-08-15'),
+    ]).get(recallTargetIdFor('NO', 'country-to-capital'))!
+
+    expect(progress.proficiency).toBe('strong')
+    expect(progress.mastered).toBe(false)
+  })
+
   it('steps repeated difficulty from Strong through Developing to Weak', () => {
     const progress = deriveWorldCountriesRecallProgress({
       countryIds: ['NO'],

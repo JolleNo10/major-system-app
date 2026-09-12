@@ -1,5 +1,8 @@
 import type { Attempt, ItemProgress, RecallItemId } from '@/core/learning'
-import { deriveWorldCountriesReviewDifficulty } from './reviewSchedule'
+import {
+  deriveWorldCountriesReviewEvents,
+  isValidWorldCountriesLocalDate,
+} from './reviewSchedule'
 
 /** Semantic proficiency for one atomic World Countries recall skill. */
 export type WorldCountriesProficiency =
@@ -95,12 +98,26 @@ function deriveCurrentProficiency(
 ): { proficiency: WorldCountriesProficiency; mastered: boolean } {
   let proficiency: WorldCountriesProficiency = 'unpractised'
   let latestFailureIndex = -1
+  const reviewEvents = new Map(
+    deriveWorldCountriesReviewEvents(attempts).map(event => [event.localDate, event]),
+  )
+  const processedFailureDates = new Set<string>()
 
   for (let index = 0; index < attempts.length; index += 1) {
     const attempt = attempts[index]!
     if (!attempt.ok) {
+      const localDate = isValidWorldCountriesLocalDate(attempt.localDate)
+        ? attempt.localDate
+        : null
+      if (localDate) {
+        const event = reviewEvents.get(localDate)
+        if (!event?.lapse || processedFailureDates.has(localDate)) continue
+        processedFailureDates.add(localDate)
+      }
+
       // Both lapse kinds move one current band. Repeated difficulty can keep
-      // stepping down because the preceding lapse already changed the band.
+      // stepping down because each later dated lapse event changes the band;
+      // attempts clustered on the same date have already been collapsed.
       proficiency = lowerProficiency(proficiency)
       latestFailureIndex = index
       continue
@@ -117,10 +134,7 @@ function deriveCurrentProficiency(
       continue
     }
 
-    const difficulty = deriveWorldCountriesReviewDifficulty(attempts.slice(0, index + 1))
-    proficiency = latestFailureIndex >= 0 && difficulty !== 'normal'
-      ? strongerProficiency(proficiency, successProficiency)
-      : strongerProficiency(successProficiency, proficiency)
+    proficiency = strongerProficiency(successProficiency, proficiency)
   }
 
   return { proficiency, mastered: proficiency === 'mastered' }

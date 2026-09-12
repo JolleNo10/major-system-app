@@ -48,10 +48,16 @@ interface DatedAttemptGroup {
   hasFailure: boolean
 }
 
+export interface WorldCountriesReviewEvent extends DatedAttemptGroup {
+  /** The lapse severity assigned to this local-date review cluster, if any. */
+  lapse: Exclude<WorldCountriesReviewDifficulty, 'normal'> | null
+}
+
 interface DerivedSpacing {
   difficulty: WorldCountriesReviewDifficulty
   spacingLevel: WorldCountriesReviewSpacingLevel | null
   qualifyingRecallDates: readonly string[]
+  events: readonly WorldCountriesReviewEvent[]
 }
 
 export function isValidWorldCountriesLocalDate(value: unknown): value is string {
@@ -141,25 +147,31 @@ function datedAttemptGroups(attempts: readonly IndexedAttempt[]): DatedAttemptGr
   return [...groups.values()].sort((left, right) => left.localDate.localeCompare(right.localDate))
 }
 
-/** Derive spacing and current difficulty from one event per valid learner-local day. */
-function deriveSpacing(attempts: readonly IndexedAttempt[]): DerivedSpacing {
+/** Derive dated review events and spacing from retained attempts. */
+function deriveReviewState(attempts: readonly IndexedAttempt[]): DerivedSpacing {
   const groups = datedAttemptGroups(attempts)
   const qualifyingRecallDates = groups
     .filter(group => group.hasRecallSuccess)
     .map(group => group.localDate)
+  const events: WorldCountriesReviewEvent[] = []
 
   let spacingLevel: WorldCountriesReviewSpacingLevel | null = null
   let difficulty: WorldCountriesReviewDifficulty = 'normal'
   let cleanDaysAfterLapse = 0
 
   for (const group of groups) {
+    let lapse: WorldCountriesReviewEvent['lapse'] = null
     if (spacingLevel === null) {
-      if (!group.hasRecallSuccess) continue
-      spacingLevel = 0
-      if (group.hasFailure) {
-        difficulty = 'lapse'
-        cleanDaysAfterLapse = 0
+      if (group.hasFailure) lapse = 'lapse'
+      if (group.hasRecallSuccess) {
+        spacingLevel = 0
+        if (group.hasFailure) {
+          difficulty = 'lapse'
+          cleanDaysAfterLapse = 0
+          lapse = 'lapse'
+        }
       }
+      events.push({ ...group, lapse })
       continue
     }
 
@@ -168,21 +180,37 @@ function deriveSpacing(attempts: readonly IndexedAttempt[]): DerivedSpacing {
       spacingLevel = spacingLevelFor(spacingLevel - (repeated ? 2 : 1))
       difficulty = repeated ? 'repeated' : 'lapse'
       cleanDaysAfterLapse = 0
-      continue
-    }
-
-    if (!group.hasRecallSuccess) continue
-    spacingLevel = spacingLevelFor(spacingLevel + 1)
-    if (difficulty !== 'normal') {
-      cleanDaysAfterLapse += 1
-      if (cleanDaysAfterLapse >= 2) {
-        difficulty = 'normal'
-        cleanDaysAfterLapse = 0
+      lapse = repeated ? 'repeated' : 'lapse'
+    } else if (group.hasRecallSuccess) {
+      spacingLevel = spacingLevelFor(spacingLevel + 1)
+      if (difficulty !== 'normal') {
+        cleanDaysAfterLapse += 1
+        if (cleanDaysAfterLapse >= 2) {
+          difficulty = 'normal'
+          cleanDaysAfterLapse = 0
+        }
       }
     }
+    events.push({ ...group, lapse })
   }
 
-  return { difficulty, spacingLevel, qualifyingRecallDates }
+  return { difficulty, spacingLevel, qualifyingRecallDates, events }
+}
+
+/**
+ * Share the scheduler's one-event-per-local-date interpretation with recall
+ * proficiency. Attempts without a valid local date remain outside this
+ * timeline because their review cluster cannot be reconstructed.
+ */
+export function deriveWorldCountriesReviewEvents(
+  inputAttempts: readonly Attempt[],
+): readonly WorldCountriesReviewEvent[] {
+  return deriveReviewState(sortedAttempts(inputAttempts)).events
+}
+
+/** Derive spacing and current difficulty from one event per valid learner-local day. */
+function deriveSpacing(attempts: readonly IndexedAttempt[]): DerivedSpacing {
+  return deriveReviewState(attempts)
 }
 
 /**
