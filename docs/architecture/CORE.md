@@ -69,6 +69,10 @@ PAO-specific concepts must not leak into `core/`.
 - Scheduling constants and algorithms used by existing drills stay in
   `scoring/`; feature-specific eligibility, batching, and completion rules stay
   in the feature caller.
+- No generic spaced-repetition abstraction is added to `scoring/` until a
+  concrete cross-feature contract exists. World Countries derives its review
+  spacing from retained raw attempts inside the feature on purpose; one
+  feature needing an interval ladder is not a shared contract.
 - A reusable UI component accepts data and callbacks. It must not import a
   feature store or encode workflow policy.
 - `safeSet`/`safeRemove` make localStorage failure non-fatal. User-authored

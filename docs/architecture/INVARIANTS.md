@@ -38,11 +38,13 @@ architecture document.
 - When a change moves ownership, changes a dependency or public boundary,
   changes persistent-state ownership/schema, or changes an invariant, update
   the affected document under `docs/architecture/` in the same change.
-- ADRs preserve durable architectural rationale; Change Specs define delivery
-  scope for substantial feature/functionality work. Neither replaces current-
-  state architecture.
+- `docs/architecture/` is the authoritative description of the system as it
+  exists now. Do not reconstruct current architecture from decision history:
+  a decision record states what was chosen at a point in time, not what is
+  true today, and the two diverge as the code moves.
 - Current implementation decisions belong here and in the relevant current-
-  state architecture document, not only in an ADR, Change Spec, issue, or chat.
+  state architecture document, not only in an issue, chat, or historical
+  record. A rule that lives only in history is a rule that will be broken.
 
 ## Clarifications
 

@@ -61,6 +61,18 @@ the current view may publish the generic transient presentation through
 responsive presentation, and presentation cleanup; it remains unaware of
 feature workflow concepts such as recall or learning phases. Expanded-center is
 not browser fullscreen and is not persisted.
+
+Expansion is one semantic mode switch, not a set of independent flags such as
+`wide`, `hideLeftRail`, and `fullscreen`. The 42rem standard center is retained
+deliberately: it keeps cross-mode alignment and ordinary reading density, so
+expansion stays explicit and transient rather than becoming the default width.
+The browser Fullscreen API was rejected for this — the requirement is an
+expanded application layout inside the existing window, and fullscreen
+lifecycle and permission handling would add complexity without addressing
+layout ownership. Mode-level width was part of the ownership conflict that
+`PageLayout` exists to resolve and cannot express transient expansion inside a
+mounted workflow; a feature-specific wide layout is equally excluded, because
+`PageLayout` remains feature- and workflow-agnostic.
 The layout slot context separates read access (used by `PageLayout`) from the
 stable write channel used by `useRails`, `useLayoutHeader`, and
 `usePageLayoutPresentation`, so publishing a slot cannot re-render the
