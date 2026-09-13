@@ -42,9 +42,10 @@ architecture document.
   exists now. Do not reconstruct current architecture from decision history:
   a decision record states what was chosen at a point in time, not what is
   true today, and the two diverge as the code moves.
-- Current implementation decisions belong here and in the relevant current-
-  state architecture document, not only in an issue, chat, or historical
-  record. A rule that lives only in history is a rule that will be broken.
+- Durable architectural rules belong in the relevant current-state architecture
+  document; repository-wide invariants belong here. Ordinary implementation
+  choices do not require architecture documentation. A durable rule that lives
+  only in an issue, chat, or historical record will be lost to future agents.
 
 ## Clarifications
 
