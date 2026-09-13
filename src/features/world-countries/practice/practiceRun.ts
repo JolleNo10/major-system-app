@@ -6,9 +6,12 @@ import { snapshotPracticeCountries, shufflePracticeItems } from './practiceRunUt
 
 export type PracticeRecallOutcome = 'exact' | 'fuzzy' | 'incorrect' | 'revealed'
 
+/** Recall skills supported by the single-answer Practice Quiz seam. */
+export type PracticeQuizSkill = Extract<WorldCountriesRecallSkill, 'country-to-capital' | 'capital-to-country'>
+
 export interface PracticeRecallAnswer {
   countryId: CountryId
-  skill: WorldCountriesRecallSkill
+  skill: PracticeQuizSkill
   outcome: PracticeRecallOutcome
   submittedAnswer?: string
 }
@@ -29,6 +32,7 @@ export const PRACTICE_QUESTION_COUNTS: readonly PracticeQuestionCount[] = [10, 2
 export interface PracticeQuizRun {
   countries: readonly Country[]
   countryIds: readonly CountryId[]
+  skill: PracticeQuizSkill
   questionCount: PracticeQuestionCount
   session: WorldCountriesRecallSessionState
 }
@@ -55,15 +59,17 @@ export function normalizePracticeQuestionCount(
     : getDefaultPracticeQuestionCount(countryCount)
 }
 
-/** Create a randomized, snapshot-based Country → Capital Practice run. */
+/** Create a randomized, snapshot-based single-skill Practice Quiz run. */
 export function createPracticeQuizRun({
   scopeCountries,
   questionCount,
+  skill,
   countryIds,
   random = Math.random,
 }: {
   scopeCountries: readonly Country[]
   questionCount: PracticeQuestionCount
+  skill: PracticeQuizSkill
   /** Supplied only by Retry missed; it bypasses the configured count. */
   countryIds?: readonly CountryId[]
   random?: () => number
@@ -85,11 +91,12 @@ export function createPracticeQuizRun({
   const session = createRecallSession({
     countryIds: selectedIds,
     countryOrder: selectedIds,
-    skills: ['country-to-capital'],
+    skills: [skill],
   })
   return {
     countries,
     countryIds: selectedIds,
+    skill,
     questionCount: countryIds ? 'all' : questionCount,
     session,
   }

@@ -19,7 +19,7 @@ describe('World Countries Practice runs', () => {
 
   it('creates a unique randomized subset and snapshots answer records', () => {
     const scope = countries.slice(0, 12)
-    const run = createPracticeQuizRun({ scopeCountries: scope, questionCount: 10, random: () => 0 })
+    const run = createPracticeQuizRun({ scopeCountries: scope, questionCount: 10, skill: 'country-to-capital', random: () => 0 })
 
     expect(run?.countryIds).toHaveLength(10)
     expect(new Set(run?.countryIds).size).toBe(10)
@@ -28,7 +28,7 @@ describe('World Countries Practice runs', () => {
   })
 
   it('retries exactly the unique missed Countries in original run order', () => {
-    const run = createPracticeQuizRun({ scopeCountries: countries.slice(0, 3), questionCount: 'all', random: () => 0 })!
+    const run = createPracticeQuizRun({ scopeCountries: countries.slice(0, 3), questionCount: 'all', skill: 'country-to-capital', random: () => 0 })!
     const answers = [
       { countryId: run.countryIds[2]!, skill: 'country-to-capital' as const, outcome: 'incorrect' as const, submittedAnswer: 'Wrong' },
       { countryId: run.countryIds[0]!, skill: 'country-to-capital' as const, outcome: 'revealed' as const },
@@ -37,6 +37,19 @@ describe('World Countries Practice runs', () => {
 
     expect(getPracticeMissedCountryIds(run, answers)).toEqual([run.countryIds[0], run.countryIds[2]])
     expect(summarizePracticeAnswers(answers).correct).toBe(0)
+  })
+
+  it('creates and retries a Capital → Country run without losing its direction', () => {
+    const run = createPracticeQuizRun({ scopeCountries: countries.slice(0, 3), questionCount: 'all', skill: 'capital-to-country', random: () => 0 })!
+    const answers = [{ countryId: run.countryIds[0]!, skill: 'capital-to-country' as const, outcome: 'incorrect' as const }]
+    const missedCountryIds = getPracticeMissedCountryIds(run, answers)
+    const retry = createPracticeQuizRun({ scopeCountries: run.countries, countryIds: missedCountryIds, questionCount: 'all', skill: run.skill, random: () => 0 })!
+
+    expect(run.skill).toBe('capital-to-country')
+    expect(run.session.skills).toEqual(['capital-to-country'])
+    expect(retry.skill).toBe('capital-to-country')
+    expect(retry.session.skills).toEqual(['capital-to-country'])
+    expect(retry.countryIds).toEqual(missedCountryIds)
   })
 
   it('scores exact and fuzzy answers while keeping incorrect and revealed answers missed', () => {

@@ -113,8 +113,8 @@ function clickAriaButton(mount: HTMLElement, label: string): void {
 }
 
 function currentQuestionCountry(mount: HTMLElement, activeCountries: readonly Country[]): Country {
-  const prompt = mount.querySelector('#world-countries-capitals-quiz-question')?.textContent ?? ''
-  const country = activeCountries.find(candidate => prompt.includes(candidate.country))
+  const prompt = mount.querySelector('#world-countries-recall-quiz-question')?.textContent ?? ''
+  const country = activeCountries.find(candidate => prompt.includes(candidate.country) || prompt.includes(candidate.capital))
   if (!country) throw new Error(`Could not resolve the current Country from: ${prompt}`)
   return country
 }
@@ -143,13 +143,132 @@ function startQuiz(mount: HTMLElement): void {
   act(() => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Start Quiz')?.click())
 }
 
+function selectQuizType(mount: HTMLElement, value: string): void {
+  act(() => mount.querySelector<HTMLInputElement>(`input[name="world-countries-quiz-type"][value="${value}"]`)?.click())
+}
+
 function typeInto(input: HTMLInputElement, value: string): void {
   const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
   setter?.call(input, value)
   input.dispatchEvent(new Event('input', { bubbles: true }))
 }
 
-describe('World Countries Capitals Quiz', () => {
+describe('World Countries Quiz', () => {
+  it('offers Capitals, Countries from Capitals, and Neighbours with Capitals selected by default', () => {
+    const mount = renderQuiz()
+
+    expect(mount.textContent).toContain('Capitals')
+    expect(mount.textContent).toContain('Countries from Capitals')
+    expect(mount.textContent).toContain('Neighbours')
+    expect((mount.querySelector('input[name="world-countries-quiz-type"][value="capitals"]') as HTMLInputElement).checked).toBe(true)
+    expect(mount.querySelectorAll('input[name="world-countries-quiz-type"]')).toHaveLength(3)
+  })
+
+  it('selects Countries from Capitals and starts a Capital → Country question', () => {
+    vi.useFakeTimers()
+    const norway = countries.find(country => country.id === 'NO')!
+    const mount = renderQuiz([norway])
+
+    selectQuizType(mount, 'countries-from-capitals')
+    expect(mount.textContent).toContain('Countries from Capitals quiz')
+    expect(mount.textContent).toContain('Given a Capital, type its Country.')
+
+    startQuiz(mount)
+    expect(mount.querySelector('#world-countries-recall-quiz-question')?.textContent).toContain(norway.capital)
+    expect(mount.querySelector('#world-countries-recall-quiz-question')?.textContent).toContain('What country')
+    expect(mount.querySelector<HTMLInputElement>('input')?.placeholder).toContain('country')
+  })
+
+  it('scores a Country answer correctly for Countries from Capitals', () => {
+    vi.useFakeTimers()
+    const norway = countries.find(country => country.id === 'NO')!
+    const mount = renderQuiz([norway])
+    selectQuizType(mount, 'countries-from-capitals')
+    startQuiz(mount)
+
+    act(() => typeInto(mount.querySelector<HTMLInputElement>('input')!, norway.country))
+    clickButton(mount, 'Check')
+    act(() => vi.advanceTimersByTime(500))
+
+    expect(mount.querySelector('#world-countries-recall-quiz-results-heading')?.textContent).toBe('1 / 1')
+  })
+
+  it('shows the canonical Country for an incorrect Capital → Country answer', () => {
+    vi.useFakeTimers()
+    const norway = countries.find(country => country.id === 'NO')!
+    const mount = renderQuiz([norway])
+    selectQuizType(mount, 'countries-from-capitals')
+    startQuiz(mount)
+
+    act(() => typeInto(mount.querySelector<HTMLInputElement>('input')!, 'Sweden'))
+    clickButton(mount, 'Check')
+
+    expect(mount.querySelector('[data-world-answer-outcome="incorrect"]')).not.toBeNull()
+    expect(mount.textContent).toContain(`The correct country is ${norway.country}.`)
+  })
+
+  it('keeps the opposite Capital as a wrong-kind answer and accepts a later Country answer', () => {
+    vi.useFakeTimers()
+    const norway = countries.find(country => country.id === 'NO')!
+    const mount = renderQuiz([norway])
+    selectQuizType(mount, 'countries-from-capitals')
+    startQuiz(mount)
+
+    act(() => typeInto(mount.querySelector<HTMLInputElement>('input')!, norway.capital))
+    clickButton(mount, 'Check')
+    expect(mount.querySelector('[data-world-answer-outcome="wrong-kind"]')).not.toBeNull()
+    expect(mount.textContent).toContain("That's the Capital")
+    act(() => vi.advanceTimersByTime(650))
+
+    act(() => typeInto(mount.querySelector<HTMLInputElement>('input')!, norway.country))
+    clickButton(mount, 'Check')
+    act(() => vi.advanceTimersByTime(500))
+    expect(mount.querySelector('#world-countries-recall-quiz-results-heading')?.textContent).toBe('1 / 1')
+  })
+
+  it('scores a fuzzy Country answer through the shared spelling lifecycle', () => {
+    const norway = countries.find(country => country.id === 'NO')!
+    const mount = renderQuiz([norway])
+    selectQuizType(mount, 'countries-from-capitals')
+    startQuiz(mount)
+
+    act(() => typeInto(mount.querySelector<HTMLInputElement>('input')!, 'Norwya'))
+    clickButton(mount, 'Check')
+    expect(mount.querySelector('[data-world-answer-outcome="fuzzy"]')).not.toBeNull()
+    expect(mount.textContent).toContain('Correct')
+  })
+
+  it("reveals a missed Country and retries it in the same Capital → Country direction", () => {
+    vi.useFakeTimers()
+    const norway = countries.find(country => country.id === 'NO')!
+    const mount = renderQuiz([norway])
+    selectQuizType(mount, 'countries-from-capitals')
+    startQuiz(mount)
+
+    clickButton(mount, "Don't know")
+    expect(mount.textContent).toContain(norway.country)
+    expect(mount.textContent).toContain('Answer revealed')
+    act(() => vi.advanceTimersByTime(1800))
+    expect(mount.querySelector('#world-countries-recall-quiz-results-heading')?.textContent).toBe('0 / 1')
+
+    clickButton(mount, 'Retry missed')
+    expect(mount.querySelector('#world-countries-recall-quiz-question')?.textContent).toContain(`What country is ${norway.capital} the capital of?`)
+    expect(mount.querySelector<HTMLInputElement>('input')?.placeholder).toContain('country')
+
+    act(() => typeInto(mount.querySelector<HTMLInputElement>('input')!, norway.country))
+    clickButton(mount, 'Check')
+    act(() => vi.advanceTimersByTime(500))
+    expect(mount.querySelector('#world-countries-recall-quiz-results-heading')?.textContent).toBe('1 / 1')
+
+    clickButton(mount, 'New quiz')
+    expect(mount.querySelector('#world-countries-recall-quiz-question')?.textContent).toContain(`What country is ${norway.capital} the capital of?`)
+    clickButton(mount, "Don't know")
+    act(() => vi.advanceTimersByTime(1800))
+    clickButton(mount, 'Change setup')
+    expect(mount.querySelector('#world-countries-quiz-heading')).not.toBeNull()
+    expect((mount.querySelector('input[name="world-countries-quiz-type"][value="countries-from-capitals"]') as HTMLInputElement).checked).toBe(true)
+  })
+
   it('starts with all active Countries selected and normalizes the count to All for a small scope', () => {
     const mount = renderQuiz()
 
@@ -384,7 +503,7 @@ describe('World Countries Capitals Quiz', () => {
       act(() => vi.advanceTimersByTime(shouldMiss ? 1800 : 500))
     }
 
-    expect(mount.querySelector('#world-countries-capitals-quiz-results-heading')?.textContent).toBe('2 / 3')
+    expect(mount.querySelector('#world-countries-recall-quiz-results-heading')?.textContent).toBe('2 / 3')
     expect(mount.textContent).toContain('Missed')
 
     clickButton(mount, 'Retry missed')
@@ -393,7 +512,7 @@ describe('World Countries Capitals Quiz', () => {
     expect(retryCountry.id).toBe(missedCountry?.id)
 
     answerCurrentQuestion(mount, activeCountries, retryCountry.capital, 500)
-    expect(mount.querySelector('#world-countries-capitals-quiz-results-heading')?.textContent).toBe('1 / 1')
+    expect(mount.querySelector('#world-countries-recall-quiz-results-heading')?.textContent).toBe('1 / 1')
 
     clickButton(mount, 'New quiz')
     expect(mount.textContent).toContain('Question 1 / 3')
@@ -409,13 +528,13 @@ describe('World Countries Capitals Quiz', () => {
     act(() => vi.advanceTimersByTime(1800))
     const remainingCountry = currentQuestionCountry(rendered.mount, activeCountries)
     answerCurrentQuestion(rendered.mount, activeCountries, remainingCountry.capital, 500)
-    expect(rendered.mount.querySelector('#world-countries-capitals-quiz-results-heading')).not.toBeNull()
+    expect(rendered.mount.querySelector('#world-countries-recall-quiz-results-heading')).not.toBeNull()
 
     rendered.rerender([activeCountries[0]!])
     clickButton(rendered.mount, 'Change setup')
 
-    expect(rendered.mount.querySelector('#world-countries-capitals-quiz-question')).toBeNull()
-    expect(rendered.mount.querySelector('#world-countries-capitals-quiz-results-heading')).toBeNull()
+    expect(rendered.mount.querySelector('#world-countries-recall-quiz-question')).toBeNull()
+    expect(rendered.mount.querySelector('#world-countries-recall-quiz-results-heading')).toBeNull()
     expect(rendered.mount.textContent).not.toContain('Quiz complete')
     expect(rendered.mount.querySelector('[aria-label="World selection summary"]')?.textContent).toContain('1 Country selected')
     expect((rendered.mount.querySelector('input[value="all"]') as HTMLInputElement).checked).toBe(true)
@@ -445,7 +564,7 @@ describe('World Countries Capitals Quiz', () => {
     }
 
     expect(observedOrder).toEqual(['SE', 'FI', 'NO'])
-    expect(rendered.mount.querySelector('#world-countries-capitals-quiz-results-heading')?.textContent).toBe('3 / 3')
+    expect(rendered.mount.querySelector('#world-countries-recall-quiz-results-heading')?.textContent).toBe('3 / 3')
 
     clickButton(rendered.mount, 'New quiz')
     expect(rendered.mount.textContent).toContain('Question 1 / 1')
@@ -492,8 +611,8 @@ describe('World Countries Capitals Quiz', () => {
     act(() => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent?.includes('Check'))?.click())
     act(() => vi.advanceTimersByTime(1800))
 
-    expect(mount.querySelector('#world-countries-capitals-quiz-results-heading')?.textContent).toBe('0 / 1')
-    expect(mount.querySelectorAll('#world-countries-capitals-quiz-results-heading')).toHaveLength(1)
+    expect(mount.querySelector('#world-countries-recall-quiz-results-heading')?.textContent).toBe('0 / 1')
+    expect(mount.querySelectorAll('#world-countries-recall-quiz-results-heading')).toHaveLength(1)
     expect(mount.textContent).toContain('Your answer: London')
   })
 })
