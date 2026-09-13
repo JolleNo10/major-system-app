@@ -368,7 +368,7 @@ describe('World Countries Today', () => {
     expect(mapProps?.selectionPresentation).toBe('outline-only')
   })
 
-  it('shows Review and Continue Learning independently when both are available', async () => {
+  it('recommends Review while keeping Journey and Playground in the hub', async () => {
     const northernEntries = countries.filter(country => country.subregionId === 'northern-europe').slice(0, 5)
     const southernEntry = countries.find(country => country.subregionId === 'southern-europe')!
     activeCountries = [...northernEntries, southernEntry]
@@ -387,17 +387,19 @@ describe('World Countries Today', () => {
 
     const mount = await renderToday({ continent: 'Europe' })
     const railMount = renderLatestRails()
+    const hub = mount.querySelector('[data-today-action-hub]')
 
     expect(railMount.textContent).toContain('Review ready')
     expect(railMount.textContent).toContain('20 items ready')
     expect(railMount.textContent).toContain('Next review: 2 items')
-    expect(railMount.querySelector('[data-review-action]')?.textContent).toBe('Review 2 now')
+    expect(railMount.querySelector('[data-review-action]')).toBeNull()
     expect(railMount.textContent).not.toContain('20 ready overall')
     expect(railMount.textContent).toContain('Your journey · Northern Europe')
     expect(railMount.textContent).not.toContain('Next in journey')
-    expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Learn 5 countries')
-    expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('Continue your journey')
-    expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('Learn 5 countries · Northern Europe')
+    expect(hub?.querySelector('[data-today-action="review"]')?.textContent).toContain('Review 2 now')
+    expect(hub?.querySelector('[data-today-action="review"]')?.getAttribute('data-recommended')).toBe('true')
+    expect(hub?.querySelector('[data-today-action="journey"]')?.textContent).toContain('Learn 5 countries · Northern Europe')
+    expect(hub?.querySelector('[data-today-action="playground"]')).not.toBeNull()
   })
 
   it('keeps equal total and bounded Review counts from duplicating the item count across Home surfaces', async () => {
@@ -414,16 +416,16 @@ describe('World Countries Today', () => {
     const mount = await renderToday()
     const railMount = renderLatestRails()
 
-    expect(railMount.querySelector('[data-review-action]')?.textContent).toBe('Review 5 now')
+    expect(railMount.querySelector('[data-review-action]')).toBeNull()
     expect(railMount.textContent).toContain('5 items ready')
     expect(railMount.textContent).not.toContain('Next review:')
     expect(railMount.textContent).not.toContain('2 countries')
     expect(railMount.textContent).not.toContain('recent mistake')
     expect(railMount.textContent).not.toContain('3 reviews ready')
-    expect(mount.querySelector('[data-primary-action]')).toBeNull()
+    expect(mount.querySelector('[data-today-action="review"]')?.textContent).toContain('Review 5 now')
   })
 
-  it('launches Review from the independent panel', async () => {
+  it('launches Review from the recommended hub action', async () => {
     const candidate = { country: countries[0] }
     buildPlanMock.mockReturnValue(plan({
       dueCandidates: [candidate],
@@ -433,11 +435,9 @@ describe('World Countries Today', () => {
       reviewOpportunity: { kind: 'review', candidates: [candidate] },
     }))
     const mount = await renderToday()
-    const railMount = renderLatestRails()
-
-    act(() => railMount.querySelector<HTMLButtonElement>('[data-review-action]')?.click())
+    act(() => mount.querySelector<HTMLButtonElement>('[data-today-action="review"]')?.click())
     expect(mount.querySelector('[data-testid="today-review"]')?.getAttribute('data-review-mode')).toBe('review')
-    expect(mount.querySelector('[data-primary-action]')).toBeNull()
+    expect(mount.querySelector('[data-today-action="journey"]')).toBeNull()
   })
 
   it('shows the full scheduled Review total while launching only the bounded block', async () => {
@@ -455,13 +455,15 @@ describe('World Countries Today', () => {
 
     expect(railMount.textContent).toContain('20 items ready')
     expect(railMount.textContent).toContain('Next review: 8 items')
-    expect(railMount.querySelector('[data-review-action]')?.textContent).toBe('Review 8 now')
+    expect(railMount.querySelector('[data-review-action]')).toBeNull()
+    expect(mount.querySelector('[data-today-action="review"]')?.textContent).toContain('Review 8 now')
+    expect(mount.querySelector('[data-today-action="review"]')?.textContent).toContain('20 items due · next review 8')
 
-    act(() => railMount.querySelector<HTMLButtonElement>('[data-review-action]')?.click())
+    act(() => mount.querySelector<HTMLButtonElement>('[data-today-action="review"]')?.click())
     expect(mount.querySelector('[data-review-candidate-count]')?.getAttribute('data-review-candidate-count')).toBe('8')
   })
 
-  it('returns focus to the Review action after completion without focusing Journey', async () => {
+  it('returns focus to the recommended Review hub action after completion', async () => {
     const candidate = { country: countries[0] }
     buildPlanMock.mockReturnValue(plan({
       dueCandidates: [candidate],
@@ -475,7 +477,7 @@ describe('World Countries Today', () => {
     const mount = await renderToday()
     let railMount = renderLatestRails()
 
-    act(() => railMount.querySelector<HTMLButtonElement>('[data-review-action]')?.click())
+    act(() => mount.querySelector<HTMLButtonElement>('[data-today-action="review"]')?.click())
     await act(async () => {
       mount.querySelector<HTMLButtonElement>('[data-testid="today-review"]')?.click()
       await Promise.resolve()
@@ -484,14 +486,14 @@ describe('World Countries Today', () => {
     })
     railMount = renderLatestRails()
 
-    const reviewAction = railMount.querySelector<HTMLButtonElement>('[data-review-action]')
+    const reviewAction = mount.querySelector<HTMLButtonElement>('[data-today-action="review"]')
     expect(reviewAction).not.toBeNull()
-    expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Learn 1 country')
+    expect(mount.querySelector('[data-today-action="journey"]')?.textContent).toContain('Learn 1 country · Northern Europe')
     expect(document.activeElement).toBe(reviewAction)
     expect(railMount.querySelector('[data-review-completion]')).toBeNull()
   })
 
-  it('does not focus Journey when Review completion leaves no Review opportunity', async () => {
+  it('focuses the new recommended hub action when Review completion leaves no Review opportunity', async () => {
     const candidate = { country: countries[0] }
     let reviewCompleted = false
     const initialPlan = plan({
@@ -511,7 +513,7 @@ describe('World Countries Today', () => {
     const mount = await renderToday()
     let railMount = renderLatestRails()
 
-    act(() => railMount.querySelector<HTMLButtonElement>('[data-review-action]')?.click())
+    act(() => mount.querySelector<HTMLButtonElement>('[data-today-action="review"]')?.click())
     await act(async () => {
       reviewCompleted = true
       mount.querySelector<HTMLButtonElement>('[data-testid="today-review"]')?.click()
@@ -521,9 +523,9 @@ describe('World Countries Today', () => {
     })
     renderLatestRails()
 
-    const journeyAction = mount.querySelector<HTMLButtonElement>('[data-primary-action]')
+    const journeyAction = mount.querySelector<HTMLButtonElement>('[data-today-action="journey"]')
     expect(journeyAction).not.toBeNull()
-    expect(document.activeElement).not.toBe(journeyAction)
+    expect(document.activeElement).toBe(journeyAction)
   })
 
   it('returns focus to Review after exiting while the opportunity remains', async () => {
@@ -540,7 +542,7 @@ describe('World Countries Today', () => {
     const mount = await renderToday()
     let railMount = renderLatestRails()
 
-    act(() => railMount.querySelector<HTMLButtonElement>('[data-review-action]')?.click())
+    act(() => mount.querySelector<HTMLButtonElement>('[data-today-action="review"]')?.click())
     await act(async () => {
       mount.querySelector<HTMLButtonElement>('[data-testid="today-review-exit"]')?.click()
       await Promise.resolve()
@@ -549,7 +551,7 @@ describe('World Countries Today', () => {
     })
     railMount = renderLatestRails()
 
-    const reviewAction = railMount.querySelector<HTMLButtonElement>('[data-review-action]')
+    const reviewAction = mount.querySelector<HTMLButtonElement>('[data-today-action="review"]')
     expect(reviewAction).not.toBeNull()
     expect(document.activeElement).toBe(reviewAction)
     expect(railMount.querySelector('[data-review-completion]')).toBeNull()
@@ -565,7 +567,7 @@ describe('World Countries Today', () => {
     const mount = await renderToday()
 
     await act(async () => {
-      mount.querySelector<HTMLButtonElement>('[data-primary-action]')?.click()
+      mount.querySelector<HTMLButtonElement>('[data-today-action="journey"]')?.click()
       await Promise.resolve()
     })
     expect(countryLearningFlowMock).toHaveBeenCalledWith(expect.objectContaining({
@@ -611,10 +613,10 @@ describe('World Countries Today', () => {
     expect(mapProps?.selectionPresentation).toBe('outline-only')
     expect(railMount.querySelector('[aria-labelledby="world-countries-review-opportunity-heading"]')?.textContent).not.toContain('Review scope: Southern Europe')
     expect(mount.querySelector('[data-active-subregion]')?.textContent).toContain('Southern Europe')
-    expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('Learn 1 country · Southern Europe')
+    expect(mount.querySelector('[data-today-action="journey"]')?.textContent).toContain('Learn 1 country · Southern Europe')
 
     await act(async () => {
-      mount.querySelector<HTMLButtonElement>('[data-primary-action]')?.click()
+      mount.querySelector<HTMLButtonElement>('[data-today-action="journey"]')?.click()
       await Promise.resolve()
     })
     expect(countryLearningFlowMock).toHaveBeenCalledWith(expect.objectContaining({ subregion: 'southern-europe' }))
@@ -655,10 +657,10 @@ describe('World Countries Today', () => {
     expect(railMount.textContent).not.toContain('Central Europe')
     const mapProps = geographyOverviewMapMock.mock.calls[geographyOverviewMapMock.mock.calls.length - 1]?.[0] as { selectedSubregionIds?: readonly string[] } | undefined
     expect(mapProps?.selectedSubregionIds).toEqual(['northern-europe'])
-    expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('Northern Europe')
+    expect(mount.querySelector('[data-today-action="journey"]')?.textContent).toContain('Learn 1 country · Northern Europe')
   })
 
-  it('shows weak-spot practice alongside Journey Learning when reviews are caught up', async () => {
+  it('recommends Journey over weak-spot consolidation when reviews are caught up', async () => {
     const candidate = { country: countries[0] }
     buildPlanMock.mockReturnValue(plan({
       curriculumRecommendation: recommendation('learn-countries'),
@@ -671,9 +673,11 @@ describe('World Countries Today', () => {
     const railMount = renderLatestRails()
 
     expect(railMount.textContent).toContain('Reviews caught up')
-    expect(railMount.textContent).toContain('Strengthen 1 now')
-    expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Learn 1 country')
-    act(() => railMount.querySelector<HTMLButtonElement>('[data-review-action]')?.click())
+    expect(railMount.textContent).not.toContain('Strengthen 1 now')
+    expect(mount.querySelector('[data-today-action="journey"]')?.getAttribute('data-recommended')).toBe('true')
+    expect(mount.querySelector('[data-today-action="strengthen"]')?.textContent).toContain('Strengthen 1')
+    expect(mount.querySelector('[data-today-action="playground"]')).not.toBeNull()
+    act(() => mount.querySelector<HTMLButtonElement>('[data-today-action="strengthen"]')?.click())
     expect(mount.querySelector('[data-testid="today-review"]')?.getAttribute('data-review-mode')).toBe('consolidation')
   })
 
@@ -690,9 +694,15 @@ describe('World Countries Today', () => {
 
     expect(railMount.textContent).toContain('20 weak spots available')
     expect(railMount.textContent).toContain('Next practice: 8 items')
-    expect(railMount.querySelector('[data-review-action]')?.textContent).toBe('Strengthen 8 now')
+    expect(railMount.querySelector('[data-review-action]')).toBeNull()
+    expect(mount.querySelector('[data-today-action="strengthen"]')?.getAttribute('data-recommended')).toBe('true')
+    expect(mount.querySelector('[data-today-action="strengthen"]')?.textContent).toContain('Strengthen 8')
+    expect(mount.querySelector('[data-today-action="strengthen"]')?.textContent).toContain('20 weak spots available · next practice 8')
+    expect(mount.querySelector('[data-today-action="playground"]')).not.toBeNull()
+    expect(mount.textContent).not.toContain('Drill the world')
+    expect(mount.textContent).not.toContain('Drill Northern Europe')
 
-    act(() => railMount.querySelector<HTMLButtonElement>('[data-review-action]')?.click())
+    act(() => mount.querySelector<HTMLButtonElement>('[data-today-action="strengthen"]')?.click())
     expect(mount.querySelector('[data-testid="today-review"]')?.getAttribute('data-review-mode')).toBe('consolidation')
     expect(mount.querySelector('[data-review-candidate-count]')?.getAttribute('data-review-candidate-count')).toBe('8')
   })
@@ -707,7 +717,7 @@ describe('World Countries Today', () => {
     const mount = await renderToday()
     let railMount = renderLatestRails()
 
-    act(() => railMount.querySelector<HTMLButtonElement>('[data-review-action]')?.click())
+    act(() => mount.querySelector<HTMLButtonElement>('[data-today-action="strengthen"]')?.click())
     await act(async () => {
       mount.querySelector<HTMLButtonElement>('[data-testid="today-review"]')?.click()
       await Promise.resolve()
@@ -730,7 +740,7 @@ describe('World Countries Today', () => {
 
     expect(railMount.textContent).toContain('Reviews caught up')
     expect(railMount.querySelector('[data-review-action]')).toBeNull()
-    expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Learn 1 country')
+    expect(mount.querySelector('[data-today-action="journey"]')?.textContent).toContain('Learn 1 country · Northern Europe')
   })
 
   it('does not render a fake Journey dock when only Review is available', async () => {
@@ -743,10 +753,10 @@ describe('World Countries Today', () => {
       reviewOpportunity: { kind: 'review', candidates: [candidate] },
     }))
     const mount = await renderToday()
-    expect(mount.querySelector('[data-primary-action]')).toBeNull()
+    expect(mount.querySelector('[data-today-action="review"]')?.getAttribute('data-recommended')).toBe('true')
   })
 
-  it('keeps a selected learned Subregion active and offers Drill without falling back to the planner', async () => {
+  it('keeps a selected learned Subregion visible without suppressing the planner Journey', async () => {
     const northern = countries.find(country => country.subregionId === 'northern-europe')!
     const central = countries.find(country => country.subregionId === 'central-europe')!
     activeCountries = [northern, central]
@@ -775,14 +785,14 @@ describe('World Countries Today', () => {
 
     expect(railMount.textContent).toContain('Learning complete · Northern Europe')
     expect(railMount.querySelector('[data-active-focus="true"]')?.textContent).toContain('Northern Europe')
-    expect(railMount.querySelector('[data-review-action]')).not.toBeNull()
-    expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('Learning complete')
-    expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('You can now drill this region whenever you want.')
-    expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Drill Northern Europe')
-    expect(mount.querySelector('[data-task-scope-context]')?.textContent).not.toContain('Central Europe')
+    expect(railMount.querySelector('[data-review-action]')).toBeNull()
+    expect(mount.querySelector('[data-today-action="review"]')?.getAttribute('data-recommended')).toBe('true')
+    expect(mount.querySelector('[data-today-action="journey"]')?.textContent).toContain('Learn 1 country · Central Europe')
+    expect(mount.textContent).not.toContain('Drill Northern Europe')
 
-    await act(async () => mount.querySelector<HTMLButtonElement>('[data-primary-action]')?.click())
-    expect(onNavigate).toHaveBeenCalledWith({ area: 'drill', scope: { kind: 'subregion', subregionId: 'northern-europe' } })
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-today-action="journey"]')?.click())
+    expect(onNavigate).not.toHaveBeenCalled()
+    expect(countryLearningFlowMock).toHaveBeenCalledWith(expect.objectContaining({ subregion: 'central-europe' }))
   })
 
   it('hands Learning completion to the next Journey recommendation, not Review', async () => {
@@ -912,7 +922,7 @@ describe('World Countries Today', () => {
       await Promise.resolve()
     })
     expect(mount.querySelector('[data-testid="country-learning-flow"]')).toBeNull()
-    expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('Western Europe')
+    expect(mount.querySelector('[data-today-action="journey"]')?.textContent).toContain('Learn 1 country · Western Europe')
   })
 
   it('recognizes a Country-finished region boundary from post-milestone readiness truth', async () => {
@@ -958,7 +968,7 @@ describe('World Countries Today', () => {
     }))
   })
 
-  it('orients Home toward mastery development after curriculum Learning is complete', async () => {
+  it('makes Playground the recommendation after curriculum Learning is complete without weak spots', async () => {
     const northern = countries.find(country => country.subregionId === 'northern-europe')!
     activeCountries = [northern]
     markSubregionCountriesLearned(northern.subregionId, Date.now(), activeCountries)
@@ -970,7 +980,9 @@ describe('World Countries Today', () => {
     }))
     const mount = await renderToday({ continent: 'Europe' })
 
-    expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Drill Northern Europe')
+    expect(mount.querySelector('[data-today-action="playground"]')?.getAttribute('data-recommended')).toBe('true')
+    expect(mount.querySelector('[data-today-action="playground"]')?.textContent).toContain('Learning complete · You\'re caught up for now')
+    expect(mount.textContent).not.toContain('Drill Northern Europe')
     const railMount = renderLatestRails()
     expect(railMount.textContent).toContain('Learning complete')
     expect(railMount.textContent).toContain('Mastery')
@@ -979,7 +991,7 @@ describe('World Countries Today', () => {
     expect([...railMount.querySelectorAll('[data-journey-milestone]')].every(node => node.getAttribute('data-journey-status') === 'complete')).toBe(true)
   })
 
-  it('offers a World Drill after all active Countries complete Learning, regardless of residual recall focus', async () => {
+  it('makes Playground the recommendation after all active Countries complete Learning', async () => {
     const northern = countries.find(country => country.subregionId === 'northern-europe')!
     const eastern = countries.find(country => country.subregionId === 'eastern-europe')!
     activeCountries = [northern, eastern]
@@ -998,10 +1010,10 @@ describe('World Countries Today', () => {
     const onNavigate = vi.fn()
     const mount = await renderToday({ onNavigate })
 
-    expect(mount.textContent).toContain('Learning complete')
-    expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('World')
-    expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('You can now drill the whole world whenever you want.')
-    expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Drill the world')
+    const railMount = renderLatestRails()
+    expect(railMount.textContent).toContain('Learning complete')
+    expect(mount.querySelector('[data-today-action="playground"]')?.getAttribute('data-recommended')).toBe('true')
+    expect(mount.querySelector('[data-today-action="playground"]')?.textContent).toContain('Learning complete · You\'re caught up for now')
     expect(mount.textContent).not.toContain('Drill Eastern Europe')
     expect(mount.querySelector('[aria-label="Learning"]')).toBeNull()
     expect(mount.querySelector('[aria-label="Recall health"]')).not.toBeNull()
@@ -1015,8 +1027,8 @@ describe('World Countries Today', () => {
     expect(mapProps?.countryPatternsById?.size).toBe(0)
     expect(mapProps?.countryEdgeTreatmentsById).toBeUndefined()
 
-    await act(async () => mount.querySelector<HTMLButtonElement>('[data-primary-action]')?.click())
-    expect(onNavigate).toHaveBeenCalledWith({ area: 'drill', scope: { kind: 'world' } })
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-today-action="playground"]')?.click())
+    expect(onNavigate).toHaveBeenCalledWith({ area: 'play' })
   })
 
   it('keeps a learned Capital region truthful when no next recommendation exists', async () => {
@@ -1062,7 +1074,7 @@ describe('World Countries Today', () => {
     buildPlanMock.mockReturnValue(plan({ curriculumRecommendation: recommendation('learn-capitals') }))
     const mount = await renderToday()
 
-    expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Add the capitals')
+    expect(mount.querySelector('[data-today-action="journey"]')?.textContent).toContain('Add the capitals · Northern Europe')
 
     await act(async () => {
       mount.querySelector<HTMLButtonElement>('[data-primary-action]')?.click()
@@ -1104,7 +1116,7 @@ describe('World Countries Today', () => {
     })
     expect(mount.querySelector('[data-testid="country-learning-flow"]')).toBeNull()
     const railMount = renderLatestRails()
-    expect(railMount.querySelector('[data-review-action]')).not.toBeNull()
-    expect(mount.querySelector('[data-primary-action]')).toBeNull()
+    expect(railMount.querySelector('[data-review-action]')).toBeNull()
+    expect(mount.querySelector('[data-today-action="review"]')?.getAttribute('data-recommended')).toBe('true')
   })
 })

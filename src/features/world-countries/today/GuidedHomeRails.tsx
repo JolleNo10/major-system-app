@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from 'react'
+import { useMemo } from 'react'
 import { useRails } from '@/app/layout/PageLayoutContext'
 import type { Continent } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition } from '@/features/world-countries/data/subregions'
@@ -33,8 +33,6 @@ export function GuidedHomeRails({
   reviewOpportunity,
   reviewAvailableCount,
   reviewCompletion,
-  onStartReview,
-  focusReviewActionRequest = 0,
   journey,
   activeLearningAvailable = true,
   refreshing,
@@ -50,8 +48,6 @@ export function GuidedHomeRails({
   reviewOpportunity: WorldCountriesTodayReviewOpportunity
   reviewAvailableCount: number
   reviewCompletion?: WorldCountriesTodayReviewCompletion | null
-  onStartReview: () => void
-  focusReviewActionRequest?: number
   journey: WorldCountriesJourneyPresentation | null
   activeLearningAvailable?: boolean
   refreshing: boolean
@@ -61,12 +57,6 @@ export function GuidedHomeRails({
   onOpenProgress: () => void
 }) {
   const scopeName = continent ?? 'World'
-  const lastFocusedReviewRequest = useRef(0)
-  const reviewActionRef = useCallback((button: HTMLButtonElement | null) => {
-    if (!button || focusReviewActionRequest <= lastFocusedReviewRequest.current) return
-    lastFocusedReviewRequest.current = focusReviewActionRequest
-    button.focus()
-  }, [focusReviewActionRequest])
   const reviewResultText = reviewCompletion ? formatReviewCompletion(reviewCompletion) : null
   const nextSessionCount = reviewOpportunity?.candidates.length ?? 0
   const hasMoreAvailable = reviewAvailableCount > nextSessionCount
@@ -92,29 +82,23 @@ export function GuidedHomeRails({
           <p role="status" aria-live="polite" className="mt-2 text-sm text-zinc-400">We couldn&apos;t load your progress. Playground remains available from the feature header.</p>
         </div>
       ) : reviewOpportunity?.kind === 'review' ? (
-        <>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span aria-hidden="true" className="text-sm leading-none text-green-300">✦</span>
-              <h2 id="world-countries-review-opportunity-heading" className="text-xs font-semibold uppercase tracking-wider text-green-300">Review ready</h2>
-            </div>
-            <p className="mt-1 text-2xl font-black tabular-nums text-zinc-100">{reviewAvailableCount} {reviewAvailableCount === 1 ? 'item' : 'items'} ready</p>
-            {hasMoreAvailable
-              ? <p className="mt-1 text-sm text-zinc-400">Next review: {nextSessionCount} {nextSessionCount === 1 ? 'item' : 'items'}</p>
-              : <p className="mt-1 text-sm text-zinc-400">See what stuck.</p>}
+        <div>
+          <div className="flex items-center gap-1.5">
+            <span aria-hidden="true" className="text-sm leading-none text-green-300">✦</span>
+            <h2 id="world-countries-review-opportunity-heading" className="text-xs font-semibold uppercase tracking-wider text-green-300">Review ready</h2>
           </div>
-          <button ref={reviewActionRef} type="button" data-review-action onClick={onStartReview} disabled={refreshing} className="w-full rounded-lg border border-green-500/45 bg-green-500/10 px-3 py-2.5 text-sm font-bold text-green-200 hover:bg-green-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 disabled:cursor-not-allowed disabled:opacity-40">Review {nextSessionCount} now</button>
-        </>
+          <p className="mt-1 text-2xl font-black tabular-nums text-zinc-100">{reviewAvailableCount} {reviewAvailableCount === 1 ? 'item' : 'items'} ready</p>
+          {hasMoreAvailable
+            ? <p className="mt-1 text-sm text-zinc-400">Next review: {nextSessionCount} {nextSessionCount === 1 ? 'item' : 'items'}</p>
+            : <p className="mt-1 text-sm text-zinc-400">See what stuck.</p>}
+        </div>
       ) : reviewOpportunity?.kind === 'consolidate' ? (
-        <>
-          <div>
-            <h2 id="world-countries-review-opportunity-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Reviews caught up</h2>
-            <p className="mt-1 text-lg font-bold text-zinc-100">{reviewAvailableCount} weak {reviewAvailableCount === 1 ? 'spot' : 'spots'} available</p>
-            {hasMoreAvailable && <p className="mt-1 text-sm text-zinc-400">Next practice: {nextSessionCount} {nextSessionCount === 1 ? 'item' : 'items'}</p>}
-          </div>
-          {reviewResultText && <p data-review-completion className="text-xs leading-relaxed text-zinc-300">{reviewResultText}</p>}
-          <button ref={reviewActionRef} type="button" data-review-action onClick={onStartReview} disabled={refreshing} className="w-full rounded-lg border border-zinc-700 px-3 py-2.5 text-sm font-bold text-green-200 hover:border-green-500/60 hover:bg-green-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 disabled:cursor-not-allowed disabled:opacity-40">Strengthen {nextSessionCount} now</button>
-        </>
+        <div>
+          <h2 id="world-countries-review-opportunity-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Reviews caught up</h2>
+          <p className="mt-1 text-lg font-bold text-zinc-100">{reviewAvailableCount} weak {reviewAvailableCount === 1 ? 'spot' : 'spots'} available</p>
+          {hasMoreAvailable && <p className="mt-1 text-sm text-zinc-400">Next practice: {nextSessionCount} {nextSessionCount === 1 ? 'item' : 'items'}</p>}
+          {reviewResultText && <p data-review-completion className="mt-2 text-xs leading-relaxed text-zinc-300">{reviewResultText}</p>}
+        </div>
       ) : (
         <div>
           <h2 id="world-countries-review-opportunity-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Reviews caught up</h2>
@@ -123,7 +107,7 @@ export function GuidedHomeRails({
         </div>
       )}
     </WorldCountriesPanel>
-  ), [activeCountryCount, evidenceStatus, hasMoreAvailable, nextSessionCount, onStartReview, refreshing, reviewActionRef, reviewAvailableCount, reviewOpportunity, reviewResultText])
+  ), [activeCountryCount, evidenceStatus, hasMoreAvailable, nextSessionCount, reviewAvailableCount, reviewOpportunity, reviewResultText])
 
   const rails = useMemo(() => ({
     left: (

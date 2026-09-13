@@ -26,11 +26,12 @@ import { CapitalLearningFlow } from '@/features/world-countries/learning/flows/C
 import type { LearningCompletedRegionAction, LearningCompletionHandoff, LearningRegionCompletion } from '@/features/world-countries/learning/flows/LearningComplete'
 import type { LearningSetMaximum } from '@/features/world-countries/learning/stagedLearningPlan'
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
-import { MapSurface, TaskDock } from '@/features/world-countries/ui/MapSurface'
+import { MapSurface } from '@/features/world-countries/ui/MapSurface'
 import { WorldCountriesMapLegend } from '@/features/world-countries/ui/WorldCountriesMapLegend'
 import { TodayReviewSession, type WorldCountriesTodayReviewCheckpoint, type WorldCountriesTodayReviewCompletion } from './TodayReviewSession'
 import type { WorldCountriesGuidedRecallMode } from './TodayRails'
 import { GuidedHomeRails } from './GuidedHomeRails'
+import { TodayActionHub, type TodayHubAction } from './TodayActionHub'
 import { WorldCountriesProgressView } from './WorldCountriesProgressView'
 import { deriveWorldCountriesJourneyPresentation, type WorldCountriesJourneyPresentation } from './journeyPresentation'
 import { buildWorldCountriesTodayPlan, type WorldCountriesTodayLearningRecommendation, type WorldCountriesTodayPlan, type WorldCountriesTodayReviewOpportunity } from './todayPlan'
@@ -43,6 +44,7 @@ export type WorldCountriesTodayNavigation =
         | { kind: 'subregion'; subregionId: SubregionId }
     }
   | { area: 'recite' }
+  | { area: 'play' }
 type EvidenceState =
   | { status: 'loading' }
   | { status: 'ready'; history: WorldCountriesRecallHistory }
@@ -150,7 +152,7 @@ export function WorldCountriesToday({
   const [reviewCandidates, setReviewCandidates] = useState<WorldCountriesTodayPlan['reviewQueue'] | null>(null)
   const [reviewMode, setReviewMode] = useState<WorldCountriesGuidedRecallMode>('review')
   const [reviewing, setReviewing] = useState(false)
-  const [reviewFocusRequest, setReviewFocusRequest] = useState(0)
+  const [hubFocusRequest, setHubFocusRequest] = useState(0)
   const [reviewCompletion, setReviewCompletion] = useState<WorldCountriesTodayReviewCompletion | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [learningRun, setLearningRun] = useState<LearningRun | null>(null)
@@ -260,7 +262,7 @@ export function WorldCountriesToday({
 
   const refreshAfterReview = async () => {
     await refreshAfterActivity()
-    setReviewFocusRequest(request => request + 1)
+    setHubFocusRequest(request => request + 1)
   }
 
   const finishLearning = () => {
@@ -299,8 +301,8 @@ export function WorldCountriesToday({
   }
 
   const startJourney = () => {
-    if (!activeLearningRecommendation || evidence.status !== 'ready' || scopedCountries.length === 0) return
-    launchLearningRecommendation(activeLearningRecommendation)
+    if (!hubJourneyRecommendation || evidence.status !== 'ready' || scopedCountries.length === 0) return
+    launchLearningRecommendation(hubJourneyRecommendation)
   }
 
   const finishReview = async (checkpoint: WorldCountriesTodayReviewCheckpoint) => {
@@ -331,6 +333,7 @@ export function WorldCountriesToday({
   const activeLearningRecommendation = validSelectedSubregionId
     ? selectedLearningRecommendation
     : plan?.curriculumRecommendation ?? null
+  const hubJourneyRecommendation = activeLearningRecommendation ?? plan?.curriculumRecommendation ?? null
   const journey = useMemo<WorldCountriesJourneyPresentation | null>(() => {
     if (evidence.status !== 'ready' || !activeSubregionId) return null
     return deriveWorldCountriesJourneyPresentation({
@@ -492,23 +495,69 @@ export function WorldCountriesToday({
     />
   }
 
-  const canContinue = Boolean(activeLearningRecommendation && evidence.status === 'ready' && scopedCountries.length > 0)
   const reviewAvailableCount = plan?.reviewOpportunity?.kind === 'review'
     ? plan.dueCount
     : plan?.reviewOpportunity?.kind === 'consolidate'
       ? plan.consolidationCandidates.length
       : 0
+  const reviewSessionCount = plan?.reviewOpportunity?.candidates.length ?? 0
   const activeSubregionLabel = activeSubregionId ? getSubregionDefinition(activeSubregionId).label : null
-  const canDrillCompletedRegion = Boolean(
-    activeSubregionId
-      && evidence.status === 'ready'
-      && scopedCountries.length > 0
-      && journey?.regionLearned
-      && !activeLearningRecommendation,
-  )
-  const journeyActionLabel = activeLearningRecommendation
-    ? getJourneyActionLabel(activeLearningRecommendation)
+  const journeyActionLabel = hubJourneyRecommendation
+    ? getJourneyActionLabel(hubJourneyRecommendation)
     : null
+  const todayHubActions = (() => {
+    if (evidence.status !== 'ready' || scopedCountries.length === 0 || !plan) return null
+
+    const playground: TodayHubAction = {
+      id: 'playground',
+      title: 'Playground',
+      detail: 'Choose Drill, Quiz, Recite or Practice',
+      tone: 'playground',
+      onAction: () => onNavigate({ area: 'play' }),
+    }
+    const journeyAction: TodayHubAction | null = hubJourneyRecommendation && journeyActionLabel
+      ? {
+          id: 'journey',
+          title: 'Continue your journey',
+          detail: `${journeyActionLabel} · ${hubJourneyRecommendation.subregionLabel}`,
+          tone: 'journey',
+          onAction: startJourney,
+        }
+      : null
+    const reviewAction: TodayHubAction | null = plan.reviewOpportunity?.kind === 'review'
+      ? {
+          id: 'review',
+          title: `Review ${reviewSessionCount} now`,
+          detail: plan.dueCount === reviewSessionCount
+            ? `${reviewSessionCount} ${reviewSessionCount === 1 ? 'item is' : 'items are'} due for recall`
+            : `${plan.dueCount} items due · next review ${reviewSessionCount}`,
+          tone: 'review',
+          onAction: startReview,
+        }
+      : null
+    const strengthenAction: TodayHubAction | null = plan.reviewOpportunity?.kind === 'consolidate'
+      ? {
+          id: 'strengthen',
+          title: `Strengthen ${reviewSessionCount}`,
+          detail: plan.consolidationCandidates.length === reviewSessionCount
+            ? `${reviewSessionCount} weak ${reviewSessionCount === 1 ? 'spot' : 'spots'} ready now`
+            : `${plan.consolidationCandidates.length} weak spots available · next practice ${reviewSessionCount}`,
+          tone: 'strengthen',
+          onAction: startReview,
+        }
+      : null
+
+    if (reviewAction) return { recommended: reviewAction, otherActions: [journeyAction, playground].filter((action): action is TodayHubAction => Boolean(action)) }
+    if (journeyAction) return { recommended: journeyAction, otherActions: [strengthenAction, playground].filter((action): action is TodayHubAction => Boolean(action)) }
+    if (strengthenAction) return { recommended: strengthenAction, otherActions: [playground] }
+    return {
+      recommended: {
+        ...playground,
+        detail: 'Learning complete · You\'re caught up for now',
+      },
+      otherActions: [],
+    }
+  })()
   const mapDescriptions = new Map([...primaryStatusByCountry].map(([countryId, status]) => [
     countryId,
     status.kind === 'learning'
@@ -526,8 +575,6 @@ export function WorldCountriesToday({
         reviewOpportunity={plan?.reviewOpportunity ?? null}
         reviewAvailableCount={reviewAvailableCount}
         reviewCompletion={reviewCompletion}
-        onStartReview={startReview}
-        focusReviewActionRequest={reviewFocusRequest}
         refreshing={refreshing}
         scopeSummaries={scopeSummaries}
         scopeProgress={progress}
@@ -569,44 +616,7 @@ export function WorldCountriesToday({
               ariaLabel={continent ? `${continent} learning map` : 'World Countries learning map'}
             />
           )}
-          dock={canContinue ? (
-            <TaskDock variant="navigation" status={(
-                <div data-task-scope-context>
-                 <p className="text-xs font-semibold uppercase tracking-wider text-violet-300">Continue your journey</p>
-                 <p className="mt-1 font-semibold text-zinc-100">{journeyActionLabel} · {activeLearningRecommendation?.subregionLabel}</p>
-                </div>
-            )}>
-              <button type="button" data-primary-action disabled={refreshing} onClick={startJourney} className="w-full rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white hover:bg-violet-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-40">
-                {journeyActionLabel}
-              </button>
-            </TaskDock>
-          ) : worldLearningComplete ? (
-            <TaskDock variant="navigation" status={(
-                <div data-task-scope-context>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-cyan-300">Learning complete</p>
-                  <p className="mt-1 font-semibold text-zinc-100">World</p>
-                  <p className="mt-1 text-sm text-zinc-400">You can now drill the whole world whenever you want.</p>
-                </div>
-            )}>
-              <button type="button" data-primary-action disabled={refreshing} onClick={() => onNavigate({ area: 'drill', scope: { kind: 'world' } })} className="w-full rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-200 hover:border-cyan-400 hover:bg-cyan-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 disabled:cursor-not-allowed disabled:opacity-40">
-                Drill the world
-              </button>
-            </TaskDock>
-          ) : canDrillCompletedRegion ? (
-            <TaskDock variant="navigation" status={(
-                <div data-task-scope-context>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-cyan-300">Learning complete</p>
-                  <p className="mt-1 font-semibold text-zinc-100">{activeSubregionLabel}</p>
-                  <p className="mt-1 text-sm text-zinc-400">You can now drill this region whenever you want.</p>
-                </div>
-            )}>
-              <button type="button" data-primary-action disabled={refreshing} onClick={() => {
-                if (activeSubregionId) onNavigate({ area: 'drill', scope: { kind: 'subregion', subregionId: activeSubregionId } })
-              }} className="w-full rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-200 hover:border-cyan-400 hover:bg-cyan-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 disabled:cursor-not-allowed disabled:opacity-40">
-                Drill {activeSubregionLabel}
-              </button>
-            </TaskDock>
-          ) : undefined}
+          dock={todayHubActions ? <TodayActionHub {...todayHubActions} disabled={refreshing} focusRequest={hubFocusRequest} /> : undefined}
           dockPlacement="attached"
           className="animate-fade-in"
         />

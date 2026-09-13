@@ -40,7 +40,6 @@ function renderRails(overrides: Partial<Parameters<typeof GuidedHomeRails>[0]> =
     evidenceStatus: 'ready',
     reviewOpportunity: null,
     reviewAvailableCount: overrides.reviewAvailableCount ?? (overrides.reviewOpportunity?.candidates.length ?? 0),
-    onStartReview: vi.fn(),
     journey: null,
     refreshing: false,
     scopeSummaries: [],
@@ -93,11 +92,9 @@ describe('Guided World Countries home rails', () => {
     expect(mount.querySelector('[aria-labelledby="world-countries-review-opportunity-heading"] h2')?.textContent).toBe('Reviews caught up')
   })
 
-  it('presents scheduled Review as a compact actionable opportunity', () => {
-    const onStartReview = vi.fn()
+  it('presents scheduled Review as supporting information without an action', () => {
     const mount = renderRails({
       reviewOpportunity: makeReviewOpportunity('review', 3),
-      onStartReview,
     })
     const reviewPanel = mount.querySelector('[aria-labelledby="world-countries-review-opportunity-heading"]')
 
@@ -106,7 +103,7 @@ describe('Guided World Countries home rails', () => {
     expect(reviewPanel?.querySelector('h2')?.className).toContain('uppercase')
     expect(reviewPanel?.textContent).toContain('3 items')
     expect(reviewPanel?.textContent).toContain('See what stuck.')
-    expect(reviewPanel?.querySelector('[data-review-action]')?.textContent).toBe('Review 3 now')
+    expect(reviewPanel?.querySelector('[data-review-action]')).toBeNull()
     expect(reviewPanel?.textContent).not.toContain('Review scope')
     expect(reviewPanel?.textContent).not.toContain('countries')
     expect(reviewPanel?.textContent).not.toContain('first review')
@@ -114,8 +111,6 @@ describe('Guided World Countries home rails', () => {
     expect(reviewPanel?.textContent).not.toContain('extra practice')
     expect(reviewPanel?.querySelector('[data-review-completion]')).toBeNull()
 
-    act(() => reviewPanel?.querySelector<HTMLButtonElement>('[data-review-action]')?.click())
-    expect(onStartReview).toHaveBeenCalledOnce()
   })
 
   it('uses singular grammar for one ready item', () => {
@@ -124,7 +119,7 @@ describe('Guided World Countries home rails', () => {
 
     expect(reviewPanel?.textContent).toContain('1 item')
     expect(reviewPanel?.textContent).not.toContain('1 items')
-    expect(reviewPanel?.querySelector('[data-review-action]')?.textContent).toBe('Review 1 now')
+    expect(reviewPanel?.querySelector('[data-review-action]')).toBeNull()
   })
 
   it('uses the full scheduled Review population count separately from the bounded block', () => {
@@ -136,7 +131,7 @@ describe('Guided World Countries home rails', () => {
 
     expect(reviewPanel?.textContent).toContain('20 items ready')
     expect(reviewPanel?.textContent).toContain('Next review: 8 items')
-    expect(reviewPanel?.querySelector('[data-review-action]')?.textContent).toBe('Review 8 now')
+    expect(reviewPanel?.querySelector('[data-review-action]')).toBeNull()
     expect(reviewPanel?.textContent).not.toContain('countries')
   })
 
@@ -149,7 +144,7 @@ describe('Guided World Countries home rails', () => {
     const reviewPanel = mount.querySelector('[aria-labelledby="world-countries-review-opportunity-heading"]')
     expect(reviewPanel?.textContent).toContain('8 items ready')
     expect(reviewPanel?.textContent).toContain('See what stuck.')
-    expect(reviewPanel?.querySelector('[data-review-action]')?.textContent).toBe('Review 8 now')
+    expect(reviewPanel?.querySelector('[data-review-action]')).toBeNull()
     expect(reviewPanel?.querySelector('[data-review-completion]')).toBeNull()
   })
 
@@ -164,20 +159,16 @@ describe('Guided World Countries home rails', () => {
   })
 
   it('offers weak-spot practice only after scheduled reviews are caught up', () => {
-    const onStartReview = vi.fn()
     const mount = renderRails({
       reviewOpportunity: makeReviewOpportunity('consolidate', 4),
-      onStartReview,
     })
 
     expect(mount.textContent).toContain('Reviews caught up')
     expect(mount.textContent).toContain('4 weak spots available')
     expect(mount.textContent).not.toContain('Next practice:')
-    expect(mount.textContent).toContain('Strengthen 4 now')
+    expect(mount.textContent).not.toContain('Strengthen 4')
     expect(mount.textContent).not.toContain('consolidation')
     expect(mount.querySelector('[aria-labelledby="world-countries-review-opportunity-heading"] h2')?.textContent).toBe('Reviews caught up')
-    act(() => mount.querySelector<HTMLButtonElement>('[data-review-action]')?.click())
-    expect(onStartReview).toHaveBeenCalledOnce()
   })
 
   it('uses the full weak-spot population count separately from the bounded block', () => {
@@ -190,7 +181,7 @@ describe('Guided World Countries home rails', () => {
     expect(reviewPanel?.textContent).toContain('20 weak spots available')
     expect(reviewPanel?.textContent).toContain('Next practice: 8 items')
     expect(reviewPanel?.textContent).not.toContain('8 weak spots available')
-    expect(reviewPanel?.querySelector('[data-review-action]')?.textContent).toBe('Strengthen 8 now')
+    expect(reviewPanel?.querySelector('[data-review-action]')).toBeNull()
   })
 
   it('keeps Journey orientation separate from its specific next action', () => {

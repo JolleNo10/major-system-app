@@ -59,6 +59,10 @@ export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
     setArea('drill')
   }
   const openTodayNavigation = (navigation: WorldCountriesTodayNavigation) => {
+    if (navigation.area === 'play') {
+      openPlay()
+      return
+    }
     if (navigation.area === 'drill') {
       openDrillEntry({ activity: { kind: 'drill' }, initialScope: navigation.scope })
       return

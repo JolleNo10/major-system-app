@@ -17,11 +17,12 @@ vi.mock('./recite/WorldCountriesRecite', () => ({
 }))
 
 vi.mock('./today/WorldCountriesToday', () => ({
-  WorldCountriesToday: (props: { onNavigate?: (navigation: { area: 'drill'; scope: { kind: 'world' } | { kind: 'subregion'; subregionId: 'eastern-europe' } }) => void; onSelectContinent?: (continent: 'Europe') => void; onWorld?: () => void }) => createElement('div', { 'data-testid': 'today-workflow' },
+  WorldCountriesToday: (props: { onNavigate?: (navigation: { area: 'play' | 'drill'; scope?: { kind: 'world' } | { kind: 'subregion'; subregionId: 'eastern-europe' } }) => void; onSelectContinent?: (continent: 'Europe') => void; onWorld?: () => void }) => createElement('div', { 'data-testid': 'today-workflow' },
     createElement('button', { type: 'button', onClick: () => props.onSelectContinent?.('Europe') }, 'Open Europe'),
     createElement('button', { type: 'button', onClick: props.onWorld }, 'Back to World'),
     createElement('button', { type: 'button', 'data-testid': 'open-completed-region-drill', onClick: () => props.onNavigate?.({ area: 'drill', scope: { kind: 'subregion', subregionId: 'eastern-europe' } }) }, 'Drill Eastern Europe'),
     createElement('button', { type: 'button', 'data-testid': 'open-completed-world-drill', onClick: () => props.onNavigate?.({ area: 'drill', scope: { kind: 'world' } }) }, 'Drill the world'),
+    createElement('button', { type: 'button', 'data-testid': 'open-today-playground', onClick: () => props.onNavigate?.({ area: 'play' }) }, 'Playground from Today'),
     'Guided home',
   ),
 }))
@@ -163,6 +164,19 @@ describe('World Countries guided shell', () => {
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.click())
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-play-activity="locate-countries"]')?.click())
     expect(mount.querySelector('[data-testid="drill-workflow"]')?.textContent).toContain('practice locate-countries')
+  })
+
+  it('routes the Today Playground action through the existing scoped Playground entry', async () => {
+    const mount = await renderShell()
+
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="open-today-playground"]')?.click())
+    expect(mount.querySelector('#world-countries-play-heading')).not.toBeNull()
+    expect(mount.querySelector('nav[aria-label="World Countries hierarchy"]')?.textContent).toMatch(/World\s*\/\s*Playground/)
+
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.click())
+    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Open Europe')?.click())
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="open-today-playground"]')?.click())
+    expect(mount.querySelector('nav[aria-label="World Countries hierarchy"]')?.textContent).toMatch(/World\s*\/\s*Europe\s*\/\s*Playground/)
   })
 
   it('keeps Quiz transient state local when Playground leaves and re-enters it', async () => {

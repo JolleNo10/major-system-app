@@ -11,17 +11,19 @@ persisted state, identifiers, migrations, reset, or backup; and load
 ## Purpose and entry points
 
 World Countries opens on a map-centered **Home**. Home is the default guided
-entry: it shows World mastery, the interactive World map, a Journey continuation
-attached to the map, and an independent Review/practice opportunity in the
-right rail. A transient **Continent hub** provides the same guided composition
-over a Continent-scoped active Country population.
+entry: it shows World mastery, the interactive World map, and a map-attached
+**Next Step** action hub. The hub presents semantically independent Review,
+Journey, Strengthen, and Playground activities in priority order. A transient
+**Continent hub** provides the same guided composition over a Continent-scoped
+active Country population.
 **Playground** is the learner-facing top-level freeform activity destination for Recite, Quiz,
 non-recording Practice, and configurable recorded Drill. **Progress** is a
 derived supporting view, not a separate evidence or analytics system.
 
 The stable feature root is Home. Home and Continent guided surfaces keep
-Review and Journey context in the right rail, while the geography left rail
-provides a concise current-scope Progress entry after its geography list.
+Review and Journey state in supporting rails, while the geography left rail
+provides a concise current-scope Progress entry after its geography list. The
+Next Step hub owns the primary contextual action surface.
 Playground uses its own breadcrumb/back context to return to the originating
 Home or Continent hub. The user-facing entry hierarchy is Home -> Continent
 hub / Progress / Playground -> existing workflow owners. Structural authoring
@@ -394,11 +396,13 @@ developing; current Mastery becomes Mastered only when the existing core recall
 evidence is complete. On Home and the
 Continent hub, Today resolves one active Subregion from the transient explicit
 selection or the planner-derived default. That same focus drives the geography
-rail selection, Journey presentation, map outline, dock action, and Learning
-launch. A selected learned Subregion remains active and shows its completed
-Journey/Mastery state without a curriculum CTA; it does not silently fall back
-to another planner region. The selection is not persisted and is cleared or
-ignored when it leaves the active scope/population. World Home associates the
+rail selection, Journey presentation, map outline, and the selected-subregion
+Learning launch. A selected learned Subregion remains active and shows its
+completed Journey/Mastery state without a curriculum CTA. The Next Step hub
+uses that active Learning recommendation when available, otherwise falling
+back to the scope's planner recommendation when unfinished curriculum remains
+elsewhere. The selection is not persisted and is cleared or ignored when it
+leaves the active scope/population. World Home associates the
 active Subregion with its containing Continent row while preserving the same
 map progress. Normal Home/Continent maps use one primary status at a time:
 Not learned is neutral, Countries learned is a warm-neutral diagonal pattern,
@@ -416,11 +420,13 @@ is removed and the map moves directly to the current solid Recall-health state.
 Durable guided Learning completion can expose a
 same-focus Country-to-Capital handoff before a later planner-derived
 next-region handoff; it keeps an explicit return action and never auto-starts
-that recommendation. The attached Today task dock owns the active Journey
-continuation and identifies its scope, while the right rail owns the
-independent Review/weak-spot opportunity. Review remains independent of the
-active Learning focus, and the Journey panel remains orientation rather than a
-second next-action authority.
+that recommendation. On Home and the Continent hub, the map-attached Next Step
+hub chooses presentation priority as scheduled Review, unfinished Journey,
+available consolidation/Strengthen, then Playground. Review, Journey,
+Strengthen, and Playground remain semantically independent activities: Review
+scheduling and curriculum derivation are separate sources of truth. A selected
+learned Subregion can remain the Journey orientation while the hub falls back to
+the scope's planner recommendation when unfinished curriculum remains elsewhere.
 
 Guided Learning presents the internal staged phases with learner-facing
 language: Meet, Find, Recall, Mix, and Final recall. One-Set learner-facing
@@ -442,12 +448,10 @@ semantic task/context/progress data to the shared World Countries map-activity
 surface; setup, overview, readiness, and completion screens retain their own
 presentation. Active Learning uses learner-facing progress language rather than
 exposing the internal Learning Readiness label. Home and Continent guided rails
-present Review/practice and Journey as sibling choices: the right rail owns the
-Review opportunity and Journey orientation, while the map dock owns the
-primary Journey continuation. Review does not suppress Learning, and the
-Journey panel does not duplicate the dock action. The compact Learning context
-rail stays present through Final recall as a quiet, full-scope, read-only
-orientation surface.
+present supporting Review counts/status, completion feedback, and Journey
+orientation; they do not own Review or Strengthen action buttons. The compact
+Learning context rail stays present through Final recall as a quiet, full-scope,
+read-only orientation surface.
 
 ## Learning Readiness and map status
 
