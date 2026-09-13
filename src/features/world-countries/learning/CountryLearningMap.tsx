@@ -283,7 +283,7 @@ export function CountryLearningMap({
   )
   const unmutedSvgIds = overviewCountries ? zoomScopeSvgIds : scopeSvgIds
   return (
-    <div className="space-y-2">
+    <div>
       <SvgMapView
         svgUrl={definition.svgUrl}
         ariaLabel={ariaLabel}

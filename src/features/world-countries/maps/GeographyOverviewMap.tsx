@@ -419,7 +419,7 @@ export function GeographyOverviewMap({
   }), [highlightFill, level])
 
   return (
-    <div className="space-y-2">
+    <div>
       <SvgMapView
         svgUrl={definition.svgUrl}
         ariaLabel={ariaLabel ?? `Geography map of ${title}`}

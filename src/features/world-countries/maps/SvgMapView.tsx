@@ -192,7 +192,7 @@ export function SvgMapView({
   }
 
   return (
-    <div data-svg-map-view className="space-y-2">
+    <>
       <div
         ref={mountRef}
         onPointerLeave={clearMapHover}
@@ -204,15 +204,15 @@ export function SvgMapView({
         aria-describedby={ariaDescribedBy}
       />
       {error ? (
-        <div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-12 text-center text-sm text-red-300">
+        <div role="alert" className="mt-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-12 text-center text-sm text-red-300">
           The map could not be loaded.
         </div>
       ) : loading ? (
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-16 text-center text-sm text-zinc-500">
+        <div className="mt-2 rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-16 text-center text-sm text-zinc-500">
           Loading map…
         </div>
       ) : null}
-    </div>
+    </>
   )
 }
 

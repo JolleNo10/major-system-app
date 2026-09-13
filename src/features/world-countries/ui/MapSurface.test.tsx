@@ -66,7 +66,7 @@ describe('MapSurface expanded presentation', () => {
       ok: true,
       text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50"><g><path id="Alpha" d="M 10 10 h 10 v 10 h -10 z"/><text id="Alpha_label">ALPHA</text></g></svg>',
     } as Response)
-    const mapAdapter = createElement('div', { className: 'space-y-2' },
+    const mapAdapter = createElement('div', { 'data-map-adapter': true },
       createElement(SvgMapView, { svgUrl: '/map.svg', ariaLabel: 'Test map' }),
     )
 
@@ -77,6 +77,8 @@ describe('MapSurface expanded presentation', () => {
           createElement(MapSurface, {
             context: createElement('span', null, 'prompt context'),
             map: mapAdapter,
+            dockPlacement: 'stacked',
+            dock: createElement('span', { 'data-journey-dock': true }, 'Journey dock'),
           }),
         ),
       ))
@@ -86,24 +88,32 @@ describe('MapSurface expanded presentation', () => {
 
     const map = mount.querySelector('[data-map-surface-map]')
     const renderedSvg = map?.querySelector('.world-map-svg svg')
-    expect(map?.querySelector('[data-svg-map-view]')).not.toBeNull()
+    const mapViewport = map?.querySelector('.world-map-svg')
+    expect(map?.querySelector('[data-svg-map-view]')).toBeNull()
+    expect(mapViewport?.parentElement).toBe(map?.querySelector('[data-map-adapter]'))
     expect(renderedSvg).not.toBeNull()
     expect(map?.querySelector('[role="status"]')).toBeNull()
     expect(map?.querySelector('[role="alert"]')).toBeNull()
+    const dock = mount.querySelector('[data-journey-dock]')
+    expect(dock?.closest('[data-map-surface-dock-row]')).not.toBeNull()
+    expect(dock?.closest('.world-map-svg')).toBeNull()
+    expect(mapViewport).not.toBeNull()
 
     await act(async () => {
       mount.querySelector<HTMLButtonElement>('[aria-label="Expand map"]')?.click()
       await Promise.resolve()
     })
-    expect(map?.querySelector('[data-svg-map-view]')).not.toBeNull()
+    expect(map?.querySelector('[data-svg-map-view]')).toBeNull()
     expect(map?.querySelector('.world-map-svg svg')).toBe(renderedSvg)
+    expect(renderedSvg?.getAttribute('preserveAspectRatio')).toBe('xMidYMid meet')
 
     await act(async () => {
       mount.querySelector<HTMLButtonElement>('[aria-label="Collapse map"]')?.click()
       await Promise.resolve()
     })
-    expect(map?.querySelector('[data-svg-map-view]')).not.toBeNull()
+    expect(map?.querySelector('[data-svg-map-view]')).toBeNull()
     expect(map?.querySelector('.world-map-svg svg')).toBe(renderedSvg)
+    expect(renderedSvg?.getAttribute('preserveAspectRatio')).toBeNull()
   })
 
   it('keeps the nested SvgMapView loading state available', async () => {
@@ -117,14 +127,22 @@ describe('MapSurface expanded presentation', () => {
         createElement(PageLayout, null,
           createElement(MapSurface, {
             context: createElement('span', null, 'prompt context'),
-            map: createElement(SvgMapView, { svgUrl: '/map.svg', ariaLabel: 'Test map' }),
+            map: createElement('div', { 'data-map-adapter': true },
+              createElement(SvgMapView, { svgUrl: '/map.svg', ariaLabel: 'Test map' }),
+            ),
           }),
         ),
       ))
       await Promise.resolve()
     })
 
-    expect(mount.querySelector('[data-svg-map-view]')).not.toBeNull()
+    expect(mount.querySelector('[data-svg-map-view]')).toBeNull()
+    expect(mount.textContent).toContain('Loading map…')
+
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[aria-label="Expand map"]')?.click()
+      await Promise.resolve()
+    })
     expect(mount.textContent).toContain('Loading map…')
   })
 
@@ -139,7 +157,9 @@ describe('MapSurface expanded presentation', () => {
         createElement(PageLayout, null,
           createElement(MapSurface, {
             context: createElement('span', null, 'prompt context'),
-            map: createElement(SvgMapView, { svgUrl: '/map.svg', ariaLabel: 'Test map' }),
+            map: createElement('div', { 'data-map-adapter': true },
+              createElement(SvgMapView, { svgUrl: '/map.svg', ariaLabel: 'Test map' }),
+            ),
           }),
         ),
       ))
@@ -147,7 +167,13 @@ describe('MapSurface expanded presentation', () => {
       await Promise.resolve()
     })
 
-    expect(mount.querySelector('[data-svg-map-view]')).not.toBeNull()
+    expect(mount.querySelector('[data-svg-map-view]')).toBeNull()
+    expect(mount.querySelector('[role="alert"]')?.textContent).toBe('The map could not be loaded.')
+
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[aria-label="Expand map"]')?.click()
+      await Promise.resolve()
+    })
     expect(mount.querySelector('[role="alert"]')?.textContent).toBe('The map could not be loaded.')
   })
 
