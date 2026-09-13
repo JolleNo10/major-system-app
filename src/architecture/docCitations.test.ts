@@ -3,8 +3,11 @@ import { describe, expect, it } from 'vitest'
 import {
   collectCurrentStateDocs,
   extractDocCitations,
+  extractDocLinks,
   findCitationViolations,
+  scanArchiveLinks,
   scanDocCitations,
+  scanDocLinks,
   type DocCitation,
   type TargetKind,
 } from './docCitations'
@@ -50,6 +53,36 @@ describe('current-state documentation citations', () => {
     expect(extractDocCitations({ path: 'docs/architecture/SYSTEM.md', markdown })).toEqual([
       { doc: 'docs/architecture/SYSTEM.md', target: 'src/features/pi/index.ts', kind: 'file' },
     ])
+  })
+
+  it('resolves relative document links against the linking document', () => {
+    const markdown = [
+      'See [Core](CORE.md), [Pi](features/PI.md), and [a decision](../adr/0001-page-layout-panel-pattern.md).',
+      'External [docs](https://example.com/x.md), [mail](mailto:a@b.c), and [a section](#ownership) are not paths.',
+      'Neither is an absolute [link](/docs/architecture/SYSTEM.md).',
+    ].join('\n')
+
+    expect(extractDocLinks({ path: 'docs/architecture/SYSTEM.md', markdown })).toEqual([
+      { doc: 'docs/architecture/SYSTEM.md', target: 'docs/architecture/CORE.md', kind: 'file' },
+      { doc: 'docs/architecture/SYSTEM.md', target: 'docs/architecture/features/PI.md', kind: 'file' },
+      { doc: 'docs/architecture/SYSTEM.md', target: 'docs/adr/0001-page-layout-panel-pattern.md', kind: 'file' },
+    ])
+  })
+
+  it('strips anchors, which address a section rather than a different document', () => {
+    const markdown = 'See [ownership](../SYSTEM.md#top-level-ownership).'
+
+    expect(extractDocLinks({ path: 'docs/architecture/features/PI.md', markdown })).toEqual([
+      { doc: 'docs/architecture/features/PI.md', target: 'docs/architecture/SYSTEM.md', kind: 'file' },
+    ])
+  })
+
+  it('keeps every relative link in current-state docs pointing at a real document', () => {
+    expect(scanDocLinks(repoRoot)).toEqual([])
+  })
+
+  it('never routes an agent from current-state documentation into the archive', () => {
+    expect(scanArchiveLinks(repoRoot)).toEqual([])
   })
 
   it('reports deleted, renamed, and re-shaped citation targets', () => {
