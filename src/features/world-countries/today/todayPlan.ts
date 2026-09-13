@@ -99,17 +99,16 @@ function createCandidate(
   country: Country,
   skill: WorldCountriesCoreRecallSkill,
   history: WorldCountriesRecallHistory,
-  introductions: ReadonlyMap<string, WorldCountriesTargetIntroduction>,
   reviewEligible: boolean,
+  milestoneAt: number | null,
   options: Pick<WorldCountriesTodayPlanInput, 'now' | 'localDate'>,
 ): WorldCountriesTodayReviewCandidate | null {
   const itemId = recallTargetIdFor(country.id, skill)
-  const introduction = introductions.get(itemId)
-  if (!reviewEligible || !introduction?.introduced) return null
+  if (!reviewEligible) return null
   const schedule = deriveWorldCountriesReviewSchedule(history.get(itemId) ?? [], {
     now: options.now,
     localDate: options.localDate,
-    milestoneAt: introduction.source === 'milestone' ? introduction.milestoneAt : null,
+    milestoneAt,
   })
   return { target: { countryId: country.id, skill }, country, schedule }
 }
@@ -296,7 +295,8 @@ export function buildWorldCountriesTodayPlan(
       const reviewEligible = skill === 'location-to-country'
         ? readiness !== 'NOT_LEARNED'
         : readiness === 'COUNTRIES_AND_CAPITALS_LEARNED'
-      const candidate = createCandidate(country, skill, input.history, introductions, reviewEligible, input)
+      const milestoneAt = introductions.get(itemId)?.milestoneAt ?? null
+      const candidate = createCandidate(country, skill, input.history, reviewEligible, milestoneAt, input)
       if (!candidate) continue
       if (candidate.schedule.due) dueCandidates.push({ ...candidate, purpose: 'review' })
       if (!progressByTarget.get(itemId)!.mastered) {

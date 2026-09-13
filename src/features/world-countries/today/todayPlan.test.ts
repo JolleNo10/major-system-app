@@ -178,6 +178,30 @@ describe('World Countries Today plan', () => {
     expect(plan.consolidationCandidates).toEqual([])
   })
 
+  it('schedules the first Review from a durable Learning milestone without attempt history', () => {
+    const country = countries.find(entry => entry.id === 'NO')!
+    const milestoneAt = Date.UTC(2026, 7, 18, 12)
+    const plan = buildWorldCountriesTodayPlan({
+      activeCountries: [country],
+      history: historyFor([]),
+      learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: milestoneAt }],
+      now: milestoneAt + 24 * 60 * 60 * 1000,
+      localDate: '2026-08-19',
+    })
+
+    expect(plan.dueCandidates).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        target: { countryId: 'NO', skill: 'location-to-country' },
+        schedule: expect.objectContaining({
+          introduced: true,
+          reason: 'scheduled',
+          latestAttemptAt: null,
+          nextDueAt: milestoneAt + 24 * 60 * 60 * 1000,
+        }),
+      }),
+    ]))
+  })
+
   it('gates Country and Capital candidates by their established Learning layers', () => {
     const country = countries.find(entry => entry.id === 'NO')!
     const history = historyFor([
