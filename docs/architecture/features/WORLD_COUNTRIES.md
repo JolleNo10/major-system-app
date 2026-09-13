@@ -580,13 +580,16 @@ target-local and Country-fit cameras respectively.
   explicit overlay, attached, and stacked dock placement, and the one common
   World Countries expand/collapse affordance. Expansion publishes the generic
   transient `expanded-center` PageLayout presentation, keeps the same map and
-  dock mounted, reserves the complete bottom task row before fitting the active
-  SVG/viewBox as contain sizing within the actual remaining desktop map slot.
+  dock mounted, reserves the complete bottom task row before sizing the active
+  SVG as contain content within the actual remaining desktop map slot.
   The map controller retains semantic camera intent separately from the
-  concrete viewBox, derives the expanded viewBox from that intent plus the
-  measured slot aspect ratio, and recomputes it through the existing resize
-  lifecycle without accumulating camera drift. Standard presentation keeps
-  the source or normal semantic camera framing. Authored Subregion learning
+  concrete viewBox, while expansion, collapse, and expanded-slot resize
+  preserve the exact concrete viewBox already visible. The expanded SVG
+  surface fills the available slot and uses SVG contain alignment to center
+  that unchanged camera without stretching or cropping it. Standard
+  presentation restores source-aspect sizing. Explicit workflow camera
+  changes continue to derive their normal source-aspect viewBox framing
+  through the existing camera methods. Authored Subregion learning
   frames are finite map-coordinate metadata and are not generated from target
   geometry; an unresolvable frame falls back to the complete authoritative
   regional map. The map controller's target-centric neighbourhood

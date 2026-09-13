@@ -377,7 +377,8 @@ describe('SvgMapController persistent state', () => {
     })
 
     expect(renderNow).toHaveBeenCalledTimes(1)
-    expect(mount.querySelector<SVGSVGElement>('svg')?.style.aspectRatio).toBe('100 / 50')
+    expect(mount.querySelector<SVGSVGElement>('svg')?.style.aspectRatio).toBe('')
+    expect(mount.querySelector<SVGSVGElement>('svg')?.getAttribute('preserveAspectRatio')).toBe('xMidYMid meet')
     expect(readViewBox(mount)).toEqual({ x: 0, y: 0, width: 100, height: 50 })
 
     controller.updatePresentation({
@@ -395,6 +396,7 @@ describe('SvgMapController persistent state', () => {
       hoveredId: null,
     })
     expect(mount.querySelector<SVGSVGElement>('svg')?.style.aspectRatio).toBe('100 / 50')
+    expect(mount.querySelector<SVGSVGElement>('svg')?.getAttribute('preserveAspectRatio')).toBeNull()
   })
 
   it('renders diagonal and crosshatch patterns declaratively and restores them after hover', async () => {
@@ -479,11 +481,13 @@ describe('SvgMapController persistent state', () => {
 
     controller.setPresentation('expanded')
     expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe(largeFrame)
+    expect(mount.querySelector('svg')?.style.aspectRatio).toBe('')
+    expect(mount.querySelector('svg')?.getAttribute('preserveAspectRatio')).toBe('xMidYMid meet')
 
     controller.setCamera({ kind: 'view-box', bounds: { x: 800, y: 240, width: 2, height: 2 } })
     const tinyFrame = mount.querySelector('svg')?.getAttribute('viewBox')
     expect(tinyFrame).not.toBe(largeFrame)
-    expect(mount.querySelector('svg')?.style.aspectRatio).toBe('1000 / 500')
+    expect(mount.querySelector('svg')?.style.aspectRatio).toBe('')
   })
 
   it('preserves zoom padding beyond the source viewBox at an edge', async () => {
@@ -827,7 +831,8 @@ describe('SvgMapController persistent state', () => {
     controller.setZoomArea(['Alpha'], 5)
     const beforeExpand = readViewBox(mount)
     controller.setPresentation('expanded')
-    expect(mount.querySelector('svg')?.style.aspectRatio).toBe('100 / 50')
+    expect(mount.querySelector('svg')?.style.aspectRatio).toBe('')
+    expect(mount.querySelector('svg')?.getAttribute('preserveAspectRatio')).toBe('xMidYMid meet')
     expect(readViewBox(mount)).toEqual(beforeExpand)
 
     setMountRect(viewport, { width: 100, height: 200 })
@@ -836,6 +841,7 @@ describe('SvgMapController persistent state', () => {
 
     controller.setPresentation('standard')
     expect(mount.querySelector('svg')?.style.aspectRatio).toBe('100 / 50')
+    expect(mount.querySelector('svg')?.getAttribute('preserveAspectRatio')).toBeNull()
     expect(readViewBox(mount)).toEqual(beforeExpand)
   })
 
@@ -855,11 +861,13 @@ describe('SvgMapController persistent state', () => {
 
     setMountRect(viewport, { width: 100, height: 200 })
     controller.setPresentation('expanded')
-    expect(mount.querySelector('svg')?.style.aspectRatio).toBe('100 / 50')
+    expect(mount.querySelector('svg')?.style.aspectRatio).toBe('')
+    expect(mount.querySelector('svg')?.getAttribute('preserveAspectRatio')).toBe('xMidYMid meet')
     expect(readViewBox(mount)).toEqual(standard)
 
     controller.setPresentation('standard')
     expect(mount.querySelector('svg')?.style.aspectRatio).toBe('100 / 50')
+    expect(mount.querySelector('svg')?.getAttribute('preserveAspectRatio')).toBeNull()
     expect(readViewBox(mount)).toEqual(standard)
   })
 
@@ -870,13 +878,35 @@ describe('SvgMapController persistent state', () => {
 
     const sourceViewBox = readViewBox(mount)
     controller.setPresentation('expanded')
-    expect(mount.querySelector('svg')?.style.aspectRatio).toBe('100 / 50')
+    expect(mount.querySelector('svg')?.style.aspectRatio).toBe('')
+    expect(mount.querySelector('svg')?.getAttribute('preserveAspectRatio')).toBe('xMidYMid meet')
     expect(readViewBox(mount)).toEqual(sourceViewBox)
     controller.setPresentation('expanded')
     expect(readViewBox(mount)).toEqual(sourceViewBox)
     controller.setPresentation('standard')
     expect(mount.querySelector('svg')?.style.aspectRatio).toBe('100 / 50')
+    expect(mount.querySelector('svg')?.getAttribute('preserveAspectRatio')).toBeNull()
     expect(readViewBox(mount)).toEqual(sourceViewBox)
+  })
+
+  it('centers source SVG content only while expanded and restores authored alignment', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50" preserveAspectRatio="xMinYMin">
+        <g><path id="Alpha" d="M 10 10 h 10 v 10 h -10 z"/><text id="Alpha_label">ALPHA</text></g>
+      </svg>` })
+
+    const svg = mount.querySelector<SVGSVGElement>('svg')
+    expect(svg?.getAttribute('preserveAspectRatio')).toBe('xMinYMin')
+    expect(svg?.style.aspectRatio).toBe('100 / 50')
+
+    controller.setPresentation('expanded')
+    expect(svg?.getAttribute('preserveAspectRatio')).toBe('xMidYMid meet')
+    expect(svg?.style.aspectRatio).toBe('')
+
+    controller.setPresentation('standard')
+    expect(svg?.getAttribute('preserveAspectRatio')).toBe('xMinYMin')
+    expect(svg?.style.aspectRatio).toBe('100 / 50')
   })
 
   it('preserves a non-trivial camera through expanded resize without drift', async () => {
@@ -900,7 +930,8 @@ describe('SvgMapController persistent state', () => {
       expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('10 20 300 200')
 
       controller.setPresentation('expanded')
-      expect(mount.querySelector('svg')?.style.aspectRatio).toBe('300 / 200')
+      expect(mount.querySelector('svg')?.style.aspectRatio).toBe('')
+      expect(mount.querySelector('svg')?.getAttribute('preserveAspectRatio')).toBe('xMidYMid meet')
       expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('10 20 300 200')
       const triggerResize = resizeState.callback
       if (!triggerResize) throw new Error('Missing resize observer callback')
@@ -915,6 +946,7 @@ describe('SvgMapController persistent state', () => {
 
       controller.setPresentation('standard')
       expect(mount.querySelector('svg')?.style.aspectRatio).toBe('300 / 200')
+      expect(mount.querySelector('svg')?.getAttribute('preserveAspectRatio')).toBeNull()
       expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('10 20 300 200')
     } finally {
       globalThis.ResizeObserver = originalResizeObserver

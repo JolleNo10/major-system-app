@@ -376,6 +376,8 @@ export class SvgMapController {
   private originalBackgroundFill: OriginalStyle | null = null
   private originalBackgroundColor: OriginalStyle | null = null
   private originalViewBox: string | null = null
+  private originalPreserveAspectRatio: string | null = null
+  private presentation: SvgMapPresentation = 'standard'
   private zoomIntent: {
     kind: 'view-box'
     bounds: SvgViewBoxRect
@@ -443,7 +445,8 @@ export class SvgMapController {
     this.originalBackgroundFill = this.backgroundElement ? captureStyle(this.backgroundElement, 'fill') : null
     this.originalBackgroundColor = captureStyle(imported, 'background-color')
     this.originalViewBox = imported.getAttribute('viewBox')
-    this.syncLayoutAspectRatio()
+    this.originalPreserveAspectRatio = imported.getAttribute('preserveAspectRatio')
+    this.syncLayoutPresentation()
     this.observeResize()
     this.bindDiscoveredCountries(imported, markup)
     this.attachHoverListeners()
@@ -480,6 +483,8 @@ export class SvgMapController {
   /** Change the physical presentation without changing the current camera. */
   setPresentation(presentation: SvgMapPresentation): void {
     this.assertUsable()
+    this.presentation = presentation
+    this.syncLayoutPresentation()
   }
 
   /** Apply all React-owned map presentation state with one final DOM render. */
@@ -488,6 +493,10 @@ export class SvgMapController {
     this.renderBatchDepth += 1
     this.renderPending = true
     try {
+      if (this.presentation !== state.presentation) {
+        this.presentation = state.presentation
+        this.syncLayoutPresentation()
+      }
       this.updateSettings(state.settings)
       if (state.hoverGroups !== undefined) this.setHoverGroups(state.hoverGroups)
       this.setGroupOutlines(state.groupOutlines)
@@ -1941,11 +1950,24 @@ export class SvgMapController {
     if (this.viewportElement !== this.mount) this.resizeObserver.observe(this.viewportElement)
   }
 
-  /** Keep the physical SVG surface tied to its source map, not camera framing. */
+  /** Keep standard sizing source-based and expanded sizing slot-based. */
   private syncLayoutAspectRatio(): void {
     if (!this.svg || !this.originalViewBox) return
     const bounds = parseViewBox(this.originalViewBox)
     if (bounds) this.svg.style.aspectRatio = `${bounds.width} / ${bounds.height}`
+  }
+
+  /** Let the SVG renderer center its unchanged viewBox when expanded. */
+  private syncLayoutPresentation(): void {
+    if (!this.svg) return
+    if (this.presentation === 'expanded') {
+      this.svg.style.removeProperty('aspect-ratio')
+      this.svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
+      return
+    }
+
+    this.syncLayoutAspectRatio()
+    restoreAttribute(this.svg, 'preserveAspectRatio', this.originalPreserveAspectRatio)
   }
 
   private resetMap(): void {
@@ -1978,6 +2000,7 @@ export class SvgMapController {
     this.originalBackgroundFill = null
     this.originalBackgroundColor = null
     this.originalViewBox = null
+    this.originalPreserveAspectRatio = null
     this.zoomIntent = null
     this.mount.replaceChildren()
   }
