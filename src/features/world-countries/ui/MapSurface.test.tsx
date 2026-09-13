@@ -2,12 +2,13 @@
 
 import { act, createElement, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { PageLayout } from '@/app/layout/PageLayout'
 import { PageLayoutProvider } from '@/app/layout/PageLayoutContext'
 import { Overlay } from '@/app/layout/Overlay'
 import { MapSurface, TaskDock } from './MapSurface'
 import { TaskDockMessage } from './TaskDockMessage'
+import { SvgMapView } from '@/features/world-countries/maps/SvgMapView'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -17,6 +18,7 @@ afterEach(() => {
   act(() => root?.unmount())
   root = null
   document.body.replaceChildren()
+  vi.restoreAllMocks()
 })
 
 describe('MapSurface expanded presentation', () => {
@@ -55,6 +57,98 @@ describe('MapSurface expanded presentation', () => {
     })
     expect(mount.querySelector('[data-map-surface]')?.getAttribute('data-map-surface-presentation')).toBe('standard')
     expect(map?.querySelector('[data-map-svg]')).toBe(renderedSvg)
+  })
+
+  it('keeps the nested SvgMapView layout seam and transient states available', async () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50"><g><path id="Alpha" d="M 10 10 h 10 v 10 h -10 z"/><text id="Alpha_label">ALPHA</text></g></svg>',
+    } as Response)
+    const mapAdapter = createElement('div', { className: 'space-y-2' },
+      createElement(SvgMapView, { svgUrl: '/map.svg', ariaLabel: 'Test map' }),
+    )
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(PageLayoutProvider, null,
+        createElement(PageLayout, null,
+          createElement(MapSurface, {
+            context: createElement('span', null, 'prompt context'),
+            map: mapAdapter,
+          }),
+        ),
+      ))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const map = mount.querySelector('[data-map-surface-map]')
+    const renderedSvg = map?.querySelector('.world-map-svg svg')
+    expect(map?.querySelector('[data-svg-map-view]')).not.toBeNull()
+    expect(renderedSvg).not.toBeNull()
+    expect(map?.querySelector('[role="status"]')).toBeNull()
+    expect(map?.querySelector('[role="alert"]')).toBeNull()
+
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[aria-label="Expand map"]')?.click()
+      await Promise.resolve()
+    })
+    expect(map?.querySelector('[data-svg-map-view]')).not.toBeNull()
+    expect(map?.querySelector('.world-map-svg svg')).toBe(renderedSvg)
+
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[aria-label="Collapse map"]')?.click()
+      await Promise.resolve()
+    })
+    expect(map?.querySelector('[data-svg-map-view]')).not.toBeNull()
+    expect(map?.querySelector('.world-map-svg svg')).toBe(renderedSvg)
+  })
+
+  it('keeps the nested SvgMapView loading state available', async () => {
+    vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise<Response>(() => {}))
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(PageLayoutProvider, null,
+        createElement(PageLayout, null,
+          createElement(MapSurface, {
+            context: createElement('span', null, 'prompt context'),
+            map: createElement(SvgMapView, { svgUrl: '/map.svg', ariaLabel: 'Test map' }),
+          }),
+        ),
+      ))
+      await Promise.resolve()
+    })
+
+    expect(mount.querySelector('[data-svg-map-view]')).not.toBeNull()
+    expect(mount.textContent).toContain('Loading map…')
+  })
+
+  it('keeps the nested SvgMapView error state available', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('test map failure'))
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(PageLayoutProvider, null,
+        createElement(PageLayout, null,
+          createElement(MapSurface, {
+            context: createElement('span', null, 'prompt context'),
+            map: createElement(SvgMapView, { svgUrl: '/map.svg', ariaLabel: 'Test map' }),
+          }),
+        ),
+      ))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mount.querySelector('[data-svg-map-view]')).not.toBeNull()
+    expect(mount.querySelector('[role="alert"]')?.textContent).toBe('The map could not be loaded.')
   })
 
   it('composes an expanded-only companion beside the primary dock', async () => {

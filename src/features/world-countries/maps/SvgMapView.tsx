@@ -192,7 +192,7 @@ export function SvgMapView({
   }
 
   return (
-    <div className="space-y-2">
+    <div data-svg-map-view className="space-y-2">
       <div
         ref={mountRef}
         onPointerLeave={clearMapHover}
