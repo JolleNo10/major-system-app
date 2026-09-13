@@ -1,6 +1,7 @@
 # Change Spec 0033 - Correct expanded Drill map camera fit and compact fullscreen composition
 
-- **Status:** Draft
+- **Status:** Implemented
+- **Closed:** 2026-09-13, in bulk at archival. Delivery was not individually re-verified; source and tests are the evidence.
 - **Date:** 2026-08-24
 - **Issue:** None.
 - **Related ADRs:** [ADR 0028 - PageLayout owns an optional expanded-center presentation](../adr/0028-page-layout-expanded-center-presentation.md)

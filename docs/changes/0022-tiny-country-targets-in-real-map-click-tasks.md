@@ -1,6 +1,7 @@
 # Change Spec 0022 - Tiny-Country targets must work in real map-click tasks
 
-- **Status:** Proposed corrective change
+- **Status:** Implemented
+- **Closed:** 2026-09-13, in bulk at archival. Delivery was not individually re-verified; source and tests are the evidence.
 - **Date:** 2026-08-22
 - **Issue:** None
 - **Related ADRs:** None required

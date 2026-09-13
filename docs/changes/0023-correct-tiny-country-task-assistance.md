@@ -1,6 +1,7 @@
 # Change Spec 0023 - Correct tiny-Country assistance to task-only behavior
 
-- **Status:** Ready
+- **Status:** Implemented
+- **Closed:** 2026-09-13, in bulk at archival. Delivery was not individually re-verified; source and tests are the evidence.
 - **Date:** 2026-08-22
 - **Issue:** None.
 - **Related ADRs:** [ADR 0029 - Tiny-Country assistance is task-scoped and uses map-specific learning anchors](../adr/0029-task-scoped-tiny-country-assistance-and-learning-anchors.md)

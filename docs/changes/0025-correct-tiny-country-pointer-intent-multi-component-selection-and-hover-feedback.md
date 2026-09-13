@@ -1,6 +1,7 @@
 # Change Spec 0025 - Correct tiny-Country pointer intent, multi-component selection, and hover feedback
 
-- **Status:** Ready
+- **Status:** Implemented
+- **Closed:** 2026-09-13, in bulk at archival. Delivery was not individually re-verified; source and tests are the evidence.
 - **Date:** 2026-08-22
 - **Issue:** None.
 - **Related ADRs:** [ADR 0031 - Separate answer-selection interaction points from representative learning anchors](../adr/0031-separate-selection-interaction-points-from-representative-learning-anchors.md)

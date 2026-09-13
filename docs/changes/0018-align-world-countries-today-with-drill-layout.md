@@ -1,6 +1,7 @@
 # Change Spec 0018 - Align World Countries Today with Drill layout
 
-- **Status:** Ready
+- **Status:** Implemented
+- **Closed:** 2026-09-13, in bulk at archival. Delivery was not individually re-verified; source and tests are the evidence.
 - **Date:** 2026-08-21
 - **Issue:** None.
 - **Related ADRs:** None required.

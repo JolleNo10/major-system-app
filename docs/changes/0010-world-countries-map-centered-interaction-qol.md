@@ -1,6 +1,7 @@
 # Change Spec 0010 - World Countries map-centered interaction and QoL
 
-- **Status:** Ready
+- **Status:** Implemented
+- **Closed:** 2026-09-13, in bulk at archival. Delivery was not individually re-verified; source and tests are the evidence.
 - **Date:** 2026-08-13
 - **Issue:** None.
 - **Related ADRs:** None required.

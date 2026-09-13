@@ -1,6 +1,7 @@
 # Change Spec 0052 - Refine World Countries Neighbours Quiz Camera and Checkpoint
 
-- **Status:** Ready
+- **Status:** Implemented
+- **Closed:** 2026-09-13, in bulk at archival. Delivery was not individually re-verified; source and tests are the evidence.
 - **Date:** 2026-08-31
 - **Issue:** None.
 - **Related ADRs:** [ADR 0028](../adr/0028-page-layout-expanded-center-presentation.md), [ADR 0032](../adr/0032-model-world-countries-quiz-as-practice.md)

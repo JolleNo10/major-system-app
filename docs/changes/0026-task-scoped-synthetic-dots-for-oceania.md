@@ -1,6 +1,7 @@
 # Change Spec 0026 — Add task-scoped synthetic dots for visually weak Oceania countries
 
-- **Status:** Ready
+- **Status:** Implemented
+- **Closed:** 2026-09-13, in bulk at archival. Delivery was not individually re-verified; source and tests are the evidence.
 - **Date:** 2026-08-22
 - **Implementation:** Automated implementation complete; manual browser verification pending.
 - **Feature:** World Countries / Countries
