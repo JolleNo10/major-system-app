@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, type CSSProperties } from 'react'
 import type { Mode } from '@/core/types'
 import { MODES, HOME_TITLE } from '@/app/modes'
 import { useAnswerMode } from '@/core/ui/useAnswerMode'
@@ -35,7 +35,13 @@ export default function App() {
   const closeStats = useCallback(() => setShowStats(false), [])
 
   return (
-    <div className="min-h-dvh bg-zinc-950 flex flex-col">
+    <div
+      className="min-h-dvh bg-zinc-950 flex flex-col"
+      // Vertical chrome the page content sits inside: the h-14 header plus its
+      // 1px bottom border, plus main's py-6. Full-height surfaces subtract this
+      // instead of restating it, so they cannot drift from the header.
+      style={{ '--app-chrome': 'calc(3.5rem + 1px + 3rem)' } as CSSProperties}
+    >
       {/* Header */}
       <header className="sticky top-0 z-40 bg-zinc-950/90 backdrop-blur border-b border-zinc-800/60">
         <div className="max-w-2xl mx-auto px-4 h-14 flex items-center gap-3">

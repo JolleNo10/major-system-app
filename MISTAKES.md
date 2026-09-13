@@ -40,3 +40,19 @@ about what was outside the request.
 
 - A World Countries fallback initially used current post-failure mastery to decide whether a learner had already established a Learning layer, so a later mistake reopened the Journey. The root cause was conflating a current proficiency boundary with the historical fact that the two-date explicit free-recall requirement had been met before.
 - Keep cumulative Learning/Journey evidence and current Mastery/Review evidence as separate derived facts. Test both sides of every failure transition, including the recognition-only and same-day exclusions.
+
+# Expanded map layout: five fixes that each missed the cause
+
+Expanding the World Countries map left the map as a short band with the dock
+ballooned below it. Five consecutive commits reshaped the flex chain from
+`[data-map-surface-presentation="expanded"]` down to the `<svg>` without fixing
+it, because each assumed the map was sized wrongly. The map was sized correctly
+and starved by a sibling: `[data-map-surface-dock-row] > [data-map-surface-dock]`
+(specificity 0,3,0) beat `[data-map-surface-dock]` (0,2,0), so the dock carried
+`flex: 1 1 auto` and split the free space with the map.
+
+- `display: contents` removes an element's box but not its place in the DOM tree. Selectors still match through it, so a rule written for a wrapper's layout keeps applying after that wrapper stops generating a box. Two rules that "obviously" cannot both apply is the shape of this bug.
+- A feature no caller uses still runs. `expandedCompanion` was dead in production, which is exactly why its CSS was never exercised and never noticed as wrong. Deleting the dead branch removed the bug; scoping the selectors around it would have preserved the trap.
+- `src/app/index.css` is imported by no test, and jsdom computes no heights. Every one of the five attempts shipped a green suite against a visibly broken screen. For a layout defect, assert the structural contract (what is a child of what) in jsdom and confirm the pixels in a browser; a passing suite is not evidence either way.
+- Sizing a descendant through a chain of `flex: 1 1 0%` wrappers encodes an exact DOM depth. `GeographyOverviewMap` nests one level, `DrillSession` and `PracticeSession` two, so the same CSS collapsed the map to zero height on those screens. Absolute positioning alone does not fix it either: a `position: relative` wrapper captures the box as its containing block. Take the wrapper chain out of box generation (`*:has(.world-map-svg) { display: contents }`) so depth cannot matter.
+- Before re-adding a mechanism, check whether it was already removed. The slot-measuring camera fit proposed for this bug was `getMapSlotAspect()`, deleted hours earlier in `ba1d314`; it also would not have enlarged the map, because `fitViewBoxToAspect` only expands the viewBox and `preserveAspectRatio="meet"` renders the result at the same scale. Size the box to the camera, not the camera to the box.

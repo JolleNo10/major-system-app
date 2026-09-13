@@ -889,6 +889,27 @@ describe('SvgMapController persistent state', () => {
     expect(readViewBox(mount)).toEqual(sourceViewBox)
   })
 
+  it('sizes the expanded map box to the live camera without moving the camera', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+
+    const sourceViewBox = readViewBox(mount)
+    expect(mount.style.aspectRatio).toBe('')
+
+    controller.setPresentation('expanded')
+    expect(mount.style.aspectRatio).toBe('100 / 50')
+    expect(readViewBox(mount)).toEqual(sourceViewBox)
+
+    // A camera change while expanded re-shapes the box, still without the box
+    // being allowed to re-shape the camera.
+    controller.setViewBoxRect({ x: 10, y: 5, width: 30, height: 20 })
+    const zoomed = readViewBox(mount)
+    expect(mount.style.aspectRatio).toBe(`${zoomed.width} / ${zoomed.height}`)
+
+    controller.setPresentation('standard')
+    expect(mount.style.aspectRatio).toBe('')
+  })
+
   it('centers source SVG content only while expanded and restores authored alignment', async () => {
     const { mount, controller } = makeController()
     await controller.load({ markup: `

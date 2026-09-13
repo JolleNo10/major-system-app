@@ -1,5 +1,5 @@
 import { useId, useMemo } from 'react'
-import { useRails } from '@/app/layout/PageLayoutContext'
+import { usePageLayoutPresentationMode, useRails } from '@/app/layout/PageLayoutContext'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
 import type { SubregionDefinition, SubregionId } from '@/features/world-countries/data/subregions'
 import type { WorldCountriesSubregionScope, WorldCountriesSubregionScopeMetadata } from '@/features/world-countries/geography/subregionScope'
@@ -167,6 +167,7 @@ export function ReciteSetup({
     worldOrder,
   ])
   useRails(rails)
+  const expanded = usePageLayoutPresentationMode() === 'expanded-center'
 
   return (
     <section className="space-y-3 animate-fade-in" aria-labelledby="world-countries-recite-heading">
@@ -194,7 +195,9 @@ export function ReciteSetup({
         )}
         mapMeta={<span>{setupScopeCountries.length > 0 ? `${setupScopeCountries.length} Countries in current scope` : 'Select a Subregion to begin'}</span>}
       />
-      <ReciteStatusLegend mode={mode} progress={progress} />
+      {/* An in-flow sibling would push past the expanded surface's full-viewport
+          height and make the page scroll, so the legend yields while expanded. */}
+      {!expanded && <ReciteStatusLegend mode={mode} progress={progress} />}
     </section>
   )
 }

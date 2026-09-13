@@ -95,9 +95,14 @@ describe('MapSurface expanded presentation', () => {
     expect(map?.querySelector('[role="status"]')).toBeNull()
     expect(map?.querySelector('[role="alert"]')).toBeNull()
     const dock = mount.querySelector('[data-journey-dock]')
-    expect(dock?.closest('[data-map-surface-dock-row]')).not.toBeNull()
+    // The dock sits directly in the surface body. A wrapper between the two
+    // once let an expanded-only growth rule apply to it, which starved the map
+    // of height and ballooned the dock to fill the rest of the screen.
+    expect(dock?.closest('[data-map-surface-dock]')?.parentElement)
+      .toBe(mount.querySelector('[data-map-surface-body]'))
     expect(dock?.closest('.world-map-svg')).toBeNull()
     expect(mapViewport).not.toBeNull()
+    expect((mapViewport as HTMLElement | null)?.style.aspectRatio).toBe('')
 
     await act(async () => {
       mount.querySelector<HTMLButtonElement>('[aria-label="Expand map"]')?.click()
@@ -106,6 +111,8 @@ describe('MapSurface expanded presentation', () => {
     expect(map?.querySelector('[data-svg-map-view]')).toBeNull()
     expect(map?.querySelector('.world-map-svg svg')).toBe(renderedSvg)
     expect(renderedSvg?.getAttribute('preserveAspectRatio')).toBe('xMidYMid meet')
+    // The expanded box hugs the live camera instead of framing empty bars.
+    expect((mapViewport as HTMLElement | null)?.style.aspectRatio).toBe('100 / 50')
 
     await act(async () => {
       mount.querySelector<HTMLButtonElement>('[aria-label="Collapse map"]')?.click()
@@ -114,6 +121,7 @@ describe('MapSurface expanded presentation', () => {
     expect(map?.querySelector('[data-svg-map-view]')).toBeNull()
     expect(map?.querySelector('.world-map-svg svg')).toBe(renderedSvg)
     expect(renderedSvg?.getAttribute('preserveAspectRatio')).toBeNull()
+    expect((mapViewport as HTMLElement | null)?.style.aspectRatio).toBe('')
   })
 
   it('keeps the nested SvgMapView loading state available', async () => {
@@ -175,56 +183,6 @@ describe('MapSurface expanded presentation', () => {
       await Promise.resolve()
     })
     expect(mount.querySelector('[role="alert"]')?.textContent).toBe('The map could not be loaded.')
-  })
-
-  it('composes an expanded-only companion beside the primary dock', async () => {
-    const mount = document.createElement('div')
-    document.body.append(mount)
-
-    await act(async () => {
-      root = createRoot(mount)
-      root.render(createElement(PageLayoutProvider, null,
-        createElement(PageLayout, null,
-          createElement(MapSurface, {
-            context: createElement('span', null, 'prompt context'),
-            expandedContext: createElement('span', { 'data-expanded-context': true }, 'compact context'),
-            map: createElement('span', null, 'map content'),
-            feedbackOverlay: createElement('span', { 'data-feedback-content': true }, 'feedback'),
-            dock: createElement('span', { 'data-primary-dock': true }, 'answer dock'),
-            expandedCompanion: createElement('span', { 'data-companion-content': true }, 'session progress'),
-          }),
-        ),
-      ))
-      await Promise.resolve()
-    })
-
-    const map = mount.querySelector('[data-map-surface-map]')
-    const dock = mount.querySelector('[data-primary-dock]')
-    expect(mount.querySelector('[data-map-surface-companion]')).toBeNull()
-    expect(mount.querySelector('[data-expanded-context]')).toBeNull()
-    expect(mount.querySelector('[data-map-surface-map] [data-map-feedback-overlay-host] [data-feedback-content]')).not.toBeNull()
-
-    await act(async () => {
-      mount.querySelector<HTMLButtonElement>('[aria-label="Expand map"]')?.click()
-      await Promise.resolve()
-    })
-
-    const row = mount.querySelector('[data-map-surface-dock-row]')
-    expect(row?.contains(mount.querySelector('[data-map-surface-dock]'))).toBe(true)
-    expect(row?.contains(mount.querySelector('[data-map-surface-companion]'))).toBe(true)
-    expect(mount.querySelector('[data-companion-content]')?.textContent).toBe('session progress')
-    expect(mount.querySelector('[data-expanded-context]')?.textContent).toBe('compact context')
-    expect(mount.querySelector('[data-map-surface-map]')).toBe(map)
-    expect(mount.querySelector('[data-primary-dock]')).toBe(dock)
-
-    await act(async () => {
-      mount.querySelector<HTMLButtonElement>('[aria-label="Collapse map"]')?.click()
-      await Promise.resolve()
-    })
-
-    expect(mount.querySelector('[data-map-surface-companion]')).toBeNull()
-    expect(mount.querySelector('[data-map-surface-map]')).toBe(map)
-    expect(mount.querySelector('[data-primary-dock]')).toBe(dock)
   })
 
   it('provides one expand/collapse control while preserving map and dock content', async () => {

@@ -81,15 +81,19 @@ body {
   max-height: min(70dvh, 560px);
 }
 
-/* At xl+, the expanded surface owns the remaining space below the global
-   header and main-content padding. Its map area is a flex item so attached
-   and stacked docks keep their natural height, while the SVG uses contain
-   sizing inside the remaining map box. */
+/* At xl+, the expanded surface owns the remaining space below the app chrome.
+   The dock takes its natural height first and the map area takes the rest.
+
+   The map box is positioned against the map area rather than sized through a
+   chain of flex items, so how deeply a caller nests `map` cannot affect it.
+   Its aspect-ratio is published by SvgMapController from the live viewBox, so
+   the box hugs the camera instead of leaving empty bars beside a letterboxed
+   map. The camera itself is never refitted to the slot. */
 @media (min-width: 1280px) {
   [data-map-surface-presentation="expanded"] {
     display: flex;
     min-height: 0;
-    height: calc(100dvh - 6.5rem);
+    height: calc(100dvh - var(--app-chrome, 6.5rem));
     flex-direction: column;
   }
 
@@ -105,32 +109,36 @@ body {
   }
 
   [data-map-surface-presentation="expanded"] [data-map-surface-map] {
-    display: flex;
-    flex-direction: column;
+    position: relative;
     min-width: 0;
     min-height: 0;
     width: 100%;
     flex: 1 1 0%;
-    justify-content: center;
     overflow: hidden;
   }
 
-  [data-map-surface-presentation="expanded"] [data-map-surface-map] > * {
-    display: flex;
-    min-width: 0;
-    min-height: 0;
-    width: 100%;
-    flex: 1 1 0%;
-    flex-direction: column;
-    justify-content: center;
+  /* Adapters wrap `map` in a varying number of divs — GeographyOverviewMap one,
+     DrillSession and PracticeSession two, and some of those are positioned, which
+     would otherwise capture the map box as its containing block and collapse it.
+     Taking the wrapper chain out of box generation makes the map box resolve
+     against the map area itself, whatever a caller nests in between. */
+  [data-map-surface-presentation="expanded"] [data-map-surface-map] *:has(.world-map-svg) {
+    display: contents;
   }
 
+  /* Height-driven: width follows from the aspect-ratio the controller sets.
+     A camera wider than the slot would clamp on max-width and letterbox
+     vertically inside the box instead; every bundled source map is at most
+     1.9:1 against an expanded slot that is wider still, and the inner SVG's
+     `xMidYMid meet` keeps that case contained rather than stretched. */
   [data-map-surface-presentation="expanded"] .world-map-svg {
-    position: relative;
-    width: 100%;
-    min-width: 0;
-    min-height: 0;
-    flex: 1 1 0%;
+    position: absolute;
+    inset-block: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    height: 100%;
+    width: auto;
+    max-width: 100%;
     overflow: hidden;
   }
 
@@ -141,26 +149,6 @@ body {
     height: 100%;
     max-width: none;
     max-height: none;
-  }
-
-  [data-map-surface-presentation="expanded"] [data-map-surface-dock-row] {
-    flex: 0 0 auto;
-  }
-
-  [data-map-surface-presentation="expanded"] [data-map-surface-dock-row] > [data-map-surface-dock] {
-    display: flex;
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-
-  [data-map-surface-presentation="expanded"] [data-map-surface-dock-row] > [data-map-surface-dock] > * {
-    flex: 1 1 auto;
-    width: 100%;
-  }
-
-  [data-map-surface-presentation="expanded"] [data-map-surface-companion] > * {
-    flex: 1 1 auto;
-    width: 100%;
   }
 
   [data-map-surface-presentation="expanded"] [data-map-surface-dock] {

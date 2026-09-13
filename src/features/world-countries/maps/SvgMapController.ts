@@ -1933,6 +1933,7 @@ export class SvgMapController {
   private applyViewBox(value: string): void {
     if (!this.svg) return
     this.svg.setAttribute('viewBox', value)
+    this.syncExpandedSlotAspect()
     this.render()
   }
 
@@ -1963,11 +1964,33 @@ export class SvgMapController {
     if (this.presentation === 'expanded') {
       this.svg.style.removeProperty('aspect-ratio')
       this.svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
+      this.syncExpandedSlotAspect()
       return
     }
 
+    this.syncExpandedSlotAspect()
     this.syncLayoutAspectRatio()
     restoreAttribute(this.svg, 'preserveAspectRatio', this.originalPreserveAspectRatio)
+  }
+
+  /**
+   * Give the expanded map box the live camera's shape, so it hugs the map
+   * instead of framing empty bars beside a letterboxed one.
+   *
+   * This sizes the box to the camera, never the camera to the box: the viewBox
+   * is only read here. Refitting it to the measured slot was tried and reverted
+   * (`getMapSlotAspect`) because it shows geography outside the intended frame
+   * without rendering anything larger. Reading rather than measuring is also
+   * what keeps the ResizeObserver from feeding back into layout.
+   */
+  private syncExpandedSlotAspect(): void {
+    if (this.presentation !== 'expanded') {
+      this.mount.style.removeProperty('aspect-ratio')
+      return
+    }
+    const current = this.svg?.getAttribute('viewBox')
+    const bounds = current ? parseViewBox(current) : null
+    if (bounds) this.mount.style.aspectRatio = `${bounds.width} / ${bounds.height}`
   }
 
   private resetMap(): void {

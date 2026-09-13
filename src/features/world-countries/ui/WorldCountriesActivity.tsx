@@ -127,7 +127,6 @@ export function WorldCountriesMapActivitySurface({
   mapMeta,
   feedbackOverlay,
   dock,
-  expandedCompanion,
   dockPlacement = 'overlay',
   className = '',
 }: {
@@ -136,7 +135,6 @@ export function WorldCountriesMapActivitySurface({
   mapMeta?: ReactNode
   feedbackOverlay?: ReactNode
   dock?: ReactNode
-  expandedCompanion?: ReactNode
   dockPlacement?: MapSurfaceDockPlacement
   className?: string
 }) {
@@ -147,7 +145,6 @@ export function WorldCountriesMapActivitySurface({
       mapMeta={mapMeta}
       feedbackOverlay={feedbackOverlay}
       dock={dock}
-      expandedCompanion={expandedCompanion}
       dockPlacement={dockPlacement}
       className={className}
     />

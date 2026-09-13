@@ -123,7 +123,6 @@ describe('DrillSession map presentation', () => {
       await Promise.resolve()
     })
 
-    expect(mount.querySelector('[data-map-surface-dock-row]')?.querySelector('[data-map-surface-companion]')).toBeNull()
     const taskPrompt = mount.querySelector('[data-world-countries-task]')
     const progressCard = mount.querySelector('[data-world-countries-task-progress]')
     const taskMain = taskPrompt?.querySelector('[data-world-countries-task-main]')
@@ -176,7 +175,7 @@ describe('DrillSession map presentation', () => {
       await Promise.resolve()
     })
 
-    expect(mount.querySelector('[data-map-surface-dock-row] [data-task-dock], [data-map-surface-dock-row] p')).not.toBeNull()
+    expect(mount.querySelector('[data-map-surface-dock] [data-task-dock], [data-map-surface-dock] p')).not.toBeNull()
     expect(mount.querySelector('[data-world-countries-task-progress]')).not.toBeNull()
     if (draft !== undefined) expect(mount.querySelector<HTMLInputElement>('input')?.value).toBe(draft)
 
