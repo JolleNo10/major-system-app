@@ -355,7 +355,7 @@ describe('SvgMapController loading and discovery', () => {
 
 describe('SvgMapController persistent state', () => {
   it('batches a declarative presentation update into one full-map render', async () => {
-    const { controller } = makeController()
+    const { mount, controller } = makeController()
     await controller.load({ markup: TEST_MAP })
     const renderNow = vi.spyOn(controller as unknown as { renderNow: () => void }, 'renderNow')
 
@@ -377,6 +377,23 @@ describe('SvgMapController persistent state', () => {
     })
 
     expect(renderNow).toHaveBeenCalledTimes(1)
+    expect(mount.querySelector<SVGSVGElement>('svg')?.style.aspectRatio).toBe('')
+
+    controller.updatePresentation({
+      presentation: 'standard',
+      settings: {},
+      hoverGroups: [],
+      groupOutlines: [],
+      hiddenIds: [],
+      taskAssistance: null,
+      highlightedIds: [],
+      mutedIds: [],
+      countryColors: [],
+      countryLabels: {},
+      namedIds: [],
+      hoveredId: null,
+    })
+    expect(mount.querySelector<SVGSVGElement>('svg')?.style.aspectRatio).toBe('100 / 50')
   })
 
   it('renders diagonal and crosshatch patterns declaratively and restores them after hover', async () => {
@@ -815,6 +832,7 @@ describe('SvgMapController persistent state', () => {
 
     controller.setZoomArea(['Alpha'], 5)
     controller.setPresentation('expanded')
+    expect(mount.querySelector('svg')?.style.aspectRatio).toBe('')
     expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('-5 5 40 20')
 
     setMountRect(viewport, { width: 100, height: 200 })
@@ -822,6 +840,7 @@ describe('SvgMapController persistent state', () => {
     expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('5 -5 20 40')
 
     controller.setPresentation('standard')
+    expect(mount.querySelector('svg')?.style.aspectRatio).toBe('100 / 50')
     expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('-5 5 40 20')
   })
 
@@ -831,9 +850,13 @@ describe('SvgMapController persistent state', () => {
     setMountRect(mount, { width: 100, height: 100 })
 
     controller.setPresentation('expanded')
+    expect(mount.querySelector('svg')?.style.aspectRatio).toBe('')
     expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('0 -25 100 100')
     controller.setPresentation('expanded')
     expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('0 -25 100 100')
+    controller.setPresentation('standard')
+    expect(mount.querySelector('svg')?.style.aspectRatio).toBe('100 / 50')
+    expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('0 0 100 50')
   })
 
   it('recomputes the expanded source camera from the resize observer without accumulating drift', async () => {
@@ -851,6 +874,7 @@ describe('SvgMapController persistent state', () => {
       await controller.load({ markup: TEST_MAP })
       setMountRect(mount, { width: 200, height: 100 })
       controller.setPresentation('expanded')
+      expect(mount.querySelector('svg')?.style.aspectRatio).toBe('')
       const triggerResize = resizeState.callback
       if (!triggerResize) throw new Error('Missing resize observer callback')
 
@@ -861,6 +885,9 @@ describe('SvgMapController persistent state', () => {
       setMountRect(mount, { width: 200, height: 100 })
       triggerResize([], {} as ResizeObserver)
       expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('0 0 100 50')
+
+      controller.setPresentation('standard')
+      expect(mount.querySelector('svg')?.style.aspectRatio).toBe('100 / 50')
     } finally {
       globalThis.ResizeObserver = originalResizeObserver
     }

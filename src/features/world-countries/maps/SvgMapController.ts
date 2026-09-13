@@ -482,6 +482,7 @@ export class SvgMapController {
   setPresentation(presentation: SvgMapPresentation): void {
     this.assertUsable()
     this.presentation = presentation
+    this.syncLayoutAspectRatio()
     this.recomputeViewBox()
   }
 
@@ -493,6 +494,7 @@ export class SvgMapController {
     const presentationChanged = this.presentation !== state.presentation
     this.presentation = state.presentation
     try {
+      if (presentationChanged) this.syncLayoutAspectRatio()
       this.updateSettings(state.settings)
       if (state.hoverGroups !== undefined) this.setHoverGroups(state.hoverGroups)
       this.setGroupOutlines(state.groupOutlines)
@@ -1955,9 +1957,13 @@ export class SvgMapController {
     if (this.viewportElement !== this.mount) this.resizeObserver.observe(this.viewportElement)
   }
 
-  /** Keep the physical SVG surface tied to its source map, not camera framing. */
+  /** Keep standard sizing tied to the source map while expanded sizing fills its slot. */
   private syncLayoutAspectRatio(): void {
     if (!this.svg || !this.originalViewBox) return
+    if (this.presentation === 'expanded') {
+      this.svg.style.removeProperty('aspect-ratio')
+      return
+    }
     const bounds = parseViewBox(this.originalViewBox)
     if (bounds) this.svg.style.aspectRatio = `${bounds.width} / ${bounds.height}`
   }
