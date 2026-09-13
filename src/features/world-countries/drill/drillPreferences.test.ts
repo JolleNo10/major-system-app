@@ -11,7 +11,7 @@ describe('World Countries Drill preferences', () => {
     expect(loadDrillPreferences()).toMatchObject({
       subregionIds: [],
       mode: 'countries-capitals',
-      order: 'ordered',
+      order: 'random',
     })
   })
 

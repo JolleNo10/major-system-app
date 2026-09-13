@@ -27,7 +27,7 @@ export interface WorldCountriesDrillPreferences extends WorldCountriesDrillSelec
 }
 
 function defaultPreferences(): WorldCountriesDrillPreferences {
-  return { ...createDrillSelection(), mode: 'countries-capitals', order: 'ordered' }
+  return { ...createDrillSelection(), mode: 'countries-capitals', order: 'random' }
 }
 
 function getSelectionMetadata(): DrillSelectionMetadata {
