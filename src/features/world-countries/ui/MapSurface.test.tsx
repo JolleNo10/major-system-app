@@ -20,6 +20,43 @@ afterEach(() => {
 })
 
 describe('MapSurface expanded presentation', () => {
+  it('keeps one SVG viewport mounted while its surface presentation changes', async () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+    const svg = createElement('svg', { 'data-map-svg': true, viewBox: '0 0 100 50' })
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(PageLayoutProvider, null,
+        createElement(PageLayout, null,
+          createElement(MapSurface, {
+            context: createElement('span', null, 'prompt context'),
+            map: createElement('div', { className: 'world-map-svg' }, svg),
+          }),
+        ),
+      ))
+      await Promise.resolve()
+    })
+
+    const map = mount.querySelector('[data-map-surface-map]')
+    const renderedSvg = map?.querySelector('[data-map-svg]')
+    expect(renderedSvg).not.toBeNull()
+
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[aria-label="Expand map"]')?.click()
+      await Promise.resolve()
+    })
+    expect(mount.querySelector('[data-map-surface]')?.getAttribute('data-map-surface-presentation')).toBe('expanded')
+    expect(map?.querySelector('[data-map-svg]')).toBe(renderedSvg)
+
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[aria-label="Collapse map"]')?.click()
+      await Promise.resolve()
+    })
+    expect(mount.querySelector('[data-map-surface]')?.getAttribute('data-map-surface-presentation')).toBe('standard')
+    expect(map?.querySelector('[data-map-svg]')).toBe(renderedSvg)
+  })
+
   it('composes an expanded-only companion beside the primary dock', async () => {
     const mount = document.createElement('div')
     document.body.append(mount)
