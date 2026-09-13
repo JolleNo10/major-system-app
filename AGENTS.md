@@ -1,12 +1,46 @@
 # Repository instructions
 
-## Required architecture bootstrap
-
-Before normal code modification, read `CLAUDE.md`. It is the canonical Tier-0
-source for architecture context routing and the compact global invariant set.
-Do not duplicate that content here.
+This file is the canonical working agreement for every agent in this
+repository, whichever tool loads it. Codex loads it directly; Claude Code
+reaches it through `CLAUDE.md`, which does nothing but point here. Keep it
+tool-neutral, and keep each rule in exactly one place.
 
 Follow the applicable nested `AGENTS.md` before modifying a feature.
+
+## Architecture context
+
+`docs/architecture/` is the authoritative description of the system as it
+exists now. Start at `docs/architecture/SYSTEM.md`: its **Agent loading**
+section routes each kind of task to the smallest relevant document, and every
+architecture document repeats that routing for its own area. The routing table
+is deliberately not copied here — one copy cannot drift.
+
+Load only what the task needs and stop once the change can be made safely. Do
+not scan sibling features unless the task crosses a feature boundary.
+
+Record mistakes in `MISTAKES.md`: what happened, the root cause, and the
+prevention.
+
+### Global invariants
+
+- `src/core/` contains feature-independent abstractions and must not import
+  `src/app/` or `src/features/`.
+- `src/app/` owns high-level composition. Feature-domain rules stay in their
+  feature; existing settings/layout integration seams do not transfer
+  ownership to `app/`.
+- External consumers use feature root barrels where defined. Keep public
+  surfaces small.
+- Feature persistence must not modify unrelated feature state. The
+  `major-system` IndexedDB connection and version have one owner:
+  `src/core/scoring/attemptStore.ts`.
+- Stable domain IDs are feature-owned; never infer them from labels, array
+  positions, or asset IDs.
+- Shared mnemonic infrastructure treats feature-defined target IDs as opaque.
+- When an architectural boundary or invariant changes, update the affected
+  current-state architecture document in the same change.
+
+`docs/architecture/INVARIANTS.md` is canonical and records the clarifications
+and current exceptions.
 
 ## Runtime and verification
 
@@ -127,7 +161,7 @@ Agents must not:
 - perform environment recovery merely to make browser/manual verification
   possible;
 - leave background development servers or verification processes running;
-- keep an implementation or Change Spec incomplete solely because
+- keep an implementation incomplete solely because
   browser/manual verification was unavailable or unperformed, unless the user
   explicitly required that check for the current task;
 - make browser/manual verification a completion gate unless the user
@@ -158,7 +192,7 @@ Do not stop at an uncommitted worktree or local-only commit, and do not ask
 whether to commit or push unless the user explicitly opts out or the required
 Git operation encounters an actual authentication or authorization failure.
 
-### RepoWise hooks
+### RepoWise hooks (Codex-specific)
 
 `.codex/hooks.json` is the active lean RepoWise configuration. The previous
 full-refresh configuration is saved in `.codex/hooks.repowise-full.json`.
@@ -198,8 +232,8 @@ and avoid brittle assertions of exact presentational structure.
 - Do not scan sibling features for examples unless the task crosses feature
   boundaries.
 - Stop discovery once enough context exists to implement the requested change.
-- Keep historical ADRs and change records outside normal implementation
-  context unless specifically required.
+- `docs/archive/` stays out of implementation context. It is frozen history,
+  excluded from default search, and never a current-state authority.
 - For map work, inspect adapters/controllers first; inspect bundled SVG source
   only when the actual asset is relevant.
 
@@ -208,9 +242,8 @@ Implementation does not automatically require architecture documentation:
 - implementation conforms to existing architecture -> code only;
 - documented current-state architecture becomes incorrect -> update the
   current architecture documentation;
-- new architectural decision -> ADR; and
-- new or revised implementation contract requiring a Change Spec -> Change
-  Spec.
+- a durable architectural choice is made -> record the rule and its rejected
+  alternative in the affected architecture document, in the same change.
 
 Do not update architecture docs merely because implementation details moved,
 were renamed, or presentation changed when the documented architecture
@@ -229,16 +262,29 @@ remains true.
 - Use `gh auth status` only when an operation itself requires GitHub CLI, such
   as creating a pull request or querying issues.
 
-## Decision and delivery documents
+## Recording decisions
 
-- When the task names a Change Spec, read that one spec as the delivery
-  contract. Do not scan `docs/changes/` for normal implementation discovery.
-- For a new or revised feature/functionality specification, follow
-  `docs/changes/README.md`. For an architectural decision, follow
-  `docs/adr/README.md`.
-- When a commit implements a Change Spec or ADR, identify each applicable
-  document by number in the commit message (for example, `Change Spec 0003` or
-  `ADR 0014`).
+GitHub issues track work; see `docs/agents/issue-tracker.md`. Architecture
+lives in `docs/architecture/` and nowhere else.
+
+When a change makes a durable architectural choice, write the rule into the
+affected current-state architecture document **in the same change**, together
+with the alternative that was rejected and why. A decision is architectural
+when it settles ownership, dependency direction, source of truth, stable
+identity, a persistence contract, a public boundary, or an invariant — and
+when it constrains work beyond the change delivering it.
+
+Prefer a rule plus its rejected alternative in one or two sentences over a
+separate record. A future agent needs to know what not to do and why the
+obvious-looking simplification was already tried; it does not need the
+deliberation that produced the answer.
+
+If a document mainly answers what the learner experiences, which states and
+edge cases exist, or how delivery is accepted, it is scope, not architecture.
+Keep it in the issue.
+
+Do not reconstruct current architecture from historical records. `docs/archive/`
+is frozen: it explains how the system came to be, never what is true now.
 
 <!-- REPOWISE_AGENTS:START — Do not edit below this line. Auto-generated by Repowise. -->
 ## Codebase Intelligence for major-system-app (Repowise)
