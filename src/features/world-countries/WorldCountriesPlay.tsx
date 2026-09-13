@@ -38,7 +38,7 @@ export function WorldCountriesPlay({
       <div className="space-y-1"><p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World Countries · Playground</p><h1 id="world-countries-play-heading" className="text-2xl font-black text-zinc-100">What do you feel like doing?</h1><p className="text-sm text-zinc-500">Choose an existing activity intentionally; the guided path remains separate.</p></div>
       <div className="grid gap-3 sm:grid-cols-2">
         <PlayCard activity="recite" title="Recite" description="Free recall across one or multiple Continents/Subregions, with all existing Recite modes." onClick={onOpenRecite} />
-        <PlayCard activity="quiz" title="Quiz" description="Use the existing Practice-owned Capitals and Neighbours Quiz experiences." onClick={onOpenQuiz} />
+        <PlayCard activity="quiz" title="Quiz" description="Test Country → Capital, Capital → Country, or neighbouring Countries." onClick={onOpenQuiz} />
         <PlayCard activity="locate-countries" title="Locate Countries" description="Use existing non-recording map-backed Country Practice." onClick={onOpenLocateCountries} />
         <PlayCard activity="locate-capitals" title="Locate Capitals" description="Use existing non-recording map-backed Capital Practice." onClick={onOpenLocateCapitals} />
         <PlayCard activity="capital-practice" title="Capital Practice" description="Use existing non-recording Country-to-Capital Practice." onClick={onOpenCapitalPractice} />

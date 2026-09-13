@@ -149,6 +149,8 @@ describe('World Countries guided shell', () => {
     expect(mount.textContent).toContain('Locate Countries')
     expect(mount.textContent).toContain('Locate Capitals')
     expect(mount.textContent).toContain('Capital Practice')
+    const quizCards = mount.querySelectorAll('[data-play-activity="quiz"]')
+    expect(quizCards).toHaveLength(1)
 
     const recite = mount.querySelector<HTMLButtonElement>('[data-play-activity="recite"]')
     await act(async () => recite?.click())

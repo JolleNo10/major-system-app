@@ -1,12 +1,13 @@
 import { useMemo } from 'react'
 import { useRails } from '@/app/layout/PageLayoutContext'
 import { classifyRecallAnswer, getRecallAnswerKindMistakeMessage } from '@/features/world-countries/learning/recallAnswerMatching'
+import { deriveRecallTaskPresentation } from '@/features/world-countries/learning/recallTaskPresentation'
 import { getCurrentRecallStep, getRecallSessionTotalSteps, type WorldCountriesRecallSessionState } from '@/features/world-countries/learning/recallSession'
 import { WorldCountriesTypedAnswer, type WorldCountriesTypedAnswerEvaluation, type WorldCountriesTypedAnswerResult } from '@/features/world-countries/ui/WorldCountriesTypedAnswer'
-import type { PracticeRecallAnswer, PracticeQuizRun } from './practiceRun'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
+import type { PracticeRecallAnswer, PracticeQuizRun } from './practiceRun'
 
-export function CapitalQuizSession({ run, session, fuzzyMatching, correctCount, onAnswer, onAdvance, onExit }: {
+export function RecallQuizSession({ run, session, fuzzyMatching, correctCount, onAnswer, onAdvance, onExit }: {
   run: PracticeQuizRun
   session: WorldCountriesRecallSessionState
   fuzzyMatching: boolean
@@ -22,17 +23,25 @@ export function CapitalQuizSession({ run, session, fuzzyMatching, correctCount, 
   const country = step ? run.countries.find(candidate => candidate.id === step.countryId) : undefined
   if (!step || !country) return null
 
+  const skill = step.skill
+  if (skill !== 'country-to-capital' && skill !== 'capital-to-country') return null
+  if (skill !== run.skill) return null
+  const task = deriveRecallTaskPresentation(skill, country)
+  const expectedAnswer = task.answerKind === 'capital' ? country.capital : country.country
+  const question = skill === 'country-to-capital'
+    ? `What is the capital of ${country.country}?`
+    : `What country is ${country.capital} the capital of?`
   const totalQuestions = getRecallSessionTotalSteps(session)
   const questionNumber = session.countryIndex + 1
   return (
     <WorldCountriesTypedAnswer
-      promptKey={`${step.countryId}-${step.skill}`}
-      answerKind="capital"
-      answerLabel="Type the capital"
-      placeholder="Type the capital…"
-      correctAnswer={country.capital}
+      promptKey={`${step.countryId}-${skill}`}
+      answerKind={task.answerKind}
+      answerLabel={task.typedAnswerLabel}
+      placeholder={task.typedPlaceholder}
+      correctAnswer={expectedAnswer}
       evaluate={(answer): WorldCountriesTypedAnswerEvaluation => {
-        const match = classifyRecallAnswer(step.skill, answer, country, {
+        const match = classifyRecallAnswer(skill, answer, country, {
           fuzzy: fuzzyMatching,
           countryCandidates: run.countries,
           capitalCandidates: run.countries.map(candidate => candidate.capital),
@@ -40,36 +49,36 @@ export function CapitalQuizSession({ run, session, fuzzyMatching, correctCount, 
         const outcome = match === 'wrong-kind' ? 'wrong-kind' : match === 'exact' ? 'exact' : match === 'fuzzy' ? 'fuzzy' : 'incorrect'
         return {
           outcome,
-          canonicalAnswer: country.capital,
-          answerKind: 'capital',
+          canonicalAnswer: expectedAnswer,
+          answerKind: task.answerKind,
           message: outcome === 'wrong-kind'
-            ? getRecallAnswerKindMistakeMessage('country-to-capital')
+            ? getRecallAnswerKindMistakeMessage(skill)
             : outcome === 'incorrect'
-            ? `The correct capital is ${country.capital}.`
+            ? `The correct ${task.answerKind} is ${expectedAnswer}.`
             : outcome === 'fuzzy'
-              ? `Correct. The canonical answer is ${country.capital}.`
+              ? `Correct. The canonical answer is ${expectedAnswer}.`
               : 'Correct.',
         }
       }}
       onAnswer={(answer, evaluation) => {
         if (evaluation.outcome === 'wrong-kind') return
-        onAnswer({ countryId: country.id, skill: 'country-to-capital', outcome: evaluation.outcome, submittedAnswer: answer })
+        onAnswer({ countryId: country.id, skill, outcome: evaluation.outcome, submittedAnswer: answer })
       }}
-      reveal={{ canonicalAnswer: country.capital, answerKind: 'capital', message: `The capital is ${country.capital}.` }}
+      reveal={{ canonicalAnswer: expectedAnswer, answerKind: task.answerKind, message: `The ${task.answerKind} is ${expectedAnswer}.` }}
       onTransition={onAdvance}
     >
       {typed => (
-        <section className="mx-auto w-full max-w-2xl space-y-6 py-8" aria-labelledby="world-countries-capitals-quiz-question">
+        <section className="mx-auto w-full max-w-2xl space-y-6 py-8" aria-labelledby="world-countries-recall-quiz-question">
           <div className="space-y-2 text-center">
             <p className="text-sm font-semibold tabular-nums text-zinc-500">Question {questionNumber} / {totalQuestions}</p>
-            <h1 id="world-countries-capitals-quiz-question" className="text-3xl font-black text-zinc-100">What is the capital of {country.country}?</h1>
+            <h1 id="world-countries-recall-quiz-question" className="text-3xl font-black text-zinc-100">{question}</h1>
           </div>
           <div className="space-y-3">
             {typed.input}
             <p className="text-sm font-semibold text-zinc-400">{correctCount} correct</p>
             <button type="button" disabled={!typed.isAnswerable} onClick={() => {
               if (!typed.reveal()) return
-              onAnswer({ countryId: country.id, skill: 'country-to-capital', outcome: 'revealed' })
+              onAnswer({ countryId: country.id, skill, outcome: 'revealed' })
             }} className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-sm font-semibold text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40">Don&apos;t know</button>
             {typed.feedbackOverlay}
           </div>

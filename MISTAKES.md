@@ -56,3 +56,11 @@ and starved by a sibling: `[data-map-surface-dock-row] > [data-map-surface-dock]
 - `src/app/index.css` is imported by no test, and jsdom computes no heights. Every one of the five attempts shipped a green suite against a visibly broken screen. For a layout defect, assert the structural contract (what is a child of what) in jsdom and confirm the pixels in a browser; a passing suite is not evidence either way.
 - Sizing a descendant through a chain of `flex: 1 1 0%` wrappers encodes an exact DOM depth. `GeographyOverviewMap` nests one level, `DrillSession` and `PracticeSession` two, so the same CSS collapsed the map to zero height on those screens. Absolute positioning alone does not fix it either: a `position: relative` wrapper captures the box as its containing block. Take the wrapper chain out of box generation (`*:has(.world-map-svg) { display: contents }`) so depth cannot matter.
 - Before re-adding a mechanism, check whether it was already removed. The slot-measuring camera fit proposed for this bug was `getMapSlotAspect()`, deleted hours earlier in `ba1d314`; it also would not have enlarged the map, because `fitViewBoxToAspect` only expands the viewBox and `preserveAspectRatio="meet"` renders the result at the same scale. Size the box to the camera, not the camera to the box.
+
+# Shared feedback contracts
+
+- A reverse Quiz reveal test initially expected a session-specific sentence,
+  but the shared typed-answer overlay renders the canonical answer with its
+  generic `Answer revealed` status. The test was corrected to assert the
+  stable semantic output instead; reuse shared feedback components by testing
+  their established contract rather than inventing workflow-specific copy.
