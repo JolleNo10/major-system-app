@@ -484,6 +484,14 @@ are discarded without persistence. During an active multi-Continent run the
 map and read-only Geography rail follow the current prompt Country's
 Continent, while the rail remains grouped in effective World/Subregion order.
 
+A completed Country outcome is exactly one of `recalled` (every required prompt
+correct on first submission, nothing revealed), `recovered` (nothing revealed,
+but at least one required prompt needed another attempt), or `revealed` (at
+least one required prompt used Reveal / Skip). Absence of a persisted outcome
+means `unrecited`. Where one Country carries several required prompts, such as
+Countries + Capitals, the composed outcome is the worst of them under
+`recalled < recovered < revealed`.
+
 Recite progress remains stored independently by mode. Countries setup derives
 its displayed status from the stronger of the latest Countries and Countries +
 Capitals outcomes, while Countries + Capitals and Countries from Capitals remain
@@ -502,6 +510,28 @@ the same prompt for another focused attempt, while Reveal / Skip resolves and
 advances automatically after the correction dwell.
 
 ## Maps and camera presentation
+
+An authored Subregion learning frame is a deliberate learning composition, not
+merely a structurally valid rectangle, and structural validation does not
+establish frame quality. Structural validation covers exactly one effective
+frame per current `SubregionId`, correct authoritative map applicability,
+finite positive bounds inside the source coordinate system, no duplicate
+Subregion records, and no workflow-specific or Country-specific frame identity.
+Frame quality is the separate product concern:
+
+- Ordinary compact Countries keep a comfortable interior safe zone. A normal
+  Country must not touch or cross a viewport edge, or sit at an extreme edge
+  merely because the rectangle technically contains it. Poland in Central
+  Europe and Serbia in the Balkans are the representative cases.
+- Huge, transcontinental, or highly distributed Countries are an explicit
+  exception to naive whole-geometry containment. Eastern Europe may show only
+  the geographically useful western portion of Russia while composing Romania,
+  Moldova, Ukraine, Belarus, and their context well. A learning frame is a
+  pedagogical window, not the union of every Country bound.
+- Sparse and island geography may need a broader composition. Micronesia,
+  Polynesia, Melanesia, and Australia & New Zealand keep targets legible while
+  showing enough surrounding geography for spatial memory, avoiding both an
+  isolated tight crop and a tiny target lost in empty ocean.
 
 World Countries maps use the shared quiet treatment of `#202326` background,
 `#2A2D33` / 1.05 Country borders, and `#DDE0E5` labels at 0.8 opacity.
@@ -823,6 +853,16 @@ flowchart TD
   membership for the session lifetime, even if later evidence changes.
 - Proficiency-derived Learning runs retain their concrete Country membership for
   the run lifetime and do not write Learning milestones.
+- Task assistance is never scoped to the current correct answer. Eligibility
+  follows the active candidate set and map geometry; deriving it from answer
+  correctness leaks the answer in map-click tasks.
+- Assistance eligibility is never a hard-coded Country allowlist in workflow or
+  UI code. A manual list drifts as map assets evolve and guarantees omissions.
+- Canonical `data/` carries no selectable product policy. Fields such as
+  `countsTowardWorldMastery` or `includedInPrimaryList` do not belong on a
+  canonical entity, and workflows never interpret classification
+  independently; `geography/` resolves it once so active populations cannot
+  diverge.
 - Country-set changes do not delete attempts or change atomic target IDs.
 - Temporary Set and Combined scheduler progress is session-only and never
   writes Drill evidence or Learning milestones.
@@ -894,4 +934,48 @@ flowchart TD
 
 ## Historical rationale
 
-The durable Learning-versus-Practice boundary remains recorded in ADR 0024.
+These questions are settled. Each cost real iteration; reopening one needs new
+evidence, not a fresh opinion.
+
+- **Authored camera frames are not derived from geometry.** Several iterations
+  of adaptive framing — sparsity detection, target fill thresholds, dominance
+  limits, component selection, aspect fitting — still produced contradictory
+  over- and under-zoom. Runtime geometry cannot infer the desired teaching
+  context. Inferring a frame per Subregion from Country bounds fails the same
+  way for sparse island regions. Geometry may help author or validate a value;
+  the committed metadata is authoritative. A frame per Country was rejected
+  separately: it moves the camera between neighbouring prompts and works
+  against repeated spatial context.
+- **Pointer precedence deliberately favours the assisted interaction point.**
+  Keeping direct source geometry ahead of all halos makes microstates embedded
+  in or adjacent to a larger Country fundamentally hard to select, which
+  defeats the forgiving target. A microstate winning over Italy, Spain, or
+  France is the intent, not a bug. Enlarging the halo radius instead was
+  rejected: the failure was precedence, not radius, and a bigger halo that
+  still loses to source geometry only adds accidental overlap.
+- **Hover emphasis is local to the component under the pointer.** Enlarging
+  every component of a multi-dot Country at once was rejected; Country-level
+  colour may identify the entity, but size emphasis follows the local point.
+- **Review scheduling is derived, never persisted.** A stored `nextReviewAt`
+  or SRS record is duplicate state that drifts from the learning evidence it
+  is supposed to summarise. Writing synthetic attempts on Learning completion
+  was rejected for the same reason: a milestone is not an answer.
+- **Recite keeps latest-outcome-per-(mode, Country), not run history.**
+  Product behaviour needs current status, not analytics, streaks, or run
+  inspection. Keeping the status fully transient was also rejected, because
+  mode-specific setup colouring must survive navigation and restarts. Reusing
+  Drill attempts would make sequence practice indistinguishable from scheduled
+  item recall and would move Drill proficiency.
+- **Learning Readiness is cumulative, so there is no Capitals-only state.**
+  Countries is the foundation and Countries + Capitals is the combined
+  milestone. An early Capitals fact is preserved without displaying a fourth
+  state. The durable Learning-versus-Practice boundary is settled in the same
+  place: an activity that intentionally writes durable evidence is modelled as
+  Drill or Learning, never as Practice.
+- **Map visibility stays a map capability.** Hiding Countries through Recite's
+  own DOM or CSS was rejected; a generic caller-controlled hidden-ID capability
+  keeps SVG manipulation with the map owner without teaching the map about
+  Recite.
+
+The decisions above were recorded as ADRs 0022, 0024, 0026, 0027, 0030, 0031,
+and 0033 before those records were archived.
