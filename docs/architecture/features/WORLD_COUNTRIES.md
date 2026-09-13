@@ -40,8 +40,7 @@ semantics remain unchanged, while Playground selects the activity before setup.
 `WorldCountriesDrill.tsx` owns the shared Geography/proficiency setup
 coordinator, recorded Drill and fixed non-recording Practice entry, active
 sessions, and results. Geography metadata changes reach mounted consumers
-through the feature-owned geography subscription signal rather than
-coordinator-owned refresh counters.
+through the feature-owned geography subscription signal.
 
 ## Ownership
 
@@ -108,18 +107,13 @@ coordinator-owned refresh counters.
   the shared typed-answer lifecycle for primary World Countries recall, shared
   reusable answer-kind semantics across active workflows, and draft movement
   without persistence policy. Workflows provide the active answer kind from
-  their task or skill. The typed-answer seam owns native
-  submit handling, blank prevention, map-relative answer-feedback overlay,
-  feedback state, focus/reset, and the shared 500 ms / 1800 ms lifecycle;
-  multi-answer Practice workflows reuse that feedback presentation/lifecycle
-  while retaining their own repeated-answer state and transitions. Workflow
-  owners provide classification, disclosure copy, evidence, and transitions.
-  The form dock owns answer entry and does not repeat result copy.
-  Fuzzy is the interactive feedback exception by default: its overlay owns
-  Continue and transient mini spelling practice, initially focuses Mini
-  practise spelling, and creates no evidence. Ordinary Drill, Today, and Recite
-  incorrect answers retain their
-  existing correction/retry lifecycle.
+  their task or skill, and workflow owners provide classification, disclosure
+  copy, evidence, and transitions. Multi-answer Practice workflows reuse that
+  feedback presentation and lifecycle while retaining their own
+  repeated-answer state and transitions. Fuzzy remediation creates no
+  evidence, and ordinary Drill, Today, and Recite incorrect answers retain
+  their existing correction/retry lifecycle. The lifecycle contract itself is
+  stated once, under Decision rules and dependencies.
 - `recite/` owns the ordered World Countries Recite setup, its three typed-recall
   modes, transient setup/session state, current-run outcomes, completion flow,
   and mode-specific latest-outcome status. It consumes geography, answer
@@ -140,10 +134,7 @@ geography/progress left rail rather than a second progress authority. The
 activity semantics remain exactly Drill, Learning, and
 Practice; Quiz is Practice and does not introduce an Assessment semantic.
 Today remains the owner of guided planning/review and delegation into the
-existing Learning flows even though its learner-facing presentation is now the
-Home/Continent guided surface. Review/practice and curriculum Learning are
-separate derived opportunities: the former is owned by the right rail and the
-map dock owns the latter. When Today launches Learning, the completed Learning
+existing Learning flows. When Today launches Learning, the completed Learning
 surface can present a parent-provided next Journey handoff: the flow writes its
 durable milestone first, Today observes the feature-local learning revision,
 and the latest derived curriculum recommendation remains authoritative for a
@@ -633,7 +624,8 @@ target-local and Country-fit cameras respectively.
   Its owner-provided prompt key clears stale value and feedback, and its
   explicit accessible answer label is separate from visual placeholder copy.
   Enter, the Check button, and native form submission share one deduplicated
-  path. Exact, fuzzy, incorrect, and revealed feedback is presented in the
+  path, and a blank answer is never submitted. Exact, fuzzy, incorrect, and
+  revealed feedback is presented in the
   centered map-relative overlay; the dock contains only answer entry and
   answerable-state actions. Exact feedback lasts 500 ms; incorrect and
   revealed feedback lasts 1800 ms. There is no generic post-answer Continue
@@ -776,12 +768,9 @@ flowchart TD
 - Geography mnemonics remain in the shared IndexedDB `mnemonics` store with
   existing `geo:*` target IDs.
 - `world-countries-drill-preferences` remains the owner of the selected
-  World-wide Subregion IDs, actual Drill mode, and Drill order. New writes have
-  the shape `{ subregionIds, mode, order }`; they do not persist setup
-  navigation, derived Continent state, scope counts, or Country IDs. Reads
-  continue to accept the legacy `{ continent, subregionIds, mode, order }`
-  shape and preserve all valid selected Subregions across the World. Setup
-  activity state is not added to this schema.
+  World-wide Subregion IDs, actual Drill mode, and Drill order. Setup activity
+  state is not added to this schema. `../PERSISTENCE.md` owns the stored shape
+  and its legacy read-compatibility.
 - Proficiency filter selection and any resolved Country membership remain
   transient Drill setup/session state; no resolved Country list or new
   persistence key is stored.
