@@ -377,7 +377,8 @@ describe('SvgMapController persistent state', () => {
     })
 
     expect(renderNow).toHaveBeenCalledTimes(1)
-    expect(mount.querySelector<SVGSVGElement>('svg')?.style.aspectRatio).toBe('')
+    expect(mount.querySelector<SVGSVGElement>('svg')?.style.aspectRatio).toBe('100 / 50')
+    expect(readViewBox(mount)).toEqual({ x: 0, y: 0, width: 100, height: 50 })
 
     controller.updatePresentation({
       presentation: 'standard',
@@ -475,6 +476,9 @@ describe('SvgMapController persistent state', () => {
     controller.setCamera({ kind: 'view-box', bounds: { x: 40, y: 40, width: 400, height: 400 } })
     const largeFrame = mount.querySelector('svg')?.getAttribute('viewBox')
     expect(mount.querySelector('svg')?.style.aspectRatio).toBe('1000 / 500')
+
+    controller.setPresentation('expanded')
+    expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe(largeFrame)
 
     controller.setCamera({ kind: 'view-box', bounds: { x: 800, y: 240, width: 2, height: 2 } })
     const tinyFrame = mount.querySelector('svg')?.getAttribute('viewBox')
@@ -767,7 +771,7 @@ describe('SvgMapController persistent state', () => {
     expect(readViewBox(mount)).toEqual({ x: 0, y: 0, width: 100, height: 50 })
   })
 
-  it('fits a target-centric frame to the expanded slot without losing the target', async () => {
+  it('preserves a target-centric frame when entering expanded presentation', async () => {
     const viewport = document.createElement('div')
     const mount = document.createElement('div')
     viewport.append(mount)
@@ -779,17 +783,13 @@ describe('SvgMapController persistent state', () => {
     setMountRect(viewport, { width: 200, height: 100 })
 
     controller.setTargetCentricZoom(['Alpha'])
+    const beforeExpand = readViewBox(mount)
     controller.setPresentation('expanded')
 
-    const viewBox = readViewBox(mount)
-    expect(viewBox.width / viewBox.height).toBeCloseTo(2)
-    expect(viewBox.x).toBeLessThanOrEqual(30)
-    expect(viewBox.x + viewBox.width).toBeGreaterThanOrEqual(40)
-    expect(viewBox.y).toBeLessThanOrEqual(10)
-    expect(viewBox.y + viewBox.height).toBeGreaterThanOrEqual(20)
+    expect(readViewBox(mount)).toEqual(beforeExpand)
   })
 
-  it('retains one target-centric neighbourhood intent across standard and expanded aspect changes', async () => {
+  it('preserves one target-centric frame across presentation and slot changes', async () => {
     const viewport = document.createElement('div')
     const mount = document.createElement('div')
     viewport.append(mount)
@@ -804,22 +804,16 @@ describe('SvgMapController persistent state', () => {
     controller.setTargetCentricZoom(['Alpha'], ['Beta'])
     const standard = readViewBox(mount)
     controller.setPresentation('expanded')
-    const wide = readViewBox(mount)
-    expect(wide.width / wide.height).toBeCloseTo(2)
-    expect(wide.x).toBeLessThanOrEqual(30)
-    expect(wide.x + wide.width).toBeGreaterThanOrEqual(51)
+    expect(readViewBox(mount)).toEqual(standard)
 
     setMountRect(viewport, { width: 100, height: 200 })
     controller.setPresentation('expanded')
-    const tall = readViewBox(mount)
-    expect(tall.width / tall.height).toBeCloseTo(0.5)
-    expect(tall.x).toBeLessThanOrEqual(30)
-    expect(tall.x + tall.width).toBeGreaterThanOrEqual(51)
+    expect(readViewBox(mount)).toEqual(standard)
     controller.setPresentation('standard')
     expect(readViewBox(mount)).toEqual(standard)
   })
 
-  it('fits the retained zoom intent to the expanded map slot and refits after a slot change', async () => {
+  it('preserves the retained zoom frame while the expanded slot changes', async () => {
     const viewport = document.createElement('div')
     const mount = document.createElement('div')
     viewport.append(mount)
@@ -831,17 +825,18 @@ describe('SvgMapController persistent state', () => {
     setMountRect(viewport, { width: 200, height: 100 })
 
     controller.setZoomArea(['Alpha'], 5)
+    const beforeExpand = readViewBox(mount)
     controller.setPresentation('expanded')
-    expect(mount.querySelector('svg')?.style.aspectRatio).toBe('')
-    expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('-5 5 40 20')
+    expect(mount.querySelector('svg')?.style.aspectRatio).toBe('100 / 50')
+    expect(readViewBox(mount)).toEqual(beforeExpand)
 
     setMountRect(viewport, { width: 100, height: 200 })
     controller.setPresentation('expanded')
-    expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('5 -5 20 40')
+    expect(readViewBox(mount)).toEqual(beforeExpand)
 
     controller.setPresentation('standard')
     expect(mount.querySelector('svg')?.style.aspectRatio).toBe('100 / 50')
-    expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('-5 5 40 20')
+    expect(readViewBox(mount)).toEqual(beforeExpand)
   })
 
   it('retains an explicit view-box camera intent across expanded sizing changes', async () => {
@@ -860,30 +855,31 @@ describe('SvgMapController persistent state', () => {
 
     setMountRect(viewport, { width: 100, height: 200 })
     controller.setPresentation('expanded')
-    expect(mount.querySelector('svg')?.style.aspectRatio).toBe('')
-    expect(readViewBox(mount)).toEqual({ x: 30, y: 5, width: 10, height: 20 })
+    expect(mount.querySelector('svg')?.style.aspectRatio).toBe('100 / 50')
+    expect(readViewBox(mount)).toEqual(standard)
 
     controller.setPresentation('standard')
     expect(mount.querySelector('svg')?.style.aspectRatio).toBe('100 / 50')
     expect(readViewBox(mount)).toEqual(standard)
   })
 
-  it('fits the original source viewBox when expanded without an explicit zoom target', async () => {
+  it('preserves the original source viewBox when expanded without an explicit zoom target', async () => {
     const { mount, controller } = makeController()
     await controller.load({ markup: TEST_MAP })
     setMountRect(mount, { width: 100, height: 100 })
 
+    const sourceViewBox = readViewBox(mount)
     controller.setPresentation('expanded')
-    expect(mount.querySelector('svg')?.style.aspectRatio).toBe('')
-    expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('0 -25 100 100')
+    expect(mount.querySelector('svg')?.style.aspectRatio).toBe('100 / 50')
+    expect(readViewBox(mount)).toEqual(sourceViewBox)
     controller.setPresentation('expanded')
-    expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('0 -25 100 100')
+    expect(readViewBox(mount)).toEqual(sourceViewBox)
     controller.setPresentation('standard')
     expect(mount.querySelector('svg')?.style.aspectRatio).toBe('100 / 50')
-    expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('0 0 100 50')
+    expect(readViewBox(mount)).toEqual(sourceViewBox)
   })
 
-  it('recomputes the expanded source camera from the resize observer without accumulating drift', async () => {
+  it('preserves a non-trivial camera through expanded resize without drift', async () => {
     const originalResizeObserver = globalThis.ResizeObserver
     const resizeState: { callback: ResizeObserverCallback | null } = { callback: null }
     class TestResizeObserver {
@@ -895,23 +891,31 @@ describe('SvgMapController persistent state', () => {
 
     try {
       const { mount, controller } = makeController()
-      await controller.load({ markup: TEST_MAP })
-      setMountRect(mount, { width: 200, height: 100 })
+      await controller.load({ markup: `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 200">
+          <g><path id="Alpha" d="M 20 30 h 10 v 10 h -10 z"/><text id="Alpha_label">ALPHA</text></g>
+        </svg>` })
+      const camera = { x: 10, y: 20, width: 300, height: 200 }
+      controller.setCamera({ kind: 'view-box', bounds: camera })
+      expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('10 20 300 200')
+
       controller.setPresentation('expanded')
-      expect(mount.querySelector('svg')?.style.aspectRatio).toBe('')
+      expect(mount.querySelector('svg')?.style.aspectRatio).toBe('300 / 200')
+      expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('10 20 300 200')
       const triggerResize = resizeState.callback
       if (!triggerResize) throw new Error('Missing resize observer callback')
 
-      setMountRect(mount, { width: 100, height: 200 })
+      setMountRect(mount, { width: 800, height: 300 })
       triggerResize([], {} as ResizeObserver)
-      expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('0 -75 100 200')
+      expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('10 20 300 200')
 
-      setMountRect(mount, { width: 200, height: 100 })
+      setMountRect(mount, { width: 300, height: 800 })
       triggerResize([], {} as ResizeObserver)
-      expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('0 0 100 50')
+      expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('10 20 300 200')
 
       controller.setPresentation('standard')
-      expect(mount.querySelector('svg')?.style.aspectRatio).toBe('100 / 50')
+      expect(mount.querySelector('svg')?.style.aspectRatio).toBe('300 / 200')
+      expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('10 20 300 200')
     } finally {
       globalThis.ResizeObserver = originalResizeObserver
     }

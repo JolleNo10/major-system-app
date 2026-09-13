@@ -376,7 +376,6 @@ export class SvgMapController {
   private originalBackgroundFill: OriginalStyle | null = null
   private originalBackgroundColor: OriginalStyle | null = null
   private originalViewBox: string | null = null
-  private presentation: SvgMapPresentation = 'standard'
   private zoomIntent: {
     kind: 'view-box'
     bounds: SvgViewBoxRect
@@ -478,12 +477,9 @@ export class SvgMapController {
     return [...this.named]
   }
 
-  /** Keep a retained camera intent fitted to the current map presentation. */
+  /** Change the physical presentation without changing the current camera. */
   setPresentation(presentation: SvgMapPresentation): void {
     this.assertUsable()
-    this.presentation = presentation
-    this.syncLayoutAspectRatio()
-    this.recomputeViewBox()
   }
 
   /** Apply all React-owned map presentation state with one final DOM render. */
@@ -491,10 +487,7 @@ export class SvgMapController {
     this.assertUsable()
     this.renderBatchDepth += 1
     this.renderPending = true
-    const presentationChanged = this.presentation !== state.presentation
-    this.presentation = state.presentation
     try {
-      if (presentationChanged) this.syncLayoutAspectRatio()
       this.updateSettings(state.settings)
       if (state.hoverGroups !== undefined) this.setHoverGroups(state.hoverGroups)
       this.setGroupOutlines(state.groupOutlines)
@@ -516,7 +509,6 @@ export class SvgMapController {
       if (previouslyNamed.length > 0) this.setNamesVisible(previouslyNamed, false)
       if (state.namedIds.length > 0) this.setNamesVisible(state.namedIds, true)
       this.hoverCountry(state.hoveredId)
-      if (presentationChanged) this.recomputeViewBox()
     } finally {
       this.renderBatchDepth -= 1
       if (this.renderBatchDepth === 0 && this.renderPending) {
@@ -1902,15 +1894,8 @@ export class SvgMapController {
     return { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
   }
 
-  private getMapSlotAspect(): number | null {
+  private getSourceMapAspect(): number | null {
     const sourceBounds = this.originalViewBox ? parseViewBox(this.originalViewBox) : null
-    if (this.presentation !== 'expanded') {
-      return sourceBounds ? sourceBounds.width / sourceBounds.height : null
-    }
-    const viewportRect = this.viewportElement.getBoundingClientRect()
-    if (viewportRect.width > 0 && viewportRect.height > 0) return viewportRect.width / viewportRect.height
-    const mountRect = this.mount.getBoundingClientRect()
-    if (mountRect.width > 0 && mountRect.height > 0) return mountRect.width / mountRect.height
     return sourceBounds ? sourceBounds.width / sourceBounds.height : null
   }
 
@@ -1918,7 +1903,7 @@ export class SvgMapController {
     if (!this.svg) return
     const target = explicitTarget ?? this.getRetainedZoomBounds()
     if (!target) return
-    const fitted = fitViewBoxToAspect(target, this.getMapSlotAspect())
+    const fitted = fitViewBoxToAspect(target, this.getSourceMapAspect())
     const value = `${fitted.x} ${fitted.y} ${fitted.width} ${fitted.height}`
     if (this.svg.getAttribute('viewBox') === value) {
       this.render()
@@ -1950,20 +1935,15 @@ export class SvgMapController {
     const observedSvg = this.svg
     this.resizeObserver = new ResizeObserver(() => {
       if (this.destroyed || this.svg !== observedSvg) return
-      if (this.presentation === 'expanded') this.recomputeViewBox()
-      else this.render()
+      this.render()
     })
     this.resizeObserver.observe(this.mount)
     if (this.viewportElement !== this.mount) this.resizeObserver.observe(this.viewportElement)
   }
 
-  /** Keep standard sizing tied to the source map while expanded sizing fills its slot. */
+  /** Keep the physical SVG surface tied to its source map, not camera framing. */
   private syncLayoutAspectRatio(): void {
     if (!this.svg || !this.originalViewBox) return
-    if (this.presentation === 'expanded') {
-      this.svg.style.removeProperty('aspect-ratio')
-      return
-    }
     const bounds = parseViewBox(this.originalViewBox)
     if (bounds) this.svg.style.aspectRatio = `${bounds.width} / ${bounds.height}`
   }
