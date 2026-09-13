@@ -7,6 +7,8 @@ import type { SubregionLearningState } from '@/features/world-countries/learning
 import { createWorldCountriesEstablishedLearningReadinessByCountry, isWorldCountriesCapitalLayerEstablished, isWorldCountriesCountryLayerEstablished } from '@/features/world-countries/learning/learningReadiness'
 import {
   deriveWorldCountriesReviewSchedule,
+  isValidWorldCountriesLocalDate,
+  worldCountriesLocalDateForTimestamp,
   type WorldCountriesReviewSchedule,
 } from '@/features/world-countries/learning/reviewSchedule'
 import {
@@ -258,6 +260,11 @@ function deriveCurriculumRecommendations({
 export function buildWorldCountriesTodayPlan(
   input: WorldCountriesTodayPlanInput,
 ): WorldCountriesTodayPlan {
+  const now = input.now ?? Date.now()
+  const localDate = isValidWorldCountriesLocalDate(input.localDate)
+    ? input.localDate
+    : worldCountriesLocalDateForTimestamp(now)
+  const temporalOptions = { now, localDate }
   const effectiveCountries = orderedActiveCountries(
     input.activeCountries,
     input.effectiveCountries ?? input.activeCountries,
@@ -296,10 +303,11 @@ export function buildWorldCountriesTodayPlan(
         ? readiness !== 'NOT_LEARNED'
         : readiness === 'COUNTRIES_AND_CAPITALS_LEARNED'
       const milestoneAt = introductions.get(itemId)?.milestoneAt ?? null
-      const candidate = createCandidate(country, skill, input.history, reviewEligible, milestoneAt, input)
+      const candidate = createCandidate(country, skill, input.history, reviewEligible, milestoneAt, temporalOptions)
       if (!candidate) continue
       if (candidate.schedule.due) dueCandidates.push({ ...candidate, purpose: 'review' })
-      if (!progressByTarget.get(itemId)!.mastered) {
+      const recalledSuccessfullyToday = candidate.schedule.qualifyingRecallDates.includes(localDate)
+      if (!progressByTarget.get(itemId)!.mastered && !recalledSuccessfullyToday) {
         consolidationCandidates.push({ ...candidate, purpose: 'consolidation' })
       }
     }

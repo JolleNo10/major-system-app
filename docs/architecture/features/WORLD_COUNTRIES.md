@@ -205,10 +205,19 @@ opportunity exposes the bounded block that will launch, while Home support copy
 distinguishes it from total due work when those values differ.
 
 The 8-item Review/consolidation block is a repeatable learner choice rather
-than a daily or visit gate. After a completed block, Today refreshes retained
-evidence and can expose the next scheduler-derived block immediately while
-work remains; blocks never auto-chain. Within-block delayed retries remain
-owned by the existing Review queue.
+than a daily or visit gate. Consolidation remains derived from retained
+evidence: an established, non-mastered target that has already received
+successful qualifying explicit recall on the current learner-local date rests
+from consolidation for that date. This does not mark the target Mastered;
+scheduled due Review remains authoritative and independent. After a completed
+block, Today refreshes retained evidence and can expose another
+scheduler-derived block immediately: when other eligible weak targets remain,
+the next consolidation block uses them, and when none remain there is no
+consolidation opportunity. Blocks never auto-chain. Today does not track a
+transient list of targets completed by the last Strengthen session; retained
+atomic recall evidence plus learner-local date is the source of truth, so remounting or
+reloading Home produces the same eligibility. Within-block delayed retries
+remain owned by the existing Review queue.
 
 Guided Country and Capital Learning retain their staged Meet, Find/Recall,
 Mix, and Final recall pedagogy. The normal forward action from a completed
