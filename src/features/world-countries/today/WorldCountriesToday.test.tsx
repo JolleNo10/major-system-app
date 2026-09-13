@@ -782,7 +782,7 @@ describe('World Countries Today', () => {
     expect(mount.querySelector('[data-task-scope-context]')?.textContent).not.toContain('Central Europe')
 
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-primary-action]')?.click())
-    expect(onNavigate).toHaveBeenCalledWith({ area: 'drill', subregionId: 'northern-europe' })
+    expect(onNavigate).toHaveBeenCalledWith({ area: 'drill', scope: { kind: 'subregion', subregionId: 'northern-europe' } })
   })
 
   it('hands Learning completion to the next Journey recommendation, not Review', async () => {
@@ -899,7 +899,7 @@ describe('World Countries Today', () => {
     expect(countryLearningFlowMock).not.toHaveBeenCalled()
 
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="capital-learning-region-action"]')?.click())
-    expect(onNavigate).toHaveBeenCalledWith({ area: 'drill', subregionId: northern.subregionId })
+    expect(onNavigate).toHaveBeenCalledWith({ area: 'drill', scope: { kind: 'subregion', subregionId: northern.subregionId } })
 
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="capital-learning-handoff"]')?.click())
     expect(countryLearningFlowMock).toHaveBeenCalledWith(expect.objectContaining({
@@ -979,6 +979,46 @@ describe('World Countries Today', () => {
     expect([...railMount.querySelectorAll('[data-journey-milestone]')].every(node => node.getAttribute('data-journey-status') === 'complete')).toBe(true)
   })
 
+  it('offers a World Drill after all active Countries complete Learning, regardless of residual recall focus', async () => {
+    const northern = countries.find(country => country.subregionId === 'northern-europe')!
+    const eastern = countries.find(country => country.subregionId === 'eastern-europe')!
+    activeCountries = [northern, eastern]
+    const at = Date.now()
+    markSubregionCountriesLearned(northern.subregionId, at, activeCountries)
+    markSubregionCapitalsLearned(northern.subregionId, at + 1, activeCountries)
+    markSubregionCountriesLearned(eastern.subregionId, at + 2, activeCountries)
+    markSubregionCapitalsLearned(eastern.subregionId, at + 3, activeCountries)
+    buildPlanMock.mockReturnValue(plan({
+      curriculumRecommendation: null,
+      plannerFocusSubregionId: eastern.subregionId,
+      scopeComplete: true,
+      incompleteCountryCount: 0,
+      incompleteSubregionLabels: [],
+    }))
+    const onNavigate = vi.fn()
+    const mount = await renderToday({ onNavigate })
+
+    expect(mount.textContent).toContain('Learning complete')
+    expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('World')
+    expect(mount.querySelector('[data-task-scope-context]')?.textContent).toContain('You can now drill the whole world whenever you want.')
+    expect(mount.querySelector('[data-primary-action]')?.textContent).toBe('Drill the world')
+    expect(mount.textContent).not.toContain('Drill Eastern Europe')
+    expect(mount.querySelector('[aria-label="Learning"]')).toBeNull()
+    expect(mount.querySelector('[aria-label="Recall health"]')).not.toBeNull()
+
+    const mapProps = geographyOverviewMapMock.mock.calls[geographyOverviewMapMock.mock.calls.length - 1]?.[0] as {
+      countryColorsById?: ReadonlyMap<string, string>
+      countryPatternsById?: ReadonlyMap<string, unknown>
+      countryEdgeTreatmentsById?: ReadonlyMap<string, unknown>
+    } | undefined
+    expect(mapProps?.countryColorsById?.size).toBe(activeCountries.length)
+    expect(mapProps?.countryPatternsById?.size).toBe(0)
+    expect(mapProps?.countryEdgeTreatmentsById).toBeUndefined()
+
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-primary-action]')?.click())
+    expect(onNavigate).toHaveBeenCalledWith({ area: 'drill', scope: { kind: 'world' } })
+  })
+
   it('keeps a learned Capital region truthful when no next recommendation exists', async () => {
     const northern = countries.find(country => country.subregionId === 'northern-europe')!
     activeCountries = [northern]
@@ -1003,7 +1043,7 @@ describe('World Countries Today', () => {
     expect(mount.querySelector('[data-testid="capital-learning-region-action"]')?.textContent).toBe('Drill Northern Europe')
     expect(mount.textContent).not.toContain('Start Western Europe')
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="capital-learning-region-action"]')?.click())
-    expect(onNavigate).toHaveBeenCalledWith({ area: 'drill', subregionId: northern.subregionId })
+    expect(onNavigate).toHaveBeenCalledWith({ area: 'drill', scope: { kind: 'subregion', subregionId: northern.subregionId } })
     await act(async () => {
       mount.querySelector<HTMLButtonElement>('[data-testid="capital-learning-done"]')?.click()
       await Promise.resolve()

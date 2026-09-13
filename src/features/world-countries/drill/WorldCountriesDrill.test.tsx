@@ -5,7 +5,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SettingsProvider } from '@/app/settings/SettingsContext'
 import { WorldCountriesPopulationProvider } from '@/features/world-countries/WorldCountriesPopulationContext'
-import type { Country } from '@/features/world-countries/data/countries'
+import { countries, type Country } from '@/features/world-countries/data/countries'
 import { WorldCountriesDrill } from './WorldCountriesDrill'
 import { getCurrentDrillStep, getDrillSessionSkills, type DrillAnswerRecord, type DrillSessionState } from './drillSessionState'
 import type { WorldCountriesSetupActivity } from './setupActivity'
@@ -160,11 +160,27 @@ describe('WorldCountriesDrill activity integration', () => {
   })
 
   it('opens Drill setup focused on a requested Subregion without starting a session', () => {
-    renderDrill({ initialSubregionId: 'eastern-europe' })
+    renderDrill({ initialScope: { kind: 'subregion', subregionId: 'eastern-europe' } })
 
     expect(drillSetupProps.current?.activity).toEqual({ kind: 'drill' })
     expect(drillSetupProps.current?.setupContinent).toBe('Europe')
     expect((drillSetupProps.current?.selection as { subregionIds: readonly string[] }).subregionIds).toEqual(['eastern-europe'])
+    expect(drillSessionProps.current).toBeNull()
+  })
+
+  it('opens World setup with every active Subregion while retaining saved Drill preferences', () => {
+    localStorage.setItem('world-countries-drill-preferences', JSON.stringify({
+      subregionIds: ['northern-europe'], mode: 'countries-from-shape', order: 'ordered',
+    }))
+
+    renderDrill({ initialScope: { kind: 'world' } })
+
+    expect(drillSetupProps.current?.setupContinent).toBeNull()
+    const selectedSubregionIds = (drillSetupProps.current?.selection as { subregionIds: readonly string[] }).subregionIds
+    expect(new Set(selectedSubregionIds)).toEqual(new Set(countries.map(country => country.subregionId)))
+    expect(selectedSubregionIds).toHaveLength(new Set(countries.map(country => country.subregionId)).size)
+    expect(drillSetupProps.current?.mode).toBe('countries-from-shape')
+    expect(drillSetupProps.current?.order).toBe('ordered')
     expect(drillSessionProps.current).toBeNull()
   })
 

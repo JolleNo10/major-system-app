@@ -16,7 +16,7 @@ import { DrillSession } from './DrillSession'
 import { DrillSetup } from './DrillSetup'
 import type { WorldCountriesDrillMode } from './drillModes'
 import type { WorldCountriesDrillOrder } from './drillOrder'
-import { clearDrillSelection, getCountriesForDrillSelectionInEffectiveOrder, normalizeDrillSelection, type DrillSelectionMetadata, type WorldCountriesDrillSelection } from './drillSelection'
+import { clearDrillSelection, getCountriesForDrillSelectionInEffectiveOrder, normalizeDrillSelection, selectAllDrillSubregions, type DrillSelectionMetadata, type WorldCountriesDrillSelection } from './drillSelection'
 import { toggleWorldScope } from '@/features/world-countries/geography/subregionScope'
 import {
   createDrillSession,
@@ -52,26 +52,35 @@ type ActiveDrillRun = {
   answers: DrillAnswerRecord[]
 }
 
+export type WorldCountriesDrillInitialScope =
+  | { kind: 'world' }
+  | { kind: 'subregion'; subregionId: SubregionId }
+
 /** Coordinator for shared geography setup, recorded Drill, and non-recording Practice. */
-export function WorldCountriesDrill({ answerMode, onExit, initialActivity = { kind: 'drill' }, initialSubregionId }: { answerMode: AnswerMode; onExit?: () => void; initialActivity?: WorldCountriesSetupActivity; initialSubregionId?: SubregionId }) {
+export function WorldCountriesDrill({ answerMode, onExit, initialActivity = { kind: 'drill' }, initialScope }: { answerMode: AnswerMode; onExit?: () => void; initialActivity?: WorldCountriesSetupActivity; initialScope?: WorldCountriesDrillInitialScope }) {
   const { settings } = useSettings()
   const activeCountries = useWorldCountriesPopulation()
-  const [preferences, setPreferences] = useState<WorldCountriesDrillPreferences>(() => {
-    const loaded = loadDrillPreferences()
-    return initialSubregionId ? { ...loaded, subregionIds: [initialSubregionId] } : loaded
-  })
-  const [phase, setPhase] = useState<DrillPhase>('setup')
-  const [proficiencySelection, setProficiencySelection] = useState<WorldCountriesProficiencySelection>([])
-  const [setupContinent, setSetupContinent] = useState<Continent | null>(() => initialSubregionId ? getSubregionDefinition(initialSubregionId).continent : null)
-  const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null)
-  const [activeRun, setActiveRun] = useState<ActiveDrillRun | null>(null)
-  const launchGeneration = useRef(0)
   const geographyRevision = useWorldCountriesGeographyRevision()
   const learningRevision = useWorldCountriesSubregionLearningRevision()
   const selectionMetadata = useMemo<DrillSelectionMetadata>(() => {
     void geographyRevision
     return readWorldCountriesGeography(activeCountries).metadata
   }, [activeCountries, geographyRevision])
+  const [preferences, setPreferences] = useState<WorldCountriesDrillPreferences>(() => {
+    const loaded = loadDrillPreferences()
+    if (initialScope?.kind === 'world') {
+      return { ...loaded, subregionIds: selectAllDrillSubregions(activeCountries, selectionMetadata).subregionIds }
+    }
+    return initialScope?.kind === 'subregion'
+      ? { ...loaded, subregionIds: [initialScope.subregionId] }
+      : loaded
+  })
+  const [phase, setPhase] = useState<DrillPhase>('setup')
+  const [proficiencySelection, setProficiencySelection] = useState<WorldCountriesProficiencySelection>([])
+  const [setupContinent, setSetupContinent] = useState<Continent | null>(() => initialScope?.kind === 'subregion' ? getSubregionDefinition(initialScope.subregionId).continent : null)
+  const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null)
+  const [activeRun, setActiveRun] = useState<ActiveDrillRun | null>(null)
+  const launchGeneration = useRef(0)
   const effectivePreferences = useMemo(
     () => ({ ...normalizeDrillSelection(preferences, activeCountries, selectionMetadata), mode: preferences.mode, order: preferences.order }),
     [activeCountries, preferences, selectionMetadata],

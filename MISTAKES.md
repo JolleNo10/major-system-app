@@ -64,3 +64,7 @@ and starved by a sibling: `[data-map-surface-dock-row] > [data-map-surface-dock]
   generic `Answer revealed` status. The test was corrected to assert the
   stable semantic output instead; reuse shared feedback components by testing
   their established contract rather than inventing workflow-specific copy.
+
+# Windows npm command entry points
+
+- PowerShell blocked the first focused verification command because `npx` resolved to the disabled `npx.ps1` shim. Use the host `npx.cmd` entry point for npm-backed commands when the repository is run under this execution policy.

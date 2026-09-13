@@ -5,24 +5,26 @@ import {
 } from '@/features/world-countries/learning/learningReadiness'
 
 /** Compact, visible legend for the one-status map ladder. */
-export function WorldCountriesMapLegend() {
+export function WorldCountriesMapLegend({ learningComplete = false }: { learningComplete?: boolean }) {
   return (
     <div
       data-testid="world-countries-map-legend"
-      aria-label="Map legend: learning and recall health"
+      aria-label={learningComplete ? 'Map legend: recall health' : 'Map legend: learning and recall health'}
       className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-zinc-400"
     >
-      <section aria-label="Learning" className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-        <p className="font-semibold uppercase tracking-wider text-zinc-500">Learning</p>
-        <ul className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-          {WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES.map(entry => (
-            <li key={entry.state} data-learning-state={entry.state} className="inline-flex items-center gap-1.5">
-              <span aria-hidden="true" className="h-2.5 w-2.5 shrink-0 rounded-sm border border-white/15" style={{ backgroundColor: entry.color, ...entry.swatchStyle }} />
-              <span>{entry.label}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
+      {!learningComplete && (
+        <section aria-label="Learning" className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <p className="font-semibold uppercase tracking-wider text-zinc-500">Learning</p>
+          <ul className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+            {WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES.map(entry => (
+              <li key={entry.state} data-learning-state={entry.state} className="inline-flex items-center gap-1.5">
+                <span aria-hidden="true" className="h-2.5 w-2.5 shrink-0 rounded-sm border border-white/15" style={{ backgroundColor: entry.color, ...entry.swatchStyle }} />
+                <span>{entry.label}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <section aria-label="Recall health" className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
         <p className="font-semibold uppercase tracking-wider text-zinc-500">Recall health</p>
         <ul className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">

@@ -36,7 +36,12 @@ import { deriveWorldCountriesJourneyPresentation, type WorldCountriesJourneyPres
 import { buildWorldCountriesTodayPlan, type WorldCountriesTodayLearningRecommendation, type WorldCountriesTodayPlan, type WorldCountriesTodayReviewOpportunity } from './todayPlan'
 
 export type WorldCountriesTodayNavigation =
-  | { area: 'drill'; subregionId: SubregionId }
+  | {
+      area: 'drill'
+      scope:
+        | { kind: 'world' }
+        | { kind: 'subregion'; subregionId: SubregionId }
+    }
   | { area: 'recite' }
 type EvidenceState =
   | { status: 'loading' }
@@ -208,6 +213,15 @@ export function WorldCountriesToday({
     ),
     [learningStates, recallProgress, scopedCountries],
   )
+  const worldLearningComplete = Boolean(
+    !continent
+    && evidence.status === 'ready'
+    && scopedCountries.length > 0
+    && learningReadinessByCountry.size === scopedCountries.length
+    && [...learningReadinessByCountry.values()].every(
+      readiness => readiness === 'COUNTRIES_AND_CAPITALS_LEARNED',
+    )
+  )
   const primaryStatusByCountry = useMemo(() => new Map(scopedCountries.map(country => [
     country.id,
     deriveWorldCountriesPrimaryStatus(
@@ -230,11 +244,13 @@ export function WorldCountriesToday({
         : []
     )))
   }, [primaryStatusByCountry])
-  const countryPatternsById = useMemo(() => new Map([...primaryStatusByCountry].flatMap(([countryId, status]) => (
-    status.kind === 'learning' && status.readiness === 'COUNTRIES_LEARNED'
-      ? [[countryId, createWorldCountriesLearningPattern('diagonal')] as const]
-      : []
-  ))), [primaryStatusByCountry])
+  const countryPatternsById = useMemo(() => new Map(scopedCountries.flatMap(country => (
+    worldLearningComplete
+      ? []
+      : learningReadinessByCountry.get(country.id) === 'COUNTRIES_LEARNED'
+        ? [[country.id, createWorldCountriesLearningPattern('diagonal')] as const]
+        : []
+  ))), [learningReadinessByCountry, scopedCountries, worldLearningComplete])
 
   const refreshAfterActivity = async () => {
     setRefreshing(true)
@@ -395,7 +411,7 @@ export function WorldCountriesToday({
   const completedRegionAction: LearningCompletedRegionAction | undefined = learningRun && regionCompletion
     ? {
         label: `Drill ${learningRun.recommendation.subregionLabel}`,
-        onAction: () => onNavigate({ area: 'drill', subregionId: learningRun.recommendation.subregionId }),
+        onAction: () => onNavigate({ area: 'drill', scope: { kind: 'subregion', subregionId: learningRun.recommendation.subregionId } }),
       }
     : undefined
 
@@ -534,7 +550,7 @@ export function WorldCountriesToday({
                 {activeSubregionLabel && <p data-active-subregion className="text-sm font-semibold text-cyan-200">Focus: {activeSubregionLabel}</p>}
               </div>
               <div className="mt-2">
-                <WorldCountriesMapLegend />
+                <WorldCountriesMapLegend learningComplete={worldLearningComplete} />
               </div>
             </div>
           )}
@@ -564,6 +580,18 @@ export function WorldCountriesToday({
                 {journeyActionLabel}
               </button>
             </TaskDock>
+          ) : worldLearningComplete ? (
+            <TaskDock variant="navigation" status={(
+                <div data-task-scope-context>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-cyan-300">Learning complete</p>
+                  <p className="mt-1 font-semibold text-zinc-100">World</p>
+                  <p className="mt-1 text-sm text-zinc-400">You can now drill the whole world whenever you want.</p>
+                </div>
+            )}>
+              <button type="button" data-primary-action disabled={refreshing} onClick={() => onNavigate({ area: 'drill', scope: { kind: 'world' } })} className="w-full rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-200 hover:border-cyan-400 hover:bg-cyan-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 disabled:cursor-not-allowed disabled:opacity-40">
+                Drill the world
+              </button>
+            </TaskDock>
           ) : canDrillCompletedRegion ? (
             <TaskDock variant="navigation" status={(
                 <div data-task-scope-context>
@@ -573,7 +601,7 @@ export function WorldCountriesToday({
                 </div>
             )}>
               <button type="button" data-primary-action disabled={refreshing} onClick={() => {
-                if (activeSubregionId) onNavigate({ area: 'drill', subregionId: activeSubregionId })
+                if (activeSubregionId) onNavigate({ area: 'drill', scope: { kind: 'subregion', subregionId: activeSubregionId } })
               }} className="w-full rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-200 hover:border-cyan-400 hover:bg-cyan-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 disabled:cursor-not-allowed disabled:opacity-40">
                 Drill {activeSubregionLabel}
               </button>

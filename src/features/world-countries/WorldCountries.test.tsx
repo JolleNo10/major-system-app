@@ -9,7 +9,7 @@ import { SettingsProvider } from '@/app/settings/SettingsContext'
 import { WorldCountries } from './WorldCountries'
 
 vi.mock('./drill/WorldCountriesDrill', () => ({
-  WorldCountriesDrill: ({ onExit, initialActivity, initialSubregionId }: { onExit?: () => void; initialActivity?: { kind: string; mode?: string }; initialSubregionId?: string }) => createElement('div', { 'data-testid': 'drill-workflow' }, createElement('button', { type: 'button', onClick: onExit }, 'Exit Drill'), `Drill workflow ${initialActivity?.kind ?? 'drill'} ${initialActivity?.mode ?? ''} ${initialSubregionId ?? ''}`),
+  WorldCountriesDrill: ({ onExit, initialActivity, initialScope }: { onExit?: () => void; initialActivity?: { kind: string; mode?: string }; initialScope?: { kind: string; subregionId?: string } }) => createElement('div', { 'data-testid': 'drill-workflow' }, createElement('button', { type: 'button', onClick: onExit }, 'Exit Drill'), ['Drill workflow', initialActivity?.kind ?? 'drill', initialActivity?.mode, initialScope?.kind, initialScope?.subregionId].filter(Boolean).join(' ')),
 }))
 
 vi.mock('./recite/WorldCountriesRecite', () => ({
@@ -17,10 +17,11 @@ vi.mock('./recite/WorldCountriesRecite', () => ({
 }))
 
 vi.mock('./today/WorldCountriesToday', () => ({
-  WorldCountriesToday: (props: { onNavigate?: (navigation: { area: 'drill'; subregionId: 'eastern-europe' }) => void; onSelectContinent?: (continent: 'Europe') => void; onWorld?: () => void }) => createElement('div', { 'data-testid': 'today-workflow' },
+  WorldCountriesToday: (props: { onNavigate?: (navigation: { area: 'drill'; scope: { kind: 'world' } | { kind: 'subregion'; subregionId: 'eastern-europe' } }) => void; onSelectContinent?: (continent: 'Europe') => void; onWorld?: () => void }) => createElement('div', { 'data-testid': 'today-workflow' },
     createElement('button', { type: 'button', onClick: () => props.onSelectContinent?.('Europe') }, 'Open Europe'),
     createElement('button', { type: 'button', onClick: props.onWorld }, 'Back to World'),
-    createElement('button', { type: 'button', 'data-testid': 'open-completed-region-drill', onClick: () => props.onNavigate?.({ area: 'drill', subregionId: 'eastern-europe' }) }, 'Drill Eastern Europe'),
+    createElement('button', { type: 'button', 'data-testid': 'open-completed-region-drill', onClick: () => props.onNavigate?.({ area: 'drill', scope: { kind: 'subregion', subregionId: 'eastern-europe' } }) }, 'Drill Eastern Europe'),
+    createElement('button', { type: 'button', 'data-testid': 'open-completed-world-drill', onClick: () => props.onNavigate?.({ area: 'drill', scope: { kind: 'world' } }) }, 'Drill the world'),
     'Guided home',
   ),
 }))
@@ -221,5 +222,14 @@ describe('World Countries guided shell', () => {
 
     expect(mount.querySelector('[data-testid="drill-workflow"]')?.textContent).toContain('Drill workflow drill')
     expect(mount.querySelector('[data-testid="drill-workflow"]')?.textContent).toContain('eastern-europe')
+  })
+
+  it('routes a completed-World Drill action to setup with the World scope', async () => {
+    const mount = await renderShell()
+
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="open-completed-world-drill"]')?.click())
+
+    expect(mount.querySelector('[data-testid="drill-workflow"]')?.textContent).toContain('Drill workflow drill world')
+    expect(mount.querySelector('[data-testid="drill-workflow"]')?.textContent).not.toContain('eastern-europe')
   })
 })
