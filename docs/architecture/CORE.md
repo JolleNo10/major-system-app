@@ -122,7 +122,6 @@ owner.
 
 ## Historical rationale
 
-The current shared-learning boundary resolves
-[ADR 0005](../adr/0005-shared-learning-domain.md). The shared mnemonic boundary
-resolves [ADR 0006](../adr/0006-shared-mnemonic-content.md). Load either ADR
-only when reconsidering the corresponding shared boundary.
+The shared-learning boundary was decided in ADR 0005 and the shared mnemonic
+boundary in ADR 0006, both archived under `docs/archive/adr/`. The rules above
+are authoritative; the records only explain how they came about.

@@ -6,7 +6,6 @@
         "repowise": true
     },
     "search.exclude": {
-        "docs/adr/**": true,
-        "docs/changes/**": true
+        "docs/archive/**": true
     }
 }

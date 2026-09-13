@@ -12,9 +12,9 @@ read `docs/architecture/features/WORLD_COUNTRIES.md`.
 - Load `docs/architecture/SYSTEM.md` for public exports, app integration,
   ownership, or cross-feature work.
 
-Legacy ADRs and archived change records are historical rationale, not normal
-task context. If a task explicitly requires one, check
-`docs/adr/LEGACY_CLASSIFICATION.md` before loading it.
+`docs/archive/` is frozen history and never normal task context. Enduring
+World Countries rules and the alternatives they rejected are in the feature
+architecture document above.
 
 ## Scope and starting points
 

@@ -12,7 +12,7 @@ read `docs/architecture/features/PI.md`.
 - Load `docs/architecture/SYSTEM.md` for public exports, Major System or app
   integration, ownership, or cross-feature work.
 
-ADRs are historical rationale, not normal task context.
+`docs/archive/` is frozen history, not normal task context.
 
 ## Scope and starting points
 

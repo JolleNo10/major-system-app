@@ -60,8 +60,6 @@ not candidates for generic `core/` merely because several features use them.
 
 ## Historical rationale
 
-This canonical invariant set implements
-[ADR 0012](../adr/0012-agent-oriented-current-state-architecture-documentation.md)
-and its documentation-artifact refinement,
-[ADR 0021](../adr/0021-separate-architectural-decisions-from-change-specifications.md).
-Load them only when reconsidering the documentation or context-routing model.
+This invariant set grew out of ADR 0012 and its refinements ADR 0021 and
+ADR 0034, archived under `docs/archive/adr/`. This document is canonical; the
+records are history.

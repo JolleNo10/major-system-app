@@ -1,10 +1,10 @@
 # Issue tracker: GitHub
 
-GitHub issues own work tracking, assignment, triage, and discussion. A
-substantial feature or functionality change may link a repository Change Spec
-under `docs/changes/`; that spec is the compiled delivery contract, while the
-issue remains the live work item. Small fixes can remain fully specified in the
-issue. Follow `docs/changes/README.md` when a Change Spec is needed.
+GitHub issues own work tracking, assignment, triage, and discussion, and they
+own delivery scope outright: the repository no longer keeps Change Specs. Spell
+out the scope and acceptance criteria in the issue itself. Durable
+architectural rules go into `docs/architecture/` in the same change as the
+code — see `AGENTS.md`.
 
 Use the `gh` CLI for issue operations.
 
@@ -44,9 +44,8 @@ bug "WordListGrid crashes when CSV has BOM"
 ## Conventions
 
 - **Create an issue**: `gh issue create --title "..." --body "..."`. Use a heredoc for multi-line bodies.
-- **Link a Change Spec**: add its repository path to the issue body and add the
-  issue URL to the Change Spec metadata. A `ready-for-agent` issue with a Change
-  Spec must link a spec whose status is `Ready`.
+- **Scope an issue**: a `ready-for-agent` issue carries its own observable
+  acceptance criteria in the body. There is no separate spec to link.
 - **Read an issue**: `gh issue view <number> --comments`, filtering comments by `jq` and also fetching labels.
 - **List issues**: `gh issue list --state open --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'` with appropriate `--label` and `--state` filters.
 - **Comment on an issue**: `gh issue comment <number> --body "..."`

@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import {
+  archiveRoot,
   collectCurrentStateDocs,
   extractDocCitations,
   extractDocLinks,
@@ -26,7 +27,7 @@ describe('current-state documentation citations', () => {
     expect(docs).toContain('docs/architecture/INVARIANTS.md')
     expect(docs).toContain('docs/architecture/features/WORLD_COUNTRIES.md')
     expect(docs).toContain('src/features/world-countries/AGENTS.md')
-    expect(docs.filter(doc => doc.startsWith('docs/adr/') || doc.startsWith('docs/changes/'))).toEqual([])
+    expect(docs.filter(doc => doc.startsWith(archiveRoot))).toEqual([])
   })
 
   it('cites enough source to be a meaningful guard', () => {
@@ -57,7 +58,7 @@ describe('current-state documentation citations', () => {
 
   it('resolves relative document links against the linking document', () => {
     const markdown = [
-      'See [Core](CORE.md), [Pi](features/PI.md), and [a decision](../adr/0001-page-layout-panel-pattern.md).',
+      'See [Core](CORE.md), [Pi](features/PI.md), and [a decision](../archive/adr/0001-page-layout-panel-pattern.md).',
       'External [docs](https://example.com/x.md), [mail](mailto:a@b.c), and [a section](#ownership) are not paths.',
       'Neither is an absolute [link](/docs/architecture/SYSTEM.md).',
     ].join('\n')
@@ -65,7 +66,7 @@ describe('current-state documentation citations', () => {
     expect(extractDocLinks({ path: 'docs/architecture/SYSTEM.md', markdown })).toEqual([
       { doc: 'docs/architecture/SYSTEM.md', target: 'docs/architecture/CORE.md', kind: 'file' },
       { doc: 'docs/architecture/SYSTEM.md', target: 'docs/architecture/features/PI.md', kind: 'file' },
-      { doc: 'docs/architecture/SYSTEM.md', target: 'docs/adr/0001-page-layout-panel-pattern.md', kind: 'file' },
+      { doc: 'docs/architecture/SYSTEM.md', target: 'docs/archive/adr/0001-page-layout-panel-pattern.md', kind: 'file' },
     ])
   })
 

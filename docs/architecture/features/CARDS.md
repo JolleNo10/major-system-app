@@ -105,7 +105,5 @@ parsers, role helpers, and drill engines remain internal.
 
 ## Historical rationale
 
-Cards packaging and PAO ownership resolve
-[ADR 0002](../../adr/0002-package-by-feature.md) and
-[ADR 0003](../../adr/0003-cards-subfolders-pao.md). Load them only when
-reconsidering those boundaries.
+Cards packaging and PAO ownership were decided in ADR 0002 and ADR 0003,
+archived under `docs/archive/adr/`. This document is authoritative.

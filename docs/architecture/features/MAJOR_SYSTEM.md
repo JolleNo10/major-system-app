@@ -95,6 +95,5 @@ contexts private unless a demonstrated external consumer needs them.
 
 ## Historical rationale
 
-Current feature packaging resolves
-[ADR 0002](../../adr/0002-package-by-feature.md). Load it only when
-reconsidering package ownership or the public boundary.
+Feature packaging was decided in ADR 0002, archived under `docs/archive/adr/`.
+This document is authoritative.

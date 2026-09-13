@@ -172,8 +172,6 @@ unless a concrete external consumer requires them.
 
 ## Historical rationale
 
-The current Pi structure resolves
-[ADR 0004](../../adr/0004-pi-by-tab.md), while shared learning and mnemonic
-contracts resolve [ADR 0005](../../adr/0005-shared-learning-domain.md) and
-[ADR 0006](../../adr/0006-shared-mnemonic-content.md). Load them only when
-reconsidering those boundaries.
+The Pi structure was decided in ADR 0004, and the shared learning and mnemonic
+contracts in ADR 0005 and ADR 0006. Those records are archived under
+`docs/archive/adr/` and are history, not current authority.

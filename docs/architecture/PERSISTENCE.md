@@ -183,8 +183,8 @@ follows the defining module and feature namespace.
 
 ## Historical rationale
 
-The shared learning and mnemonic persistence boundaries resolve
-[ADR 0005](../adr/0005-shared-learning-domain.md) and
-[ADR 0006](../adr/0006-shared-mnemonic-content.md). The requirement to expose
-the single IndexedDB owner as mandatory agent context resolves
-[ADR 0012](../adr/0012-agent-oriented-current-state-architecture-documentation.md).
+The shared learning and mnemonic persistence boundaries were decided in
+ADR 0005 and ADR 0006, and exposing the single IndexedDB owner as mandatory
+agent context in ADR 0012. Those records are archived under
+`docs/archive/adr/` and explain how the rules above came about; they do not
+restate them.

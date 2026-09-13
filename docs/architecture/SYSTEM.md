@@ -16,13 +16,12 @@ next document required by the task:
 | A global rule itself | [INVARIANTS.md](INVARIANTS.md) |
 
 Do not load every linked document. A feature-local change normally needs only
-that feature document and relevant source. Load a specific ADR only when the
-rationale behind a current rule is needed.
+that feature document and relevant source.
 
-A named Change Spec under `docs/changes/` is delivery context, not an
-architecture source. Load only the spec linked by the task or issue and resolve
-any conflict in favor of this current-state layer until the architectural
-change is explicitly decided and implemented.
+This layer is the only current-state authority. `docs/archive/` holds retired
+decision records and delivery specs; it is frozen history, excluded from
+default search, and is never loaded during normal work. See `AGENTS.md` for
+the working agreement and `INVARIANTS.md` for the global rules.
 
 ## Runtime model
 
@@ -128,11 +127,10 @@ boundary should load only the documents for the affected features.
   [PERSISTENCE.md](PERSISTENCE.md).
 - Changing app/core/feature ownership, a feature barrel, an app integration
   seam, or a cross-feature edge requires this file plus affected feature docs.
-- Changing a documented invariant requires [INVARIANTS.md](INVARIANTS.md) and
-  the relevant historical rationale.
+- Changing a documented invariant requires [INVARIANTS.md](INVARIANTS.md).
 - If current source contradicts these documents, inspect the smallest relevant
-  implementation slice and then the directly linked ADR; do not reconstruct
-  architecture by loading all ADRs or scanning sibling features.
+  implementation slice and correct the document. Do not reconstruct
+  architecture from archived records or by scanning sibling features.
 
 ## Source anchors
 
@@ -146,10 +144,8 @@ boundary should load only the documents for the affected features.
 
 ## Historical rationale
 
-The package-by-feature and composition boundaries resolve
-[ADR 0001](../adr/0001-page-layout-panel-pattern.md) and
-[ADR 0002](../adr/0002-package-by-feature.md). The current documentation and
-context-loading model resolves
-[ADR 0012](../adr/0012-agent-oriented-current-state-architecture-documentation.md)
-and [ADR 0021](../adr/0021-separate-architectural-decisions-from-change-specifications.md).
-Load those ADRs only when their rationale is needed.
+The package-by-feature and composition boundaries were decided in ADR 0001 and
+ADR 0002; the documentation and context-loading model in ADR 0012, ADR 0021,
+and ADR 0034. Those records are archived under `docs/archive/adr/` and are
+history, not current authority. Read one only to understand how a rule came
+about, never to establish what is true now.

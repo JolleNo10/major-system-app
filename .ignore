@@ -1,0 +1,7 @@
+# Keep frozen history out of default search. ripgrep reads this file, and it is
+# what Claude Code's Grep, Codex, and VS Code search use underneath.
+#
+# Current truth is docs/architecture/. The archive is still tracked by git and
+# still browsable - reaching it is just deliberate:
+#   rg --no-ignore <pattern> docs/archive
+docs/archive/

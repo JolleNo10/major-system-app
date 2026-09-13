@@ -26,7 +26,7 @@ return exactly what is asked for, so a complete-looking result proves nothing
 about what was outside the request.
 
 - Never infer a file's length from a ranged read. A read of the first 101 lines of `src/architecture/dependencyRules.ts` was mistaken for the whole file, producing a false report that an exported function was missing; the file is 135 lines and exports it. Get the line count first, or read the file whole.
-- Treat the workspace structure listing as truncated. Counting `docs/adr/` entries from that elided tree gave 46 ADRs; there are 31. Count with `Get-ChildItem docs/adr -File -Filter '0*.md'`.
+- Treat the workspace structure listing as truncated. Counting `docs/archive/adr/` entries from that elided tree gave 46 ADRs; there are 31. Count with `Get-ChildItem docs/archive/adr -File -Filter '0*.md'`.
 - A `catch` block's location is not evidence that an error is swallowed. Read the handler body and confirm whether its state reaches the DOM. `GeographyMnemonicEditor` and `InlineOrderEditor` both keep the draft and render `role="alert"`, and were wrongly reported as failing silently.
 - `grep_search` can miss matches that exist on disk. When a negative result is load-bearing, confirm with `Select-String` against the files themselves.
 - Negative and counting claims need exhaustive evidence, not a sample. State the command that establishes such a claim; if there is none, the claim is not established.
