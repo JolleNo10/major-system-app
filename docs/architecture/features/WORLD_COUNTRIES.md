@@ -160,6 +160,8 @@ coordinators do not carry generic version counters solely to force a re-read.
 
 ## Activity model
 
+### Today and the derived plan
+
 Today derives its plan from raw core evidence and applicable Learning
 milestones. It reviews only `location-to-country` and `country-to-capital`,
 derives the current whole-Subregion Learning recommendation independently of
@@ -226,6 +228,8 @@ own completion and next-action narration while map context remains scope
 orientation. Completed Review counters are transient Home feedback rather than
 another progress authority.
 
+### Derived Progress view
+
 The derived Progress view keeps World -> Continent and Continent -> Subregion
 hierarchy. Its rows combine complete-country totals, the existing core recall
 state distribution, and, for Subregions, the existing Journey presentation.
@@ -236,6 +240,8 @@ denominator; for example, 9/10 mastered core skills can accompany 4/5 fully
 mastered Countries. Continent rows also show a core-recall-complete region
 rollup. Progress rails
 explain scope and state semantics and do not choose Review or Journey actions.
+
+### Review spacing and recall projection
 
 World Countries review spacing is also derived from retained raw attempts. The
 fixed `1, 3, 7, 14, 30, 60` day ladder advances on clean typed-recall days and
@@ -251,6 +257,8 @@ Developing to Weak, and a retry cannot restore Mastered without two new
 qualifying explicit-recall dates. `hasEverMastered` remains historical
 evidence for the established-layer fallback and is never cleared by a later
 mistake.
+
+### Playground activities
 
 Continent, Playground, and Progress are transient views within the Home
 composition. Playground selects the activity before entering the shared setup
@@ -325,6 +333,8 @@ The resolved Country membership is ordered through `geography/` and snapshotted
 into the active Drill/Practice session when it starts. Guided Learning resolves
 its own scope and milestone semantics through `today/` and `learning/flows/`.
 
+### Learning sets and staged flows
+
 World Countries Learning introduces items in bounded Sets. The persisted
 `New items per set` setting is snapshotted when a multi-Subregion Learning run
 starts and applied independently to each Subregion. The feature-local plan
@@ -358,6 +368,8 @@ non-limiting speed threshold and actual answer latency. Location, Country-name,
 Capital, and Combined scopes each start fresh scheduler state. Only the
 whole-Subregion ordered Final recall writes the owning Learning milestone;
 journey and scheduler state are not persisted.
+
+### The learner-facing Journey
 
 The learner-facing Journey is a derived presentation over existing Subregion
 milestones and recall/proficiency evidence. Its guided learning path is
@@ -432,7 +444,7 @@ Journey panel does not duplicate the dock action. The compact Learning context
 rail stays present through Final recall as a quiet, full-scope, read-only
 orientation surface.
 
-## Learning Readiness
+## Learning Readiness and map status
 
 Durable Learning Readiness is derived from `countriesLearnedAt` and
 `capitalsLearnedAt` and has exactly three internal curriculum states:
@@ -450,11 +462,6 @@ readiness is not the Today curriculum gate: the guided planner requires the
 durable Country milestone or the separate complete-recall fallback described
 above before recommending Capital Learning.
 
-World Countries maps use the shared quiet treatment of `#202326` background,
-`#2A2D33` / 1.05 Country borders, and `#DDE0E5` labels at 0.8 opacity.
-Geographic selection uses `#73CDD4`; answer-domain task accents remain owned by
-the existing Country/Capital answer semantics.
-
 Today map status uses the established-layer form of this truth: a durable
 layer is authoritative, while the existing all-active-Country historical
 `hasEverMastered` fallback may establish the display/planning signal without
@@ -471,6 +478,8 @@ internal Countries + Capitals milestone, but do not add a third map pattern.
 The standalone Learn Capitals flow remains runnable from its intentional
 non-Today entry points. The Today guided recommendation uses the Country
 establishment gate above rather than target introduction alone.
+
+## Recite
 
 Recite is a sibling activity with exactly three ordered modes: Countries,
 Countries + Capitals, and Countries from Capitals. It resolves the same
@@ -500,6 +509,13 @@ incorrect answers transition after the correction dwell. Recite is the workflow
 exception: an incorrect answer keeps the expected answer hidden, then resets
 the same prompt for another focused attempt, while Reveal / Skip resolves and
 advances automatically after the correction dwell.
+
+## Maps and camera presentation
+
+World Countries maps use the shared quiet treatment of `#202326` background,
+`#2A2D33` / 1.05 Country borders, and `#DDE0E5` labels at 0.8 opacity.
+Geographic selection uses `#73CDD4`; answer-domain task accents remain owned by
+the existing Country/Capital answer semantics.
 
 Applicable active Today, Drill, Learning, Practice, Quiz, and Recite
 learning/recall surfaces use the authored frame for their current Subregion,
@@ -886,5 +902,7 @@ flowchart TD
 - `src/features/world-countries/mnemonics/GeographyMnemonicEditor.tsx`
 - `src/features/world-countries/ui/InlineOrderEditor.tsx`
 - `src/app/layout/PageLayoutContext.tsx`
+
+## Historical rationale
 
 The durable Learning-versus-Practice boundary remains recorded in ADR 0024.
