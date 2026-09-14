@@ -5,8 +5,9 @@ import './ContinentCompletionDialog.css'
 
 export interface ContinentCompletionDialogProps {
   continent: Continent
-  nextContinent: Continent
-  onContinue: () => void
+  /** Absent once the World Journey has no remaining Continent to hand off to. */
+  nextContinent?: Continent
+  onContinue?: () => void
   onWorld: () => void
   onDismiss: () => void
   onStrengthen?: () => void
@@ -36,6 +37,7 @@ export function ContinentCompletionDialog({
   const dialogRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
   const descriptionId = useId()
+  const handoff = nextContinent && onContinue ? { nextContinent, onContinue } : null
 
   useOverlay(dialogRef, onDismiss)
 
@@ -95,24 +97,26 @@ export function ContinentCompletionDialog({
           <p className="relative mt-5 text-xs font-bold uppercase tracking-[0.30em] text-cyan-100/90">{continent.toUpperCase()}</p>
           <h2 id={titleId} className="relative mt-2 text-4xl font-black tracking-tight text-white sm:text-5xl">Complete!</h2>
           <p id={descriptionId} className="relative mt-4 text-base text-zinc-200 sm:text-lg">You've learned all countries and capitals in {continent}.</p>
-          <p className="relative mt-1 text-sm text-zinc-400">Your journey continues.</p>
+          {handoff && <p className="relative mt-1 text-sm text-zinc-400">Your journey continues.</p>}
         </section>
 
         <div className="px-6 pb-7 pt-6 sm:px-8">
-          <button
-            type="button"
-            data-testid="continent-completion-continue"
-            className="grid w-full grid-cols-[1fr_auto] items-center gap-4 rounded-2xl border border-cyan-300/60 bg-gradient-to-b from-cyan-600 to-cyan-700 px-5 py-4 text-left shadow-[0_12px_30px_rgba(8,145,178,0.18)] transition hover:from-cyan-500 hover:to-cyan-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
-            onClick={onContinue}
-          >
-            <span>
-              <span className="text-lg font-black text-white">Continue journey → {nextContinent}</span>
-              <span className="mt-1 block text-sm text-cyan-50/85">Start the next continent in your learning journey</span>
-            </span>
-            <span aria-hidden="true" className="text-3xl leading-none text-cyan-50">→</span>
-          </button>
+          {handoff && (
+            <button
+              type="button"
+              data-testid="continent-completion-continue"
+              className="grid w-full grid-cols-[1fr_auto] items-center gap-4 rounded-2xl border border-cyan-300/60 bg-gradient-to-b from-cyan-600 to-cyan-700 px-5 py-4 text-left shadow-[0_12px_30px_rgba(8,145,178,0.18)] transition hover:from-cyan-500 hover:to-cyan-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+              onClick={handoff.onContinue}
+            >
+              <span>
+                <span className="text-lg font-black text-white">Continue journey → {handoff.nextContinent}</span>
+                <span className="mt-1 block text-sm text-cyan-50/85">Start the next continent in your learning journey</span>
+              </span>
+              <span aria-hidden="true" className="text-3xl leading-none text-cyan-50">→</span>
+            </button>
+          )}
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className={`grid gap-3 sm:grid-cols-2 ${handoff ? 'mt-4' : ''}`}>
             <button
               type="button"
               data-testid="continent-completion-view-world"

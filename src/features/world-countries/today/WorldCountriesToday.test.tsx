@@ -1004,7 +1004,7 @@ describe('World Countries Today', () => {
     expect(countryLearningFlowMock).toHaveBeenCalledWith(expect.objectContaining({ subregion: 'central-europe' }))
   })
 
-  it('uses the Subregion celebration for a non-final Relearn in a fully learned Continent', async () => {
+  it('celebrates the Continent after a non-final Subregion Relearn in a fully learned Continent', async () => {
     const northern = countries.find(country => country.subregionId === 'northern-europe')!
     const western = countries.find(country => country.subregionId === 'western-europe')!
     const africa = countries.find(country => country.subregionId === 'east-africa')!
@@ -1032,9 +1032,49 @@ describe('World Countries Today', () => {
     expect(countryLearningFlowMock).toHaveBeenLastCalledWith(expect.objectContaining({
       subregion: nonFinalSubregion.subregionId,
       recordCompletion: false,
+      completionCelebration: 'continent',
+    }))
+    expect(mount.querySelector('[data-celebration-level="continent"]')).not.toBeNull()
+    expect(mount.querySelector('[data-celebration-level="subregion"]')).toBeNull()
+
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-testid="country-learning-done"]')?.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mount.querySelector('[data-continent-completion-dialog]')).not.toBeNull()
+  })
+
+  it('keeps the Subregion celebration when a Relearn leaves the Continent incomplete', async () => {
+    const northern = countries.find(country => country.subregionId === 'northern-europe')!
+    const western = countries.find(country => country.subregionId === 'western-europe')!
+    const africa = countries.find(country => country.subregionId === 'east-africa')!
+    activeCountries = [northern, western, africa]
+    const effectiveSubregions = getSubregionsForContinentInEffectiveOrder('Europe', activeCountries, getContinentMetadata('Europe'))
+    const finalSubregion = activeCountries.find(country => country.subregionId === effectiveSubregions[effectiveSubregions.length - 1]?.id)!
+    const at = Date.now()
+    // Only the Relearn target is learned: the other Europe Subregion keeps the Continent incomplete.
+    markSubregionCountriesLearned(finalSubregion.subregionId, at, activeCountries)
+    markSubregionCapitalsLearned(finalSubregion.subregionId, at + 1, activeCountries)
+    configureContinentCompletionPlans({
+      continentRecommendation: null,
+      worldRecommendation: recommendation('learn-countries', [africa.id], africa),
+    })
+
+    const mount = await renderToday({ continent: 'Europe' })
+    let railMount = renderLatestRails()
+    act(() => [...railMount.querySelectorAll<HTMLButtonElement>('button')]
+      .find(button => button.textContent?.startsWith(finalSubregion.subregion))?.click())
+    railMount = renderLatestRails()
+
+    await act(async () => railMount.querySelector<HTMLButtonElement>('[data-relearn-track="countries"]')?.click())
+
+    expect(countryLearningFlowMock).toHaveBeenLastCalledWith(expect.objectContaining({
+      subregion: finalSubregion.subregionId,
+      recordCompletion: false,
       completionCelebration: 'subregion',
     }))
-    expect(mount.querySelector('[data-celebration-level="subregion"]')).not.toBeNull()
     expect(mount.querySelector('[data-celebration-level="continent"]')).toBeNull()
 
     await act(async () => {
@@ -1138,7 +1178,7 @@ describe('World Countries Today', () => {
     expect(mount.querySelector('[data-continent-completion-dialog]')).not.toBeNull()
   })
 
-  it('does not show the Continent completion popup after final Relearn when the World Journey is complete', async () => {
+  it('shows the Continent completion popup without a handoff when the World Journey is complete', async () => {
     const northern = countries.find(country => country.subregionId === 'northern-europe')!
     const western = countries.find(country => country.subregionId === 'western-europe')!
     const africa = countries.find(country => country.subregionId === 'east-africa')!
@@ -1173,10 +1213,15 @@ describe('World Countries Today', () => {
       await Promise.resolve()
     })
 
-    expect(mount.querySelector('[data-continent-completion-dialog]')).toBeNull()
+    const dialog = mount.querySelector<HTMLElement>('[data-continent-completion-dialog]')
+    expect(dialog).not.toBeNull()
+    expect(dialog?.textContent).toContain('Complete!')
+    expect(dialog?.textContent).toContain('View the World')
+    expect(dialog?.querySelector('[data-testid="continent-completion-continue"]')).toBeNull()
+    expect(dialog?.textContent).not.toContain('Continue journey')
   })
 
-  it('does not show the Continent completion popup when final Relearn exits early', async () => {
+  it('does not show the Continent completion popup when a Relearn exits early', async () => {
     const northern = countries.find(country => country.subregionId === 'northern-europe')!
     const western = countries.find(country => country.subregionId === 'western-europe')!
     const africa = countries.find(country => country.subregionId === 'east-africa')!
@@ -1714,13 +1759,39 @@ describe('World Countries Today', () => {
     expect(dialog?.querySelector('[data-testid="continent-completion-view-world"]')).not.toBeNull()
   })
 
-  it('does not show the Continent celebration when the World Journey is complete', async () => {
+  it('shows the Continent celebration without a handoff when the World Journey is complete', async () => {
     const europe = countries.find(country => country.subregionId === 'northern-europe')!
     const africa = countries.find(country => country.subregionId === 'east-africa')!
     activeCountries = [europe, africa]
     markSubregionCountriesLearned(europe.subregionId, Date.now(), activeCountries)
     const continentRecommendation = recommendation('learn-capitals', [europe.id], europe)
     configureContinentCompletionPlans({ continentRecommendation, worldRecommendation: null })
+    const mount = await renderToday({ continent: 'Europe' })
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-today-action="journey"]')?.click())
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="complete-capital-learning"]')?.click())
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-testid="capital-learning-done"]')?.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const dialog = mount.querySelector<HTMLElement>('[data-continent-completion-dialog]')
+    expect(dialog).not.toBeNull()
+    expect(dialog?.textContent).toContain('Complete!')
+    expect(dialog?.querySelector('[data-testid="continent-completion-continue"]')).toBeNull()
+    expect(dialog?.textContent).not.toContain('Continue journey')
+  })
+
+  it('does not show the Continent celebration while the World planner still recommends this Continent', async () => {
+    const europe = countries.find(country => country.subregionId === 'northern-europe')!
+    const africa = countries.find(country => country.subregionId === 'east-africa')!
+    activeCountries = [europe, africa]
+    markSubregionCountriesLearned(europe.subregionId, Date.now(), activeCountries)
+    const continentRecommendation = recommendation('learn-capitals', [europe.id], europe)
+    configureContinentCompletionPlans({
+      continentRecommendation,
+      worldRecommendation: recommendation('learn-capitals', [europe.id], europe),
+    })
     const mount = await renderToday({ continent: 'Europe' })
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-today-action="journey"]')?.click())
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="complete-capital-learning"]')?.click())

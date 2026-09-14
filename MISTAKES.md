@@ -75,3 +75,23 @@ and starved by a sibling: `[data-map-surface-dock-row] > [data-map-surface-dock]
   patch context placed the combined-ready assertion in a Set-ready test. Use
   the repository's native DOM assertions and anchor repeated edits on the
   enclosing test name or a unique nearby assertion.
+
+# Positional proxies for state predicates
+
+- The Continent completion badge did not re-fire when a learner relearned a
+  Subregion of an already-complete Continent. The Relearn path asked "is this
+  the last Subregion in the effective Continent order?"
+  (`completedRunIsFinalContinentSubregion`) instead of "is this Continent fully
+  learned?", even though the curriculum path next to it already used the real
+  readiness predicate. A positional proxy is wrong in both directions: no
+  celebration for any other Subregion of a complete Continent, and the big
+  Continent celebration for the last Subregion of an incomplete one. Derive
+  milestone semantics from the state they describe; authored order carries no
+  completion meaning.
+- Two fix attempts failed because the tests encoded the proxy. `'uses the
+  Subregion celebration for a non-final Relearn in a fully learned Continent'`
+  asserted the defect as intended behaviour, so every correct fix turned it red
+  and every green fix preserved the bug. When a test names a proxy
+  (`non-final`, `last`, `first`) rather than the condition it stands for,
+  re-express the test before changing the code, and confirm a new regression
+  test fails against the unfixed source.

@@ -61,7 +61,8 @@ interface LearningRun {
 
 interface ContinentCompletionCelebration {
   continent: Continent
-  nextContinent: Continent
+  /** Absent once the World Journey has no remaining Continent to hand off to. */
+  nextContinent?: Continent
 }
 
 interface ContinentCompletionLookup {
@@ -307,15 +308,12 @@ export function WorldCountriesToday({
           preferredJourneyContinent: continentCompletionLookup.preferredJourneyContinent,
         })
         const nextRecommendation = worldPlan.curriculumRecommendation
-        if (
-          cancelled
-          || continentCompletionLookup.continent !== continent
-          || !nextRecommendation
-          || nextRecommendation.continent === continentCompletionLookup.continent
-        ) return
+        if (cancelled || continentCompletionLookup.continent !== continent) return
+        // Remaining Journey work inside this Continent means it is not complete after all.
+        if (nextRecommendation && nextRecommendation.continent === continentCompletionLookup.continent) return
         setContinentCompletionCelebration({
           continent: continentCompletionLookup.continent,
-          nextContinent: nextRecommendation.continent,
+          ...(nextRecommendation ? { nextContinent: nextRecommendation.continent } : {}),
         })
       } catch {
         // This optional handoff must not block the completed Continent hub.
@@ -481,16 +479,18 @@ export function WorldCountriesToday({
       recallProgress: recallProgress ?? new Map(),
     })
   }, [evidence.status, learningRun, learningStates, recallProgress, scopedCountries])
-  const completedRunIsFinalContinentSubregion = useMemo(() => {
+  /**
+   * Whether the completed run's Continent is fully learned. Continent celebration semantics derive
+   * from learning completeness, never from the run's Subregion position in the Continent order.
+   */
+  const completedRunContinentFullyLearned = useMemo(() => {
     if (!learningRun) return false
     const continentCountries = activeCountries.filter(country => country.continent === learningRun.recommendation.continent)
-    const effectiveSubregions = getSubregionsForContinentInEffectiveOrder(
-      learningRun.recommendation.continent,
-      continentCountries,
-      getContinentMetadata(learningRun.recommendation.continent),
-    )
-    return effectiveSubregions[effectiveSubregions.length - 1]?.id === learningRun.recommendation.subregionId
-  }, [activeCountries, geographyRevision, learningRun])
+    if (continentCountries.length === 0) return false
+    return continentCountries.every(country => (
+      learningReadinessByCountry.get(country.id) === 'COUNTRIES_AND_CAPITALS_LEARNED'
+    ))
+  }, [activeCountries, learningReadinessByCountry, learningRun])
   const finishLearning = () => {
     const nextRecommendation = plan?.curriculumRecommendation
     if (
@@ -508,14 +508,14 @@ export function WorldCountriesToday({
     void refreshAfterActivity()
   }
   const completeLearning = () => {
-    const completedFinalRelearnContinent = learningRun?.kind === 'relearn'
+    const completedRelearnContinent = learningRun?.kind === 'relearn'
       && continent
       && learningRun.recommendation.continent === continent
-      && completedRunIsFinalContinentSubregion
+      && completedRunContinentFullyLearned
       ? learningRun.recommendation.continent
       : null
     finishLearning()
-    if (completedFinalRelearnContinent) requestContinentCompletionHandoff(completedFinalRelearnContinent)
+    if (completedRelearnContinent) requestContinentCompletionHandoff(completedRelearnContinent)
   }
 
   const scopeSummaries = useMemo(() => {
@@ -579,15 +579,8 @@ export function WorldCountriesToday({
     : undefined
   const completionCelebration: LearningCompletionCelebration | undefined = useMemo(() => {
     if (!learningRun || !regionCompletion) return undefined
-    if (learningRun.kind === 'relearn') {
-      return completedRunIsFinalContinentSubregion ? 'continent' : 'subregion'
-    }
-    const continentCountries = activeCountries.filter(country => country.continent === learningRun.recommendation.continent)
-    if (continentCountries.length === 0) return 'subregion'
-    return continentCountries.every(country => (
-      learningReadinessByCountry.get(country.id) === 'COUNTRIES_AND_CAPITALS_LEARNED'
-    )) ? 'continent' : 'subregion'
-  }, [activeCountries, completedRunIsFinalContinentSubregion, learningReadinessByCountry, learningRun, regionCompletion])
+    return completedRunContinentFullyLearned ? 'continent' : 'subregion'
+  }, [completedRunContinentFullyLearned, learningRun, regionCompletion])
   const completedRegionAction: LearningCompletedRegionAction | undefined = learningRun?.kind === 'curriculum' && regionCompletion
     ? {
         label: `Drill ${learningRun.recommendation.subregionLabel}`,
@@ -613,6 +606,7 @@ export function WorldCountriesToday({
   }
   const dismissContinentCompletion = useCallback(() => {
     setContinentCompletionCelebration(null)
+    setContinentCompletionLookup(null)
   }, [])
 
   if (showProgress) {
@@ -780,18 +774,18 @@ export function WorldCountriesToday({
         <ContinentCompletionDialog
           continent={continentCompletionCelebration.continent}
           nextContinent={continentCompletionCelebration.nextContinent}
-          onContinue={() => {
+          onContinue={continentCompletionCelebration.nextContinent ? () => {
             const nextContinent = continentCompletionCelebration.nextContinent
-            setContinentCompletionCelebration(null)
-            onSelectContinent?.(nextContinent, nextContinent)
-          }}
+            dismissContinentCompletion()
+            if (nextContinent) onSelectContinent?.(nextContinent, nextContinent)
+          } : undefined}
           onWorld={() => {
-            setContinentCompletionCelebration(null)
+            dismissContinentCompletion()
             navigateWorld()
           }}
           onDismiss={dismissContinentCompletion}
           onStrengthen={plan?.reviewOpportunity ? () => {
-            setContinentCompletionCelebration(null)
+            dismissContinentCompletion()
             startReview()
           } : undefined}
         />

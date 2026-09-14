@@ -434,6 +434,20 @@ scheduling and curriculum derivation are separate sources of truth. A selected
 learned Subregion can remain the Journey orientation while the hub falls back to
 the scope's planner recommendation when unfinished curriculum remains elsewhere.
 
+A learned Subregion can be relearned from the guided rails. A Relearn run is
+non-durable: it writes no milestone and no evidence, exposes no next-region
+handoff, and never clears existing completion. Completion celebration level is
+derived from learning completeness and never from the run Subregion's position
+in the effective Continent order. A completed run celebrates at Continent level
+when every Country in the run's Continent has an established Countries +
+Capitals layer, and at Subregion level otherwise. The Continent completion badge
+follows the same predicate, so relearning any Subregion of a still-complete
+Continent re-presents it, while a run that leaves the Continent incomplete
+presents neither the Continent celebration nor the badge. The badge's
+next-Continent handoff is optional: it is omitted when the World Journey has no
+remaining Continent, and the badge is suppressed entirely while the World
+planner still recommends Journey work inside the completed Continent.
+
 Guided Learning presents the internal staged phases with learner-facing
 language: Meet, Find, Recall, Mix, and Final recall. One-Set learner-facing
 context uses the item or pair count without meaningless Set 1 ceremony;
@@ -883,6 +897,11 @@ flowchart TD
 - Durable Learning completion may be presented to learners as Countries learned
   or Capitals learned; internal establishment/readiness names and milestone
   semantics remain unchanged.
+- Continent celebration level and the Continent completion badge derive from
+  Continent learning completeness. A Subregion's position in the effective
+  Continent order is never a proxy for completion: the last authored Subregion
+  carries no completion meaning, and reordering Subregions cannot change which
+  runs celebrate.
 - Active Drill recall suppresses map progress treatments until feedback.
 - Geography and proficiency scope sources are never combined. Selecting
   proficiency clears Subregions; selecting a Subregion, Entire Continent, or
@@ -928,6 +947,7 @@ flowchart TD
 - `src/features/world-countries/geography/subregionScope.ts`
 - `src/features/world-countries/today/WorldCountriesToday.tsx`
 - `src/features/world-countries/today/GuidedHomeRails.tsx`
+- `src/features/world-countries/today/ContinentCompletionDialog.tsx`
 - `src/features/world-countries/today/WorldCountriesProgressView.tsx`
 - `src/features/world-countries/today/journeyPresentation.ts`
 - `src/features/world-countries/today/TodayReviewSession.tsx`
