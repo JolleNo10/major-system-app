@@ -21,7 +21,7 @@ import {
 import { flattenWorldCountriesRecallHistory, loadWorldCountriesRecallHistory, type WorldCountriesRecallHistory } from '@/features/world-countries/learning/recallHistory'
 import { WORLD_COUNTRIES_CORE_RECALL_SKILLS } from '@/features/world-countries/learning/recallTargets'
 import { deriveWorldCountriesScopeProgressForCountries } from '@/features/world-countries/learning/scopeProgress'
-import { deriveWorldCountriesPrimaryStatus, deriveWorldCountriesPrimaryStatusCounts, getCountryProgressColor, getWorldCountriesPrimaryStatusLabel, WORLD_COUNTRIES_PROGRESS_LABELS } from '@/features/world-countries/learning/progressPresentation'
+import { deriveWorldCountriesPrimaryStatus, deriveWorldCountriesPrimaryStatusCounts, getCountryProgressColor, WORLD_COUNTRIES_PROGRESS_LABELS } from '@/features/world-countries/learning/progressPresentation'
 import { CountryLearningFlow } from '@/features/world-countries/learning/flows/CountryLearningFlow'
 import { CapitalLearningFlow } from '@/features/world-countries/learning/flows/CapitalLearningFlow'
 import type { LearningCompletedRegionAction, LearningCompletionCelebration, LearningCompletionHandoff, LearningRegionCompletion } from '@/features/world-countries/learning/flows/LearningComplete'
@@ -247,12 +247,6 @@ export function WorldCountriesToday({
     })
   }, [continent, evidence, geographicOrder, learningStates, preferredJourneyContinent, scopedCountries])
   useEffect(() => {
-    if (!plan) return
-    const { fragileTargetCount, establishedNonMasteredTargetCount, fragileRatio } = plan.consolidationPressure
-    console.log(`World Countries Weak + Developing: ${(fragileRatio * 100).toFixed(1)}% (${fragileTargetCount}/${establishedNonMasteredTargetCount})`)
-  }, [plan])
-
-  useEffect(() => {
     if (!plan || !preferredJourneyContinent) return
     if (continent && continentIdFor(continent) !== preferredJourneyContinent) return
     const hasRemainingJourney = [...plan.curriculumRecommendationsBySubregion.values()].some(recommendation => (
@@ -339,18 +333,6 @@ export function WorldCountriesToday({
       deriveWorldCountriesCountryProgress(country.id, recallProgress ?? new Map()),
     ),
   ] as const)), [learningReadinessByCountry, recallProgress, scopedCountries])
-  useEffect(() => {
-    const countriesByStatus = new Map<string, string[]>()
-    for (const country of scopedCountries) {
-      const status = primaryStatusByCountry.get(country.id)
-      if (!status) continue
-      const statusLabel = getWorldCountriesPrimaryStatusLabel(status)
-      const countries = countriesByStatus.get(statusLabel) ?? []
-      countries.push(country.country)
-      countriesByStatus.set(statusLabel, countries)
-    }
-    console.log('World Countries by status:', Object.fromEntries(countriesByStatus))
-  }, [primaryStatusByCountry, scopedCountries])
   const progress = useMemo(
     () => recallProgress ? deriveWorldCountriesScopeProgressForCountries(
       continent ? `continent:${continent}` : 'world',
@@ -806,8 +788,8 @@ export function WorldCountriesToday({
           id: 'strengthen',
           title: `Strengthen ${reviewSessionCount}`,
           detail: plan.consolidationCandidates.length === reviewSessionCount
-            ? `${reviewSessionCount} weak ${reviewSessionCount === 1 ? 'spot' : 'spots'} ready now`
-            : `${plan.consolidationCandidates.length} weak spots available · next practice ${reviewSessionCount}`,
+            ? `${reviewSessionCount} ${reviewSessionCount === 1 ? 'item' : 'items'} ready to strengthen now`
+            : `${plan.consolidationCandidates.length} items available to strengthen · next practice ${reviewSessionCount}`,
           tone: 'strengthen',
           onAction: startReview,
         }

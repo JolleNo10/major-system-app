@@ -226,12 +226,12 @@ describe('World Countries Today plan', () => {
     })
   })
 
-  it('does not classify unpractised targets as fragile', () => {
-    const entries = countries.slice(0, 4)
+  it('counts established unpractised targets as fragile', () => {
+    const entries = countries.slice(0, 8)
     const plan = buildWorldCountriesTodayPlan({
       activeCountries: entries,
       history: historyForLocationProgress(entries, {
-        developingIds: entries.slice(0, 3).map(country => country.id),
+        strongIds: entries.slice(4).map(country => country.id),
       }),
       learningStates: countryLayerLearningStatesFor(entries, TEST_NOW),
       now: TEST_NOW,
@@ -239,10 +239,10 @@ describe('World Countries Today plan', () => {
     })
 
     expect(plan.consolidationPressure).toEqual({
-      establishedNonMasteredTargetCount: 4,
-      fragileTargetCount: 3,
-      fragileRatio: 0.75,
-      isHigh: false,
+      establishedNonMasteredTargetCount: 8,
+      fragileTargetCount: 4,
+      fragileRatio: 0.5,
+      isHigh: true,
     })
   })
 

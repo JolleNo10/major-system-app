@@ -164,7 +164,7 @@ describe('Guided World Countries home rails', () => {
     })
 
     expect(mount.textContent).toContain('Reviews caught up')
-    expect(mount.textContent).toContain('4 weak spots available')
+    expect(mount.textContent).toContain('4 items available to strengthen')
     expect(mount.textContent).not.toContain('Next practice:')
     expect(mount.textContent).not.toContain('Strengthen 4')
     expect(mount.textContent).not.toContain('consolidation')
@@ -178,9 +178,9 @@ describe('Guided World Countries home rails', () => {
     })
     const reviewPanel = mount.querySelector('[aria-labelledby="world-countries-review-opportunity-heading"]')
 
-    expect(reviewPanel?.textContent).toContain('20 weak spots available')
+    expect(reviewPanel?.textContent).toContain('20 items available to strengthen')
     expect(reviewPanel?.textContent).toContain('Next practice: 8 items')
-    expect(reviewPanel?.textContent).not.toContain('8 weak spots available')
+    expect(reviewPanel?.textContent).not.toContain('8 items available to strengthen')
     expect(reviewPanel?.querySelector('[data-review-action]')).toBeNull()
   })
 

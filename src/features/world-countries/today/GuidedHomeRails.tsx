@@ -102,7 +102,7 @@ export function GuidedHomeRails({
       ) : reviewOpportunity?.kind === 'consolidate' ? (
         <div>
           <h2 id="world-countries-review-opportunity-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Reviews caught up</h2>
-          <p className="mt-1 text-lg font-bold text-zinc-100">{reviewAvailableCount} weak {reviewAvailableCount === 1 ? 'spot' : 'spots'} available</p>
+          <p className="mt-1 text-lg font-bold text-zinc-100">{reviewAvailableCount} {reviewAvailableCount === 1 ? 'item' : 'items'} available to strengthen</p>
           {hasMoreAvailable && <p className="mt-1 text-sm text-zinc-400">Next practice: {nextSessionCount} {nextSessionCount === 1 ? 'item' : 'items'}</p>}
           {reviewResultText && <p data-review-completion className="mt-2 text-xs leading-relaxed text-zinc-300">{reviewResultText}</p>}
         </div>

@@ -136,6 +136,12 @@ function isTargetEstablishedForReadiness(
     : readiness === 'COUNTRIES_AND_CAPITALS_LEARNED'
 }
 
+function createsConsolidationPressure(proficiency: WorldCountriesProficiency): boolean {
+  return proficiency === 'unpractised'
+    || proficiency === 'weak'
+    || proficiency === 'developing'
+}
+
 function deriveConsolidationPressure({
   countries,
   establishedReadinessByCountry,
@@ -156,7 +162,7 @@ function deriveConsolidationPressure({
       if (!progress || progress.mastered) continue
 
       establishedNonMasteredTargetCount += 1
-      if (progress.proficiency === 'weak' || progress.proficiency === 'developing') {
+      if (createsConsolidationPressure(progress.proficiency)) {
         fragileTargetCount += 1
       }
     }
