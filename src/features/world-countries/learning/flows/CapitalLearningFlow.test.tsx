@@ -83,6 +83,17 @@ function renderFlow(onPhaseChange: (phase: string) => void, flowEntries: readonl
   return container
 }
 
+function reachCapitalFinalGate(container: HTMLDivElement): HTMLDivElement {
+  act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-practice"]')!.click())
+  for (let attempt = 0; attempt < 3; attempt += 1) act(() => container.querySelector<HTMLButtonElement>('[data-testid="submit-correct"]')!.click())
+  act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
+
+  const finalRecallRail = renderRail()
+  expect(finalRecallRail.textContent).not.toContain('Skip final recall')
+  act(() => [...finalRecallRail.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Back to Final recall')?.click())
+  return renderRail()
+}
+
 function strongRecallProgress(): RecallProgress {
   return deriveWorldCountriesRecallProgress({ countryIds: ['NO'], skills: [...WORLD_COUNTRIES_CORE_RECALL_SKILLS] }, WORLD_COUNTRIES_CORE_RECALL_SKILLS.flatMap((skill, index) => [
     { itemId: recallTargetIdFor('NO', skill), at: index * 2 + 1, ok: true, ms: 500, evidenceKind: 'recall' as const, localDate: '2026-08-10' },
@@ -277,6 +288,40 @@ describe('CapitalLearningFlow orchestration', () => {
     const presentation = learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].presentation
     expect(presentation.countryPatternsById?.get('NO')).toMatchObject({ kind: 'diagonal' })
     expect(presentation.countryColorsById).toBeUndefined()
+  })
+
+  it('confirms skipping Final recall before completing Capital Learning', () => {
+    const phases: string[] = []
+    const container = renderFlow(phase => phases.push(phase))
+    const finalGateRail = reachCapitalFinalGate(container)
+    const actionButtons = [...finalGateRail.querySelectorAll<HTMLButtonElement>('button')]
+
+    expect(actionButtons.slice(0, 3).map(button => button.textContent)).toEqual(['Skip final recall', 'Back', 'Exit'])
+    act(() => actionButtons[0]!.click())
+
+    const dialog = container.querySelector<HTMLElement>('[role="dialog"]')!
+    expect(dialog.textContent).toContain('Northern Europe · Capitals')
+    expect(dialog.textContent).toContain('does not create recall or mastery evidence')
+    expect(getSubregionLearningState('northern-europe')).toBeNull()
+    expect(phases).not.toContain('complete')
+
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-recall-skip-confirm"]')!.click())
+
+    expect(phases).toContain('complete')
+    expect(getSubregionLearningState('northern-europe')).toMatchObject({ capitalsLearnedAt: expect.any(Number) })
+    expect(container.textContent).toContain('Capitals learned')
+  })
+
+  it('completes a temporary Capital run when Final recall is skipped without writing a milestone', () => {
+    const container = renderFlow(() => undefined, entries, false, false, undefined, false)
+    const finalGateRail = reachCapitalFinalGate(container)
+
+    act(() => [...finalGateRail.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Skip final recall')?.click())
+    expect(container.querySelector('[role="dialog"]')?.textContent).toContain('temporary Capitals run')
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-recall-skip-confirm"]')!.click())
+
+    expect(container.textContent).toContain("doesn't change your guided region progress")
+    expect(getSubregionLearningState('northern-europe')).toBeNull()
   })
 
   it('keeps Capital scheduler progress on the center task surface', () => {

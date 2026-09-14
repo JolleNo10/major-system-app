@@ -225,11 +225,15 @@ remain owned by the existing Review queue.
 Guided Country and Capital Learning retain their staged Meet, Find/Recall,
 Mix, and Final recall pedagogy. The normal forward action from a completed
 practice checkpoint starts Final recall directly; the final-gate state remains
-available for legitimate Back/resume navigation. Learning and Review
+available for legitimate Back/resume navigation and offers an explicit,
+confirmed `Skip as completed` path that establishes the same Learning-layer
+milestone without creating recall or mastery evidence. Learning and Review
 completion surfaces use existing milestone/evidence truth. Checkpoint docks
 own completion and next-action narration while map context remains scope
 orientation. Completed Review counters are transient Home feedback rather than
-another progress authority.
+another progress authority. A parallel `finalRecallSkipped` flag or synthetic
+successful attempts is rejected: the existing Learning milestone remains the
+single source of truth for this explicit learner assertion.
 
 ### Derived Progress view
 
@@ -373,8 +377,10 @@ All temporary Learning Practice scopes use the shared
 `core/scoring/roundScheduler.ts` through a feature-local adapter with a
 non-limiting speed threshold and actual answer latency. Location, Country-name,
 Capital, and Combined scopes each start fresh scheduler state. Only the
-whole-Subregion ordered Final recall writes the owning Learning milestone;
-journey and scheduler state are not persisted.
+whole-Subregion ordered Final recall or an explicitly confirmed `Skip as
+completed` action at the Final recall gate writes the owning Learning milestone;
+the skip creates no recall or mastery evidence, and journey and scheduler state
+are not persisted.
 
 ### The learner-facing Journey
 
@@ -889,8 +895,10 @@ flowchart TD
   lifecycle only. Classification, answer disclosure, evidence, queue or
   scheduler mutation, Recite outcomes, and Learning repair semantics remain
   owned by Today, Drill, Learning, or Recite.
-- Final recall is mandatory for Learning completion; skipped temporary scopes
-  cannot fabricate Ready state or completion evidence.
+- Final recall is the normal pedagogical finish for Learning. A confirmed
+  `Skip as completed` action from the Final recall gate may establish the same
+  Learning-layer milestone without fabricating recall/mastery evidence; skipped
+  temporary scopes do not establish durable completion or fabricate evidence.
 - Workflow folders do not depend on sibling workflow internals.
 - Quiz run membership, Country records, and question order are snapshots;
   live Settings/geography changes affect only a later run.

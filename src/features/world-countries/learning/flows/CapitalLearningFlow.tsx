@@ -22,6 +22,7 @@ import {
   keepStagedCapitalPractising,
   moveStagedCapitalWalkthrough,
   skipStagedCapital,
+  skipStagedCapitalFinalRecall,
   startStagedCapitalFinalRecall,
   startStagedCapitalPractice,
   submitStagedCapitalCombined,
@@ -40,6 +41,7 @@ import { SchedulerPracticeStep } from './SchedulerPracticeStep'
 import { StagedWalkthroughStep } from './StagedWalkthroughStep'
 import { StagedFinalRecallStep } from './StagedFinalRecallStep'
 import { FinalRecallGate, StagedLearningReadyStep } from './StagedLearningReadyStep'
+import { FinalRecallSkipDialog } from './FinalRecallSkipDialog'
 import { LearningHeader } from './MemoryPreviewStep'
 import type { SchedulerAnswerEvaluation } from './SchedulerPracticeStep'
 import type { WorldCountriesActivityTask } from '@/features/world-countries/ui/WorldCountriesActivity'
@@ -115,6 +117,7 @@ export function CapitalLearningFlow({
   const ids = useMemo(() => entries.map(country => country.id), [entries])
   const [flow, setFlow] = useState<StagedCapitalLearningFlowState>(() => createStagedCapitalLearningFlow({ countryIds: ids, maximum: newItemsPerSet, schedulerSettings }))
   const completionReporter = useRef(subregion && recordCompletion ? createSubregionCapitalCompletionReporter(subregion, activeCountries) : null)
+  const [finalRecallSkipDialogOpen, setFinalRecallSkipDialogOpen] = useState(false)
   const [orderDraft, setOrderDraft] = useState<readonly Country[] | null>(null)
   const [editingOrder, setEditingOrder] = useState(false)
   const [hoveredCountryId, setHoveredCountryId] = useState<string | null>(null)
@@ -145,6 +148,12 @@ export function CapitalLearningFlow({
     const result = submitStagedCapitalFinalAnswer(flow, correct)
     transition(result.state)
     completionReporter.current?.report(result.result.completedNow)
+  }
+  const confirmFinalRecallSkip = () => {
+    setFinalRecallSkipDialogOpen(false)
+    const next = skipStagedCapitalFinalRecall(flow)
+    transition(next)
+    if (next.phase === 'complete') completionReporter.current?.report(true)
   }
   const onOrderSaved = (draft: readonly Country[]) => {
     setOrderDraft(draft)
@@ -231,8 +240,8 @@ export function CapitalLearningFlow({
     onBack={backAvailable ? () => run(backStagedCapital) : undefined}
     backLabel={backLabel}
     onExit={onExit}
-    onSkip={['walkthrough', 'practice', 'set-ready', 'combined-practice', 'combined-ready'].includes(flow.phase) ? skip : undefined}
-    skipLabel={flow.phase === 'walkthrough' ? 'Skip to Recall' : flow.phase === 'practice' || flow.phase === 'combined-practice' ? 'Skip practice' : 'Next'}
+    onSkip={flow.phase === 'final-gate' ? () => setFinalRecallSkipDialogOpen(true) : ['walkthrough', 'practice', 'set-ready', 'combined-practice', 'combined-ready'].includes(flow.phase) ? skip : undefined}
+    skipLabel={flow.phase === 'final-gate' ? 'Skip final recall' : flow.phase === 'walkthrough' ? 'Skip to Recall' : flow.phase === 'practice' || flow.phase === 'combined-practice' ? 'Skip practice' : 'Next'}
     walkthroughCountryId={flow.phase === 'walkthrough' ? currentStagedCapitalIds(flow)[flow.walkthroughIndex] ?? null : null}
     practiceProgress={practiceProgress}
   />
@@ -263,7 +272,7 @@ export function CapitalLearningFlow({
       break
   }
   const dockPlacement = ['practice', 'combined-practice', 'final-recall'].includes(flow.phase) ? 'stacked' : 'attached'
-  return <>{rails}<LearningMapSurface continent={continent} scopeCountries={mapEntries} cameraIntent={subregion && !editingOrder ? { kind: 'subregion-learning', subregionId: subregion } : { kind: 'default' }} presentation={mapPresentation} presentationKey={presentationKey} context={context} task={activeTask} mapMeta={mapMeta} dockPlacement={dockPlacement}>{content}</LearningMapSurface></>
+  return <>{rails}<LearningMapSurface continent={continent} scopeCountries={mapEntries} cameraIntent={subregion && !editingOrder ? { kind: 'subregion-learning', subregionId: subregion } : { kind: 'default' }} presentation={mapPresentation} presentationKey={presentationKey} context={context} task={activeTask} mapMeta={mapMeta} dockPlacement={dockPlacement}>{content}</LearningMapSurface>{finalRecallSkipDialogOpen && <FinalRecallSkipDialog learningScopeLabel={learningScopeLabel} track="capitals" willPersistCompletion={Boolean(recordCompletion && subregion)} onDismiss={() => setFinalRecallSkipDialogOpen(false)} onConfirm={confirmFinalRecallSkip} />}</>
 }
 
 function capitalSetContext(stagePresentation: LearningStagePresentation<Country['id']> | null, count: number): string {

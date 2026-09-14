@@ -105,7 +105,11 @@ follows the defining module and feature namespace.
   through `learning/recallHistory.ts`. Its temporal schedule, due queue,
   delayed retry state, and checkpoints are derived/transient; no Today key,
   schedule record, or IndexedDB version change exists. Learning milestones
-  remain owned and written by the existing whole-Subregion Learning flows.
+  remain owned by the existing whole-Subregion Learning flows:
+  `countriesLearnedAt` / `capitalsLearnedAt` may be established by ordinary
+  Final recall completion or by the learner's explicitly confirmed `Skip as
+  completed` action at the Final recall gate. The skip writes no atomic attempt
+  records.
 - World Countries Recite progress uses the localStorage key
   `world-countries-recite-progress`. Its versioned record stores the latest
   completed outcome and timestamp independently for each `(ReciteMode,

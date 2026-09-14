@@ -277,13 +277,59 @@ describe('Guided World Countries home rails', () => {
       capitalRecallMastered: false,
       coreRecallComplete: false,
     }
-    const mount = renderRails({ journey, activeLearningAvailable: false })
+    const onRelearnCountries = vi.fn()
+    const onRelearnCapitals = vi.fn()
+    const mount = renderRails({ journey, activeLearningAvailable: false, onRelearnCountries, onRelearnCapitals })
 
     expect(mount.textContent).toContain('Learning complete')
     expect(mount.textContent).toContain('Mastery')
     expect(mount.textContent).toContain('Building through Review')
     expect(mount.textContent).not.toContain('Your journey · Northern Europe')
     expect(mount.textContent).not.toContain('Journey focus')
+    expect(mount.querySelectorAll('[data-relearn-track="countries"]')).toHaveLength(1)
+    expect(mount.querySelectorAll('[data-relearn-track="capitals"]')).toHaveLength(1)
+    expect(mount.querySelector('[data-relearn-track="countries"]')?.getAttribute('aria-label')).toBe('Relearn Countries in Northern Europe')
+    expect(mount.querySelector('[data-relearn-track="capitals"]')?.getAttribute('aria-label')).toBe('Relearn Capitals in Northern Europe')
+    expect(mount.querySelector('[data-journey-milestone="region-learned"] [data-relearn-track]')).toBeNull()
+
+    act(() => mount.querySelector<HTMLButtonElement>('[data-relearn-track="countries"]')?.click())
+    act(() => mount.querySelector<HTMLButtonElement>('[data-relearn-track="capitals"]')?.click())
+    expect(onRelearnCountries).toHaveBeenCalledOnce()
+    expect(onRelearnCapitals).toHaveBeenCalledOnce()
+  })
+
+  it('only exposes Relearn controls for a fully learned Journey with callbacks', () => {
+    const journey: WorldCountriesJourneyPresentation = {
+      subregionId: 'northern-europe',
+      currentStageId: 'capitals',
+      stages: WORLD_COUNTRIES_JOURNEY_STAGES.map(stage => ({ ...stage, status: stage.id === 'countries' ? 'complete' : 'current', detail: 'Detail' })),
+      regionLearned: false,
+      masteryStatus: 'building',
+      hasCountryPractice: true,
+      hasCapitalPractice: false,
+      countriesLearned: true,
+      countriesEstablished: true,
+      capitalsLearned: false,
+      capitalsEstablished: false,
+      countryRecallMastered: false,
+      capitalRecallMastered: false,
+      coreRecallComplete: false,
+    }
+
+    const incompleteMount = renderRails({ journey, onRelearnCountries: vi.fn(), onRelearnCapitals: vi.fn() })
+    expect(incompleteMount.querySelector('[data-relearn-track="countries"]')).toBeNull()
+    expect(incompleteMount.querySelector('[data-relearn-track="capitals"]')).toBeNull()
+
+    act(() => root?.unmount())
+    root = null
+    act(() => railRoot?.unmount())
+    railRoot = null
+    document.body.replaceChildren()
+
+    const completeJourney = { ...journey, regionLearned: true, currentStageId: null, stages: journey.stages.map(stage => ({ ...stage, status: 'complete' as const })) }
+    const noCallbacksMount = renderRails({ journey: completeJourney })
+    expect(noCallbacksMount.querySelector('[data-relearn-track="countries"]')).toBeNull()
+    expect(noCallbacksMount.querySelector('[data-relearn-track="capitals"]')).toBeNull()
   })
 
   it('keeps geography choices and places Progress in the geography footer', () => {

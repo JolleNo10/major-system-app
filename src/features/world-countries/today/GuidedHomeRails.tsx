@@ -40,6 +40,8 @@ export function GuidedHomeRails({
   scopeProgress,
   onWorld,
   onOpenProgress,
+  onRelearnCountries,
+  onRelearnCapitals,
 }: {
   level: 'world' | 'continent'
   continent?: Continent
@@ -55,6 +57,8 @@ export function GuidedHomeRails({
   scopeProgress: GuidedHomeScopeSummary['progress'] | null
   onWorld: () => void
   onOpenProgress: () => void
+  onRelearnCountries?: () => void
+  onRelearnCapitals?: () => void
 }) {
   const scopeName = continent ?? 'World'
   const reviewResultText = reviewCompletion ? formatReviewCompletion(reviewCompletion) : null
@@ -163,7 +167,7 @@ export function GuidedHomeRails({
         {reviewPanel}
         {journey && (
           <WorldCountriesPanel className="space-y-4" aria-labelledby="world-countries-journey-heading" data-active-subregion={journey.subregionId}>
-            <CompactJourneyPath journey={journey} learningAvailable={activeLearningAvailable} />
+            <CompactJourneyPath journey={journey} learningAvailable={activeLearningAvailable} onRelearnCountries={onRelearnCountries} onRelearnCapitals={onRelearnCapitals} />
           </WorldCountriesPanel>
         )}
         {refreshing && <p role="status" aria-live="polite" className="text-xs text-zinc-500">Updating your progress…</p>}
@@ -171,7 +175,7 @@ export function GuidedHomeRails({
     ),
     leftLabel: 'Geography',
     rightLabel: 'Review and journey',
-  }), [activeLearningAvailable, continent, evidenceStatus, journey, level, onOpenProgress, onWorld, refreshing, reviewPanel, scopeName, scopeProgress, scopeSummaries])
+  }), [activeLearningAvailable, continent, evidenceStatus, journey, level, onOpenProgress, onRelearnCapitals, onRelearnCountries, onWorld, refreshing, reviewPanel, scopeName, scopeProgress, scopeSummaries])
   useRails(rails)
   return null
 }
@@ -180,7 +184,12 @@ function getMasteryRatio(progress: GuidedHomeScopeSummary['progress']): number {
   return progress.coreMasteryRatio ?? progress.completionRatio
 }
 
-function CompactJourneyPath({ journey, learningAvailable }: { journey: WorldCountriesJourneyPresentation; learningAvailable: boolean }) {
+function CompactJourneyPath({ journey, learningAvailable, onRelearnCountries, onRelearnCapitals }: {
+  journey: WorldCountriesJourneyPresentation
+  learningAvailable: boolean
+  onRelearnCountries?: () => void
+  onRelearnCapitals?: () => void
+}) {
   const subregionLabel = getSubregionDefinition(journey.subregionId).label
   return (
     <section className="space-y-2" aria-labelledby="world-countries-journey-heading">
@@ -189,7 +198,9 @@ function CompactJourneyPath({ journey, learningAvailable }: { journey: WorldCoun
         {journey.stages.map(stage => (
           <li key={stage.id} className="flex items-start gap-2" data-journey-milestone={stage.id} data-journey-status={stage.status}>
             <span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border text-[10px] font-bold ${stage.status === 'complete' ? 'border-green-500/40 bg-green-500/10 text-green-300' : stage.status === 'current' ? 'border-violet-400 bg-violet-600 text-white' : 'border-zinc-700 text-zinc-500'}`} aria-hidden="true">{stage.status === 'complete' ? '✓' : stage.status === 'current' ? '•' : '○'}</span>
-            <span className="min-w-0"><span className={`block text-xs font-semibold ${stage.status === 'current' ? 'text-violet-100' : 'text-zinc-300'}`}>{stage.label}</span><span className="mt-0.5 block text-[11px] text-zinc-500">{stage.status === 'complete' ? 'Complete' : stage.status === 'current' ? 'Current' : 'Upcoming'}</span></span>
+            <span className="min-w-0 flex-1"><span className={`block text-xs font-semibold ${stage.status === 'current' ? 'text-violet-100' : 'text-zinc-300'}`}>{stage.label}</span><span className="mt-0.5 block text-[11px] text-zinc-500">{stage.status === 'complete' ? 'Complete' : stage.status === 'current' ? 'Current' : 'Upcoming'}</span></span>
+            {journey.regionLearned && stage.id === 'countries' && onRelearnCountries && <button type="button" data-relearn-track="countries" aria-label={`Relearn Countries in ${subregionLabel}`} onClick={onRelearnCountries} className="ml-auto shrink-0 rounded-md border border-zinc-700 bg-transparent px-2 py-1 text-[11px] font-semibold text-zinc-400 hover:border-violet-400 hover:text-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400">Relearn</button>}
+            {journey.regionLearned && stage.id === 'capitals' && onRelearnCapitals && <button type="button" data-relearn-track="capitals" aria-label={`Relearn Capitals in ${subregionLabel}`} onClick={onRelearnCapitals} className="ml-auto shrink-0 rounded-md border border-zinc-700 bg-transparent px-2 py-1 text-[11px] font-semibold text-zinc-400 hover:border-violet-400 hover:text-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400">Relearn</button>}
           </li>
         ))}
       </ol>

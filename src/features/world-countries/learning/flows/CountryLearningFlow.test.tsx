@@ -97,7 +97,7 @@ function renderLeftRail() {
   return mount
 }
 
-function renderFlow(flowEntries: readonly Country[] = entries, countriesEstablished = false, capitalsEstablished = false): HTMLDivElement {
+function renderFlow(flowEntries: readonly Country[] = entries, countriesEstablished = false, capitalsEstablished = false, recordCompletion = true): HTMLDivElement {
   const container = document.createElement('div')
   document.body.append(container)
   act(() => {
@@ -109,6 +109,7 @@ function renderFlow(flowEntries: readonly Country[] = entries, countriesEstablis
         entries={flowEntries}
         countriesEstablished={countriesEstablished}
         capitalsEstablished={capitalsEstablished}
+        recordCompletion={recordCompletion}
         newItemsPerSet={3}
         schedulerSettings={{ masteryLatencyFactor: 1.4, sessionUnmasteredShare: 0.5 }}
         fuzzyMatching={false}
@@ -118,6 +119,19 @@ function renderFlow(flowEntries: readonly Country[] = entries, countriesEstablis
     )
   })
   return container
+}
+
+function reachCountryFinalGate(container: HTMLDivElement): HTMLDivElement {
+  act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-location"]')!.click())
+  for (let attempt = 0; attempt < 3; attempt += 1) act(() => container.querySelector<HTMLButtonElement>('[data-testid="location-submit"]')!.click())
+  act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
+  for (let attempt = 0; attempt < 3; attempt += 1) act(() => container.querySelector<HTMLButtonElement>('[data-testid="practice-submit"]')!.click())
+  act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
+
+  const finalRecallRail = renderRail()
+  expect(finalRecallRail.textContent).not.toContain('Skip final recall')
+  act(() => [...finalRecallRail.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Back to Final recall')?.click())
+  return renderRail()
 }
 
 function expectCountryWalkthrough(container: HTMLDivElement, task: unknown, country: Country) {
@@ -320,5 +334,56 @@ describe('CountryLearningFlow scheduler progress wiring', () => {
     const restartedRail = renderLeftRail()
     expect(restartedRail.textContent).toContain('Meet the countries')
     expect(restartedRail.textContent).not.toContain('Learning progress')
+  })
+
+  it('confirms skipping Final recall before completing Country Learning', () => {
+    const container = renderFlow(entries, false, false, true)
+    const finalGateRail = reachCountryFinalGate(container)
+    const actionButtons = [...finalGateRail.querySelectorAll<HTMLButtonElement>('button')]
+
+    expect(actionButtons.slice(0, 3).map(button => button.textContent)).toEqual(['Skip final recall', 'Back', 'Exit'])
+    const skipTrigger = actionButtons[0]!
+    act(() => {
+      skipTrigger.focus()
+      skipTrigger.click()
+    })
+
+    const dialog = container.querySelector<HTMLElement>('[role="dialog"]')!
+    const labelledTitle = dialog.querySelector(`#${dialog.getAttribute('aria-labelledby')}`)
+    const describedText = dialog.querySelector(`#${dialog.getAttribute('aria-describedby')}`)
+    expect(labelledTitle?.textContent).toBe('Skip final recall?')
+    expect(describedText?.textContent).toContain('does not create recall or mastery evidence')
+    expect(dialog.textContent).toContain('Northern Europe · Countries')
+    expect([...dialog.querySelectorAll('button')].map(button => button.textContent)).toEqual(['Dismiss', 'Skip as completed'])
+    expect(document.activeElement).toBe(dialog.querySelector('[data-testid="final-recall-skip-dismiss"]'))
+    expect(getSubregionLearningState('northern-europe')).toBeNull()
+    expect(container.querySelector('[data-testid="final-start"]')).not.toBeNull()
+
+    act(() => dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
+    expect(container.querySelector('[role="dialog"]')).toBeNull()
+    expect(document.activeElement).toBe(skipTrigger)
+    expect(renderRail().textContent).toContain('Skip final recall')
+
+    act(() => {
+      skipTrigger.focus()
+      skipTrigger.click()
+    })
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-recall-skip-confirm"]')!.click())
+
+    expect(container.textContent).toContain('Countries learned')
+    expect(getSubregionLearningState('northern-europe')).toMatchObject({ countriesLearnedAt: expect.any(Number) })
+    expect(container.querySelector('[data-testid="final-recall-skip-confirm"]')).toBeNull()
+  })
+
+  it('completes a temporary Country run when Final recall is skipped without writing a milestone', () => {
+    const container = renderFlow(entries, false, false, false)
+    const finalGateRail = reachCountryFinalGate(container)
+
+    act(() => [...finalGateRail.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Skip final recall')?.click())
+    expect(container.querySelector('[role="dialog"]')?.textContent).toContain('temporary Countries run')
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-recall-skip-confirm"]')!.click())
+
+    expect(container.textContent).toContain("doesn't change your guided region progress")
+    expect(getSubregionLearningState('northern-europe')).toBeNull()
   })
 })

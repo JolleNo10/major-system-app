@@ -790,6 +790,39 @@ describe('World Countries Today', () => {
     expect(mount.querySelector('[data-today-action="journey"]')?.textContent).toContain('Learn 1 country · Central Europe')
     expect(mount.textContent).not.toContain('Drill Northern Europe')
 
+    expect(railMount.querySelector('[data-relearn-track="countries"]')?.getAttribute('aria-label')).toBe('Relearn Countries in Northern Europe')
+    expect(railMount.querySelector('[data-relearn-track="capitals"]')?.getAttribute('aria-label')).toBe('Relearn Capitals in Northern Europe')
+    await act(async () => railMount.querySelector<HTMLButtonElement>('[data-relearn-track="countries"]')?.click())
+    expect(countryLearningFlowMock).toHaveBeenLastCalledWith(expect.objectContaining({
+      subregion: northern.subregionId,
+      entries: [northern],
+      recordCompletion: false,
+      completionHandoff: undefined,
+      completedRegionAction: undefined,
+    }))
+    expect(mount.querySelector('[data-testid="country-learning-handoff"]')).toBeNull()
+
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-testid="country-learning-done"]')?.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    railMount = renderLatestRails()
+    expect(railMount.querySelector('[data-active-focus="true"]')?.textContent).toContain('Northern Europe')
+    await act(async () => railMount.querySelector<HTMLButtonElement>('[data-relearn-track="capitals"]')?.click())
+    expect(capitalLearningFlowMock).toHaveBeenLastCalledWith(expect.objectContaining({
+      subregion: northern.subregionId,
+      entries: [northern],
+      recordCompletion: false,
+      completionHandoff: undefined,
+      completedRegionAction: undefined,
+    }))
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-testid="capital-learning-done"]')?.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-today-action="journey"]')?.click())
     expect(onNavigate).not.toHaveBeenCalled()
     expect(countryLearningFlowMock).toHaveBeenCalledWith(expect.objectContaining({ subregion: 'central-europe' }))

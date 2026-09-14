@@ -4,6 +4,7 @@ import {
   createStagedCountryLearningFlow,
   backStagedCountry,
   skipStagedCountry,
+  skipStagedCountryFinalRecall,
   startStagedCountryFinalRecall,
   startStagedCountryPractice,
   submitStagedCountryFinalAnswer,
@@ -102,5 +103,18 @@ describe('staged country learning flow', () => {
     flow = startStagedCountryFinalRecall(flow)
     expect(flow.ordered?.currentIndex).toBe(0)
     expect(flow.ordered?.mode).toBe('clean')
+  })
+
+  it('only skips Final recall from the Final gate', () => {
+    let flow = createStagedCountryLearningFlow({ countryIds: ['A'], maximum: 3, schedulerSettings: settings })
+    expect(skipStagedCountryFinalRecall(flow)).toBe(flow)
+
+    flow = { ...flow, phase: 'final-gate', stageIndex: flow.plan.length - 1 }
+    const skipped = skipStagedCountryFinalRecall(flow)
+    expect(skipped.phase).toBe('complete')
+    expect(skipped.ordered).toBeNull()
+
+    const finalRecall = { ...flow, phase: 'final-recall' as const }
+    expect(skipStagedCountryFinalRecall(finalRecall)).toBe(finalRecall)
   })
 })

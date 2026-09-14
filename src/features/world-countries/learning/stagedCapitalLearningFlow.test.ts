@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   createStagedCapitalLearningFlow,
   skipStagedCapital,
+  skipStagedCapitalFinalRecall,
   startStagedCapitalFinalRecall,
   submitStagedCapitalPractice,
   submitStagedCapitalFinalAnswer,
@@ -46,5 +47,18 @@ describe('staged capital learning flow', () => {
   it('inserts cumulative practice after the second Set', () => {
     const flow = createStagedCapitalLearningFlow({ countryIds: ['A', 'B', 'C', 'D'], maximum: 3, schedulerSettings: settings })
     expect(flow.plan.map(stage => stage.kind)).toEqual(['set', 'set', 'combined', 'final'])
+  })
+
+  it('only skips Final recall from the Final gate', () => {
+    let flow = createStagedCapitalLearningFlow({ countryIds: ['A'], maximum: 3, schedulerSettings: settings })
+    expect(skipStagedCapitalFinalRecall(flow)).toBe(flow)
+
+    flow = { ...flow, phase: 'final-gate', stageIndex: flow.plan.length - 1 }
+    const skipped = skipStagedCapitalFinalRecall(flow)
+    expect(skipped.phase).toBe('complete')
+    expect(skipped.ordered).toBeNull()
+
+    const finalRecall = { ...flow, phase: 'final-recall' as const }
+    expect(skipStagedCapitalFinalRecall(finalRecall)).toBe(finalRecall)
   })
 })

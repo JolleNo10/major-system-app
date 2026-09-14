@@ -166,6 +166,13 @@ export function startStagedCapitalFinalRecall(state: StagedCapitalLearningFlowSt
   return { ...state, phase: 'final-recall' as const, ordered: createOrderedRecallSession({ order: state.countryIds, rewindOnError: state.rewindOnError }) }
 }
 
+export function skipStagedCapitalFinalRecall(
+  state: StagedCapitalLearningFlowState,
+): StagedCapitalLearningFlowState {
+  if (state.phase !== 'final-gate') return state
+  return { ...state, phase: 'complete' as const, ordered: null }
+}
+
 export function submitStagedCapitalFinalAnswer(
   state: StagedCapitalLearningFlowState,
   correct: boolean,

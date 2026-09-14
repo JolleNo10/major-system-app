@@ -51,6 +51,7 @@ type EvidenceState =
   | { status: 'error' }
 
 interface LearningRun {
+  kind: 'curriculum' | 'relearn'
   recommendation: WorldCountriesTodayLearningRecommendation
   countryEntries: readonly Country[]
 }
@@ -275,7 +276,7 @@ export function WorldCountriesToday({
 
   const launchLearningRecommendation = (
     recommendation: WorldCountriesTodayLearningRecommendation,
-    options: { focusSubregion?: boolean } = {},
+    options: { focusSubregion?: boolean; kind?: LearningRun['kind'] } = {},
   ) => {
     const countriesById = new Map(geographicOrder.countries.map(country => [country.id, country]))
     const countryEntries = recommendation.countryIds
@@ -286,7 +287,7 @@ export function WorldCountriesToday({
     setReviewCandidates(null)
     setReviewCompletion(null)
     if (options.focusSubregion && continent) setSelectedSubregionId(recommendation.subregionId)
-    setLearningRun({ recommendation, countryEntries })
+    setLearningRun({ kind: options.kind ?? 'curriculum', recommendation, countryEntries })
   }
 
   const startReview = () => {
@@ -337,6 +338,28 @@ export function WorldCountriesToday({
       recallProgress: recallProgress ?? new Map(),
     })
   }, [activeSubregionId, evidence.status, learningStates, recallProgress, scopedCountries])
+  const selectedCompletedSubregionId = continent && validSelectedSubregionId && journey?.regionLearned
+    ? validSelectedSubregionId
+    : null
+  const buildRelearnRecommendation = (track: WorldCountriesTodayLearningRecommendation['track']): WorldCountriesTodayLearningRecommendation | null => {
+    if (!selectedCompletedSubregionId) return null
+    const countryEntries = geographicOrder.countries.filter(country => country.subregionId === selectedCompletedSubregionId)
+    if (countryEntries.length === 0) return null
+    return {
+      track,
+      subregionId: selectedCompletedSubregionId,
+      continent: countryEntries[0]!.continent,
+      subregionLabel: getSubregionDefinition(selectedCompletedSubregionId).label,
+      countryIds: countryEntries.map(country => country.id),
+    }
+  }
+  const launchRelearn = (track: WorldCountriesTodayLearningRecommendation['track']) => {
+    const recommendation = buildRelearnRecommendation(track)
+    if (!recommendation) return
+    launchLearningRecommendation(recommendation, { kind: 'relearn' })
+  }
+  const onRelearnCountries = selectedCompletedSubregionId ? () => launchRelearn('learn-countries') : undefined
+  const onRelearnCapitals = selectedCompletedSubregionId ? () => launchRelearn('learn-capitals') : undefined
   const completedLearningJourney = useMemo<WorldCountriesJourneyPresentation | null>(() => {
     if (!learningRun || evidence.status !== 'ready') return null
     return deriveWorldCountriesJourneyPresentation({
@@ -351,6 +374,7 @@ export function WorldCountriesToday({
     if (
       learningRun
       && selectedSubregionId === learningRun.recommendation.subregionId
+      && learningRun.kind === 'curriculum'
       && completedLearningJourney?.regionLearned
       && nextRecommendation
       && nextRecommendation.subregionId !== learningRun.recommendation.subregionId
@@ -402,7 +426,7 @@ export function WorldCountriesToday({
     && learningRun.recommendation.subregionId === validSelectedSubregionId
     ? selectedLearningRecommendation ?? plannerNextRecommendation
     : plannerNextRecommendation
-  const completionHandoff = learningRun && evidence.status === 'ready' && continuationRecommendation
+  const completionHandoff = learningRun?.kind === 'curriculum' && evidence.status === 'ready' && continuationRecommendation
     ? createCompletionHandoff({
         currentRecommendation: learningRun.recommendation,
         nextRecommendation: continuationRecommendation,
@@ -421,7 +445,7 @@ export function WorldCountriesToday({
   const regionCompletion: LearningRegionCompletion | undefined = completedLearningJourney?.regionLearned
     ? { masteryStatus: completedLearningJourney.masteryStatus }
     : undefined
-  const completedRegionAction: LearningCompletedRegionAction | undefined = learningRun && regionCompletion
+  const completedRegionAction: LearningCompletedRegionAction | undefined = learningRun?.kind === 'curriculum' && regionCompletion
     ? {
         label: `Drill ${learningRun.recommendation.subregionLabel}`,
         onAction: () => onNavigate({ area: 'drill', scope: { kind: 'subregion', subregionId: learningRun.recommendation.subregionId } }),
@@ -465,10 +489,10 @@ export function WorldCountriesToday({
         onExit={finishLearning}
         onDone={finishLearning}
         doneLabel={`Back to ${continent ?? 'World'}`}
-        completionHandoff={completionHandoff}
+        completionHandoff={learningRun.kind === 'curriculum' ? completionHandoff : undefined}
         regionCompletion={regionCompletion}
-        completedRegionAction={completedRegionAction}
-        recordCompletion={true}
+        completedRegionAction={learningRun.kind === 'curriculum' ? completedRegionAction : undefined}
+        recordCompletion={learningRun.kind === 'curriculum'}
       />
     }
     return <CapitalLearningFlow
@@ -487,10 +511,10 @@ export function WorldCountriesToday({
       onExit={finishLearning}
       onDone={finishLearning}
       doneLabel={`Back to ${continent ?? 'World'}`}
-      completionHandoff={completionHandoff}
+      completionHandoff={learningRun.kind === 'curriculum' ? completionHandoff : undefined}
       regionCompletion={regionCompletion}
-      completedRegionAction={completedRegionAction}
-      recordCompletion={true}
+      completedRegionAction={learningRun.kind === 'curriculum' ? completedRegionAction : undefined}
+      recordCompletion={learningRun.kind === 'curriculum'}
     />
   }
 
@@ -590,6 +614,8 @@ export function WorldCountriesToday({
         scopeProgress={progress}
         journey={journey}
         activeLearningAvailable={Boolean(activeLearningRecommendation)}
+        onRelearnCountries={onRelearnCountries}
+        onRelearnCapitals={onRelearnCapitals}
         onWorld={navigateWorld}
         onOpenProgress={() => {
           if (evidence.status !== 'ready' || !progress) return

@@ -20,6 +20,7 @@ import {
   keepStagedCountryPractising,
   moveStagedCountryWalkthrough,
   skipStagedCountry,
+  skipStagedCountryFinalRecall,
   startStagedCountryFinalRecall,
   startStagedCountryLocation,
   startStagedCountryPractice,
@@ -42,6 +43,7 @@ import { SchedulerPracticeStep } from './SchedulerPracticeStep'
 import { StagedWalkthroughStep } from './StagedWalkthroughStep'
 import { StagedFinalRecallStep } from './StagedFinalRecallStep'
 import { FinalRecallGate, StagedLearningReadyStep } from './StagedLearningReadyStep'
+import { FinalRecallSkipDialog } from './FinalRecallSkipDialog'
 import { LearningHeader } from './MemoryPreviewStep'
 import type { SchedulerAnswerEvaluation } from './SchedulerPracticeStep'
 import type { WorldCountriesActivityTask } from '@/features/world-countries/ui/WorldCountriesActivity'
@@ -116,6 +118,7 @@ export function CountryLearningFlow({
   const ids = useMemo(() => entries.map(country => country.id), [entries])
   const [flow, setFlow] = useState<StagedCountryLearningFlowState>(() => createStagedCountryLearningFlow({ countryIds: ids, maximum: newItemsPerSet, schedulerSettings }))
   const completionReported = useRef(false)
+  const [finalRecallSkipDialogOpen, setFinalRecallSkipDialogOpen] = useState(false)
   const [orderDraft, setOrderDraft] = useState<readonly Country[] | null>(null)
   const [editingOrder, setEditingOrder] = useState(false)
   const [hoveredCountryId, setHoveredCountryId] = useState<string | null>(null)
@@ -143,13 +146,21 @@ export function CountryLearningFlow({
       : submitStagedCountryPractice(flow, correct, latencyMs)
     transition(result.state)
   }
+  const reportCompletion = (completedNow: boolean) => {
+    if (!completedNow || completionReported.current) return
+    completionReported.current = true
+    if (recordCompletion && subregion) markSubregionCountriesLearned(subregion, Date.now(), activeCountries)
+  }
   const updateFinal = (correct: boolean) => {
     const result = submitStagedCountryFinalAnswer(flow, correct)
     transition(result.state)
-    if (result.result.completedNow && !completionReported.current) {
-      completionReported.current = true
-      if (recordCompletion && subregion) markSubregionCountriesLearned(subregion, Date.now(), activeCountries)
-    }
+    reportCompletion(result.result.completedNow)
+  }
+  const confirmFinalRecallSkip = () => {
+    setFinalRecallSkipDialogOpen(false)
+    const next = skipStagedCountryFinalRecall(flow)
+    transition(next)
+    reportCompletion(next.phase === 'complete')
   }
   const onOrderSaved = (draft: readonly Country[]) => {
     setOrderDraft(draft)
@@ -243,8 +254,8 @@ export function CountryLearningFlow({
     onBack={backAvailable ? () => run(backStagedCountry) : undefined}
     backLabel={backLabel}
     onExit={onExit}
-    onSkip={['walkthrough', 'location-practice', 'location-ready', 'practice', 'set-ready', 'combined-practice', 'combined-ready'].includes(flow.phase) ? skip : undefined}
-    skipLabel={flow.phase === 'walkthrough' ? 'Skip to Find' : flow.phase === 'location-practice' || flow.phase === 'location-ready' ? 'Next: Recall' : flow.phase === 'practice' || flow.phase === 'combined-practice' ? 'Skip practice' : 'Next'}
+    onSkip={flow.phase === 'final-gate' ? () => setFinalRecallSkipDialogOpen(true) : ['walkthrough', 'location-practice', 'location-ready', 'practice', 'set-ready', 'combined-practice', 'combined-ready'].includes(flow.phase) ? skip : undefined}
+    skipLabel={flow.phase === 'final-gate' ? 'Skip final recall' : flow.phase === 'walkthrough' ? 'Skip to Find' : flow.phase === 'location-practice' || flow.phase === 'location-ready' ? 'Next: Recall' : flow.phase === 'practice' || flow.phase === 'combined-practice' ? 'Skip practice' : 'Next'}
     practiceProgress={practiceProgress}
   />
 
@@ -280,7 +291,7 @@ export function CountryLearningFlow({
       break
   }
   const dockPlacement = ['practice', 'combined-practice', 'final-recall'].includes(flow.phase) ? 'stacked' : 'attached'
-  return <>{rails}<LearningMapSurface continent={continent} scopeCountries={mapEntries} cameraIntent={subregion && !editingOrder ? { kind: 'subregion-learning', subregionId: subregion } : { kind: 'default' }} presentation={mapPresentation} presentationKey={presentationKey} context={context} task={activeTask} mapMeta={mapMeta} dockPlacement={dockPlacement}>{content}</LearningMapSurface></>
+  return <>{rails}<LearningMapSurface continent={continent} scopeCountries={mapEntries} cameraIntent={subregion && !editingOrder ? { kind: 'subregion-learning', subregionId: subregion } : { kind: 'default' }} presentation={mapPresentation} presentationKey={presentationKey} context={context} task={activeTask} mapMeta={mapMeta} dockPlacement={dockPlacement}>{content}</LearningMapSurface>{finalRecallSkipDialogOpen && <FinalRecallSkipDialog learningScopeLabel={learningScopeLabel} track="countries" willPersistCompletion={Boolean(recordCompletion && subregion)} onDismiss={() => setFinalRecallSkipDialogOpen(false)} onConfirm={confirmFinalRecallSkip} />}</>
 }
 
 function learningSetContext(flow: StagedCountryLearningFlowState, count: number): string {

@@ -280,6 +280,13 @@ export function startStagedCountryFinalRecall(
   }
 }
 
+export function skipStagedCountryFinalRecall(
+  state: StagedCountryLearningFlowState,
+): StagedCountryLearningFlowState {
+  if (state.phase !== 'final-gate') return state
+  return { ...state, phase: 'complete', ordered: null }
+}
+
 export function submitStagedCountryFinalAnswer(
   state: StagedCountryLearningFlowState,
   correct: boolean,
