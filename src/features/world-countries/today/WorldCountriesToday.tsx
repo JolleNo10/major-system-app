@@ -246,6 +246,11 @@ export function WorldCountriesToday({
       ...(continent ? {} : { preferredJourneyContinent }),
     })
   }, [continent, evidence, geographicOrder, learningStates, preferredJourneyContinent, scopedCountries])
+  useEffect(() => {
+    if (!plan) return
+    const { fragileTargetCount, establishedNonMasteredTargetCount, fragileRatio } = plan.consolidationPressure
+    console.log(`World Countries Weak + Developing: ${(fragileRatio * 100).toFixed(1)}% (${fragileTargetCount}/${establishedNonMasteredTargetCount})`)
+  }, [plan])
 
   useEffect(() => {
     if (!plan || !preferredJourneyContinent) return
