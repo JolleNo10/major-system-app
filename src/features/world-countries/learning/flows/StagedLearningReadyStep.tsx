@@ -1,5 +1,6 @@
 import { LearningHeader } from './MemoryPreviewStep'
 import { TaskDockMessage } from '@/features/world-countries/ui/TaskDockMessage'
+import { LearningSetCelebration } from './LearningCelebration'
 
 function EnterKey() {
   return <span aria-label="Enter" className="ml-2 inline-flex min-w-[22px] items-center justify-center rounded-[5px] border border-white/25 border-b-2 px-1.5 py-px text-[11px]">↵</span>
@@ -15,6 +16,7 @@ export function StagedLearningReadyStep({
   onBack,
   onExit,
   surface = false,
+  celebration,
 }: {
   title: string
   summary: string
@@ -25,6 +27,7 @@ export function StagedLearningReadyStep({
   onBack: () => void
   onExit: () => void
   surface?: boolean
+  celebration?: 'set'
 }) {
   const dock = (
     <TaskDockMessage
@@ -32,6 +35,7 @@ export function StagedLearningReadyStep({
       tone="ready"
       focusPrimary
       enableEnterPrimary
+      decoration={celebration === 'set' ? <LearningSetCelebration /> : undefined}
       header={<div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.08em] text-green-400"><span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-green-500 shadow-[0_0_16px_rgba(34,197,94,0.8)]" />{title}</div>}
       description={<div className="flex flex-wrap items-baseline gap-x-3 gap-y-1"><span className="text-lg font-bold text-zinc-100">{summary}</span><span className="text-xs text-zinc-400">{nextDescription}</span></div>}
       actions={<><button type="button" onClick={onKeepPractising} className="whitespace-nowrap rounded-[9px] border border-zinc-600 bg-zinc-800 px-3.5 py-2.5 text-sm text-zinc-200 hover:border-violet-400">Keep practising</button><button type="button" data-primary-action onClick={onNext} className="whitespace-nowrap rounded-[9px] border border-violet-500 bg-violet-600 px-3.5 py-2.5 text-sm font-bold text-white hover:bg-violet-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400">{nextLabel}<EnterKey /></button>{!surface && <button type="button" onClick={onBack} className="whitespace-nowrap rounded-[9px] border border-zinc-700 bg-zinc-900 px-3.5 py-2.5 text-sm text-zinc-400 hover:text-zinc-200">Back</button>}</>}

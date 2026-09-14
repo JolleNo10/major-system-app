@@ -16,6 +16,7 @@ export function TaskDockMessage({
   tone = 'neutral',
   focusPrimary = false,
   enableEnterPrimary = false,
+  decoration,
 }: {
   header: ReactNode
   description: ReactNode
@@ -24,6 +25,7 @@ export function TaskDockMessage({
   tone?: 'neutral' | 'ready'
   focusPrimary?: boolean
   enableEnterPrimary?: boolean
+  decoration?: ReactNode
 }) {
   return (
     <TaskDock
@@ -32,6 +34,7 @@ export function TaskDockMessage({
       contentSizing="contained"
       focusPrimary={focusPrimary}
       enableEnterPrimary={enableEnterPrimary}
+      decoration={decoration}
     >
       <div data-task-dock-message className="min-w-0 space-y-3">
         <div data-task-dock-message-content role="status" aria-live="polite" className="min-w-0">

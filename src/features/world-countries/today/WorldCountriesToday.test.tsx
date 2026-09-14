@@ -44,8 +44,10 @@ vi.mock('@/features/world-countries/learning/flows/CountryLearningFlow', () => (
     countryLearningFlowMock(props)
     const handoff = props.completionHandoff as { description: string; label: string; onContinue: () => void; stopLabel?: string; onStop?: () => void } | undefined
     const regionCompletion = props.regionCompletion as { masteryStatus: string } | undefined
+    const completionCelebration = props.completionCelebration as string | undefined
     const completedRegionAction = props.completedRegionAction as { label: string; onAction: () => void } | undefined
     return createElement('div', { 'data-testid': 'country-learning-flow' }, [
+      completionCelebration ? createElement('span', { key: 'celebration', 'data-celebration-level': completionCelebration }) : null,
       createElement('button', {
         key: 'complete',
         type: 'button',
@@ -83,6 +85,7 @@ vi.mock('@/features/world-countries/learning/flows/CapitalLearningFlow', () => (
     capitalLearningFlowMock(props)
     const handoff = props.completionHandoff as { description: string; label: string; onContinue: () => void; stopLabel?: string; onStop?: () => void } | undefined
     const regionCompletion = props.regionCompletion as { masteryStatus: string } | undefined
+    const completionCelebration = props.completionCelebration as string | undefined
     const completedRegionAction = props.completedRegionAction as { label: string; onAction: () => void } | undefined
     return createElement('div', { 'data-testid': 'capital-learning-flow' }, [
       createElement('button', {
@@ -96,6 +99,7 @@ vi.mock('@/features/world-countries/learning/flows/CapitalLearningFlow', () => (
       }, 'Finish Capital Learning'),
       completedRegionAction ? createElement('button', { key: 'region-action', type: 'button', 'data-testid': 'capital-learning-region-action', onClick: completedRegionAction.onAction }, completedRegionAction.label) : null,
       regionCompletion ? createElement('p', { key: 'region', 'data-testid': 'region-completion' }, `Region learned · Mastery ${regionCompletion.masteryStatus}`) : null,
+      completionCelebration ? createElement('span', { key: 'celebration', 'data-celebration-level': completionCelebration }) : null,
       handoff ? createElement('button', {
         key: 'handoff',
         type: 'button',
@@ -1184,6 +1188,107 @@ describe('World Countries Today', () => {
       subregion: western.subregionId,
       entries: [western],
     }))
+  })
+
+  it('resolves a Subregion celebration when another active Subregion in the Continent is not learned', async () => {
+    const northern = countries.find(country => country.subregionId === 'northern-europe')!
+    const western = countries.find(country => country.subregionId === 'western-europe')!
+    activeCountries = [northern, western]
+    markSubregionCountriesLearned(northern.subregionId, Date.now(), activeCountries)
+    const currentRecommendation = recommendation('learn-capitals', [northern.id], northern)
+    buildPlanMock.mockImplementation(() => capitalMilestoneWritten
+      ? plan({ curriculumRecommendation: null, plannerFocusSubregionId: null })
+      : plan({ curriculumRecommendation: currentRecommendation, plannerFocusSubregionId: northern.subregionId }))
+    const mount = await renderToday()
+
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-primary-action]')?.click()
+      await Promise.resolve()
+    })
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-testid="complete-capital-learning"]')?.click()
+      await Promise.resolve()
+    })
+
+    expect(mount.querySelector('[data-testid="region-completion"]')).not.toBeNull()
+    expect(mount.querySelector('[data-celebration-level]')?.getAttribute('data-celebration-level')).toBe('subregion')
+  })
+
+  it('resolves the Continent celebration when the final active Subregion completes from the World scope', async () => {
+    const northern = countries.find(country => country.subregionId === 'northern-europe')!
+    const western = countries.find(country => country.subregionId === 'western-europe')!
+    activeCountries = [northern, western]
+    const at = Date.now()
+    markSubregionCountriesLearned(northern.subregionId, at, activeCountries)
+    markSubregionCountriesLearned(western.subregionId, at + 1, activeCountries)
+    markSubregionCapitalsLearned(western.subregionId, at + 2, activeCountries)
+    const currentRecommendation = recommendation('learn-capitals', [northern.id], northern)
+    buildPlanMock.mockImplementation(() => capitalMilestoneWritten
+      ? plan({ curriculumRecommendation: null, plannerFocusSubregionId: null })
+      : plan({ curriculumRecommendation: currentRecommendation, plannerFocusSubregionId: northern.subregionId }))
+    const mount = await renderToday()
+
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-primary-action]')?.click()
+      await Promise.resolve()
+    })
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-testid="complete-capital-learning"]')?.click()
+      await Promise.resolve()
+    })
+
+    expect(mount.querySelector('[data-testid="region-completion"]')).not.toBeNull()
+    expect(mount.querySelectorAll('[data-celebration-level]')).toHaveLength(1)
+    expect(mount.querySelector('[data-celebration-level]')?.getAttribute('data-celebration-level')).toBe('continent')
+  })
+
+  it('resolves the same Continent celebration from a Continent hub', async () => {
+    const northern = countries.find(country => country.subregionId === 'northern-europe')!
+    const western = countries.find(country => country.subregionId === 'western-europe')!
+    activeCountries = [northern, western]
+    const at = Date.now()
+    markSubregionCountriesLearned(northern.subregionId, at, activeCountries)
+    markSubregionCountriesLearned(western.subregionId, at + 1, activeCountries)
+    markSubregionCapitalsLearned(western.subregionId, at + 2, activeCountries)
+    const currentRecommendation = recommendation('learn-capitals', [northern.id], northern)
+    buildPlanMock.mockImplementation(() => capitalMilestoneWritten
+      ? plan({ curriculumRecommendation: null, plannerFocusSubregionId: null })
+      : plan({ curriculumRecommendation: currentRecommendation, plannerFocusSubregionId: northern.subregionId }))
+    const mount = await renderToday({ continent: 'Europe' })
+
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-primary-action]')?.click()
+      await Promise.resolve()
+    })
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-testid="complete-capital-learning"]')?.click()
+      await Promise.resolve()
+    })
+
+    expect(mount.querySelector('[data-celebration-level]')?.getAttribute('data-celebration-level')).toBe('continent')
+  })
+
+  it('does not resolve a medium or big celebration for a Country-only completion', async () => {
+    const northern = countries.find(country => country.subregionId === 'northern-europe')!
+    const western = countries.find(country => country.subregionId === 'western-europe')!
+    activeCountries = [northern, western]
+    const currentRecommendation = recommendation('learn-countries', [northern.id], northern)
+    buildPlanMock.mockImplementation(() => milestoneWritten
+      ? plan({ curriculumRecommendation: null, plannerFocusSubregionId: null })
+      : plan({ curriculumRecommendation: currentRecommendation, plannerFocusSubregionId: northern.subregionId }))
+    const mount = await renderToday()
+
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-primary-action]')?.click()
+      await Promise.resolve()
+    })
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-testid="complete-country-learning"]')?.click()
+      await Promise.resolve()
+    })
+
+    expect(mount.querySelector('[data-testid="country-region-completion"]')).toBeNull()
+    expect(mount.querySelector('[data-celebration-level]')).toBeNull()
   })
 
   it('makes Playground the recommendation after curriculum Learning is complete without weak spots', async () => {

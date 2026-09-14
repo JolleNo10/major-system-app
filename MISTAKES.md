@@ -68,3 +68,10 @@ and starved by a sibling: `[data-map-surface-dock-row] > [data-map-surface-dock]
 # Windows npm command entry points
 
 - PowerShell blocked the first focused verification command because `npx` resolved to the disabled `npx.ps1` shim. Use the host `npx.cmd` entry point for npm-backed commands when the repository is run under this execution policy.
+
+# Celebration wiring tests
+
+- A first pass used the unavailable `toHaveAttribute` matcher and one repeated
+  patch context placed the combined-ready assertion in a Set-ready test. Use
+  the repository's native DOM assertions and anchor repeated edits on the
+  enclosing test name or a unique nearby assertion.

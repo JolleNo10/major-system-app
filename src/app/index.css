@@ -55,6 +55,168 @@
   animation: world-answer-feedback-icon 0.48s ease-out;
 }
 
+@keyframes world-learning-set-glow {
+  0% { opacity: 0.34; box-shadow: inset 0 0 0 rgba(74, 222, 128, 0), 0 0 0 rgba(74, 222, 128, 0); }
+  32% { opacity: 1; box-shadow: inset 0 0 22px rgba(74, 222, 128, 0.16), 0 0 24px rgba(74, 222, 128, 0.22); }
+  100% { opacity: 0; box-shadow: inset 0 0 12px rgba(74, 222, 128, 0.05), 0 0 0 rgba(74, 222, 128, 0); }
+}
+
+@keyframes world-learning-set-shine {
+  from { background-position: -170% 0; }
+  to { background-position: 170% 0; }
+}
+
+@keyframes world-learning-set-twinkle {
+  0%, 100% { opacity: 0; transform: scale(0.5); }
+  35% { opacity: 0.9; transform: scale(1); }
+  62% { opacity: 0.35; transform: scale(0.7); }
+}
+
+.world-learning-set-glow {
+  animation: world-learning-set-glow 1.2s ease-out both;
+}
+
+.world-learning-set-shine {
+  background-image: linear-gradient(115deg, transparent 0%, transparent 43%, rgba(236, 253, 245, 0.04) 47%, rgba(236, 253, 245, 0.48) 50%, rgba(236, 253, 245, 0.04) 53%, transparent 57%, transparent 100%);
+  background-size: 260% 100%;
+  background-position: -170% 0;
+  animation: world-learning-set-shine 0.9s cubic-bezier(0.2, 0.7, 0.25, 1) both;
+}
+
+.world-learning-set-twinkle {
+  animation: world-learning-set-twinkle 1.1s ease-out both;
+}
+
+@keyframes world-learning-milestone-glow {
+  0% { opacity: 0; transform: scale(0.7); }
+  18% { opacity: 0.4; }
+  100% { opacity: 0; transform: scale(1.15); }
+}
+
+@keyframes world-learning-firework-ray {
+  0% { opacity: 0; transform: translate(-50%, -100%) rotate(var(--learning-firework-angle)) scaleY(0.2); }
+  28% { opacity: 0.9; transform: translate(-50%, -100%) rotate(var(--learning-firework-angle)) scaleY(1); }
+  100% { opacity: 0; transform: translate(-50%, -100%) rotate(var(--learning-firework-angle)) scaleY(0.35); }
+}
+
+@keyframes world-learning-firework-core {
+  0%, 100% { opacity: 0; transform: scale(0.5); }
+  18% { opacity: 0.95; transform: scale(1); }
+  60% { opacity: 0.2; transform: scale(0.7); }
+}
+
+@keyframes world-learning-confetti {
+  0% { opacity: 0; transform: translate3d(0, 0, 0) rotate(var(--learning-confetti-rotate)); }
+  18% { opacity: 0.85; }
+  100% { opacity: 0; transform: translate3d(0, 3.5rem, 0) rotate(calc(var(--learning-confetti-rotate) + 90deg)); }
+}
+
+@keyframes world-learning-sparkle {
+  0%, 100% { opacity: 0; transform: scale(0.5) rotate(0deg); }
+  32% { opacity: 0.85; transform: scale(1) rotate(45deg); }
+  66% { opacity: 0.2; transform: scale(0.65) rotate(90deg); }
+}
+
+.world-learning-milestone-glow {
+  background: radial-gradient(ellipse at center, rgba(74, 222, 128, 0.24), transparent 58%);
+  animation: world-learning-milestone-glow 2.8s ease-out both;
+}
+
+.world-learning-firework {
+  width: 0;
+  height: 0;
+}
+
+.world-learning-firework-ray {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2px;
+  height: 2rem;
+  transform-origin: 50% 100%;
+  border-radius: 999px;
+  background: linear-gradient(to top, rgba(187, 247, 208, 0.9), rgba(125, 211, 252, 0.22));
+  box-shadow: 0 0 6px rgba(187, 247, 208, 0.65);
+  animation: world-learning-firework-ray 2.15s cubic-bezier(0.12, 0.7, 0.2, 1) var(--learning-firework-delay) both;
+}
+
+.world-learning-firework-core {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 6px;
+  height: 6px;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background: #ecfdf5;
+  box-shadow: 0 0 12px 3px rgba(134, 239, 172, 0.68);
+  animation: world-learning-firework-core 2.15s ease-out both;
+}
+
+.world-learning-confetti {
+  width: 0.3rem;
+  height: 0.65rem;
+  transform-origin: center;
+  border-radius: 999px;
+  background: #a7f3d0;
+  box-shadow: 0 0 5px rgba(167, 243, 208, 0.35);
+  animation: world-learning-confetti 2.1s ease-out var(--learning-confetti-delay) both;
+}
+
+.world-learning-confetti:nth-of-type(3n) { background: #a5f3fc; }
+.world-learning-confetti:nth-of-type(4n) { background: #fde68a; }
+
+.world-learning-sparkle::before,
+.world-learning-sparkle::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100%;
+  height: 2px;
+  border-radius: 999px;
+  background: #ecfdf5;
+  box-shadow: 0 0 7px rgba(236, 253, 245, 0.8);
+  transform: translate(-50%, -50%);
+}
+
+.world-learning-sparkle::after { transform: translate(-50%, -50%) rotate(90deg); }
+
+.world-learning-milestone-big .world-learning-milestone-glow {
+  animation-duration: 4.1s;
+}
+
+.world-learning-milestone-big .world-learning-firework-ray,
+.world-learning-milestone-big .world-learning-firework-core {
+  animation-duration: 2.9s;
+}
+
+.world-learning-milestone-big .world-learning-confetti { animation-duration: 2.8s; }
+
+.world-learning-sparkle {
+  animation: world-learning-sparkle 1.7s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .world-learning-set-shine,
+  .world-learning-set-twinkle,
+  .world-learning-firework,
+  .world-learning-firework-ray,
+  .world-learning-firework-core,
+  .world-learning-confetti,
+  .world-learning-sparkle {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+
+  .world-learning-set-glow,
+  .world-learning-milestone-glow {
+    animation: none !important;
+    opacity: 0.35;
+    transform: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-shake,
   .animate-fade-in,

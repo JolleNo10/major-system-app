@@ -1,5 +1,7 @@
-import type { ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { TaskDockMessage } from '@/features/world-countries/ui/TaskDockMessage'
+import { useMapSurfaceFeedbackOverlay } from '@/features/world-countries/ui/MapSurface'
+import { LearningMilestoneCelebration, type LearningCompletionCelebration } from './LearningCelebration'
 
 export interface LearningCompletionHandoff {
   description: string
@@ -10,6 +12,8 @@ export interface LearningCompletionHandoff {
 }
 
 export type LearningMasteryStatus = 'building' | 'mastered'
+
+export type { LearningCompletionCelebration }
 
 export interface LearningRegionCompletion {
   masteryStatus: LearningMasteryStatus
@@ -31,6 +35,7 @@ export interface LearningCompleteProps {
   completionHandoff?: LearningCompletionHandoff
   regionCompletion?: LearningRegionCompletion
   completedRegionAction?: LearningCompletedRegionAction
+  completionCelebration?: LearningCompletionCelebration
   regionLabel?: string
   surface?: boolean
 }
@@ -47,10 +52,18 @@ export function LearningComplete({
   completionHandoff,
   regionCompletion,
   completedRegionAction,
+  completionCelebration,
   regionLabel,
   surface = false,
 }: LearningCompleteProps) {
   const isCompletedRegion = Boolean(regionCompletion && regionLabel)
+  const completionOverlay = useMemo(
+    () => isCompletedRegion && completionCelebration
+      ? <LearningMilestoneCelebration level={completionCelebration} />
+      : null,
+    [completionCelebration, isCompletedRegion],
+  )
+  useMapSurfaceFeedbackOverlay(completionOverlay)
   const completionAction = isCompletedRegion ? completedRegionAction : undefined
   const header = (
     <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.08em] text-green-400">

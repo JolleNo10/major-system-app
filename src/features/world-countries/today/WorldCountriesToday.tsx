@@ -23,7 +23,7 @@ import { deriveWorldCountriesScopeProgressForCountries } from '@/features/world-
 import { deriveWorldCountriesPrimaryStatus, getCountryProgressColor, WORLD_COUNTRIES_PROGRESS_LABELS } from '@/features/world-countries/learning/progressPresentation'
 import { CountryLearningFlow } from '@/features/world-countries/learning/flows/CountryLearningFlow'
 import { CapitalLearningFlow } from '@/features/world-countries/learning/flows/CapitalLearningFlow'
-import type { LearningCompletedRegionAction, LearningCompletionHandoff, LearningRegionCompletion } from '@/features/world-countries/learning/flows/LearningComplete'
+import type { LearningCompletedRegionAction, LearningCompletionCelebration, LearningCompletionHandoff, LearningRegionCompletion } from '@/features/world-countries/learning/flows/LearningComplete'
 import type { LearningSetMaximum } from '@/features/world-countries/learning/stagedLearningPlan'
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
 import { MapSurface } from '@/features/world-countries/ui/MapSurface'
@@ -479,6 +479,14 @@ export function WorldCountriesToday({
   const regionCompletion: LearningRegionCompletion | undefined = completedLearningJourney?.regionLearned
     ? { masteryStatus: completedLearningJourney.masteryStatus }
     : undefined
+  const completionCelebration: LearningCompletionCelebration | undefined = useMemo(() => {
+    if (learningRun?.kind !== 'curriculum' || !regionCompletion) return undefined
+    const continentCountries = activeCountries.filter(country => country.continent === learningRun.recommendation.continent)
+    if (continentCountries.length === 0) return 'subregion'
+    return continentCountries.every(country => (
+      learningReadinessByCountry.get(country.id) === 'COUNTRIES_AND_CAPITALS_LEARNED'
+    )) ? 'continent' : 'subregion'
+  }, [activeCountries, learningReadinessByCountry, learningRun, regionCompletion])
   const completedRegionAction: LearningCompletedRegionAction | undefined = learningRun?.kind === 'curriculum' && regionCompletion
     ? {
         label: `Drill ${learningRun.recommendation.subregionLabel}`,
@@ -544,6 +552,7 @@ export function WorldCountriesToday({
         regionCompletion={regionCompletion}
         completedRegionAction={learningRun.kind === 'curriculum' ? completedRegionAction : undefined}
         recordCompletion={learningRun.kind === 'curriculum'}
+        completionCelebration={completionCelebration}
       />
     }
     return <CapitalLearningFlow
@@ -566,6 +575,7 @@ export function WorldCountriesToday({
       regionCompletion={regionCompletion}
       completedRegionAction={learningRun.kind === 'curriculum' ? completedRegionAction : undefined}
       recordCompletion={learningRun.kind === 'curriculum'}
+      completionCelebration={completionCelebration}
     />
   }
 

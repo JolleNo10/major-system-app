@@ -351,6 +351,34 @@ describe('TaskDock content sizing', () => {
     expect(mount.querySelector('[data-task-dock-message-actions] button')?.textContent).toBe('Continue')
     expect(mount.querySelector('[data-task-dock-message-description]')?.closest('[data-task-dock-message-actions]')).toBeNull()
     expect(mount.querySelector('[data-task-dock-message-actions]')?.previousElementSibling?.hasAttribute('data-task-dock-message-content')).toBe(true)
+    expect(mount.querySelector('[data-task-dock-decoration]')).toBeNull()
+  })
+
+  it('renders opt-in decoration inside the real TaskDock without changing its content actions', () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement(TaskDockMessage, {
+        header: createElement('span', null, 'Ready'),
+        description: createElement('span', null, 'Next step'),
+        actions: createElement('button', { type: 'button' }, 'Continue'),
+        decoration: createElement('span', { 'data-celebration-marker': true }, 'celebration'),
+      }))
+    })
+
+    const dock = mount.querySelector('[data-task-dock]')
+    const decoration = mount.querySelector('[data-task-dock-decoration]')
+    expect(decoration?.parentElement).toBe(dock)
+    expect(decoration?.className).toContain('absolute')
+    expect(decoration?.className).toContain('inset-0')
+    expect(decoration?.className).toContain('overflow-hidden')
+    expect(decoration?.className).toContain('pointer-events-none')
+    expect(decoration?.getAttribute('aria-hidden')).toBe('true')
+    expect(decoration?.querySelector('[data-celebration-marker]')?.textContent).toBe('celebration')
+    expect(mount.querySelector('[data-task-dock-message-header]')?.textContent).toBe('Ready')
+    expect(mount.querySelector('[data-task-dock-message-description]')?.textContent).toBe('Next step')
+    expect(mount.querySelector('[data-task-dock-message-actions] button')?.textContent).toBe('Continue')
   })
 
   it('allows complex checkpoint content to shrink inside its parent', () => {

@@ -35,7 +35,7 @@ import {
 import { markSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningStore'
 import { classifyRecallAnswer } from '@/features/world-countries/learning/recallAnswerMatching'
 import { CountryLearningComplete } from './CountryLearningComplete'
-import type { LearningCompletedRegionAction, LearningCompletionHandoff, LearningRegionCompletion } from './LearningComplete'
+import type { LearningCompletedRegionAction, LearningCompletionCelebration, LearningCompletionHandoff, LearningRegionCompletion } from './LearningComplete'
 import { GuidedLearningRails } from './GuidedLearningRails'
 import { LearningMapSurface } from './LearningMapSurface'
 import { SchedulerLocationPracticeStep } from './SchedulerLocationPracticeStep'
@@ -87,6 +87,7 @@ export function CountryLearningFlow({
   completionHandoff,
   regionCompletion,
   completedRegionAction,
+  completionCelebration,
   countriesEstablished = false,
   capitalsEstablished = false,
   recallProgress,
@@ -108,6 +109,7 @@ export function CountryLearningFlow({
   completionHandoff?: LearningCompletionHandoff
   regionCompletion?: LearningRegionCompletion
   completedRegionAction?: LearningCompletedRegionAction
+  completionCelebration?: LearningCompletionCelebration
   countriesEstablished?: boolean
   capitalsEstablished?: boolean
   recallProgress?: RecallProgress
@@ -275,7 +277,7 @@ export function CountryLearningFlow({
        content = flow.practice ? <SchedulerPracticeStep continent={continent} entries={stageEntries.length ? stageEntries : allPresentationEntries} session={flow.practice} stepLabel={flow.phase === 'combined-practice' ? `${stageEntries.length} ${stageEntries.length === 1 ? 'country' : 'countries'}` : learningSetContext(flow, stageEntries.length)} questionLabel={flow.phase === 'combined-practice' ? 'Mix what you\'ve learned' : 'Recall the countries'} questionTitle="Name the country" answerLabel="Type the country name" placeholder="Type the country…" showCountryName={false} answerKind="country" showMap={flow.phase !== 'combined-practice'} promptText="Name the country" evaluateAnswer={(answer, country) => evaluateCountryAnswer(answer, country, fuzzyMatching, allPresentationEntries)} formatFeedback={formatCountryFeedback} onSubmit={updatePractice} onBack={() => run(backStagedCountry)} onExit={onExit} allowIncorrectSpellingPractice={allowIncorrectSpellingPractice} surface /> : null
       break
     case 'set-ready':
-      content = <StagedLearningReadyStep title={getLearningSetCompletionLabel(stagePresentation)} summary={`You recalled all ${stageEntries.length} ${stageEntries.length === 1 ? 'country' : 'countries'} in this practice.`} nextDescription={getNextLearningStageDescription(flow.plan, flow.stageIndex, 'countries')} nextLabel={getNextLearningStageLabel(flow.plan, flow.stageIndex)} onNext={() => run(advanceStagedCountryPlan)} onKeepPractising={() => run(keepStagedCountryPractising)} onBack={() => run(backStagedCountry)} onExit={onExit} surface />
+      content = <StagedLearningReadyStep title={getLearningSetCompletionLabel(stagePresentation)} summary={`You recalled all ${stageEntries.length} ${stageEntries.length === 1 ? 'country' : 'countries'} in this practice.`} nextDescription={getNextLearningStageDescription(flow.plan, flow.stageIndex, 'countries')} nextLabel={getNextLearningStageLabel(flow.plan, flow.stageIndex)} onNext={() => run(advanceStagedCountryPlan)} onKeepPractising={() => run(keepStagedCountryPractising)} onBack={() => run(backStagedCountry)} onExit={onExit} celebration="set" surface />
       break
     case 'combined-ready':
       content = <StagedLearningReadyStep title="Mixed practice complete" summary={`You recalled all ${stageEntries.length} introduced countries together.`} nextDescription={getNextLearningStageDescription(flow.plan, flow.stageIndex, 'countries')} nextLabel={getNextLearningStageLabel(flow.plan, flow.stageIndex)} onNext={() => run(advanceStagedCountryPlan)} onKeepPractising={() => run(keepStagedCountryPractising)} onBack={() => run(backStagedCountry)} onExit={onExit} surface />
@@ -287,7 +289,7 @@ export function CountryLearningFlow({
       content = flow.ordered ? <StagedFinalRecallStep continent={continent} entries={entries} ordered={flow.ordered} stepLabel="Final recall" answerLabel="Country name" placeholder="Type the country…" showCountryName={false} answerKind="country" evaluateAnswer={(answer, country) => evaluateCountryAnswer(answer, country, fuzzyMatching, entries)} formatFeedback={formatCountryFeedback} onSubmit={updateFinal} onBack={() => run(backStagedCountry)} onExit={onExit} allowIncorrectSpellingPractice={allowIncorrectSpellingPractice} surface /> : null
       break
     case 'complete':
-      content = <CountryLearningComplete subregion={subregion} scopeLabel={learningScopeLabel} countryCount={entries.length} onDone={onDone ?? onExit} doneLabel={doneLabel} completionHandoff={completionHandoff} regionCompletion={regionCompletion} completedRegionAction={completedRegionAction} recordCompletion={recordCompletion} onRestart={() => { completionReported.current = false; transition(createStagedCountryLearningFlow({ countryIds: ids, maximum: newItemsPerSet, schedulerSettings })) }} surface />
+      content = <CountryLearningComplete subregion={subregion} scopeLabel={learningScopeLabel} countryCount={entries.length} onDone={onDone ?? onExit} doneLabel={doneLabel} completionHandoff={completionHandoff} regionCompletion={regionCompletion} completedRegionAction={completedRegionAction} completionCelebration={completionCelebration} recordCompletion={recordCompletion} onRestart={() => { completionReported.current = false; transition(createStagedCountryLearningFlow({ countryIds: ids, maximum: newItemsPerSet, schedulerSettings })) }} surface />
       break
   }
   const dockPlacement = ['practice', 'combined-practice', 'final-recall'].includes(flow.phase) ? 'stacked' : 'attached'

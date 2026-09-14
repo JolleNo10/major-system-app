@@ -20,7 +20,7 @@ vi.mock('./SchedulerPracticeStep', () => ({
   SchedulerPracticeStep: ({ onSubmit }: { onSubmit: (correct: boolean, latencyMs: number) => void }) => <button type="button" data-testid="submit-correct" onClick={() => onSubmit(true, 100)}>Correct</button>,
 }))
 vi.mock('./StagedLearningReadyStep', () => ({
-  StagedLearningReadyStep: ({ title, summary, nextDescription, nextLabel, onNext, onKeepPractising }: { title: string; summary: string; nextDescription: string; nextLabel: string; onNext: () => void; onKeepPractising?: () => void }) => <><div data-testid="ready-copy">{title} {summary} {nextDescription} {nextLabel}</div><button type="button" data-testid="ready-next" onClick={onNext}>Next</button>{onKeepPractising && <button type="button" data-testid="ready-keep" onClick={onKeepPractising}>Keep practising</button>}</>,
+  StagedLearningReadyStep: ({ title, summary, nextDescription, nextLabel, onNext, onKeepPractising, celebration }: { title: string; summary: string; nextDescription: string; nextLabel: string; onNext: () => void; onKeepPractising?: () => void; celebration?: string }) => <><div data-testid="ready-copy">{title} {summary} {nextDescription} {nextLabel}</div>{celebration && <span data-celebration-level={celebration} />}<button type="button" data-testid="ready-next" onClick={onNext}>Next</button>{onKeepPractising && <button type="button" data-testid="ready-keep" onClick={onKeepPractising}>Keep practising</button>}</>,
   FinalRecallGate: ({ onStart }: { onStart: () => void }) => <button type="button" data-testid="final-start" onClick={onStart}>Final recall</button>,
 }))
 vi.mock('./StagedFinalRecallStep', () => ({
@@ -134,6 +134,7 @@ describe('CapitalLearningFlow orchestration', () => {
     expect(container.textContent).not.toMatch(/Step [23]/)
     for (let attempt = 0; attempt < 20 && container.querySelector('[data-testid="submit-correct"]'); attempt += 1) act(() => container.querySelector<HTMLButtonElement>('[data-testid="submit-correct"]')!.click())
 
+    expect(container.querySelector('[data-celebration-level]')?.getAttribute('data-celebration-level')).toBe('set')
     expect(container.querySelector('[data-testid="ready-copy"]')?.textContent).toContain('Practice complete')
     expect(container.querySelector('[data-testid="ready-copy"]')?.textContent).not.toContain('Set 1')
     expect(container.querySelector('[data-testid="ready-copy"]')?.textContent).toContain('You recalled all 1 country–capital pair in this practice.')
@@ -222,6 +223,7 @@ describe('CapitalLearningFlow orchestration', () => {
     expect(combinedRail.querySelector('[data-learning-current-set]')).toBeNull()
 
     for (let attempt = 0; attempt < 20 && container.querySelector('[data-testid="submit-correct"]'); attempt += 1) act(() => container.querySelector<HTMLButtonElement>('[data-testid="submit-correct"]')!.click())
+    expect(container.querySelector('[data-celebration-level]')).toBeNull()
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
 
     const finalRecallRail = renderLeftRail()

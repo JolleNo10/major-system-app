@@ -142,6 +142,7 @@ export function TaskDock({
   focusPrimary = false,
   enableEnterPrimary = false,
   answerKind,
+  decoration,
 }: {
   children?: ReactNode
   status?: ReactNode
@@ -151,6 +152,7 @@ export function TaskDock({
   focusPrimary?: boolean
   enableEnterPrimary?: boolean
   answerKind?: WorldCountriesAnswerKind
+  decoration?: ReactNode
 }) {
   const dockRef = useRef<HTMLDivElement>(null)
   const formBorderClass = answerKind ? getWorldCountriesAnswerAccent(answerKind).dockBorderClassName : 'border-white/[0.11]'
@@ -194,18 +196,19 @@ export function TaskDock({
     <section
       ref={dockRef}
       data-task-dock
-      className={`${shellClass} ${variantClass} ${toneClass}`}
+      className={`${shellClass} relative isolate ${variantClass} ${toneClass}`}
     >
+      {decoration && <div data-task-dock-decoration className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]" aria-hidden="true">{decoration}</div>}
       {horizontal ? (
-        <div className="flex flex-col items-stretch gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <div className="relative z-10 flex flex-col items-stretch gap-3 xl:flex-row xl:items-center xl:justify-between">
           {status && <div role="status" aria-live="polite" className={`min-w-0 flex-1 text-sm ${statusClass}`}>{status}</div>}
           {children && <div data-task-dock-content className={contentClass}>{children}</div>}
         </div>
       ) : (
-        <>
+        <div className="relative z-10">
           {status && <div className={`mb-2 text-sm ${statusClass}`}>{status}</div>}
           {children}
-        </>
+        </div>
       )}
     </section>
   )

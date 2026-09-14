@@ -28,7 +28,7 @@ vi.mock('./SchedulerPracticeStep', () => ({
   SchedulerPracticeStep: ({ onSubmit }: { onSubmit: (correct: boolean, latencyMs: number) => void }) => <button type="button" data-testid="practice-submit" onClick={() => onSubmit(true, 100)}>Correct Country</button>,
 }))
 vi.mock('./StagedLearningReadyStep', () => ({
-  StagedLearningReadyStep: ({ title, summary, nextDescription, nextLabel, onNext }: { title: string; summary: string; nextDescription: string; nextLabel: string; onNext: () => void }) => <><div data-testid="ready-copy">{title} {summary} {nextDescription} {nextLabel}</div><button type="button" data-testid="ready-next" onClick={onNext}>Next</button></>,
+  StagedLearningReadyStep: ({ title, summary, nextDescription, nextLabel, onNext, celebration }: { title: string; summary: string; nextDescription: string; nextLabel: string; onNext: () => void; celebration?: string }) => <><div data-testid="ready-copy">{title} {summary} {nextDescription} {nextLabel}</div>{celebration && <span data-celebration-level={celebration} />}<button type="button" data-testid="ready-next" onClick={onNext}>Next</button></>,
   FinalRecallGate: ({ onStart }: { onStart: () => void }) => <button type="button" data-testid="final-start" onClick={onStart}>Final recall</button>,
 }))
 vi.mock('./StagedFinalRecallStep', () => ({ StagedFinalRecallStep: ({ onSubmit }: { onSubmit: (correct: boolean) => void }) => <button type="button" data-testid="final-submit" onClick={() => onSubmit(true)}>Correct final</button> }))
@@ -150,11 +150,13 @@ describe('CountryLearningFlow scheduler progress wiring', () => {
 
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-location"]')!.click())
     for (let attempt = 0; attempt < 20 && container.querySelector('[data-testid="location-submit"]'); attempt += 1) act(() => container.querySelector<HTMLButtonElement>('[data-testid="location-submit"]')!.click())
+    expect(container.querySelector('[data-celebration-level]')).toBeNull()
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
     expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].task).toMatchObject({ direction: 'Recall the countries', sessionContext: '1 country' })
     expect(container.textContent).not.toMatch(/Step [23]/)
     for (let attempt = 0; attempt < 20 && container.querySelector('[data-testid="practice-submit"]'); attempt += 1) act(() => container.querySelector<HTMLButtonElement>('[data-testid="practice-submit"]')!.click())
 
+    expect(container.querySelector('[data-celebration-level]')?.getAttribute('data-celebration-level')).toBe('set')
     expect(container.querySelector('[data-testid="ready-copy"]')?.textContent).toContain('Practice complete')
     expect(container.querySelector('[data-testid="ready-copy"]')?.textContent).not.toContain('Set 1')
     expect(container.querySelector('[data-testid="ready-copy"]')?.textContent).toContain('You recalled all 1 country in this practice.')
@@ -237,6 +239,7 @@ describe('CountryLearningFlow scheduler progress wiring', () => {
     expect(combinedRail.querySelector('[data-learning-current-set]')).toBeNull()
 
     for (let attempt = 0; attempt < 20 && container.querySelector('[data-testid="practice-submit"]'); attempt += 1) act(() => container.querySelector<HTMLButtonElement>('[data-testid="practice-submit"]')!.click())
+    expect(container.querySelector('[data-celebration-level]')).toBeNull()
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
 
     const finalRecallRail = renderLeftRail()
