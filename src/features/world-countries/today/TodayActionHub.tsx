@@ -3,7 +3,7 @@ import { useLayoutEffect, useRef, type RefObject } from 'react'
 export type TodayHubActionTone = 'review' | 'journey' | 'strengthen' | 'playground'
 
 export interface TodayHubAction {
-  id: 'review' | 'journey' | 'strengthen' | 'playground'
+  id: 'review' | 'journey' | 'strengthen' | 'playground' | 'drill'
   title: string
   detail: string
   tone: TodayHubActionTone

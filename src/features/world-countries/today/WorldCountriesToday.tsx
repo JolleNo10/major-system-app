@@ -745,13 +745,24 @@ export function WorldCountriesToday({
   const todayHubActions = (() => {
     if (evidence.status !== 'ready' || scopedCountries.length === 0 || !plan) return null
 
-    const playground: TodayHubAction = {
-      id: 'playground',
-      title: 'Playground',
-      detail: 'Choose Drill, Quiz, Recite or Practice',
-      tone: 'playground',
-      onAction: () => onNavigate({ area: 'play' }),
-    }
+    const freeformAction: TodayHubAction = selectedCompletedSubregionId
+      ? {
+          id: 'drill',
+          title: `Drill ${getSubregionDefinition(selectedCompletedSubregionId).label}`,
+          detail: 'Focus your drill on this region',
+          tone: 'playground',
+          onAction: () => onNavigate({
+            area: 'drill',
+            scope: { kind: 'subregion', subregionId: selectedCompletedSubregionId },
+          }),
+        }
+      : {
+          id: 'playground',
+          title: 'Playground',
+          detail: 'Choose Drill, Quiz, Recite or Practice',
+          tone: 'playground',
+          onAction: () => onNavigate({ area: 'play' }),
+        }
     const journeyAction: TodayHubAction | null = hubJourneyRecommendation && journeyActionLabel
       ? {
           id: 'journey',
@@ -784,14 +795,13 @@ export function WorldCountriesToday({
         }
       : null
 
-    if (reviewAction) return { recommended: reviewAction, otherActions: [journeyAction, playground].filter((action): action is TodayHubAction => Boolean(action)) }
-    if (journeyAction) return { recommended: journeyAction, otherActions: [strengthenAction, playground].filter((action): action is TodayHubAction => Boolean(action)) }
-    if (strengthenAction) return { recommended: strengthenAction, otherActions: [playground] }
+    if (reviewAction) return { recommended: reviewAction, otherActions: [journeyAction, freeformAction].filter((action): action is TodayHubAction => Boolean(action)) }
+    if (journeyAction) return { recommended: journeyAction, otherActions: [strengthenAction, freeformAction].filter((action): action is TodayHubAction => Boolean(action)) }
+    if (strengthenAction) return { recommended: strengthenAction, otherActions: [freeformAction] }
     return {
-      recommended: {
-        ...playground,
-        detail: 'Learning complete · You\'re caught up for now',
-      },
+      recommended: freeformAction.id === 'playground'
+        ? { ...freeformAction, detail: 'Learning complete · You\'re caught up for now' }
+        : freeformAction,
       otherActions: [],
     }
   })()

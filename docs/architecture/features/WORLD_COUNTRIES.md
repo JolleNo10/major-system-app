@@ -13,7 +13,10 @@ persisted state, identifiers, migrations, reset, or backup; and load
 World Countries opens on a map-centered **Home**. Home is the default guided
 entry: it shows World mastery, the interactive World map, and a map-attached
 **Next Step** action hub. The hub presents semantically independent Review,
-Journey, Strengthen, and Playground activities in priority order. A transient
+Journey, Strengthen, and contextual freeform activities in priority order.
+Playground remains the normal freeform action; on a Continent hub, an
+explicitly focused Subregion whose Learning is complete may replace it with a
+direct Drill shortcut scoped to that Subregion. A transient
 **Continent hub** provides the same guided composition over a Continent-scoped
 active Country population.
 **Playground** is the learner-facing top-level freeform activity destination for Recite, Quiz,
@@ -428,8 +431,9 @@ same-focus Country-to-Capital handoff before a later planner-derived
 next-region handoff; it keeps an explicit return action and never auto-starts
 that recommendation. On Home and the Continent hub, the map-attached Next Step
 hub chooses presentation priority as scheduled Review, unfinished Journey,
-available consolidation/Strengthen, then Playground. Review, Journey,
-Strengthen, and Playground remain semantically independent activities: Review
+available consolidation/Strengthen, then the contextual freeform action.
+Review, Journey,
+Strengthen, and the freeform action remain semantically independent activities: Review
 scheduling and curriculum derivation are separate sources of truth. A selected
 learned Subregion can remain the Journey orientation while the hub falls back to
 the scope's planner recommendation when unfinished curriculum remains elsewhere.

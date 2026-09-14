@@ -963,6 +963,32 @@ describe('World Countries Today', () => {
     expect(countryLearningFlowMock).toHaveBeenCalledWith(expect.objectContaining({ subregion: 'southern-europe' }))
   })
 
+  it('keeps Playground for an explicitly selected incomplete Subregion', async () => {
+    const northern = countries.find(country => country.subregionId === 'northern-europe')!
+    const southern = countries.find(country => country.subregionId === 'southern-europe')!
+    activeCountries = [northern, southern]
+    const northernRecommendation = recommendation('learn-countries', [northern.id], northern)
+    const southernRecommendation = recommendation('learn-countries', [southern.id], southern)
+    const onNavigate = vi.fn()
+    buildPlanMock.mockReturnValue(plan({
+      curriculumRecommendation: northernRecommendation,
+      plannerFocusSubregionId: northern.subregionId,
+      curriculumRecommendationsBySubregion: new Map([
+        [northern.subregionId, northernRecommendation],
+        [southern.subregionId, southernRecommendation],
+      ]),
+    }))
+
+    const mount = await renderToday({ continent: 'Europe', onNavigate })
+    const railMount = renderLatestRails()
+    act(() => [...railMount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent?.startsWith('Southern Europe'))?.click())
+
+    expect(mount.querySelector('[data-today-action="drill"]')).toBeNull()
+    expect(mount.querySelector('[data-today-action="playground"]')?.textContent).toContain('Playground')
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-today-action="playground"]')?.click())
+    expect(onNavigate).toHaveBeenCalledWith({ area: 'play' })
+  })
+
   it('falls back to the planner focus when the selected Subregion leaves the active population', async () => {
     const northern = countries.find(country => country.subregionId === 'northern-europe')!
     const central = countries.find(country => country.subregionId === 'central-europe')!
@@ -1129,7 +1155,11 @@ describe('World Countries Today', () => {
     expect(railMount.querySelector('[data-review-action]')).toBeNull()
     expect(mount.querySelector('[data-today-action="review"]')?.getAttribute('data-recommended')).toBe('true')
     expect(mount.querySelector('[data-today-action="journey"]')?.textContent).toContain('Learn 1 country · Central Europe')
-    expect(mount.textContent).not.toContain('Drill Northern Europe')
+    expect(mount.querySelector('[data-today-action="drill"]')?.textContent).toContain('Drill Northern Europe')
+    expect(mount.querySelector('[data-today-action="drill"]')?.textContent).toContain('Focus your drill on this region')
+    expect(mount.querySelector('[data-today-action="playground"]')).toBeNull()
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-today-action="drill"]')?.click())
+    expect(onNavigate).toHaveBeenCalledWith({ area: 'drill', scope: { kind: 'subregion', subregionId: northern.subregionId } })
 
     expect(railMount.querySelector('[data-relearn-track="countries"]')?.getAttribute('aria-label')).toBe('Relearn Countries in Northern Europe')
     expect(railMount.querySelector('[data-relearn-track="capitals"]')?.getAttribute('aria-label')).toBe('Relearn Capitals in Northern Europe')
@@ -1167,8 +1197,30 @@ describe('World Countries Today', () => {
     })
 
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-today-action="journey"]')?.click())
-    expect(onNavigate).not.toHaveBeenCalled()
     expect(countryLearningFlowMock).toHaveBeenCalledWith(expect.objectContaining({ subregion: 'central-europe' }))
+  })
+
+  it('recommends the selected completed Subregion Drill when no higher-priority work remains', async () => {
+    const northern = countries.find(country => country.subregionId === 'northern-europe')!
+    activeCountries = [northern]
+    markSubregionCountriesLearned(northern.subregionId, Date.now(), activeCountries)
+    markSubregionCapitalsLearned(northern.subregionId, Date.now() + 1, activeCountries)
+    buildPlanMock.mockReturnValue(plan({
+      curriculumRecommendation: null,
+      plannerFocusSubregionId: northern.subregionId,
+      scopeComplete: true,
+    }))
+    const onNavigate = vi.fn()
+    const mount = await renderToday({ continent: 'Europe', onNavigate })
+    const railMount = renderLatestRails()
+    act(() => [...railMount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent?.startsWith('Northern Europe'))?.click())
+
+    expect(mount.querySelector('[data-today-action="drill"]')?.getAttribute('data-recommended')).toBe('true')
+    expect(mount.querySelector('[data-today-action="drill"]')?.textContent).toContain('Drill Northern Europe')
+    expect(mount.querySelector('[data-today-action="drill"]')?.textContent).toContain('Focus your drill on this region')
+    expect(mount.querySelector('[data-today-action="playground"]')).toBeNull()
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-today-action="drill"]')?.click())
+    expect(onNavigate).toHaveBeenCalledWith({ area: 'drill', scope: { kind: 'subregion', subregionId: northern.subregionId } })
   })
 
   it('celebrates the Continent after a non-final Subregion Relearn in a fully learned Continent', async () => {
