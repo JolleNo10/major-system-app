@@ -21,7 +21,7 @@ import {
 import { flattenWorldCountriesRecallHistory, loadWorldCountriesRecallHistory, type WorldCountriesRecallHistory } from '@/features/world-countries/learning/recallHistory'
 import { WORLD_COUNTRIES_CORE_RECALL_SKILLS } from '@/features/world-countries/learning/recallTargets'
 import { deriveWorldCountriesScopeProgressForCountries } from '@/features/world-countries/learning/scopeProgress'
-import { deriveWorldCountriesPrimaryStatus, deriveWorldCountriesPrimaryStatusCounts, getCountryProgressColor, WORLD_COUNTRIES_PROGRESS_LABELS } from '@/features/world-countries/learning/progressPresentation'
+import { deriveWorldCountriesPrimaryStatus, deriveWorldCountriesPrimaryStatusCounts, getCountryProgressColor, getWorldCountriesPrimaryStatusLabel, WORLD_COUNTRIES_PROGRESS_LABELS } from '@/features/world-countries/learning/progressPresentation'
 import { CountryLearningFlow } from '@/features/world-countries/learning/flows/CountryLearningFlow'
 import { CapitalLearningFlow } from '@/features/world-countries/learning/flows/CapitalLearningFlow'
 import type { LearningCompletedRegionAction, LearningCompletionCelebration, LearningCompletionHandoff, LearningRegionCompletion } from '@/features/world-countries/learning/flows/LearningComplete'
@@ -339,6 +339,18 @@ export function WorldCountriesToday({
       deriveWorldCountriesCountryProgress(country.id, recallProgress ?? new Map()),
     ),
   ] as const)), [learningReadinessByCountry, recallProgress, scopedCountries])
+  useEffect(() => {
+    const countriesByStatus = new Map<string, string[]>()
+    for (const country of scopedCountries) {
+      const status = primaryStatusByCountry.get(country.id)
+      if (!status) continue
+      const statusLabel = getWorldCountriesPrimaryStatusLabel(status)
+      const countries = countriesByStatus.get(statusLabel) ?? []
+      countries.push(country.country)
+      countriesByStatus.set(statusLabel, countries)
+    }
+    console.log('World Countries by status:', Object.fromEntries(countriesByStatus))
+  }, [primaryStatusByCountry, scopedCountries])
   const progress = useMemo(
     () => recallProgress ? deriveWorldCountriesScopeProgressForCountries(
       continent ? `continent:${continent}` : 'world',
