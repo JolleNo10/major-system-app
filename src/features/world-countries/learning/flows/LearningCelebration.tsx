@@ -86,6 +86,26 @@ const BIG_SPARKLES: readonly CelebrationPosition[] = [
   { left: '66%', top: '76%', delay: '1.36s' },
 ]
 
+const MILESTONE_PROFILES: Readonly<Record<LearningCompletionCelebration, {
+  bursts: readonly CelebrationPosition[]
+  confetti: readonly ConfettiPosition[]
+  sparkles: readonly CelebrationPosition[]
+  modifierClassName: string
+}>> = {
+  subregion: {
+    bursts: MEDIUM_BURSTS,
+    confetti: MEDIUM_CONFETTI,
+    sparkles: MEDIUM_SPARKLES,
+    modifierClassName: '',
+  },
+  continent: {
+    bursts: BIG_BURSTS,
+    confetti: BIG_CONFETTI,
+    sparkles: BIG_SPARKLES,
+    modifierClassName: 'world-learning-milestone-big',
+  },
+}
+
 export function LearningSetCelebration() {
   return (
     <div data-celebration-level="set" className="pointer-events-none absolute inset-0" aria-hidden="true">
@@ -103,18 +123,16 @@ export function LearningSetCelebration() {
 }
 
 export function LearningMilestoneCelebration({ level }: { level: LearningCompletionCelebration }) {
-  const bursts = level === 'continent' ? BIG_BURSTS : MEDIUM_BURSTS
-  const confetti = level === 'continent' ? BIG_CONFETTI : MEDIUM_CONFETTI
-  const sparkles = level === 'continent' ? BIG_SPARKLES : MEDIUM_SPARKLES
+  const profile = MILESTONE_PROFILES[level]
 
   return (
     <div
       data-celebration-level={level}
-      className={`world-learning-milestone pointer-events-none absolute inset-0 overflow-hidden ${level === 'continent' ? 'world-learning-milestone-big' : ''}`}
+      className={`world-learning-milestone pointer-events-none absolute inset-0 overflow-hidden ${profile.modifierClassName}`}
       aria-hidden="true"
     >
       <div className="world-learning-milestone-glow absolute inset-0" />
-      {bursts.map((burst, burstIndex) => (
+      {profile.bursts.map((burst, burstIndex) => (
         <span key={`burst-${burstIndex}`} className="world-learning-firework absolute" style={{ left: burst.left, top: burst.top }}>
           {FIREWORK_RAYS.map(angle => (
             <span
@@ -126,14 +144,14 @@ export function LearningMilestoneCelebration({ level }: { level: LearningComplet
           <span className="world-learning-firework-core" style={{ animationDelay: burst.delay }} />
         </span>
       ))}
-      {confetti.map((piece, index) => (
+      {profile.confetti.map((piece, index) => (
         <span
           key={`confetti-${index}`}
           className="world-learning-confetti absolute"
           style={{ left: piece.left, top: piece.top, '--learning-confetti-delay': piece.delay, '--learning-confetti-rotate': piece.rotate } as CSSProperties}
         />
       ))}
-      {sparkles.map((sparkle, index) => (
+      {profile.sparkles.map((sparkle, index) => (
         <span
           key={`sparkle-${index}`}
           className="world-learning-sparkle absolute size-2"

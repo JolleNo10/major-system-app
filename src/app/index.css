@@ -72,6 +72,11 @@
   62% { opacity: 0.35; transform: scale(0.7); }
 }
 
+@keyframes world-learning-reduced-glow {
+  from { opacity: 0.35; }
+  to { opacity: 0; }
+}
+
 .world-learning-set-glow {
   animation: world-learning-set-glow 1.2s ease-out both;
 }
@@ -84,7 +89,7 @@
 }
 
 .world-learning-set-twinkle {
-  animation: world-learning-set-twinkle 1.1s ease-out both;
+  animation: world-learning-set-twinkle 0.85s ease-out both;
 }
 
 @keyframes world-learning-milestone-glow {
@@ -211,7 +216,7 @@
 
   .world-learning-set-glow,
   .world-learning-milestone-glow {
-    animation: none !important;
+    animation: world-learning-reduced-glow 0.8s ease-out both !important;
     opacity: 0.35;
     transform: none;
   }
