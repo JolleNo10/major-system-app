@@ -480,7 +480,8 @@ export function WorldCountriesToday({
     ? { masteryStatus: completedLearningJourney.masteryStatus }
     : undefined
   const completionCelebration: LearningCompletionCelebration | undefined = useMemo(() => {
-    if (learningRun?.kind !== 'curriculum' || !regionCompletion) return undefined
+    if (!learningRun || !regionCompletion) return undefined
+    if (learningRun.kind === 'relearn') return 'subregion'
     const continentCountries = activeCountries.filter(country => country.continent === learningRun.recommendation.continent)
     if (continentCountries.length === 0) return 'subregion'
     return continentCountries.every(country => (

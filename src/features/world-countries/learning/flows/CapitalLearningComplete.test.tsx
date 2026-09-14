@@ -3,6 +3,8 @@
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { PageLayoutProvider } from '@/app/layout/PageLayoutContext'
+import { MapSurface } from '@/features/world-countries/ui/MapSurface'
 import { CapitalLearningComplete } from './CapitalLearningComplete'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -140,5 +142,38 @@ describe('CapitalLearningComplete', () => {
     expect(mount.textContent).not.toContain('Countries established')
     expect(mount.textContent).not.toContain('Capitals established')
     expect(mount.textContent).not.toContain('Capitals learned')
+  })
+
+  it('keeps a non-durable Relearn celebration without exposing durable completion semantics', async () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(PageLayoutProvider, null,
+        createElement(MapSurface, {
+          context: createElement('span', null, 'Learning context'),
+          map: createElement('span', null, 'map'),
+          dock: createElement(CapitalLearningComplete, {
+            subregion: 'balkans',
+            recordCompletion: false,
+            completionCelebration: 'subregion',
+            regionCompletion: { masteryStatus: 'building' },
+            completionHandoff: { description: 'Continue the Journey', label: 'Continue', onContinue: vi.fn() },
+            completedRegionAction: { label: 'Drill Balkans', onAction: vi.fn() },
+            onDone: vi.fn(),
+            onRestart: vi.fn(),
+            surface: true,
+          }),
+        }),
+      ))
+      await Promise.resolve()
+    })
+
+    expect(mount.querySelector('[data-celebration-level="subregion"]')).not.toBeNull()
+    expect(mount.textContent).toContain("doesn't change your guided region progress")
+    expect(mount.textContent).not.toContain('Region learned')
+    expect(mount.textContent).not.toContain('Continue the Journey')
+    expect(mount.querySelector('[data-completion-region-action]')).toBeNull()
   })
 })

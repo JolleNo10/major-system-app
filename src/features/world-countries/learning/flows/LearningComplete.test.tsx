@@ -3,6 +3,8 @@
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { PageLayoutProvider } from '@/app/layout/PageLayoutContext'
+import { MapSurface } from '@/features/world-countries/ui/MapSurface'
 import { LearningComplete } from './LearningComplete'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -144,5 +146,35 @@ describe('LearningComplete', () => {
 
     act(() => mount.querySelector<HTMLButtonElement>('[data-completion-region-action]')?.click())
     expect(onAction).toHaveBeenCalledOnce()
+  })
+
+  it('registers an explicit celebration without requiring region completion state', async () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(PageLayoutProvider, null,
+        createElement(MapSurface, {
+          context: createElement('span', null, 'Learning context'),
+          map: createElement('span', null, 'map'),
+          dock: createElement(LearningComplete, {
+            eyebrow: 'Learning complete',
+            title: 'Northern Europe complete',
+            summary: 'Relearn completion summary',
+            onDone: vi.fn(),
+            onRestart: vi.fn(),
+            completionCelebration: 'subregion',
+            regionCompletion: undefined,
+            surface: true,
+          }),
+        }),
+      ))
+      await Promise.resolve()
+    })
+
+    expect(mount.querySelector('[data-map-feedback-overlay-host] [data-celebration-level="subregion"]')).not.toBeNull()
+    expect(mount.textContent).toContain('Learning complete')
+    expect(mount.textContent).not.toContain('Region learned')
   })
 })

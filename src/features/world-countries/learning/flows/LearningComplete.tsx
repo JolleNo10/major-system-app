@@ -58,10 +58,10 @@ export function LearningComplete({
 }: LearningCompleteProps) {
   const isCompletedRegion = Boolean(regionCompletion && regionLabel)
   const completionOverlay = useMemo(
-    () => isCompletedRegion && completionCelebration
+    () => completionCelebration
       ? <LearningMilestoneCelebration level={completionCelebration} />
       : null,
-    [completionCelebration, isCompletedRegion],
+    [completionCelebration],
   )
   useMapSurfaceFeedbackOverlay(completionOverlay)
   const completionAction = isCompletedRegion ? completedRegionAction : undefined
