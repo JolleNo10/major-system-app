@@ -50,7 +50,8 @@ describe('World Countries active map-task presentation', () => {
               answerKind: 'capital',
               sessionContext: 'Europe · Practice',
               reviewReason: 'Spaced review',
-              progress: { label: 'Country', current: 2, total: 5, percent: 40 },
+              progress: { label: 'Country', current: 2, total: 5, percent: 37 },
+              showStandardProgress: true,
             },
             map: createElement('span', { 'data-map-content': true }, 'map'),
             dock: createElement('span', { 'data-dock-content': true }, 'answer'),
@@ -62,9 +63,11 @@ describe('World Countries active map-task presentation', () => {
 
     const map = mount.querySelector('[data-map-surface-map]')
     const task = mount.querySelector('[data-world-countries-task]')
-    expect(task?.textContent).toBe('Country → CapitalCapital of Norway')
+    expect(task?.querySelector('[data-world-countries-task-copy]')?.textContent).toBe('Country → CapitalCapital of Norway')
     expect(mount.querySelector('[data-world-countries-task-context]')).toBeNull()
-    expect(mount.querySelector('[data-world-countries-task-progress]')).toBeNull()
+    expect(mount.querySelector('[data-world-countries-task-progress]')?.textContent).toContain('Country 2 / 5')
+    expect(mount.querySelector('[data-world-countries-task-progress]')?.textContent).toContain('37%')
+    expect(mount.querySelectorAll('[data-world-countries-session-progress]')).toHaveLength(1)
     expect(mount.querySelectorAll('[data-world-countries-task-cue]')).toHaveLength(1)
 
     await act(async () => {
@@ -77,7 +80,8 @@ describe('World Countries active map-task presentation', () => {
     expect(mount.querySelector('[data-world-countries-task-reason]')?.textContent).toContain('Why now')
     expect(mount.querySelector('[data-world-countries-task-reason]')?.textContent).toContain('Spaced review')
     expect(mount.querySelector('[data-world-countries-task-progress]')?.textContent).toContain('Country 2 / 5')
-    expect(mount.querySelector('[data-world-countries-task-progress]')?.textContent).toContain('40%')
+    expect(mount.querySelector('[data-world-countries-task-progress]')?.textContent).toContain('37%')
+    expect(mount.querySelectorAll('[data-world-countries-session-progress]')).toHaveLength(1)
     expect(mount.querySelector('[data-map-surface-map]')).toBe(map)
     expect(mount.querySelectorAll('[data-world-countries-task-cue]')).toHaveLength(1)
 
@@ -86,8 +90,62 @@ describe('World Countries active map-task presentation', () => {
       await Promise.resolve()
     })
     expect(mount.querySelector('[data-world-countries-task-context]')).toBeNull()
-    expect(mount.querySelector('[data-world-countries-task-progress]')).toBeNull()
+    expect(mount.querySelector('[data-world-countries-task-progress]')?.textContent).toContain('Country 2 / 5')
+    expect(mount.querySelector('[data-world-countries-task-progress]')?.textContent).toContain('37%')
+    expect(mount.querySelectorAll('[data-world-countries-session-progress]')).toHaveLength(1)
     expect(mount.querySelector('[data-map-surface-map]')).toBe(map)
+  })
+
+  it('renders zero standard progress with a true zero fill', async () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(PageLayoutProvider, null,
+        createElement(PageLayout, null,
+          createElement(WorldCountriesMapActivitySurface, {
+            task: {
+              direction: 'Recall the countries',
+              cue: 'Name the country',
+              progress: { label: 'Recall', current: 0, total: 3, percent: 0 },
+              showStandardProgress: true,
+            },
+            map: createElement('span', null, 'map'),
+          }),
+        ),
+      ))
+      await Promise.resolve()
+    })
+
+    expect(mount.querySelector('[data-world-countries-task-progress]')?.textContent).toContain('Recall 0 / 3')
+    expect(mount.querySelector('[data-world-countries-task-progress]')?.textContent).toContain('0%')
+    expect(mount.querySelector('[role="progressbar"] > div')?.getAttribute('style')).toContain('width: 0%')
+  })
+
+  it('keeps standard progress opt-in while retaining expanded progress for other workflows', async () => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(PageLayoutProvider, null,
+        createElement(PageLayout, null,
+          createElement(WorldCountriesMapActivitySurface, {
+            task: { direction: 'Recall', cue: 'Name the country', progress: { label: 'Recall', current: 2, total: 5, percent: 40 } },
+            map: createElement('span', null, 'map'),
+          }),
+        ),
+      ))
+      await Promise.resolve()
+    })
+
+    expect(mount.querySelector('[data-world-countries-task-progress]')).toBeNull()
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[aria-label="Expand map"]')?.click()
+      await Promise.resolve()
+    })
+    expect(mount.querySelector('[data-world-countries-task-progress]')?.textContent).toContain('Recall 2 / 5')
   })
 
   it('omits a progress card when the workflow supplies no meaningful progress', async () => {
@@ -99,13 +157,15 @@ describe('World Countries active map-task presentation', () => {
       root.render(createElement(PageLayoutProvider, null,
         createElement(PageLayout, null,
           createElement(WorldCountriesMapActivitySurface, {
-            task: { direction: 'Location → Country', cue: 'Find the Country' },
+            task: { direction: 'Location → Country', cue: 'Find the Country', progress: { label: 'Find', total: 0 }, showStandardProgress: true },
             map: createElement('span', null, 'map'),
           }),
         ),
       ))
       await Promise.resolve()
     })
+
+    expect(mount.querySelector('[data-world-countries-task-progress]')).toBeNull()
 
     await act(async () => {
       mount.querySelector<HTMLButtonElement>('[aria-label="Expand map"]')?.click()

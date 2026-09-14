@@ -59,12 +59,15 @@ export function LearningMapSurface({
     ...(taskHighlightFill ? { highlightFill: taskHighlightFill } : {}),
     ...override,
   }), [cameraIntent, override, presentation, taskHighlightFill])
+  const taskWithStandardProgress = task?.answerKind
+    ? { ...task, showStandardProgress: true }
+    : task
   const contextValue = useMemo(() => ({ setOverride }), [])
   const map = <CountryLearningMap continent={continent} scopeCountries={scopeCountries} ariaLabel={effectivePresentation.ariaLabel ?? 'World Countries Learning map'} {...effectivePresentation} />
 
   return (
     <LearningMapSurfaceContext.Provider value={contextValue}>
-      <MapSurface context={task ? <WorldCountriesTaskContext task={task} /> : context} map={map} mapMeta={mapMeta} dock={children} dockPlacement={dockPlacement} />
+      <MapSurface context={taskWithStandardProgress ? <WorldCountriesTaskContext task={taskWithStandardProgress} /> : context} map={map} mapMeta={mapMeta} dock={children} dockPlacement={dockPlacement} />
     </LearningMapSurfaceContext.Provider>
   )
 }

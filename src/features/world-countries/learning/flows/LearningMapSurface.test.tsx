@@ -96,7 +96,7 @@ describe('LearningMapSurface continuity', () => {
         presentation: { ariaLabel: 'Learning map', highlightedCountryId: norway.id },
         presentationKey: 'capital-practice',
         context: createElement('h1', null, 'Learning'),
-         task: { cue: 'Answer the task', answerKind },
+        task: { cue: 'Answer the task', answerKind, progress: { label: 'Recall', current: 0, total: 3, percent: 0 } },
         children: createElement('p', null, 'Task'),
       })))
     })
@@ -104,5 +104,32 @@ describe('LearningMapSurface continuity', () => {
     expect(mapRenders.mock.calls[mapRenders.mock.calls.length - 1]?.[0]).toMatchObject({
       highlightFill,
     })
+    expect(mount.querySelector('[data-world-countries-task-progress]')?.textContent).toContain('Recall 0 / 3')
+    expect(mount.querySelector('[data-world-countries-task-progress]')?.textContent).toContain('0%')
+  })
+
+  it.each([
+    ['Meet walkthrough', 'Meet the countries', 'Norway', 'walkthrough'],
+    ['readiness', 'Learning context', 'Northern Europe', 'readiness'],
+    ['checkpoint', 'Learning context', 'Recall ready', 'checkpoint'],
+    ['completion', 'Learning complete', 'Northern Europe', 'completion'],
+  ] as const)('does not opt a %s task into standard progress', (_state, direction, cue, presentationKey) => {
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    act(() => {
+      root = createRoot(mount)
+      root.render(createElement(PageLayoutProvider, null, createElement(LearningMapSurface, {
+        continent: 'Europe',
+        scopeCountries: [norway],
+        presentation: { ariaLabel: 'Learning map' },
+        presentationKey,
+        context: createElement('h1', null, 'Learning'),
+        task: { direction, cue, progress: { label: 'Country', current: 1, total: 3 } },
+        children: createElement('p', null, 'Task'),
+      })))
+    })
+
+    expect(mount.querySelector('[data-world-countries-task-progress]')).toBeNull()
   })
 })

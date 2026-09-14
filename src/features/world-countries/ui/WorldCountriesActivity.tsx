@@ -20,6 +20,7 @@ export interface WorldCountriesActivityTask {
   answerKind?: WorldCountriesAnswerKind
   reviewReason?: ReactNode
   progress?: WorldCountriesActivityProgress
+  showStandardProgress?: boolean
 }
 
 function getProgressPercent(progress: WorldCountriesActivityProgress): number | null {
@@ -53,8 +54,9 @@ export function WorldCountriesSessionProgressBar({ progressPercent, label }: {
   )
 }
 
-export function WorldCountriesSessionProgress({ progress }: {
+export function WorldCountriesSessionProgress({ progress, variant = 'card' }: {
   progress: WorldCountriesActivityProgress
+  variant?: 'card' | 'embedded'
 }) {
   const percent = getProgressPercent(progress)
   if (!hasMeaningfulProgress(progress)) return null
@@ -67,7 +69,9 @@ export function WorldCountriesSessionProgress({ progress }: {
     <section
       data-world-countries-session-progress
       aria-label={progress.label}
-      className="flex h-full min-w-0 flex-col justify-center rounded-xl border border-zinc-800 bg-zinc-950/75 px-3 py-2"
+      className={variant === 'embedded'
+        ? 'min-w-0'
+        : 'flex h-full min-w-0 flex-col justify-center rounded-xl border border-zinc-800 bg-zinc-950/75 px-3 py-2'}
     >
       <div className="flex items-center justify-between gap-3 text-xs tabular-nums text-zinc-400">
         <span>{count ? `${progress.label} ${count}` : progress.label}</span>
@@ -83,7 +87,7 @@ export function WorldCountriesTaskContext({ task }: {
 }) {
   const presentation = useMapSurfacePresentation()
   const expanded = presentation === 'expanded'
-  const progress = expanded && hasMeaningfulProgress(task.progress) ? task.progress : null
+  const progress = (expanded || task.showStandardProgress) && hasMeaningfulProgress(task.progress) ? task.progress : null
 
   return (
     <section
@@ -111,8 +115,13 @@ export function WorldCountriesTaskContext({ task }: {
             )}
           </div>
         </div>
+        {!expanded && progress && (
+          <div data-world-countries-task-progress className="mt-2 min-w-0 text-left">
+            <WorldCountriesSessionProgress progress={progress} variant="embedded" />
+          </div>
+        )}
       </div>
-      {progress && (
+      {expanded && progress && (
         <div data-world-countries-task-progress className="min-w-0">
           <WorldCountriesSessionProgress progress={progress} />
         </div>

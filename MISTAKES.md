@@ -69,6 +69,12 @@ and starved by a sibling: `[data-map-surface-dock-row] > [data-map-surface-dock]
 
 - PowerShell blocked the first focused verification command because `npx` resolved to the disabled `npx.ps1` shim. Use the host `npx.cmd` entry point for npm-backed commands when the repository is run under this execution policy.
 
+# PowerShell command separators
+
+- An amend command was rejected before execution because PowerShell does not
+  support `&&` as a statement separator in this session. Run sequential Git
+  operations as separate tool calls, or use PowerShell-compatible control flow.
+
 # Celebration wiring tests
 
 - A first pass used the unavailable `toHaveAttribute` matcher and one repeated
