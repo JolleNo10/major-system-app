@@ -15,12 +15,13 @@ import {
   createWorldCountriesEstablishedLearningReadinessByCountry,
   createWorldCountriesLearningPattern,
   getWorldCountriesLearningReadinessLabel,
+  getWorldCountriesLearningStateList,
   isWorldCountriesCountryLayerEstablished,
 } from '@/features/world-countries/learning/learningReadiness'
 import { flattenWorldCountriesRecallHistory, loadWorldCountriesRecallHistory, type WorldCountriesRecallHistory } from '@/features/world-countries/learning/recallHistory'
 import { WORLD_COUNTRIES_CORE_RECALL_SKILLS } from '@/features/world-countries/learning/recallTargets'
 import { deriveWorldCountriesScopeProgressForCountries } from '@/features/world-countries/learning/scopeProgress'
-import { deriveWorldCountriesPrimaryStatus, getCountryProgressColor, WORLD_COUNTRIES_PROGRESS_LABELS } from '@/features/world-countries/learning/progressPresentation'
+import { deriveWorldCountriesPrimaryStatus, deriveWorldCountriesPrimaryStatusCounts, getCountryProgressColor, WORLD_COUNTRIES_PROGRESS_LABELS } from '@/features/world-countries/learning/progressPresentation'
 import { CountryLearningFlow } from '@/features/world-countries/learning/flows/CountryLearningFlow'
 import { CapitalLearningFlow } from '@/features/world-countries/learning/flows/CapitalLearningFlow'
 import type { LearningCompletedRegionAction, LearningCompletionCelebration, LearningCompletionHandoff, LearningRegionCompletion } from '@/features/world-countries/learning/flows/LearningComplete'
@@ -521,6 +522,7 @@ export function WorldCountriesToday({
   const scopeSummaries = useMemo(() => {
     void geographyRevision
     if (!recallProgress) return []
+    const learningStateList = getWorldCountriesLearningStateList(learningStates)
     if (!continent) {
       return getContinentsInEffectiveOrder(scopedCountries, getWorldMetadata()).map(candidate => {
         const entries = scopedCountries.filter(country => country.continent === candidate)
@@ -529,6 +531,7 @@ export function WorldCountriesToday({
           id: candidate,
           label: candidate,
           progress: deriveWorldCountriesScopeProgressForCountries(`continent:${candidate}`, entries, recallProgress),
+          distribution: deriveWorldCountriesPrimaryStatusCounts(entries, learningStateList, recallProgress),
           onSelect: onSelectContinent ? () => onSelectContinent(candidate, plan?.curriculumRecommendation?.continent ?? null) : undefined,
           selected: isSelected,
           status: isSelected && activeSubregionId
@@ -544,12 +547,13 @@ export function WorldCountriesToday({
         id: subregion.id,
         label: subregion.label,
         progress: deriveWorldCountriesScopeProgressForCountries(`subregion:${subregion.id}`, entries, recallProgress),
+        distribution: deriveWorldCountriesPrimaryStatusCounts(entries, learningStateList, recallProgress),
         onSelect: () => setSelectedSubregionId(subregion.id),
         selected: isSelected,
         status: isSelected ? 'Selected focus' : undefined,
       }
     })
-  }, [activeSubregionId, continent, geographyRevision, onSelectContinent, plan, recallProgress, scopedCountries])
+  }, [activeSubregionId, continent, geographyRevision, learningStates, onSelectContinent, plan, recallProgress, scopedCountries])
   const scopeLabel = continent ?? 'World'
   const navigateWorld = onWorld ?? (() => undefined)
   const plannerNextRecommendation = plan?.curriculumRecommendation ?? null

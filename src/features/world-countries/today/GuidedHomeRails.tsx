@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useRails } from '@/app/layout/PageLayoutContext'
 import type { Continent } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition } from '@/features/world-countries/data/subregions'
+import type { WorldCountriesPrimaryStatusCount } from '@/features/world-countries/learning/progressPresentation'
 import { GeographyBreadcrumbs } from '@/features/world-countries/ui/GeographyBreadcrumbs'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
 import type { WorldCountriesJourneyPresentation } from './journeyPresentation'
@@ -20,6 +21,8 @@ export interface GuidedHomeScopeSummary {
     coreSkillCount?: number
     coreMasteryRatio?: number
   }
+  /** Recall health distribution — when present, renders a segmented colour bar instead of the solid cyan bar. */
+  distribution?: readonly WorldCountriesPrimaryStatusCount[]
   onSelect?: () => void
   selected?: boolean
   status?: string
@@ -140,8 +143,13 @@ export function GuidedHomeRails({
                   <span>{summary.label}</span>
                   <span className="text-xs tabular-nums text-zinc-500">Mastery {Math.round(getMasteryRatio(summary.progress) * 100)}%</span>
                 </span>
-                <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-zinc-800" aria-hidden="true">
-                  <span className="block h-full rounded-full bg-cyan-500" style={{ width: `${Math.round(getMasteryRatio(summary.progress) * 100)}%` }} />
+                <span className="mt-1 flex h-1.5 overflow-hidden rounded-full bg-zinc-800" aria-hidden="true">
+                  {summary.distribution
+                    ? summary.distribution.filter(entry => entry.count > 0).map(entry => (
+                        <span key={entry.state} className="h-full" style={{ width: `${(entry.count / Math.max(1, summary.progress.totalCountries)) * 100}%`, backgroundColor: entry.color }} />
+                      ))
+                    : <span className="block h-full rounded-full bg-cyan-500" style={{ width: `${Math.round(getMasteryRatio(summary.progress) * 100)}%` }} />
+                  }
                 </span>
                 <span className="mt-1 block text-xs text-zinc-500">{summary.status ?? `${summary.progress.completeCountries} / ${summary.progress.totalCountries} Countries fully mastered`}</span>
               </button>
