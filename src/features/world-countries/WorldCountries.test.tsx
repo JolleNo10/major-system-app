@@ -66,18 +66,12 @@ async function renderShell() {
 }
 
 describe('World Countries guided shell', () => {
-  it('opens on Home without an equal activity-tab selector', async () => {
+  it('opens on Home without the redundant feature header or Playground shortcut', async () => {
     const mount = await renderShell()
-    const header = mount.querySelector('nav[aria-label="World Countries navigation"]')
 
-    expect(header?.textContent).toContain('World Countries')
-    expect(header?.textContent).toContain('Playground')
-    expect(header?.textContent).not.toContain('Home')
-    expect(header?.querySelector('[role="tablist"]')).toBeNull()
-    const playgroundButton = header?.querySelector<HTMLButtonElement>('[data-world-countries-playground]')
-    expect(playgroundButton?.textContent).toBe('Playground')
-    expect(playgroundButton?.getAttribute('aria-current')).toBeNull()
     expect(mount.querySelector('[data-testid="today-workflow"]')).not.toBeNull()
+    expect(mount.querySelector('nav[aria-label="World Countries navigation"]')).toBeNull()
+    expect(mount.querySelector('[data-world-countries-playground]')).toBeNull()
   })
 
   it('reaches the Continent hub from geography without starting a workflow', async () => {
@@ -87,15 +81,16 @@ describe('World Countries guided shell', () => {
     await act(async () => openEurope?.click())
 
     expect(mount.querySelector('[data-testid="today-workflow"]')).not.toBeNull()
-    expect(mount.querySelector('nav[aria-label="World Countries navigation"]')?.textContent).toContain('World / Europe')
+    expect(mount.querySelector('nav[aria-label="World Countries navigation"]')).toBeNull()
+    expect(mount.querySelector('[data-world-countries-playground]')).toBeNull()
     expect(mount.querySelector('[data-testid="recite-workflow"]')).toBeNull()
   })
 
-  it('opens Playground from a Continent while preserving its originating scope', async () => {
+  it('opens Playground from Continent Today navigation while preserving its originating scope', async () => {
     const mount = await renderShell()
 
     await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Open Europe')?.click())
-    await act(async () => mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.click())
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="open-today-playground"]')?.click())
 
     expect(mount.querySelector('[data-world-countries-playground]')?.getAttribute('aria-current')).toBe('page')
     expect(mount.querySelector('#world-countries-play-heading')).not.toBeNull()
@@ -106,28 +101,28 @@ describe('World Countries guided shell', () => {
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.click())
 
     expect(mount.querySelector('[data-testid="today-workflow"]')).not.toBeNull()
-    expect(mount.querySelector('nav[aria-label="World Countries navigation"]')?.textContent).toContain('World / Europe')
-    expect(mount.querySelector('[data-world-countries-playground]')?.getAttribute('aria-current')).toBeNull()
+    expect(mount.querySelector('nav[aria-label="World Countries navigation"]')).toBeNull()
+    expect(mount.querySelector('[data-world-countries-playground]')).toBeNull()
   })
 
   it('toggles Playground back to World Home at World scope', async () => {
     const mount = await renderShell()
 
-    await act(async () => mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.click())
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="open-today-playground"]')?.click())
     expect(mount.querySelector('#world-countries-play-heading')).not.toBeNull()
     expect(mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.textContent).toBe('Back to World')
 
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.click())
 
     expect(mount.querySelector('[data-testid="today-workflow"]')).not.toBeNull()
-    expect(mount.querySelector('nav[aria-label="World Countries navigation"]')?.textContent).toContain('Learn the world')
-    expect(mount.querySelector('[data-world-countries-playground]')?.getAttribute('aria-current')).toBeNull()
+    expect(mount.querySelector('nav[aria-label="World Countries navigation"]')).toBeNull()
+    expect(mount.querySelector('[data-world-countries-playground]')).toBeNull()
   })
 
-  it('returns to Playground from an activity launched through the header', async () => {
+  it('returns to Playground from an activity launched through Today', async () => {
     const mount = await renderShell()
 
-    await act(async () => mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.click())
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="open-today-playground"]')?.click())
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-play-activity="recite"]')?.click())
     expect(mount.querySelector('[data-testid="recite-workflow"]')).not.toBeNull()
 
@@ -140,7 +135,7 @@ describe('World Countries guided shell', () => {
 
   it('opens Playground from Home and routes its choices to the existing workflow owners', async () => {
     const mount = await renderShell()
-    await act(async () => mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.click())
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="open-today-playground"]')?.click())
 
     expect(mount.querySelector('[data-world-countries-playground]')?.getAttribute('aria-current')).toBe('page')
     expect(mount.querySelector('#world-countries-play-heading')).not.toBeNull()
@@ -161,7 +156,7 @@ describe('World Countries guided shell', () => {
     await act(async () => mount.querySelector<HTMLButtonElement>('button')?.click())
     expect(mount.querySelector('[data-testid="today-workflow"]')).not.toBeNull()
 
-    await act(async () => mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.click())
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="open-today-playground"]')?.click())
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-play-activity="locate-countries"]')?.click())
     expect(mount.querySelector('[data-testid="drill-workflow"]')?.textContent).toContain('practice locate-countries')
   })
@@ -181,7 +176,7 @@ describe('World Countries guided shell', () => {
 
   it('keeps Quiz transient state local when Playground leaves and re-enters it', async () => {
     const mount = await renderShell()
-    await act(async () => mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.click())
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="open-today-playground"]')?.click())
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-play-activity="quiz"]')?.click())
     expect(mount.querySelector('[data-testid="quiz-local-state"]')?.textContent).toBe('Quiz initial state')
 
@@ -190,26 +185,26 @@ describe('World Countries guided shell', () => {
     await act(async () => mount.querySelector<HTMLButtonElement>('button')?.click())
     expect(mount.querySelector('[data-testid="today-workflow"]')).not.toBeNull()
 
-    await act(async () => mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.click())
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="open-today-playground"]')?.click())
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-play-activity="quiz"]')?.click())
     expect(mount.querySelector('[data-testid="quiz-local-state"]')?.textContent).toBe('Quiz initial state')
   })
 
   it('routes Locate Capitals and Capital Practice to fixed Practice setup modes', async () => {
     const mount = await renderShell()
-    await act(async () => mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.click())
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="open-today-playground"]')?.click())
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-play-activity="locate-capitals"]')?.click())
     expect(mount.querySelector('[data-testid="drill-workflow"]')?.textContent).toContain('practice locate-capitals')
 
     await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Exit Drill')?.click())
-    await act(async () => mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.click())
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="open-today-playground"]')?.click())
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-play-activity="capital-practice"]')?.click())
     expect(mount.querySelector('[data-testid="drill-workflow"]')?.textContent).toContain('practice capitals')
   })
 
   it('routes Custom Drill to the recorded Drill owner', async () => {
     const mount = await renderShell()
-    await act(async () => mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.click())
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="open-today-playground"]')?.click())
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-play-activity="custom-drill"]')?.click())
 
     expect(mount.querySelector('[data-testid="drill-workflow"]')?.textContent).toContain('Drill workflow drill')
@@ -218,14 +213,18 @@ describe('World Countries guided shell', () => {
   it('returns each Playground setup activity to its originating Continent scope', async () => {
     const mount = await renderShell()
     await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Open Europe')?.click())
-    await act(async () => mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.click())
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="open-today-playground"]')?.click())
 
     for (const activity of ['custom-drill', 'locate-countries', 'locate-capitals', 'capital-practice']) {
       await act(async () => mount.querySelector<HTMLButtonElement>(`[data-play-activity="${activity}"]`)?.click())
       await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Exit Drill')?.click())
       expect(mount.querySelector('[data-testid="today-workflow"]')).not.toBeNull()
-      expect(mount.querySelector('nav[aria-label="World Countries navigation"]')?.textContent).toContain('World / Europe')
-      if (activity !== 'capital-practice') await act(async () => mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.click())
+      expect(mount.querySelector('nav[aria-label="World Countries navigation"]')).toBeNull()
+      expect(mount.querySelector('[data-world-countries-playground]')).toBeNull()
+      if (activity !== 'capital-practice') {
+        await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="open-today-playground"]')?.click())
+        expect(mount.querySelector('nav[aria-label="World Countries hierarchy"]')?.textContent).toMatch(/World\s*\/\s*Europe\s*\/\s*Playground/)
+      }
     }
   })
 

@@ -596,7 +596,7 @@ export function WorldCountriesToday({
                 <h1 id="world-countries-today-heading" className="text-2xl font-black text-zinc-100">{continent ?? 'Your world'}</h1>
                 {activeSubregionLabel && <p data-active-subregion className="text-sm font-semibold text-cyan-200">Focus: {activeSubregionLabel}</p>}
               </div>
-              <div className="mt-2">
+              <div className="mt-1">
                 <WorldCountriesMapLegend learningComplete={worldLearningComplete} />
               </div>
             </div>
