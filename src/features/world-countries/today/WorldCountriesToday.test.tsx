@@ -925,6 +925,56 @@ describe('World Countries Today', () => {
     expect(mount.querySelector('[data-today-action="journey"]')?.textContent).toContain('Learn 1 country · Western Europe')
   })
 
+  it('releases an explicitly selected region after completing Learning when the planner advances', async () => {
+    const central = countries.find(country => country.subregionId === 'central-europe')!
+    const western = countries.find(country => country.subregionId === 'western-europe')!
+    activeCountries = [central, western]
+    markSubregionCountriesLearned(central.subregionId, Date.now(), activeCountries)
+    const initialPlan = plan({
+      curriculumRecommendation: recommendation('learn-capitals', [central.id], central),
+      plannerFocusSubregionId: central.subregionId,
+    })
+    const nextRecommendation = recommendation('learn-countries', [western.id], western)
+    const postMilestonePlan = plan({
+      curriculumRecommendation: nextRecommendation,
+      plannerFocusSubregionId: western.subregionId,
+    })
+    buildPlanMock.mockImplementation(() => capitalMilestoneWritten ? postMilestonePlan : initialPlan)
+    const mount = await renderToday({ continent: 'Europe' })
+
+    let railMount = renderLatestRails()
+    act(() => [...railMount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent?.startsWith('Central Europe'))?.click())
+
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-today-action="journey"]')?.click()
+      await Promise.resolve()
+    })
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-testid="complete-capital-learning"]')?.click()
+      await Promise.resolve()
+    })
+
+    expect(mount.querySelector('[data-testid="region-completion"]')?.textContent).toContain('Region learned')
+    expect(mount.textContent).toContain('Back to Europe')
+    expect(mount.textContent).toContain('Start Western Europe')
+
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-testid="capital-learning-stop"]')?.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    railMount = renderLatestRails()
+    expect(railMount.querySelector('[data-active-focus="true"]')?.textContent).toContain('Western Europe')
+    expect(railMount.textContent).not.toContain('Learning complete · Central Europe')
+    expect(mount.querySelector('[data-active-subregion]')?.textContent).toBe('Focus: Western Europe')
+    const mapProps = geographyOverviewMapMock.mock.calls[geographyOverviewMapMock.mock.calls.length - 1]?.[0] as {
+      selectedSubregionIds?: readonly string[]
+    } | undefined
+    expect(mapProps?.selectedSubregionIds).toEqual([western.subregionId])
+    expect(mount.querySelector('[data-today-action="journey"]')?.textContent).toContain('Learn 1 country · Western Europe')
+  })
+
   it('recognizes a Country-finished region boundary from post-milestone readiness truth', async () => {
     const northern = countries.find(country => country.subregionId === 'northern-europe')!
     const western = countries.find(country => country.subregionId === 'western-europe')!

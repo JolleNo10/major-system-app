@@ -265,12 +265,6 @@ export function WorldCountriesToday({
     setHubFocusRequest(request => request + 1)
   }
 
-  const finishLearning = () => {
-    setLearningRun(null)
-    setReviewCompletion(null)
-    void refreshAfterActivity()
-  }
-
   const launchReviewOpportunity = (opportunity: Exclude<WorldCountriesTodayReviewOpportunity, null>) => {
     setLearningRun(null)
     setReviewCompletion(null)
@@ -352,6 +346,22 @@ export function WorldCountriesToday({
       recallProgress: recallProgress ?? new Map(),
     })
   }, [evidence.status, learningRun, learningStates, recallProgress, scopedCountries])
+  const finishLearning = () => {
+    const nextRecommendation = plan?.curriculumRecommendation
+    if (
+      learningRun
+      && selectedSubregionId === learningRun.recommendation.subregionId
+      && completedLearningJourney?.regionLearned
+      && nextRecommendation
+      && nextRecommendation.subregionId !== learningRun.recommendation.subregionId
+    ) {
+      setSelectedSubregionId(null)
+    }
+    setLearningRun(null)
+    setReviewCompletion(null)
+    void refreshAfterActivity()
+  }
+
   const scopeSummaries = useMemo(() => {
     void geographyRevision
     if (!recallProgress) return []
