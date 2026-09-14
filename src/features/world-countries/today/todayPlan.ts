@@ -4,7 +4,7 @@ import type { WorldCountriesRecallHistory } from '@/features/world-countries/lea
 import { deriveWorldCountriesIntroducedness, type WorldCountriesTargetIntroduction } from '@/features/world-countries/learning/todayIntroduction'
 import { getSubregionDefinition } from '@/features/world-countries/data/subregions'
 import type { SubregionLearningState } from '@/features/world-countries/learning/subregionLearningState'
-import { createWorldCountriesEstablishedLearningReadinessByCountry, isWorldCountriesCapitalLayerEstablished, isWorldCountriesCountryLayerEstablished } from '@/features/world-countries/learning/learningReadiness'
+import { createWorldCountriesEstablishedLearningReadinessByCountry, isWorldCountriesCapitalLayerEstablished, isWorldCountriesCountryLayerEstablished, type WorldCountriesLearningReadiness } from '@/features/world-countries/learning/learningReadiness'
 import {
   deriveWorldCountriesReviewSchedule,
   isValidWorldCountriesLocalDate,
@@ -24,6 +24,8 @@ import {
 import { interleaveWorldCountriesTodayReviewCandidates } from './reviewInterleaving'
 
 export const WORLD_COUNTRIES_TODAY_REVIEW_BLOCK_SIZE = 8
+const WORLD_COUNTRIES_TODAY_HIGH_CONSOLIDATION_MIN_FRAGILE_TARGETS = 4
+const WORLD_COUNTRIES_TODAY_HIGH_CONSOLIDATION_MIN_FRAGILE_RATIO = 0.5
 
 export type WorldCountriesTodayLearningTrack = 'learn-countries' | 'learn-capitals'
 
@@ -47,6 +49,13 @@ export type WorldCountriesTodayReviewOpportunity =
   | { kind: 'consolidate'; candidates: readonly WorldCountriesTodayReviewCandidate[] }
   | null
 
+export interface WorldCountriesTodayConsolidationPressure {
+  establishedNonMasteredTargetCount: number
+  fragileTargetCount: number
+  fragileRatio: number
+  isHigh: boolean
+}
+
 export interface WorldCountriesTodayPlan {
   dueCandidates: readonly WorldCountriesTodayReviewCandidate[]
   reviewQueue: readonly WorldCountriesTodayReviewCandidate[]
@@ -67,6 +76,8 @@ export interface WorldCountriesTodayPlan {
   curriculumRecommendationsBySubregion: ReadonlyMap<SubregionId, WorldCountriesTodayLearningRecommendation | null>
   /** Independent Review-area opportunity: scheduled review first, weak spots second. */
   reviewOpportunity: WorldCountriesTodayReviewOpportunity
+  /** Derived pressure from established, non-mastered recall targets in scope. */
+  consolidationPressure: WorldCountriesTodayConsolidationPressure
 }
 
 export interface WorldCountriesTodayPlanInput {
@@ -114,6 +125,53 @@ function createCandidate(
     milestoneAt,
   })
   return { target: { countryId: country.id, skill }, country, schedule }
+}
+
+function isTargetEstablishedForReadiness(
+  skill: WorldCountriesCoreRecallSkill,
+  readiness: WorldCountriesLearningReadiness,
+): boolean {
+  return skill === 'location-to-country'
+    ? readiness !== 'NOT_LEARNED'
+    : readiness === 'COUNTRIES_AND_CAPITALS_LEARNED'
+}
+
+function deriveConsolidationPressure({
+  countries,
+  establishedReadinessByCountry,
+  progressByTarget,
+}: {
+  countries: readonly Country[]
+  establishedReadinessByCountry: ReadonlyMap<CountryId, WorldCountriesLearningReadiness>
+  progressByTarget: ReadonlyMap<string, ReturnType<typeof deriveWorldCountriesAtomicProgress>>
+}): WorldCountriesTodayConsolidationPressure {
+  let establishedNonMasteredTargetCount = 0
+  let fragileTargetCount = 0
+
+  for (const country of countries) {
+    const readiness = establishedReadinessByCountry.get(country.id) ?? 'NOT_LEARNED'
+    for (const skill of WORLD_COUNTRIES_CORE_RECALL_SKILLS) {
+      if (!isTargetEstablishedForReadiness(skill, readiness)) continue
+      const progress = progressByTarget.get(recallTargetIdFor(country.id, skill))
+      if (!progress || progress.mastered) continue
+
+      establishedNonMasteredTargetCount += 1
+      if (progress.proficiency === 'weak' || progress.proficiency === 'developing') {
+        fragileTargetCount += 1
+      }
+    }
+  }
+
+  const fragileRatio = establishedNonMasteredTargetCount === 0
+    ? 0
+    : fragileTargetCount / establishedNonMasteredTargetCount
+  return {
+    establishedNonMasteredTargetCount,
+    fragileTargetCount,
+    fragileRatio,
+    isHigh: fragileTargetCount >= WORLD_COUNTRIES_TODAY_HIGH_CONSOLIDATION_MIN_FRAGILE_TARGETS
+      && fragileRatio >= WORLD_COUNTRIES_TODAY_HIGH_CONSOLIDATION_MIN_FRAGILE_RATIO,
+  }
 }
 
 function compareCandidates(
@@ -310,9 +368,7 @@ export function buildWorldCountriesTodayPlan(
     for (const skill of WORLD_COUNTRIES_CORE_RECALL_SKILLS) {
       const itemId = recallTargetIdFor(country.id, skill)
       const readiness = establishedReadinessByCountry.get(country.id) ?? 'NOT_LEARNED'
-      const reviewEligible = skill === 'location-to-country'
-        ? readiness !== 'NOT_LEARNED'
-        : readiness === 'COUNTRIES_AND_CAPITALS_LEARNED'
+      const reviewEligible = isTargetEstablishedForReadiness(skill, readiness)
       const milestoneAt = introductions.get(itemId)?.milestoneAt ?? null
       const candidate = createCandidate(country, skill, input.history, reviewEligible, milestoneAt, temporalOptions)
       if (!candidate) continue
@@ -343,6 +399,11 @@ export function buildWorldCountriesTodayPlan(
     progressByTarget,
     incompleteCountries,
     preferredJourneyContinent: input.preferredJourneyContinent,
+  })
+  const consolidationPressure = deriveConsolidationPressure({
+    countries: effectiveCountries,
+    establishedReadinessByCountry,
+    progressByTarget,
   })
   const incompleteSubregionLabels = [...new Set(effectiveCountries
     .filter(country => incompleteCountries.has(country.id))
@@ -376,5 +437,6 @@ export function buildWorldCountriesTodayPlan(
     plannerFocusSubregionId,
     curriculumRecommendationsBySubregion,
     reviewOpportunity,
+    consolidationPressure,
   }
 }

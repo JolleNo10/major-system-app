@@ -65,8 +65,49 @@ function establishedLearningStatesFor(
   }))
 }
 
+function countryLayerLearningStatesFor(
+  entries: readonly Pick<Country, 'subregionId'>[],
+  milestoneAt: number,
+) {
+  return [...new Set(entries.map(country => country.subregionId))].map(subregionId => ({
+    subregionId,
+    countriesLearnedAt: milestoneAt,
+  }))
+}
+
 function candidateId(candidate: { target: { countryId: Country['id']; skill: WorldCountriesCoreRecallSkill } }): string {
   return recallTargetIdFor(candidate.target.countryId, candidate.target.skill)
+}
+
+function historyForLocationProgress(
+  entries: readonly Country[],
+  options: {
+    weakIds?: readonly Country['id'][]
+    developingIds?: readonly Country['id'][]
+    strongIds?: readonly Country['id'][]
+    masteredIds?: readonly Country['id'][]
+  } = {},
+) {
+  const weakIds = new Set(options.weakIds)
+  const developingIds = new Set(options.developingIds)
+  const strongIds = new Set(options.strongIds)
+  const masteredIds = new Set(options.masteredIds)
+  const attempts = entries.flatMap((country, index) => {
+    const itemId = recallTargetIdFor(country.id, 'location-to-country')
+    const firstAt = index * 10 + 1
+    if (weakIds.has(country.id)) return [{ itemId, at: firstAt, ok: false, evidenceKind: 'recall' as const, localDate: TEST_LOCAL_DATE }]
+    if (developingIds.has(country.id)) return [{ itemId, at: firstAt, ok: true, evidenceKind: 'recall' as const, localDate: TEST_LOCAL_DATE }]
+    if (strongIds.has(country.id)) return [
+      { itemId, at: firstAt, ok: true, evidenceKind: 'recall' as const, localDate: TEST_LOCAL_DATE },
+      { itemId, at: firstAt + 1, ok: true, evidenceKind: 'recall' as const, localDate: TEST_LOCAL_DATE },
+    ]
+    if (masteredIds.has(country.id)) return [
+      { itemId, at: firstAt, ok: true, evidenceKind: 'recall' as const, localDate: '2026-08-10' },
+      { itemId, at: firstAt + 1, ok: true, evidenceKind: 'recall' as const, localDate: '2026-08-11' },
+    ]
+    return []
+  })
+  return historyFor(attempts, entries.map(country => country.id))
 }
 
 describe('World Countries Today plan', () => {
@@ -111,6 +152,137 @@ describe('World Countries Today plan', () => {
     expect(plan.consolidationCandidates.length).toBeGreaterThan(8)
     expect(plan.consolidationQueue).toHaveLength(8)
     expect(plan.reviewOpportunity).toMatchObject({ kind: 'consolidate' })
+  })
+
+  it.each([
+    { establishedCount: 3, fragileCount: 3, expectedRatio: 1, high: false },
+    { establishedCount: 9, fragileCount: 4, expectedRatio: 4 / 9, high: false },
+    { establishedCount: 8, fragileCount: 4, expectedRatio: 0.5, high: true },
+    { establishedCount: 10, fragileCount: 4, expectedRatio: 0.4, high: false },
+    { establishedCount: 12, fragileCount: 6, expectedRatio: 0.5, high: true },
+    { establishedCount: 20, fragileCount: 10, expectedRatio: 0.5, high: true },
+  ])('derives high consolidation pressure only when both thresholds qualify', ({ establishedCount, fragileCount, expectedRatio, high }) => {
+    const entries = countries.slice(0, establishedCount)
+    const plan = buildWorldCountriesTodayPlan({
+      activeCountries: entries,
+      history: historyForLocationProgress(entries, {
+        developingIds: entries.slice(0, fragileCount).map(country => country.id),
+        strongIds: entries.slice(fragileCount).map(country => country.id),
+      }),
+      learningStates: countryLayerLearningStatesFor(entries, TEST_NOW),
+      now: TEST_NOW,
+      localDate: TEST_LOCAL_DATE,
+    })
+
+    expect(plan.consolidationPressure).toEqual({
+      establishedNonMasteredTargetCount: establishedCount,
+      fragileTargetCount: fragileCount,
+      fragileRatio: expectedRatio,
+      isHigh: high,
+    })
+  })
+
+  it('counts Weak and Developing as fragile while Strong remains in the denominator', () => {
+    const entries = countries.slice(0, 8)
+    const plan = buildWorldCountriesTodayPlan({
+      activeCountries: entries,
+      history: historyForLocationProgress(entries, {
+        weakIds: [entries[0]!.id],
+        developingIds: entries.slice(1, 4).map(country => country.id),
+        strongIds: entries.slice(4).map(country => country.id),
+      }),
+      learningStates: countryLayerLearningStatesFor(entries, TEST_NOW),
+      now: TEST_NOW,
+      localDate: TEST_LOCAL_DATE,
+    })
+
+    expect(plan.consolidationPressure).toEqual({
+      establishedNonMasteredTargetCount: 8,
+      fragileTargetCount: 4,
+      fragileRatio: 0.5,
+      isHigh: true,
+    })
+  })
+
+  it('excludes Mastered targets from the consolidation-pressure denominator', () => {
+    const entries = countries.slice(0, 10)
+    const plan = buildWorldCountriesTodayPlan({
+      activeCountries: entries,
+      history: historyForLocationProgress(entries, {
+        developingIds: entries.slice(0, 4).map(country => country.id),
+        strongIds: entries.slice(4, 8).map(country => country.id),
+        masteredIds: entries.slice(8).map(country => country.id),
+      }),
+      learningStates: countryLayerLearningStatesFor(entries, TEST_NOW),
+      now: TEST_NOW,
+      localDate: TEST_LOCAL_DATE,
+    })
+
+    expect(plan.consolidationPressure).toEqual({
+      establishedNonMasteredTargetCount: 8,
+      fragileTargetCount: 4,
+      fragileRatio: 0.5,
+      isHigh: true,
+    })
+  })
+
+  it('does not classify unpractised targets as fragile', () => {
+    const entries = countries.slice(0, 4)
+    const plan = buildWorldCountriesTodayPlan({
+      activeCountries: entries,
+      history: historyForLocationProgress(entries, {
+        developingIds: entries.slice(0, 3).map(country => country.id),
+      }),
+      learningStates: countryLayerLearningStatesFor(entries, TEST_NOW),
+      now: TEST_NOW,
+      localDate: TEST_LOCAL_DATE,
+    })
+
+    expect(plan.consolidationPressure).toEqual({
+      establishedNonMasteredTargetCount: 4,
+      fragileTargetCount: 3,
+      fragileRatio: 0.75,
+      isHigh: false,
+    })
+  })
+
+  it('keeps pressure low when no established non-mastered targets exist', () => {
+    const country = countries[0]!
+    const plan = buildWorldCountriesTodayPlan({
+      activeCountries: [country],
+      history: historyFor([]),
+      now: TEST_NOW,
+      localDate: TEST_LOCAL_DATE,
+    })
+
+    expect(plan.consolidationPressure).toEqual({
+      establishedNonMasteredTargetCount: 0,
+      fragileTargetCount: 0,
+      fragileRatio: 0,
+      isHigh: false,
+    })
+  })
+
+  it('only includes targets whose corresponding Learning layer is established', () => {
+    const establishedEntries = countries.filter(country => country.subregionId === 'northern-europe').slice(0, 2)
+    const unestablishedEntries = countries.filter(country => country.subregionId === 'eastern-europe').slice(0, 2)
+    const entries = [...establishedEntries, ...unestablishedEntries]
+    const plan = buildWorldCountriesTodayPlan({
+      activeCountries: entries,
+      history: historyForLocationProgress(entries, {
+        developingIds: entries.map(country => country.id),
+      }),
+      learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: TEST_NOW }],
+      now: TEST_NOW,
+      localDate: TEST_LOCAL_DATE,
+    })
+
+    expect(plan.consolidationPressure).toEqual({
+      establishedNonMasteredTargetCount: 2,
+      fragileTargetCount: 2,
+      fragileRatio: 1,
+      isHigh: false,
+    })
   })
 
   it('rests a successfully recalled non-mastered target for the current local date', () => {

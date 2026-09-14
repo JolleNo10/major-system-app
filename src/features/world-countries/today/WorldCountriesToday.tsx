@@ -797,6 +797,12 @@ export function WorldCountriesToday({
       : null
 
     if (reviewAction) return { recommended: reviewAction, otherActions: [journeyAction, freeformAction].filter((action): action is TodayHubAction => Boolean(action)) }
+    if (strengthenAction && plan.consolidationPressure.isHigh) {
+      return {
+        recommended: strengthenAction,
+        otherActions: [journeyAction, freeformAction].filter((action): action is TodayHubAction => Boolean(action)),
+      }
+    }
     if (journeyAction) return { recommended: journeyAction, otherActions: [strengthenAction, freeformAction].filter((action): action is TodayHubAction => Boolean(action)) }
     if (strengthenAction) return { recommended: strengthenAction, otherActions: [freeformAction] }
     return {

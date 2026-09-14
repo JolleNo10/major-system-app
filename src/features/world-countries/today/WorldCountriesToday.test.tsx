@@ -215,6 +215,12 @@ function plan(overrides: Record<string, unknown> = {}) {
     scopeComplete: false,
     reviewReasonSummary: { mistakes: 0, firstRecall: 0, firstReviewAfterLearning: 0, spaced: 0, repeated: 0 },
     reviewOpportunity: null,
+    consolidationPressure: {
+      establishedNonMasteredTargetCount: 0,
+      fragileTargetCount: 0,
+      fragileRatio: 0,
+      isHigh: false,
+    },
     ...overrides,
   }
 }
@@ -1034,6 +1040,12 @@ describe('World Countries Today', () => {
       plannerFocusSubregionId: 'northern-europe',
       consolidationCandidates: [candidate],
       consolidationQueue: [candidate],
+      consolidationPressure: {
+        establishedNonMasteredTargetCount: 8,
+        fragileTargetCount: 3,
+        fragileRatio: 0.375,
+        isHigh: false,
+      },
       reviewOpportunity: { kind: 'consolidate', candidates: [candidate] },
     }))
     const mount = await renderToday()
@@ -1046,6 +1058,56 @@ describe('World Countries Today', () => {
     expect(mount.querySelector('[data-today-action="playground"]')).not.toBeNull()
     act(() => mount.querySelector<HTMLButtonElement>('[data-today-action="strengthen"]')?.click())
     expect(mount.querySelector('[data-testid="today-review"]')?.getAttribute('data-review-mode')).toBe('consolidation')
+  })
+
+  it('promotes Strengthen under high consolidation pressure while keeping Journey in Other options', async () => {
+    const candidate = { country: countries[0] }
+    buildPlanMock.mockReturnValue(plan({
+      curriculumRecommendation: recommendation('learn-countries'),
+      plannerFocusSubregionId: 'northern-europe',
+      consolidationCandidates: [candidate],
+      consolidationQueue: [candidate],
+      consolidationPressure: {
+        establishedNonMasteredTargetCount: 8,
+        fragileTargetCount: 4,
+        fragileRatio: 0.5,
+        isHigh: true,
+      },
+      reviewOpportunity: { kind: 'consolidate', candidates: [candidate] },
+    }))
+    const mount = await renderToday()
+    const hub = mount.querySelector('[data-today-action-hub]')
+
+    expect(hub?.querySelector('[data-today-action="strengthen"]')?.getAttribute('data-recommended')).toBe('true')
+    expect(hub?.querySelector('[data-today-action="journey"]')).not.toBeNull()
+    expect(hub?.querySelector('[data-today-action="journey"]')?.getAttribute('data-recommended')).toBeNull()
+
+    act(() => mount.querySelector<HTMLButtonElement>('[data-today-action="strengthen"]')?.click())
+    expect(mount.querySelector('[data-testid="today-review"]')?.getAttribute('data-review-mode')).toBe('consolidation')
+  })
+
+  it('keeps scheduled Review recommended above high consolidation pressure', async () => {
+    const candidate = { country: countries[0] }
+    buildPlanMock.mockReturnValue(plan({
+      dueCandidates: [candidate],
+      reviewQueue: [candidate],
+      dueCount: 1,
+      dueCountryCount: 1,
+      curriculumRecommendation: recommendation('learn-countries'),
+      consolidationCandidates: [candidate],
+      consolidationQueue: [candidate],
+      consolidationPressure: {
+        establishedNonMasteredTargetCount: 8,
+        fragileTargetCount: 4,
+        fragileRatio: 0.5,
+        isHigh: true,
+      },
+      reviewOpportunity: { kind: 'review', candidates: [candidate] },
+    }))
+    const mount = await renderToday()
+
+    expect(mount.querySelector('[data-today-action="review"]')?.getAttribute('data-recommended')).toBe('true')
+    expect(mount.querySelector('[data-today-action="journey"]')).not.toBeNull()
   })
 
   it('shows the full weak-spot total while launching only the bounded consolidation block', async () => {

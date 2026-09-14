@@ -430,8 +430,11 @@ Durable guided Learning completion can expose a
 same-focus Country-to-Capital handoff before a later planner-derived
 next-region handoff; it keeps an explicit return action and never auto-starts
 that recommendation. On Home and the Continent hub, the map-attached Next Step
-hub chooses presentation priority as scheduled Review, unfinished Journey,
-available consolidation/Strengthen, then the contextual freeform action.
+ hub chooses presentation priority as scheduled Review; when Review is clear,
+ available consolidation/Strengthen moves ahead of unfinished Journey only
+ under high derived consolidation pressure, otherwise Journey remains first,
+ followed by available consolidation/Strengthen and the contextual freeform
+ action.
 Review, Journey,
 Strengthen, and the freeform action remain semantically independent activities: Review
 scheduling and curriculum derivation are separate sources of truth. A selected
