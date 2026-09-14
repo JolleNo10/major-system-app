@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { AnswerMode } from '@/core/types'
 import { useSettings } from '@/app/settings/SettingsContext'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
@@ -34,6 +34,7 @@ import { GuidedHomeRails } from './GuidedHomeRails'
 import { TodayActionHub, type TodayHubAction } from './TodayActionHub'
 import { WorldCountriesProgressView } from './WorldCountriesProgressView'
 import { JourneyContinentSwitchDialog } from './JourneyContinentSwitchDialog'
+import { ContinentCompletionDialog } from './ContinentCompletionDialog'
 import { clearPreferredJourneyContinent, getPreferredJourneyContinent, setPreferredJourneyContinent } from './journeyPreferenceStore'
 import { deriveWorldCountriesJourneyPresentation, type WorldCountriesJourneyPresentation } from './journeyPresentation'
 import { buildWorldCountriesTodayPlan, type WorldCountriesTodayLearningRecommendation, type WorldCountriesTodayPlan, type WorldCountriesTodayReviewOpportunity } from './todayPlan'
@@ -56,6 +57,18 @@ interface LearningRun {
   kind: 'curriculum' | 'relearn'
   recommendation: WorldCountriesTodayLearningRecommendation
   countryEntries: readonly Country[]
+}
+
+interface ContinentCompletionCelebration {
+  continent: Continent
+  nextContinent: Continent
+}
+
+interface ContinentCompletionLookup {
+  continent: Continent
+  activeCountries: readonly Country[]
+  learningStates: ReturnType<typeof getAllSubregionLearningStates>
+  preferredJourneyContinent: ContinentId | null
 }
 
 function isSameLearningRecommendation(
@@ -168,6 +181,9 @@ export function WorldCountriesToday({
     recommendation: WorldCountriesTodayLearningRecommendation
     currentContinent: Continent
   } | null>(null)
+  const completionObservedRef = useRef<boolean | null>(null)
+  const [continentCompletionCelebration, setContinentCompletionCelebration] = useState<ContinentCompletionCelebration | null>(null)
+  const [continentCompletionLookup, setContinentCompletionLookup] = useState<ContinentCompletionLookup | null>(null)
 
   const loadEvidence = useCallback(async () => {
     if (scopedCountries.length === 0) {
@@ -191,6 +207,11 @@ export function WorldCountriesToday({
     setSelectedSubregionId(current => current && scopedCountries.some(country => country.subregionId === current) ? current : null)
     setReviewCompletion(null)
   }, [continent, scopedCountries])
+  useEffect(() => {
+    completionObservedRef.current = null
+    setContinentCompletionCelebration(null)
+    setContinentCompletionLookup(null)
+  }, [continent])
 
   const learningStates = useMemo(() => {
     void learningRevision
@@ -237,15 +258,69 @@ export function WorldCountriesToday({
     ),
     [learningStates, recallProgress, scopedCountries],
   )
-  const worldLearningComplete = Boolean(
-    !continent
-    && evidence.status === 'ready'
+  const scopeLearningComplete = Boolean(
+    evidence.status === 'ready'
     && scopedCountries.length > 0
     && learningReadinessByCountry.size === scopedCountries.length
     && [...learningReadinessByCountry.values()].every(
       readiness => readiness === 'COUNTRIES_AND_CAPITALS_LEARNED',
     )
   )
+  const continentLearningComplete = Boolean(continent && scopeLearningComplete)
+  const worldLearningComplete = Boolean(!continent && scopeLearningComplete)
+  useEffect(() => {
+    if (!continent || evidence.status !== 'ready') return
+    if (completionObservedRef.current === null) {
+      completionObservedRef.current = continentLearningComplete
+      return
+    }
+    const wasComplete = completionObservedRef.current
+    completionObservedRef.current = continentLearningComplete
+    if (wasComplete || !continentLearningComplete) return
+    setContinentCompletionLookup({
+      continent,
+      activeCountries,
+      learningStates,
+      preferredJourneyContinent,
+    })
+  }, [activeCountries, continent, continentLearningComplete, evidence.status, learningStates, preferredJourneyContinent])
+  useEffect(() => {
+    if (!continentCompletionLookup || continentCompletionLookup.continent !== continent) return
+    let cancelled = false
+    const resolveNextContinent = async () => {
+      try {
+        const history = await loadWorldCountriesRecallHistory({
+          countryIds: continentCompletionLookup.activeCountries.map(country => country.id),
+          skills: WORLD_COUNTRIES_CORE_RECALL_SKILLS,
+        })
+        if (cancelled || continentCompletionLookup.continent !== continent) return
+        const worldOrder = getWorldCountriesInEffectiveOrder(continentCompletionLookup.activeCountries)
+        const worldPlan = buildWorldCountriesTodayPlan({
+          activeCountries: continentCompletionLookup.activeCountries,
+          history,
+          learningStates: continentCompletionLookup.learningStates,
+          effectiveCountries: worldOrder.countries,
+          effectiveSubregionIds: worldOrder.subregionIds,
+          preferredJourneyContinent: continentCompletionLookup.preferredJourneyContinent,
+        })
+        const nextRecommendation = worldPlan.curriculumRecommendation
+        if (
+          cancelled
+          || continentCompletionLookup.continent !== continent
+          || !nextRecommendation
+          || nextRecommendation.continent === continentCompletionLookup.continent
+        ) return
+        setContinentCompletionCelebration({
+          continent: continentCompletionLookup.continent,
+          nextContinent: nextRecommendation.continent,
+        })
+      } catch {
+        // This optional handoff must not block the completed Continent hub.
+      }
+    }
+    void resolveNextContinent()
+    return () => { cancelled = true }
+  }, [continent, continentCompletionLookup])
   const primaryStatusByCountry = useMemo(() => new Map(scopedCountries.map(country => [
     country.id,
     deriveWorldCountriesPrimaryStatus(
@@ -511,6 +586,9 @@ export function WorldCountriesToday({
     setJourneySwitchPrompt(null)
     launchLearningRecommendation(pending.recommendation)
   }
+  const dismissContinentCompletion = useCallback(() => {
+    setContinentCompletionCelebration(null)
+  }, [])
 
   if (showProgress) {
     return <WorldCountriesProgressView
@@ -671,6 +749,26 @@ export function WorldCountriesToday({
           onDismiss={dismissJourneySwitchPrompt}
           onLearnOnly={launchPromptedJourney}
           onMakeCurrent={makePromptedJourneyCurrent}
+        />
+      )}
+      {continentCompletionCelebration && (
+        <ContinentCompletionDialog
+          continent={continentCompletionCelebration.continent}
+          nextContinent={continentCompletionCelebration.nextContinent}
+          onContinue={() => {
+            const nextContinent = continentCompletionCelebration.nextContinent
+            setContinentCompletionCelebration(null)
+            onSelectContinent?.(nextContinent, nextContinent)
+          }}
+          onWorld={() => {
+            setContinentCompletionCelebration(null)
+            navigateWorld()
+          }}
+          onDismiss={dismissContinentCompletion}
+          onStrengthen={plan?.reviewOpportunity ? () => {
+            setContinentCompletionCelebration(null)
+            startReview()
+          } : undefined}
         />
       )}
       <section className="space-y-4 animate-fade-in" aria-labelledby="world-countries-today-heading">
