@@ -1,7 +1,7 @@
-import { useId, useRef, type CSSProperties } from 'react'
+import { useId, useRef } from 'react'
 import type { Continent } from '@/features/world-countries/data/countries'
 import { useOverlay } from '@/app/layout/useOverlay'
-import './ContinentCompletionDialog.css'
+import { CompletionConfetti } from './CompletionConfetti'
 
 export interface ContinentCompletionDialogProps {
   continent: Continent
@@ -12,19 +12,6 @@ export interface ContinentCompletionDialogProps {
   onDismiss: () => void
   onStrengthen?: () => void
 }
-
-const CONFETTI = [
-  { left: '9%', delay: '0ms', duration: '2.25s', drift: '-10px', color: 'bg-cyan-300' },
-  { left: '18%', delay: '140ms', duration: '2.5s', drift: '22px', color: 'bg-amber-300' },
-  { left: '29%', delay: '70ms', duration: '2.35s', drift: '14px', color: 'bg-emerald-300' },
-  { left: '39%', delay: '220ms', duration: '2.55s', drift: '-18px', color: 'bg-blue-300' },
-  { left: '51%', delay: '30ms', duration: '2.4s', drift: '17px', color: 'bg-amber-200' },
-  { left: '62%', delay: '180ms', duration: '2.3s', drift: '-14px', color: 'bg-cyan-200' },
-  { left: '72%', delay: '95ms', duration: '2.6s', drift: '20px', color: 'bg-emerald-300' },
-  { left: '81%', delay: '260ms', duration: '2.4s', drift: '-20px', color: 'bg-blue-300' },
-  { left: '89%', delay: '45ms', duration: '2.5s', drift: '12px', color: 'bg-amber-300' },
-  { left: '44%', delay: '310ms', duration: '2.35s', drift: '-12px', color: 'bg-cyan-300' },
-] as const
 
 export function ContinentCompletionDialog({
   continent,
@@ -61,20 +48,7 @@ export function ContinentCompletionDialog({
         <section className="relative flex min-h-[250px] flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-slate-900 via-zinc-900 to-stone-900 px-6 py-9 text-center">
           <div aria-hidden="true" className="absolute -left-20 top-2 h-48 w-48 rounded-full bg-cyan-400/10 blur-3xl" />
           <div aria-hidden="true" className="absolute -right-16 bottom-0 h-52 w-52 rounded-full bg-amber-300/10 blur-3xl" />
-          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-full overflow-hidden">
-            {CONFETTI.map(piece => (
-              <span
-                key={`${piece.left}-${piece.delay}`}
-                className={`wc-continent-confetti absolute top-0 h-3 w-1.5 rounded-sm ${piece.color}`}
-                style={{
-                  left: piece.left,
-                  animationDelay: piece.delay,
-                  animationDuration: piece.duration,
-                  '--wc-continent-confetti-drift': piece.drift,
-                } as CSSProperties}
-              />
-            ))}
-          </div>
+          <CompletionConfetti />
           <div className="relative grid h-20 w-20 place-items-center rounded-3xl border-2 border-amber-300/80 bg-zinc-950/90 text-amber-300 shadow-[0_0_32px_rgba(252,211,77,0.12)]">
             <svg
               aria-hidden="true"

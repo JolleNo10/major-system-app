@@ -503,7 +503,7 @@ describe('World Countries Today', () => {
     expect(mount.querySelector('[data-review-candidate-count]')?.getAttribute('data-review-candidate-count')).toBe('8')
   })
 
-  it('returns focus to the recommended Review hub action after completion', async () => {
+  it('shows the Review completion popup and returns focus to the hub after Back', async () => {
     const candidate = { country: countries[0] }
     buildPlanMock.mockReturnValue(plan({
       dueCandidates: [candidate],
@@ -525,6 +525,17 @@ describe('World Countries Today', () => {
       await Promise.resolve()
     })
     railMount = renderLatestRails()
+
+    expect(loadHistoryMock).toHaveBeenCalledTimes(2)
+    const completionDialog = mount.querySelector('[data-testid="review-completion-dialog"]')
+    expect(completionDialog?.textContent).toContain('Review complete!')
+    expect(completionDialog?.querySelector('[data-completion-stat="Reviewed"]')?.textContent).toContain('1')
+    expect(completionDialog?.querySelector('[data-completion-stat="First try"]')?.textContent).toContain('1')
+    expect(completionDialog?.querySelector('[data-completion-stat="Recovered"]')?.textContent).toContain('0')
+    expect(completionDialog?.querySelector('[data-completion-stat="Resolved"]')?.textContent).toContain('All')
+    expect(document.activeElement).toBe(mount.querySelector('[data-testid="review-completion-continue"]'))
+
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="review-completion-back"]')?.click())
 
     const reviewAction = mount.querySelector<HTMLButtonElement>('[data-today-action="review"]')
     expect(reviewAction).not.toBeNull()
@@ -564,8 +575,164 @@ describe('World Countries Today', () => {
     renderLatestRails()
 
     const journeyAction = mount.querySelector<HTMLButtonElement>('[data-today-action="journey"]')
+    expect(mount.querySelector('[data-testid="review-completion-continue"]')).toBeNull()
+    expect(document.activeElement).toBe(mount.querySelector('[data-testid="review-completion-back"]'))
+
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="review-completion-back"]')?.click())
+    railMount = renderLatestRails()
+
     expect(journeyAction).not.toBeNull()
     expect(document.activeElement).toBe(journeyAction)
+    expect(railMount.textContent).toContain('Last review:')
+  })
+
+  it('continues with the freshly refreshed Review block and its bounded size', async () => {
+    const candidate = { country: countries[0] }
+    const nextCandidates = [candidate, candidate, candidate]
+    let reviewCompleted = false
+    buildPlanMock.mockImplementation(() => reviewCompleted
+      ? plan({ reviewOpportunity: { kind: 'review', candidates: nextCandidates } })
+      : plan({
+          dueCandidates: [candidate],
+          reviewQueue: [candidate],
+          dueCount: 1,
+          dueCountryCount: 1,
+          reviewOpportunity: { kind: 'review', candidates: [candidate] },
+        }))
+    const mount = await renderToday()
+
+    act(() => mount.querySelector<HTMLButtonElement>('[data-today-action="review"]')?.click())
+    await act(async () => {
+      reviewCompleted = true
+      mount.querySelector<HTMLButtonElement>('[data-testid="today-review"]')?.click()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mount.querySelector('[data-testid="review-completion-continue"]')?.textContent).toContain('3 items')
+    expect(document.activeElement).toBe(mount.querySelector('[data-testid="review-completion-continue"]'))
+
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="review-completion-continue"]')?.click())
+
+    expect(mount.querySelector('[data-testid="review-completion-dialog"]')).toBeNull()
+    expect(mount.querySelector('[data-review-candidate-count]')?.getAttribute('data-review-candidate-count')).toBe('3')
+    expect(mount.querySelector('[data-testid="today-review"]')?.getAttribute('data-review-mode')).toBe('review')
+  })
+
+  it('does not cross from Review to Strengthen after the refresh', async () => {
+    const candidate = { country: countries[0] }
+    let reviewCompleted = false
+    buildPlanMock.mockImplementation(() => reviewCompleted
+      ? plan({ reviewOpportunity: { kind: 'consolidate', candidates: [candidate, candidate] } })
+      : plan({
+          dueCandidates: [candidate],
+          reviewQueue: [candidate],
+          dueCount: 1,
+          dueCountryCount: 1,
+          reviewOpportunity: { kind: 'review', candidates: [candidate] },
+        }))
+    const mount = await renderToday()
+
+    act(() => mount.querySelector<HTMLButtonElement>('[data-today-action="review"]')?.click())
+    await act(async () => {
+      reviewCompleted = true
+      mount.querySelector<HTMLButtonElement>('[data-testid="today-review"]')?.click()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mount.querySelector('[data-testid="review-completion-continue"]')).toBeNull()
+    expect(document.activeElement).toBe(mount.querySelector('[data-testid="review-completion-back"]'))
+
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="review-completion-back"]')?.click())
+
+    expect(mount.querySelector('[data-today-action="strengthen"]')?.textContent).toContain('Strengthen 2')
+    expect(mount.querySelector('[data-testid="today-review"]')).toBeNull()
+  })
+
+  it('keeps a completed set dismissible when the evidence refresh fails', async () => {
+    const candidate = { country: countries[0] }
+    buildPlanMock.mockReturnValue(plan({
+      dueCandidates: [candidate],
+      reviewQueue: [candidate],
+      dueCount: 1,
+      dueCountryCount: 1,
+      reviewOpportunity: { kind: 'review', candidates: [candidate] },
+    }))
+    loadHistoryMock
+      .mockResolvedValueOnce(new Map())
+      .mockRejectedValueOnce(new Error('refresh failed'))
+    const mount = await renderToday()
+
+    act(() => mount.querySelector<HTMLButtonElement>('[data-today-action="review"]')?.click())
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-testid="today-review"]')?.click()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mount.querySelector('[data-testid="review-completion-dialog"]')?.textContent).toContain('Review complete!')
+    expect(mount.querySelector('[data-testid="review-completion-continue"]')).toBeNull()
+    expect(document.activeElement).toBe(mount.querySelector('[data-testid="review-completion-back"]'))
+  })
+
+  it('continues Strengthen with another refreshed Strengthen block', async () => {
+    const candidate = { country: countries[0] }
+    const nextCandidates = [candidate, candidate, candidate]
+    let strengthenCompleted = false
+    buildPlanMock.mockImplementation(() => strengthenCompleted
+      ? plan({ reviewOpportunity: { kind: 'consolidate', candidates: nextCandidates } })
+      : plan({ reviewOpportunity: { kind: 'consolidate', candidates: [candidate] } }))
+    const mount = await renderToday()
+
+    act(() => mount.querySelector<HTMLButtonElement>('[data-today-action="strengthen"]')?.click())
+    expect(mount.querySelector('[data-testid="today-review"]')?.getAttribute('data-review-mode')).toBe('consolidation')
+
+    await act(async () => {
+      strengthenCompleted = true
+      mount.querySelector<HTMLButtonElement>('[data-testid="today-review"]')?.click()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mount.querySelector('[data-testid="review-completion-dialog"]')?.textContent).toContain('Strengthen complete!')
+    expect(mount.querySelector('[data-testid="review-completion-continue"]')?.textContent).toContain('Next strengthen set')
+    expect(document.activeElement).toBe(mount.querySelector('[data-testid="review-completion-continue"]'))
+
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="review-completion-continue"]')?.click())
+
+    expect(mount.querySelector('[data-review-candidate-count]')?.getAttribute('data-review-candidate-count')).toBe('3')
+    expect(mount.querySelector('[data-testid="today-review"]')?.getAttribute('data-review-mode')).toBe('consolidation')
+  })
+
+  it('does not cross from Strengthen to Review after the refresh', async () => {
+    const candidate = { country: countries[0] }
+    let strengthenCompleted = false
+    buildPlanMock.mockImplementation(() => strengthenCompleted
+      ? plan({ reviewOpportunity: { kind: 'review', candidates: [candidate, candidate] } })
+      : plan({ reviewOpportunity: { kind: 'consolidate', candidates: [candidate] } }))
+    const mount = await renderToday()
+
+    act(() => mount.querySelector<HTMLButtonElement>('[data-today-action="strengthen"]')?.click())
+    await act(async () => {
+      strengthenCompleted = true
+      mount.querySelector<HTMLButtonElement>('[data-testid="today-review"]')?.click()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mount.querySelector('[data-testid="review-completion-continue"]')).toBeNull()
+    expect(document.activeElement).toBe(mount.querySelector('[data-testid="review-completion-back"]'))
+
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="review-completion-back"]')?.click())
+
+    expect(mount.querySelector('[data-today-action="review"]')?.textContent).toContain('Review 2 now')
+    expect(mount.querySelector('[data-testid="today-review"]')).toBeNull()
   })
 
   it('returns focus to Review after exiting while the opportunity remains', async () => {

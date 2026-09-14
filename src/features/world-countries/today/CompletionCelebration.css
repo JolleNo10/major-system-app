@@ -1,0 +1,26 @@
+@keyframes wc-completion-confetti-fall {
+  0% {
+    transform: translate3d(0, -28px, 0) rotate(0deg);
+    opacity: 0;
+  }
+
+  12% {
+    opacity: 0.9;
+  }
+
+  100% {
+    transform: translate3d(var(--wc-completion-confetti-drift, 18px), 300px, 0) rotate(320deg);
+    opacity: 0;
+  }
+}
+
+.wc-completion-confetti {
+  animation: wc-completion-confetti-fall 2.4s ease-out 1 both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wc-completion-confetti {
+    animation: none;
+    opacity: 0.35;
+  }
+}

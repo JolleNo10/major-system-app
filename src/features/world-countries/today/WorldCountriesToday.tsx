@@ -36,6 +36,7 @@ import { TodayActionHub, type TodayHubAction } from './TodayActionHub'
 import { WorldCountriesProgressView } from './WorldCountriesProgressView'
 import { JourneyContinentSwitchDialog } from './JourneyContinentSwitchDialog'
 import { ContinentCompletionDialog } from './ContinentCompletionDialog'
+import { ReviewCompletionDialog } from './ReviewCompletionDialog'
 import { clearPreferredJourneyContinent, getPreferredJourneyContinent, setPreferredJourneyContinent } from './journeyPreferenceStore'
 import { deriveWorldCountriesJourneyPresentation, type WorldCountriesJourneyPresentation } from './journeyPresentation'
 import { buildWorldCountriesTodayPlan, type WorldCountriesTodayLearningRecommendation, type WorldCountriesTodayPlan, type WorldCountriesTodayReviewOpportunity } from './todayPlan'
@@ -174,6 +175,7 @@ export function WorldCountriesToday({
   const [reviewing, setReviewing] = useState(false)
   const [hubFocusRequest, setHubFocusRequest] = useState(0)
   const [reviewCompletion, setReviewCompletion] = useState<WorldCountriesTodayReviewCompletion | null>(null)
+  const [reviewCompletionDialogOpen, setReviewCompletionDialogOpen] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [learningRun, setLearningRun] = useState<LearningRun | null>(null)
   const [selectedSubregionId, setSelectedSubregionId] = useState<SubregionId | null>(null)
@@ -208,6 +210,7 @@ export function WorldCountriesToday({
   useEffect(() => {
     setSelectedSubregionId(current => current && scopedCountries.some(country => country.subregionId === current) ? current : null)
     setReviewCompletion(null)
+    setReviewCompletionDialogOpen(false)
   }, [continent, scopedCountries])
   useEffect(() => {
     completionObservedRef.current = null
@@ -367,6 +370,7 @@ export function WorldCountriesToday({
   const launchReviewOpportunity = (opportunity: Exclude<WorldCountriesTodayReviewOpportunity, null>) => {
     setLearningRun(null)
     setReviewCompletion(null)
+    setReviewCompletionDialogOpen(false)
     setReviewCandidates(opportunity.candidates)
     setReviewMode(opportunity.kind === 'consolidate' ? 'consolidation' : 'review')
     setReviewing(true)
@@ -384,6 +388,7 @@ export function WorldCountriesToday({
     setReviewing(false)
     setReviewCandidates(null)
     setReviewCompletion(null)
+    setReviewCompletionDialogOpen(false)
     if (options.focusSubregion && continent) setSelectedSubregionId(recommendation.subregionId)
     setLearningRun({ kind: options.kind ?? 'curriculum', recommendation, countryEntries })
   }
@@ -416,8 +421,10 @@ export function WorldCountriesToday({
     setReviewing(false)
     setReviewCandidates(null)
     setReviewMode('review')
+    setReviewCompletionDialogOpen(false)
+    await refreshAfterActivity()
     setReviewCompletion({ checkpoint, mode: completionMode })
-    await refreshAfterReview()
+    setReviewCompletionDialogOpen(true)
   }
 
   const exitReview = async () => {
@@ -425,6 +432,7 @@ export function WorldCountriesToday({
     setReviewCandidates(null)
     setReviewMode('review')
     setReviewCompletion(null)
+    setReviewCompletionDialogOpen(false)
     await refreshAfterReview()
   }
 
@@ -556,6 +564,38 @@ export function WorldCountriesToday({
   }, [activeSubregionId, continent, geographyRevision, learningStates, onSelectContinent, plan, recallProgress, scopedCountries])
   const scopeLabel = continent ?? 'World'
   const navigateWorld = onWorld ?? (() => undefined)
+  const reviewCompletionContinuation = reviewCompletion?.mode === 'review'
+    && plan?.reviewOpportunity?.kind === 'review'
+    ? plan.reviewOpportunity
+    : reviewCompletion?.mode === 'consolidation'
+      && plan?.reviewOpportunity?.kind === 'consolidate'
+      ? plan.reviewOpportunity
+      : null
+  const planRef = useRef(plan)
+  planRef.current = plan
+  const backFromReviewCompletion = () => {
+    setReviewCompletionDialogOpen(false)
+    setHubFocusRequest(request => request + 1)
+  }
+  const continueReviewCompletion = () => {
+    const continuation = reviewCompletionContinuation
+    const currentPlan = planRef.current
+    const currentOpportunity = currentPlan?.reviewOpportunity
+    const sameCandidates = continuation && currentOpportunity
+      && continuation.kind === currentOpportunity.kind
+      && continuation.candidates.length === currentOpportunity.candidates.length
+      && continuation.candidates.every((candidate, index) => {
+        const current = currentOpportunity.candidates[index]
+        return current?.target?.countryId === candidate.target?.countryId
+          && current?.target?.skill === candidate.target?.skill
+      })
+    if (!continuation || !sameCandidates) {
+      backFromReviewCompletion()
+      return
+    }
+    setReviewCompletionDialogOpen(false)
+    launchReviewOpportunity(continuation)
+  }
   const plannerNextRecommendation = plan?.curriculumRecommendation ?? null
   const continuationRecommendation = learningRun
     && validSelectedSubregionId
@@ -792,6 +832,15 @@ export function WorldCountriesToday({
             dismissContinentCompletion()
             startReview()
           } : undefined}
+        />
+      )}
+      {reviewCompletion && reviewCompletionDialogOpen && (evidence.status === 'ready' || evidence.status === 'error') && !refreshing && (
+        <ReviewCompletionDialog
+          completion={reviewCompletion}
+          scopeLabel={scopeLabel}
+          continueCount={reviewCompletionContinuation?.candidates.length}
+          onContinue={reviewCompletionContinuation ? continueReviewCompletion : undefined}
+          onBack={backFromReviewCompletion}
         />
       )}
       <section className="space-y-4 animate-fade-in" aria-labelledby="world-countries-today-heading">
