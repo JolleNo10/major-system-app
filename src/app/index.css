@@ -202,26 +202,6 @@
   animation: world-learning-sparkle 1.7s ease-out both;
 }
 
-@keyframes world-mastery-glow {
-  0%, 100% { border-color: rgba(251, 191, 36, 0.2); box-shadow: 0 0 0 rgba(251, 191, 36, 0); }
-  50% { border-color: rgba(251, 191, 36, 0.5); box-shadow: 0 0 28px rgba(251, 191, 36, 0.14); }
-}
-
-@keyframes world-mastery-sparkle {
-  0%, 100% { opacity: 0; transform: scale(0.2); }
-  30%, 70% { opacity: 1; transform: scale(1); }
-}
-
-.world-mastery-glow {
-  animation: world-mastery-glow 4s ease-in-out infinite;
-  border: 1px solid rgba(251, 191, 36, 0.2);
-  border-radius: inherit;
-}
-
-.world-mastery-sparkle {
-  animation: world-mastery-sparkle 3s ease-in-out infinite;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .world-learning-set-shine,
   .world-learning-set-twinkle,
@@ -229,8 +209,7 @@
   .world-learning-firework-ray,
   .world-learning-firework-core,
   .world-learning-confetti,
-  .world-learning-sparkle,
-  .world-mastery-sparkle {
+  .world-learning-sparkle {
     animation: none !important;
     opacity: 0 !important;
   }
@@ -240,12 +219,6 @@
     animation: world-learning-reduced-glow 0.8s ease-out both !important;
     opacity: 0.35;
     transform: none;
-  }
-
-  .world-mastery-glow {
-    animation: none !important;
-    border-color: rgba(251, 191, 36, 0.35) !important;
-    box-shadow: none !important;
   }
 }
 

@@ -106,43 +106,6 @@ const MILESTONE_PROFILES: Readonly<Record<LearningCompletionCelebration, {
   },
 }
 
-const MASTERY_SPARKLES: readonly SetTwinkle[] = [
-  { left: '12%', top: '18%', delay: '0ms' },
-  { left: '82%', top: '12%', delay: '600ms' },
-  { right: '6%', top: '40%', delay: '1.2s' },
-  { left: '8%', bottom: '22%', delay: '1.8s' },
-  { right: '12%', bottom: '18%', delay: '400ms' },
-  { left: '48%', top: '8%', delay: '2.4s' },
-  { left: '68%', bottom: '12%', delay: '1s' },
-  { left: '28%', bottom: '8%', delay: '2s' },
-] as const
-
-/**
- * Persistent ambient decoration shown when all world countries are mastered.
- * Renders a pulsing amber glow border and scattered twinkling sparkle dots.
- */
-export function WorldMasteryCelebration() {
-  return (
-    <div data-celebration-level="world" className="pointer-events-none absolute inset-0" aria-hidden="true">
-      <div className="world-mastery-glow absolute inset-0 rounded-[inherit]" />
-      {MASTERY_SPARKLES.map((sparkle, index) => (
-        <span
-          key={index}
-          className="world-mastery-sparkle absolute size-1.5 rounded-full bg-amber-200 shadow-[0_0_8px_rgba(253,230,138,0.9)]"
-          style={{
-            left: sparkle.left,
-            right: sparkle.right,
-            top: sparkle.top,
-            bottom: sparkle.bottom,
-            animationDelay: sparkle.delay,
-            animationDuration: `${3 + (index % 3) * 0.8}s`,
-          }}
-        />
-      ))}
-    </div>
-  )
-}
-
 export function LearningSetCelebration() {
   return (
     <div data-celebration-level="set" className="pointer-events-none absolute inset-0" aria-hidden="true">
