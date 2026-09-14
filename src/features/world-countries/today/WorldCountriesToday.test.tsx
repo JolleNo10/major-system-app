@@ -2,6 +2,8 @@ import { act, createElement, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { countries } from '@/features/world-countries/data/countries'
+import { getSubregionsForContinentInEffectiveOrder } from '@/features/world-countries/geography/queries'
+import { getContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
 import { markSubregionCapitalsLearned, markSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningStore'
 import { WORLD_COUNTRIES_PROGRESS_LABELS, getCountryProgressColor } from '@/features/world-countries/learning/progressPresentation'
 import { WORLD_COUNTRIES_COUNTRY_CORE_STATES } from '@/features/world-countries/learning/scopeProgress'
@@ -990,10 +992,12 @@ describe('World Countries Today', () => {
     expect(countryLearningFlowMock).toHaveBeenCalledWith(expect.objectContaining({ subregion: 'central-europe' }))
   })
 
-  it('keeps Relearn at the Subregion celebration level in a fully learned Continent', async () => {
+  it('uses the Subregion celebration for a non-final Relearn in a fully learned Continent', async () => {
     const northern = countries.find(country => country.subregionId === 'northern-europe')!
     const western = countries.find(country => country.subregionId === 'western-europe')!
     activeCountries = [northern, western]
+    const effectiveSubregions = getSubregionsForContinentInEffectiveOrder('Europe', activeCountries, getContinentMetadata('Europe'))
+    const nonFinalSubregion = activeCountries.find(country => country.subregionId === effectiveSubregions[0]?.id)!
     const at = Date.now()
     markSubregionCountriesLearned(northern.subregionId, at, activeCountries)
     markSubregionCapitalsLearned(northern.subregionId, at + 1, activeCountries)
@@ -1014,18 +1018,68 @@ describe('World Countries Today', () => {
     const mount = await renderToday({ continent: 'Europe' })
     let railMount = renderLatestRails()
     act(() => [...railMount.querySelectorAll<HTMLButtonElement>('button')]
-      .find(button => button.textContent?.startsWith('Northern Europe'))?.click())
+      .find(button => button.textContent?.startsWith(nonFinalSubregion.subregion))?.click())
     railMount = renderLatestRails()
 
     await act(async () => railMount.querySelector<HTMLButtonElement>('[data-relearn-track="countries"]')?.click())
 
     expect(countryLearningFlowMock).toHaveBeenLastCalledWith(expect.objectContaining({
-      subregion: northern.subregionId,
+      subregion: nonFinalSubregion.subregionId,
       recordCompletion: false,
       completionCelebration: 'subregion',
     }))
     expect(mount.querySelector('[data-celebration-level="subregion"]')).not.toBeNull()
     expect(mount.querySelector('[data-celebration-level="continent"]')).toBeNull()
+  })
+
+  it('uses the Continent celebration for the final effective Subregion Relearn without a Continent transition', async () => {
+    const northern = countries.find(country => country.subregionId === 'northern-europe')!
+    const western = countries.find(country => country.subregionId === 'western-europe')!
+    activeCountries = [northern, western]
+    const effectiveSubregions = getSubregionsForContinentInEffectiveOrder('Europe', activeCountries, getContinentMetadata('Europe'))
+    const finalSubregion = activeCountries.find(country => country.subregionId === effectiveSubregions[effectiveSubregions.length - 1]?.id)!
+    const at = Date.now()
+    markSubregionCountriesLearned(northern.subregionId, at, activeCountries)
+    markSubregionCapitalsLearned(northern.subregionId, at + 1, activeCountries)
+    markSubregionCountriesLearned(western.subregionId, at + 2, activeCountries)
+    markSubregionCapitalsLearned(western.subregionId, at + 3, activeCountries)
+    buildPlanMock.mockReturnValue(plan({
+      curriculumRecommendation: null,
+      plannerFocusSubregionId: null,
+      curriculumRecommendationsBySubregion: new Map([
+        [northern.subregionId, null],
+        [western.subregionId, null],
+      ]),
+      incompleteCountryCount: 0,
+      incompleteSubregionLabels: [],
+      scopeComplete: true,
+    }))
+
+    const mount = await renderToday({ continent: 'Europe' })
+    let railMount = renderLatestRails()
+    act(() => [...railMount.querySelectorAll<HTMLButtonElement>('button')]
+      .find(button => button.textContent?.startsWith(finalSubregion.subregion))?.click())
+    railMount = renderLatestRails()
+
+    await act(async () => railMount.querySelector<HTMLButtonElement>('[data-relearn-track="countries"]')?.click())
+
+    expect(countryLearningFlowMock).toHaveBeenLastCalledWith(expect.objectContaining({
+      subregion: finalSubregion.subregionId,
+      recordCompletion: false,
+      completionCelebration: 'continent',
+      completionHandoff: undefined,
+      completedRegionAction: undefined,
+    }))
+    expect(mount.querySelector('[data-celebration-level="continent"]')).not.toBeNull()
+    expect(mount.querySelector('[data-celebration-level="subregion"]')).toBeNull()
+
+    await act(async () => {
+      mount.querySelector<HTMLButtonElement>('[data-testid="country-learning-done"]')?.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mount.querySelector('[data-continent-completion-dialog]')).toBeNull()
   })
 
   it('hands Learning completion to the next Journey recommendation, not Review', async () => {

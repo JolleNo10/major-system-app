@@ -478,6 +478,16 @@ export function WorldCountriesToday({
       recallProgress: recallProgress ?? new Map(),
     })
   }, [evidence.status, learningRun, learningStates, recallProgress, scopedCountries])
+  const completedRunIsFinalContinentSubregion = useMemo(() => {
+    if (!learningRun) return false
+    const continentCountries = activeCountries.filter(country => country.continent === learningRun.recommendation.continent)
+    const effectiveSubregions = getSubregionsForContinentInEffectiveOrder(
+      learningRun.recommendation.continent,
+      continentCountries,
+      getContinentMetadata(learningRun.recommendation.continent),
+    )
+    return effectiveSubregions[effectiveSubregions.length - 1]?.id === learningRun.recommendation.subregionId
+  }, [activeCountries, geographyRevision, learningRun])
   const finishLearning = () => {
     const nextRecommendation = plan?.curriculumRecommendation
     if (
@@ -556,13 +566,15 @@ export function WorldCountriesToday({
     : undefined
   const completionCelebration: LearningCompletionCelebration | undefined = useMemo(() => {
     if (!learningRun || !regionCompletion) return undefined
-    if (learningRun.kind === 'relearn') return 'subregion'
+    if (learningRun.kind === 'relearn') {
+      return completedRunIsFinalContinentSubregion ? 'continent' : 'subregion'
+    }
     const continentCountries = activeCountries.filter(country => country.continent === learningRun.recommendation.continent)
     if (continentCountries.length === 0) return 'subregion'
     return continentCountries.every(country => (
       learningReadinessByCountry.get(country.id) === 'COUNTRIES_AND_CAPITALS_LEARNED'
     )) ? 'continent' : 'subregion'
-  }, [activeCountries, learningReadinessByCountry, learningRun, regionCompletion])
+  }, [activeCountries, completedRunIsFinalContinentSubregion, learningReadinessByCountry, learningRun, regionCompletion])
   const completedRegionAction: LearningCompletedRegionAction | undefined = learningRun?.kind === 'curriculum' && regionCompletion
     ? {
         label: `Drill ${learningRun.recommendation.subregionLabel}`,
