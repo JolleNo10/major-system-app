@@ -145,7 +145,7 @@ export function GuidedHomeRails({
                 </span>
                 <span className="mt-1 flex h-1.5 overflow-hidden rounded-full bg-zinc-800" aria-hidden="true">
                   {summary.distribution
-                    ? summary.distribution.filter(entry => entry.count > 0).map(entry => (
+                    ? [...summary.distribution].reverse().filter(entry => entry.count > 0).map(entry => (
                         <span key={entry.state} className="h-full" style={{ width: `${(entry.count / Math.max(1, summary.progress.totalCountries)) * 100}%`, backgroundColor: entry.color }} />
                       ))
                     : <span className="block h-full rounded-full bg-cyan-500" style={{ width: `${Math.round(getMasteryRatio(summary.progress) * 100)}%` }} />
