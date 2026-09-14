@@ -2,7 +2,7 @@ import type { Country, CountryId } from '@/features/world-countries/data/countri
 import { deriveWorldCountriesCountryProgress, type WorldCountriesCountryCoreState, type WorldCountriesCountryProgress, type RecallProgress } from './recallProgress'
 import type { WorldCountriesProficiency } from './recallMastery'
 import type { WorldCountriesRecallSkill } from './recallTargets'
-import { createWorldCountriesEstablishedLearningReadinessByCountry, getWorldCountriesLearningReadinessLabel, getWorldCountriesLearningStateList, WORLD_COUNTRIES_LEARNING_BASE, type WorldCountriesLearningReadiness, type WorldCountriesLearningStates } from './learningReadiness'
+import { createWorldCountriesEstablishedLearningReadinessByCountry, getWorldCountriesLearningReadinessLabel, getWorldCountriesLearningStateList, WORLD_COUNTRIES_LEARNING_BASE, WORLD_COUNTRIES_LEARNING_COUNTRIES_COLOR, type WorldCountriesLearningReadiness, type WorldCountriesLearningStates } from './learningReadiness'
 
 export type WorldCountriesProgressPerspective = 'core' | WorldCountriesRecallSkill
 export type WorldCountriesProgressState = WorldCountriesCountryCoreState | WorldCountriesProficiency
@@ -98,7 +98,7 @@ export function deriveWorldCountriesPrimaryStatusCounts(
     return statuses.get(state)!
   }
   ensure('NOT_LEARNED', 'Not learned', WORLD_COUNTRIES_LEARNING_BASE)
-  ensure('COUNTRIES_LEARNED', 'Countries learned', WORLD_COUNTRIES_LEARNING_BASE)
+  ensure('COUNTRIES_LEARNED', 'Countries learned', WORLD_COUNTRIES_LEARNING_COUNTRIES_COLOR)
   for (const state of ['unpractised', 'weak', 'developing', 'strong', 'complete'] as const) {
     ensure(state, WORLD_COUNTRIES_PROGRESS_LABELS[state], getCountryProgressColor(state))
   }

@@ -26,6 +26,8 @@ export function getWorldCountriesLearningStateList(
 }
 
 export const WORLD_COUNTRIES_LEARNING_BASE = '#5A5E66'
+/** Solid bar colour for the "Countries learned" state (stripe pattern on the map, solid in bars). */
+export const WORLD_COUNTRIES_LEARNING_COUNTRIES_COLOR = '#726B63'
 export const WORLD_COUNTRIES_LEARNING_PATTERN_BASE = WORLD_COUNTRIES_LEARNING_BASE
 export const WORLD_COUNTRIES_LEARNING_PATTERN_LINE = '#3E3719'
 export const WORLD_COUNTRIES_LEARNING_PATTERN_OPACITY = 0.46
