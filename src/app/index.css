@@ -85,7 +85,7 @@
   background-image: linear-gradient(115deg, transparent 0%, transparent 43%, rgba(236, 253, 245, 0.04) 47%, rgba(236, 253, 245, 0.48) 50%, rgba(236, 253, 245, 0.04) 53%, transparent 57%, transparent 100%);
   background-size: 260% 100%;
   background-position: -170% 0;
-  animation: world-learning-set-shine 0.9s cubic-bezier(0.2, 0.7, 0.25, 1) both;
+  animation: world-learning-set-shine 0.9s cubic-bezier(0.2, 0.7, 0.25, 1) 300ms both;
 }
 
 .world-learning-set-twinkle {
