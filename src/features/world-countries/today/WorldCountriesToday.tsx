@@ -25,6 +25,7 @@ import { deriveWorldCountriesPrimaryStatus, deriveWorldCountriesPrimaryStatusCou
 import { CountryLearningFlow } from '@/features/world-countries/learning/flows/CountryLearningFlow'
 import { CapitalLearningFlow } from '@/features/world-countries/learning/flows/CapitalLearningFlow'
 import type { LearningCompletedRegionAction, LearningCompletionCelebration, LearningCompletionHandoff, LearningRegionCompletion } from '@/features/world-countries/learning/flows/LearningComplete'
+import { WorldMasteryCelebration } from '@/features/world-countries/learning/flows/LearningCelebration'
 import type { LearningSetMaximum } from '@/features/world-countries/learning/stagedLearningPlan'
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
 import { MapSurface } from '@/features/world-countries/ui/MapSurface'
@@ -897,6 +898,7 @@ export function WorldCountriesToday({
                 ariaLabel={continent ? `${continent} learning map` : 'World Countries learning map'}
               />
             )}
+            feedbackOverlay={worldLearningComplete ? <WorldMasteryCelebration /> : undefined}
             dock={todayHubActions ? <TodayActionHub {...todayHubActions} disabled={refreshing} focusRequest={hubFocusRequest} /> : undefined}
             dockPlacement="attached"
             className="animate-fade-in"
