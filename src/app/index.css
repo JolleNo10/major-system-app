@@ -198,6 +198,36 @@
 
 .world-learning-milestone-big .world-learning-confetti { animation-duration: 2.8s; }
 
+/* World tier: the top rung. Same parts as the milestone celebration, scaled up and
+   gilded — the gold is promoted from the every-4th confetti colour below. */
+.world-learning-milestone-world .world-learning-milestone-glow {
+  background: radial-gradient(ellipse at center, rgba(253, 224, 71, 0.2), rgba(74, 222, 128, 0.17) 44%, transparent 68%);
+  animation-duration: 5.4s;
+}
+
+.world-learning-milestone-world .world-learning-firework-ray {
+  width: 2.5px;
+  height: 3.1rem;
+  background: linear-gradient(to top, rgba(254, 240, 138, 0.95), rgba(134, 239, 172, 0.5) 55%, rgba(125, 211, 252, 0.2));
+  box-shadow: 0 0 9px rgba(253, 224, 71, 0.55);
+  animation-duration: 3.5s;
+}
+
+.world-learning-milestone-world .world-learning-firework-core {
+  width: 8px;
+  height: 8px;
+  box-shadow: 0 0 18px 5px rgba(253, 224, 71, 0.6);
+  animation-duration: 3.5s;
+}
+
+.world-learning-milestone-world .world-learning-confetti { animation-duration: 3.3s; }
+
+.world-learning-milestone-world .world-learning-sparkle::before,
+.world-learning-milestone-world .world-learning-sparkle::after {
+  background: #fefce8;
+  box-shadow: 0 0 9px rgba(253, 224, 71, 0.85);
+}
+
 .world-learning-sparkle {
   animation: world-learning-sparkle 1.7s ease-out both;
 }

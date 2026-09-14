@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 
-export type LearningCompletionCelebration = 'subregion' | 'continent'
+export type LearningCompletionCelebration = 'subregion' | 'continent' | 'world'
 
 interface SetTwinkle {
   left?: string
@@ -16,7 +16,11 @@ const SET_TWINKLES: readonly SetTwinkle[] = [
   { right: '1.75rem', bottom: '0.75rem', delay: '560ms' },
 ] as const
 
-const FIREWORK_RAYS = Array.from({ length: 8 }, (_, index) => index * 45)
+const createFireworkRays = (count: number) => Array.from({ length: count }, (_, index) => (index * 360) / count)
+
+const FIREWORK_RAYS = createFireworkRays(8)
+/** The world tier fires a denser burst so the top of the ladder reads as the biggest. */
+const WORLD_FIREWORK_RAYS = createFireworkRays(12)
 
 interface CelebrationPosition {
   left: string
@@ -86,23 +90,92 @@ const BIG_SPARKLES: readonly CelebrationPosition[] = [
   { left: '66%', top: '76%', delay: '1.36s' },
 ]
 
+const WORLD_BURSTS: readonly CelebrationPosition[] = [
+  { left: '16%', top: '28%', delay: '0ms' },
+  { left: '34%', top: '40%', delay: '190ms' },
+  { left: '50%', top: '24%', delay: '380ms' },
+  { left: '66%', top: '38%', delay: '570ms' },
+  { left: '84%', top: '30%', delay: '760ms' },
+  { left: '25%', top: '64%', delay: '950ms' },
+  { left: '45%', top: '58%', delay: '1.14s' },
+  { left: '63%', top: '70%', delay: '1.33s' },
+  { left: '80%', top: '60%', delay: '1.52s' },
+]
+
+const WORLD_CONFETTI: readonly ConfettiPosition[] = [
+  { left: '10%', top: '22%', delay: '0ms', rotate: '-24deg' },
+  { left: '19%', top: '31%', delay: '90ms', rotate: '18deg' },
+  { left: '27%', top: '20%', delay: '180ms', rotate: '-8deg' },
+  { left: '35%', top: '28%', delay: '270ms', rotate: '30deg' },
+  { left: '43%', top: '18%', delay: '360ms', rotate: '-16deg' },
+  { left: '51%', top: '30%', delay: '450ms', rotate: '22deg' },
+  { left: '59%', top: '19%', delay: '540ms', rotate: '-28deg' },
+  { left: '67%', top: '27%', delay: '630ms', rotate: '12deg' },
+  { left: '75%', top: '17%', delay: '720ms', rotate: '-20deg' },
+  { left: '83%', top: '29%', delay: '810ms', rotate: '26deg' },
+  { left: '90%', top: '23%', delay: '900ms', rotate: '-12deg' },
+  { left: '13%', top: '44%', delay: '990ms', rotate: '20deg' },
+  { left: '22%', top: '52%', delay: '1.08s', rotate: '-26deg' },
+  { left: '31%', top: '42%', delay: '1.17s', rotate: '14deg' },
+  { left: '40%', top: '50%', delay: '1.26s', rotate: '-18deg' },
+  { left: '49%', top: '41%', delay: '1.35s', rotate: '28deg' },
+  { left: '57%', top: '49%', delay: '1.44s', rotate: '-10deg' },
+  { left: '66%', top: '43%', delay: '1.53s', rotate: '24deg' },
+  { left: '74%', top: '51%', delay: '1.62s', rotate: '-22deg' },
+  { left: '82%', top: '45%', delay: '1.71s', rotate: '16deg' },
+  { left: '89%', top: '53%', delay: '1.8s', rotate: '-30deg' },
+  { left: '16%', top: '66%', delay: '1.89s', rotate: '10deg' },
+  { left: '25%', top: '74%', delay: '1.98s', rotate: '-14deg' },
+  { left: '34%', top: '64%', delay: '2.07s', rotate: '22deg' },
+  { left: '43%', top: '72%', delay: '2.16s', rotate: '-24deg' },
+  { left: '52%', top: '66%', delay: '2.25s', rotate: '18deg' },
+  { left: '61%', top: '74%', delay: '2.34s', rotate: '-8deg' },
+  { left: '70%', top: '65%', delay: '2.43s', rotate: '30deg' },
+  { left: '79%', top: '72%', delay: '2.52s', rotate: '-20deg' },
+  { left: '87%', top: '67%', delay: '2.61s', rotate: '12deg' },
+]
+
+const WORLD_SPARKLES: readonly CelebrationPosition[] = [
+  { left: '12%', top: '36%', delay: '140ms' },
+  { left: '28%', top: '24%', delay: '420ms' },
+  { left: '41%', top: '38%', delay: '700ms' },
+  { left: '55%', top: '26%', delay: '980ms' },
+  { left: '69%', top: '36%', delay: '1.26s' },
+  { left: '85%', top: '28%', delay: '1.54s' },
+  { left: '20%', top: '58%', delay: '1.82s' },
+  { left: '37%', top: '70%', delay: '2.1s' },
+  { left: '53%', top: '60%', delay: '2.38s' },
+  { left: '71%', top: '68%', delay: '2.66s' },
+  { left: '88%', top: '58%', delay: '2.94s' },
+]
+
 const MILESTONE_PROFILES: Readonly<Record<LearningCompletionCelebration, {
   bursts: readonly CelebrationPosition[]
   confetti: readonly ConfettiPosition[]
   sparkles: readonly CelebrationPosition[]
+  rays: readonly number[]
   modifierClassName: string
 }>> = {
   subregion: {
     bursts: MEDIUM_BURSTS,
     confetti: MEDIUM_CONFETTI,
     sparkles: MEDIUM_SPARKLES,
+    rays: FIREWORK_RAYS,
     modifierClassName: '',
   },
   continent: {
     bursts: BIG_BURSTS,
     confetti: BIG_CONFETTI,
     sparkles: BIG_SPARKLES,
+    rays: FIREWORK_RAYS,
     modifierClassName: 'world-learning-milestone-big',
+  },
+  world: {
+    bursts: WORLD_BURSTS,
+    confetti: WORLD_CONFETTI,
+    sparkles: WORLD_SPARKLES,
+    rays: WORLD_FIREWORK_RAYS,
+    modifierClassName: 'world-learning-milestone-world',
   },
 }
 
@@ -134,7 +207,7 @@ export function LearningMilestoneCelebration({ level }: { level: LearningComplet
       <div className="world-learning-milestone-glow absolute inset-0" />
       {profile.bursts.map((burst, burstIndex) => (
         <span key={`burst-${burstIndex}`} className="world-learning-firework absolute" style={{ left: burst.left, top: burst.top }}>
-          {FIREWORK_RAYS.map(angle => (
+          {profile.rays.map(angle => (
             <span
               key={angle}
               className="world-learning-firework-ray"

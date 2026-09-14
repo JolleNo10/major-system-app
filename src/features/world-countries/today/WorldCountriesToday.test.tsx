@@ -1802,6 +1802,46 @@ describe('World Countries Today', () => {
     expect(mount.querySelector('[data-celebration-level]')).toBeNull()
   })
 
+  it('celebrates world mastery on the home map once every country and capital is learned', async () => {
+    const northern = countries.find(country => country.subregionId === 'northern-europe')!
+    activeCountries = [northern]
+    const at = Date.now()
+    markSubregionCountriesLearned(northern.subregionId, at, activeCountries)
+    markSubregionCapitalsLearned(northern.subregionId, at + 1, activeCountries)
+    buildPlanMock.mockReturnValue(plan({ curriculumRecommendation: null, plannerFocusSubregionId: null, scopeComplete: true }))
+
+    const mount = await renderToday()
+
+    expect(mount.querySelector('[data-celebration-level="world"]')).not.toBeNull()
+  })
+
+  it('does not celebrate world mastery while a country is still unlearned', async () => {
+    const northern = countries.find(country => country.subregionId === 'northern-europe')!
+    const africa = countries.find(country => country.subregionId === 'east-africa')!
+    activeCountries = [northern, africa]
+    const at = Date.now()
+    markSubregionCountriesLearned(northern.subregionId, at, activeCountries)
+    markSubregionCapitalsLearned(northern.subregionId, at + 1, activeCountries)
+    buildPlanMock.mockReturnValue(plan({ curriculumRecommendation: null, plannerFocusSubregionId: null }))
+
+    const mount = await renderToday()
+
+    expect(mount.querySelector('[data-celebration-level="world"]')).toBeNull()
+  })
+
+  it('keeps world mastery scoped to the world map rather than a Continent', async () => {
+    const northern = countries.find(country => country.subregionId === 'northern-europe')!
+    activeCountries = [northern]
+    const at = Date.now()
+    markSubregionCountriesLearned(northern.subregionId, at, activeCountries)
+    markSubregionCapitalsLearned(northern.subregionId, at + 1, activeCountries)
+    buildPlanMock.mockReturnValue(plan({ curriculumRecommendation: null, plannerFocusSubregionId: null, scopeComplete: true }))
+
+    const mount = await renderToday({ continent: 'Europe' })
+
+    expect(mount.querySelector('[data-celebration-level="world"]')).toBeNull()
+  })
+
   it('does not celebrate an already-completed Continent on entry', async () => {
     const northern = countries.find(country => country.subregionId === 'northern-europe')!
     const africa = countries.find(country => country.subregionId === 'east-africa')!
