@@ -5,6 +5,7 @@ import { countries } from '@/features/world-countries/data/countries'
 import { markSubregionCapitalsLearned, markSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningStore'
 import { WORLD_COUNTRIES_PROGRESS_LABELS, getCountryProgressColor } from '@/features/world-countries/learning/progressPresentation'
 import { WORLD_COUNTRIES_COUNTRY_CORE_STATES } from '@/features/world-countries/learning/scopeProgress'
+import { JOURNEY_PREFERENCE_STORAGE_KEY } from './journeyPreferenceStore'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -575,6 +576,140 @@ describe('World Countries Today', () => {
       entries: countryIds.map(countryId => countries.find(country => country.id === countryId)),
       newItemsPerSet: 3,
     }))
+  })
+
+  it('launches a same-Continent Journey immediately', async () => {
+    const europe = countries.find(country => country.subregionId === 'central-europe')!
+    activeCountries = [europe]
+    buildPlanMock.mockReturnValue(plan({ curriculumRecommendation: recommendation('learn-countries', [europe.id], europe) }))
+    const mount = await renderToday({ continent: 'Europe', worldJourneyContinent: 'Europe' })
+
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-today-action="journey"]')?.click())
+
+    expect(mount.querySelector('[role="dialog"]')).toBeNull()
+    expect(countryLearningFlowMock).toHaveBeenCalledWith(expect.objectContaining({ subregion: europe.subregionId }))
+  })
+
+  it('asks before starting an Africa Journey while Europe is current', async () => {
+    const africa = countries.find(country => country.subregionId === 'east-africa')!
+    activeCountries = [africa]
+    buildPlanMock.mockReturnValue(plan({ curriculumRecommendation: recommendation('learn-countries', [africa.id], africa) }))
+    const mount = await renderToday({ continent: 'Africa', worldJourneyContinent: 'Europe' })
+
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-today-action="journey"]')?.click())
+
+    expect(mount.querySelector('[role="dialog"]')?.textContent).toContain('Make Africa your current journey?')
+    expect(countryLearningFlowMock).not.toHaveBeenCalled()
+  })
+
+  it('learns the selected out-of-current-continent Subregion without persisting a switch', async () => {
+    const centralAfrica = countries.find(country => country.subregionId === 'central-africa')!
+    const eastAfrica = countries.find(country => country.subregionId === 'east-africa')!
+    activeCountries = [centralAfrica, eastAfrica]
+    const centralRecommendation = recommendation('learn-countries', [centralAfrica.id], centralAfrica)
+    const eastRecommendation = recommendation('learn-countries', [eastAfrica.id], eastAfrica)
+    buildPlanMock.mockReturnValue(plan({
+      curriculumRecommendation: centralRecommendation,
+      curriculumRecommendationsBySubregion: new Map([
+        [centralAfrica.subregionId, centralRecommendation],
+        [eastAfrica.subregionId, eastRecommendation],
+      ]),
+    }))
+    const mount = await renderToday({ continent: 'Africa', worldJourneyContinent: 'Europe' })
+    let railMount = renderLatestRails()
+
+    act(() => [...railMount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent?.startsWith('East Africa'))?.click())
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-today-action="journey"]')?.click())
+    expect(mount.querySelector('[role="dialog"]')).not.toBeNull()
+
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="journey-switch-learn-only"]')?.click())
+
+    expect(localStorage.getItem(JOURNEY_PREFERENCE_STORAGE_KEY)).toBeNull()
+    expect(countryLearningFlowMock).toHaveBeenCalledWith(expect.objectContaining({ subregion: eastAfrica.subregionId }))
+  })
+
+  it('makes the selected Continent current and launches the same Journey', async () => {
+    const africa = countries.find(country => country.subregionId === 'east-africa')!
+    activeCountries = [africa]
+    buildPlanMock.mockReturnValue(plan({ curriculumRecommendation: recommendation('learn-countries', [africa.id], africa) }))
+    const mount = await renderToday({ continent: 'Africa', worldJourneyContinent: 'Europe' })
+
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-today-action="journey"]')?.click())
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-testid="journey-switch-make-current"]')?.click())
+
+    expect(localStorage.getItem(JOURNEY_PREFERENCE_STORAGE_KEY)).toBe('africa')
+    expect(countryLearningFlowMock).toHaveBeenCalledWith(expect.objectContaining({ subregion: africa.subregionId }))
+  })
+
+  it('does not prompt when the selected Journey already matches the preference', async () => {
+    const africa = countries.find(country => country.subregionId === 'east-africa')!
+    activeCountries = [africa]
+    localStorage.setItem(JOURNEY_PREFERENCE_STORAGE_KEY, 'africa')
+    buildPlanMock.mockReturnValue(plan({ curriculumRecommendation: recommendation('learn-countries', [africa.id], africa) }))
+    const mount = await renderToday({ continent: 'Africa', worldJourneyContinent: 'Europe' })
+
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-today-action="journey"]')?.click())
+
+    expect(mount.querySelector('[role="dialog"]')).toBeNull()
+    expect(countryLearningFlowMock).toHaveBeenCalledWith(expect.objectContaining({ subregion: africa.subregionId }))
+  })
+
+  it('passes the persisted Journey preference only to the World-scoped plan', async () => {
+    const africa = countries.find(country => country.subregionId === 'central-africa')!
+    activeCountries = [countries[0], africa]
+    localStorage.setItem(JOURNEY_PREFERENCE_STORAGE_KEY, 'africa')
+    buildPlanMock.mockReturnValue(plan({ curriculumRecommendation: recommendation('learn-countries', [africa.id], africa) }))
+    await renderToday()
+    expect(buildPlanMock.mock.calls[buildPlanMock.mock.calls.length - 1]?.[0]).toEqual(expect.objectContaining({ preferredJourneyContinent: 'africa' }))
+
+    await act(async () => {
+      root?.render(createElement(WorldCountriesToday, { answerMode: 'typing', onNavigate: vi.fn(), continent: 'Africa' }))
+      await Promise.resolve()
+    })
+
+    expect(buildPlanMock.mock.calls[buildPlanMock.mock.calls.length - 1]?.[0]).toEqual(expect.not.objectContaining({ preferredJourneyContinent: expect.anything() }))
+  })
+
+  it('clears a preferred Continent when its refreshed plan has no Journey work', async () => {
+    localStorage.setItem(JOURNEY_PREFERENCE_STORAGE_KEY, 'africa')
+    buildPlanMock.mockReturnValue(plan())
+
+    await renderToday({ continent: 'Africa' })
+
+    expect(localStorage.getItem(JOURNEY_PREFERENCE_STORAGE_KEY)).toBeNull()
+  })
+
+  it('clears a preferred Continent from an exhausted World plan', async () => {
+    localStorage.setItem(JOURNEY_PREFERENCE_STORAGE_KEY, 'africa')
+    buildPlanMock.mockReturnValue(plan())
+
+    await renderToday()
+
+    expect(localStorage.getItem(JOURNEY_PREFERENCE_STORAGE_KEY)).toBeNull()
+  })
+
+  it('does not clear a preferred Continent from an unrelated Continent hub', async () => {
+    localStorage.setItem(JOURNEY_PREFERENCE_STORAGE_KEY, 'africa')
+    buildPlanMock.mockReturnValue(plan())
+
+    await renderToday({ continent: 'Europe' })
+
+    expect(localStorage.getItem(JOURNEY_PREFERENCE_STORAGE_KEY)).toBe('africa')
+  })
+
+  it('dismisses the switch dialog without launching or persisting', async () => {
+    const africa = countries.find(country => country.subregionId === 'east-africa')!
+    activeCountries = [africa]
+    buildPlanMock.mockReturnValue(plan({ curriculumRecommendation: recommendation('learn-countries', [africa.id], africa) }))
+    const mount = await renderToday({ continent: 'Africa', worldJourneyContinent: 'Europe' })
+
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-today-action="journey"]')?.click())
+    const dialog = mount.querySelector<HTMLElement>('[role="dialog"]')!
+    await act(async () => dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
+
+    expect(mount.querySelector('[role="dialog"]')).toBeNull()
+    expect(localStorage.getItem(JOURNEY_PREFERENCE_STORAGE_KEY)).toBeNull()
+    expect(countryLearningFlowMock).not.toHaveBeenCalled()
   })
 
   it('uses one selected Subregion for the rail, Journey, dock, and Learning launch', async () => {

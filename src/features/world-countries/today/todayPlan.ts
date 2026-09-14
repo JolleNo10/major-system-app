@@ -1,5 +1,5 @@
 import type { Country, CountryId } from '@/features/world-countries/data/countries'
-import type { SubregionId } from '@/features/world-countries/data/subregions'
+import { continentIdFor, type ContinentId, type SubregionId } from '@/features/world-countries/data/subregions'
 import type { WorldCountriesRecallHistory } from '@/features/world-countries/learning/recallHistory'
 import { deriveWorldCountriesIntroducedness, type WorldCountriesTargetIntroduction } from '@/features/world-countries/learning/todayIntroduction'
 import { getSubregionDefinition } from '@/features/world-countries/data/subregions'
@@ -76,6 +76,7 @@ export interface WorldCountriesTodayPlanInput {
   /** Effective World -> Continent -> Subregion -> Country order. */
   effectiveCountries?: readonly Country[]
   effectiveSubregionIds?: readonly SubregionId[]
+  preferredJourneyContinent?: ContinentId | null
   now?: number
   localDate?: string
 }
@@ -228,6 +229,7 @@ function deriveCurriculumRecommendations({
   learningStates,
   progressByTarget,
   incompleteCountries,
+  preferredJourneyContinent,
 }: {
   countriesInOrder: readonly Country[]
   introductions: ReadonlyMap<string, WorldCountriesTargetIntroduction>
@@ -235,6 +237,7 @@ function deriveCurriculumRecommendations({
   learningStates: readonly SubregionLearningState[]
   progressByTarget: ReadonlyMap<string, ReturnType<typeof deriveWorldCountriesAtomicProgress>>
   incompleteCountries: ReadonlySet<CountryId>
+  preferredJourneyContinent?: ContinentId | null
 }): {
   curriculumRecommendation: WorldCountriesTodayLearningRecommendation | null
   plannerFocusSubregionId: SubregionId | null
@@ -247,9 +250,17 @@ function deriveCurriculumRecommendations({
       recommendationForSubregion({ countriesBySubregion, introductions, subregionId, learningStates, progressByTarget }),
     ] as const),
   )
-  const curriculumRecommendation = subregionIds
+  const ordinaryCurriculumRecommendation = subregionIds
     .map(subregionId => curriculumRecommendationsBySubregion.get(subregionId) ?? null)
     .find(Boolean) ?? null
+  const preferredCurriculumRecommendation = preferredJourneyContinent
+    ? subregionIds
+      .map(subregionId => curriculumRecommendationsBySubregion.get(subregionId) ?? null)
+      .find(recommendation => recommendation
+        && continentIdFor(recommendation.continent) === preferredJourneyContinent)
+      ?? null
+    : null
+  const curriculumRecommendation = preferredCurriculumRecommendation ?? ordinaryCurriculumRecommendation
   const plannerFocusSubregionId = curriculumRecommendation?.subregionId
     ?? subregionIds.find(subregionId => countriesBySubregion.get(subregionId)?.some(country => incompleteCountries.has(country.id)))
     ?? null
@@ -331,6 +342,7 @@ export function buildWorldCountriesTodayPlan(
     learningStates: input.learningStates ?? [],
     progressByTarget,
     incompleteCountries,
+    preferredJourneyContinent: input.preferredJourneyContinent,
   })
   const incompleteSubregionLabels = [...new Set(effectiveCountries
     .filter(country => incompleteCountries.has(country.id))

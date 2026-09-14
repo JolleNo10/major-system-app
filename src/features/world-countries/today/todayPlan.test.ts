@@ -658,6 +658,84 @@ describe('World Countries Today plan', () => {
     expect(plan.plannerFocusSubregionId).toBe('northern-europe')
   })
 
+  it('biases the World Journey toward the preferred Continent without changing effective order', () => {
+    const europe = countries.find(country => country.subregionId === 'central-europe')!
+    const centralAfrica = countries.find(country => country.subregionId === 'central-africa')!
+    const eastAfrica = countries.find(country => country.subregionId === 'east-africa')!
+    const entries = [europe, centralAfrica, eastAfrica]
+    const input = {
+      activeCountries: entries,
+      effectiveCountries: entries,
+      effectiveSubregionIds: ['central-europe', 'central-africa', 'east-africa'] as const,
+      history: historyFor([], entries.map(country => country.id)),
+    }
+
+    const ordinary = buildWorldCountriesTodayPlan(input)
+    const preferred = buildWorldCountriesTodayPlan({ ...input, preferredJourneyContinent: 'africa' })
+
+    expect(ordinary.curriculumRecommendation?.subregionId).toBe('central-europe')
+    expect(preferred.curriculumRecommendation?.subregionId).toBe('central-africa')
+    expect(preferred.plannerFocusSubregionId).toBe('central-africa')
+    expect(preferred.curriculumRecommendationsBySubregion.get('central-africa')).toEqual(
+      ordinary.curriculumRecommendationsBySubregion.get('central-africa'),
+    )
+    expect(preferred.curriculumRecommendationsBySubregion.get('east-africa')).toEqual(
+      ordinary.curriculumRecommendationsBySubregion.get('east-africa'),
+    )
+  })
+
+  it('keeps the preferred Continent recommendation in supplied effective Subregion order', () => {
+    const europe = countries.find(country => country.subregionId === 'central-europe')!
+    const centralAfrica = countries.find(country => country.subregionId === 'central-africa')!
+    const eastAfrica = countries.find(country => country.subregionId === 'east-africa')!
+    const plan = buildWorldCountriesTodayPlan({
+      activeCountries: [europe, centralAfrica, eastAfrica],
+      effectiveCountries: [europe, centralAfrica, eastAfrica],
+      effectiveSubregionIds: ['central-europe', 'east-africa', 'central-africa'],
+      preferredJourneyContinent: 'africa',
+      history: historyFor([], [europe.id, centralAfrica.id, eastAfrica.id]),
+    })
+
+    expect(plan.curriculumRecommendation?.subregionId).toBe('east-africa')
+  })
+
+  it('keeps Review and consolidation results independent from Journey preference', () => {
+    const europe = countries.find(country => country.subregionId === 'central-europe')!
+    const africa = countries.find(country => country.subregionId === 'central-africa')!
+    const entries = [europe, africa]
+    const input = {
+      activeCountries: entries,
+      effectiveCountries: entries,
+      effectiveSubregionIds: ['central-europe', 'central-africa'] as const,
+      learningStates: establishedLearningStatesFor(entries, TEST_NOW),
+      history: dueHistoryFor(entries.map(country => country.id)),
+      now: TEST_NOW,
+      localDate: TEST_LOCAL_DATE,
+    }
+    const ordinary = buildWorldCountriesTodayPlan(input)
+    const preferred = buildWorldCountriesTodayPlan({ ...input, preferredJourneyContinent: 'africa' })
+
+    expect(preferred.dueCandidates.map(candidateId)).toEqual(ordinary.dueCandidates.map(candidateId))
+    expect(preferred.consolidationCandidates.map(candidateId)).toEqual(ordinary.consolidationCandidates.map(candidateId))
+    expect(preferred.reviewOpportunity?.kind).toBe(ordinary.reviewOpportunity?.kind)
+  })
+
+  it('falls back to the ordinary World recommendation when the preferred Continent is complete', () => {
+    const europe = countries.find(country => country.subregionId === 'central-europe')!
+    const africa = countries.find(country => country.subregionId === 'central-africa')!
+    const plan = buildWorldCountriesTodayPlan({
+      activeCountries: [europe, africa],
+      effectiveCountries: [europe, africa],
+      effectiveSubregionIds: ['central-europe', 'central-africa'],
+      preferredJourneyContinent: 'africa',
+      learningStates: [{ subregionId: africa.subregionId, countriesLearnedAt: TEST_NOW, capitalsLearnedAt: TEST_NOW }],
+      history: completeCoreHistory([africa.id]),
+    })
+
+    expect(plan.curriculumRecommendationsBySubregion.get(africa.subregionId)).toBeNull()
+    expect(plan.curriculumRecommendation?.subregionId).toBe('central-europe')
+  })
+
   it('does not use the first review candidate when the bounded block spans Subregions', () => {
     const northern = countries.find(country => country.subregionId === 'northern-europe')!
     const southern = countries.find(country => country.subregionId === 'southern-europe')!

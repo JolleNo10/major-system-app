@@ -64,7 +64,7 @@ Architecturally significant groups are:
 | Major System | `major-word-*`, `major-soundkey-*`, sequence/speed preferences. Layered word and sound-key records use `createWordStore`. |
 | Cards | `major-cardword-*`, `major-pao-*`, deck-memo histories, drill/suit/range preferences. Themed and PAO stores are independent even when PAO seeds Person values from Themed. |
 | Pi | `major-pi-*` session, selection, memoed/flawless, anchor, story-era, and maintenance state. Exact keys are defined beside their owners. |
-| World Countries | `world-countries-world-metadata`, `world-countries-continent-metadata`, `world-countries-subregion-metadata`, `world-countries-subregion-learning`, `world-countries-subregion-learning-membership`, and `world-countries-recite-progress`. |
+| World Countries | `world-countries-world-metadata`, `world-countries-continent-metadata`, `world-countries-subregion-metadata`, `world-countries-subregion-learning`, `world-countries-subregion-learning-membership`, `world-countries-recite-progress`, and `world-countries-journey-preference`. |
 
 Small view preferences need not be catalogued here. Their ownership still
 follows the defining module and feature namespace.
@@ -116,6 +116,12 @@ follows the defining module and feature namespace.
   CountryId)` pair. Setup preferences, prompt history, incomplete sessions,
   and flattened authored/session Country sequences remain transient; Recite
   does not write the shared Drill-attempt namespace.
+- World Countries Today uses `world-countries-journey-preference` for one
+  optional stable `ContinentId`. It biases only the World curriculum
+  recommendation while that Continent has unfinished Journey Learning. The
+  preference is cleared when that Journey work is exhausted; it never changes
+  authored order, Review scheduling, Learning milestones, or per-Subregion
+  readiness. Malformed or unknown IDs are ignored.
 
 ## Migration and isolation rules
 
@@ -164,6 +170,9 @@ follows the defining module and feature namespace.
   JSON family; order restore/reset replaces or clears the complete saved
   World/Continent/Subregion metadata collections and never writes mnemonics,
   progress, attempts, or app settings.
+- Geography order backup/import/export/reset does not include or modify
+  `world-countries-journey-preference`; the authored Continent order and the
+  temporary learning-path preference remain separate persisted responsibilities.
 - Dictionary CSV import/export remains owned by each layered store/parser;
   browser exports never rewrite bundled repository CSV files.
 
@@ -181,6 +190,7 @@ follows the defining module and feature namespace.
 - `src/features/world-countries/learning/subregionLearningStore.ts`
 - `src/features/world-countries/learning/recallHistory.ts`
 - `src/features/world-countries/learning/recallProgress.ts`
+- `src/features/world-countries/today/journeyPreferenceStore.ts`
 - `src/features/world-countries/today/todayPlan.ts`
 - `src/features/world-countries/drill/drillPreferences.ts`
 - `src/features/world-countries/recite/reciteProgress.ts`

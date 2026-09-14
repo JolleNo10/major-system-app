@@ -17,8 +17,8 @@ vi.mock('./recite/WorldCountriesRecite', () => ({
 }))
 
 vi.mock('./today/WorldCountriesToday', () => ({
-  WorldCountriesToday: (props: { onNavigate?: (navigation: { area: 'play' | 'drill'; scope?: { kind: 'world' } | { kind: 'subregion'; subregionId: 'eastern-europe' } }) => void; onSelectContinent?: (continent: 'Europe') => void; onWorld?: () => void }) => createElement('div', { 'data-testid': 'today-workflow' },
-    createElement('button', { type: 'button', onClick: () => props.onSelectContinent?.('Europe') }, 'Open Europe'),
+  WorldCountriesToday: (props: { worldJourneyContinent?: 'Europe' | null; onNavigate?: (navigation: { area: 'play' | 'drill'; scope?: { kind: 'world' } | { kind: 'subregion'; subregionId: 'eastern-europe' } }) => void; onSelectContinent?: (continent: 'Europe', worldJourneyContinent: 'Europe' | null) => void; onWorld?: () => void }) => createElement('div', { 'data-testid': 'today-workflow', 'data-world-journey-continent': props.worldJourneyContinent ?? 'none' },
+    createElement('button', { type: 'button', onClick: () => props.onSelectContinent?.('Europe', 'Europe') }, 'Open Europe'),
     createElement('button', { type: 'button', onClick: props.onWorld }, 'Back to World'),
     createElement('button', { type: 'button', 'data-testid': 'open-completed-region-drill', onClick: () => props.onNavigate?.({ area: 'drill', scope: { kind: 'subregion', subregionId: 'eastern-europe' } }) }, 'Drill Eastern Europe'),
     createElement('button', { type: 'button', 'data-testid': 'open-completed-world-drill', onClick: () => props.onNavigate?.({ area: 'drill', scope: { kind: 'world' } }) }, 'Drill the world'),
@@ -84,6 +84,16 @@ describe('World Countries guided shell', () => {
     expect(mount.querySelector('nav[aria-label="World Countries navigation"]')).toBeNull()
     expect(mount.querySelector('[data-world-countries-playground]')).toBeNull()
     expect(mount.querySelector('[data-testid="recite-workflow"]')).toBeNull()
+    expect(mount.querySelector('[data-world-journey-continent]')?.getAttribute('data-world-journey-continent')).toBe('Europe')
+  })
+
+  it('clears the transient World Journey Continent when returning Home', async () => {
+    const mount = await renderShell()
+
+    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Open Europe')?.click())
+    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Back to World')?.click())
+
+    expect(mount.querySelector('[data-testid="today-workflow"]')?.getAttribute('data-world-journey-continent')).toBe('none')
   })
 
   it('opens Playground from Continent Today navigation while preserving its originating scope', async () => {

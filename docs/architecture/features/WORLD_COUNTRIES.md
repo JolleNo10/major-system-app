@@ -836,6 +836,18 @@ flowchart TD
   It stores no flattened session sequence, setup preference, incomplete run, or
   prompt history. Recite outcomes are independent from Drill attempts and
   Learning milestones.
+- Today may persist one stable Continent-ID Journey preference in
+  `world-countries-journey-preference`. It biases only the selection of the
+  World curriculum recommendation while that Continent has unfinished Journey
+  Learning; it does not modify authored geography order, Review scheduling,
+  Learning milestones, or per-Subregion readiness. When the preferred Continent
+  has no remaining Journey recommendation, the preference is cleared and normal
+  effective World order resumes.
+- A Journey switch is not implemented by moving a Continent in
+  `worldMetadata.continentOrder`: authored geography order and the learner's
+  temporary current Journey are separate responsibilities, and conflating them
+  would permanently rewrite navigation/order merely to express a learning-path
+  preference.
 - Atomic Drill and Today review evidence continue to use the existing attempts
   store and `world-countries:<skill>:<CountryId>` IDs. Practice never writes it.
 - Capitals, Countries from Capitals, and Neighbours Quiz are transient
@@ -847,7 +859,8 @@ flowchart TD
   single-answer Country/Capital records.
 - Today reads raw core evidence through `learning/recallHistory.ts` and writes
   ordinary `recall` evidence through the existing feature adapter. It owns no
-  schedule, plan, queue, retry, or checkpoint persistence.
+  schedule, plan, queue, retry, or checkpoint persistence; its sole durable
+  Journey preference is the stable Continent ID described above.
 - A persisted legacy Drill `mode: "capitals"` remains invalid under the
   current four-mode union and falls back to the normal `countries` default.
   No migration is performed.

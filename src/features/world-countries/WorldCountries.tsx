@@ -26,6 +26,7 @@ export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
   const { settings } = useSettings()
   const [area, setArea] = useState<WorldCountriesArea>('home')
   const [continent, setContinent] = useState<Continent | null>(null)
+  const [worldJourneyContinent, setWorldJourneyContinent] = useState<Continent | null>(null)
   const [drillEntry, setDrillEntry] = useState<DrillEntry | null>(null)
   const activeCountries = useMemo(
     () => resolveCountrySet(
@@ -39,10 +40,12 @@ export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
   const goHome = () => {
     setDrillEntry(null)
     setContinent(null)
+    setWorldJourneyContinent(null)
     setArea('home')
   }
-  const goToContinent = (nextContinent: Continent) => {
+  const goToContinent = (nextContinent: Continent, nextWorldJourneyContinent: Continent | null = worldJourneyContinent) => {
     setContinent(nextContinent)
+    setWorldJourneyContinent(nextWorldJourneyContinent)
     setArea('continent')
   }
   const goToScope = useCallback(() => {
@@ -96,7 +99,7 @@ export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
   return (
     <WorldCountriesPopulationProvider countries={activeCountries}>
       {area === 'home' && <WorldCountriesToday answerMode={answerMode} onNavigate={openTodayNavigation} onSelectContinent={goToContinent} />}
-      {area === 'continent' && continent && <WorldCountriesToday answerMode={answerMode} continent={continent} onNavigate={openTodayNavigation} onSelectContinent={goToContinent} onWorld={goHome} />}
+      {area === 'continent' && continent && <WorldCountriesToday answerMode={answerMode} continent={continent} worldJourneyContinent={worldJourneyContinent} onNavigate={openTodayNavigation} onSelectContinent={goToContinent} onWorld={goHome} />}
       {area === 'play' && <WorldCountriesPlay scopeLabel={continent ?? 'World'} scopeContinent={continent ?? undefined} onBack={goToScope} onOpenRecite={() => openWorkflow('recite')} onOpenQuiz={() => openWorkflow('quiz')} onOpenLocateCountries={() => openDrillEntry({ activity: { kind: 'practice', mode: 'locate-countries' } })} onOpenLocateCapitals={() => openDrillEntry({ activity: { kind: 'practice', mode: 'locate-capitals' } })} onOpenCapitalPractice={() => openDrillEntry({ activity: { kind: 'practice', mode: 'capitals' } })} onOpenCustomDrill={() => openDrillEntry({ activity: { kind: 'drill' } })} />}
       {area === 'drill' && <WorldCountriesDrill answerMode={answerMode} onExit={goToScope} initialActivity={drillEntry?.activity} initialScope={drillEntry?.initialScope} />}
       {area === 'recite' && <WorldCountriesRecite answerMode={answerMode} onExit={goToScope} />}

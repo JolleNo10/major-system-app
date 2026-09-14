@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { AnswerMode } from '@/core/types'
 import { useSettings } from '@/app/settings/SettingsContext'
 import type { Continent, Country } from '@/features/world-countries/data/countries'
-import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
+import { continentIdFor, getSubregionDefinition, type ContinentId, type SubregionId } from '@/features/world-countries/data/subregions'
 import { useWorldCountriesPopulation } from '@/features/world-countries/WorldCountriesPopulationContext'
 import { getWorldCountriesInEffectiveOrder } from '@/features/world-countries/geography/effectiveOrder'
 import { getContinentsInEffectiveOrder, getSubregionsForContinentInEffectiveOrder } from '@/features/world-countries/geography/queries'
@@ -33,6 +33,8 @@ import type { WorldCountriesGuidedRecallMode } from './TodayRails'
 import { GuidedHomeRails } from './GuidedHomeRails'
 import { TodayActionHub, type TodayHubAction } from './TodayActionHub'
 import { WorldCountriesProgressView } from './WorldCountriesProgressView'
+import { JourneyContinentSwitchDialog } from './JourneyContinentSwitchDialog'
+import { clearPreferredJourneyContinent, getPreferredJourneyContinent, setPreferredJourneyContinent } from './journeyPreferenceStore'
 import { deriveWorldCountriesJourneyPresentation, type WorldCountriesJourneyPresentation } from './journeyPresentation'
 import { buildWorldCountriesTodayPlan, type WorldCountriesTodayLearningRecommendation, type WorldCountriesTodayPlan, type WorldCountriesTodayReviewOpportunity } from './todayPlan'
 
@@ -130,6 +132,7 @@ export function WorldCountriesToday({
   answerMode: _answerMode,
   onNavigate,
   continent = null,
+  worldJourneyContinent = null,
   onSelectContinent,
   onWorld,
   onOpenProgress,
@@ -137,7 +140,8 @@ export function WorldCountriesToday({
   answerMode: AnswerMode
   onNavigate: (navigation: WorldCountriesTodayNavigation) => void
   continent?: Continent | null
-  onSelectContinent?: (continent: Continent) => void
+  worldJourneyContinent?: Continent | null
+  onSelectContinent?: (continent: Continent, worldJourneyContinent: Continent | null) => void
   onWorld?: () => void
   onOpenProgress?: () => void
 }) {
@@ -159,6 +163,11 @@ export function WorldCountriesToday({
   const [learningRun, setLearningRun] = useState<LearningRun | null>(null)
   const [selectedSubregionId, setSelectedSubregionId] = useState<SubregionId | null>(null)
   const [showProgress, setShowProgress] = useState(false)
+  const [preferredJourneyContinent, setPreferredJourneyContinentState] = useState<ContinentId | null>(getPreferredJourneyContinent)
+  const [journeySwitchPrompt, setJourneySwitchPrompt] = useState<{
+    recommendation: WorldCountriesTodayLearningRecommendation
+    currentContinent: Continent
+  } | null>(null)
 
   const loadEvidence = useCallback(async () => {
     if (scopedCountries.length === 0) {
@@ -199,8 +208,20 @@ export function WorldCountriesToday({
       learningStates,
       effectiveCountries: geographicOrder.countries,
       effectiveSubregionIds: geographicOrder.subregionIds,
+      ...(continent ? {} : { preferredJourneyContinent }),
     })
-  }, [evidence, geographicOrder, learningStates, scopedCountries])
+  }, [continent, evidence, geographicOrder, learningStates, preferredJourneyContinent, scopedCountries])
+
+  useEffect(() => {
+    if (!plan || !preferredJourneyContinent) return
+    if (continent && continentIdFor(continent) !== preferredJourneyContinent) return
+    const hasRemainingJourney = [...plan.curriculumRecommendationsBySubregion.values()].some(recommendation => (
+      recommendation && continentIdFor(recommendation.continent) === preferredJourneyContinent
+    ))
+    if (hasRemainingJourney) return
+    clearPreferredJourneyContinent()
+    setPreferredJourneyContinentState(null)
+  }, [continent, plan, preferredJourneyContinent])
   const recallProgress = useMemo<RecallProgress | null>(() => {
     if (evidence.status !== 'ready') return null
     return deriveWorldCountriesRecallProgress({
@@ -297,6 +318,19 @@ export function WorldCountriesToday({
 
   const startJourney = () => {
     if (!hubJourneyRecommendation || evidence.status !== 'ready' || scopedCountries.length === 0) return
+    const recommendationContinentId = continentIdFor(hubJourneyRecommendation.continent)
+    const currentWorldJourneyContinentId = worldJourneyContinent ? continentIdFor(worldJourneyContinent) : null
+    if (
+      continent
+      && worldJourneyContinent
+      && recommendationContinentId
+      && currentWorldJourneyContinentId
+      && recommendationContinentId !== currentWorldJourneyContinentId
+      && recommendationContinentId !== preferredJourneyContinent
+    ) {
+      setJourneySwitchPrompt({ recommendation: hubJourneyRecommendation, currentContinent: worldJourneyContinent })
+      return
+    }
     launchLearningRecommendation(hubJourneyRecommendation)
   }
 
@@ -397,7 +431,7 @@ export function WorldCountriesToday({
           id: candidate,
           label: candidate,
           progress: deriveWorldCountriesScopeProgressForCountries(`continent:${candidate}`, entries, recallProgress),
-          onSelect: onSelectContinent ? () => onSelectContinent(candidate) : undefined,
+          onSelect: onSelectContinent ? () => onSelectContinent(candidate, plan?.curriculumRecommendation?.continent ?? null) : undefined,
           selected: isSelected,
           status: isSelected && activeSubregionId
             ? `Focus · ${getSubregionDefinition(activeSubregionId).label}`
@@ -417,7 +451,7 @@ export function WorldCountriesToday({
         status: isSelected ? 'Selected focus' : undefined,
       }
     })
-  }, [activeSubregionId, continent, geographyRevision, onSelectContinent, recallProgress, scopedCountries])
+  }, [activeSubregionId, continent, geographyRevision, onSelectContinent, plan, recallProgress, scopedCountries])
   const scopeLabel = continent ?? 'World'
   const navigateWorld = onWorld ?? (() => undefined)
   const plannerNextRecommendation = plan?.curriculumRecommendation ?? null
@@ -451,6 +485,23 @@ export function WorldCountriesToday({
         onAction: () => onNavigate({ area: 'drill', scope: { kind: 'subregion', subregionId: learningRun.recommendation.subregionId } }),
       }
     : undefined
+  const dismissJourneySwitchPrompt = () => setJourneySwitchPrompt(null)
+  const launchPromptedJourney = () => {
+    const pending = journeySwitchPrompt
+    if (!pending) return
+    setJourneySwitchPrompt(null)
+    launchLearningRecommendation(pending.recommendation)
+  }
+  const makePromptedJourneyCurrent = () => {
+    const pending = journeySwitchPrompt
+    if (!pending) return
+    const nextContinentId = continentIdFor(pending.recommendation.continent)
+    if (!nextContinentId) return
+    setPreferredJourneyContinent(nextContinentId)
+    setPreferredJourneyContinentState(nextContinentId)
+    setJourneySwitchPrompt(null)
+    launchLearningRecommendation(pending.recommendation)
+  }
 
   if (showProgress) {
     return <WorldCountriesProgressView
@@ -600,63 +651,77 @@ export function WorldCountriesToday({
   ] as const))
 
   return (
-    <section className="space-y-4 animate-fade-in" aria-labelledby="world-countries-today-heading">
-      <GuidedHomeRails
-        level={continent ? 'continent' : 'world'}
-        continent={continent ?? undefined}
-        activeCountryCount={scopedCountries.length}
-        evidenceStatus={evidence.status}
-        reviewOpportunity={plan?.reviewOpportunity ?? null}
-        reviewAvailableCount={reviewAvailableCount}
-        reviewCompletion={reviewCompletion}
-        refreshing={refreshing}
-        scopeSummaries={scopeSummaries}
-        scopeProgress={progress}
-        journey={journey}
-        activeLearningAvailable={Boolean(activeLearningRecommendation)}
-        onRelearnCountries={onRelearnCountries}
-        onRelearnCapitals={onRelearnCapitals}
-        onWorld={navigateWorld}
-        onOpenProgress={() => {
-          if (evidence.status !== 'ready' || !progress) return
-          setShowProgress(true)
-          onOpenProgress?.()
-        }}
-      />
-
-      <div className="space-y-4">
-        <MapSurface
-          context={(
-            <div className="px-1">
-              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <h1 id="world-countries-today-heading" className="text-2xl font-black text-zinc-100">{continent ?? 'Your world'}</h1>
-                {activeSubregionLabel && <p data-active-subregion className="text-sm font-semibold text-cyan-200">Focus: {activeSubregionLabel}</p>}
-              </div>
-              <div className="mt-1">
-                <WorldCountriesMapLegend learningComplete={worldLearningComplete} />
-              </div>
-            </div>
-          )}
-          map={(
-            <GeographyOverviewMap
-              level={continent ? 'continent' : 'world'}
-              continent={continent ?? undefined}
-              countryPopulation={scopedCountries}
-              countryColorsById={countryColorsById}
-              countryPatternsById={countryPatternsById}
-              selectedSubregionIds={activeSubregionId ? [activeSubregionId] : undefined}
-              selectionPresentation="outline-only"
-              countryAccessibleDescriptionsById={mapDescriptions}
-              interactive
-              onCountryClick={country => continent ? setSelectedSubregionId(country.subregionId) : onSelectContinent?.(country.continent)}
-              ariaLabel={continent ? `${continent} learning map` : 'World Countries learning map'}
-            />
-          )}
-          dock={todayHubActions ? <TodayActionHub {...todayHubActions} disabled={refreshing} focusRequest={hubFocusRequest} /> : undefined}
-          dockPlacement="attached"
-          className="animate-fade-in"
+    <>
+      {journeySwitchPrompt && (
+        <JourneyContinentSwitchDialog
+          currentContinent={journeySwitchPrompt.currentContinent}
+          nextContinent={journeySwitchPrompt.recommendation.continent}
+          subregionLabel={journeySwitchPrompt.recommendation.subregionLabel}
+          onDismiss={dismissJourneySwitchPrompt}
+          onLearnOnly={launchPromptedJourney}
+          onMakeCurrent={makePromptedJourneyCurrent}
         />
-      </div>
-    </section>
+      )}
+      <section className="space-y-4 animate-fade-in" aria-labelledby="world-countries-today-heading">
+        <GuidedHomeRails
+          level={continent ? 'continent' : 'world'}
+          continent={continent ?? undefined}
+          activeCountryCount={scopedCountries.length}
+          evidenceStatus={evidence.status}
+          reviewOpportunity={plan?.reviewOpportunity ?? null}
+          reviewAvailableCount={reviewAvailableCount}
+          reviewCompletion={reviewCompletion}
+          refreshing={refreshing}
+          scopeSummaries={scopeSummaries}
+          scopeProgress={progress}
+          journey={journey}
+          activeLearningAvailable={Boolean(activeLearningRecommendation)}
+          onRelearnCountries={onRelearnCountries}
+          onRelearnCapitals={onRelearnCapitals}
+          onWorld={navigateWorld}
+          onOpenProgress={() => {
+            if (evidence.status !== 'ready' || !progress) return
+            setShowProgress(true)
+            onOpenProgress?.()
+          }}
+        />
+
+        <div className="space-y-4">
+          <MapSurface
+            context={(
+              <div className="px-1">
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <h1 id="world-countries-today-heading" className="text-2xl font-black text-zinc-100">{continent ?? 'Your world'}</h1>
+                  {activeSubregionLabel && <p data-active-subregion className="text-sm font-semibold text-cyan-200">Focus: {activeSubregionLabel}</p>}
+                </div>
+                <div className="mt-1">
+                  <WorldCountriesMapLegend learningComplete={worldLearningComplete} />
+                </div>
+              </div>
+            )}
+            map={(
+              <GeographyOverviewMap
+                level={continent ? 'continent' : 'world'}
+                continent={continent ?? undefined}
+                countryPopulation={scopedCountries}
+                countryColorsById={countryColorsById}
+                countryPatternsById={countryPatternsById}
+                selectedSubregionIds={activeSubregionId ? [activeSubregionId] : undefined}
+                selectionPresentation="outline-only"
+                countryAccessibleDescriptionsById={mapDescriptions}
+                interactive
+                onCountryClick={country => continent
+                  ? setSelectedSubregionId(country.subregionId)
+                  : onSelectContinent?.(country.continent, hubJourneyRecommendation?.continent ?? null)}
+                ariaLabel={continent ? `${continent} learning map` : 'World Countries learning map'}
+              />
+            )}
+            dock={todayHubActions ? <TodayActionHub {...todayHubActions} disabled={refreshing} focusRequest={hubFocusRequest} /> : undefined}
+            dockPlacement="attached"
+            className="animate-fade-in"
+          />
+        </div>
+      </section>
+    </>
   )
 }
