@@ -232,7 +232,7 @@ export function CapitalLearningFlow({
     backLabel={backLabel}
     onExit={onExit}
     onSkip={['walkthrough', 'practice', 'set-ready', 'combined-practice', 'combined-ready'].includes(flow.phase) ? skip : undefined}
-    skipLabel={flow.phase === 'walkthrough' ? 'Skip to Recall' : 'Next'}
+    skipLabel={flow.phase === 'walkthrough' ? 'Skip to Recall' : flow.phase === 'practice' || flow.phase === 'combined-practice' ? 'Skip practice' : 'Next'}
     walkthroughCountryId={flow.phase === 'walkthrough' ? currentStagedCapitalIds(flow)[flow.walkthroughIndex] ?? null : null}
     practiceProgress={practiceProgress}
   />

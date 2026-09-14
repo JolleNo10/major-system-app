@@ -244,7 +244,7 @@ export function CountryLearningFlow({
     backLabel={backLabel}
     onExit={onExit}
     onSkip={['walkthrough', 'location-practice', 'location-ready', 'practice', 'set-ready', 'combined-practice', 'combined-ready'].includes(flow.phase) ? skip : undefined}
-    skipLabel={flow.phase === 'walkthrough' ? 'Skip to Find' : flow.phase === 'location-practice' || flow.phase === 'location-ready' ? 'Next: Recall' : 'Next'}
+    skipLabel={flow.phase === 'walkthrough' ? 'Skip to Find' : flow.phase === 'location-practice' || flow.phase === 'location-ready' ? 'Next: Recall' : flow.phase === 'practice' || flow.phase === 'combined-practice' ? 'Skip practice' : 'Next'}
     practiceProgress={practiceProgress}
   />
 
