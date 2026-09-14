@@ -31,7 +31,7 @@ export function CountryLearningComplete({ subregion, scopeLabel, countryCount, o
       completionHandoff={durable ? completionHandoff : undefined}
       regionCompletion={durable ? regionCompletion : undefined}
       completedRegionAction={durable ? completedRegionAction : undefined}
-      completionCelebration={completionCelebration}
+      completionCelebration={completionCelebration ?? (durable ? 'subregion' : undefined)}
       regionLabel={label}
       surface={surface}
     />
