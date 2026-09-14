@@ -217,6 +217,14 @@ export function WorldCountriesToday({
     void learningRevision
     return getAllSubregionLearningStates(activeCountries)
   }, [activeCountries, learningRevision])
+  const requestContinentCompletionHandoff = useCallback((completedContinent: Continent) => {
+    setContinentCompletionLookup({
+      continent: completedContinent,
+      activeCountries,
+      learningStates,
+      preferredJourneyContinent,
+    })
+  }, [activeCountries, learningStates, preferredJourneyContinent])
   const geographicOrder = useMemo(() => {
     void geographyRevision
     return getWorldCountriesInEffectiveOrder(scopedCountries)
@@ -277,13 +285,8 @@ export function WorldCountriesToday({
     const wasComplete = completionObservedRef.current
     completionObservedRef.current = continentLearningComplete
     if (wasComplete || !continentLearningComplete) return
-    setContinentCompletionLookup({
-      continent,
-      activeCountries,
-      learningStates,
-      preferredJourneyContinent,
-    })
-  }, [activeCountries, continent, continentLearningComplete, evidence.status, learningStates, preferredJourneyContinent])
+    requestContinentCompletionHandoff(continent)
+  }, [continent, continentLearningComplete, evidence.status, requestContinentCompletionHandoff])
   useEffect(() => {
     if (!continentCompletionLookup || continentCompletionLookup.continent !== continent) return
     let cancelled = false
@@ -504,6 +507,16 @@ export function WorldCountriesToday({
     setReviewCompletion(null)
     void refreshAfterActivity()
   }
+  const completeLearning = () => {
+    const completedFinalRelearnContinent = learningRun?.kind === 'relearn'
+      && continent
+      && learningRun.recommendation.continent === continent
+      && completedRunIsFinalContinentSubregion
+      ? learningRun.recommendation.continent
+      : null
+    finishLearning()
+    if (completedFinalRelearnContinent) requestContinentCompletionHandoff(completedFinalRelearnContinent)
+  }
 
   const scopeSummaries = useMemo(() => {
     void geographyRevision
@@ -637,7 +650,7 @@ export function WorldCountriesToday({
         recallProgress={recallProgress ?? new Map()}
         onPhaseChange={() => undefined}
         onExit={finishLearning}
-        onDone={finishLearning}
+        onDone={completeLearning}
         doneLabel={`Back to ${continent ?? 'World'}`}
         completionHandoff={learningRun.kind === 'curriculum' ? completionHandoff : undefined}
         regionCompletion={regionCompletion}
@@ -660,7 +673,7 @@ export function WorldCountriesToday({
       fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching}
       onPhaseChange={() => undefined}
       onExit={finishLearning}
-      onDone={finishLearning}
+      onDone={completeLearning}
       doneLabel={`Back to ${continent ?? 'World'}`}
       completionHandoff={learningRun.kind === 'curriculum' ? completionHandoff : undefined}
       regionCompletion={regionCompletion}
