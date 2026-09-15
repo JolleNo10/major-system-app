@@ -11,6 +11,11 @@ import { CapitalLearningFlow } from './CapitalLearningFlow'
 
 const useRailsMock = vi.hoisted(() => vi.fn())
 const learningMapSurfaceMock = vi.hoisted(() => vi.fn())
+const recordAttemptMock = vi.hoisted(() => vi.fn(() => Promise.resolve()))
+vi.mock('@/features/world-countries/learning/recallProgress', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/features/world-countries/learning/recallProgress')>()),
+  recordWorldCountriesAttempt: recordAttemptMock,
+}))
 vi.mock('@/app/layout/PageLayoutContext', () => ({ useRails: useRailsMock }))
 vi.mock('./LearningMapSurface', () => ({ LearningMapSurface: (props: { context: ReactNode; mapMeta?: ReactNode; children: ReactNode }) => { learningMapSurfaceMock(props); return createElement('div', null, props.mapMeta, props.context, props.children) } }))
 vi.mock('./StagedWalkthroughStep', () => ({
@@ -24,7 +29,7 @@ vi.mock('./StagedLearningReadyStep', () => ({
   FinalRecallGate: ({ onStart }: { onStart: () => void }) => <button type="button" data-testid="final-start" onClick={onStart}>Final recall</button>,
 }))
 vi.mock('./StagedFinalRecallStep', () => ({
-  StagedFinalRecallStep: ({ onSubmit }: { onSubmit: (correct: boolean) => void }) => <button type="button" data-testid="final-submit" onClick={() => onSubmit(true)}>Correct final</button>,
+  StagedFinalRecallStep: ({ entries: finalEntries, onSubmit, onRecordAnswer }: { entries: readonly Country[]; onSubmit: (correct: boolean) => void; onRecordAnswer?: (country: Country, correct: boolean, latencyMs: number) => void }) => <button type="button" data-testid="final-submit" onClick={() => { onRecordAnswer?.(finalEntries[0], true, 1234); onSubmit(true) }}>Correct final</button>,
 }))
 vi.mock('@/features/world-countries/mnemonics/GeographyMnemonicView', () => ({ GeographyMnemonicView: () => null }))
 vi.mock('@/features/world-countries/mnemonics/GeographyMnemonicEditor', () => ({ GeographyMnemonicEditor: () => null }))
@@ -56,6 +61,7 @@ afterEach(() => {
   localStorage.clear()
   useRailsMock.mockReset()
   learningMapSurfaceMock.mockReset()
+  recordAttemptMock.mockClear()
 })
 
 function renderFlow(onPhaseChange: (phase: string) => void, flowEntries: readonly Country[] = entries, countriesEstablished = false, capitalsEstablished = false, recallProgress?: RecallProgress, recordCompletion = true): HTMLDivElement {
@@ -258,6 +264,40 @@ describe('CapitalLearningFlow orchestration', () => {
     expect(phases).toEqual(['practice', 'set-ready', 'final-recall', 'complete', 'walkthrough'])
     expect(renderLeftRail().textContent).toContain('Meet the capitals')
     expect(renderLeftRail().textContent).not.toContain('Learning progress')
+  })
+
+  it('records Final recall as Country → Capital recall evidence', () => {
+    const container = renderFlow(() => undefined)
+
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-practice"]')!.click())
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      act(() => container.querySelector<HTMLButtonElement>('[data-testid="submit-correct"]')!.click())
+    }
+    expect(recordAttemptMock).not.toHaveBeenCalled()
+
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-submit"]')!.click())
+
+    expect(recordAttemptMock).toHaveBeenCalledTimes(1)
+    expect(recordAttemptMock).toHaveBeenCalledWith('NO', 'country-to-capital', expect.objectContaining({
+      ok: true,
+      ms: 1234,
+      evidenceKind: 'recall',
+    }))
+  })
+
+  it('writes no Final recall evidence for a non-durable Relearn run', () => {
+    const container = renderFlow(() => undefined, entries, true, true, new Map(), false)
+
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-practice"]')!.click())
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      act(() => container.querySelector<HTMLButtonElement>('[data-testid="submit-correct"]')!.click())
+    }
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-submit"]')!.click())
+
+    expect(recordAttemptMock).not.toHaveBeenCalled()
+    expect(getSubregionLearningState('northern-europe')).toBeNull()
   })
 
   it('keeps Countries established when Capital Learning completes after Country Learning', () => {

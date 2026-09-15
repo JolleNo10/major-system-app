@@ -235,7 +235,20 @@ Mix, and Final recall pedagogy. The normal forward action from a completed
 practice checkpoint starts Final recall directly; the final-gate state remains
 available for legitimate Back/resume navigation and offers an explicit,
 confirmed `Skip as completed` path that establishes the same Learning-layer
-milestone without creating recall or mastery evidence. Learning and Review
+milestone without creating recall or mastery evidence.
+
+The whole-scope ordered Final recall is a third evidence writer alongside Drill
+and Today. Each answered Final recall prompt writes one ordinary `recall`
+attempt for that Country's owning core skill — `location-to-country` for
+Country Learning, `country-to-capital` for Capital Learning — through the same
+feature adapter and answer lifecycle guided review uses. Recording the staged
+Meet, Find/Recall, and Mix phases too is rejected: those repeat to criterion
+inside one session, so they would add many attempts on a single local date
+without adding a mastery date, while letting one session's repetition drive the
+proficiency band. A non-durable Relearn run writes no Final recall evidence,
+and the confirmed `Skip as completed` path continues to write none.
+
+Learning and Review
 completion surfaces use existing milestone/evidence truth. Checkpoint docks
 own completion and next-action narration while map context remains scope
 orientation. Completed Review counters are transient Home feedback rather than
@@ -392,7 +405,8 @@ Capital, and Combined scopes each start fresh scheduler state. Only the
 whole-Subregion ordered Final recall or an explicitly confirmed `Skip as
 completed` action at the Final recall gate writes the owning Learning milestone;
 the skip creates no recall or mastery evidence, and journey and scheduler state
-are not persisted.
+are not persisted. Final recall additionally writes ordinary `recall` evidence
+per answered prompt; the staged practice scopes remain evidence-free.
 
 ### The learner-facing Journey
 
@@ -878,8 +892,9 @@ flowchart TD
   temporary current Journey are separate responsibilities, and conflating them
   would permanently rewrite navigation/order merely to express a learning-path
   preference.
-- Atomic Drill and Today review evidence continue to use the existing attempts
-  store and `world-countries:<skill>:<CountryId>` IDs. Practice never writes it.
+- Atomic Drill, Today review, and guided Final recall evidence continue to use
+  the existing attempts store and `world-countries:<skill>:<CountryId>` IDs.
+  Practice never writes it.
 - Capitals, Countries from Capitals, and Neighbours Quiz are transient
   Practice: they write no attempts, Drill preferences/proficiency, Learning
   milestones/readiness, Today state, Recite progress, Quiz history, or other

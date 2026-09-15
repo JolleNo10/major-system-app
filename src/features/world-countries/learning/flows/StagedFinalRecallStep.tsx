@@ -5,6 +5,7 @@ import { TaskDock } from '@/features/world-countries/ui/MapSurface'
 import { WorldCountriesMapActivitySurface, type WorldCountriesActivityTask } from '@/features/world-countries/ui/WorldCountriesActivity'
 import {
   WorldCountriesTypedAnswer,
+  isWorldCountriesTypedAnswerResolved,
   type WorldCountriesTypedAnswerEvaluation,
 } from '@/features/world-countries/ui/WorldCountriesTypedAnswer'
 import { getWorldCountriesTaskHighlightFill, type WorldCountriesAnswerKind } from '@/features/world-countries/ui/WorldCountriesAnswerSemantics'
@@ -24,6 +25,7 @@ export function StagedFinalRecallStep({
   evaluateAnswer,
   formatFeedback,
   onSubmit,
+  onRecordAnswer,
   onBack,
   onExit,
   surface = false,
@@ -40,6 +42,8 @@ export function StagedFinalRecallStep({
   evaluateAnswer: (answer: string, country: Country) => SchedulerAnswerEvaluation
   formatFeedback: (evaluation: SchedulerAnswerEvaluation, country: Country) => string
   onSubmit: (correct: boolean) => void
+  /** Report the one whole-scope free-recall answer for this Country as evidence. */
+  onRecordAnswer?: (country: Country, correct: boolean, latencyMs: number) => void
   onBack: () => void
   onExit: () => void
   surface?: boolean
@@ -86,7 +90,11 @@ export function StagedFinalRecallStep({
             : evaluation.correct ? undefined : 'The ordered repair traversal rewinds before the next clean pass.',
         } satisfies WorldCountriesTypedAnswerEvaluation
       }}
-      onAnswer={() => undefined}
+      onAnswer={(_answer, evaluation, latencyMs) => onRecordAnswer?.(
+        current,
+        isWorldCountriesTypedAnswerResolved(evaluation.outcome),
+        latencyMs,
+      )}
       onTransition={result => onSubmit(result.outcome !== 'incorrect')}
     >
       {typed => {

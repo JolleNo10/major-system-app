@@ -32,6 +32,7 @@ import {
   type StagedCapitalLearningPhase,
 } from '@/features/world-countries/learning/stagedCapitalLearningFlow'
 import { createSubregionCapitalCompletionReporter } from '@/features/world-countries/learning/capitalLearningCompletion'
+import { recordWorldCountriesAttempt } from '@/features/world-countries/learning/recallProgress'
 import { classifyRecallAnswer } from '@/features/world-countries/learning/recallAnswerMatching'
 import { CapitalLearningComplete } from './CapitalLearningComplete'
 import type { LearningCompletedRegionAction, LearningCompletionCelebration, LearningCompletionHandoff, LearningRegionCompletion } from './LearningComplete'
@@ -151,6 +152,21 @@ export function CapitalLearningFlow({
     transition(result.state)
     completionReporter.current?.report(result.result.completedNow)
   }
+  /**
+   * Final recall is one typed free-recall pass over the whole scope, so it uses
+   * the same evidence seam as guided review. A non-durable Relearn run keeps
+   * writing nothing.
+   */
+  const recordFinalAnswer = recordCompletion
+    ? (country: Country, correct: boolean, latencyMs: number) => {
+      void recordWorldCountriesAttempt(country.id, 'country-to-capital', {
+        at: Date.now(),
+        ok: correct,
+        ms: latencyMs,
+        evidenceKind: 'recall',
+      })
+    }
+    : undefined
   const confirmFinalRecallSkip = () => {
     setFinalRecallSkipDialogOpen(false)
     const next = skipStagedCapitalFinalRecall(flow)
@@ -267,7 +283,7 @@ export function CapitalLearningFlow({
       content = <FinalRecallGate ready={flow.finalScopeReady} onStart={() => run(startStagedCapitalFinalRecall)} onKeepPractising={() => run(keepStagedCapitalPractising)} onBack={() => run(backStagedCapital)} onExit={onExit} surface />
       break
     case 'final-recall':
-      content = flow.ordered ? <StagedFinalRecallStep continent={continent} entries={entries} ordered={flow.ordered} stepLabel="Final recall" answerLabel="Country → Capital" placeholder="Type the capital…" showCountryName answerKind="capital" evaluateAnswer={(answer, country) => evaluateCapitalAnswer(answer, country, fuzzyMatching, entries)} formatFeedback={formatCapitalFeedback} onSubmit={updateFinal} onBack={() => run(backStagedCapital)} onExit={onExit} allowIncorrectSpellingPractice={allowIncorrectSpellingPractice} surface /> : null
+      content = flow.ordered ? <StagedFinalRecallStep continent={continent} entries={entries} ordered={flow.ordered} stepLabel="Final recall" answerLabel="Country → Capital" placeholder="Type the capital…" showCountryName answerKind="capital" evaluateAnswer={(answer, country) => evaluateCapitalAnswer(answer, country, fuzzyMatching, entries)} formatFeedback={formatCapitalFeedback} onSubmit={updateFinal} onRecordAnswer={recordFinalAnswer} onBack={() => run(backStagedCapital)} onExit={onExit} allowIncorrectSpellingPractice={allowIncorrectSpellingPractice} surface /> : null
       break
     case 'complete':
       content = <CapitalLearningComplete subregion={subregion} scopeLabel={learningScopeLabel} onDone={onDone ?? onExit} doneLabel={doneLabel} completionHandoff={completionHandoff} regionCompletion={regionCompletion} completedRegionAction={completedRegionAction} completionCelebration={completionCelebration} recordCompletion={recordCompletion} onRestart={() => { completionReporter.current?.reset(); transition(createStagedCapitalLearningFlow({ countryIds: ids, maximum: newItemsPerSet, schedulerSettings })) }} surface />
