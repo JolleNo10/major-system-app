@@ -2,6 +2,7 @@ import { act, createElement, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { countries } from '@/features/world-countries/data/countries'
+import type { WorldCountriesPrimaryStatusCount } from '@/features/world-countries/learning/progressPresentation'
 import { GuidedHomeRails } from './GuidedHomeRails'
 import { WORLD_COUNTRIES_JOURNEY_STAGES, type WorldCountriesJourneyPresentation } from './journeyPresentation'
 import type { WorldCountriesTodayReviewOpportunity } from './todayPlan'
@@ -56,6 +57,31 @@ function renderRails(overrides: Partial<Parameters<typeof GuidedHomeRails>[0]> =
   railRoot = createRoot(railMount)
   act(() => railRoot?.render(createElement('div', null, rails?.left ?? null, rails?.right ?? null)))
   return railMount
+}
+
+function makeStatusDistribution(entries: ReadonlyArray<readonly [string, string, number]>): readonly WorldCountriesPrimaryStatusCount[] {
+  return entries.map(([state, label, count]) => ({ state, label, count, color: '#000000' }))
+}
+
+function renderGeographyRow({
+  totalCountries,
+  distribution,
+  coreMasteryRatio = 0,
+}: {
+  totalCountries: number
+  distribution: readonly WorldCountriesPrimaryStatusCount[]
+  coreMasteryRatio?: number
+}) {
+  const mount = renderRails({
+    scopeSummaries: [{
+      id: 'scope',
+      label: 'Scope',
+      progress: { completeCountries: 0, totalCountries, completionRatio: 0, coreMasteryRatio },
+      distribution,
+    }],
+  })
+  return [...mount.querySelectorAll<HTMLButtonElement>('button')]
+    .find(button => button.textContent?.includes('Scope'))
 }
 
 describe('Guided World Countries home rails', () => {
@@ -358,7 +384,7 @@ describe('Guided World Countries home rails', () => {
     expect(continentMount.textContent).not.toContain('Back to World')
   })
 
-  it('labels geography row and scope footer percentages as Mastery', () => {
+  it('keeps the atomic Mastery label for a non-zero mastery ratio', () => {
     const mount = renderRails({
       scopeSummaries: [{
         id: 'northern-europe',
@@ -375,6 +401,81 @@ describe('Guided World Countries home rails', () => {
       .find(button => button.textContent?.includes('Northern Europe'))
     expect(geographyRow?.textContent).toContain('Mastery 45%')
     expect(mount.querySelector('[data-progress-entry]')?.textContent).toContain('Mastery 25%')
+  })
+
+  it('uses the highest non-zero primary status for an unmastered scope', () => {
+    const geographyRow = renderGeographyRow({
+      totalCountries: 10,
+      distribution: makeStatusDistribution([
+        ['strong', 'Strong', 2],
+        ['developing', 'Developing', 5],
+        ['weak', 'Weak', 3],
+      ]),
+    })
+
+    expect(geographyRow?.textContent).toContain('Strong 20%')
+    expect(geographyRow?.textContent).not.toContain('Developing 50%')
+  })
+
+  it('uses Developing when it is the highest non-zero primary status', () => {
+    const geographyRow = renderGeographyRow({
+      totalCountries: 10,
+      distribution: makeStatusDistribution([
+        ['developing', 'Developing', 5],
+        ['weak', 'Weak', 3],
+      ]),
+    })
+
+    expect(geographyRow?.textContent).toContain('Developing 50%')
+  })
+
+  it('uses Early recall when no stronger recall state is present', () => {
+    const geographyRow = renderGeographyRow({
+      totalCountries: 10,
+      distribution: makeStatusDistribution([
+        ['unpractised', 'Early recall', 6],
+        ['COUNTRIES_LEARNED', 'Countries learned', 2],
+      ]),
+    })
+
+    expect(geographyRow?.textContent).toContain('Early recall 60%')
+  })
+
+  it('shows Countries learned as an exact-state percentage', () => {
+    const geographyRow = renderGeographyRow({
+      totalCountries: 8,
+      distribution: makeStatusDistribution([
+        ['COUNTRIES_LEARNED', 'Countries learned', 3],
+        ['NOT_LEARNED', 'Not learned', 5],
+      ]),
+    })
+
+    expect(geographyRow?.textContent).toContain('Countries learned 38%')
+  })
+
+  it('shows untouched scopes as Not learned without a percentage', () => {
+    const geographyRow = renderGeographyRow({
+      totalCountries: 14,
+      distribution: makeStatusDistribution([
+        ['NOT_LEARNED', 'Not learned', 14],
+      ]),
+    })
+
+    expect(geographyRow?.textContent).toContain('Not learned')
+    expect(geographyRow?.textContent).not.toContain('%')
+  })
+
+  it('keeps Mastery ahead of country-level status distribution', () => {
+    const geographyRow = renderGeographyRow({
+      totalCountries: 20,
+      coreMasteryRatio: 0.04,
+      distribution: makeStatusDistribution([
+        ['developing', 'Developing', 20],
+      ]),
+    })
+
+    expect(geographyRow?.textContent).toContain('Mastery 4%')
+    expect(geographyRow?.textContent).not.toContain('Developing 100%')
   })
 
   it('uses atomic core mastery for the primary percentage while keeping strict Country context', () => {

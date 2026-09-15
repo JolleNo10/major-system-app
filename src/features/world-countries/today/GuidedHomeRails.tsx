@@ -28,6 +28,20 @@ export interface GuidedHomeScopeSummary {
   status?: string
 }
 
+interface ScopeProgressHeadline {
+  label: string
+  percent?: number
+}
+
+const SCOPE_PROGRESS_STATUS_PRIORITY = [
+  'strong',
+  'developing',
+  'weak',
+  'unpractised',
+  'COUNTRIES_LEARNED',
+  'NOT_LEARNED',
+] as const
+
 export function GuidedHomeRails({
   level,
   continent,
@@ -129,31 +143,34 @@ export function GuidedHomeRails({
         </div>
         {scopeSummaries.length > 0 && (
           <div className="space-y-2" aria-label={level === 'world' ? 'Continents' : 'Subregions'}>
-            {scopeSummaries.map(summary => (
-              <button
-                key={summary.id}
-                type="button"
-                onClick={summary.onSelect}
-                disabled={!summary.onSelect}
-                aria-current={summary.selected ? 'true' : undefined}
-                data-active-focus={summary.selected ? 'true' : undefined}
-                className={`w-full rounded-lg border px-2 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70 disabled:cursor-default ${summary.selected ? 'border-cyan-500/70 bg-cyan-500/10 text-cyan-100' : 'border-transparent text-zinc-300 enabled:hover:border-zinc-700 enabled:hover:bg-zinc-800'}`}
-              >
-                <span className="flex items-center justify-between gap-2 text-sm font-semibold">
-                  <span>{summary.label}</span>
-                  <span className="text-xs tabular-nums text-zinc-500">Mastery {Math.round(getMasteryRatio(summary.progress) * 100)}%</span>
-                </span>
-                <span className="mt-1 flex h-1.5 overflow-hidden rounded-full bg-zinc-800" aria-hidden="true">
-                  {summary.distribution
-                    ? [...summary.distribution].reverse().filter(entry => entry.count > 0).map(entry => (
-                        <span key={entry.state} className="h-full" style={{ width: `${(entry.count / Math.max(1, summary.progress.totalCountries)) * 100}%`, backgroundColor: entry.color }} />
-                      ))
-                    : <span className="block h-full rounded-full bg-cyan-500" style={{ width: `${Math.round(getMasteryRatio(summary.progress) * 100)}%` }} />
-                  }
-                </span>
-                <span className="mt-1 block text-xs text-zinc-500">{summary.status ?? `${summary.progress.completeCountries} / ${summary.progress.totalCountries} Countries fully mastered`}</span>
-              </button>
-            ))}
+            {scopeSummaries.map(summary => {
+              const headline = getScopeProgressHeadline(summary)
+              return (
+                <button
+                  key={summary.id}
+                  type="button"
+                  onClick={summary.onSelect}
+                  disabled={!summary.onSelect}
+                  aria-current={summary.selected ? 'true' : undefined}
+                  data-active-focus={summary.selected ? 'true' : undefined}
+                  className={`w-full rounded-lg border px-2 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70 disabled:cursor-default ${summary.selected ? 'border-cyan-500/70 bg-cyan-500/10 text-cyan-100' : 'border-transparent text-zinc-300 enabled:hover:border-zinc-700 enabled:hover:bg-zinc-800'}`}
+                >
+                  <span className="flex items-center justify-between gap-2 text-sm font-semibold">
+                    <span>{summary.label}</span>
+                    <span className="text-xs tabular-nums text-zinc-500">{headline.label}{headline.percent === undefined ? '' : ` ${headline.percent}%`}</span>
+                  </span>
+                  <span className="mt-1 flex h-1.5 overflow-hidden rounded-full bg-zinc-800" aria-hidden="true">
+                    {summary.distribution
+                      ? [...summary.distribution].reverse().filter(entry => entry.count > 0).map(entry => (
+                          <span key={entry.state} className="h-full" style={{ width: `${(entry.count / Math.max(1, summary.progress.totalCountries)) * 100}%`, backgroundColor: entry.color }} />
+                        ))
+                      : <span className="block h-full rounded-full bg-cyan-500" style={{ width: `${Math.round(getMasteryRatio(summary.progress) * 100)}%` }} />
+                    }
+                  </span>
+                  <span className="mt-1 block text-xs text-zinc-500">{summary.status ?? `${summary.progress.completeCountries} / ${summary.progress.totalCountries} Countries fully mastered`}</span>
+                </button>
+              )
+            })}
           </div>
         )}
         <div data-progress-entry className="border-t border-zinc-800 pt-4" aria-labelledby="world-countries-scope-progress-heading">
@@ -190,6 +207,28 @@ export function GuidedHomeRails({
 
 function getMasteryRatio(progress: GuidedHomeScopeSummary['progress']): number {
   return progress.coreMasteryRatio ?? progress.completionRatio
+}
+
+function getScopeProgressHeadline(summary: GuidedHomeScopeSummary): ScopeProgressHeadline {
+  const masteryRatio = getMasteryRatio(summary.progress)
+  const masteryPercent = Math.round(masteryRatio * 100)
+
+  if (masteryRatio > 0) {
+    return { label: 'Mastery', percent: masteryPercent }
+  }
+
+  const headlineEntry = SCOPE_PROGRESS_STATUS_PRIORITY
+    .map(state => summary.distribution?.find(entry => entry.state === state && entry.count > 0))
+    .find(entry => entry !== undefined)
+
+  if (!headlineEntry || headlineEntry.state === 'NOT_LEARNED') {
+    return { label: headlineEntry?.label ?? 'Not learned' }
+  }
+
+  return {
+    label: headlineEntry.label,
+    percent: Math.round((headlineEntry.count / Math.max(1, summary.progress.totalCountries)) * 100),
+  }
 }
 
 function CompactJourneyPath({ journey, learningAvailable, onRelearnCountries, onRelearnCapitals }: {
