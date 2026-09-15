@@ -16,3 +16,11 @@ export {
   restoreWorldCountriesOrder,
 } from './geography/orderBackup'
 export type { WorldCountriesOrderBackup } from './geography/orderBackup'
+export {
+  applyWorldCountriesCapitalBackfill,
+  planWorldCountriesCapitalBackfill,
+} from './learning/capitalEvidenceBackfill'
+export type {
+  WorldCountriesCapitalBackfillPlan,
+  WorldCountriesCapitalBackfillResult,
+} from './learning/capitalEvidenceBackfill'

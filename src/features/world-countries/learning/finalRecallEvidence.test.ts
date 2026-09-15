@@ -7,7 +7,9 @@ import {
   recordWorldCountriesFinalRecallPass,
 } from './finalRecallEvidence'
 
-const recordAttemptMock = vi.hoisted(() => vi.fn(() => Promise.resolve()))
+const recordAttemptMock = vi.hoisted(() => vi.fn(
+  (_itemId: string, _attempt: Record<string, unknown>, _options?: unknown) => Promise.resolve(),
+))
 vi.mock('@/core/learning', async importOriginal => ({
   ...(await importOriginal<typeof import('@/core/learning')>()),
   recordAttempt: recordAttemptMock,

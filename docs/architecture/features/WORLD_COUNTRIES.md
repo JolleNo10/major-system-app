@@ -274,6 +274,18 @@ is not one any consumer needs — and mastery is not weakened by
 self-assertion, because it requires three distinct local dates and one skip
 supplies one.
 
+`learning/capitalEvidenceBackfill.ts` is a one-time recovery for Capital
+milestones recorded before Final recall wrote evidence. It reconstructs the
+rows that path would have written — one successful `country-to-capital`
+attempt per Country, at the `capitalsLearnedAt` timestamp — and is bounded by
+that durable milestone rather than by anything inferred. It is idempotent by
+learner-local date: a Country that already has a qualifying recall on that
+date is left alone, so re-running adds nothing and never overwrites earned
+evidence. The plan step is separate from the apply step and reads no
+milestone it does not already find. Running it automatically at startup is
+rejected: a reconstruction that rewrites evidence invisibly cannot be reviewed
+before it lands, so it stays an explicitly invoked development-only surface.
+
 Learning and Review
 completion surfaces use existing milestone/evidence truth. Checkpoint docks
 own completion and next-action narration while map context remains scope
