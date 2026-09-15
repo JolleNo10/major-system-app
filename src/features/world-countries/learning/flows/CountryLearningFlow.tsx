@@ -33,7 +33,10 @@ import {
   type StagedCountryLearningPhase,
 } from '@/features/world-countries/learning/stagedCountryLearningFlow'
 import { markSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningStore'
-import { recordWorldCountriesAttempt } from '@/features/world-countries/learning/recallProgress'
+import {
+  recordWorldCountriesFinalRecallAnswer,
+  recordWorldCountriesFinalRecallPass,
+} from '@/features/world-countries/learning/finalRecallEvidence'
 import { classifyRecallAnswer } from '@/features/world-countries/learning/recallAnswerMatching'
 import { CountryLearningComplete } from './CountryLearningComplete'
 import type { LearningCompletedRegionAction, LearningCompletionCelebration, LearningCompletionHandoff, LearningRegionCompletion } from './LearningComplete'
@@ -168,19 +171,18 @@ export function CountryLearningFlow({
    */
   const recordFinalAnswer = recordFinalRecallEvidence
     ? (country: Country, correct: boolean, latencyMs: number) => {
-      void recordWorldCountriesAttempt(country.id, 'location-to-country', {
-        at: Date.now(),
-        ok: correct,
-        ms: latencyMs,
-        evidenceKind: 'recall',
-      })
+      void recordWorldCountriesFinalRecallAnswer(country.id, 'location-to-country', correct, latencyMs)
     }
     : undefined
   const confirmFinalRecallSkip = () => {
     setFinalRecallSkipDialogOpen(false)
     const next = skipStagedCountryFinalRecall(flow)
     transition(next)
-    reportCompletion(next.phase === 'complete')
+    if (next.phase !== 'complete') return
+    // `Skip as completed` asserts the same thing a clean pass demonstrates, so
+    // it writes the same evidence.
+    if (recordFinalRecallEvidence) void recordWorldCountriesFinalRecallPass(flow.countryIds, 'location-to-country')
+    reportCompletion(true)
   }
   const onOrderSaved = (draft: readonly Country[]) => {
     setOrderDraft(draft)

@@ -19,7 +19,7 @@ export function FinalRecallSkipDialog({
   const descriptionId = useId()
   const trackLabel = track === 'countries' ? 'Countries' : 'Capitals'
   const description = willPersistCompletion
-    ? `This will mark ${learningScopeLabel} · ${trackLabel} as completed without doing the final recall. Your Learning journey can continue from this point, but the skip does not create recall or mastery evidence.`
+    ? `This will mark ${learningScopeLabel} · ${trackLabel} as completed without doing the final recall. Your Learning journey can continue from this point, and the skip counts as one successful recall for each Country, exactly as completing the final recall would.`
     : `This will finish this temporary ${trackLabel} run without doing the final recall. The skip does not change your Learning journey or create recall or mastery evidence.`
 
   useOverlay(dialogRef, onDismiss)

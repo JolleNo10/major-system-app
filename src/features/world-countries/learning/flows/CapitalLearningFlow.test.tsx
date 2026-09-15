@@ -348,16 +348,19 @@ describe('CapitalLearningFlow orchestration', () => {
 
     const dialog = container.querySelector<HTMLElement>('[role="dialog"]')!
     expect(dialog.textContent).toContain('Northern Europe · Capitals')
-    expect(dialog.textContent).toContain('does not create recall or mastery evidence')
+    expect(dialog.textContent).toContain('counts as one successful recall for each Country')
     expect(getSubregionLearningState('northern-europe')).toBeNull()
     expect(phases).not.toContain('complete')
 
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-recall-skip-confirm"]')!.click())
 
-    expect(recordAttemptMock).not.toHaveBeenCalled()
     expect(phases).toContain('complete')
     expect(getSubregionLearningState('northern-europe')).toMatchObject({ capitalsLearnedAt: expect.any(Number) })
     expect(container.textContent).toContain('Capitals learned')
+    expect(recordAttemptMock).toHaveBeenCalledWith('NO', 'country-to-capital', expect.objectContaining({
+      ok: true,
+      evidenceKind: 'recall',
+    }))
   })
 
   it('completes a temporary Capital run when Final recall is skipped without writing a milestone', () => {
@@ -370,6 +373,7 @@ describe('CapitalLearningFlow orchestration', () => {
 
     expect(container.textContent).toContain("doesn't change your guided region progress")
     expect(getSubregionLearningState('northern-europe')).toBeNull()
+    expect(recordAttemptMock).not.toHaveBeenCalled()
   })
 
   it('keeps Capital scheduler progress on the center task surface', () => {

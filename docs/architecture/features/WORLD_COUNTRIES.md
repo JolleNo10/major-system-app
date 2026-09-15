@@ -235,7 +235,7 @@ Mix, and Final recall pedagogy. The normal forward action from a completed
 practice checkpoint starts Final recall directly; the final-gate state remains
 available for legitimate Back/resume navigation and offers an explicit,
 confirmed `Skip as completed` path that establishes the same Learning-layer
-milestone without creating recall or mastery evidence.
+milestone.
 
 The whole-scope ordered Final recall is a third evidence writer alongside Drill
 and Today. Each answered Final recall prompt writes one ordinary `recall`
@@ -251,17 +251,28 @@ conflates two different sources of truth. Recording the staged Meet,
 Find/Recall, and Mix phases too is rejected: those repeat to criterion inside
 one session, so they would add many attempts on a single local date without
 adding a mastery date, while letting one session's repetition drive the
-proficiency band. The confirmed `Skip as completed` path continues to write no
-atomic recall evidence.
+proficiency band.
+
+The confirmed `Skip as completed` path writes exactly the evidence a completed
+pass implies: one successful `recall` attempt per Country in the scope, under
+the same evidence permission an answered pass uses. The ordered session only
+completes on a clean pass over every Country, so both routes assert the same
+thing, and the learner-facing dialog states it. This reverses the earlier rule
+that the skip creates no atomic recall evidence: that rule silently discarded
+the learner's assertion, so a Subregion could be `capitalsLearnedAt` while
+every `country-to-capital` target still read `unpractised`. The asserted
+attempt carries a non-finite `ms`, because both median-latency consumers skip
+non-finite values and an asserted pass has no measured answer time. A
+`finalRecallSkipped` flag is still rejected — the distinction it would record
+is not one any consumer needs — and mastery is not weakened by
+self-assertion, because it requires three distinct local dates and one skip
+supplies one.
 
 Learning and Review
 completion surfaces use existing milestone/evidence truth. Checkpoint docks
 own completion and next-action narration while map context remains scope
 orientation. Completed Review counters are transient Home feedback rather than
-another progress authority. A parallel `finalRecallSkipped` flag or synthetic
-successful attempts is rejected: a skipped Final recall is represented by the
-existing Learning milestone, while answered Final recall prompts are retained
-as real evidence rather than being fabricated from that milestone.
+another progress authority.
 
 ### Derived Progress view
 
@@ -411,10 +422,11 @@ non-limiting speed threshold and actual answer latency. Location, Country-name,
 Capital, and Combined scopes each start fresh scheduler state. Only the
 whole-Subregion ordered Final recall or an explicitly confirmed `Skip as
 completed` action at the Final recall gate writes the owning Learning milestone;
-the skip creates no recall or mastery evidence, and journey and scheduler state
-are not persisted. Final recall additionally writes ordinary `recall` evidence
-per answered prompt when the flow is configured to retain it, including Today
-Relearn; the staged practice scopes remain evidence-free.
+journey and scheduler state are not persisted. Both routes additionally write
+ordinary `recall` evidence when the flow is configured to retain it, including
+Today Relearn — Final recall per answered prompt, the skip as one successful
+attempt per Country in the scope; the staged practice scopes remain
+evidence-free.
 
 ### The learner-facing Journey
 

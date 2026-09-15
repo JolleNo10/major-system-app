@@ -402,7 +402,7 @@ describe('CountryLearningFlow scheduler progress wiring', () => {
     const labelledTitle = dialog.querySelector(`#${dialog.getAttribute('aria-labelledby')}`)
     const describedText = dialog.querySelector(`#${dialog.getAttribute('aria-describedby')}`)
     expect(labelledTitle?.textContent).toBe('Skip final recall?')
-    expect(describedText?.textContent).toContain('does not create recall or mastery evidence')
+    expect(describedText?.textContent).toContain('counts as one successful recall for each Country')
     expect(dialog.textContent).toContain('Northern Europe · Countries')
     expect([...dialog.querySelectorAll('button')].map(button => button.textContent)).toEqual(['Dismiss', 'Skip as completed'])
     expect(document.activeElement).toBe(dialog.querySelector('[data-testid="final-recall-skip-dismiss"]'))
@@ -420,7 +420,10 @@ describe('CountryLearningFlow scheduler progress wiring', () => {
     })
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-recall-skip-confirm"]')!.click())
 
-    expect(recordAttemptMock).not.toHaveBeenCalled()
+    expect(recordAttemptMock).toHaveBeenCalledWith('NO', 'location-to-country', expect.objectContaining({
+      ok: true,
+      evidenceKind: 'recall',
+    }))
     expect(container.textContent).toContain('Countries learned')
     expect(getSubregionLearningState('northern-europe')).toMatchObject({ countriesLearnedAt: expect.any(Number) })
     expect(container.querySelector('[data-testid="final-recall-skip-confirm"]')).toBeNull()
