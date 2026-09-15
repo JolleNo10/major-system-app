@@ -54,6 +54,7 @@ export interface WorldCountriesTodayConsolidationPressure {
   establishedNonMasteredTargetCount: number
   fragileTargetCount: number
   fragileRatio: number
+  eligibleFragileTargetCount: number
   isHigh: boolean
 }
 
@@ -160,10 +161,12 @@ function deriveConsolidationPressure({
   countries,
   establishedReadinessByCountry,
   progressByTarget,
+  consolidationCandidates,
 }: {
   countries: readonly Country[]
   establishedReadinessByCountry: ReadonlyMap<CountryId, WorldCountriesLearningReadiness>
   progressByTarget: ReadonlyMap<string, ReturnType<typeof deriveWorldCountriesAtomicProgress>>
+  consolidationCandidates: readonly WorldCountriesTodayReviewCandidate[]
 }): WorldCountriesTodayConsolidationPressure {
   let establishedNonMasteredTargetCount = 0
   let fragileTargetCount = 0
@@ -185,11 +188,16 @@ function deriveConsolidationPressure({
   const fragileRatio = establishedNonMasteredTargetCount === 0
     ? 0
     : fragileTargetCount / establishedNonMasteredTargetCount
+  const eligibleFragileTargetCount = consolidationCandidates.filter(candidate => {
+    const progress = progressByTarget.get(recallTargetIdFor(candidate.target.countryId, candidate.target.skill))
+    return progress ? createsConsolidationPressure(progress.proficiency) : false
+  }).length
   return {
     establishedNonMasteredTargetCount,
     fragileTargetCount,
     fragileRatio,
-    isHigh: fragileTargetCount >= WORLD_COUNTRIES_TODAY_HIGH_CONSOLIDATION_MIN_FRAGILE_TARGETS,
+    eligibleFragileTargetCount,
+    isHigh: eligibleFragileTargetCount >= WORLD_COUNTRIES_TODAY_HIGH_CONSOLIDATION_MIN_FRAGILE_TARGETS,
   }
 }
 
@@ -424,6 +432,7 @@ export function buildWorldCountriesTodayPlan(
     countries: effectiveCountries,
     establishedReadinessByCountry,
     progressByTarget,
+    consolidationCandidates,
   })
   const incompleteSubregionLabels = [...new Set(effectiveCountries
     .filter(country => incompleteCountries.has(country.id))

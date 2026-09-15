@@ -7,6 +7,7 @@ import { buildWorldCountriesTodayPlan } from './todayPlan'
 
 const TEST_NOW = Date.UTC(2026, 7, 19, 12)
 const TEST_LOCAL_DATE = '2026-08-19'
+const TEST_PREVIOUS_LOCAL_DATE = '2026-08-18'
 
 function historyFor(
   attempts: readonly { itemId: string; at: number; ok: boolean; ms?: number; evidenceKind?: 'recall' | 'recognition'; localDate?: string }[],
@@ -112,11 +113,11 @@ function historyForLocationProgress(
   const attempts = entries.flatMap((country, index) => {
     const itemId = recallTargetIdFor(country.id, 'location-to-country')
     const firstAt = index * 10 + 1
-    if (weakIds.has(country.id)) return [{ itemId, at: firstAt, ok: false, evidenceKind: 'recall' as const, localDate: TEST_LOCAL_DATE }]
-    if (developingIds.has(country.id)) return [{ itemId, at: firstAt, ok: true, evidenceKind: 'recall' as const, localDate: TEST_LOCAL_DATE }]
+    if (weakIds.has(country.id)) return [{ itemId, at: firstAt, ok: false, evidenceKind: 'recall' as const, localDate: TEST_PREVIOUS_LOCAL_DATE }]
+    if (developingIds.has(country.id)) return [{ itemId, at: firstAt, ok: true, evidenceKind: 'recall' as const, localDate: TEST_PREVIOUS_LOCAL_DATE }]
     if (strongIds.has(country.id)) return [
-      { itemId, at: firstAt, ok: true, evidenceKind: 'recall' as const, localDate: TEST_LOCAL_DATE },
-      { itemId, at: firstAt + 1, ok: true, evidenceKind: 'recall' as const, localDate: TEST_LOCAL_DATE },
+      { itemId, at: firstAt, ok: true, evidenceKind: 'recall' as const, localDate: TEST_PREVIOUS_LOCAL_DATE },
+      { itemId, at: firstAt + 1, ok: true, evidenceKind: 'recall' as const, localDate: TEST_PREVIOUS_LOCAL_DATE },
     ]
     if (masteredIds.has(country.id)) return [
       { itemId, at: firstAt, ok: true, evidenceKind: 'recall' as const, localDate: '2026-08-10' },
@@ -186,7 +187,7 @@ describe('World Countries Today plan', () => {
         developingIds: entries.slice(0, fragileCount).map(country => country.id),
         strongIds: entries.slice(fragileCount).map(country => country.id),
       }),
-      learningStates: countryLayerLearningStatesFor(entries, TEST_NOW),
+      learningStates: countryLayerLearningStatesFor(entries, TEST_NOW - 5 * 60 * 1000),
       now: TEST_NOW,
       localDate: TEST_LOCAL_DATE,
     })
@@ -195,6 +196,7 @@ describe('World Countries Today plan', () => {
       establishedNonMasteredTargetCount: establishedCount,
       fragileTargetCount: fragileCount,
       fragileRatio: expectedRatio,
+      eligibleFragileTargetCount: fragileCount,
       isHigh: high,
     })
   })
@@ -208,7 +210,7 @@ describe('World Countries Today plan', () => {
         developingIds: entries.slice(1, 4).map(country => country.id),
         strongIds: entries.slice(4).map(country => country.id),
       }),
-      learningStates: countryLayerLearningStatesFor(entries, TEST_NOW),
+      learningStates: countryLayerLearningStatesFor(entries, TEST_NOW - 5 * 60 * 1000),
       now: TEST_NOW,
       localDate: TEST_LOCAL_DATE,
     })
@@ -217,6 +219,7 @@ describe('World Countries Today plan', () => {
       establishedNonMasteredTargetCount: 8,
       fragileTargetCount: 4,
       fragileRatio: 0.5,
+      eligibleFragileTargetCount: 4,
       isHigh: false,
     })
   })
@@ -230,7 +233,7 @@ describe('World Countries Today plan', () => {
         strongIds: entries.slice(4, 8).map(country => country.id),
         masteredIds: entries.slice(8).map(country => country.id),
       }),
-      learningStates: countryLayerLearningStatesFor(entries, TEST_NOW),
+      learningStates: countryLayerLearningStatesFor(entries, TEST_NOW - 5 * 60 * 1000),
       now: TEST_NOW,
       localDate: TEST_LOCAL_DATE,
     })
@@ -239,6 +242,7 @@ describe('World Countries Today plan', () => {
       establishedNonMasteredTargetCount: 8,
       fragileTargetCount: 4,
       fragileRatio: 0.5,
+      eligibleFragileTargetCount: 4,
       isHigh: false,
     })
   })
@@ -250,7 +254,7 @@ describe('World Countries Today plan', () => {
       history: historyForLocationProgress(entries, {
         strongIds: entries.slice(4).map(country => country.id),
       }),
-      learningStates: countryLayerLearningStatesFor(entries, TEST_NOW),
+      learningStates: countryLayerLearningStatesFor(entries, TEST_NOW - 5 * 60 * 1000),
       now: TEST_NOW,
       localDate: TEST_LOCAL_DATE,
     })
@@ -259,7 +263,109 @@ describe('World Countries Today plan', () => {
       establishedNonMasteredTargetCount: 8,
       fragileTargetCount: 4,
       fragileRatio: 0.5,
+      eligibleFragileTargetCount: 4,
       isHigh: false,
+    })
+  })
+
+  it('does not count fragile targets still inside the cooldown toward promotion', () => {
+    const entries = countries.slice(0, 16)
+    const recentFailureHistory = historyFor(
+      entries.slice(0, 4).map(country => ({
+        itemId: recallTargetIdFor(country.id, 'location-to-country'),
+        at: TEST_NOW - 60 * 1000,
+        ok: false,
+        evidenceKind: 'recall' as const,
+        localDate: TEST_LOCAL_DATE,
+      })),
+      entries.map(country => country.id),
+    )
+    const plan = buildWorldCountriesTodayPlan({
+      activeCountries: entries,
+      history: recentFailureHistory,
+      learningStates: countryLayerLearningStatesFor(entries, TEST_NOW - 5 * 60 * 1000),
+      now: TEST_NOW,
+      localDate: TEST_LOCAL_DATE,
+    })
+
+    expect(plan.consolidationCandidates).toHaveLength(12)
+    expect(plan.consolidationPressure).toEqual({
+      establishedNonMasteredTargetCount: 16,
+      fragileTargetCount: 16,
+      fragileRatio: 1,
+      eligibleFragileTargetCount: 12,
+      isHigh: false,
+    })
+  })
+
+  it('does not count fragile targets resting after successful recall today toward promotion', () => {
+    const entries = countries.slice(0, 16)
+    const restingHistory = historyFor(
+      entries.slice(0, 4).map(country => ({
+        itemId: recallTargetIdFor(country.id, 'location-to-country'),
+        at: TEST_NOW - 10 * 60 * 1000,
+        ok: true,
+        evidenceKind: 'recall' as const,
+        localDate: TEST_LOCAL_DATE,
+      })),
+      entries.map(country => country.id),
+    )
+    const plan = buildWorldCountriesTodayPlan({
+      activeCountries: entries,
+      history: restingHistory,
+      learningStates: countryLayerLearningStatesFor(entries, TEST_NOW - 5 * 60 * 1000),
+      now: TEST_NOW,
+      localDate: TEST_LOCAL_DATE,
+    })
+
+    expect(plan.consolidationCandidates).toHaveLength(12)
+    expect(plan.consolidationPressure).toEqual({
+      establishedNonMasteredTargetCount: 16,
+      fragileTargetCount: 16,
+      fragileRatio: 1,
+      eligibleFragileTargetCount: 12,
+      isHigh: false,
+    })
+  })
+
+  it('does not promote Strengthen when Strong candidates make up part of a 16-item block', () => {
+    const entries = countries.slice(0, 16)
+    const plan = buildWorldCountriesTodayPlan({
+      activeCountries: entries,
+      history: historyForLocationProgress(entries, {
+        developingIds: entries.slice(0, 12).map(country => country.id),
+        strongIds: entries.slice(12).map(country => country.id),
+      }),
+      learningStates: countryLayerLearningStatesFor(entries, TEST_NOW - 5 * 60 * 1000),
+      now: TEST_NOW,
+      localDate: TEST_LOCAL_DATE,
+    })
+
+    expect(plan.consolidationCandidates).toHaveLength(16)
+    expect(plan.consolidationPressure.eligibleFragileTargetCount).toBe(12)
+    expect(plan.consolidationPressure.isHigh).toBe(false)
+  })
+
+  it('promotes Strengthen when 16 eligible fragile candidates coexist with Strong candidates', () => {
+    const entries = countries.slice(0, 20)
+    const plan = buildWorldCountriesTodayPlan({
+      activeCountries: entries,
+      history: historyForLocationProgress(entries, {
+        developingIds: entries.slice(0, 16).map(country => country.id),
+        strongIds: entries.slice(16).map(country => country.id),
+      }),
+      learningStates: countryLayerLearningStatesFor(entries, TEST_NOW - 5 * 60 * 1000),
+      now: TEST_NOW,
+      localDate: TEST_LOCAL_DATE,
+    })
+
+    expect(plan.consolidationCandidates).toHaveLength(20)
+    expect(plan.consolidationPressure).toEqual({
+      establishedNonMasteredTargetCount: 20,
+      fragileTargetCount: 16,
+      fragileRatio: 0.8,
+      eligibleFragileTargetCount: 16,
+      isHigh: true,
     })
   })
 
@@ -276,6 +382,7 @@ describe('World Countries Today plan', () => {
       establishedNonMasteredTargetCount: 0,
       fragileTargetCount: 0,
       fragileRatio: 0,
+      eligibleFragileTargetCount: 0,
       isHigh: false,
     })
   })
@@ -289,7 +396,7 @@ describe('World Countries Today plan', () => {
       history: historyForLocationProgress(entries, {
         developingIds: entries.map(country => country.id),
       }),
-      learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: TEST_NOW }],
+      learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: TEST_NOW - 5 * 60 * 1000 }],
       now: TEST_NOW,
       localDate: TEST_LOCAL_DATE,
     })
@@ -298,6 +405,7 @@ describe('World Countries Today plan', () => {
       establishedNonMasteredTargetCount: 2,
       fragileTargetCount: 2,
       fragileRatio: 1,
+      eligibleFragileTargetCount: 2,
       isHigh: false,
     })
   })
