@@ -562,6 +562,38 @@ export function WorldCountriesToday({
       }
     })
   }, [activeSubregionId, continent, geographyRevision, learningStates, onSelectContinent, plan, recallProgress, scopedCountries])
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+
+    console.log(
+      continent
+        ? `World Countries rail progress - ${continent} subregions`
+        : 'World Countries rail progress - continents',
+    )
+    console.table(scopeSummaries.map(summary => ({
+      scope: summary.label,
+      completeCountries: summary.progress.completeCountries,
+      totalCountries: summary.progress.totalCountries,
+      coreMasteredSkills: summary.progress.coreMasteredSkills,
+      coreSkillCount: summary.progress.coreSkillCount,
+      coreMasteryRatio: summary.progress.coreMasteryRatio,
+      masteryPercent: Math.round(summary.progress.coreMasteryRatio * 100),
+      calculation: `${summary.progress.coreMasteredSkills}/${summary.progress.coreSkillCount}`,
+    })))
+    console.log(
+      'World Countries rail status distributions',
+      Object.fromEntries(
+        scopeSummaries.map(summary => [
+          summary.label,
+          Object.fromEntries(
+            summary.distribution
+              .filter(entry => entry.count > 0)
+              .map(entry => [entry.label, entry.count]),
+          ),
+        ]),
+      ),
+    )
+  }, [continent, scopeSummaries])
   const scopeLabel = continent ?? 'World'
   const navigateWorld = onWorld ?? (() => undefined)
   const reviewCompletionContinuation = reviewCompletion?.mode === 'review'
