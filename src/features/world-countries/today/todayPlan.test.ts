@@ -174,13 +174,11 @@ describe('World Countries Today plan', () => {
   })
 
   it.each([
-    { establishedCount: 3, fragileCount: 3, expectedRatio: 1, high: false },
-    { establishedCount: 9, fragileCount: 4, expectedRatio: 4 / 9, high: false },
-    { establishedCount: 8, fragileCount: 4, expectedRatio: 0.5, high: true },
-    { establishedCount: 10, fragileCount: 4, expectedRatio: 0.4, high: false },
-    { establishedCount: 12, fragileCount: 6, expectedRatio: 0.5, high: true },
-    { establishedCount: 20, fragileCount: 10, expectedRatio: 0.5, high: true },
-  ])('derives high consolidation pressure only when both thresholds qualify', ({ establishedCount, fragileCount, expectedRatio, high }) => {
+    { establishedCount: 15, fragileCount: 15, expectedRatio: 1, high: false },
+    { establishedCount: 16, fragileCount: 16, expectedRatio: 1, high: true },
+    { establishedCount: 17, fragileCount: 17, expectedRatio: 1, high: true },
+    { establishedCount: 40, fragileCount: 16, expectedRatio: 0.4, high: true },
+  ])('derives high consolidation pressure from the absolute fragile count', ({ establishedCount, fragileCount, expectedRatio, high }) => {
     const entries = countries.slice(0, establishedCount)
     const plan = buildWorldCountriesTodayPlan({
       activeCountries: entries,
@@ -219,7 +217,7 @@ describe('World Countries Today plan', () => {
       establishedNonMasteredTargetCount: 8,
       fragileTargetCount: 4,
       fragileRatio: 0.5,
-      isHigh: true,
+      isHigh: false,
     })
   })
 
@@ -241,7 +239,7 @@ describe('World Countries Today plan', () => {
       establishedNonMasteredTargetCount: 8,
       fragileTargetCount: 4,
       fragileRatio: 0.5,
-      isHigh: true,
+      isHigh: false,
     })
   })
 
@@ -261,7 +259,7 @@ describe('World Countries Today plan', () => {
       establishedNonMasteredTargetCount: 8,
       fragileTargetCount: 4,
       fragileRatio: 0.5,
-      isHigh: true,
+      isHigh: false,
     })
   })
 

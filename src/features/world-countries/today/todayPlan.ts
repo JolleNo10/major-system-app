@@ -26,8 +26,7 @@ import { interleaveWorldCountriesTodayReviewCandidates } from './reviewInterleav
 export const WORLD_COUNTRIES_TODAY_REVIEW_BLOCK_SIZE = 8
 const WORLD_COUNTRIES_TODAY_MIN_REVIEW_OPPORTUNITY_DUE_ITEMS = 3
 const WORLD_COUNTRIES_TODAY_MIN_ACTIVITY_AGE_MS = 5 * 60 * 1000
-const WORLD_COUNTRIES_TODAY_HIGH_CONSOLIDATION_MIN_FRAGILE_TARGETS = 4
-const WORLD_COUNTRIES_TODAY_HIGH_CONSOLIDATION_MIN_FRAGILE_RATIO = 0.5
+const WORLD_COUNTRIES_TODAY_HIGH_CONSOLIDATION_MIN_FRAGILE_TARGETS = 16
 
 export type WorldCountriesTodayLearningTrack = 'learn-countries' | 'learn-capitals'
 
@@ -190,8 +189,7 @@ function deriveConsolidationPressure({
     establishedNonMasteredTargetCount,
     fragileTargetCount,
     fragileRatio,
-    isHigh: fragileTargetCount >= WORLD_COUNTRIES_TODAY_HIGH_CONSOLIDATION_MIN_FRAGILE_TARGETS
-      && fragileRatio >= WORLD_COUNTRIES_TODAY_HIGH_CONSOLIDATION_MIN_FRAGILE_RATIO,
+    isHigh: fragileTargetCount >= WORLD_COUNTRIES_TODAY_HIGH_CONSOLIDATION_MIN_FRAGILE_TARGETS,
   }
 }
 
