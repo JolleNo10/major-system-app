@@ -16,14 +16,16 @@ function countryRecallAttempts() {
   return [
     { itemId: 'world-countries:location-to-country:NO', at: 1, ok: true },
     { itemId: 'world-countries:location-to-country:NO', at: 2, ok: true },
+    { itemId: 'world-countries:location-to-country:NO', at: 3, ok: true },
   ]
 }
 
 function completeRecallAttempts() {
   return [
     ...countryRecallAttempts(),
-    { itemId: 'world-countries:country-to-capital:NO', at: 3, ok: true },
     { itemId: 'world-countries:country-to-capital:NO', at: 4, ok: true },
+    { itemId: 'world-countries:country-to-capital:NO', at: 5, ok: true },
+    { itemId: 'world-countries:country-to-capital:NO', at: 6, ok: true },
   ]
 }
 
@@ -107,7 +109,7 @@ describe('World Countries learner journey presentation', () => {
       entries: norway,
       recallProgress: progressFor([
         ...completeRecallAttempts(),
-        { itemId: 'world-countries:country-to-capital:NO', at: 5, ok: false },
+        { itemId: 'world-countries:country-to-capital:NO', at: 7, ok: false },
       ]),
     })
 
@@ -177,8 +179,9 @@ describe('World Countries learner journey presentation', () => {
       entries: norway,
       recallProgress: progressFor([
         ...countryRecallAttempts(),
-        { itemId: 'world-countries:country-to-capital:NO', at: 3, ok: true },
         { itemId: 'world-countries:country-to-capital:NO', at: 4, ok: true },
+        { itemId: 'world-countries:country-to-capital:NO', at: 5, ok: true },
+        { itemId: 'world-countries:country-to-capital:NO', at: 6, ok: true },
       ]),
     })
 

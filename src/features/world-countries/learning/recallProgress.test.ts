@@ -33,6 +33,7 @@ describe('World Countries recall progress', () => {
       attempt('NO', 'location-to-country', 1, false, '2026-08-10'),
       attempt('NO', 'country-to-capital', 2, true, '2026-08-10'),
       attempt('NO', 'country-to-capital', 3, true, '2026-08-11'),
+      attempt('NO', 'country-to-capital', 4, true, '2026-08-12'),
     ])
 
     expect(progress.get(recallTargetIdFor('NO', 'location-to-country'))?.wrong).toBe(1)
@@ -42,28 +43,51 @@ describe('World Countries recall progress', () => {
     expect(country.complete).toBe(false)
   })
 
-  it('requires explicit free recall on two recorded calendar dates for mastery', () => {
+  it('requires explicit free recall on three recorded calendar dates for mastery', () => {
     const sameDay = deriveWorldCountriesRecallProgress({
       countryIds: ['NO'],
       skills: ['country-to-capital'],
     }, [
       attempt('NO', 'country-to-capital', 1, true, '2026-08-10'),
       attempt('NO', 'country-to-capital', 2, true, '2026-08-10'),
+      attempt('NO', 'country-to-capital', 3, true, '2026-08-10'),
     ]).get(recallTargetIdFor('NO', 'country-to-capital'))!
     expect(sameDay.proficiency).toBe('strong')
     expect(sameDay.mastered).toBe(false)
     expect(sameDay.hasEverMastered).toBe(false)
 
-    const boundary = deriveWorldCountriesRecallProgress({
+    const developing = deriveWorldCountriesRecallProgress({
+      countryIds: ['NO'],
+      skills: ['country-to-capital'],
+    }, [
+      attempt('NO', 'country-to-capital', 1, true, '2026-08-10'),
+    ]).get(recallTargetIdFor('NO', 'country-to-capital'))!
+    expect(developing.proficiency).toBe('developing')
+    expect(developing.mastered).toBe(false)
+    expect(developing.hasEverMastered).toBe(false)
+
+    const strong = deriveWorldCountriesRecallProgress({
       countryIds: ['NO'],
       skills: ['country-to-capital'],
     }, [
       attempt('NO', 'country-to-capital', 1, true, '2026-08-10'),
       attempt('NO', 'country-to-capital', 2, true, '2026-08-11'),
     ]).get(recallTargetIdFor('NO', 'country-to-capital'))!
-    expect(boundary.proficiency).toBe('mastered')
-    expect(boundary.mastered).toBe(true)
-    expect(boundary.hasEverMastered).toBe(true)
+    expect(strong.proficiency).toBe('strong')
+    expect(strong.mastered).toBe(false)
+    expect(strong.hasEverMastered).toBe(false)
+
+    const mastered = deriveWorldCountriesRecallProgress({
+      countryIds: ['NO'],
+      skills: ['country-to-capital'],
+    }, [
+      attempt('NO', 'country-to-capital', 1, true, '2026-08-10'),
+      attempt('NO', 'country-to-capital', 2, true, '2026-08-11'),
+      attempt('NO', 'country-to-capital', 3, true, '2026-08-12'),
+    ]).get(recallTargetIdFor('NO', 'country-to-capital'))!
+    expect(mastered.proficiency).toBe('mastered')
+    expect(mastered.mastered).toBe(true)
+    expect(mastered.hasEverMastered).toBe(true)
   })
 
   it('lets recognition improve proficiency without establishing mastery', () => {
@@ -102,8 +126,8 @@ describe('World Countries recall progress', () => {
     }, [
       attempt('NO', 'country-to-capital', 1, true, '2026-08-10'),
       attempt('NO', 'country-to-capital', 2, true, '2026-08-11'),
-      attempt('NO', 'country-to-capital', 3, false, '2026-08-15'),
-      attempt('NO', 'country-to-capital', 4, true, '2026-08-16'),
+      attempt('NO', 'country-to-capital', 3, true, '2026-08-12'),
+      attempt('NO', 'country-to-capital', 4, false, '2026-08-15'),
     ]).get(recallTargetIdFor('NO', 'country-to-capital'))!
 
     expect(progress.proficiency).toBe('strong')
@@ -117,10 +141,11 @@ describe('World Countries recall progress', () => {
     }, [
       attempt('NO', 'country-to-capital', 1, true, '2026-08-10'),
       attempt('NO', 'country-to-capital', 2, true, '2026-08-11'),
-      attempt('NO', 'country-to-capital', 3, false, '2026-08-15'),
+      attempt('NO', 'country-to-capital', 3, true, '2026-08-12'),
       attempt('NO', 'country-to-capital', 4, false, '2026-08-15'),
       attempt('NO', 'country-to-capital', 5, false, '2026-08-15'),
-      attempt('NO', 'country-to-capital', 6, true, '2026-08-15'),
+      attempt('NO', 'country-to-capital', 6, false, '2026-08-15'),
+      attempt('NO', 'country-to-capital', 7, true, '2026-08-15'),
     ]).get(recallTargetIdFor('NO', 'country-to-capital'))!
 
     expect(progress.proficiency).toBe('strong')
@@ -134,9 +159,10 @@ describe('World Countries recall progress', () => {
     }, [
       attempt('NO', 'country-to-capital', 1, true, '2026-08-10'),
       attempt('NO', 'country-to-capital', 2, true, '2026-08-11'),
-      attempt('NO', 'country-to-capital', 3, false, '2026-08-12'),
-      attempt('NO', 'country-to-capital', 4, true, '2026-08-12'),
-      attempt('NO', 'country-to-capital', 5, false, '2026-08-13'),
+      attempt('NO', 'country-to-capital', 3, true, '2026-08-12'),
+      attempt('NO', 'country-to-capital', 4, false, '2026-08-13'),
+      attempt('NO', 'country-to-capital', 5, true, '2026-08-13'),
+      attempt('NO', 'country-to-capital', 6, false, '2026-08-14'),
     ]).get(recallTargetIdFor('NO', 'country-to-capital'))!
 
     expect(progress.proficiency).toBe('developing')
@@ -147,10 +173,12 @@ describe('World Countries recall progress', () => {
     }, [
       attempt('NO', 'country-to-capital', 1, true, '2026-08-10'),
       attempt('NO', 'country-to-capital', 2, true, '2026-08-11'),
-      attempt('NO', 'country-to-capital', 3, false, '2026-08-12'),
-      attempt('NO', 'country-to-capital', 4, true, '2026-08-12'),
+      attempt('NO', 'country-to-capital', 3, true, '2026-08-12'),
+      attempt('NO', 'country-to-capital', 4, false, '2026-08-13'),
+      attempt('NO', 'country-to-capital', 5, true, '2026-08-13'),
       attempt('NO', 'country-to-capital', 5, false, '2026-08-13'),
       attempt('NO', 'country-to-capital', 6, false, '2026-08-14'),
+      attempt('NO', 'country-to-capital', 7, false, '2026-08-15'),
     ]).get(recallTargetIdFor('NO', 'country-to-capital'))!
 
     expect(weak.proficiency).toBe('weak')
@@ -163,8 +191,9 @@ describe('World Countries recall progress', () => {
     }, [
       attempt('NO', 'country-to-capital', 1, true, '2026-08-10'),
       attempt('NO', 'country-to-capital', 2, true, '2026-08-11'),
-      attempt('NO', 'country-to-capital', 3, false, '2026-08-12'),
-      attempt('NO', 'country-to-capital', 4, true, '2026-08-12'),
+      attempt('NO', 'country-to-capital', 3, true, '2026-08-12'),
+      attempt('NO', 'country-to-capital', 4, false, '2026-08-13'),
+      attempt('NO', 'country-to-capital', 5, true, '2026-08-13'),
     ]).get(recallTargetIdFor('NO', 'country-to-capital'))!
 
     expect(progress.proficiency).toBe('strong')
@@ -179,7 +208,8 @@ describe('World Countries recall progress', () => {
     }, [
       attempt('NO', 'country-to-capital', 1, true, '2026-08-10'),
       attempt('NO', 'country-to-capital', 2, true, '2026-08-11'),
-      attempt('NO', 'country-to-capital', 3, false, '2026-08-12'),
+      attempt('NO', 'country-to-capital', 3, true, '2026-08-12'),
+      attempt('NO', 'country-to-capital', 4, false, '2026-08-13'),
     ]).get(recallTargetIdFor('NO', 'country-to-capital'))!
 
     expect(progress.proficiency).toBe('strong')
@@ -201,28 +231,85 @@ describe('World Countries recall progress', () => {
     expect(progress.hasEverMastered).toBe(false)
   })
 
-  it('keeps mastery after later successes and recovers only with two new dates', () => {
-    const mastered = deriveWorldCountriesRecallProgress({
+  it('restores Mastered after an isolated lapse only on a later qualifying date', () => {
+    const sameDayRetry = deriveWorldCountriesRecallProgress({
       countryIds: ['NO'],
       skills: ['country-to-capital'],
     }, [
       attempt('NO', 'country-to-capital', 1, true, '2026-08-10'),
       attempt('NO', 'country-to-capital', 2, true, '2026-08-11'),
-      attempt('NO', 'country-to-capital', 3, true, '2026-08-11', 'recognition'),
+      attempt('NO', 'country-to-capital', 3, true, '2026-08-12'),
+      attempt('NO', 'country-to-capital', 4, false, '2026-08-13'),
+      attempt('NO', 'country-to-capital', 5, true, '2026-08-13'),
     ]).get(recallTargetIdFor('NO', 'country-to-capital'))!
-    expect(mastered.proficiency).toBe('mastered')
+    expect(sameDayRetry.proficiency).toBe('strong')
+    expect(sameDayRetry.mastered).toBe(false)
+    expect(sameDayRetry.hasEverMastered).toBe(true)
 
-    const failed = deriveWorldCountriesRecallProgress({
+    const recovered = deriveWorldCountriesRecallProgress({
       countryIds: ['NO'],
       skills: ['country-to-capital'],
     }, [
       attempt('NO', 'country-to-capital', 1, true, '2026-08-10'),
       attempt('NO', 'country-to-capital', 2, true, '2026-08-11'),
-      attempt('NO', 'country-to-capital', 3, false, '2026-08-12', 'recognition'),
-      attempt('NO', 'country-to-capital', 4, true, '2026-08-13'),
-      attempt('NO', 'country-to-capital', 5, true, '2026-08-14'),
+      attempt('NO', 'country-to-capital', 3, true, '2026-08-12'),
+      attempt('NO', 'country-to-capital', 4, false, '2026-08-13'),
+      attempt('NO', 'country-to-capital', 5, true, '2026-08-13'),
+      attempt('NO', 'country-to-capital', 6, true, '2026-08-14'),
     ]).get(recallTargetIdFor('NO', 'country-to-capital'))!
-    expect(failed.proficiency).toBe('mastered')
+    expect(recovered.proficiency).toBe('mastered')
+    expect(recovered.mastered).toBe(true)
+    expect(recovered.hasEverMastered).toBe(true)
+  })
+
+  it('cancels accelerated recovery after a repeated lapse before restoration', () => {
+    const progress = deriveWorldCountriesRecallProgress({
+      countryIds: ['NO'],
+      skills: ['country-to-capital'],
+    }, [
+      attempt('NO', 'country-to-capital', 1, true, '2026-08-10'),
+      attempt('NO', 'country-to-capital', 2, true, '2026-08-11'),
+      attempt('NO', 'country-to-capital', 3, true, '2026-08-12'),
+      attempt('NO', 'country-to-capital', 4, false, '2026-08-13'),
+      attempt('NO', 'country-to-capital', 5, false, '2026-08-14'),
+      attempt('NO', 'country-to-capital', 6, true, '2026-08-15'),
+    ]).get(recallTargetIdFor('NO', 'country-to-capital'))!
+
+    expect(progress.proficiency).toBe('developing')
+    expect(progress.mastered).toBe(false)
+    expect(progress.hasEverMastered).toBe(true)
+
+    const rebuilt = deriveWorldCountriesRecallProgress({
+      countryIds: ['NO'],
+      skills: ['country-to-capital'],
+    }, [
+      attempt('NO', 'country-to-capital', 1, true, '2026-08-10'),
+      attempt('NO', 'country-to-capital', 2, true, '2026-08-11'),
+      attempt('NO', 'country-to-capital', 3, true, '2026-08-12'),
+      attempt('NO', 'country-to-capital', 4, false, '2026-08-13'),
+      attempt('NO', 'country-to-capital', 5, false, '2026-08-14'),
+      attempt('NO', 'country-to-capital', 6, true, '2026-08-15'),
+      attempt('NO', 'country-to-capital', 7, true, '2026-08-16'),
+      attempt('NO', 'country-to-capital', 8, true, '2026-08-17'),
+    ]).get(recallTargetIdFor('NO', 'country-to-capital'))!
+    expect(rebuilt.proficiency).toBe('mastered')
+  })
+
+  it('does not use accelerated recovery when a mastered lapse has no valid local date', () => {
+    const progress = deriveWorldCountriesRecallProgress({
+      countryIds: ['NO'],
+      skills: ['country-to-capital'],
+    }, [
+      attempt('NO', 'country-to-capital', 1, true, '2026-08-10'),
+      attempt('NO', 'country-to-capital', 2, true, '2026-08-11'),
+      attempt('NO', 'country-to-capital', 3, true, '2026-08-12'),
+      { ...attempt('NO', 'country-to-capital', 4, false), localDate: 'not-a-date' },
+      attempt('NO', 'country-to-capital', 5, true, '2026-08-13'),
+    ]).get(recallTargetIdFor('NO', 'country-to-capital'))!
+
+    expect(progress.proficiency).toBe('strong')
+    expect(progress.mastered).toBe(false)
+    expect(progress.hasEverMastered).toBe(true)
   })
 
   it('degrades only the atomic skill that was answered incorrectly', () => {
@@ -232,9 +319,11 @@ describe('World Countries recall progress', () => {
     }, [
       attempt('NO', 'location-to-country', 1, true, '2026-08-10'),
       attempt('NO', 'location-to-country', 2, true, '2026-08-11'),
-      attempt('NO', 'country-to-capital', 3, true, '2026-08-10'),
-      attempt('NO', 'country-to-capital', 4, true, '2026-08-11'),
-      attempt('NO', 'location-to-country', 5, false, '2026-08-12'),
+      attempt('NO', 'location-to-country', 3, true, '2026-08-12'),
+      attempt('NO', 'country-to-capital', 4, true, '2026-08-10'),
+      attempt('NO', 'country-to-capital', 5, true, '2026-08-11'),
+      attempt('NO', 'country-to-capital', 6, true, '2026-08-12'),
+      attempt('NO', 'location-to-country', 7, false, '2026-08-13'),
     ])
 
     expect(progress.get(recallTargetIdFor('NO', 'location-to-country'))?.proficiency).toBe('strong')
@@ -247,8 +336,8 @@ describe('World Countries recall progress', () => {
       skills: ['country-to-capital'],
     }, [
       { ...attempt('NO', 'country-to-capital', 1, true, '2026-08-10'), ms: 1 },
-      { ...attempt('NO', 'country-to-capital', 2, true, '2026-08-10'), ms: 5000 },
-      { ...attempt('NO', 'country-to-capital', 3, true, '2026-08-11'), ms: 1000 },
+      { ...attempt('NO', 'country-to-capital', 2, true, '2026-08-11'), ms: 5000 },
+      { ...attempt('NO', 'country-to-capital', 3, true, '2026-08-12'), ms: 1000 },
     ]).get(recallTargetIdFor('NO', 'country-to-capital'))!
 
     expect(progress.proficiency).toBe('mastered')
@@ -262,9 +351,11 @@ describe('World Countries recall progress', () => {
     }, [
       attempt('NO', 'location-to-country', 1, true, '2026-08-10'),
       attempt('NO', 'location-to-country', 2, true, '2026-08-11'),
-      attempt('NO', 'country-to-capital', 3, true, '2026-08-10'),
-      attempt('NO', 'country-to-capital', 4, true, '2026-08-11'),
-      attempt('NO', 'capital-to-country', 5, false, '2026-08-12'),
+      attempt('NO', 'location-to-country', 3, true, '2026-08-12'),
+      attempt('NO', 'country-to-capital', 4, true, '2026-08-10'),
+      attempt('NO', 'country-to-capital', 5, true, '2026-08-11'),
+      attempt('NO', 'country-to-capital', 6, true, '2026-08-12'),
+      attempt('NO', 'capital-to-country', 7, false, '2026-08-13'),
     ])
 
     const country = deriveWorldCountriesCountryProgress('NO', progress)
@@ -281,13 +372,13 @@ describe('World Countries recall progress', () => {
       skills: [...WORLD_COUNTRIES_RECALL_SKILLS],
     }, [
       ...[
-        ['location-to-country', 1], ['location-to-country', 2],
-        ['country-to-capital', 3], ['country-to-capital', 4],
-        ['capital-to-country', 5], ['capital-to-country', 6],
-        ['shape-to-country', 7], ['shape-to-country', 8],
+        ['location-to-country', 1], ['location-to-country', 2], ['location-to-country', 3],
+        ['country-to-capital', 4], ['country-to-capital', 5], ['country-to-capital', 6],
+        ['capital-to-country', 7], ['capital-to-country', 8], ['capital-to-country', 9],
+        ['shape-to-country', 10], ['shape-to-country', 11], ['shape-to-country', 12],
       ].map(([skill, at], index) => attempt(
         'NO', skill as (typeof WORLD_COUNTRIES_RECALL_SKILLS)[number], at as number,
-        true, index % 2 ? '2026-08-11' : '2026-08-10',
+        true, `2026-08-${String(10 + (index % 3)).padStart(2, '0')}`,
       )),
     ])
 

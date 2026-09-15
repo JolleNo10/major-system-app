@@ -8,6 +8,7 @@ import { buildWorldCountriesTodayPlan } from './todayPlan'
 const TEST_NOW = Date.UTC(2026, 7, 19, 12)
 const TEST_LOCAL_DATE = '2026-08-19'
 const TEST_PREVIOUS_LOCAL_DATE = '2026-08-18'
+const TEST_TWO_DAYS_AGO_LOCAL_DATE = '2026-08-17'
 
 function historyFor(
   attempts: readonly { itemId: string; at: number; ok: boolean; ms?: number; evidenceKind?: 'recall' | 'recognition'; localDate?: string }[],
@@ -25,8 +26,10 @@ function completeCoreHistory(countryIds: readonly string[] = ['NO']) {
     countryIds.flatMap(countryId => [
       { itemId: `world-countries:location-to-country:${countryId}`, at: 1, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-10' },
       { itemId: `world-countries:location-to-country:${countryId}`, at: 2, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-11' },
-      { itemId: `world-countries:country-to-capital:${countryId}`, at: 3, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-10' },
-      { itemId: `world-countries:country-to-capital:${countryId}`, at: 4, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-11' },
+      { itemId: `world-countries:location-to-country:${countryId}`, at: 3, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-12' },
+      { itemId: `world-countries:country-to-capital:${countryId}`, at: 4, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-10' },
+      { itemId: `world-countries:country-to-capital:${countryId}`, at: 5, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-11' },
+      { itemId: `world-countries:country-to-capital:${countryId}`, at: 6, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-12' },
     ]),
   )
 }
@@ -116,12 +119,13 @@ function historyForLocationProgress(
     if (weakIds.has(country.id)) return [{ itemId, at: firstAt, ok: false, evidenceKind: 'recall' as const, localDate: TEST_PREVIOUS_LOCAL_DATE }]
     if (developingIds.has(country.id)) return [{ itemId, at: firstAt, ok: true, evidenceKind: 'recall' as const, localDate: TEST_PREVIOUS_LOCAL_DATE }]
     if (strongIds.has(country.id)) return [
-      { itemId, at: firstAt, ok: true, evidenceKind: 'recall' as const, localDate: TEST_PREVIOUS_LOCAL_DATE },
+      { itemId, at: firstAt, ok: true, evidenceKind: 'recall' as const, localDate: TEST_TWO_DAYS_AGO_LOCAL_DATE },
       { itemId, at: firstAt + 1, ok: true, evidenceKind: 'recall' as const, localDate: TEST_PREVIOUS_LOCAL_DATE },
     ]
     if (masteredIds.has(country.id)) return [
       { itemId, at: firstAt, ok: true, evidenceKind: 'recall' as const, localDate: '2026-08-10' },
       { itemId, at: firstAt + 1, ok: true, evidenceKind: 'recall' as const, localDate: '2026-08-11' },
+      { itemId, at: firstAt + 2, ok: true, evidenceKind: 'recall' as const, localDate: '2026-08-12' },
     ]
     return []
   })
@@ -809,9 +813,10 @@ describe('World Countries Today plan', () => {
     const history = historyFor([
       { itemId: 'world-countries:location-to-country:NO', at: 1, ok: true, evidenceKind: 'recall', localDate: '2026-08-10' },
       { itemId: 'world-countries:location-to-country:NO', at: 2, ok: true, evidenceKind: 'recall', localDate: '2026-08-11' },
-      { itemId: 'world-countries:location-to-country:NO', at: 3, ok: false, evidenceKind: 'recall', localDate: '2026-08-12' },
+      { itemId: 'world-countries:location-to-country:NO', at: 3, ok: true, evidenceKind: 'recall', localDate: '2026-08-12' },
+      { itemId: 'world-countries:location-to-country:NO', at: 4, ok: false, evidenceKind: 'recall', localDate: '2026-08-13' },
     ])
-    const plan = buildWorldCountriesTodayPlan({ activeCountries: [country], history, localDate: '2026-08-12' })
+    const plan = buildWorldCountriesTodayPlan({ activeCountries: [country], history, localDate: '2026-08-13' })
 
     expect(plan.curriculumRecommendation?.track).toBe('learn-capitals')
     expect(plan.introductions.get('world-countries:location-to-country:NO')?.source).toBe('attempt')
@@ -825,11 +830,13 @@ describe('World Countries Today plan', () => {
     const history = historyFor([
       { itemId: 'world-countries:location-to-country:NO', at: 1, ok: true, evidenceKind: 'recall', localDate: '2026-08-10' },
       { itemId: 'world-countries:location-to-country:NO', at: 2, ok: true, evidenceKind: 'recall', localDate: '2026-08-11' },
-      { itemId: 'world-countries:country-to-capital:NO', at: 3, ok: true, evidenceKind: 'recall', localDate: '2026-08-10' },
-      { itemId: 'world-countries:country-to-capital:NO', at: 4, ok: true, evidenceKind: 'recall', localDate: '2026-08-11' },
-      { itemId: 'world-countries:country-to-capital:NO', at: 5, ok: false, evidenceKind: 'recall', localDate: '2026-08-12' },
+      { itemId: 'world-countries:location-to-country:NO', at: 3, ok: true, evidenceKind: 'recall', localDate: '2026-08-12' },
+      { itemId: 'world-countries:country-to-capital:NO', at: 4, ok: true, evidenceKind: 'recall', localDate: '2026-08-10' },
+      { itemId: 'world-countries:country-to-capital:NO', at: 5, ok: true, evidenceKind: 'recall', localDate: '2026-08-11' },
+      { itemId: 'world-countries:country-to-capital:NO', at: 6, ok: true, evidenceKind: 'recall', localDate: '2026-08-12' },
+      { itemId: 'world-countries:country-to-capital:NO', at: 7, ok: false, evidenceKind: 'recall', localDate: '2026-08-13' },
     ])
-    const plan = buildWorldCountriesTodayPlan({ activeCountries: [country], history, localDate: '2026-08-12' })
+    const plan = buildWorldCountriesTodayPlan({ activeCountries: [country], history, localDate: '2026-08-13' })
 
     expect(plan.curriculumRecommendation).toBeNull()
     expect(plan.dueCandidates).toEqual(expect.arrayContaining([
@@ -908,8 +915,9 @@ describe('World Countries Today plan', () => {
       history: historyFor([
         { itemId: 'world-countries:location-to-country:NO', at: 1, ok: true, evidenceKind: 'recall', localDate: '2026-08-10' },
         { itemId: 'world-countries:location-to-country:NO', at: 2, ok: true, evidenceKind: 'recall', localDate: '2026-08-11' },
+        { itemId: 'world-countries:location-to-country:NO', at: 3, ok: true, evidenceKind: 'recall', localDate: '2026-08-12' },
       ]),
-      localDate: '2026-08-11',
+      localDate: '2026-08-12',
       effectiveSubregionIds: ['northern-europe'],
     })
 
@@ -923,9 +931,10 @@ describe('World Countries Today plan', () => {
       history: historyFor([
         { itemId: 'world-countries:location-to-country:NO', at: 1, ok: true, evidenceKind: 'recall', localDate: '2026-08-10' },
         { itemId: 'world-countries:location-to-country:NO', at: 2, ok: true, evidenceKind: 'recall', localDate: '2026-08-11' },
-        { itemId: 'world-countries:location-to-country:NO', at: 3, ok: false, evidenceKind: 'recall', localDate: '2026-08-12' },
+        { itemId: 'world-countries:location-to-country:NO', at: 3, ok: true, evidenceKind: 'recall', localDate: '2026-08-12' },
+        { itemId: 'world-countries:location-to-country:NO', at: 4, ok: false, evidenceKind: 'recall', localDate: '2026-08-13' },
       ]),
-      localDate: '2026-08-12',
+      localDate: '2026-08-13',
       effectiveSubregionIds: ['northern-europe'],
     })
 
@@ -942,11 +951,13 @@ describe('World Countries Today plan', () => {
       history: historyFor([
         { itemId: 'world-countries:location-to-country:NO', at: 1, ok: true, evidenceKind: 'recall', localDate: '2026-08-10' },
         { itemId: 'world-countries:location-to-country:NO', at: 2, ok: true, evidenceKind: 'recall', localDate: '2026-08-11' },
-        { itemId: 'world-countries:country-to-capital:NO', at: 3, ok: true, evidenceKind: 'recall', localDate: '2026-08-10' },
-        { itemId: 'world-countries:country-to-capital:NO', at: 4, ok: true, evidenceKind: 'recall', localDate: '2026-08-11' },
-        { itemId: 'world-countries:country-to-capital:NO', at: 5, ok: false, evidenceKind: 'recall', localDate: '2026-08-12' },
+        { itemId: 'world-countries:location-to-country:NO', at: 3, ok: true, evidenceKind: 'recall', localDate: '2026-08-12' },
+        { itemId: 'world-countries:country-to-capital:NO', at: 4, ok: true, evidenceKind: 'recall', localDate: '2026-08-10' },
+        { itemId: 'world-countries:country-to-capital:NO', at: 5, ok: true, evidenceKind: 'recall', localDate: '2026-08-11' },
+        { itemId: 'world-countries:country-to-capital:NO', at: 6, ok: true, evidenceKind: 'recall', localDate: '2026-08-12' },
+        { itemId: 'world-countries:country-to-capital:NO', at: 7, ok: false, evidenceKind: 'recall', localDate: '2026-08-13' },
       ]),
-      localDate: '2026-08-12',
+      localDate: '2026-08-13',
       effectiveSubregionIds: ['northern-europe'],
     })
 
@@ -988,6 +999,7 @@ describe('World Countries Today plan', () => {
         ...entries.map((country, index) => ({ itemId: `world-countries:location-to-country:${country.id}`, at: index + 1, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-18' })),
         { itemId: `world-countries:country-to-capital:${norway.id}`, at: 3, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-16' },
         { itemId: `world-countries:country-to-capital:${norway.id}`, at: 4, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-17' },
+        { itemId: `world-countries:country-to-capital:${norway.id}`, at: 5, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-18' },
         { itemId: `world-countries:country-to-capital:${sweden.id}`, at: 5, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-18' },
       ],
     )
@@ -1026,15 +1038,17 @@ describe('World Countries Today plan', () => {
       entries.flatMap((country, index) => [
         { itemId: `world-countries:location-to-country:${country.id}`, at: index + 1, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-16' },
         { itemId: `world-countries:location-to-country:${country.id}`, at: index + 3, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-17' },
-        { itemId: `world-countries:country-to-capital:${country.id}`, at: index + 5, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-16' },
-        { itemId: `world-countries:country-to-capital:${country.id}`, at: index + 7, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-17' },
+        { itemId: `world-countries:location-to-country:${country.id}`, at: index + 5, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-18' },
+        { itemId: `world-countries:country-to-capital:${country.id}`, at: index + 7, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-16' },
+        { itemId: `world-countries:country-to-capital:${country.id}`, at: index + 9, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-17' },
+        { itemId: `world-countries:country-to-capital:${country.id}`, at: index + 11, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-18' },
       ]),
     )
     const plan = buildWorldCountriesTodayPlan({
       activeCountries: entries,
       history,
       effectiveSubregionIds: ['northern-europe'],
-      localDate: '2026-08-17',
+      localDate: '2026-08-18',
     })
 
     expect(plan.curriculumRecommendation).toBeNull()
@@ -1225,6 +1239,7 @@ describe('World Countries Today plan', () => {
       }, [
         { itemId: 'world-countries:location-to-country:NO', at: 1, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-16' },
         { itemId: 'world-countries:location-to-country:NO', at: 2, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-17' },
+        { itemId: 'world-countries:location-to-country:NO', at: 3, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-18' },
       ]),
       learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: now - 5 * 60 * 1000, capitalsLearnedAt: now - 5 * 60 * 1000 }],
       now,

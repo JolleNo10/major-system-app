@@ -1728,6 +1728,7 @@ describe('World Countries Today', () => {
     loadHistoryMock.mockImplementation(() => Promise.resolve(new Map([[capitalItemId, [
       { itemId: capitalItemId, at: 1, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-10' },
       { itemId: capitalItemId, at: 2, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-11' },
+      { itemId: capitalItemId, at: 3, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-12' },
     ]]])))
     const initialPlan = plan({
       curriculumRecommendation: recommendation('learn-countries', [northern.id], northern),
@@ -2277,6 +2278,7 @@ describe('World Countries Today', () => {
     loadHistoryMock.mockResolvedValueOnce(new Map([[countryItemId, [
       { itemId: countryItemId, at: 1, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-10' },
       { itemId: countryItemId, at: 2, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-11' },
+      { itemId: countryItemId, at: 3, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-12' },
     ]]]))
     buildPlanMock.mockReturnValue(plan({ curriculumRecommendation: recommendation('learn-capitals') }))
     const mount = await renderToday()

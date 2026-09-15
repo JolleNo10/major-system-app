@@ -105,8 +105,10 @@ describe('World Countries progress hierarchy', () => {
     const attempts = [
       { itemId: `world-countries:location-to-country:${northern.id}`, at: 1, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-10' },
       { itemId: `world-countries:location-to-country:${northern.id}`, at: 2, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-11' },
-      { itemId: `world-countries:country-to-capital:${northern.id}`, at: 3, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-10' },
-      { itemId: `world-countries:country-to-capital:${northern.id}`, at: 4, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-11' },
+      { itemId: `world-countries:location-to-country:${northern.id}`, at: 3, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-12' },
+      { itemId: `world-countries:country-to-capital:${northern.id}`, at: 4, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-10' },
+      { itemId: `world-countries:country-to-capital:${northern.id}`, at: 5, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-11' },
+      { itemId: `world-countries:country-to-capital:${northern.id}`, at: 6, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-12' },
     ]
     const mount = renderProgress('Europe', [northern], [{ subregionId: northern.subregionId, countriesLearnedAt: 1, capitalsLearnedAt: 2 }], attempts)
 

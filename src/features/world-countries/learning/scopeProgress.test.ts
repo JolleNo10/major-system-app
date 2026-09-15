@@ -34,8 +34,10 @@ describe('World Countries scope progress', () => {
       ...(['NO', 'SE'].flatMap((countryId, countryIndex) => [
         attempt(countryId, 'location-to-country', countryIndex * 10 + 1, true, '2026-08-10'),
         attempt(countryId, 'location-to-country', countryIndex * 10 + 2, true, '2026-08-11'),
-        attempt(countryId, 'country-to-capital', countryIndex * 10 + 3, true, '2026-08-10'),
-        attempt(countryId, 'country-to-capital', countryIndex * 10 + 4, true, '2026-08-11'),
+        attempt(countryId, 'location-to-country', countryIndex * 10 + 3, true, '2026-08-12'),
+        attempt(countryId, 'country-to-capital', countryIndex * 10 + 4, true, '2026-08-10'),
+        attempt(countryId, 'country-to-capital', countryIndex * 10 + 5, true, '2026-08-11'),
+        attempt(countryId, 'country-to-capital', countryIndex * 10 + 6, true, '2026-08-12'),
       ])),
       attempt('DK', 'location-to-country', 30, true, '2026-08-10'),
       attempt('DK', 'country-to-capital', 31, false, '2026-08-10'),
@@ -77,9 +79,11 @@ describe('World Countries scope progress', () => {
     const attempts = [
       attempt('NO', 'location-to-country', 1, true, '2026-08-10'),
       attempt('NO', 'location-to-country', 2, true, '2026-08-11'),
-      attempt('NO', 'country-to-capital', 3, true, '2026-08-10'),
-      attempt('NO', 'country-to-capital', 4, true, '2026-08-11'),
-      attempt('NO', 'capital-to-country', 5, false, '2026-08-12'),
+      attempt('NO', 'location-to-country', 3, true, '2026-08-12'),
+      attempt('NO', 'country-to-capital', 4, true, '2026-08-10'),
+      attempt('NO', 'country-to-capital', 5, true, '2026-08-11'),
+      attempt('NO', 'country-to-capital', 6, true, '2026-08-12'),
+      attempt('NO', 'capital-to-country', 7, false, '2026-08-13'),
     ]
     const itemProgress = deriveWorldCountriesRecallProgress({
       countryIds: ['NO'],
@@ -100,6 +104,7 @@ describe('World Countries scope progress', () => {
     }, [
       attempt('NO', 'capital-to-country', 1, true, '2026-08-10'),
       attempt('NO', 'capital-to-country', 2, true, '2026-08-11'),
+      attempt('NO', 'capital-to-country', 3, true, '2026-08-12'),
     ])
 
     const progress = deriveWorldCountriesWorldProgress(itemProgress, countries.filter(country => country.id === 'NO'))
@@ -122,13 +127,17 @@ describe('World Countries scope progress', () => {
     const attempts = [
       attempt('NO', 'location-to-country', 1, true, '2026-08-10'),
       attempt('NO', 'location-to-country', 2, true, '2026-08-11'),
-      attempt('NO', 'country-to-capital', 3, true, '2026-08-10'),
-      attempt('NO', 'country-to-capital', 4, true, '2026-08-11'),
+      attempt('NO', 'location-to-country', 3, true, '2026-08-12'),
+      attempt('NO', 'country-to-capital', 4, true, '2026-08-10'),
+      attempt('NO', 'country-to-capital', 5, true, '2026-08-11'),
+      attempt('NO', 'country-to-capital', 6, true, '2026-08-12'),
       attempt('SE', 'location-to-country', 5, false, '2026-08-10'),
-      attempt('DK', 'location-to-country', 6, true, '2026-08-10'),
-      attempt('DK', 'location-to-country', 7, true, '2026-08-11'),
-      attempt('DK', 'country-to-capital', 8, true, '2026-08-10'),
-      attempt('DK', 'country-to-capital', 9, true, '2026-08-11'),
+      attempt('DK', 'location-to-country', 7, true, '2026-08-10'),
+      attempt('DK', 'location-to-country', 8, true, '2026-08-11'),
+      attempt('DK', 'location-to-country', 9, true, '2026-08-12'),
+      attempt('DK', 'country-to-capital', 10, true, '2026-08-10'),
+      attempt('DK', 'country-to-capital', 11, true, '2026-08-11'),
+      attempt('DK', 'country-to-capital', 12, true, '2026-08-12'),
     ]
     const itemProgress = deriveWorldCountriesRecallProgress({
       countryIds: ['NO', 'SE', 'DK'],

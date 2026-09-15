@@ -100,15 +100,24 @@ describe('World Countries Learning Readiness', () => {
       { countryIds: ['NO'], skills: ['location-to-country'] },
       [{ itemId: recallTargetIdFor('NO', 'location-to-country'), at: 1, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10' }],
     )
-    const complete = deriveWorldCountriesRecallProgress(
+    const strong = deriveWorldCountriesRecallProgress(
       { countryIds: ['NO'], skills: ['location-to-country'] },
       [
         { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 1, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10' },
         { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 2, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-11' },
       ],
     )
+    const complete = deriveWorldCountriesRecallProgress(
+      { countryIds: ['NO'], skills: ['location-to-country'] },
+      [
+        { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 1, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10' },
+        { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 2, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-11' },
+        { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 3, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-12' },
+      ],
+    )
 
     expect(isWorldCountriesCountryRecallMastered(entries, 'northern-europe', partial)).toBe(false)
+    expect(isWorldCountriesCountryRecallMastered(entries, 'northern-europe', strong)).toBe(false)
     expect(isWorldCountriesCountryRecallMastered(entries, 'northern-europe', complete)).toBe(true)
     expect(isWorldCountriesCountryLayerEstablished(entries, 'northern-europe', undefined, partial)).toBe(false)
     expect(isWorldCountriesCountryLayerEstablished(entries, 'northern-europe', { subregionId: 'northern-europe', countriesLearnedAt: 1 }, partial)).toBe(true)
@@ -121,7 +130,8 @@ describe('World Countries Learning Readiness', () => {
       [
         { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 1, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10' },
         { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 2, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-11' },
-        { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 3, ok: false, ms: 500, evidenceKind: 'recall', localDate: '2026-08-12' },
+        { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 3, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-12' },
+        { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 4, ok: false, ms: 500, evidenceKind: 'recall', localDate: '2026-08-13' },
       ],
     )
 
@@ -137,20 +147,31 @@ describe('World Countries Learning Readiness', () => {
     ]
     const incidental = deriveWorldCountriesRecallProgress(
       { countryIds: ['NO', 'SE'], skills: ['country-to-capital'] },
-      entries.map((entry, index) => ({
-        itemId: recallTargetIdFor(entry.id, 'country-to-capital'),
-        at: index + 1,
-        ok: true,
-        ms: 500,
-        evidenceKind: 'recall' as const,
-        localDate: '2026-08-10',
-      })),
+      entries.flatMap((entry, index) => [
+        {
+          itemId: recallTargetIdFor(entry.id, 'country-to-capital'),
+          at: index + 1,
+          ok: true,
+          ms: 500,
+          evidenceKind: 'recall' as const,
+          localDate: '2026-08-10',
+        },
+        {
+          itemId: recallTargetIdFor(entry.id, 'country-to-capital'),
+          at: index + 3,
+          ok: true,
+          ms: 500,
+          evidenceKind: 'recall' as const,
+          localDate: '2026-08-11',
+        },
+      ]),
     )
     const mastered = deriveWorldCountriesRecallProgress(
       { countryIds: ['NO', 'SE'], skills: ['country-to-capital'] },
       entries.flatMap((entry, index) => [
         { itemId: recallTargetIdFor(entry.id, 'country-to-capital'), at: index + 1, ok: true, ms: 500, evidenceKind: 'recall' as const, localDate: '2026-08-10' },
         { itemId: recallTargetIdFor(entry.id, 'country-to-capital'), at: index + 3, ok: true, ms: 500, evidenceKind: 'recall' as const, localDate: '2026-08-11' },
+        { itemId: recallTargetIdFor(entry.id, 'country-to-capital'), at: index + 5, ok: true, ms: 500, evidenceKind: 'recall' as const, localDate: '2026-08-12' },
       ]),
     )
 
@@ -168,7 +189,8 @@ describe('World Countries Learning Readiness', () => {
       [
         { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 1, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10' },
         { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 2, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-11' },
-        { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 3, ok: false, ms: 500, evidenceKind: 'recall', localDate: '2026-08-12' },
+        { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 3, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-12' },
+        { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 4, ok: false, ms: 500, evidenceKind: 'recall', localDate: '2026-08-13' },
       ],
     )
 

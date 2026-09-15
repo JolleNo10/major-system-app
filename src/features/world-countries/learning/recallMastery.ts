@@ -18,6 +18,8 @@ export interface WorldCountriesAtomicProgress extends ItemProgress {
   proficiency: WorldCountriesProficiency
 }
 
+const WORLD_COUNTRIES_MASTERY_RECALL_DATES = 3
+
 function sortAttempts(input: readonly Attempt[]): Attempt[] {
   return input
     .map((attempt, index) => ({ attempt, index }))
@@ -26,7 +28,9 @@ function sortAttempts(input: readonly Attempt[]): Attempt[] {
 }
 
 function isQualifyingRecallSuccess(attempt: Attempt): boolean {
-  return attempt.ok && attempt.evidenceKind === 'recall' && Boolean(attempt.localDate)
+  return attempt.ok
+    && attempt.evidenceKind === 'recall'
+    && isValidWorldCountriesLocalDate(attempt.localDate)
 }
 
 function masteryEvidenceDates(attempts: readonly Attempt[]): Set<string> {
@@ -38,7 +42,7 @@ function masteryEvidenceDates(attempts: readonly Attempt[]): Set<string> {
 }
 
 function meetsMasteryEvidenceDateRequirement(dates: ReadonlySet<string>): boolean {
-  return dates.size >= 2
+  return dates.size >= WORLD_COUNTRIES_MASTERY_RECALL_DATES
 }
 
 function hasMasteryEvidence(attempts: readonly Attempt[]): boolean {
@@ -98,6 +102,8 @@ function deriveCurrentProficiency(
 ): { proficiency: WorldCountriesProficiency; mastered: boolean } {
   let proficiency: WorldCountriesProficiency = 'unpractised'
   let latestFailureIndex = -1
+  let acceleratedRecoveryEligible = false
+  let masteredLapseDate: string | null = null
   const reviewEvents = new Map(
     deriveWorldCountriesReviewEvents(attempts).map(event => [event.localDate, event]),
   )
@@ -115,6 +121,9 @@ function deriveCurrentProficiency(
         processedFailureDates.add(localDate)
       }
 
+      acceleratedRecoveryEligible = proficiency === 'mastered' && localDate !== null
+      masteredLapseDate = acceleratedRecoveryEligible ? localDate : null
+
       // Both lapse kinds move one current band. Repeated difficulty can keep
       // stepping down because each later dated lapse event changes the band;
       // attempts clustered on the same date have already been collapsed.
@@ -128,6 +137,22 @@ function deriveCurrentProficiency(
     const successProficiency: WorldCountriesProficiency = postFailureSuccesses >= 2
       ? 'strong'
       : 'developing'
+    const localDate = isValidWorldCountriesLocalDate(attempt.localDate)
+      ? attempt.localDate
+      : null
+    if (
+      acceleratedRecoveryEligible
+      && masteredLapseDate !== null
+      && isQualifyingRecallSuccess(attempt)
+      && localDate !== null
+      && localDate > masteredLapseDate
+    ) {
+      proficiency = 'mastered'
+      acceleratedRecoveryEligible = false
+      masteredLapseDate = null
+      continue
+    }
+
     const mastered = hasMasteryEvidence(postFailureAttempts)
     if (mastered) {
       proficiency = 'mastered'

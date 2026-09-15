@@ -176,7 +176,7 @@ make the target eligible for Review or consolidation. Those queues require the
 corresponding established Learning layer. Today keeps recommending Country
 Learning until that layer has its durable `countriesLearnedAt` milestone,
 except when every active `location-to-country` target has historically
-satisfied the existing two-date explicit free-recall mastery evidence. That
+satisfied the existing three-date explicit free-recall mastery evidence. That
 display/planning-only fallback avoids redundant Country Learning without
 writing a synthetic milestone; it uses historical qualification rather than
 current post-failure proficiency. Later failures therefore remain visible to
@@ -186,7 +186,7 @@ consolidation eligible and Capital Learning may be layered on top; the durable
 milestone meaning remains unchanged. Capital Learning uses the same
 distinction: `capitalsLearnedAt` establishes the Capital layer, while a
 display/planning-only fallback may treat every active `country-to-capital`
-target with historical two-date explicit free-recall mastery evidence as
+target with historical three-date explicit free-recall mastery evidence as
 already known without writing a synthetic milestone. Capital targets likewise
 remain outside Review and consolidation until the Capital layer is
 established.
@@ -266,12 +266,16 @@ is not persisted and clears after two clean recall days. The guided Home
 presents the resulting reason as concise `Why now` summary counts and the
 Review flow gives a per-prompt `Why now` explanation, including repeated
 difficulty and useful overdue wording. Current atomic recall proficiency is
-also projected from this retained history: an isolated failure lowers one
-band (Mastered -> Strong), repeated difficulty can lower it further through
-Developing to Weak, and a retry cannot restore Mastered without two new
-qualifying explicit-recall dates. `hasEverMastered` remains historical
-evidence for the established-layer fallback and is never cleared by a later
-mistake.
+also projected from this retained history. Initial/current Mastery requires
+successful qualifying explicit recall on three distinct learner-local dates
+after the applicable failure boundary, so one date is Developing and two
+dates are Strong in the normal spaced progression. An isolated failure lowers
+one band (Mastered -> Strong); a same-date retry remains Strong, while the
+first later qualifying explicit-recall date restores Mastered. A later
+processed failure before that recovery clears the accelerated recovery and
+returns the target to the normal three-date post-failure progression.
+`hasEverMastered` is historical three-date mastery evidence for the
+established-layer fallback and is never cleared by a later mistake.
 
 ### Playground activities
 

@@ -17,9 +17,11 @@ describe('World Countries progress presentation semantics', () => {
     }, [
       { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 1, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10' },
       { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 2, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-11' },
-      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 3, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10' },
-      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 4, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-11' },
-      { itemId: recallTargetIdFor('NO', 'capital-to-country'), at: 5, ok: false, ms: 500, evidenceKind: 'recognition', localDate: '2026-08-12' },
+      { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 3, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-12' },
+      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 4, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10' },
+      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 5, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-11' },
+      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 6, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-12' },
+      { itemId: recallTargetIdFor('NO', 'capital-to-country'), at: 7, ok: false, ms: 500, evidenceKind: 'recognition', localDate: '2026-08-13' },
     ])
     const progress = deriveWorldCountriesCountryProgress('NO', itemProgress)
 
