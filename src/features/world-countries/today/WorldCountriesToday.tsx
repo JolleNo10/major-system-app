@@ -19,7 +19,7 @@ import {
   isWorldCountriesCountryLayerEstablished,
 } from '@/features/world-countries/learning/learningReadiness'
 import { flattenWorldCountriesRecallHistory, loadWorldCountriesRecallHistory, type WorldCountriesRecallHistory } from '@/features/world-countries/learning/recallHistory'
-import { WORLD_COUNTRIES_CORE_RECALL_SKILLS } from '@/features/world-countries/learning/recallTargets'
+import { recallTargetIdFor, WORLD_COUNTRIES_CORE_RECALL_SKILLS } from '@/features/world-countries/learning/recallTargets'
 import { deriveWorldCountriesScopeProgressForCountries } from '@/features/world-countries/learning/scopeProgress'
 import { deriveWorldCountriesPrimaryStatus, deriveWorldCountriesPrimaryStatusCounts, getCountryProgressColor, WORLD_COUNTRIES_PROGRESS_LABELS } from '@/features/world-countries/learning/progressPresentation'
 import { CountryLearningFlow } from '@/features/world-countries/learning/flows/CountryLearningFlow'
@@ -593,7 +593,37 @@ export function WorldCountriesToday({
         ]),
       ),
     )
-  }, [continent, scopeSummaries])
+    if (!recallProgress) return
+
+    console.log(
+      continent
+        ? `World Countries core mastery detail - ${continent}`
+        : 'World Countries core mastery detail - World',
+    )
+    console.table(scopedCountries.map(country => {
+      const locationProgress = recallProgress.get(
+        recallTargetIdFor(country.id, 'location-to-country'),
+      )
+      const capitalProgress = recallProgress.get(
+        recallTargetIdFor(country.id, 'country-to-capital'),
+      )
+      const locationMastered = locationProgress?.mastered ?? false
+      const capitalMastered = capitalProgress?.mastered ?? false
+
+      return {
+        country: country.country,
+        subregion: getSubregionDefinition(country.subregionId).label,
+        locationState: locationProgress?.proficiency ?? 'unpractised',
+        locationMastered,
+        locationAttempts: locationProgress?.attempts ?? 0,
+        capitalState: capitalProgress?.proficiency ?? 'unpractised',
+        capitalMastered,
+        capitalAttempts: capitalProgress?.attempts ?? 0,
+        masteredCoreSkills: Number(locationMastered) + Number(capitalMastered),
+        fullyMastered: locationMastered && capitalMastered,
+      }
+    }))
+  }, [continent, recallProgress, scopeSummaries, scopedCountries])
   const scopeLabel = continent ?? 'World'
   const navigateWorld = onWorld ?? (() => undefined)
   const reviewCompletionContinuation = reviewCompletion?.mode === 'review'
