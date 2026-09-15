@@ -376,6 +376,19 @@ describe('CapitalLearningFlow orchestration', () => {
     expect(recordAttemptMock).not.toHaveBeenCalled()
   })
 
+  it('writes no skip evidence for a Relearn run that still retains answered Final recall', () => {
+    const container = renderFlow(() => undefined, entries, true, true, new Map(), false, true)
+    const finalGateRail = reachCapitalFinalGate(container)
+
+    act(() => [...finalGateRail.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Skip final recall')?.click())
+    const dialog = container.querySelector<HTMLElement>('[role="dialog"]')!
+    expect(dialog.textContent).toContain('does not change your Learning journey or create recall or mastery evidence')
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-recall-skip-confirm"]')!.click())
+
+    expect(recordAttemptMock).not.toHaveBeenCalled()
+    expect(getSubregionLearningState('northern-europe')).toBeNull()
+  })
+
   it('keeps Capital scheduler progress on the center task surface', () => {
     const container = renderFlow(() => undefined)
 

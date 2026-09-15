@@ -254,10 +254,16 @@ adding a mastery date, while letting one session's repetition drive the
 proficiency band.
 
 The confirmed `Skip as completed` path writes exactly the evidence a completed
-pass implies: one successful `recall` attempt per Country in the scope, under
-the same evidence permission an answered pass uses. The ordered session only
-completes on a clean pass over every Country, so both routes assert the same
-thing, and the learner-facing dialog states it. This reverses the earlier rule
+pass implies: one successful `recall` attempt per Country in the scope. The
+ordered session only completes on a clean pass over every Country, so both
+routes assert the same thing, and the learner-facing dialog states it. Unlike
+an answered pass, the skip writes evidence only when it also writes the
+Learning milestone — one condition covers both, so the dialog's two branches
+stay true. Gating the skip on the evidence permission instead was rejected:
+Today grants that permission unconditionally, so a Relearn skip would mint a
+qualifying date for every Country in an already-completed Subregion, repeatable
+daily, while asserting nothing the milestone did not already record. This
+reverses the earlier rule
 that the skip creates no atomic recall evidence: that rule silently discarded
 the learner's assertion, so a Subregion could be `capitalsLearnedAt` while
 every `country-to-capital` target still read `unpractised`. The asserted
@@ -422,10 +428,10 @@ non-limiting speed threshold and actual answer latency. Location, Country-name,
 Capital, and Combined scopes each start fresh scheduler state. Only the
 whole-Subregion ordered Final recall or an explicitly confirmed `Skip as
 completed` action at the Final recall gate writes the owning Learning milestone;
-journey and scheduler state are not persisted. Both routes additionally write
-ordinary `recall` evidence when the flow is configured to retain it, including
-Today Relearn — Final recall per answered prompt, the skip as one successful
-attempt per Country in the scope; the staged practice scopes remain
+journey and scheduler state are not persisted. Answered Final recall prompts
+write ordinary `recall` evidence whenever the flow is configured to retain it,
+including Today Relearn; the skip writes one successful attempt per Country
+only when it also writes the milestone. The staged practice scopes remain
 evidence-free.
 
 ### The learner-facing Journey

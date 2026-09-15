@@ -167,6 +167,12 @@ export function CapitalLearningFlow({
       void recordWorldCountriesFinalRecallAnswer(country.id, 'country-to-capital', correct, latencyMs)
     }
     : undefined
+  /**
+   * The one condition under which `Skip as completed` is a durable learner
+   * assertion. Evidence and milestone stay together here: a skip that changes
+   * no Learning milestone asserts nothing new to retain.
+   */
+  const persistsSkipAsCompleted = Boolean(recordCompletion && subregion)
   const confirmFinalRecallSkip = () => {
     setFinalRecallSkipDialogOpen(false)
     const next = skipStagedCapitalFinalRecall(flow)
@@ -174,7 +180,7 @@ export function CapitalLearningFlow({
     if (next.phase !== 'complete') return
     // `Skip as completed` asserts the same thing a clean pass demonstrates, so
     // it writes the same evidence.
-    if (recordFinalRecallEvidence) void recordWorldCountriesFinalRecallPass(flow.countryIds, 'country-to-capital')
+    if (persistsSkipAsCompleted) void recordWorldCountriesFinalRecallPass(flow.countryIds, 'country-to-capital')
     completionReporter.current?.report(true)
   }
   const onOrderSaved = (draft: readonly Country[]) => {
@@ -294,7 +300,7 @@ export function CapitalLearningFlow({
       break
   }
   const dockPlacement = ['practice', 'combined-practice', 'final-recall'].includes(flow.phase) ? 'stacked' : 'attached'
-  return <>{rails}<LearningMapSurface continent={continent} scopeCountries={mapEntries} cameraIntent={subregion && !editingOrder ? { kind: 'subregion-learning', subregionId: subregion } : { kind: 'default' }} presentation={mapPresentation} presentationKey={presentationKey} context={context} task={activeTask} mapMeta={mapMeta} dockPlacement={dockPlacement}>{content}</LearningMapSurface>{finalRecallSkipDialogOpen && <FinalRecallSkipDialog learningScopeLabel={learningScopeLabel} track="capitals" willPersistCompletion={Boolean(recordCompletion && subregion)} onDismiss={() => setFinalRecallSkipDialogOpen(false)} onConfirm={confirmFinalRecallSkip} />}</>
+  return <>{rails}<LearningMapSurface continent={continent} scopeCountries={mapEntries} cameraIntent={subregion && !editingOrder ? { kind: 'subregion-learning', subregionId: subregion } : { kind: 'default' }} presentation={mapPresentation} presentationKey={presentationKey} context={context} task={activeTask} mapMeta={mapMeta} dockPlacement={dockPlacement}>{content}</LearningMapSurface>{finalRecallSkipDialogOpen && <FinalRecallSkipDialog learningScopeLabel={learningScopeLabel} track="capitals" willPersistCompletion={persistsSkipAsCompleted} onDismiss={() => setFinalRecallSkipDialogOpen(false)} onConfirm={confirmFinalRecallSkip} />}</>
 }
 
 function capitalSetContext(stagePresentation: LearningStagePresentation<Country['id']> | null, count: number): string {
