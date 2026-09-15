@@ -54,6 +54,23 @@ function dueHistoryFor(countryIds: readonly string[]) {
   )
 }
 
+function dueHistoryWithLatestFailureAt(
+  entries: readonly Country[],
+  latestFailureAtFor: (country: Country, index: number) => number,
+) {
+  return historyFor(
+    entries.flatMap((country, index) => {
+      const itemId = recallTargetIdFor(country.id, 'location-to-country')
+      const latestFailureAt = latestFailureAtFor(country, index)
+      return [
+        { itemId, at: latestFailureAt - 1, ok: true, evidenceKind: 'recall' as const, localDate: '2026-08-18' },
+        { itemId, at: latestFailureAt, ok: false, evidenceKind: 'recall' as const, localDate: TEST_LOCAL_DATE },
+      ]
+    }),
+    entries.map(country => country.id),
+  )
+}
+
 function establishedLearningStatesFor(
   entries: readonly Pick<Country, 'subregionId'>[],
   milestoneAt: number,
@@ -144,7 +161,7 @@ describe('World Countries Today plan', () => {
       activeCountries: entries,
       effectiveCountries: entries,
       effectiveSubregionIds: [...new Set(entries.map(country => country.subregionId))],
-      learningStates: establishedLearningStatesFor(entries, TEST_NOW),
+      learningStates: establishedLearningStatesFor(entries, TEST_NOW - 5 * 60 * 1000),
       history,
       now: TEST_NOW,
       localDate: TEST_LOCAL_DATE,
@@ -313,7 +330,7 @@ describe('World Countries Today plan', () => {
 
   it('offers other weak spots after the first block is successfully recalled today', () => {
     const entries = countries.slice(0, 10)
-    const learningStates = establishedLearningStatesFor(entries, TEST_NOW)
+    const learningStates = establishedLearningStatesFor(entries, TEST_NOW - 5 * 60 * 1000)
     const history = deriveWorldCountriesRecallHistory({
       countryIds: entries.map(country => country.id),
       skills: ['location-to-country', 'country-to-capital'],
@@ -345,7 +362,7 @@ describe('World Countries Today plan', () => {
       effectiveSubregionIds: [...new Set(entries.map(country => country.subregionId))],
       learningStates,
       history: secondHistory,
-      now: TEST_NOW,
+      now: TEST_NOW + 5 * 60 * 1000 + entries.length + 1,
       localDate: TEST_LOCAL_DATE,
     })
     const nextQueueIds = secondPlan.consolidationQueue.map(candidateId)
@@ -360,7 +377,7 @@ describe('World Countries Today plan', () => {
     expect(nextQueueIds.every(itemId => remainingEligibleIds.has(itemId))).toBe(true)
   })
 
-  it('keeps an unresolved same-day failure in scheduled Review', () => {
+  it('withholds an unresolved same-day failure from Today during the cooldown', () => {
     const country = countries.find(entry => entry.id === 'NO')!
     const itemId = recallTargetIdFor(country.id, 'location-to-country')
     const history = historyFor([
@@ -375,13 +392,8 @@ describe('World Countries Today plan', () => {
       localDate: TEST_LOCAL_DATE,
     })
 
-    expect(plan.dueCandidates).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        target: { countryId: country.id, skill: 'location-to-country' },
-        schedule: expect.objectContaining({ reason: 'latest-failure' }),
-      }),
-    ]))
-    expect(plan.reviewOpportunity).toBeNull()
+    expect(plan.dueCandidates).toEqual([])
+    expect(plan.consolidationCandidates).toEqual([])
   })
 
   it('returns a rested target through scheduled Review on a later local date', () => {
@@ -414,6 +426,118 @@ describe('World Countries Today plan', () => {
     ]))
   })
 
+  it('withholds a latest failure from Today while it is inside the five-minute cooldown', () => {
+    const country = countries.find(entry => entry.id === 'NO')!
+    const plan = buildWorldCountriesTodayPlan({
+      activeCountries: [country],
+      learningStates: [{ subregionId: country.subregionId, countriesLearnedAt: 1 }],
+      history: dueHistoryWithLatestFailureAt([country], () => TEST_NOW - (5 * 60 * 1000 - 1_000)),
+      now: TEST_NOW,
+      localDate: TEST_LOCAL_DATE,
+    })
+
+    expect(plan.dueCandidates).toEqual([])
+    expect(plan.consolidationCandidates).toEqual([])
+  })
+
+  it('allows a latest failure into Today at exactly five minutes old', () => {
+    const country = countries.find(entry => entry.id === 'NO')!
+    const plan = buildWorldCountriesTodayPlan({
+      activeCountries: [country],
+      learningStates: [{ subregionId: country.subregionId, countriesLearnedAt: 1 }],
+      history: dueHistoryWithLatestFailureAt([country], () => TEST_NOW - 5 * 60 * 1000),
+      now: TEST_NOW,
+      localDate: TEST_LOCAL_DATE,
+    })
+
+    expect(plan.dueCandidates).toEqual(expect.arrayContaining([
+      expect.objectContaining({ target: { countryId: country.id, skill: 'location-to-country' } }),
+    ]))
+  })
+
+  it('does not immediately consolidate a target established by a Learning milestone', () => {
+    const country = countries.find(entry => entry.id === 'NO')!
+    const plan = buildWorldCountriesTodayPlan({
+      activeCountries: [country],
+      learningStates: [{ subregionId: country.subregionId, countriesLearnedAt: TEST_NOW }],
+      history: historyFor([]),
+      now: TEST_NOW,
+      localDate: TEST_LOCAL_DATE,
+    })
+
+    expect(plan.consolidationCandidates).toEqual([])
+  })
+
+  it('allows a milestone-established target into consolidation at exactly five minutes old', () => {
+    const country = countries.find(entry => entry.id === 'NO')!
+    const plan = buildWorldCountriesTodayPlan({
+      activeCountries: [country],
+      learningStates: [{ subregionId: country.subregionId, countriesLearnedAt: TEST_NOW - 5 * 60 * 1000 }],
+      history: historyFor([]),
+      now: TEST_NOW,
+      localDate: TEST_LOCAL_DATE,
+    })
+
+    expect(plan.consolidationCandidates).toEqual(expect.arrayContaining([
+      expect.objectContaining({ target: { countryId: country.id, skill: 'location-to-country' } }),
+    ]))
+  })
+
+  it('uses the newer attempt or Learning milestone as the cooldown anchor', () => {
+    const country = countries.find(entry => entry.id === 'NO')!
+    const recentAttemptPlan = buildWorldCountriesTodayPlan({
+      activeCountries: [country],
+      learningStates: [{ subregionId: country.subregionId, countriesLearnedAt: TEST_NOW - 24 * 60 * 60 * 1000 }],
+      history: dueHistoryWithLatestFailureAt([country], () => TEST_NOW - (5 * 60 * 1000 - 1_000)),
+      now: TEST_NOW,
+      localDate: TEST_LOCAL_DATE,
+    })
+    const recentMilestonePlan = buildWorldCountriesTodayPlan({
+      activeCountries: [country],
+      learningStates: [{ subregionId: country.subregionId, countriesLearnedAt: TEST_NOW - (5 * 60 * 1000 - 1_000) }],
+      history: historyFor([{
+        itemId: recallTargetIdFor(country.id, 'location-to-country'),
+        at: TEST_NOW - 24 * 60 * 60 * 1000,
+        ok: true,
+        evidenceKind: 'recall',
+        localDate: '2026-08-18',
+      }]),
+      now: TEST_NOW,
+      localDate: TEST_LOCAL_DATE,
+    })
+
+    expect(recentAttemptPlan.dueCandidates).toEqual([])
+    expect(recentAttemptPlan.consolidationCandidates).toEqual([])
+    expect(recentMilestonePlan.dueCandidates).toEqual([])
+    expect(recentMilestonePlan.consolidationCandidates).toEqual([])
+  })
+
+  it('applies the three-item Review minimum after the cooldown filter', () => {
+    const entries = countries.slice(0, 3)
+    const learningStates = countryLayerLearningStatesFor(entries, 1)
+    const justUnderFiveMinutes = TEST_NOW - (5 * 60 * 1000 - 1_000)
+    const exactlyFiveMinutes = TEST_NOW - 5 * 60 * 1000
+    const partiallyCooled = buildWorldCountriesTodayPlan({
+      activeCountries: entries,
+      learningStates,
+      history: dueHistoryWithLatestFailureAt(entries, (_country, index) => index === 0 ? justUnderFiveMinutes : exactlyFiveMinutes),
+      now: TEST_NOW,
+      localDate: TEST_LOCAL_DATE,
+    })
+    const fullyCooled = buildWorldCountriesTodayPlan({
+      activeCountries: entries,
+      learningStates,
+      history: dueHistoryWithLatestFailureAt(entries, () => exactlyFiveMinutes),
+      now: TEST_NOW,
+      localDate: TEST_LOCAL_DATE,
+    })
+
+    expect(partiallyCooled.dueCandidates).toHaveLength(2)
+    expect(partiallyCooled.reviewOpportunity?.kind).not.toBe('review')
+    expect(fullyCooled.dueCandidates).toHaveLength(3)
+    expect(fullyCooled.reviewOpportunity?.kind).toBe('review')
+  })
+
   it.each([
     ['recognition', 'recognition' as const],
     ['legacy', undefined],
@@ -422,7 +546,7 @@ describe('World Countries Today plan', () => {
     const itemId = recallTargetIdFor(country.id, 'location-to-country')
     const history = historyFor([{
       itemId,
-      at: TEST_NOW,
+      at: TEST_NOW - 24 * 60 * 60 * 1000,
       ok: true,
       ms: 100,
       ...(evidenceKind ? { evidenceKind } : {}),
@@ -430,7 +554,7 @@ describe('World Countries Today plan', () => {
     }])
     const plan = buildWorldCountriesTodayPlan({
       activeCountries: [country],
-      learningStates: [{ subregionId: country.subregionId, countriesLearnedAt: TEST_NOW }],
+      learningStates: [{ subregionId: country.subregionId, countriesLearnedAt: TEST_NOW - 24 * 60 * 60 * 1000 }],
       history,
       now: TEST_NOW,
       localDate: TEST_LOCAL_DATE,
@@ -663,7 +787,7 @@ describe('World Countries Today plan', () => {
     const countryEstablished = buildWorldCountriesTodayPlan({
       activeCountries: countries.filter(country => country.id === 'NO'),
       history: historyFor([]),
-      learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: TEST_NOW }],
+      learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: TEST_NOW - 24 * 60 * 60 * 1000 }],
       now: TEST_NOW,
       localDate: TEST_LOCAL_DATE,
       effectiveSubregionIds: ['northern-europe'],
@@ -965,7 +1089,7 @@ describe('World Countries Today plan', () => {
     const consolidation = buildWorldCountriesTodayPlan({
       activeCountries: [country],
       history: historyFor([]),
-      learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: TEST_NOW, capitalsLearnedAt: TEST_NOW }],
+      learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: TEST_NOW - 5 * 60 * 1000, capitalsLearnedAt: TEST_NOW - 5 * 60 * 1000 }],
       now: TEST_NOW,
       localDate: TEST_LOCAL_DATE,
     })
@@ -996,7 +1120,7 @@ describe('World Countries Today plan', () => {
         { itemId: 'world-countries:location-to-country:NO', at: 1, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-16' },
         { itemId: 'world-countries:location-to-country:NO', at: 2, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-17' },
       ]),
-      learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: now, capitalsLearnedAt: now }],
+      learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: now - 5 * 60 * 1000, capitalsLearnedAt: now - 5 * 60 * 1000 }],
       now,
       localDate: '2026-08-18',
     })

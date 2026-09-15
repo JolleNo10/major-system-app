@@ -25,6 +25,7 @@ import { interleaveWorldCountriesTodayReviewCandidates } from './reviewInterleav
 
 export const WORLD_COUNTRIES_TODAY_REVIEW_BLOCK_SIZE = 8
 const WORLD_COUNTRIES_TODAY_MIN_REVIEW_OPPORTUNITY_DUE_ITEMS = 3
+const WORLD_COUNTRIES_TODAY_MIN_ACTIVITY_AGE_MS = 5 * 60 * 1000
 const WORLD_COUNTRIES_TODAY_HIGH_CONSOLIDATION_MIN_FRAGILE_TARGETS = 4
 const WORLD_COUNTRIES_TODAY_HIGH_CONSOLIDATION_MIN_FRAGILE_RATIO = 0.5
 
@@ -141,6 +142,19 @@ function createsConsolidationPressure(proficiency: WorldCountriesProficiency): b
   return proficiency === 'unpractised'
     || proficiency === 'weak'
     || proficiency === 'developing'
+}
+
+function hasMinimumActivityAge(
+  schedule: WorldCountriesReviewSchedule,
+  milestoneAt: number | null,
+  now: number,
+): boolean {
+  const latestRelevantActivityAt = Math.max(
+    schedule.latestAttemptAt ?? Number.NEGATIVE_INFINITY,
+    milestoneAt ?? Number.NEGATIVE_INFINITY,
+  )
+  return latestRelevantActivityAt === Number.NEGATIVE_INFINITY
+    || now - latestRelevantActivityAt >= WORLD_COUNTRIES_TODAY_MIN_ACTIVITY_AGE_MS
 }
 
 function deriveConsolidationPressure({
@@ -379,6 +393,7 @@ export function buildWorldCountriesTodayPlan(
       const milestoneAt = introductions.get(itemId)?.milestoneAt ?? null
       const candidate = createCandidate(country, skill, input.history, reviewEligible, milestoneAt, temporalOptions)
       if (!candidate) continue
+      if (!hasMinimumActivityAge(candidate.schedule, milestoneAt, now)) continue
       if (candidate.schedule.due) dueCandidates.push({ ...candidate, purpose: 'review' })
       const recalledSuccessfullyToday = candidate.schedule.qualifyingRecallDates.includes(localDate)
       if (!progressByTarget.get(itemId)!.mastered && !recalledSuccessfullyToday) {

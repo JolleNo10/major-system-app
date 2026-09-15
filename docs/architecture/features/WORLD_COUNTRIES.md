@@ -216,6 +216,10 @@ than a daily or visit gate. Consolidation remains derived from retained
 evidence: an established, non-mastered target that has already received
 successful qualifying explicit recall on the current learner-local date rests
 from consolidation for that date. This does not mark the target Mastered;
+Today surfaces scheduled Review and consolidation candidates only after a
+five-minute cooldown from the newer of the latest attempt and applicable
+Learning milestone. This planning filter does not modify retained evidence,
+proficiency, or scheduler state.
 scheduled due Review remains authoritative and independent. After a completed
 block, Today refreshes retained evidence and can expose another
 scheduler-derived block immediately: when other eligible weak targets remain,
