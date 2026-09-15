@@ -64,7 +64,7 @@ afterEach(() => {
   recordAttemptMock.mockClear()
 })
 
-function renderFlow(onPhaseChange: (phase: string) => void, flowEntries: readonly Country[] = entries, countriesEstablished = false, capitalsEstablished = false, recallProgress?: RecallProgress, recordCompletion = true): HTMLDivElement {
+function renderFlow(onPhaseChange: (phase: string) => void, flowEntries: readonly Country[] = entries, countriesEstablished = false, capitalsEstablished = false, recallProgress?: RecallProgress, recordCompletion = true, recordFinalRecallEvidence = recordCompletion): HTMLDivElement {
   const container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
@@ -80,6 +80,7 @@ function renderFlow(onPhaseChange: (phase: string) => void, flowEntries: readonl
         capitalsEstablished={capitalsEstablished}
         recallProgress={recallProgress}
         recordCompletion={recordCompletion}
+        recordFinalRecallEvidence={recordFinalRecallEvidence}
         fuzzyMatching={false}
         onPhaseChange={onPhaseChange}
         onExit={() => undefined}
@@ -286,8 +287,8 @@ describe('CapitalLearningFlow orchestration', () => {
     }))
   })
 
-  it('writes no Final recall evidence for a non-durable Relearn run', () => {
-    const container = renderFlow(() => undefined, entries, true, true, new Map(), false)
+  it('records Final recall evidence for a non-durable Relearn run without writing a milestone', () => {
+    const container = renderFlow(() => undefined, entries, true, true, new Map(), false, true)
 
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-practice"]')!.click())
     for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -296,7 +297,11 @@ describe('CapitalLearningFlow orchestration', () => {
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-submit"]')!.click())
 
-    expect(recordAttemptMock).not.toHaveBeenCalled()
+    expect(recordAttemptMock).toHaveBeenCalledWith('NO', 'country-to-capital', expect.objectContaining({
+      ok: true,
+      ms: 1234,
+      evidenceKind: 'recall',
+    }))
     expect(getSubregionLearningState('northern-europe')).toBeNull()
   })
 
@@ -349,6 +354,7 @@ describe('CapitalLearningFlow orchestration', () => {
 
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-recall-skip-confirm"]')!.click())
 
+    expect(recordAttemptMock).not.toHaveBeenCalled()
     expect(phases).toContain('complete')
     expect(getSubregionLearningState('northern-europe')).toMatchObject({ capitalsLearnedAt: expect.any(Number) })
     expect(container.textContent).toContain('Capitals learned')

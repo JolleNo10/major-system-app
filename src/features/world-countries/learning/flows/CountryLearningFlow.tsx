@@ -93,6 +93,7 @@ export function CountryLearningFlow({
   capitalsEstablished = false,
   recallProgress,
   recordCompletion = true,
+  recordFinalRecallEvidence = recordCompletion,
   allowIncorrectSpellingPractice = false,
 }: {
   continent: Continent
@@ -115,6 +116,7 @@ export function CountryLearningFlow({
   capitalsEstablished?: boolean
   recallProgress?: RecallProgress
   recordCompletion?: boolean
+  recordFinalRecallEvidence?: boolean
   allowIncorrectSpellingPractice?: boolean
 }) {
   const learningScopeLabel = scopeLabel ?? (subregion ? getSubregionDefinition(subregion).label : 'Learning scope')
@@ -161,10 +163,10 @@ export function CountryLearningFlow({
   }
   /**
    * Final recall is one typed free-recall pass over the whole scope, so it uses
-   * the same evidence seam as guided review. A non-durable Relearn run keeps
-   * writing nothing.
+   * the same evidence seam as guided review. Evidence retention is independent
+   * from whether this run persists the durable Learning milestone.
    */
-  const recordFinalAnswer = recordCompletion
+  const recordFinalAnswer = recordFinalRecallEvidence
     ? (country: Country, correct: boolean, latencyMs: number) => {
       void recordWorldCountriesAttempt(country.id, 'location-to-country', {
         at: Date.now(),

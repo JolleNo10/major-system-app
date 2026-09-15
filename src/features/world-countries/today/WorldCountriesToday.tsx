@@ -772,6 +772,7 @@ export function WorldCountriesToday({
         regionCompletion={regionCompletion}
         completedRegionAction={learningRun.kind === 'curriculum' ? completedRegionAction : undefined}
         recordCompletion={learningRun.kind === 'curriculum'}
+        recordFinalRecallEvidence={true}
         completionCelebration={completionCelebration}
       />
     }
@@ -795,6 +796,7 @@ export function WorldCountriesToday({
       regionCompletion={regionCompletion}
       completedRegionAction={learningRun.kind === 'curriculum' ? completedRegionAction : undefined}
       recordCompletion={learningRun.kind === 'curriculum'}
+      recordFinalRecallEvidence={true}
       completionCelebration={completionCelebration}
     />
   }

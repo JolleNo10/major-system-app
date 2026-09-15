@@ -241,20 +241,27 @@ The whole-scope ordered Final recall is a third evidence writer alongside Drill
 and Today. Each answered Final recall prompt writes one ordinary `recall`
 attempt for that Country's owning core skill — `location-to-country` for
 Country Learning, `country-to-capital` for Capital Learning — through the same
-feature adapter and answer lifecycle guided review uses. Recording the staged
-Meet, Find/Recall, and Mix phases too is rejected: those repeat to criterion
-inside one session, so they would add many attempts on a single local date
-without adding a mastery date, while letting one session's repetition drive the
-proficiency band. A non-durable Relearn run writes no Final recall evidence,
-and the confirmed `Skip as completed` path continues to write none.
+feature adapter and answer lifecycle guided review uses. For the normal Today
+paths, Curriculum Final recall writes both recall evidence and the applicable
+Learning completion, while Relearn Final recall writes recall evidence only;
+the flow's explicit evidence permission is independent from its milestone
+permission. Reusing the milestone `recordCompletion` flag for both was
+rejected because it discards genuine free-recall evidence during Relearn and
+conflates two different sources of truth. Recording the staged Meet,
+Find/Recall, and Mix phases too is rejected: those repeat to criterion inside
+one session, so they would add many attempts on a single local date without
+adding a mastery date, while letting one session's repetition drive the
+proficiency band. The confirmed `Skip as completed` path continues to write no
+atomic recall evidence.
 
 Learning and Review
 completion surfaces use existing milestone/evidence truth. Checkpoint docks
 own completion and next-action narration while map context remains scope
 orientation. Completed Review counters are transient Home feedback rather than
 another progress authority. A parallel `finalRecallSkipped` flag or synthetic
-successful attempts is rejected: the existing Learning milestone remains the
-single source of truth for this explicit learner assertion.
+successful attempts is rejected: a skipped Final recall is represented by the
+existing Learning milestone, while answered Final recall prompts are retained
+as real evidence rather than being fabricated from that milestone.
 
 ### Derived Progress view
 
@@ -406,7 +413,8 @@ whole-Subregion ordered Final recall or an explicitly confirmed `Skip as
 completed` action at the Final recall gate writes the owning Learning milestone;
 the skip creates no recall or mastery evidence, and journey and scheduler state
 are not persisted. Final recall additionally writes ordinary `recall` evidence
-per answered prompt; the staged practice scopes remain evidence-free.
+per answered prompt when the flow is configured to retain it, including Today
+Relearn; the staged practice scopes remain evidence-free.
 
 ### The learner-facing Journey
 
@@ -465,18 +473,20 @@ learned Subregion can remain the Journey orientation while the hub falls back to
 the scope's planner recommendation when unfinished curriculum remains elsewhere.
 
 A learned Subregion can be relearned from the guided rails. A Relearn run is
-non-durable: it writes no milestone and no evidence, exposes no next-region
-handoff, and never clears existing completion. Completion celebration level is
-derived from learning completeness and never from the run Subregion's position
-in the effective Continent order. A completed run celebrates at Continent level
-when every Country in the run's Continent has an established Countries +
-Capitals layer, and at Subregion level otherwise. The Continent completion badge
-follows the same predicate, so relearning any Subregion of a still-complete
-Continent re-presents it, while a run that leaves the Continent incomplete
-presents neither the Continent celebration nor the badge. The badge's
-next-Continent handoff is optional: it is omitted when the World Journey has no
-remaining Continent, and the badge is suppressed entirely while the World
-planner still recommends Journey work inside the completed Continent.
+non-durable with respect to Learning milestones: it writes no milestone, but
+answered whole-scope Final recall prompts write ordinary recall evidence. It
+exposes no next-region handoff and never clears existing completion. Completion
+celebration level is derived from learning completeness and never from the run
+Subregion's position in the effective Continent order. A completed run
+celebrates at Continent level when every Country in the run's Continent has an
+established Countries + Capitals layer, and at Subregion level otherwise. The
+Continent completion badge follows the same predicate, so relearning any
+Subregion of a still-complete Continent re-presents it, while a run that leaves
+the Continent incomplete presents neither the Continent celebration nor the
+badge. The badge's next-Continent handoff is optional: it is omitted when the
+World Journey has no remaining Continent, and the badge is suppressed entirely
+while the World planner still recommends Journey work inside the completed
+Continent.
 
 Guided Learning presents the internal staged phases with learner-facing
 language: Meet, Find, Recall, Mix, and Final recall. One-Set learner-facing

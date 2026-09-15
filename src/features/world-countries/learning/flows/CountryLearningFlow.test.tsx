@@ -9,7 +9,12 @@ import { CountryLearningFlow } from './CountryLearningFlow'
 
 const useRailsMock = vi.hoisted(() => vi.fn())
 const learningMapSurfaceMock = vi.hoisted(() => vi.fn())
+const recordAttemptMock = vi.hoisted(() => vi.fn(() => Promise.resolve()))
 vi.mock('@/app/layout/PageLayoutContext', () => ({ useRails: useRailsMock }))
+vi.mock('@/features/world-countries/learning/recallProgress', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/features/world-countries/learning/recallProgress')>()),
+  recordWorldCountriesAttempt: recordAttemptMock,
+}))
 vi.mock('./LearningMapSurface', () => ({ LearningMapSurface: (props: { context: ReactNode; mapMeta?: ReactNode; children: ReactNode }) => { learningMapSurfaceMock(props); return createElement('div', null, props.mapMeta, props.context, props.children) } }))
 vi.mock('./StagedWalkthroughStep', () => ({
   StagedWalkthroughStep: ({ onMove, onContinue }: { onMove: (offset: -1 | 1) => void; onContinue: () => void }) => <>
@@ -31,7 +36,7 @@ vi.mock('./StagedLearningReadyStep', () => ({
   StagedLearningReadyStep: ({ title, summary, nextDescription, nextLabel, onNext, celebration }: { title: string; summary: string; nextDescription: string; nextLabel: string; onNext: () => void; celebration?: string }) => <><div data-testid="ready-copy">{title} {summary} {nextDescription} {nextLabel}</div>{celebration && <span data-celebration-level={celebration} />}<button type="button" data-testid="ready-next" onClick={onNext}>Next</button></>,
   FinalRecallGate: ({ onStart }: { onStart: () => void }) => <button type="button" data-testid="final-start" onClick={onStart}>Final recall</button>,
 }))
-vi.mock('./StagedFinalRecallStep', () => ({ StagedFinalRecallStep: ({ onSubmit }: { onSubmit: (correct: boolean) => void }) => <button type="button" data-testid="final-submit" onClick={() => onSubmit(true)}>Correct final</button> }))
+vi.mock('./StagedFinalRecallStep', () => ({ StagedFinalRecallStep: ({ entries: finalEntries, onSubmit, onRecordAnswer }: { entries: readonly Country[]; onSubmit: (correct: boolean) => void; onRecordAnswer?: (country: Country, correct: boolean, latencyMs: number) => void }) => <button type="button" data-testid="final-submit" onClick={() => { onRecordAnswer?.(finalEntries[0]!, true, 1234); onSubmit(true) }}>Correct final</button> }))
 vi.mock('@/features/world-countries/mnemonics/GeographyMnemonicView', () => ({ GeographyMnemonicView: () => null }))
 vi.mock('@/features/world-countries/mnemonics/GeographyMnemonicEditor', () => ({ GeographyMnemonicEditor: () => null }))
 vi.mock('@/features/world-countries/mnemonics/CountryCapitalMnemonicPanel', () => ({ CountryCapitalMnemonicPanel: () => null }))
@@ -72,6 +77,7 @@ afterEach(() => {
   localStorage.clear()
   useRailsMock.mockReset()
   learningMapSurfaceMock.mockReset()
+  recordAttemptMock.mockClear()
 })
 
 function renderRail() {
@@ -97,7 +103,7 @@ function renderLeftRail() {
   return mount
 }
 
-function renderFlow(flowEntries: readonly Country[] = entries, countriesEstablished = false, capitalsEstablished = false, recordCompletion = true): HTMLDivElement {
+function renderFlow(flowEntries: readonly Country[] = entries, countriesEstablished = false, capitalsEstablished = false, recordCompletion = true, recordFinalRecallEvidence = recordCompletion): HTMLDivElement {
   const container = document.createElement('div')
   document.body.append(container)
   act(() => {
@@ -110,6 +116,7 @@ function renderFlow(flowEntries: readonly Country[] = entries, countriesEstablis
         countriesEstablished={countriesEstablished}
         capitalsEstablished={capitalsEstablished}
         recordCompletion={recordCompletion}
+        recordFinalRecallEvidence={recordFinalRecallEvidence}
         newItemsPerSet={3}
         schedulerSettings={{ masteryLatencyFactor: 1.4, sessionUnmasteredShare: 0.5 }}
         fuzzyMatching={false}
@@ -339,6 +346,46 @@ describe('CountryLearningFlow scheduler progress wiring', () => {
     expect(restartedRail.textContent).not.toContain('Learning progress')
   })
 
+  it('records Curriculum Final recall as Country recall evidence after staged practice', () => {
+    const container = renderFlow()
+
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-location"]')!.click())
+    for (let attempt = 0; attempt < 3; attempt += 1) act(() => container.querySelector<HTMLButtonElement>('[data-testid="location-submit"]')!.click())
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
+    for (let attempt = 0; attempt < 3; attempt += 1) act(() => container.querySelector<HTMLButtonElement>('[data-testid="practice-submit"]')!.click())
+    expect(recordAttemptMock).not.toHaveBeenCalled()
+
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-submit"]')!.click())
+
+    expect(recordAttemptMock).toHaveBeenCalledWith('NO', 'location-to-country', expect.objectContaining({
+      ok: true,
+      ms: 1234,
+      evidenceKind: 'recall',
+    }))
+    expect(getSubregionLearningState('northern-europe')).toMatchObject({ countriesLearnedAt: expect.any(Number) })
+  })
+
+  it('records Relearn Final recall without writing a Country Learning milestone', () => {
+    const container = renderFlow(entries, true, true, false, true)
+
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="start-location"]')!.click())
+    for (let attempt = 0; attempt < 3; attempt += 1) act(() => container.querySelector<HTMLButtonElement>('[data-testid="location-submit"]')!.click())
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
+    for (let attempt = 0; attempt < 3; attempt += 1) act(() => container.querySelector<HTMLButtonElement>('[data-testid="practice-submit"]')!.click())
+    expect(recordAttemptMock).not.toHaveBeenCalled()
+
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="ready-next"]')!.click())
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-submit"]')!.click())
+
+    expect(recordAttemptMock).toHaveBeenCalledWith('NO', 'location-to-country', expect.objectContaining({
+      ok: true,
+      ms: 1234,
+      evidenceKind: 'recall',
+    }))
+    expect(getSubregionLearningState('northern-europe')).toBeNull()
+  })
+
   it('confirms skipping Final recall before completing Country Learning', () => {
     const container = renderFlow(entries, false, false, true)
     const finalGateRail = reachCountryFinalGate(container)
@@ -373,6 +420,7 @@ describe('CountryLearningFlow scheduler progress wiring', () => {
     })
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-recall-skip-confirm"]')!.click())
 
+    expect(recordAttemptMock).not.toHaveBeenCalled()
     expect(container.textContent).toContain('Countries learned')
     expect(getSubregionLearningState('northern-europe')).toMatchObject({ countriesLearnedAt: expect.any(Number) })
     expect(container.querySelector('[data-testid="final-recall-skip-confirm"]')).toBeNull()
