@@ -11,6 +11,7 @@ import { getWorldMetadata } from '@/features/world-countries/geography/worldMeta
 import { getAllSubregionLearningStates, useWorldCountriesSubregionLearningRevision } from '@/features/world-countries/learning/subregionLearningStore'
 import { useWorldCountriesGeographyRevision } from '@/features/world-countries/geography/geographyRefresh'
 import { deriveWorldCountriesCountryProgress, deriveWorldCountriesRecallProgress, type RecallProgress } from '@/features/world-countries/learning/recallProgress'
+import { deriveWorldCountriesReviewSchedule } from '@/features/world-countries/learning/reviewSchedule'
 import {
   createWorldCountriesEstablishedLearningReadinessByCountry,
   createWorldCountriesLearningPattern,
@@ -19,7 +20,7 @@ import {
   isWorldCountriesCountryLayerEstablished,
 } from '@/features/world-countries/learning/learningReadiness'
 import { flattenWorldCountriesRecallHistory, loadWorldCountriesRecallHistory, type WorldCountriesRecallHistory } from '@/features/world-countries/learning/recallHistory'
-import { WORLD_COUNTRIES_CORE_RECALL_SKILLS } from '@/features/world-countries/learning/recallTargets'
+import { recallTargetIdFor, WORLD_COUNTRIES_CORE_RECALL_SKILLS } from '@/features/world-countries/learning/recallTargets'
 import { deriveWorldCountriesScopeProgressForCountries } from '@/features/world-countries/learning/scopeProgress'
 import { deriveWorldCountriesPrimaryStatus, deriveWorldCountriesPrimaryStatusCounts, getCountryProgressColor, WORLD_COUNTRIES_PROGRESS_LABELS } from '@/features/world-countries/learning/progressPresentation'
 import { CountryLearningFlow } from '@/features/world-countries/learning/flows/CountryLearningFlow'
@@ -271,6 +272,83 @@ export function WorldCountriesToday({
     ),
     [learningStates, recallProgress, scopedCountries],
   )
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    if (evidence.status !== 'ready' || !recallProgress || !plan) return
+
+    const europeCountries = scopedCountries.filter(country => country.continent === 'Europe')
+    if (europeCountries.length === 0) return
+
+    const hasCandidate = (
+      candidates: WorldCountriesTodayPlan['dueCandidates'] | WorldCountriesTodayPlan['consolidationCandidates'],
+      countryId: string,
+      skill: typeof WORLD_COUNTRIES_CORE_RECALL_SKILLS[number],
+    ) => candidates.some(candidate => (
+      candidate.target.countryId === countryId && candidate.target.skill === skill
+    ))
+
+    const debugDump = {
+      generatedAt: new Date().toISOString(),
+      countries: europeCountries.map(country => {
+        const coreProgress = deriveWorldCountriesCountryProgress(country.id, recallProgress)
+        const readiness = learningReadinessByCountry.get(country.id) ?? 'NOT_LEARNED'
+        const progressForSkill = (skill: typeof WORLD_COUNTRIES_CORE_RECALL_SKILLS[number]) => {
+          const itemId = recallTargetIdFor(country.id, skill)
+          const attempts = evidence.history.get(itemId) ?? []
+          const progress = recallProgress.get(itemId)!
+          const schedule = deriveWorldCountriesReviewSchedule(attempts)
+
+          return {
+            proficiency: progress.proficiency,
+            mastered: progress.mastered,
+            hasEverMastered: progress.hasEverMastered,
+            qualifyingRecallDates: schedule.qualifyingRecallDates,
+            schedule,
+            inReviewCandidates: hasCandidate(plan.dueCandidates, country.id, skill),
+            inStrengthenCandidates: hasCandidate(plan.consolidationCandidates, country.id, skill),
+            attempts: attempts.map(attempt => ({
+              at: attempt.at,
+              timestamp: new Date(attempt.at).toISOString(),
+              localDate: attempt.localDate,
+              ok: attempt.ok,
+              evidenceKind: attempt.evidenceKind,
+              ms: attempt.ms,
+            })),
+          }
+        }
+
+        return {
+          country: country.country,
+          subregion: getSubregionDefinition(country.subregionId).label,
+          readiness,
+          coreState: coreProgress.coreState,
+          complete: coreProgress.complete,
+          fullyMastered: coreProgress.complete,
+          coreMasteredSkills: coreProgress.coreMasteredSkills,
+          coreSkillCount: coreProgress.coreSkillCount,
+          locationToCountry: progressForSkill('location-to-country'),
+          countryToCapital: progressForSkill('country-to-capital'),
+        }
+      }),
+    }
+
+    console.table(debugDump.countries.map(country => ({
+      Country: country.country,
+      Subregion: country.subregion,
+      'Core State': country.coreState,
+      'Location State': country.locationToCountry.proficiency,
+      'Location Dates': country.locationToCountry.qualifyingRecallDates.join(', '),
+      'Capital State': country.countryToCapital.proficiency,
+      'Capital Dates': country.countryToCapital.qualifyingRecallDates.join(', '),
+      'Location Due': country.locationToCountry.schedule.due,
+      'Capital Due': country.countryToCapital.schedule.due,
+    })))
+    console.log('World Countries Europe recall debug', debugDump)
+    console.log(
+      'World Countries Europe recall debug JSON',
+      JSON.stringify(debugDump, null, 2),
+    )
+  }, [evidence, learningReadinessByCountry, plan, recallProgress, scopedCountries])
   const scopeLearningComplete = Boolean(
     evidence.status === 'ready'
     && scopedCountries.length > 0
