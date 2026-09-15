@@ -112,11 +112,13 @@ function historyForLocationProgress(
 
 describe('World Countries Today plan', () => {
   it.each([
-    [1, 1],
-    [7, 7],
-    [8, 8],
-    [10, 8],
-  ])('bounds a %i-item due population to %i initial Review candidates', (readyCount, expectedBlockSize) => {
+    [1, 1, 'consolidate'],
+    [2, 2, 'consolidate'],
+    [3, 3, 'review'],
+    [7, 7, 'review'],
+    [8, 8, 'review'],
+    [10, 8, 'review'],
+  ])('bounds a %i-item due population to %i initial Review candidates and surfaces %s', (readyCount, expectedBlockSize, expectedOpportunityKind) => {
     const entries = countries.slice(0, readyCount)
     const plan = buildWorldCountriesTodayPlan({
       activeCountries: entries,
@@ -129,7 +131,7 @@ describe('World Countries Today plan', () => {
 
     expect(plan.dueCount).toBe(readyCount)
     expect(plan.reviewQueue).toHaveLength(expectedBlockSize)
-    expect(plan.reviewOpportunity).toMatchObject({ kind: 'review' })
+    expect(plan.reviewOpportunity).toMatchObject({ kind: expectedOpportunityKind })
   })
 
   it('uses the same eight-item bound for weak-spot practice', () => {
@@ -379,7 +381,7 @@ describe('World Countries Today plan', () => {
         schedule: expect.objectContaining({ reason: 'latest-failure' }),
       }),
     ]))
-    expect(plan.reviewOpportunity?.kind).toBe('review')
+    expect(plan.reviewOpportunity).toBeNull()
   })
 
   it('returns a rested target through scheduled Review on a later local date', () => {
@@ -698,7 +700,7 @@ describe('World Countries Today plan', () => {
     })
 
     expect(plan.curriculumRecommendation?.track).toBe('learn-capitals')
-    expect(plan.reviewOpportunity?.kind).toBe('review')
+    expect(plan.reviewOpportunity?.kind).toBe('consolidate')
     expect(plan.reviewQueue).toEqual(expect.arrayContaining([
       expect.objectContaining({ target: { countryId: 'NO', skill: 'location-to-country' } }),
     ]))
@@ -719,7 +721,7 @@ describe('World Countries Today plan', () => {
     })
 
     expect(plan.curriculumRecommendation).toBeNull()
-    expect(plan.reviewOpportunity?.kind).toBe('review')
+    expect(plan.reviewOpportunity?.kind).toBe('consolidate')
     expect(plan.reviewQueue).toEqual(expect.arrayContaining([
       expect.objectContaining({ target: { countryId: 'NO', skill: 'country-to-capital' } }),
     ]))
@@ -809,7 +811,7 @@ describe('World Countries Today plan', () => {
     expect(plan.reviewOpportunity).toBeNull()
   })
 
-  it('keeps the curriculum journey focus while due review owns Today priority', () => {
+  it('keeps the curriculum journey focus while a small due population remains below Review priority', () => {
     const northern = countries.find(country => country.subregionId === 'northern-europe')!
     const southern = countries.find(country => country.subregionId === 'southern-europe')!
     const plan = buildWorldCountriesTodayPlan({
@@ -824,7 +826,7 @@ describe('World Countries Today plan', () => {
       localDate: '2026-08-19',
     })
 
-    expect(plan.reviewOpportunity?.kind).toBe('review')
+    expect(plan.reviewOpportunity?.kind).toBe('consolidate')
     expect(plan.curriculumRecommendation?.track).toBe('learn-countries')
     expect(plan.curriculumRecommendation?.subregionId).toBe('northern-europe')
     expect(plan.plannerFocusSubregionId).toBe('northern-europe')
@@ -937,7 +939,7 @@ describe('World Countries Today plan', () => {
     expect(plan.plannerFocusSubregionId).toBe('northern-europe')
   })
 
-  it('derives due Review, Journey Learning, and fallback consolidation independently', () => {
+  it('derives due Review candidates, Journey Learning, and fallback consolidation independently', () => {
     const country = countries.find(entry => entry.id === 'NO')!
     const due = buildWorldCountriesTodayPlan({
       activeCountries: [country],
@@ -948,7 +950,7 @@ describe('World Countries Today plan', () => {
       ]),
       localDate: '2026-08-19',
     })
-    expect(due.reviewOpportunity?.kind).toBe('review')
+    expect(due.reviewOpportunity?.kind).toBe('consolidate')
     expect(due.curriculumRecommendation).toBeNull()
 
     const learning = buildWorldCountriesTodayPlan({

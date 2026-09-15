@@ -75,8 +75,9 @@ through the feature-owned geography subscription signal.
   Review/practice opportunities, bounded due-review and targeted consolidation
   queues with retry state, guided setup/checkpoint states, and delegation into
   existing Learning flows. Its Review opportunity chooses scheduled due review
-  before bounded unfinished-core consolidation; curriculum Learning remains
-  independently available. It consumes learning, geography, maps, and
+  when at least three due targets exist; otherwise it chooses bounded
+  unfinished-core consolidation. Curriculum Learning remains independently
+  available. It consumes learning, geography, maps, and
   feature-local UI but not Drill or Recite internals.
 - `learning/flows/` owns Country and Capital Learning UI and orchestration.
   Learning modes own their milestone writes; the guided UI is not Drill

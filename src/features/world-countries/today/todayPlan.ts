@@ -24,6 +24,7 @@ import {
 import { interleaveWorldCountriesTodayReviewCandidates } from './reviewInterleaving'
 
 export const WORLD_COUNTRIES_TODAY_REVIEW_BLOCK_SIZE = 8
+const WORLD_COUNTRIES_TODAY_MIN_REVIEW_OPPORTUNITY_DUE_ITEMS = 3
 const WORLD_COUNTRIES_TODAY_HIGH_CONSOLIDATION_MIN_FRAGILE_TARGETS = 4
 const WORLD_COUNTRIES_TODAY_HIGH_CONSOLIDATION_MIN_FRAGILE_RATIO = 0.5
 
@@ -74,7 +75,7 @@ export interface WorldCountriesTodayPlan {
   plannerFocusSubregionId: SubregionId | null
   /** The same readiness-derived curriculum action for every active Subregion. */
   curriculumRecommendationsBySubregion: ReadonlyMap<SubregionId, WorldCountriesTodayLearningRecommendation | null>
-  /** Independent Review-area opportunity: scheduled review first, weak spots second. */
+  /** Independent Review-area opportunity: sufficient scheduled review first, consolidation otherwise. */
   reviewOpportunity: WorldCountriesTodayReviewOpportunity
   /** Derived pressure from established, non-mastered recall targets in scope. */
   consolidationPressure: WorldCountriesTodayConsolidationPressure
@@ -422,7 +423,7 @@ export function buildWorldCountriesTodayPlan(
     consolidationCandidates,
     WORLD_COUNTRIES_TODAY_REVIEW_BLOCK_SIZE,
   )
-  const reviewOpportunity: WorldCountriesTodayReviewOpportunity = dueCandidates.length > 0
+  const reviewOpportunity: WorldCountriesTodayReviewOpportunity = dueCandidates.length >= WORLD_COUNTRIES_TODAY_MIN_REVIEW_OPPORTUNITY_DUE_ITEMS
     ? { kind: 'review', candidates: reviewQueue }
     : consolidationCandidates.length > 0
       ? { kind: 'consolidate', candidates: consolidationQueue }
