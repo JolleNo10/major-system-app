@@ -154,7 +154,7 @@ export function keepStagedCapitalPractising(state: StagedCapitalLearningFlowStat
 }
 
 export function backStagedCapital(state: StagedCapitalLearningFlowState, random: () => number = Math.random) {
-  if (state.phase === 'final-recall' && state.finalRecallOrigin === 'initial-walkthrough') {
+  if ((state.phase === 'final-gate' || state.phase === 'final-recall') && state.finalRecallOrigin === 'initial-walkthrough') {
     return {
       ...state,
       phase: 'walkthrough' as const,
@@ -185,10 +185,10 @@ export function jumpStagedCapitalToFinalRecall(state: StagedCapitalLearningFlowS
   return {
     ...state,
     stageIndex: finalStageIndex,
-    phase: 'final-recall' as const,
+    phase: 'final-gate' as const,
     walkthroughIndex: 0,
     practice: null,
-    ordered: createOrderedRecallSession({ order: state.countryIds, rewindOnError: state.rewindOnError }),
+    ordered: null,
     finalScopeReady: false,
     finalRecallOrigin: 'initial-walkthrough' as const,
   }

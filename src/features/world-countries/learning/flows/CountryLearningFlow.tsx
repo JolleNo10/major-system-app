@@ -208,8 +208,9 @@ export function CountryLearningFlow({
     || flow.phase === 'final-gate'
     || ((flow.phase === 'combined-practice' || flow.phase === 'combined-ready') && flow.stageIndex > 0)
   const backLabel = flow.phase === 'location-practice' ? 'Back to Meet countries'
-    : flow.phase === 'final-recall' ? flow.finalRecallOrigin === 'initial-walkthrough' ? 'Back to learning' : 'Back to Final recall'
-      : 'Back'
+    : flow.finalRecallOrigin === 'initial-walkthrough' && (flow.phase === 'final-gate' || flow.phase === 'final-recall') ? 'Back to learning'
+      : flow.phase === 'final-recall' ? 'Back to Final recall'
+        : 'Back'
   const canJumpToFinalRecall = Boolean(subregion && flow.phase === 'walkthrough' && flow.stageIndex === 0 && flow.walkthroughIndex === 0)
 
   const walkthroughCountry = stageEntries[flow.walkthroughIndex]

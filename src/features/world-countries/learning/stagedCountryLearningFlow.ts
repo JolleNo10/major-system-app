@@ -264,7 +264,7 @@ export function backStagedCountry(
   state: StagedCountryLearningFlowState,
   random: () => number = Math.random,
 ): StagedCountryLearningFlowState {
-  if (state.phase === 'final-recall' && state.finalRecallOrigin === 'initial-walkthrough') {
+  if ((state.phase === 'final-gate' || state.phase === 'final-recall') && state.finalRecallOrigin === 'initial-walkthrough') {
     return {
       ...state,
       phase: 'walkthrough',
@@ -306,11 +306,11 @@ export function jumpStagedCountryToFinalRecall(
   return {
     ...state,
     stageIndex: finalStageIndex,
-    phase: 'final-recall',
+    phase: 'final-gate',
     walkthroughIndex: 0,
     location: null,
     practice: null,
-    ordered: createOrderedRecallSession({ order: state.countryIds, rewindOnError: state.rewindOnError }),
+    ordered: null,
     finalScopeReady: false,
     finalRecallOrigin: 'initial-walkthrough',
   }

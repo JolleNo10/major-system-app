@@ -106,19 +106,24 @@ describe('staged country learning flow', () => {
     expect(flow.ordered?.mode).toBe('clean')
   })
 
-  it('jumps from the initial walkthrough to full Final recall with explicit origin state', () => {
+  it('jumps from the initial walkthrough to the full Final recall gate with explicit origin state', () => {
     const initial = createStagedCountryLearningFlow({ countryIds: ['A', 'B', 'C', 'D'], maximum: 3, schedulerSettings: settings })
     const jumped = jumpStagedCountryToFinalRecall(initial)
 
-    expect(jumped.phase).toBe('final-recall')
+    expect(jumped.phase).toBe('final-gate')
     expect(jumped.stageIndex).toBe(jumped.plan.length - 1)
     expect(jumped.plan[jumped.stageIndex]?.kind).toBe('final')
-    expect(jumped.ordered?.order).toEqual(['A', 'B', 'C', 'D'])
-    expect(jumped.ordered?.rewindOnError).toBe(initial.rewindOnError)
+    expect(jumped.ordered).toBeNull()
     expect(jumped.finalScopeReady).toBe(false)
     expect(jumped.finalRecallOrigin).toBe('initial-walkthrough')
     expect(jumped.location).toBeNull()
     expect(jumped.practice).toBeNull()
+
+    const started = startStagedCountryFinalRecall(jumped)
+    expect(started.phase).toBe('final-recall')
+    expect(started.ordered?.order).toEqual(['A', 'B', 'C', 'D'])
+    expect(started.ordered?.rewindOnError).toBe(initial.rewindOnError)
+    expect(started.finalRecallOrigin).toBeNull()
   })
 
   it('does not jump from a non-initial walkthrough state', () => {
@@ -129,7 +134,7 @@ describe('staged country learning flow', () => {
     expect(jumpStagedCountryToFinalRecall(laterStage)).toBe(laterStage)
   })
 
-  it('returns a shortcut-origin Final recall directly to the first walkthrough item', () => {
+  it('returns a shortcut-origin Final recall gate directly to the first walkthrough item', () => {
     const initial = createStagedCountryLearningFlow({ countryIds: ['A', 'B', 'C', 'D'], maximum: 3, schedulerSettings: settings })
     const jumped = jumpStagedCountryToFinalRecall(initial)
     const backed = backStagedCountry(jumped)

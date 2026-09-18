@@ -151,16 +151,15 @@ function expectCountryWalkthrough(container: HTMLDivElement, task: unknown, coun
 }
 
 describe('CountryLearningFlow scheduler progress wiring', () => {
-  it('offers the initial Subregion shortcut and enters full Final recall directly', () => {
+  it('offers the initial Subregion shortcut and opens the full Final recall gate', () => {
     const container = renderFlow(fullWalkthroughEntries)
     const initialRail = renderRail()
     expect([...initialRail.querySelectorAll<HTMLButtonElement>('button')].slice(0, 3).map(button => button.textContent)).toEqual(['Skip to Find', 'Jump to final recall', 'Exit'])
 
     act(() => [...initialRail.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Jump to final recall')?.click())
 
-    expect(container.querySelector('[data-testid="final-submit"]')).not.toBeNull()
-    expect(container.querySelector('[data-testid="final-start"]')).toBeNull()
-    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].task).toMatchObject({ direction: 'Final recall', progress: { current: 1, total: 4 } })
+    expect(container.querySelector('[data-testid="final-start"]')).not.toBeNull()
+    expect(container.querySelector('[data-testid="final-submit"]')).toBeNull()
     const finalRecallRail = renderLeftRail()
     expect(finalRecallRail.textContent).toContain('Final recall')
     expect(finalRecallRail.textContent).toContain('All 4 Countries')
@@ -180,10 +179,21 @@ describe('CountryLearningFlow scheduler progress wiring', () => {
     const initialRail = renderRail()
 
     act(() => [...initialRail.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Jump to final recall')?.click())
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-start"]')!.click())
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-submit"]')!.click())
 
     expect(recordAttemptMock).toHaveBeenCalledWith('NO', 'location-to-country', expect.objectContaining({ ok: true, evidenceKind: 'recall' }))
     expect(getSubregionLearningState('northern-europe')).toMatchObject({ countriesLearnedAt: expect.any(Number) })
+  })
+
+  it('starts the complete Country Final recall order after the shortcut gate', () => {
+    const container = renderFlow(fullWalkthroughEntries)
+    const initialRail = renderRail()
+
+    act(() => [...initialRail.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Jump to final recall')?.click())
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-start"]')!.click())
+
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].task).toMatchObject({ direction: 'Final recall', progress: { current: 1, total: 4 } })
   })
 
   it('does not expose the Subregion shortcut for a temporary proficiency scope', () => {
