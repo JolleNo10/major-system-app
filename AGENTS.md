@@ -206,6 +206,38 @@ and stop every process started for it before completing the task.
 
 ## Repository workflow
 
+### File editing
+
+On Windows hosts, never use `apply_patch` for repository file edits.
+
+Do not:
+
+- invoke `apply_patch`;
+- retry `apply_patch` after a failure;
+- construct unified patch text for `apply_patch`;
+- create temporary patch files such as `.codex-patch.tmp` as a workaround;
+- spend time troubleshooting or recovering `apply_patch`.
+
+Use deterministic direct file editing instead:
+
+- use a small Python script for multiline or structured edits;
+- use PowerShell/.NET direct file operations for simple, exact replacements;
+- use an existing formatter, generator, or repository tool when that tool owns
+  the file being changed.
+
+Prefer targeted replacements over rewriting an entire file. Preserve the
+existing encoding and line endings and do not modify unrelated content.
+
+After editing, inspect the resulting diff before verification:
+
+```text
+git diff -- <changed-files>
+```
+
+If a direct replacement cannot be performed safely, read the complete current
+file and deliberately rewrite it with the intended result rather than falling
+back to `apply_patch`.
+
 ### Implementation delivery
 
 For a completed implementation or change task, verification is followed by
