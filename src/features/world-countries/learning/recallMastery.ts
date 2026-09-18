@@ -2,7 +2,13 @@ import type { Attempt, ItemProgress, RecallItemId } from '@/core/learning'
 import {
   deriveWorldCountriesReviewEvents,
   isValidWorldCountriesLocalDate,
+  worldCountriesLocalDateForTimestamp,
 } from './reviewSchedule'
+import { isWorldCountriesAttemptType } from './attemptTypes'
+import {
+  parseWorldCountriesRecallTargetId,
+  WORLD_COUNTRIES_CORE_RECALL_SKILLS,
+} from './recallTargets'
 
 /** Semantic proficiency for one atomic World Countries recall skill. */
 export type WorldCountriesProficiency =
@@ -92,15 +98,73 @@ function lowerProficiency(proficiency: WorldCountriesProficiency): WorldCountrie
   }
 }
 
+function isCoreTarget(itemId: RecallItemId): boolean {
+  const target = parseWorldCountriesRecallTargetId(itemId)
+  return target !== null
+    && (WORLD_COUNTRIES_CORE_RECALL_SKILLS as readonly string[]).includes(target.skill)
+}
+
+/** The fallback date is used only to group old evidence, never for mastery. */
+function effectiveLegacyClusterDate(attempt: Attempt): string {
+  return isValidWorldCountriesLocalDate(attempt.localDate)
+    ? attempt.localDate
+    : worldCountriesLocalDateForTimestamp(attempt.at)
+}
+
+interface AttemptProjection {
+  acquisition: Attempt[]
+  performance: Attempt[]
+}
+
+/**
+ * Separate curriculum/acquisition evidence from performance evidence before
+ * applying the dated lapse and mastery state machine.
+ */
+function projectAttempts(
+  itemId: RecallItemId,
+  sorted: readonly Attempt[],
+): AttemptProjection {
+  const core = isCoreTarget(itemId)
+  const acquisition: Attempt[] = []
+  const performance: Attempt[] = []
+  let firstLegacyClusterDate: string | null = null
+
+  for (const attempt of sorted) {
+    const attemptType = isWorldCountriesAttemptType(attempt.attemptType)
+      ? attempt.attemptType
+      : 'legacy'
+
+    if (core && attemptType === 'learning') {
+      acquisition.push(attempt)
+      continue
+    }
+
+    if (core && attemptType === 'legacy') {
+      const clusterDate = effectiveLegacyClusterDate(attempt)
+      if (firstLegacyClusterDate === null) firstLegacyClusterDate = clusterDate
+      if (clusterDate === firstLegacyClusterDate) acquisition.push(attempt)
+      else performance.push(attempt)
+      continue
+    }
+
+    // Additional skills have no guided Learning owner, so all provenance
+    // values, including legacy, retain the ordinary performance semantics.
+    performance.push(attempt)
+  }
+
+  return { acquisition, performance }
+}
+
 /**
  * Derive current proficiency as a sequence of lapse/recovery events. The
  * scheduler supplies the shared dated lapse context, while the current band
- * remains a projection of retained attempts rather than a stored state.
+ * remains a projection of retained performance attempts rather than state.
  */
 function deriveCurrentProficiency(
   attempts: readonly Attempt[],
+  initialProficiency: WorldCountriesProficiency,
 ): { proficiency: WorldCountriesProficiency; mastered: boolean } {
-  let proficiency: WorldCountriesProficiency = 'unpractised'
+  let proficiency = initialProficiency
   let latestFailureIndex = -1
   let acceleratedRecoveryEligible = false
   let masteredLapseDate: string | null = null
@@ -166,9 +230,9 @@ function deriveCurrentProficiency(
 }
 
 /**
- * Derive World Countries proficiency from raw evidence after the latest
- * failure. Legacy success remains positive evidence, but cannot qualify as
- * explicit free-recall mastery because its interaction is unknown.
+ * Derive World Countries proficiency from raw evidence. Milestones are not
+ * consulted: they describe curriculum completion, while retained attempts
+ * are the sole proficiency source.
  */
 export function deriveWorldCountriesAtomicProgress(
   itemId: RecallItemId,
@@ -183,9 +247,13 @@ export function deriveWorldCountriesAtomicProgress(
     consecutiveCorrect++
   }
   const lastAttempt = attempts.length ? attempts[attempts.length - 1] : undefined
-  const hasEverMastered = hasEverMasteryEvidence(attempts)
-  const current = deriveCurrentProficiency(attempts)
-  const mastered = Boolean(lastAttempt?.ok && current.mastered)
+  const projection = projectAttempts(itemId, attempts)
+  const hasAcquisitionEvidence = projection.acquisition.length > 0
+  const hasEverMastered = hasEverMasteryEvidence(projection.performance)
+  const current = deriveCurrentProficiency(
+    projection.performance,
+    hasAcquisitionEvidence ? 'weak' : 'unpractised',
+  )
 
   const validLatencies = attempts
     .map(attempt => attempt.ms)
@@ -206,7 +274,7 @@ export function deriveWorldCountriesAtomicProgress(
       : sortedLatencies.length % 2 === 1
         ? sortedLatencies[middle]
         : (sortedLatencies[middle - 1] + sortedLatencies[middle]) / 2,
-    mastered,
+    mastered: current.mastered,
     hasEverMastered,
     proficiency: current.proficiency,
   }

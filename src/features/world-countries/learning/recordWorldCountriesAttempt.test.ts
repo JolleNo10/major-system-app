@@ -18,6 +18,7 @@ describe('World Countries attempt evidence adapter', () => {
       at: Date.UTC(2026, 7, 10, 18),
       ok: true,
       ms: 1200,
+      attemptType: 'review',
       evidenceKind: 'recognition',
       localDate: '2026-08-10',
     })
@@ -26,6 +27,7 @@ describe('World Countries attempt evidence adapter', () => {
       'world-countries:country-to-capital:NO',
       expect.objectContaining({
         evidenceKind: 'recognition',
+        attemptType: 'review',
         localDate: '2026-08-10',
       }),
       { pruneHistory: false },
@@ -37,6 +39,7 @@ describe('World Countries attempt evidence adapter', () => {
       at: Date.UTC(2026, 7, 10, 18),
       ok: true,
       ms: 1200,
+      attemptType: 'learning',
       localDate: '2026-08-10',
     })
 

@@ -40,6 +40,7 @@ function progressFor(
     ok,
     ms: 500,
     evidenceKind,
+    attemptType: 'drill' as const,
   }])
 }
 
@@ -81,6 +82,7 @@ describe('World Countries Drill map precedence', () => {
         ok: true,
         ms: 500,
         evidenceKind: 'recall',
+        attemptType: 'drill',
       },
       {
         itemId: recallTargetIdFor('NO', 'country-to-capital'),
@@ -88,6 +90,7 @@ describe('World Countries Drill map precedence', () => {
         ok: false,
         ms: 500,
         evidenceKind: 'recall',
+        attemptType: 'drill',
       },
     ])
     const colors = createColors('countries-capitals', recallProgress, [
@@ -113,6 +116,7 @@ describe('World Countries Drill map precedence', () => {
       ok: true,
       ms: 500,
       evidenceKind: 'recognition',
+      attemptType: 'drill',
     }])
     const colors = createColors('countries', progress, [
       { subregionId: 'northern-europe', countriesLearnedAt: 1 },

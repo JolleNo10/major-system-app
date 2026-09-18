@@ -26,6 +26,8 @@ export interface Attempt {
   ms: number
   /** Absent on attempts written before evidence quality was introduced. */
   evidenceKind?: AttemptEvidenceKind
+  /** Opaque activity provenance preserved by core and interpreted by features. */
+  attemptType?: string
   /** Learner-local calendar date captured when the attempt was answered. */
   localDate?: string
 }

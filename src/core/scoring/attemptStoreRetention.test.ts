@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto'
 import { describe, expect, it } from 'vitest'
 import { DAY_MS, HISTORY_MAX, HISTORY_RETENTION_DAYS } from './itemStore'
-import { addAttemptRaw, getAttemptsForKey, shouldPruneAttemptHistory } from './attemptStore'
+import { addAttemptRaw, getAttemptsForKey, getDb, reqToPromise, rewriteAttemptsForKey, shouldPruneAttemptHistory } from './attemptStore'
 
 let testKey = 0
 
@@ -47,5 +47,33 @@ describe('attempt history retention policy', () => {
     const attempts = await getAttemptsForKey(key)
     expect(attempts).toHaveLength(HISTORY_MAX)
     expect(attempts.some(attempt => attempt.at === now)).toBe(false)
+  })
+
+  it('rewrites only one key while preserving IDs, order, and arbitrary metadata', async () => {
+    const selectedKey = uniqueKey('rewrite-selected')
+    const otherKey = uniqueKey('rewrite-other')
+    await addAttemptRaw(selectedKey, { at: 1, ok: true, ms: 100, custom: { source: 'keep' } } as Parameters<typeof addAttemptRaw>[1] & Record<string, unknown>)
+    await addAttemptRaw(selectedKey, { at: 2, ok: false, ms: 200, evidenceKind: 'recognition' } as Parameters<typeof addAttemptRaw>[1] & Record<string, unknown>)
+    await addAttemptRaw(otherKey, { at: 3, ok: true, ms: 300, custom: 'untouched' } as Parameters<typeof addAttemptRaw>[1] & Record<string, unknown>)
+
+    const before = await reqToPromise(await getDb().then(db => db.transaction('attempts', 'readonly').objectStore('attempts').getAll()))
+    const selectedBefore = before.filter(record => record.key === selectedKey)
+    const otherBefore = before.filter(record => record.key === otherKey)
+
+    await rewriteAttemptsForKey(selectedKey, (attempt, index) => ({
+      attemptType: index === 0 ? 'learning' : 'legacy',
+      customRewrite: true,
+    }))
+
+    const after = await reqToPromise(await getDb().then(db => db.transaction('attempts', 'readonly').objectStore('attempts').getAll()))
+    const selectedAfter = after.filter(record => record.key === selectedKey)
+    const otherAfter = after.filter(record => record.key === otherKey)
+
+    expect(selectedAfter).toHaveLength(2)
+    expect(selectedAfter.map(record => record.id)).toEqual(selectedBefore.map(record => record.id))
+    expect(selectedAfter.map(record => record.at)).toEqual([1, 2])
+    expect(selectedAfter[0]).toMatchObject({ attemptType: 'learning', custom: { source: 'keep' }, customRewrite: true })
+    expect(selectedAfter[1]).toMatchObject({ attemptType: 'legacy', evidenceKind: 'recognition', customRewrite: true })
+    expect(otherAfter).toEqual(otherBefore)
   })
 })

@@ -8,7 +8,7 @@ const norway = countries.filter(country => country.id === 'NO')
 function progressFor(attempts: readonly { itemId: string; at: number; ok: boolean }[]) {
   return deriveWorldCountriesRecallProgress(
     { countryIds: ['NO'], skills: ['location-to-country', 'country-to-capital'] },
-    attempts.map((attempt, index) => ({ ...attempt, ms: 100, localDate: `2026-08-${10 + index}`, evidenceKind: 'recall' as const })),
+    attempts.map((attempt, index) => ({ ...attempt, ms: 100, localDate: `2026-08-${10 + index}`, evidenceKind: 'recall' as const, attemptType: 'review' as const })),
   )
 }
 

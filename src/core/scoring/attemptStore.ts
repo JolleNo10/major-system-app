@@ -8,7 +8,7 @@ import {
 // Appends are cheap and time/item-indexed; the localStorage store keeps only the
 // small hot metadata used for synchronous question selection.
 //
-// Record: { id (auto), key: "enc:42", at, ok, ms }
+// Record: { id (auto), key: "enc:42", at, ok, ms, ...opaque metadata }
 
 const DB_NAME = 'major-system'
 // v3: same schema as v2 (attempts + pi_stories). Bumped to backfill pi_stories
@@ -22,6 +22,7 @@ const MIGRATED_KEY = 'major-attempts-migrated'
 interface AttemptRecord extends Attempt {
   id?: number
   key: string
+  [metadata: string]: unknown
 }
 
 /** Persistence policy for append-heavy attempt history. */
@@ -100,7 +101,7 @@ async function migrateOnce(db: IDBDatabase): Promise<void> {
       let changed = false
       for (const [key, rec] of Object.entries(store)) {
         if (rec.attempts?.length) {
-          for (const a of rec.attempts) os.add({ key, at: a.at, ok: a.ok, ms: a.ms } as AttemptRecord)
+          for (const a of rec.attempts) os.add({ key, ...a } as AttemptRecord)
           delete rec.attempts
           changed = true
         }
@@ -164,6 +165,37 @@ export async function addAttemptRaw(
   } catch {
     /* non-critical */
   }
+}
+
+/**
+ * Rewrite metadata on attempts for one raw key without changing record IDs,
+ * ordering, or any metadata the callback does not replace.
+ */
+export async function rewriteAttemptsForKey(
+  key: string,
+  rewrite: (
+    attempt: AttemptRecord,
+    index: number,
+    history: readonly AttemptRecord[],
+  ) => Partial<AttemptRecord> | void,
+): Promise<void> {
+  if (!hasIdb) return
+
+  const db = await getDb()
+  const tx = db.transaction(STORE, 'readwrite')
+  const os = tx.objectStore(STORE)
+  const idx = os.index('by_key_at')
+  const keyRange = IDBKeyRange.bound([key], [key, []])
+  const records = await reqToPromise(idx.getAll(keyRange)) as AttemptRecord[]
+  const history = records.map(({ id: _id, key: _key, ...attempt }) => attempt as AttemptRecord)
+
+  records.forEach((record, index) => {
+    const update = rewrite(history[index]!, index, history)
+    if (update === undefined) return
+    os.put({ ...record, ...update, id: record.id, key } as AttemptRecord)
+  })
+
+  await txDone(tx)
 }
 
 // Item-keyed convenience wrapper (direction + number → "enc:07").

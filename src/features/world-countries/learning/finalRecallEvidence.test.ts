@@ -29,7 +29,7 @@ describe('World Countries Final recall evidence', () => {
       recallTargetIdFor('DK', 'country-to-capital'),
     ])
     for (const [, attempt] of recordAttemptMock.mock.calls) {
-      expect(attempt).toMatchObject({ ok: true, evidenceKind: 'recall' })
+      expect(attempt).toMatchObject({ ok: true, evidenceKind: 'recall', attemptType: 'learning' })
       expect(attempt.localDate).toMatch(/^\d{4}-\d{2}-\d{2}$/)
     }
   })
@@ -40,16 +40,18 @@ describe('World Countries Final recall evidence', () => {
     expect(recordAttemptMock).toHaveBeenCalledTimes(1)
   })
 
-  it('keeps an asserted pass out of median latency while still qualifying for mastery', () => {
+  it('keeps an asserted Learning pass out of median latency without qualifying for mastery', () => {
     const itemId = recallTargetIdFor('NO', 'country-to-capital')
     const progress = deriveWorldCountriesAtomicProgress(itemId, [
-      { at: 1, ok: true, ms: WORLD_COUNTRIES_UNTIMED_ATTEMPT_MS, evidenceKind: 'recall', localDate: '2026-09-12' },
-      { at: 2, ok: true, ms: 2000, evidenceKind: 'recall', localDate: '2026-09-13' },
-      { at: 3, ok: true, ms: 3000, evidenceKind: 'recall', localDate: '2026-09-14' },
+      { at: 1, ok: true, ms: WORLD_COUNTRIES_UNTIMED_ATTEMPT_MS, evidenceKind: 'recall', localDate: '2026-09-12', attemptType: 'learning' },
+      { at: 2, ok: true, ms: 2000, evidenceKind: 'recall', localDate: '2026-09-13', attemptType: 'learning' },
+      { at: 3, ok: true, ms: 3000, evidenceKind: 'recall', localDate: '2026-09-14', attemptType: 'learning' },
     ])
 
     expect(progress.medianMs).toBe(2500)
-    expect(progress.proficiency).toBe('mastered')
+    expect(progress.proficiency).toBe('weak')
+    expect(progress.mastered).toBe(false)
+    expect(progress.hasEverMastered).toBe(false)
   })
 
   it('records a measured Final recall answer with its real latency', async () => {
@@ -57,7 +59,7 @@ describe('World Countries Final recall evidence', () => {
 
     expect(recordAttemptMock).toHaveBeenCalledWith(
       recallTargetIdFor('NO', 'country-to-capital'),
-      expect.objectContaining({ ok: false, ms: 4321, evidenceKind: 'recall' }),
+      expect.objectContaining({ ok: false, ms: 4321, evidenceKind: 'recall', attemptType: 'learning' }),
       expect.anything(),
     )
   })

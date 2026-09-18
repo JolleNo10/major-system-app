@@ -210,7 +210,7 @@ export function WorldCountriesDrill({ answerMode, onExit, initialActivity = { ki
   const answer = useCallback((record: DrillAnswerRecord) => {
     setActiveRun(previous => previous ? { ...previous, answers: [...previous.answers, record] } : previous)
     if (!activeRunActivity || activeRunActivity === 'practice' || record.assisted) return
-    void recordWorldCountriesAttempt(record.countryId, record.skill, { at: record.at, ok: record.correct, ms: record.ms, evidenceKind: record.evidenceKind })
+    void recordWorldCountriesAttempt(record.countryId, record.skill, { at: record.at, ok: record.correct, ms: record.ms, evidenceKind: record.evidenceKind, attemptType: 'drill' })
   }, [activeRunActivity])
 
   const answerPractice = useCallback((record: PracticeSessionAnswer) => {

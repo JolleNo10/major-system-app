@@ -83,8 +83,8 @@ describe('DrillSetup activity boundary', () => {
     loadRecallProgressMock.mockResolvedValue(deriveWorldCountriesRecallProgress({
       countryIds: ['NO'], skills: ['location-to-country', 'country-to-capital'],
     }, [
-      { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 1, ok: true, ms: 500, evidenceKind: 'recall' },
-      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 2, ok: false, ms: 500, evidenceKind: 'recall' },
+      { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 1, ok: true, ms: 500, evidenceKind: 'recall', attemptType: 'drill' },
+      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 2, ok: false, ms: 500, evidenceKind: 'recall', attemptType: 'drill' },
     ]))
     renderSetup({ level: 'world', mode: 'countries-capitals', entries: [norway] })
     await act(async () => { await Promise.resolve(); await Promise.resolve() })
@@ -105,13 +105,15 @@ describe('DrillSetup activity boundary', () => {
       countryIds: entries.map(entry => entry.id),
       skills: [...WORLD_COUNTRIES_RECALL_SKILLS],
     }, [
-      { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 1, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10' },
-      { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 2, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-11' },
-      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 3, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10' },
-      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 4, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-11' },
-      { itemId: recallTargetIdFor('SE', 'location-to-country'), at: 5, ok: false, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10' },
-      { itemId: recallTargetIdFor('DK', 'location-to-country'), at: 6, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10' },
-      { itemId: recallTargetIdFor('DK', 'country-to-capital'), at: 7, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10' },
+      { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 1, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10', attemptType: 'drill' },
+      { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 2, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-11', attemptType: 'drill' },
+      { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 3, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-12', attemptType: 'drill' },
+      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 4, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10', attemptType: 'drill' },
+      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 5, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-11', attemptType: 'drill' },
+      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 6, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-12', attemptType: 'drill' },
+      { itemId: recallTargetIdFor('SE', 'location-to-country'), at: 5, ok: false, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10', attemptType: 'drill' },
+      { itemId: recallTargetIdFor('DK', 'location-to-country'), at: 6, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10', attemptType: 'drill' },
+      { itemId: recallTargetIdFor('DK', 'country-to-capital'), at: 7, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10', attemptType: 'drill' },
     ]))
 
     const mount = renderSetup({ level: 'world', entries })
@@ -167,10 +169,10 @@ describe('DrillSetup activity boundary', () => {
       countryIds: entries.map(entry => entry.id),
       skills: [...WORLD_COUNTRIES_RECALL_SKILLS],
     }, [
-      { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 1, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10' },
-      { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 2, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-11' },
-      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 3, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10' },
-      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 4, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-11' },
+      { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 1, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10', attemptType: 'drill' },
+      { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 2, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-11', attemptType: 'drill' },
+      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 3, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10', attemptType: 'drill' },
+      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 4, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-11', attemptType: 'drill' },
     ]))
     const mount = renderSetup({ level: 'world', entries, mode: 'countries' })
     await act(async () => { await Promise.resolve(); await Promise.resolve() })

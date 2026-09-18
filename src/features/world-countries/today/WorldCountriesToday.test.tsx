@@ -1726,9 +1726,9 @@ describe('World Countries Today', () => {
     activeCountries = [northern, western]
     const capitalItemId = `world-countries:country-to-capital:${northern.id}`
     loadHistoryMock.mockImplementation(() => Promise.resolve(new Map([[capitalItemId, [
-      { itemId: capitalItemId, at: 1, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-10' },
-      { itemId: capitalItemId, at: 2, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-11' },
-      { itemId: capitalItemId, at: 3, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-12' },
+      { itemId: capitalItemId, at: 1, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-10', attemptType: 'review' },
+      { itemId: capitalItemId, at: 2, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-11', attemptType: 'review' },
+      { itemId: capitalItemId, at: 3, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-12', attemptType: 'review' },
     ]]])))
     const initialPlan = plan({
       curriculumRecommendation: recommendation('learn-countries', [northern.id], northern),
@@ -2276,9 +2276,9 @@ describe('World Countries Today', () => {
     const country = activeCountries[0]
     const countryItemId = `world-countries:location-to-country:${country.id}`
     loadHistoryMock.mockResolvedValueOnce(new Map([[countryItemId, [
-      { itemId: countryItemId, at: 1, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-10' },
-      { itemId: countryItemId, at: 2, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-11' },
-      { itemId: countryItemId, at: 3, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-12' },
+      { itemId: countryItemId, at: 1, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-10', attemptType: 'review' },
+      { itemId: countryItemId, at: 2, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-11', attemptType: 'review' },
+      { itemId: countryItemId, at: 3, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-12', attemptType: 'review' },
     ]]]))
     buildPlanMock.mockReturnValue(plan({ curriculumRecommendation: recommendation('learn-capitals') }))
     const mount = await renderToday()

@@ -204,5 +204,5 @@ export function getDrillProgressLegendEntries(
 export function getDrillProgressExplanation(mode: WorldCountriesDrillMode): string {
   return getDrillProgressPerspective(mode) === 'core'
     ? WORLD_COUNTRIES_CORE_FINISH_LINE_EXPLANATION
-    : 'Weak means the latest attempt was incorrect; Strong means repeated success; Mastered requires successful free recall on two different dates.'
+    : 'Weak means the latest attempt was incorrect; Strong means repeated success; Mastered requires successful free recall on three different learner-local dates.'
 }

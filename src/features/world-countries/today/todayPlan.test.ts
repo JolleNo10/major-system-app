@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { countries, type Country } from '@/features/world-countries/data/countries'
 import { deriveWorldCountriesRecallHistory } from '@/features/world-countries/learning/recallHistory'
+import type { WorldCountriesRecallHistoryAttempt } from '@/features/world-countries/learning/recallHistory'
 import { deriveWorldCountriesRecallProgress } from '@/features/world-countries/learning/recallProgress'
 import { recallTargetIdFor, type WorldCountriesCoreRecallSkill } from '@/features/world-countries/learning/recallTargets'
 import { buildWorldCountriesTodayPlan } from './todayPlan'
@@ -10,18 +11,28 @@ const TEST_LOCAL_DATE = '2026-08-19'
 const TEST_PREVIOUS_LOCAL_DATE = '2026-08-18'
 const TEST_TWO_DAYS_AGO_LOCAL_DATE = '2026-08-17'
 
+function deriveTestHistory(
+  config: { countryIds: readonly string[]; skills: readonly WorldCountriesCoreRecallSkill[] },
+  attempts: readonly WorldCountriesRecallHistoryAttempt[],
+) {
+  return deriveWorldCountriesRecallHistory(config, attempts.map(attempt => ({
+    attemptType: 'review' as const,
+    ...attempt,
+  })))
+}
+
 function historyFor(
   attempts: readonly { itemId: string; at: number; ok: boolean; ms?: number; evidenceKind?: 'recall' | 'recognition'; localDate?: string }[],
   countryIds: readonly string[] = ['NO'],
 ) {
-  return deriveWorldCountriesRecallHistory({
+  return deriveTestHistory({
     countryIds,
     skills: ['location-to-country', 'country-to-capital'],
   }, attempts.map(attempt => ({ ms: 100, ...attempt })))
 }
 
 function completeCoreHistory(countryIds: readonly string[] = ['NO']) {
-  return deriveWorldCountriesRecallHistory(
+  return deriveTestHistory(
     { countryIds, skills: ['location-to-country', 'country-to-capital'] },
     countryIds.flatMap(countryId => [
       { itemId: `world-countries:location-to-country:${countryId}`, at: 1, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-10' },
@@ -35,7 +46,7 @@ function completeCoreHistory(countryIds: readonly string[] = ['NO']) {
 }
 
 function dueHistoryFor(countryIds: readonly string[]) {
-  return deriveWorldCountriesRecallHistory(
+  return deriveTestHistory(
     { countryIds, skills: ['location-to-country', 'country-to-capital'] },
     countryIds.flatMap((countryId, index) => [
       {
@@ -158,7 +169,7 @@ describe('World Countries Today plan', () => {
 
   it('uses the same eight-item bound for weak-spot practice', () => {
     const entries = countries.slice(0, 10)
-    const history = deriveWorldCountriesRecallHistory(
+    const history = deriveTestHistory(
       { countryIds: entries.map(country => country.id), skills: ['location-to-country', 'country-to-capital'] },
       [],
     )
@@ -441,7 +452,7 @@ describe('World Countries Today plan', () => {
   it('offers other weak spots after the first block is successfully recalled today', () => {
     const entries = countries.slice(0, 10)
     const learningStates = establishedLearningStatesFor(entries, TEST_NOW - 5 * 60 * 1000)
-    const history = deriveWorldCountriesRecallHistory({
+    const history = deriveTestHistory({
       countryIds: entries.map(country => country.id),
       skills: ['location-to-country', 'country-to-capital'],
     }, [])
@@ -455,7 +466,7 @@ describe('World Countries Today plan', () => {
       localDate: TEST_LOCAL_DATE,
     })
     const completedIds = new Set(firstPlan.consolidationQueue.map(candidateId))
-    const secondHistory = deriveWorldCountriesRecallHistory({
+    const secondHistory = deriveTestHistory({
       countryIds: entries.map(country => country.id),
       skills: ['location-to-country', 'country-to-capital'],
     }, firstPlan.consolidationQueue.map((candidate, index) => ({
@@ -677,7 +688,7 @@ describe('World Countries Today plan', () => {
   })
 
   it('keeps a scoped plan inside the supplied active Country population', () => {
-    const scopedHistory = deriveWorldCountriesRecallHistory({
+    const scopedHistory = deriveTestHistory({
       countryIds: ['NO', 'IN'],
       skills: ['location-to-country', 'country-to-capital'],
     }, [
@@ -846,7 +857,7 @@ describe('World Countries Today plan', () => {
 
   it('does not unlock a layer from partial whole-layer mastery evidence', () => {
     const entries = countries.filter(entry => entry.id === 'NO' || entry.id === 'SE')
-    const history = deriveWorldCountriesRecallHistory(
+    const history = deriveTestHistory(
       { countryIds: entries.map(entry => entry.id), skills: ['location-to-country', 'country-to-capital'] },
       [
         { itemId: 'world-countries:location-to-country:NO', at: 1, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-10' },
@@ -970,7 +981,7 @@ describe('World Countries Today plan', () => {
 
   it('does not let incidental Capital practice skip Capital Learning', () => {
     const entries = countries.filter(country => country.id === 'NO' || country.id === 'SE')
-    const history = deriveWorldCountriesRecallHistory(
+    const history = deriveTestHistory(
       { countryIds: entries.map(country => country.id), skills: ['location-to-country', 'country-to-capital'] },
       entries.flatMap((country, index) => [
         { itemId: `world-countries:location-to-country:${country.id}`, at: index + 1, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-18' },
@@ -993,7 +1004,7 @@ describe('World Countries Today plan', () => {
     const entries = countries.filter(country => country.id === 'NO' || country.id === 'SE')
     const norway = entries.find(country => country.id === 'NO')!
     const sweden = entries.find(country => country.id === 'SE')!
-    const history = deriveWorldCountriesRecallHistory(
+    const history = deriveTestHistory(
       { countryIds: entries.map(country => country.id), skills: ['location-to-country', 'country-to-capital'] },
       [
         ...entries.map((country, index) => ({ itemId: `world-countries:location-to-country:${country.id}`, at: index + 1, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-18' })),
@@ -1033,7 +1044,7 @@ describe('World Countries Today plan', () => {
 
   it('does not require redundant Capital Learning when every Capital target is mastered', () => {
     const entries = countries.filter(country => country.id === 'NO' || country.id === 'SE')
-    const history = deriveWorldCountriesRecallHistory(
+    const history = deriveTestHistory(
       { countryIds: entries.map(country => country.id), skills: ['location-to-country', 'country-to-capital'] },
       entries.flatMap((country, index) => [
         { itemId: `world-countries:location-to-country:${country.id}`, at: index + 1, ok: true, ms: 100, evidenceKind: 'recall' as const, localDate: '2026-08-16' },
@@ -1233,7 +1244,7 @@ describe('World Countries Today plan', () => {
     const now = Date.UTC(2026, 7, 18, 12)
     const plan = buildWorldCountriesTodayPlan({
       activeCountries: [country],
-      history: deriveWorldCountriesRecallHistory({
+      history: deriveTestHistory({
         countryIds: ['NO'],
         skills: ['location-to-country', 'country-to-capital'],
       }, [
@@ -1258,7 +1269,7 @@ describe('World Countries Today plan', () => {
   it('keeps consolidation candidates inside the supplied Continent population', () => {
     const norway = countries.find(entry => entry.id === 'NO')!
     const india = countries.find(entry => entry.id === 'IN')!
-    const history = deriveWorldCountriesRecallHistory({
+    const history = deriveTestHistory({
       countryIds: ['NO', 'IN'],
       skills: ['location-to-country', 'country-to-capital'],
     }, [

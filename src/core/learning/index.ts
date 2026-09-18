@@ -27,6 +27,7 @@ export {
   getAttempts,
   getAttemptsForItem,
   recordAttempt,
+  rewriteAttemptsForItem,
 } from './attempts'
 export {
   rankNextItems,

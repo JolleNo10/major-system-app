@@ -31,7 +31,7 @@ function renderProgress(
   const recallProgress = deriveWorldCountriesRecallProgress({
     countryIds: scopeCountries.map(country => country.id),
     skills: ['location-to-country', 'country-to-capital'],
-  }, attempts)
+  }, attempts.map(attempt => ({ attemptType: 'review' as const, ...attempt })))
   const progress = deriveWorldCountriesScopeProgressForCountries(
     scopeLabel === 'World' ? 'world' : `continent:${scopeLabel}`,
     scopeCountries,

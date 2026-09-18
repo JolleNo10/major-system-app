@@ -50,3 +50,17 @@ export function recallTargetIdFor(
   if (!countryId.trim()) throw new Error('Country ID must not be empty')
   return `${TARGET_PREFIX}${skill}:${countryId}`
 }
+
+/** Parse a feature-owned atomic target without inferring identity from labels. */
+export function parseWorldCountriesRecallTargetId(
+  itemId: string,
+): WorldCountriesRecallTarget | null {
+  if (!itemId.startsWith(TARGET_PREFIX)) return null
+  const remainder = itemId.slice(TARGET_PREFIX.length)
+  const separator = remainder.indexOf(':')
+  if (separator <= 0) return null
+  const skill = remainder.slice(0, separator)
+  const countryId = remainder.slice(separator + 1)
+  if (!(WORLD_COUNTRIES_RECALL_SKILLS as readonly string[]).includes(skill) || !countryId) return null
+  return { skill: skill as WorldCountriesRecallSkill, countryId: countryId as CountryId }
+}

@@ -1,7 +1,4 @@
-import type {
-  Attempt,
-  AttemptEvidenceKind,
-} from '@/core/learning'
+import type { Attempt, AttemptEvidenceKind } from '@/core/learning'
 import { recordAttempt } from '@/core/learning'
 import type { CountryId } from '@/features/world-countries/data/countries'
 import {
@@ -13,6 +10,7 @@ import {
   type WorldCountriesCoreRecallSkill,
   type WorldCountriesRecallSkill,
 } from './recallTargets'
+import type { WorldCountriesAttempt, WorldCountriesAttemptType } from './attemptTypes'
 import {
   flattenWorldCountriesRecallHistory,
   loadWorldCountriesRecallHistory,
@@ -23,7 +21,7 @@ import {
   type WorldCountriesProficiency,
 } from './recallMastery'
 
-export interface WorldCountriesAttempt extends Attempt {
+export interface WorldCountriesAttemptRecord extends WorldCountriesAttempt {
   itemId: string
 }
 
@@ -37,7 +35,7 @@ export interface RecallProgressConfig {
 /** Derive requested World Countries progress from raw atomic attempts. */
 export function deriveWorldCountriesRecallProgress(
   config: RecallProgressConfig,
-  attempts: readonly WorldCountriesAttempt[],
+  attempts: readonly WorldCountriesAttemptRecord[],
 ): Map<string, WorldCountriesAtomicProgress> {
   const result = new Map<string, WorldCountriesAtomicProgress>()
   for (const countryId of [...new Set(config.countryIds)]) {
@@ -71,6 +69,8 @@ function localDateForTimestamp(at: number): string {
 }
 
 export interface RecordWorldCountriesAttempt extends Attempt {
+  /** New World Countries callers must identify their activity. */
+  attemptType: WorldCountriesAttemptType
   /** New callers should provide this; omitted values remain legacy/unknown. */
   evidenceKind?: AttemptEvidenceKind
   /** Filled from `at` when omitted, using the current local timezone. */
@@ -86,10 +86,11 @@ export function recordWorldCountriesAttempt(
   skill: WorldCountriesRecallSkill,
   attempt: RecordWorldCountriesAttempt,
 ): Promise<void> {
-  const { evidenceKind, ...attemptWithoutEvidenceKind } = attempt
+  const { evidenceKind, attemptType, ...attemptWithoutMetadata } = attempt
   const recordedAttempt: Attempt = {
-    ...attemptWithoutEvidenceKind,
+    ...attemptWithoutMetadata,
     ...(evidenceKind === undefined ? {} : { evidenceKind }),
+    attemptType,
     localDate: attempt.localDate ?? localDateForTimestamp(attempt.at),
   }
   return recordAttempt(

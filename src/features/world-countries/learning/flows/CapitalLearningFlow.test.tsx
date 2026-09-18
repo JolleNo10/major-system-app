@@ -103,8 +103,8 @@ function reachCapitalFinalGate(container: HTMLDivElement): HTMLDivElement {
 
 function strongRecallProgress(): RecallProgress {
   return deriveWorldCountriesRecallProgress({ countryIds: ['NO'], skills: [...WORLD_COUNTRIES_CORE_RECALL_SKILLS] }, WORLD_COUNTRIES_CORE_RECALL_SKILLS.flatMap((skill, index) => [
-    { itemId: recallTargetIdFor('NO', skill), at: index * 2 + 1, ok: true, ms: 500, evidenceKind: 'recall' as const, localDate: '2026-08-10' },
-    { itemId: recallTargetIdFor('NO', skill), at: index * 2 + 2, ok: true, ms: 500, evidenceKind: 'recall' as const, localDate: '2026-08-10' },
+    { itemId: recallTargetIdFor('NO', skill), at: index * 2 + 1, ok: true, ms: 500, evidenceKind: 'recall' as const, attemptType: 'review' as const, localDate: '2026-08-10' },
+    { itemId: recallTargetIdFor('NO', skill), at: index * 2 + 2, ok: true, ms: 500, evidenceKind: 'recall' as const, attemptType: 'review' as const, localDate: '2026-08-10' },
   ]))
 }
 

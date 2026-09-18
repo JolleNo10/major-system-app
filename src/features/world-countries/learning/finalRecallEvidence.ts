@@ -22,6 +22,7 @@ export function recordWorldCountriesFinalRecallAnswer(
     ok: correct,
     ms: latencyMs,
     evidenceKind: 'recall',
+    attemptType: 'learning',
   })
 }
 
@@ -38,6 +39,6 @@ export function recordWorldCountriesFinalRecallPass(
   return Promise.all([...new Set(countryIds)].map(countryId => recordWorldCountriesAttempt(
     countryId,
     skill,
-    { at, ok: true, ms: WORLD_COUNTRIES_UNTIMED_ATTEMPT_MS, evidenceKind: 'recall' },
+    { at, ok: true, ms: WORLD_COUNTRIES_UNTIMED_ATTEMPT_MS, evidenceKind: 'recall', attemptType: 'learning' },
   ))).then(() => undefined)
 }

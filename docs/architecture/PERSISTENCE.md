@@ -43,7 +43,7 @@ Significant object stores:
 
 | Store | Purpose and identity |
 | --- | --- |
-| `attempts` | Append-heavy answer evidence keyed by an auto ID and indexed by opaque string `key` and time. Records may include `evidenceKind` (`recall` or `recognition`) and a recorded learner-local `localDate`; older records omit both and are legacy/unknown. Existing namespaces include `enc:NN`, `dec:NN`, `pi:<position>`, `piseg:<segment>`, and `pi:pair:<position>`; `core/learning` exposes the same store as opaque recall-item evidence. |
+| `attempts` | Append-heavy answer evidence keyed by an auto ID and indexed by opaque string `key` and time. Records may include `evidenceKind` (`recall` or `recognition`), a recorded learner-local `localDate`, and opaque `attemptType` provenance; older records omit these fields and are legacy/unknown. Existing namespaces include `enc:NN`, `dec:NN`, `pi:<position>`, `piseg:<segment>`, and `pi:pair:<position>`; `core/learning` exposes the same store as opaque recall-item evidence. |
 | `mnemonics` | Shared user-authored `{targetId, text, image, updatedAt, ...featureMetadata}` records keyed by feature-owned `targetId`. Current namespaces include `pi:segment:<index>` and `geo:*`. |
 | `pi_stories` | Legacy Pi records keyed by zero-based `seg`. Retained for lazy read migration; new writes go to `mnemonics`. |
 
@@ -98,9 +98,12 @@ follows the defining module and feature namespace.
   Countries + Capitals writes two atomic records when both steps are answered;
   its mode name is not part of either ID. The Capitals Drill helper is
   deliberately non-recording: its answers do not write atomic evidence or
-  change durable progress. New recorded attempts preserve whether the
-  interaction was recall or recognition and the local calendar date at answer
-  time.
+  change durable progress. New World Countries attempts carry feature-owned
+  `attemptType` provenance: `learning`, `review`, `strengthen`, `drill`, or
+  `legacy`; `legacy` is migration/compatibility provenance and is never
+  deliberately written by interactive activities. New recorded attempts also
+  preserve whether the interaction was recall or recognition and the local
+  calendar date at answer time.
 - World Countries Today reads retained raw attempts for active core targets
   through `learning/recallHistory.ts`. Its temporal schedule, due queue,
   delayed retry state, and checkpoints are derived/transient; no Today key,
@@ -108,8 +111,9 @@ follows the defining module and feature namespace.
   remain owned by the existing whole-Subregion Learning flows:
   `countriesLearnedAt` / `capitalsLearnedAt` may be established by ordinary
   Final recall completion or by the learner's explicitly confirmed `Skip as
-  completed` action at the Final recall gate. The skip writes no atomic attempt
-  records.
+  completed` action at the Final recall gate. When the skip establishes the
+  milestone it also writes one asserted atomic Learning attempt per Country;
+  the asserted attempt uses recall evidence and non-finite latency.
 - World Countries Recite progress uses the localStorage key
   `world-countries-recite-progress`. Its versioned record stores the latest
   completed outcome and timestamp independently for each `(ReciteMode,
@@ -155,6 +159,16 @@ follows the defining module and feature namespace.
   deletion removes both so deleted content cannot reappear.
 - Best-effort telemetry/attempt writes may swallow storage failures. Authored
   mnemonic writes propagate failures so editors can report quota problems.
+- World Countries runs an idempotent attempt-provenance migration at its
+  composition boundary for the current active Country population. It rewrites
+  only recognized `world-countries:<skill>:<CountryId>` attempts that lack a
+  valid feature type, reconstructs one confident Learning row from applicable
+  milestones when possible, marks other historical rows `legacy`, and writes
+  synthetic Learning rows for active milestone memberships with no recoverable
+  row. Reconciliation reruns when active membership changes; typed rows are
+  preserved and no one-shot completion flag is used. The migration uses the
+  existing attempt object store in place, so the optional metadata adds no
+  object store, index, or IndexedDB version bump.
 
 ## Backup, import, and export
 

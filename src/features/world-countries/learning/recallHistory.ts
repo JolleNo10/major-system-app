@@ -1,12 +1,12 @@
 import { getAllAttemptsOrThrow } from '@/core/learning'
-import type { Attempt } from '@/core/learning'
 import type { CountryId } from '@/features/world-countries/data/countries'
 import {
   recallTargetIdFor,
   type WorldCountriesRecallSkill,
 } from './recallTargets'
+import type { WorldCountriesAttempt } from './attemptTypes'
 
-export interface WorldCountriesRecallHistoryAttempt extends Attempt {
+export interface WorldCountriesRecallHistoryAttempt extends WorldCountriesAttempt {
   itemId: string
 }
 
@@ -56,7 +56,7 @@ export async function loadWorldCountriesRecallHistory(
   config: RecallHistoryConfig,
 ): Promise<WorldCountriesRecallHistory> {
   const attempts = await getAllAttemptsOrThrow()
-  return deriveWorldCountriesRecallHistory(config, attempts)
+  return deriveWorldCountriesRecallHistory(config, attempts as unknown as WorldCountriesRecallHistoryAttempt[])
 }
 
 export function flattenWorldCountriesRecallHistory(

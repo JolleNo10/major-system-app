@@ -161,6 +161,7 @@ export function TodayReviewSession({
             ok: isWorldCountriesTypedAnswerResolved(evaluation.outcome),
             ms: latencyMs,
             evidenceKind: 'recall',
+            attemptType: mode === 'consolidation' ? 'strengthen' : 'review',
           })
           latestWriteRef.current = write
           pendingWritesRef.current.push(write)

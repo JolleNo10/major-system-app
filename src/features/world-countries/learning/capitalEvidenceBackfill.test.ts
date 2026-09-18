@@ -69,6 +69,7 @@ describe('World Countries Capital evidence backfill', () => {
       ok: true,
       evidenceKind: 'recall',
       localDate: '2026-09-12',
+      attemptType: 'learning',
     })
 
     // The first run's rows are now retained evidence.

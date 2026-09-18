@@ -284,7 +284,7 @@ export function WorldCountriesToday({
       countryId: string,
       skill: typeof WORLD_COUNTRIES_CORE_RECALL_SKILLS[number],
     ) => candidates.some(candidate => (
-      candidate.target.countryId === countryId && candidate.target.skill === skill
+      candidate.target?.countryId === countryId && candidate.target?.skill === skill
     ))
 
     const debugDump = {

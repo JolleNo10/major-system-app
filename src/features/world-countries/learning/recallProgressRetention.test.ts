@@ -14,6 +14,7 @@ describe('World Countries recall evidence retention', () => {
       at: oldAt,
       ok: true,
       ms: 100,
+      attemptType: 'review',
       evidenceKind: 'recall',
     })
     for (let index = 0; index <= HISTORY_MAX; index += 1) {
@@ -21,6 +22,7 @@ describe('World Countries recall evidence retention', () => {
         at: now + index,
         ok: true,
         ms: 100,
+        attemptType: 'review',
         evidenceKind: 'recall',
       })
     }

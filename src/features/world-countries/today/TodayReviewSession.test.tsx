@@ -89,7 +89,7 @@ describe('Today review session', () => {
       await Promise.resolve()
     })
 
-    expect(recordAttemptMock).toHaveBeenCalledWith('NO', 'location-to-country', expect.objectContaining({ ok: false, evidenceKind: 'recall' }))
+    expect(recordAttemptMock).toHaveBeenCalledWith('NO', 'location-to-country', expect.objectContaining({ ok: false, evidenceKind: 'recall', attemptType: 'review' }))
     expect(mount.textContent).toContain('The correct answer is Norway.')
     expect(mount.textContent).not.toContain('Skip for now')
     expect(mount.querySelector('[data-world-countries-task-direction]')?.textContent).toBe('Location → Country')
@@ -146,7 +146,7 @@ describe('Today review session', () => {
       await Promise.resolve()
     })
 
-    expect(recordAttemptMock).toHaveBeenCalledWith('NO', 'location-to-country', expect.objectContaining({ ok: true, evidenceKind: 'recall' }))
+    expect(recordAttemptMock).toHaveBeenCalledWith('NO', 'location-to-country', expect.objectContaining({ ok: true, evidenceKind: 'recall', attemptType: 'strengthen' }))
   })
 
   it('keeps review workflow state in the rails without revealing a hidden Country', async () => {

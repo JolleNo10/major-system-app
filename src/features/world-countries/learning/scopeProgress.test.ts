@@ -24,6 +24,7 @@ function attempt(
     ok,
     ms: 500,
     evidenceKind: 'recall' as const,
+    attemptType: 'review' as const,
     localDate,
   }
 }

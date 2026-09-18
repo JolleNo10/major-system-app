@@ -143,6 +143,7 @@ describe('WorldCountriesDrill activity integration', () => {
 
     act(() => onAnswer({ countryId: 'NO', skill: 'location-to-country', answer: 'Norway', correct: true, at: 2, ms: 100 }))
     expect(recordWorldCountriesAttemptMock).toHaveBeenCalledTimes(1)
+    expect(recordWorldCountriesAttemptMock).toHaveBeenCalledWith('NO', 'location-to-country', expect.objectContaining({ attemptType: 'drill' }))
   })
 
   it('opens the first setup view in Drill with the Countries + Capitals perspective', () => {
@@ -206,7 +207,7 @@ describe('WorldCountriesDrill activity integration', () => {
     act(() => (drillSessionProps.current?.onAnswer as (record: DrillAnswerRecord) => void)({
       countryId: 'NO', skill: 'shape-to-country', answer: 'Norway', correct: true, at: 1, ms: 100,
     }))
-    expect(recordWorldCountriesAttemptMock).toHaveBeenCalledWith('NO', 'shape-to-country', expect.objectContaining({ ok: true }))
+    expect(recordWorldCountriesAttemptMock).toHaveBeenCalledWith('NO', 'shape-to-country', expect.objectContaining({ ok: true, attemptType: 'drill' }))
   })
 
   it.each([

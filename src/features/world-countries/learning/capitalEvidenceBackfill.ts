@@ -126,6 +126,7 @@ export async function applyWorldCountriesCapitalBackfill(
       ms: WORLD_COUNTRIES_UNTIMED_ATTEMPT_MS,
       evidenceKind: 'recall',
       localDate: entry.localDate,
+      attemptType: 'learning',
     })
   }
 

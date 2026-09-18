@@ -238,53 +238,37 @@ confirmed `Skip as completed` path that establishes the same Learning-layer
 milestone.
 
 The whole-scope ordered Final recall is a third evidence writer alongside Drill
-and Today. Each answered Final recall prompt writes one ordinary `recall`
-attempt for that Country's owning core skill — `location-to-country` for
-Country Learning, `country-to-capital` for Capital Learning — through the same
-feature adapter and answer lifecycle guided review uses. For the normal Today
-paths, Curriculum Final recall writes both recall evidence and the applicable
-Learning completion, while Relearn Final recall writes recall evidence only;
-the flow's explicit evidence permission is independent from its milestone
-permission. Reusing the milestone `recordCompletion` flag for both was
-rejected because it discards genuine free-recall evidence during Relearn and
-conflates two different sources of truth. Recording the staged Meet,
-Find/Recall, and Mix phases too is rejected: those repeat to criterion inside
-one session, so they would add many attempts on a single local date without
-adding a mastery date, while letting one session's repetition drive the
-proficiency band.
+and Today. Each answered Final recall prompt writes one `recall` attempt for
+that Country's owning core skill — `location-to-country` for Country Learning,
+`country-to-capital` for Capital Learning — with `attemptType: 'learning'`.
+Curriculum Final recall and Relearn Final recall intentionally use the same
+provenance: both are guided acquisition/relearning evidence and neither can
+advance a core target above Weak on its own. The flow's evidence permission
+remains independent from its milestone permission, so Relearn can retain
+evidence without writing a milestone. Recording the staged Meet, Find/Recall,
+and Mix phases too is rejected: those repeat to criterion inside one session,
+so they would add many attempts on a single local date without adding a
+mastery date, while letting one session's repetition drive the proficiency
+band.
 
-The confirmed `Skip as completed` path writes exactly the evidence a completed
-pass implies: one successful `recall` attempt per Country in the scope. The
-ordered session only completes on a clean pass over every Country, so both
-routes assert the same thing, and the learner-facing dialog states it. Unlike
-an answered pass, the skip writes evidence only when it also writes the
-Learning milestone — one condition covers both, so the dialog's two branches
-stay true. Gating the skip on the evidence permission instead was rejected:
-Today grants that permission unconditionally, so a Relearn skip would mint a
-qualifying date for every Country in an already-completed Subregion, repeatable
-daily, while asserting nothing the milestone did not already record. This
-reverses the earlier rule
-that the skip creates no atomic recall evidence: that rule silently discarded
-the learner's assertion, so a Subregion could be `capitalsLearnedAt` while
-every `country-to-capital` target still read `unpractised`. The asserted
-attempt carries a non-finite `ms`, because both median-latency consumers skip
-non-finite values and an asserted pass has no measured answer time. A
-`finalRecallSkipped` flag is still rejected — the distinction it would record
-is not one any consumer needs — and mastery is not weakened by
-self-assertion, because it requires three distinct local dates and one skip
-supplies one.
+The confirmed `Skip as completed` path writes exactly the asserted Learning
+evidence a completed pass implies: one successful `recall` attempt per Country
+in the scope, with `attemptType: 'learning'` and non-finite `ms`. The ordered
+session only completes on a clean pass over every Country, so both routes
+assert the same acquisition fact. Evidence is written only when the skip also
+writes the Learning milestone; a Relearn skip that establishes no new
+milestone mints no asserted pass. Learning attempts establish Weak but never
+provide performance or mastery dates, so self-assertion cannot directly create
+Developing, Strong, or Mastered.
 
-`learning/capitalEvidenceBackfill.ts` is a one-time recovery for Capital
-milestones recorded before Final recall wrote evidence. It reconstructs the
-rows that path would have written — one successful `country-to-capital`
-attempt per Country, at the `capitalsLearnedAt` timestamp — and is bounded by
-that durable milestone rather than by anything inferred. It is idempotent by
-learner-local date: a Country that already has a qualifying recall on that
-date is left alone, so re-running adds nothing and never overwrites earned
-evidence. The plan step is separate from the apply step and reads no
-milestone it does not already find. Running it automatically at startup is
-rejected: a reconstruction that rewrites evidence invisibly cannot be reviewed
-before it lands, so it stays an explicitly invoked development-only surface.
+`learning/capitalEvidenceBackfill.ts` remains an explicit compatibility
+utility for Capital milestones recorded before Final recall wrote evidence.
+Rows it reconstructs are historical Learning evidence and therefore use
+`attemptType: 'learning'`. The automatic attempt-provenance migration now
+also reconstructs missing Country and Capital Learning rows for the active
+population, but the backfill remains exported for callers that still need its
+plan/apply surface; both paths are idempotent and never overwrite earned
+evidence.
 
 Learning and Review
 completion surfaces use existing milestone/evidence truth. Checkpoint docks
@@ -314,17 +298,43 @@ difficulty. Multiple attempts on one local date count as one event; difficulty
 is not persisted and clears after two clean recall days. The guided Home
 presents the resulting reason as concise `Why now` summary counts and the
 Review flow gives a per-prompt `Why now` explanation, including repeated
-difficulty and useful overdue wording. Current atomic recall proficiency is
-also projected from this retained history. Initial/current Mastery requires
-successful qualifying explicit recall on three distinct learner-local dates
-after the applicable failure boundary, so one date is Developing and two
-dates are Strong in the normal spaced progression. An isolated failure lowers
-one band (Mastered -> Strong); a same-date retry remains Strong, while the
-first later qualifying explicit-recall date restores Mastered. A later
-processed failure before that recovery clears the accelerated recovery and
-returns the target to the normal three-date post-failure progression.
-`hasEverMastered` is historical three-date mastery evidence for the
-established-layer fallback and is never cleared by a later mistake.
+difficulty and useful overdue wording. Proficiency is a projection of the
+retained attempts, not a stored status or a Learning milestone. For the core
+Country and Capital skills, explicit `learning` attempts and the first
+legacy effective-local-day cluster are acquisition evidence: they establish
+Weak only, never provide performance or mastery dates, and never downgrade a
+higher performance-derived result. `review`, `strengthen`, and `drill`
+attempts are performance evidence and may advance a target without prior
+Learning; later legacy clusters are performance evidence too. Additional
+skills retain their existing performance interpretation for legacy attempts.
+The performance timeline is filtered before lapse/recovery projection, so
+Learning-only failures cannot create a lapse. Current Mastery and
+`hasEverMastered` require successful qualifying explicit performance recall on
+three distinct learner-local dates after the applicable failure boundary;
+recognition and missing/unknown evidence kinds remain ineligible for that
+explicit-recall requirement. An isolated performance failure lowers one band
+(Mastered -> Strong); a same-date retry remains Strong, while the first later
+qualifying explicit-recall date restores Mastered. A later processed failure
+before that recovery clears the accelerated recovery and returns the target to
+the normal three-date post-failure progression. A later Learning/Relearn
+attempt does not alter the performance projection.
+
+Historical attempts without provenance are migrated conservatively. A
+milestone-matched same-day successful non-recognition attempt may become
+`learning`; other recognized World Countries attempts become `legacy`. For
+core skills, the first legacy local-day cluster is acquisition-equivalent and
+later clusters are performance-equivalent. The migration reruns at the
+composition boundary for the active Country population, leaves typed rows
+untouched, and can add missing synthetic Learning evidence for applicable
+milestones without using those milestones as runtime proficiency state.
+
+Three tempting alternatives are intentionally rejected: deriving Weak
+directly from Learning milestones would create a second status authority;
+treating every old untyped attempt as performance would let historical
+Learning Final Recall inflate users directly to Developing/Strong; and
+guessing old Review versus Strengthen versus Drill would invent provenance
+that was never persisted even though those activities share proficiency
+semantics. `legacy` preserves the uncertainty honestly.
 
 ### Playground activities
 
@@ -441,10 +451,10 @@ Capital, and Combined scopes each start fresh scheduler state. Only the
 whole-Subregion ordered Final recall or an explicitly confirmed `Skip as
 completed` action at the Final recall gate writes the owning Learning milestone;
 journey and scheduler state are not persisted. Answered Final recall prompts
-write ordinary `recall` evidence whenever the flow is configured to retain it,
-including Today Relearn; the skip writes one successful attempt per Country
-only when it also writes the milestone. The staged practice scopes remain
-evidence-free.
+write `recall` evidence with `attemptType: 'learning'` whenever the flow is
+configured to retain it, including Today Relearn; the skip writes one
+successful Learning attempt per Country only when it also writes the
+milestone. The staged practice scopes remain evidence-free.
 
 ### The learner-facing Journey
 
@@ -504,7 +514,7 @@ the scope's planner recommendation when unfinished curriculum remains elsewhere.
 
 A learned Subregion can be relearned from the guided rails. A Relearn run is
 non-durable with respect to Learning milestones: it writes no milestone, but
-answered whole-scope Final recall prompts write ordinary recall evidence. It
+answered whole-scope Final recall prompts write `learning`-provenance recall evidence. It
 exposes no next-region handoff and never clears existing completion. Completion
 celebration level is derived from learning completeness and never from the run
 Subregion's position in the effective Continent order. A completed run
@@ -932,9 +942,12 @@ flowchart TD
   temporary current Journey are separate responsibilities, and conflating them
   would permanently rewrite navigation/order merely to express a learning-path
   preference.
-- Atomic Drill, Today review, and guided Final recall evidence continue to use
-  the existing attempts store and `world-countries:<skill>:<CountryId>` IDs.
-  Practice never writes it.
+- Atomic Drill, Today review, Strengthen, and guided Final recall evidence
+  continue to use the existing attempts store and
+  `world-countries:<skill>:<CountryId>` IDs. Durable World Countries attempts
+  carry `attemptType: 'drill'`, `'review'`, `'strengthen'`, or `'learning'`;
+  the feature-local migration uses `'legacy'` for uncertain historical
+  provenance. Practice never writes it.
 - Capitals, Countries from Capitals, and Neighbours Quiz are transient
   Practice: they write no attempts, Drill preferences/proficiency, Learning
   milestones/readiness, Today state, Recite progress, Quiz history, or other
@@ -943,7 +956,7 @@ flowchart TD
   area. Neighbours keeps its multi-answer target state separate from the
   single-answer Country/Capital records.
 - Today reads raw core evidence through `learning/recallHistory.ts` and writes
-  ordinary `recall` evidence through the existing feature adapter. It owns no
+  typed `recall` evidence through the existing feature adapter. It owns no
   schedule, plan, queue, retry, or checkpoint persistence; its sole durable
   Journey preference is the stable Continent ID described above.
 - A persisted legacy Drill `mode: "capitals"` remains invalid under the
@@ -1000,8 +1013,10 @@ flowchart TD
   owned by Today, Drill, Learning, or Recite.
 - Final recall is the normal pedagogical finish for Learning. A confirmed
   `Skip as completed` action from the Final recall gate may establish the same
-  Learning-layer milestone without fabricating recall/mastery evidence; skipped
-  temporary scopes do not establish durable completion or fabricate evidence.
+  Learning-layer milestone and writes asserted `learning`-provenance recall
+  evidence for that completion; it is not a performance or mastery date.
+  Skipped temporary scopes do not establish durable completion or fabricate
+  evidence.
 - Workflow folders do not depend on sibling workflow internals.
 - Quiz run membership, Country records, and question order are snapshots;
   live Settings/geography changes affect only a later run.
@@ -1089,8 +1104,12 @@ evidence, not a fresh opinion.
   colour may identify the entity, but size emphasis follows the local point.
 - **Review scheduling is derived, never persisted.** A stored `nextReviewAt`
   or SRS record is duplicate state that drifts from the learning evidence it
-  is supposed to summarise. Writing synthetic attempts on Learning completion
-  was rejected for the same reason: a milestone is not an answer.
+  is supposed to summarise. Writing synthetic attempts on every new Learning
+  completion remains rejected: a milestone is not a new answer. The
+  compatibility migration may synthesize a one-time historical Learning row
+  only when an existing milestone has no recoverable atomic row, so old
+  acquisition evidence is not lost while normal runtime milestones remain
+  separate from proficiency.
 - **Recite keeps latest-outcome-per-(mode, Country), not run history.**
   Product behaviour needs current status, not analytics, streaks, or run
   inspection. Keeping the status fully transient was also rejected, because

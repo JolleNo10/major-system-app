@@ -4,6 +4,7 @@ import {
   deriveWorldCountriesRecallProgress,
   deriveWorldCountriesCountryProgress,
 } from './recallProgress'
+import { deriveWorldCountriesAtomicProgress } from './recallMastery'
 import { recallTargetIdFor, WORLD_COUNTRIES_RECALL_SKILLS } from './recallTargets'
 
 function attempt(
@@ -13,6 +14,7 @@ function attempt(
   ok: boolean,
   localDate?: string,
   evidenceKind: 'recall' | 'recognition' = 'recall',
+  attemptType: 'learning' | 'review' | 'strengthen' | 'drill' | 'legacy' = 'review',
 ) {
   return {
     itemId: recallTargetIdFor(countryId, skill),
@@ -21,10 +23,149 @@ function attempt(
     ms: 500,
     ...(localDate ? { localDate } : {}),
     ...(evidenceKind ? { evidenceKind } : {}),
+    attemptType,
   }
 }
 
 describe('World Countries recall progress', () => {
+  it('reports no attempts as Unpractised', () => {
+    const progress = deriveWorldCountriesRecallProgress({ countryIds: ['NO'], skills: ['location-to-country'] }, [])
+      .get(recallTargetIdFor('NO', 'location-to-country'))!
+    expect(progress.proficiency).toBe('unpractised')
+  })
+
+  it('keeps one or many Learning successes at Weak', () => {
+    const one = deriveWorldCountriesAtomicProgress(recallTargetIdFor('NO', 'location-to-country'), [
+      attempt('NO', 'location-to-country', 1, true, '2026-08-10', 'recall', 'learning'),
+    ])
+    const many = deriveWorldCountriesAtomicProgress(recallTargetIdFor('NO', 'location-to-country'), [
+      attempt('NO', 'location-to-country', 1, true, '2026-08-10', 'recall', 'learning'),
+      attempt('NO', 'location-to-country', 2, true, '2026-08-11', 'recall', 'learning'),
+      attempt('NO', 'location-to-country', 3, true, '2026-08-12', 'recall', 'learning'),
+    ])
+    expect(one.proficiency).toBe('weak')
+    expect(many.proficiency).toBe('weak')
+    expect(many.mastered).toBe(false)
+  })
+
+  it('keeps Learning failures, retries, and repair repetitions at Weak', () => {
+    const progress = deriveWorldCountriesAtomicProgress(recallTargetIdFor('NO', 'location-to-country'), [
+      attempt('NO', 'location-to-country', 1, false, '2026-08-10', 'recall', 'learning'),
+      attempt('NO', 'location-to-country', 2, true, '2026-08-10', 'recall', 'learning'),
+      attempt('NO', 'location-to-country', 3, false, '2026-08-11', 'recall', 'learning'),
+      attempt('NO', 'location-to-country', 4, true, '2026-08-11', 'recall', 'learning'),
+    ])
+    expect(progress.proficiency).toBe('weak')
+    expect(progress.mastered).toBe(false)
+  })
+
+  it.each([
+    ['review', 'review'],
+    ['strengthen', 'strengthen'],
+    ['drill', 'drill'],
+  ] as const)('allows a first %s success without Learning', (_label, attemptType) => {
+    const progress = deriveWorldCountriesAtomicProgress(recallTargetIdFor('NO', 'country-to-capital'), [
+      attempt('NO', 'country-to-capital', 1, true, '2026-08-10', 'recall', attemptType),
+    ])
+    expect(progress.proficiency).toBe('developing')
+  })
+
+  it('does not let Learning advance or downgrade performance proficiency', () => {
+    const performanceFirst = deriveWorldCountriesAtomicProgress(recallTargetIdFor('NO', 'country-to-capital'), [
+      attempt('NO', 'country-to-capital', 1, true, '2026-08-10', 'recall', 'review'),
+      attempt('NO', 'country-to-capital', 2, true, '2026-08-11', 'recall', 'learning'),
+      attempt('NO', 'country-to-capital', 3, false, '2026-08-12', 'recall', 'learning'),
+    ])
+    const strongThenRelearn = deriveWorldCountriesAtomicProgress(recallTargetIdFor('NO', 'country-to-capital'), [
+      attempt('NO', 'country-to-capital', 1, true, '2026-08-10', 'recall', 'review'),
+      attempt('NO', 'country-to-capital', 2, true, '2026-08-11', 'recall', 'review'),
+      attempt('NO', 'country-to-capital', 3, true, '2026-08-12', 'recall', 'learning'),
+      attempt('NO', 'country-to-capital', 4, false, '2026-08-13', 'recall', 'learning'),
+    ])
+    expect(performanceFirst.proficiency).toBe('developing')
+    expect(strongThenRelearn.proficiency).toBe('strong')
+  })
+
+  it('uses further performance evidence for Strong and three performance recall dates for Mastered', () => {
+    const strong = deriveWorldCountriesAtomicProgress(recallTargetIdFor('NO', 'country-to-capital'), [
+      attempt('NO', 'country-to-capital', 1, true, '2026-08-10', 'recall', 'review'),
+      attempt('NO', 'country-to-capital', 2, true, '2026-08-11', 'recall', 'review'),
+    ])
+    const mastered = deriveWorldCountriesAtomicProgress(recallTargetIdFor('NO', 'country-to-capital'), [
+      attempt('NO', 'country-to-capital', 1, true, '2026-08-10', 'recall', 'review'),
+      attempt('NO', 'country-to-capital', 2, true, '2026-08-11', 'recall', 'strengthen'),
+      attempt('NO', 'country-to-capital', 3, true, '2026-08-12', 'recall', 'drill'),
+    ])
+    expect(strong.proficiency).toBe('strong')
+    expect(mastered.proficiency).toBe('mastered')
+    expect(mastered.hasEverMastered).toBe(true)
+  })
+
+  it('keeps missing evidence kind positive but ineligible for mastery', () => {
+    const progress = deriveWorldCountriesAtomicProgress(recallTargetIdFor('NO', 'country-to-capital'), [
+      { at: 1, ok: true, ms: 500, localDate: '2026-08-10', attemptType: 'review' },
+      { at: 2, ok: true, ms: 500, localDate: '2026-08-11', attemptType: 'review' },
+      { at: 3, ok: true, ms: 500, localDate: '2026-08-12', attemptType: 'review' },
+    ])
+    expect(progress.proficiency).toBe('strong')
+    expect(progress.mastered).toBe(false)
+  })
+
+  it('does not let a later Learning failure clear current or historical mastery', () => {
+    const progress = deriveWorldCountriesAtomicProgress(recallTargetIdFor('NO', 'country-to-capital'), [
+      attempt('NO', 'country-to-capital', 1, true, '2026-08-10', 'recall', 'review'),
+      attempt('NO', 'country-to-capital', 2, true, '2026-08-11', 'recall', 'review'),
+      attempt('NO', 'country-to-capital', 3, true, '2026-08-12', 'recall', 'review'),
+      attempt('NO', 'country-to-capital', 4, false, '2026-08-13', 'recall', 'learning'),
+    ])
+    expect(progress.proficiency).toBe('mastered')
+    expect(progress.mastered).toBe(true)
+    expect(progress.hasEverMastered).toBe(true)
+  })
+
+  it('treats later legacy clusters as performance evidence for core skills', () => {
+    const developing = deriveWorldCountriesAtomicProgress(recallTargetIdFor('NO', 'location-to-country'), [
+      { at: 1, ok: true, ms: 500, localDate: '2026-08-10', evidenceKind: 'recall', attemptType: 'legacy' },
+      { at: 2, ok: true, ms: 500, localDate: '2026-08-11', evidenceKind: 'recall', attemptType: 'legacy' },
+    ])
+    const strong = deriveWorldCountriesAtomicProgress(recallTargetIdFor('NO', 'location-to-country'), [
+      { at: 1, ok: true, ms: 500, localDate: '2026-08-10', evidenceKind: 'recall', attemptType: 'legacy' },
+      { at: 2, ok: true, ms: 500, localDate: '2026-08-11', evidenceKind: 'recall', attemptType: 'legacy' },
+      { at: 3, ok: true, ms: 500, localDate: '2026-08-12', evidenceKind: 'recall', attemptType: 'legacy' },
+    ])
+    expect(developing.proficiency).toBe('developing')
+    expect(strong.proficiency).toBe('strong')
+  })
+
+  it('uses only later qualifying legacy recall dates for mastery', () => {
+    const progress = deriveWorldCountriesAtomicProgress(recallTargetIdFor('NO', 'location-to-country'), [
+      { at: 1, ok: true, ms: 500, localDate: '2026-08-10', evidenceKind: 'recall', attemptType: 'legacy' },
+      { at: 2, ok: true, ms: 500, localDate: '2026-08-11', evidenceKind: 'recall', attemptType: 'legacy' },
+      { at: 3, ok: true, ms: 500, localDate: '2026-08-12', evidenceKind: 'recall', attemptType: 'legacy' },
+      { at: 4, ok: true, ms: 500, localDate: '2026-08-13', evidenceKind: 'recall', attemptType: 'legacy' },
+    ])
+    expect(progress.proficiency).toBe('mastered')
+    expect(progress.hasEverMastered).toBe(true)
+  })
+
+  it('uses timestamp dates to group missing-localDate legacy evidence but not to qualify mastery', () => {
+    const progress = deriveWorldCountriesAtomicProgress(recallTargetIdFor('NO', 'location-to-country'), [
+      { at: Date.parse('2026-08-10T10:00:00Z'), ok: true, ms: 500, evidenceKind: 'recall', attemptType: 'legacy' },
+      { at: Date.parse('2026-08-11T10:00:00Z'), ok: true, ms: 500, evidenceKind: 'recall', attemptType: 'legacy' },
+      { at: Date.parse('2026-08-12T10:00:00Z'), ok: true, ms: 500, evidenceKind: 'recall', attemptType: 'legacy' },
+    ])
+    expect(progress.proficiency).toBe('strong')
+    expect(progress.mastered).toBe(false)
+  })
+
+  it('keeps additional-skill legacy evidence on ordinary performance semantics', () => {
+    const progress = deriveWorldCountriesAtomicProgress(recallTargetIdFor('NO', 'capital-to-country'), [
+      { at: 1, ok: true, ms: 500, localDate: '2026-08-10', attemptType: 'legacy' },
+      { at: 2, ok: true, ms: 500, localDate: '2026-08-10', attemptType: 'legacy' },
+    ])
+    expect(progress.proficiency).toBe('strong')
+  })
+
   it('derives independent evidence for each atomic skill', () => {
     const progress = deriveWorldCountriesRecallProgress({
       countryIds: ['NO'],
@@ -105,16 +246,16 @@ describe('World Countries recall progress', () => {
     expect(progress.hasEverMastered).toBe(false)
   })
 
-  it('treats legacy successful attempts as positive but not qualifying recall evidence', () => {
+  it('treats the first legacy cluster as acquisition evidence', () => {
     const progress = deriveWorldCountriesRecallProgress({
       countryIds: ['NO'],
       skills: ['country-to-capital'],
     }, [
-      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 1, ok: true, ms: 500 },
-      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 2, ok: true, ms: 500 },
+      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 1, ok: true, ms: 500, attemptType: 'legacy', localDate: '2026-08-10', evidenceKind: 'recall' },
+      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 2, ok: true, ms: 500, attemptType: 'legacy', localDate: '2026-08-10', evidenceKind: 'recall' },
     ]).get(recallTargetIdFor('NO', 'country-to-capital'))!
 
-    expect(progress.proficiency).toBe('strong')
+    expect(progress.proficiency).toBe('weak')
     expect(progress.mastered).toBe(false)
     expect(progress.hasEverMastered).toBe(false)
   })

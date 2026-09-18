@@ -24,6 +24,7 @@ function progressFor(
     ok,
     ms: 500,
     evidenceKind: 'recognition' as const,
+    attemptType: 'drill' as const,
   }
 }
 
