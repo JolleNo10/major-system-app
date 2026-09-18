@@ -469,6 +469,49 @@ describe('GeographyOverviewMap', () => {
     Object.defineProperty(svgElementPrototype, 'getBBox', { configurable: true, value: previousGetBBox })
   })
 
+  it('translates caller Country-ID inner glows alongside colors and patterns without reloading SVG', async () => {
+    const fetchMock = vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g><g><path id="Sweden"/><text id="Sweden_label">Sweden</text></g></svg>' }))
+    vi.stubGlobal('fetch', fetchMock)
+    const norway = countries.find(country => country.id === 'NO')!
+    const sweden = countries.find(country => country.id === 'SE')!
+    const diagonal = { kind: 'diagonal' as const, baseColor: '#52525b', lineColor: '#918779', lineWidth: 2, pitch: 16 }
+    const glow = { color: '#769A70', edgeIntensity: 111, fadeLength: 10, fadeBody: 31, edgeConcentration: 79 }
+    const mount = document.createElement('div'); document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(GeographyOverviewMap, {
+        level: 'world',
+        countryPopulation: [norway, sweden],
+        countryColorsById: new Map([['NO', '#769A70']]),
+        countryPatternsById: new Map([['SE', diagonal]]),
+        countryInnerGlowsById: new Map([['NO', glow]]),
+        ariaLabel: 'World map',
+      }))
+      await Promise.resolve(); await Promise.resolve()
+    })
+
+    expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toBe('#769A70')
+    expect((mount.querySelector('path#Sweden') as SVGPathElement | null)?.style.fill).toMatch(/^url\(#svg-map-country-pattern-/)
+    expect(mount.querySelector('[data-svg-map-country-inner-glow-country="Norway"]')).not.toBeNull()
+    const fetchCallsAfterLoad = fetchMock.mock.calls.length
+
+    await act(async () => {
+      root?.render(createElement(GeographyOverviewMap, {
+        level: 'world',
+        countryPopulation: [norway, sweden],
+        countryColorsById: new Map([['NO', '#769A70']]),
+        countryPatternsById: new Map([['SE', diagonal]]),
+        countryInnerGlowsById: new Map([['NO', { ...glow, color: '#B5A678' }]]),
+        ariaLabel: 'World map',
+      }))
+      await Promise.resolve()
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(fetchCallsAfterLoad)
+    expect(mount.querySelector('[data-svg-map-country-inner-glow-country="Norway"]')).not.toBeNull()
+  })
+
   it('does not recompute explicit zoom when only semantic Country colors change', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g><g><path id="Sweden"/><text id="Sweden_label">Sweden</text></g></svg>' })))
     const norway = countries.find(country => country.id === 'NO')!

@@ -4,6 +4,7 @@ import {
   createContinentHoverGroups,
   createCountryOrderLabels,
   createCountryColors,
+  createCountryInnerGlowsById,
   createCountryPatternsById,
   createSubregionHoverGroups,
   findUnresolvedCountries,
@@ -51,6 +52,21 @@ describe('World Countries geography map adapter', () => {
     expect(createCountryColors([norway], ['NO'], ['Norway'], '#22c55e')).toEqual([
       ['Norway', '#22c55e'],
     ])
+  })
+
+
+  it('translates Country-ID inner glows to normal and multipart SVG IDs without interpreting them', () => {
+    const glow = { color: '#769A70', edgeIntensity: 111, fadeLength: 10, fadeBody: 31, edgeConcentration: 79 }
+    expect(createCountryInnerGlowsById([norway], new Map([['NO', glow]]), ['Norway'])).toEqual([
+      ['Norway', glow],
+    ])
+    expect(createCountryInnerGlowsById([unitedKingdom], new Map([['GB', glow]]), ['England', 'Scotland', 'Wales'])).toEqual([
+      ['England', glow], ['Scotland', glow], ['Wales', glow],
+    ])
+    expect(createCountryInnerGlowsById([norway], new Map([['NO', glow]]), ['Norway', 'Norway_wrap'])).toEqual([
+      ['Norway', glow],
+    ])
+    expect(createCountryInnerGlowsById([norway], new Map([['SE', glow]]), ['Norway'])).toEqual([])
   })
 
   it('translates patterns to every multipart SVG ID', () => {

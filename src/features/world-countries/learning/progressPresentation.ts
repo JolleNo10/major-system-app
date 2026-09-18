@@ -8,6 +8,14 @@ export type WorldCountriesProgressPerspective = 'core' | WorldCountriesRecallSki
 export type WorldCountriesProgressState = WorldCountriesCountryCoreState | WorldCountriesProficiency
 export type WorldCountriesProgressLegendKind = 'core' | 'skill'
 
+export const WORLD_COUNTRIES_ATOMIC_PROFICIENCY_STATES = [
+  'unpractised',
+  'weak',
+  'developing',
+  'strong',
+  'mastered',
+] as const satisfies readonly WorldCountriesProficiency[]
+
 export type WorldCountriesPrimaryStatus =
   | { kind: 'learning'; readiness: WorldCountriesLearningReadiness }
   | { kind: 'recall'; state: WorldCountriesProgressState }

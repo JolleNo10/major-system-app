@@ -5,12 +5,13 @@ import { getContinentMetadata } from '@/features/world-countries/geography/conti
 import { getContinentsInEffectiveOrder, getSubregionsForContinentInEffectiveOrder } from '@/features/world-countries/geography/queries'
 import { getWorldMetadata } from '@/features/world-countries/geography/worldMetadataStore'
 import type { RecallProgress } from '@/features/world-countries/learning/recallProgress'
-import { deriveWorldCountriesScopeProgressForCountries, type WorldCountriesScopeProgress } from '@/features/world-countries/learning/scopeProgress'
+import { deriveWorldCountriesScopeProgressForCountries, getWorldCountriesScopeDisplayedMasteryRatio, type WorldCountriesScopeProgress } from '@/features/world-countries/learning/scopeProgress'
 import type { LearningStates } from '@/features/world-countries/learning/learningProgress'
 import { getWorldCountriesLearningStateList } from '@/features/world-countries/learning/learningReadiness'
-import { deriveWorldCountriesPrimaryStatusCounts, getWorldCountriesProgressLegend, WORLD_COUNTRIES_CORE_FINISH_LINE_EXPLANATION, type WorldCountriesPrimaryStatusCount } from '@/features/world-countries/learning/progressPresentation'
+import { getWorldCountriesProgressLegend, WORLD_COUNTRIES_ATOMIC_PROFICIENCY_STATES, WORLD_COUNTRIES_CORE_FINISH_LINE_EXPLANATION, WORLD_COUNTRIES_PROGRESS_LABELS } from '@/features/world-countries/learning/progressPresentation'
 import { GeographyBreadcrumbs } from '@/features/world-countries/ui/GeographyBreadcrumbs'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
+import { WorldCountriesDualRecallBar } from '@/features/world-countries/ui/WorldCountriesDualRecallBar'
 import { WorldMasterySummary } from '@/features/world-countries/ui/WorldMasterySummary'
 import { deriveWorldCountriesJourneyPresentation, type WorldCountriesJourneyPresentation } from './journeyPresentation'
 
@@ -18,9 +19,6 @@ interface ProgressRowData {
   id: string
   label: string
   progress: WorldCountriesScopeProgress
-  countries: readonly Country[]
-  recallProgress: RecallProgress
-  learningStates: LearningStates
   regionSummary?: string
   journeyPosition?: {
     journey: string
@@ -65,9 +63,6 @@ export function WorldCountriesProgressView({
           id: `continent:${continent}`,
           label: continent,
           progress: deriveWorldCountriesScopeProgressForCountries(`continent:${continent}`, continentCountries, recallProgress),
-          countries: continentCountries,
-          recallProgress,
-          learningStates,
           regionSummary: `${completeRegions} of ${continentSubregions.length} regions with complete recall`,
         }
       })
@@ -87,9 +82,6 @@ export function WorldCountriesProgressView({
           scopeCountries.filter(country => country.subregionId === subregion.id),
           recallProgress,
         ),
-        countries: scopeCountries.filter(country => country.subregionId === subregion.id),
-        recallProgress,
-        learningStates,
         journeyPosition: getJourneyProgressLabel(deriveWorldCountriesJourneyPresentation({
           subregionId: subregion.id,
           entries: scopeCountries,
@@ -110,21 +102,47 @@ export function WorldCountriesProgressView({
   return (
     <section className="space-y-4 animate-fade-in" aria-labelledby="world-countries-progress-heading">
       <div className="space-y-1"><p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World Countries · Progress</p><h1 id="world-countries-progress-heading" className="text-2xl font-black text-zinc-100">{scopeLabel} progress</h1><p className="text-sm text-zinc-500">A concise view of current recall and Learning state.</p></div>
-      <WorldMasterySummary progress={progress} scopeLabel={scopeLabel} primaryStatusContext={{ countries: scopeCountries, recallProgress: recallProgress ?? new Map(), learningStates }} />
+      <WorldMasterySummary progress={progress} scopeLabel={scopeLabel} />
       {progress === null ? <p role="status" className="text-sm text-zinc-400">Loading progress…</p> : rows.length === 0 ? <p className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-sm text-zinc-400">No active Countries are available in this scope.</p> : <div className="grid gap-3 sm:grid-cols-2">{rows.map(row => <ProgressRow key={row.id} {...row} />)}</div>}
     </section>
   )
 }
 
-function ProgressRow({ label, progress, countries, recallProgress, learningStates, regionSummary, journeyPosition }: ProgressRowData) {
-  const percentage = Math.round(progress.coreMasteryRatio * 100)
-  const distribution = deriveWorldCountriesPrimaryStatusCounts(countries, getWorldCountriesLearningStateList(learningStates), recallProgress)
-  return <WorldCountriesPanel as="article" className="space-y-3"><div className="flex items-center justify-between gap-3"><h2 className="font-semibold text-zinc-100">{label}</h2><span className="text-xs tabular-nums text-cyan-300">{percentage}%</span></div><div className="flex h-1.5 overflow-hidden rounded-full bg-zinc-800" aria-hidden="true">{[...distribution].reverse().filter(entry => entry.count > 0).map(entry => <span key={entry.state} className="h-full" style={{ width: `${(entry.count / Math.max(1, countries.length)) * 100}%`, backgroundColor: entry.color }} />)}</div><p className="text-sm font-semibold text-zinc-200">{progress.completeCountries} / {progress.totalCountries} Countries fully mastered</p><ProgressStateDistribution label={label} distribution={distribution} />{regionSummary && <p className="text-xs text-zinc-400">{regionSummary}</p>}{journeyPosition && <><p data-journey-position className="text-xs text-violet-200"><span className="font-semibold uppercase tracking-wider text-violet-300">Journey</span> · {journeyPosition.journey}</p>{journeyPosition.mastery && <p data-mastery-position className="text-xs text-violet-200"><span className="font-semibold uppercase tracking-wider text-violet-300">Mastery</span> · {journeyPosition.mastery}</p>}</>}</WorldCountriesPanel>
+function ProgressRow({ label, progress, regionSummary, journeyPosition }: ProgressRowData) {
+  const percentage = Math.round(getWorldCountriesScopeDisplayedMasteryRatio(progress) * 100)
+  return (
+    <WorldCountriesPanel as="article" className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="font-semibold text-zinc-100">{label}</h2>
+        <span className="text-xs tabular-nums text-cyan-300">Mastery {percentage}%</span>
+      </div>
+      <WorldCountriesDualRecallBar
+        totalCountries={progress.totalCountries}
+        countryCounts={progress.locationToCountryStateCounts}
+        capitalCounts={progress.countryToCapitalStateCounts}
+      />
+      <p className="text-sm font-semibold text-zinc-200">{progress.completeCountries} / {progress.totalCountries} Countries fully mastered</p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <ProgressStateDistribution label="Country" counts={progress.locationToCountryStateCounts} />
+        <ProgressStateDistribution label="Capital" counts={progress.countryToCapitalStateCounts} />
+      </div>
+      {regionSummary && <p className="text-xs text-zinc-400">{regionSummary}</p>}
+      {journeyPosition && <><p data-journey-position className="text-xs text-violet-200"><span className="font-semibold uppercase tracking-wider text-violet-300">Journey</span> · {journeyPosition.journey}</p>{journeyPosition.mastery && <p data-mastery-position className="text-xs text-violet-200"><span className="font-semibold uppercase tracking-wider text-violet-300">Mastery</span> · {journeyPosition.mastery}</p>}</>}
+    </WorldCountriesPanel>
+  )
 }
 
-function ProgressStateDistribution({ label, distribution }: { label: string; distribution: readonly WorldCountriesPrimaryStatusCount[] }) {
-  const accessibleSummary = distribution.filter(entry => entry.count > 0).map(entry => `${entry.label} ${entry.count}`).join(' · ')
-  return <section aria-label={`${label} core recall distribution`} className="space-y-1.5"><p className="sr-only">{accessibleSummary}</p><ul aria-label={`${label} core recall state counts`} className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-zinc-400">{distribution.map(entry => <li key={entry.state} data-progress-state={entry.state} className="tabular-nums">{entry.label} {entry.count}</li>)}</ul></section>
+function ProgressStateDistribution({ label, counts }: { label: 'Country' | 'Capital'; counts: Readonly<Record<(typeof WORLD_COUNTRIES_ATOMIC_PROFICIENCY_STATES)[number], number>> }) {
+  return (
+    <section aria-label={`${label} recall distribution`} className="space-y-1.5">
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">{label}</h3>
+      <ul aria-label={`${label} recall state counts`} className="space-y-1 text-[11px] text-zinc-400">
+        {WORLD_COUNTRIES_ATOMIC_PROFICIENCY_STATES.map(state => (
+          <li key={state} data-progress-state={state} className="tabular-nums">{WORLD_COUNTRIES_PROGRESS_LABELS[state]} {counts[state]}</li>
+        ))}
+      </ul>
+    </section>
+  )
 }
 
 function getJourneyProgressLabel(journey: WorldCountriesJourneyPresentation): ProgressRowData['journeyPosition'] {

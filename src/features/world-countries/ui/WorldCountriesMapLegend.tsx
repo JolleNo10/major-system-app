@@ -1,10 +1,9 @@
-import { getCountryProgressColor, WORLD_COUNTRIES_PROGRESS_LABELS } from '@/features/world-countries/learning/progressPresentation'
-import { WORLD_COUNTRIES_COUNTRY_CORE_STATES } from '@/features/world-countries/learning/scopeProgress'
+import { WORLD_COUNTRIES_ATOMIC_PROFICIENCY_STATES, getCountryProgressColor, WORLD_COUNTRIES_PROGRESS_LABELS } from '@/features/world-countries/learning/progressPresentation'
 import {
   WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES,
 } from '@/features/world-countries/learning/learningReadiness'
 
-/** Compact, visible legend for the one-status map ladder. */
+/** Compact, visible legend for the shared Learning and atomic recall ladders. */
 export function WorldCountriesMapLegend({ learningComplete = false }: { learningComplete?: boolean }) {
   return (
     <div
@@ -28,13 +27,14 @@ export function WorldCountriesMapLegend({ learningComplete = false }: { learning
       <section aria-label="Recall health" className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
         <p className="font-semibold uppercase tracking-wider text-zinc-500">Recall health</p>
         <ul className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-          {WORLD_COUNTRIES_COUNTRY_CORE_STATES.map(state => (
+          {WORLD_COUNTRIES_ATOMIC_PROFICIENCY_STATES.map(state => (
             <li key={state} data-progress-state={state} className="inline-flex items-center gap-1.5">
               <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full border border-white/15" style={{ backgroundColor: getCountryProgressColor(state) }} />
               <span>{WORLD_COUNTRIES_PROGRESS_LABELS[state]}</span>
             </li>
           ))}
         </ul>
+        <p data-map-status-cue className="text-zinc-500">Country = fill · Capital = inner edge</p>
       </section>
     </div>
   )

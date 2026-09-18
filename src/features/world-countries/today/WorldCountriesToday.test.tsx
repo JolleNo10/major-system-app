@@ -5,8 +5,7 @@ import { countries } from '@/features/world-countries/data/countries'
 import { getSubregionsForContinentInEffectiveOrder } from '@/features/world-countries/geography/queries'
 import { getContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
 import { markSubregionCapitalsLearned, markSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningStore'
-import { WORLD_COUNTRIES_PROGRESS_LABELS, getCountryProgressColor } from '@/features/world-countries/learning/progressPresentation'
-import { WORLD_COUNTRIES_COUNTRY_CORE_STATES } from '@/features/world-countries/learning/scopeProgress'
+import { WORLD_COUNTRIES_ATOMIC_PROFICIENCY_STATES, WORLD_COUNTRIES_PROGRESS_LABELS, getCountryProgressColor } from '@/features/world-countries/learning/progressPresentation'
 import { JOURNEY_PREFERENCE_STORAGE_KEY } from './journeyPreferenceStore'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -275,10 +274,10 @@ describe('World Countries Today', () => {
 
     expect(mount.querySelector('[data-testid="world-mastery-summary"]')).toBeNull()
     expect(legend?.getAttribute('aria-label')).toBe('Map legend: learning and recall health')
-    expect(states.map(entry => entry.dataset.progressState)).toEqual([...WORLD_COUNTRIES_COUNTRY_CORE_STATES])
-    expect(states.map(entry => entry.textContent)).toEqual(WORLD_COUNTRIES_COUNTRY_CORE_STATES.map(state => WORLD_COUNTRIES_PROGRESS_LABELS[state]))
+    expect(states.map(entry => entry.dataset.progressState)).toEqual([...WORLD_COUNTRIES_ATOMIC_PROFICIENCY_STATES])
+    expect(states.map(entry => entry.textContent)).toEqual(WORLD_COUNTRIES_ATOMIC_PROFICIENCY_STATES.map(state => WORLD_COUNTRIES_PROGRESS_LABELS[state]))
     expect(states.map(entry => entry.querySelector<HTMLElement>('[aria-hidden="true"]')?.style.backgroundColor)).toEqual(
-      WORLD_COUNTRIES_COUNTRY_CORE_STATES.map(state => {
+      WORLD_COUNTRIES_ATOMIC_PROFICIENCY_STATES.map(state => {
         const expectedSwatch = document.createElement('span')
         expectedSwatch.style.backgroundColor = getCountryProgressColor(state)
         return expectedSwatch.style.backgroundColor
@@ -295,6 +294,8 @@ describe('World Countries Today', () => {
     expect(legend?.textContent).toContain('Countries learned')
     expect(legend?.textContent).not.toContain('Countries + Capitals learned')
     expect(legend?.textContent).toContain('Mastered')
+    expect(legend?.textContent).toContain('Country = fill')
+    expect(legend?.textContent).toContain('Capital = inner edge')
     expect(legend?.textContent).not.toContain('Complete')
   })
 
@@ -316,26 +317,64 @@ describe('World Countries Today', () => {
     const mapProps = [...geographyOverviewMapMock.mock.calls].pop()?.[0] as {
       countryPatternsById?: ReadonlyMap<string, { kind: string }>
       countryColorsById?: ReadonlyMap<string, string>
+      countryInnerGlowsById?: ReadonlyMap<string, { color: string }>
     } | undefined
 
     expect(mapProps?.countryPatternsById?.get(countries[0].id)?.kind).toBe('diagonal')
     expect(mapProps?.countryColorsById?.get(countries[0].id)).toBeUndefined()
+    expect(mapProps?.countryInnerGlowsById?.get(countries[0].id)).toBeUndefined()
   })
 
-  it('uses solid Early recall after both Learning layers are established', async () => {
+  it('maps Country proficiency to fill and Capital proficiency to inner edge after handoff', async () => {
+    const country = countries[0]
     const at = Date.now()
-    markSubregionCountriesLearned(countries[0].subregionId, at, activeCountries)
-    markSubregionCapitalsLearned(countries[0].subregionId, at + 1, activeCountries)
+    markSubregionCountriesLearned(country.subregionId, at, activeCountries)
+    markSubregionCapitalsLearned(country.subregionId, at + 1, activeCountries)
+    const countryItemId = `world-countries:location-to-country:${country.id}`
+    const capitalItemId = `world-countries:country-to-capital:${country.id}`
+    loadHistoryMock.mockResolvedValueOnce(new Map([
+      [countryItemId, [
+        { itemId: countryItemId, at: 1, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-10', attemptType: 'review' },
+        { itemId: countryItemId, at: 2, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-11', attemptType: 'review' },
+      ]],
+      [capitalItemId, [
+        { itemId: capitalItemId, at: 3, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-10', attemptType: 'review' },
+      ]],
+    ]))
     await renderToday()
     const mapProps = [...geographyOverviewMapMock.mock.calls].pop()?.[0] as {
-      countryPatternsById?: ReadonlyMap<string, unknown>
       countryColorsById?: ReadonlyMap<string, string>
+      countryInnerGlowsById?: ReadonlyMap<string, { color: string }>
       countryAccessibleDescriptionsById?: ReadonlyMap<string, string>
     } | undefined
 
-    expect(mapProps?.countryPatternsById?.get(countries[0].id)).toBeUndefined()
-    expect(mapProps?.countryColorsById?.get(countries[0].id)).toBe('#90796F')
-    expect(mapProps?.countryAccessibleDescriptionsById?.get(countries[0].id)).toBe('Recall health: Early recall.')
+    expect(mapProps?.countryColorsById?.get(country.id)).toBe('#769A70')
+    expect(mapProps?.countryInnerGlowsById?.get(country.id)?.color).toBe('#B5A678')
+    expect(mapProps?.countryAccessibleDescriptionsById?.get(country.id)).toBe('Country recall: Strong. Capital recall: Developing.')
+  })
+
+  it('keeps the two map channels independent when Capital is stronger than Country', async () => {
+    const country = countries[0]
+    const at = Date.now()
+    markSubregionCountriesLearned(country.subregionId, at, activeCountries)
+    markSubregionCapitalsLearned(country.subregionId, at + 1, activeCountries)
+    const countryItemId = `world-countries:location-to-country:${country.id}`
+    const capitalItemId = `world-countries:country-to-capital:${country.id}`
+    loadHistoryMock.mockResolvedValueOnce(new Map([
+      [countryItemId, [{ itemId: countryItemId, at: 1, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-10', attemptType: 'review' }]],
+      [capitalItemId, [
+        { itemId: capitalItemId, at: 2, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-10', attemptType: 'review' },
+        { itemId: capitalItemId, at: 3, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-11', attemptType: 'review' },
+      ]],
+    ]))
+    await renderToday()
+    const mapProps = [...geographyOverviewMapMock.mock.calls].pop()?.[0] as {
+      countryColorsById?: ReadonlyMap<string, string>
+      countryInnerGlowsById?: ReadonlyMap<string, { color: string }>
+    } | undefined
+
+    expect(mapProps?.countryColorsById?.get(country.id)).toBe('#B5A678')
+    expect(mapProps?.countryInnerGlowsById?.get(country.id)?.color).toBe('#769A70')
   })
 
   it('exposes both recall and Learning dimensions in Country map descriptions', async () => {

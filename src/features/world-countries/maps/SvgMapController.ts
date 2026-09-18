@@ -57,6 +57,15 @@ export interface SvgMapCountryPattern {
   pitch?: number
 }
 
+/** Generic caller-owned inward edge treatment for one semantic Country. */
+export interface SvgMapCountryInnerGlow {
+  color: string
+  edgeIntensity: number
+  fadeLength: number
+  fadeBody: number
+  edgeConcentration: number
+}
+
 export interface SvgMapZoomArea {
   id: string
   label: string
@@ -85,6 +94,7 @@ export interface SvgMapPresentationState {
   mutedIds: readonly string[]
   countryColors: SvgMapCountryColors
   countryPatterns?: SvgMapCountryPatterns
+  countryInnerGlows?: SvgMapCountryInnerGlows
   countryLabels: Readonly<Record<string, string>>
   namedIds: readonly string[]
   hoveredId: string | null
@@ -134,6 +144,42 @@ export type SvgMapCountryColors =
 export type SvgMapCountryPatterns =
   | Readonly<Record<string, SvgMapCountryPattern | null>>
   | Iterable<readonly [string, SvgMapCountryPattern | null]>
+
+export type SvgMapCountryInnerGlows =
+  | Readonly<Record<string, SvgMapCountryInnerGlow | null>>
+  | Iterable<readonly [string, SvgMapCountryInnerGlow | null]>
+
+export interface SvgMapCountryInnerGlowLayer {
+  width: number
+  opacity: number
+}
+
+export const SVG_MAP_COUNTRY_INNER_GLOW_LAYER_COUNT = 36
+
+/** Pure settled profile calculation shared by the declarative SVG renderer and tests. */
+export function calculateSvgMapCountryInnerGlowLayers(
+  glow: Pick<SvgMapCountryInnerGlow, 'edgeIntensity' | 'fadeLength' | 'fadeBody' | 'edgeConcentration'>,
+): readonly SvgMapCountryInnerGlowLayer[] {
+  const maxWidth = 8 + glow.fadeLength * 1.8
+  const minWidth = 1.8
+  const layerCount = SVG_MAP_COUNTRY_INNER_GLOW_LAYER_COUNT
+  const edgeAlpha = 1 - Math.exp(-glow.edgeIntensity / 55)
+  const bodyAlpha = edgeAlpha * (glow.fadeBody / 100) * 0.72
+  const concentrationExponent = 0.45 + (glow.edgeConcentration / 100) * 4.2
+  let previousTargetAlpha = 0
+
+  return Array.from({ length: layerCount }, (_, index) => {
+    const t = (index + 1) / layerCount
+    const width = maxWidth - (maxWidth - minWidth) * (index / (layerCount - 1))
+    const shaped = t ** concentrationExponent
+    const targetAlpha = bodyAlpha + (edgeAlpha - bodyAlpha) * shaped
+    const opacity = previousTargetAlpha >= 0.999
+      ? 0
+      : 1 - ((1 - targetAlpha) / (1 - previousTargetAlpha))
+    previousTargetAlpha = targetAlpha
+    return { width, opacity }
+  })
+}
 
 export const DEFAULT_SVG_MAP_SETTINGS: Readonly<SvgMapSettings> = Object.freeze({
   backgroundFill: null,
@@ -278,6 +324,26 @@ function formatSvgMatrix(transform: SvgAffineTransform): string {
   return `matrix(${values.join(' ')})`
 }
 
+function createInnerGlowGeometry(
+  path: SVGPathElement,
+  mapSvg: SVGSVGElement,
+  document: Document,
+  sourceAttribute: string,
+): SVGPathElement {
+  const clone = path.cloneNode(true) as SVGPathElement
+  clone.removeAttribute('id')
+  clone.setAttribute(sourceAttribute, path.id.trim())
+  clone.setAttribute('pointer-events', 'none')
+  clone.style.setProperty('pointer-events', 'none', 'important')
+
+  const transform = readSvgElementTransformToLayer(path, mapSvg)
+  if (transform) {
+    clone.setAttribute('transform', formatSvgMatrix(transform))
+    clone.style.removeProperty('transform')
+  }
+  return clone
+}
+
 function createOutlineGeometry(
   path: SVGPathElement,
   mapSvg: SVGSVGElement,
@@ -341,6 +407,21 @@ function copyOutline(outline: SvgMapGroupOutline): SvgMapGroupOutline {
   }
 }
 
+function sameStringSet(left: ReadonlySet<string>, right: ReadonlySet<string>): boolean {
+  return left.size === right.size && [...left].every(value => right.has(value))
+}
+
+function sameSvgMapCountryInnerGlow(
+  left: SvgMapCountryInnerGlow | undefined,
+  right: SvgMapCountryInnerGlow | undefined,
+): boolean {
+  return left?.color === right?.color
+    && left?.edgeIntensity === right?.edgeIntensity
+    && left?.fadeLength === right?.fadeLength
+    && left?.fadeBody === right?.fadeBody
+    && left?.edgeConcentration === right?.edgeConcentration
+}
+
 export class SvgMapController {
   private readonly mount: HTMLElement
   private readonly viewportElement: HTMLElement
@@ -349,6 +430,7 @@ export class SvgMapController {
   private highlighted = new Set<string>()
   private countryColors = new Map<string, string>()
   private countryPatterns = new Map<string, SvgMapCountryPattern>()
+  private countryInnerGlows = new Map<string, SvgMapCountryInnerGlow>()
   private mutedCountries = new Set<string>()
   private hiddenCountries = new Set<string>()
   private hoverableCountries: Set<string> | null = null
@@ -359,6 +441,9 @@ export class SvgMapController {
   private groupOutlines: SvgMapGroupOutline[] = []
   private visibleGroupOutlines = new Set<string>()
   private outlineLayers: SVGGElement[] = []
+  private countryInnerGlowLayer: SVGGElement | null = null
+  private countryInnerGlowSequence = 0
+  private countryInnerGlowDirty = false
   private outlineSequence = 0
   private hoveredCountryId: string | null = null
   private hoveredNameOverride: boolean | null = null
@@ -512,6 +597,7 @@ export class SvgMapController {
       this.setCountryColors(state.countryColors)
       this.clearPatterns()
       if (state.countryPatterns !== undefined) this.setCountryPatterns(state.countryPatterns)
+      this.replaceCountryInnerGlows(state.countryInnerGlows ?? [])
       const previouslyNamed = this.getNamedIds()
       this.clearCountryLabels()
       if (Object.keys(state.countryLabels).length > 0) this.setCountryLabels(state.countryLabels)
@@ -668,14 +754,20 @@ export class SvgMapController {
   setMutedCountries(ids: Iterable<string>): SvgMapMutationResult {
     this.assertUsable()
     const { knownIds, unknownIds } = this.resolveKnown(ids)
-    this.mutedCountries = new Set(knownIds)
+    const next = new Set(knownIds)
+    const changed = !sameStringSet(this.mutedCountries, next)
+    this.mutedCountries = next
+    if (changed) this.countryInnerGlowDirty = true
     this.render()
     return { activeIds: [...this.mutedCountries], unknownIds }
   }
 
   clearMutedCountries(): SvgMapMutationResult {
     this.assertUsable()
-    this.mutedCountries.clear()
+    if (this.mutedCountries.size > 0) {
+      this.mutedCountries.clear()
+      this.countryInnerGlowDirty = true
+    }
     this.render()
     return { activeIds: [], unknownIds: [] }
   }
@@ -684,12 +776,15 @@ export class SvgMapController {
   setHiddenCountries(ids: Iterable<string>): SvgMapMutationResult {
     this.assertUsable()
     const { knownIds, unknownIds } = this.resolveKnown(ids)
-    this.hiddenCountries = new Set(knownIds)
+    const next = new Set(knownIds)
+    const changed = !sameStringSet(this.hiddenCountries, next)
+    this.hiddenCountries = next
     if (this.hoveredCountryId !== null && !this.isHoverable(this.hoveredCountryId)) {
       this.hoveredCountryId = null
       this.hoveredNameOverride = null
     }
     this.refreshHoveredIds()
+    if (changed) this.countryInnerGlowDirty = true
     this.render()
     return { activeIds: this.getHiddenCountryIds(), unknownIds }
   }
@@ -700,7 +795,10 @@ export class SvgMapController {
 
   clearHiddenCountries(): SvgMapMutationResult {
     this.assertUsable()
-    this.hiddenCountries.clear()
+    if (this.hiddenCountries.size > 0) {
+      this.hiddenCountries.clear()
+      this.countryInnerGlowDirty = true
+    }
     this.refreshHoveredIds()
     this.render()
     return { activeIds: [], unknownIds: [] }
@@ -736,6 +834,42 @@ export class SvgMapController {
   clearPatterns(): SvgMapMutationResult {
     this.assertUsable()
     this.countryPatterns.clear()
+    this.render()
+    return { activeIds: [], unknownIds: [] }
+  }
+
+  setCountryInnerGlows(glows: SvgMapCountryInnerGlows): SvgMapMutationResult {
+    this.assertUsable()
+    const unknownIds: string[] = []
+    let changed = false
+    for (const [rawId, glow] of this.toInnerGlowEntries(glows)) {
+      const id = rawId.trim()
+      if (!id) continue
+      if (!this.countries.has(id)) {
+        unknownIds.push(id)
+        continue
+      }
+      if (glow === null) {
+        if (this.countryInnerGlows.delete(id)) changed = true
+      } else {
+        const nextGlow = { ...glow }
+        if (!sameSvgMapCountryInnerGlow(this.countryInnerGlows.get(id), nextGlow)) {
+          this.countryInnerGlows.set(id, nextGlow)
+          changed = true
+        }
+      }
+    }
+    if (changed) this.countryInnerGlowDirty = true
+    this.render()
+    return { activeIds: [...this.countryInnerGlows.keys()], unknownIds: uniqueStrings(unknownIds) }
+  }
+
+  clearCountryInnerGlows(): SvgMapMutationResult {
+    this.assertUsable()
+    if (this.countryInnerGlows.size > 0) {
+      this.countryInnerGlows.clear()
+      this.countryInnerGlowDirty = true
+    }
     this.render()
     return { activeIds: [], unknownIds: [] }
   }
@@ -1356,6 +1490,10 @@ export class SvgMapController {
       setOverride(country.label, 'opacity', this.settings.labelOpacity === null ? null : String(this.settings.labelOpacity), country.originalLabelOpacity)
       this.taskAssistance.renderCountryTaskState(country, fill, hidden, reducedMotion)
     }
+    if (this.countryInnerGlowDirty) {
+      this.renderCountryInnerGlows()
+      this.countryInnerGlowDirty = false
+    }
     this.renderGroupOutlines()
   }
 
@@ -1375,6 +1513,103 @@ export class SvgMapController {
         ? textNodes[index].value
         : textNodes[index].value.trim() === '' ? textNodes[index].value : ''
     }
+  }
+
+  private replaceCountryInnerGlows(glows: SvgMapCountryInnerGlows): void {
+    const next = new Map<string, SvgMapCountryInnerGlow>()
+    for (const [rawId, glow] of this.toInnerGlowEntries(glows)) {
+      const id = rawId.trim()
+      if (!id || glow === null || !this.countries.has(id)) continue
+      next.set(id, { ...glow })
+    }
+    if (next.size === this.countryInnerGlows.size
+      && [...next].every(([id, glow]) => sameSvgMapCountryInnerGlow(this.countryInnerGlows.get(id), glow))) {
+      return
+    }
+    this.countryInnerGlows = next
+    this.countryInnerGlowDirty = true
+  }
+
+  private renderCountryInnerGlows(): void {
+    this.removeCountryInnerGlowPresentation()
+    const firstPath = this.countries.values().next().value?.path
+    const mapSvg = firstPath?.ownerSVGElement
+    if (!mapSvg || this.countryInnerGlows.size === 0) return
+
+    const document = mapSvg.ownerDocument
+    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs')
+    defs.setAttribute('data-svg-map-country-inner-glow-defs', '')
+    mapSvg.insertBefore(defs, mapSvg.firstChild)
+
+    const layer = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+    layer.setAttribute('data-svg-map-country-inner-glow', '')
+    layer.setAttribute('pointer-events', 'none')
+
+    for (const [countryId, glow] of this.countryInnerGlows) {
+      const country = this.countries.get(countryId)
+      if (!country || this.hiddenCountries.has(countryId) || this.mutedCountries.has(countryId)) continue
+      const layers = calculateSvgMapCountryInnerGlowLayers(glow)
+      const countryLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+      countryLayer.setAttribute('data-svg-map-country-inner-glow-country', countryId)
+      countryLayer.setAttribute('pointer-events', 'none')
+
+      for (const pathState of country.pathStates) {
+        const clipId = `svg-map-country-inner-glow-clip-${this.countryInnerGlowSequence++}`
+        const clip = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath')
+        clip.setAttribute('id', clipId)
+        clip.setAttribute('data-svg-map-country-inner-glow-clip', countryId)
+        clip.setAttribute('clipPathUnits', 'userSpaceOnUse')
+        const clipGeometry = createInnerGlowGeometry(pathState.path, mapSvg, document, 'data-svg-map-country-inner-glow-clip-source')
+        clipGeometry.style.setProperty('fill', '#ffffff', 'important')
+        clipGeometry.style.setProperty('stroke', 'none', 'important')
+        clip.append(clipGeometry)
+        defs.append(clip)
+
+        const pathLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+        pathLayer.setAttribute('data-svg-map-country-inner-glow-path', pathState.path.id.trim())
+        pathLayer.setAttribute('pointer-events', 'none')
+        for (const [index, profile] of layers.entries()) {
+          const geometry = createInnerGlowGeometry(pathState.path, mapSvg, document, 'data-svg-map-country-inner-glow-source')
+          geometry.setAttribute('data-svg-map-country-inner-glow-layer', String(index))
+          geometry.setAttribute('fill', 'none')
+          geometry.setAttribute('stroke', glow.color)
+          geometry.setAttribute('stroke-width', String(profile.width))
+          geometry.setAttribute('stroke-linecap', 'round')
+          geometry.setAttribute('stroke-linejoin', 'round')
+          geometry.setAttribute('vector-effect', 'non-scaling-stroke')
+          geometry.setAttribute('clip-path', `url(#${clipId})`)
+          geometry.style.setProperty('fill', 'none', 'important')
+          geometry.style.setProperty('stroke', glow.color, 'important')
+          geometry.style.setProperty('stroke-width', String(profile.width), 'important')
+          geometry.style.setProperty('stroke-linecap', 'round', 'important')
+          geometry.style.setProperty('stroke-linejoin', 'round', 'important')
+          geometry.style.setProperty('opacity', String(profile.opacity), 'important')
+          geometry.style.setProperty('pointer-events', 'none', 'important')
+          geometry.style.removeProperty('filter')
+          geometry.style.removeProperty('visibility')
+          pathLayer.append(geometry)
+        }
+        countryLayer.append(pathLayer)
+      }
+      if (countryLayer.childElementCount > 0) layer.append(countryLayer)
+    }
+
+    if (layer.childElementCount === 0) {
+      defs.remove()
+      return
+    }
+    let firstCountryElement: Element = firstPath
+    while (firstCountryElement.parentNode && firstCountryElement.parentNode !== mapSvg) {
+      firstCountryElement = firstCountryElement.parentNode as Element
+    }
+    mapSvg.insertBefore(layer, firstCountryElement)
+    this.countryInnerGlowLayer = layer
+  }
+
+  private removeCountryInnerGlowPresentation(): void {
+    this.countryInnerGlowLayer?.remove()
+    this.countryInnerGlowLayer = null
+    this.svg?.querySelectorAll('defs[data-svg-map-country-inner-glow-defs]').forEach(defs => defs.remove())
   }
 
   private renderGroupOutlines(): void {
@@ -1539,6 +1774,11 @@ export class SvgMapController {
   private toPatternEntries(patterns: SvgMapCountryPatterns): Iterable<readonly [string, SvgMapCountryPattern | null]> {
     if (Symbol.iterator in Object(patterns)) return patterns as Iterable<readonly [string, SvgMapCountryPattern | null]>
     return Object.entries(patterns)
+  }
+
+  private toInnerGlowEntries(glows: SvgMapCountryInnerGlows): Iterable<readonly [string, SvgMapCountryInnerGlow | null]> {
+    if (Symbol.iterator in Object(glows)) return glows as Iterable<readonly [string, SvgMapCountryInnerGlow | null]>
+    return Object.entries(glows)
   }
 
   private getPaddedCountryBounds(countryIds: readonly string[], padding: number): SvgViewBoxRect | null {
@@ -2003,6 +2243,9 @@ export class SvgMapController {
     this.highlighted.clear()
     this.countryColors.clear()
     this.countryPatterns.clear()
+    this.countryInnerGlows.clear()
+    this.removeCountryInnerGlowPresentation()
+    this.countryInnerGlowDirty = false
     this.mutedCountries.clear()
     this.hiddenCountries.clear()
     this.hoverableCountries = null

@@ -7,6 +7,7 @@ import {
   createContinentHoverGroups,
   createCountryColors,
   createCountryColorsById,
+  createCountryInnerGlowsById,
   createCountryPatternsById,
   createCountryEdgeOutlines,
   createSubregionHoverGroups,
@@ -19,7 +20,7 @@ import {
 import { getMapLearningAnchors } from './learningAnchors'
 import { getMemoMapDefinition, MEMO_MAP_DEFINITIONS } from './mapDefinitions'
 import { getMapSyntheticDots } from './syntheticDots'
-import type { SvgMapCameraIntent, SvgMapCountryPattern, SvgMapGroupOutline } from './SvgMapController'
+import type { SvgMapCameraIntent, SvgMapCountryInnerGlow, SvgMapCountryPattern, SvgMapGroupOutline } from './SvgMapController'
 import { SvgMapView, type SvgMapCountry, type SvgMapLoadState } from './SvgMapView'
 import { getSubregionLearningFrame } from './subregionLearningFrames'
 import { WORLD_COUNTRIES_MAP_COUNTRY_FILL, WORLD_COUNTRIES_MAP_SELECTION_STROKE } from './worldCountriesMapPalette'
@@ -53,6 +54,8 @@ export interface GeographyOverviewMapProps {
   countryColorsById?: ReadonlyMap<CountryId, string>
   /** Caller-resolved semantic fill patterns; this map only adapts them to SVG. */
   countryPatternsById?: ReadonlyMap<CountryId, SvgMapCountryPattern>
+  /** Caller-resolved inner edge treatments; this map only adapts them to SVG. */
+  countryInnerGlowsById?: ReadonlyMap<CountryId, SvgMapCountryInnerGlow>
   /** Caller-resolved persistent Country edge/halo treatment; this map only adapts it to SVG. */
   countryEdgeTreatmentsById?: ReadonlyMap<CountryId, SvgMapCountryEdgeTreatment>
   countryEdgeStroke?: string
@@ -102,6 +105,7 @@ export function GeographyOverviewMap({
   countryColor = '#16a34a',
   countryColorsById,
   countryPatternsById,
+  countryInnerGlowsById,
   countryEdgeTreatmentsById,
   countryEdgeStroke = '#22d3ee',
   countryEdgeStrokeWidth = '2px',
@@ -274,6 +278,13 @@ export function GeographyOverviewMap({
     [countryPatternsById, mapCountryIds, visibleCountries],
   )
 
+  const countryInnerGlows = useMemo(
+    () => countryInnerGlowsById
+      ? createCountryInnerGlowsById(visibleCountries, countryInnerGlowsById, mapCountryIds)
+      : [],
+    [countryInnerGlowsById, mapCountryIds, visibleCountries],
+  )
+
   const hoveredCountryId = useMemo(
     () => hoveredGroupSvgIds[0] ?? null,
     [hoveredGroupSvgIds],
@@ -435,6 +446,7 @@ export function GeographyOverviewMap({
         mutedIds={mutedSvgIds}
         countryColors={countryColors}
         countryPatterns={countryPatterns}
+        countryInnerGlows={countryInnerGlows}
         namedIds={namedSvgIds}
         camera={camera}
         taskAssistance={taskAssistance}

@@ -6,6 +6,7 @@ import {
 } from './recallProgress'
 import {
   deriveWorldCountriesScopeProgress,
+  getWorldCountriesScopeDisplayedMasteryRatio,
   deriveWorldCountriesSubregionProgress,
   deriveWorldCountriesWorldProgress,
 } from './scopeProgress'
@@ -167,4 +168,48 @@ describe('World Countries scope progress', () => {
     })
     expect(Object.values(progress.countryStateCounts).reduce((sum, count) => sum + count, 0)).toBe(2)
   })
+
+  it('aggregates Country and Capital mastery and distributions independently', () => {
+    const scopeCountries = ['NO', 'SE', 'DK', 'FI'].map(countryId => countries.find(country => country.id === countryId)!)
+    const attempts = [
+      ...scopeCountries.slice(0, 3).flatMap((country, index) => [1, 2, 3].map((day, offset) => attempt(country.id, 'location-to-country', index * 10 + offset + 1, true, `2026-08-${String(day).padStart(2, '0')}`))),
+      ...scopeCountries.slice(1).flatMap((country, index) => [1, 2, 3].map((day, offset) => attempt(country.id, 'country-to-capital', index * 10 + offset + 101, true, `2026-08-${String(day).padStart(2, '0')}`))),
+    ]
+    const recallProgress = deriveWorldCountriesRecallProgress({
+      countryIds: scopeCountries.map(country => country.id),
+      skills: [...WORLD_COUNTRIES_RECALL_SKILLS],
+    }, attempts)
+    const countryProgress = new Map(scopeCountries.map(country => [
+      country.id,
+      deriveWorldCountriesCountryProgress(country.id, recallProgress),
+    ] as const))
+
+    const progress = deriveWorldCountriesScopeProgress('world', scopeCountries.map(country => country.id), countryProgress)
+
+    expect(progress.locationToCountryMasteredCountries).toBe(3)
+    expect(progress.countryToCapitalMasteredCountries).toBe(3)
+    expect(progress.locationToCountryMasteryRatio).toBe(0.75)
+    expect(progress.countryToCapitalMasteryRatio).toBe(0.75)
+    expect(progress.locationToCountryStateCounts).toEqual({ unpractised: 1, weak: 0, developing: 0, strong: 0, mastered: 3 })
+    expect(progress.countryToCapitalStateCounts).toEqual({ unpractised: 1, weak: 0, developing: 0, strong: 0, mastered: 3 })
+    expect(progress.completeCountries).toBe(2)
+    expect(getWorldCountriesScopeDisplayedMasteryRatio(progress)).toBe(0.75)
+  })
+
+  it('defaults missing Country and Capital evidence to separate unpractised buckets', () => {
+    const progress = deriveWorldCountriesWorldProgress(new Map(), countries.filter(country => country.id === 'NO'))
+
+    expect(progress.locationToCountryStateCounts).toEqual({ unpractised: 1, weak: 0, developing: 0, strong: 0, mastered: 0 })
+    expect(progress.countryToCapitalStateCounts).toEqual({ unpractised: 1, weak: 0, developing: 0, strong: 0, mastered: 0 })
+    expect(progress.locationToCountryMasteredCountries).toBe(0)
+    expect(progress.countryToCapitalMasteredCountries).toBe(0)
+  })
+
+  it('uses the lower atomic track for displayed Mastery without changing strict overlap', () => {
+    expect(getWorldCountriesScopeDisplayedMasteryRatio({
+      locationToCountryMasteryRatio: 0.9,
+      countryToCapitalMasteryRatio: 0.7,
+    })).toBe(0.7)
+  })
+
 })

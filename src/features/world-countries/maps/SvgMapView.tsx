@@ -3,6 +3,7 @@ import {
   SvgMapController,
   type SvgMapCountryColors,
   type SvgMapCountryPatterns,
+  type SvgMapCountryInnerGlows,
   type SvgMapCountry,
   type SvgMapGroupOutline,
   type SvgMapHoverGroup,
@@ -22,6 +23,7 @@ const EMPTY_IDS: readonly string[] = []
 const EMPTY_GROUP_OUTLINES: readonly SvgMapGroupOutline[] = []
 const EMPTY_COUNTRY_COLORS: readonly (readonly [string, string | null])[] = []
 const EMPTY_COUNTRY_PATTERNS: readonly (readonly [string, null])[] = []
+const EMPTY_COUNTRY_INNER_GLOWS: readonly (readonly [string, null])[] = []
 const EMPTY_SETTINGS: Partial<SvgMapSettings> = {}
 const EMBEDDED_MAPCHART_CREDIT_ID = 'credit-text-svg'
 const DEFAULT_CAMERA: SvgMapCameraIntent = { kind: 'default' }
@@ -38,6 +40,7 @@ export interface SvgMapViewProps {
   hoveredId?: string | null
   countryColors?: SvgMapCountryColors
   countryPatterns?: SvgMapCountryPatterns
+  countryInnerGlows?: SvgMapCountryInnerGlows
   namedIds?: readonly string[]
   countryLabels?: Readonly<Record<string, string>>
   camera?: SvgMapCameraIntent
@@ -65,6 +68,7 @@ export function SvgMapView({
   hoveredId = null,
   countryColors = EMPTY_COUNTRY_COLORS,
   countryPatterns = EMPTY_COUNTRY_PATTERNS,
+  countryInnerGlows = EMPTY_COUNTRY_INNER_GLOWS,
   namedIds = EMPTY_IDS,
   countryLabels = EMPTY_COUNTRY_LABELS,
   camera = DEFAULT_CAMERA,
@@ -90,12 +94,16 @@ export function SvgMapView({
   const presentation = useMapSurfacePresentation()
   const countryColorsSignature = getCountryColorsSignature(countryColors)
   const countryPatternsSignature = getCountryPatternsSignature(countryPatterns)
+  const countryInnerGlowsSignature = getCountryInnerGlowsSignature(countryInnerGlows)
   // Country color presentation is keyed by semantic entries, not the caller's container identity.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const stableCountryColors = useMemo(() => countryColors, [countryColorsSignature])
   // Pattern presentation is keyed by semantic entries, not the caller's container identity.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const stableCountryPatterns = useMemo(() => countryPatterns, [countryPatternsSignature])
+  // Inner glow presentation is keyed by semantic entries, not the caller container identity.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const stableCountryInnerGlows = useMemo(() => countryInnerGlows, [countryInnerGlowsSignature])
 
   clickRef.current = onCountryClick
   hoverRef.current = onCountryHover
@@ -171,11 +179,12 @@ export function SvgMapView({
       mutedIds,
       countryColors: stableCountryColors,
       countryPatterns: stableCountryPatterns,
+      countryInnerGlows: stableCountryInnerGlows,
       countryLabels,
       namedIds,
       hoveredId,
     })
-  }, [countries, countryLabels, countryPatternsSignature, groupOutlines, hiddenIds, highlightedIds, hoverGroups, hoveredId, hoverableIds, mutedIds, namedIds, presentation, selectableIds, settings, stableCountryColors, stableCountryPatterns, taskAssistance])
+  }, [countries, countryInnerGlowsSignature, countryLabels, countryPatternsSignature, groupOutlines, hiddenIds, highlightedIds, hoverGroups, hoveredId, hoverableIds, mutedIds, namedIds, presentation, selectableIds, settings, stableCountryColors, stableCountryInnerGlows, stableCountryPatterns, taskAssistance])
 
   useEffect(() => {
     const controller = controllerRef.current
@@ -222,6 +231,16 @@ function getCountryColorsSignature(colors: SvgMapCountryColors): string {
     : Object.entries(colors)
   return entries
     .map(([id, color]) => `${id}\u0000${color ?? 'null'}`)
+    .sort()
+    .join('\u0001')
+}
+
+function getCountryInnerGlowsSignature(glows: SvgMapCountryInnerGlows): string {
+  const entries = Symbol.iterator in Object(glows)
+    ? [...glows as Iterable<readonly [string, { color: string; edgeIntensity: number; fadeLength: number; fadeBody: number; edgeConcentration: number } | null]>]
+    : Object.entries(glows)
+  return entries
+    .map(([id, glow]) => `${id}\u0000${glow ? `${glow.color}|${glow.edgeIntensity}|${glow.fadeLength}|${glow.fadeBody}|${glow.edgeConcentration}` : 'null'}`)
     .sort()
     .join('\u0001')
 }

@@ -2,7 +2,7 @@ import { act, createElement, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { countries } from '@/features/world-countries/data/countries'
-import type { WorldCountriesPrimaryStatusCount } from '@/features/world-countries/learning/progressPresentation'
+import type { WorldCountriesScopeProgress } from '@/features/world-countries/learning/scopeProgress'
 import { GuidedHomeRails } from './GuidedHomeRails'
 import { WORLD_COUNTRIES_JOURNEY_STAGES, type WorldCountriesJourneyPresentation } from './journeyPresentation'
 import type { WorldCountriesTodayReviewOpportunity } from './todayPlan'
@@ -59,29 +59,44 @@ function renderRails(overrides: Partial<Parameters<typeof GuidedHomeRails>[0]> =
   return railMount
 }
 
-function makeStatusDistribution(entries: ReadonlyArray<readonly [string, string, number]>): readonly WorldCountriesPrimaryStatusCount[] {
-  return entries.map(([state, label, count]) => ({ state, label, count, color: '#000000' }))
-}
-
-function renderGeographyRow({
-  totalCountries,
-  distribution,
-  coreMasteryRatio = 0,
-}: {
-  totalCountries: number
-  distribution: readonly WorldCountriesPrimaryStatusCount[]
-  coreMasteryRatio?: number
-}) {
-  const mount = renderRails({
-    scopeSummaries: [{
-      id: 'scope',
-      label: 'Scope',
-      progress: { completeCountries: 0, totalCountries, completionRatio: 0, coreMasteryRatio },
-      distribution,
-    }],
-  })
-  return [...mount.querySelectorAll<HTMLButtonElement>('button')]
-    .find(button => button.textContent?.includes('Scope'))
+function makeProgress(overrides: Partial<WorldCountriesScopeProgress> = {}): WorldCountriesScopeProgress {
+  const totalCountries = overrides.totalCountries ?? 1
+  const countryCounts = overrides.locationToCountryStateCounts ?? {
+    unpractised: totalCountries,
+    weak: 0,
+    developing: 0,
+    strong: 0,
+    mastered: 0,
+  }
+  const capitalCounts = overrides.countryToCapitalStateCounts ?? {
+    unpractised: totalCountries,
+    weak: 0,
+    developing: 0,
+    strong: 0,
+    mastered: 0,
+  }
+  return {
+    scopeId: 'scope',
+    countryIds: [],
+    totalCountries,
+    completeCountries: 0,
+    completionRatio: 0,
+    coreMasteredSkills: 0,
+    coreSkillCount: totalCountries * 2,
+    coreMasteryRatio: 0,
+    complete: false,
+    countryStateCounts: { unpractised: totalCountries, weak: 0, developing: 0, strong: 0, complete: 0 },
+    locationToCountryMasteredCountries: 0,
+    locationToCountryMasteryRatio: 0,
+    countryToCapitalMasteredCountries: 0,
+    countryToCapitalMasteryRatio: 0,
+    locationToCountryStateCounts: countryCounts,
+    countryToCapitalStateCounts: capitalCounts,
+    additionalMasteredSkills: 0,
+    additionalSkillCount: 0,
+    additionalMasteryRatio: 0,
+    ...overrides,
+  }
 }
 
 describe('Guided World Countries home rails', () => {
@@ -265,7 +280,7 @@ describe('Guided World Countries home rails', () => {
       scopeSummaries: [{
         id: 'southern-europe',
         label: 'Southern Europe',
-        progress: { completeCountries: 1, totalCountries: 2, completionRatio: 0.5 },
+        progress: makeProgress({ completeCountries: 1, totalCountries: 2, completionRatio: 0.5 }),
         onSelect,
         selected: true,
         status: 'Selected focus',
@@ -360,7 +375,7 @@ describe('Guided World Countries home rails', () => {
 
   it('keeps geography choices and places Progress in the geography footer', () => {
     const onOpenProgress = vi.fn()
-    const worldMount = renderRails({ level: 'world', scopeProgress: { completeCountries: 1, totalCountries: 1, completionRatio: 1 }, onOpenProgress })
+    const worldMount = renderRails({ level: 'world', scopeProgress: makeProgress({ completeCountries: 1, totalCountries: 1, completionRatio: 1, locationToCountryMasteryRatio: 1, countryToCapitalMasteryRatio: 1 }), onOpenProgress })
     expect(worldMount.textContent).toContain('Explore the world')
     expect(worldMount.textContent).toContain('Choose a continent')
     expect(worldMount.textContent).toContain('World progress')
@@ -376,7 +391,7 @@ describe('Guided World Countries home rails', () => {
     railRoot = null
     document.body.replaceChildren()
 
-    const continentMount = renderRails({ level: 'continent', continent: 'Europe', scopeProgress: { completeCountries: 1, totalCountries: 1, completionRatio: 1 } })
+    const continentMount = renderRails({ level: 'continent', continent: 'Europe', scopeProgress: makeProgress({ completeCountries: 1, totalCountries: 1, completionRatio: 1, locationToCountryMasteryRatio: 1, countryToCapitalMasteryRatio: 1 }) })
     expect(continentMount.textContent).toContain('Learning regions')
     expect(continentMount.textContent).toContain('Choose a region')
     expect(continentMount.textContent).toContain('Europe progress')
@@ -389,12 +404,12 @@ describe('Guided World Countries home rails', () => {
       scopeSummaries: [{
         id: 'northern-europe',
         label: 'Northern Europe',
-        progress: { completeCountries: 9, totalCountries: 20, completionRatio: 0.45 },
+        progress: makeProgress({ completeCountries: 9, totalCountries: 20, completionRatio: 0.45, locationToCountryMasteryRatio: 0.55, countryToCapitalMasteryRatio: 0.45 }),
         onSelect: vi.fn(),
         selected: true,
         status: 'Selected focus',
       }],
-      scopeProgress: { completeCountries: 12, totalCountries: 48, completionRatio: 0.25 },
+      scopeProgress: makeProgress({ completeCountries: 12, totalCountries: 48, completionRatio: 0.25, locationToCountryMasteryRatio: 0.4, countryToCapitalMasteryRatio: 0.25 }),
     })
 
     const geographyRow = [...mount.querySelectorAll<HTMLButtonElement>('button')]
@@ -403,94 +418,68 @@ describe('Guided World Countries home rails', () => {
     expect(mount.querySelector('[data-progress-entry]')?.textContent).toContain('Mastery 25%')
   })
 
-  it('uses the highest non-zero primary status for an unmastered scope', () => {
-    const geographyRow = renderGeographyRow({
-      totalCountries: 10,
-      distribution: makeStatusDistribution([
-        ['strong', 'Strong', 2],
-        ['developing', 'Developing', 5],
-        ['weak', 'Weak', 3],
-      ]),
-    })
-
-    expect(geographyRow?.textContent).toContain('Strong 20%')
-    expect(geographyRow?.textContent).not.toContain('Developing 50%')
-  })
-
-  it('uses Developing when it is the highest non-zero primary status', () => {
-    const geographyRow = renderGeographyRow({
-      totalCountries: 10,
-      distribution: makeStatusDistribution([
-        ['developing', 'Developing', 5],
-        ['weak', 'Weak', 3],
-      ]),
-    })
-
-    expect(geographyRow?.textContent).toContain('Developing 50%')
-  })
-
-  it('uses Early recall when no stronger recall state is present', () => {
-    const geographyRow = renderGeographyRow({
-      totalCountries: 10,
-      distribution: makeStatusDistribution([
-        ['unpractised', 'Early recall', 6],
-        ['COUNTRIES_LEARNED', 'Countries learned', 2],
-      ]),
-    })
-
-    expect(geographyRow?.textContent).toContain('Early recall 60%')
-  })
-
-  it('shows Countries learned as an exact-state percentage', () => {
-    const geographyRow = renderGeographyRow({
-      totalCountries: 8,
-      distribution: makeStatusDistribution([
-        ['COUNTRIES_LEARNED', 'Countries learned', 3],
-        ['NOT_LEARNED', 'Not learned', 5],
-      ]),
-    })
-
-    expect(geographyRow?.textContent).toContain('Countries learned 38%')
-  })
-
-  it('shows untouched scopes as Not learned without a percentage', () => {
-    const geographyRow = renderGeographyRow({
-      totalCountries: 14,
-      distribution: makeStatusDistribution([
-        ['NOT_LEARNED', 'Not learned', 14],
-      ]),
-    })
-
-    expect(geographyRow?.textContent).toContain('Not learned')
-    expect(geographyRow?.textContent).not.toContain('%')
-  })
-
-  it('keeps Mastery ahead of country-level status distribution', () => {
-    const geographyRow = renderGeographyRow({
-      totalCountries: 20,
-      coreMasteryRatio: 0.04,
-      distribution: makeStatusDistribution([
-        ['developing', 'Developing', 20],
-      ]),
-    })
-
-    expect(geographyRow?.textContent).toContain('Mastery 4%')
-    expect(geographyRow?.textContent).not.toContain('Developing 100%')
-  })
-
-  it('uses atomic core mastery for the primary percentage while keeping strict Country context', () => {
+  it('always shows lower-track Mastery with both compact recall tracks', () => {
     const mount = renderRails({
-      scopeProgress: {
-        completeCountries: 1,
-        totalCountries: 2,
-        completionRatio: 0.5,
-        coreMasteredSkills: 3,
-        coreSkillCount: 4,
-        coreMasteryRatio: 0.75,
-      },
+      scopeSummaries: [{
+        id: 'northern-europe',
+        label: 'Northern Europe',
+        progress: makeProgress({
+          totalCountries: 4,
+          completeCountries: 2,
+          locationToCountryMasteredCountries: 3,
+          locationToCountryMasteryRatio: 0.75,
+          countryToCapitalMasteredCountries: 2,
+          countryToCapitalMasteryRatio: 0.5,
+          locationToCountryStateCounts: { unpractised: 0, weak: 0, developing: 1, strong: 0, mastered: 3 },
+          countryToCapitalStateCounts: { unpractised: 0, weak: 1, developing: 1, strong: 0, mastered: 2 },
+        }),
+        onSelect: vi.fn(),
+      }],
     })
+    const geographyRow = [...mount.querySelectorAll<HTMLButtonElement>('button')]
+      .find(button => button.textContent?.includes('Northern Europe'))
+    expect(geographyRow?.textContent).toContain('Mastery 50%')
+    expect(geographyRow?.textContent).not.toContain('Mastery 75%')
+    expect(geographyRow?.textContent).toContain('2 / 4 Countries fully mastered')
+    expect(geographyRow?.querySelectorAll('[data-recall-track]')).toHaveLength(2)
+    expect(geographyRow?.querySelector('[data-recall-track="country"]')).not.toBeNull()
+    expect(geographyRow?.querySelector('[data-recall-track="capital"]')).not.toBeNull()
+  })
 
-    expect(mount.querySelector('[data-progress-entry]')?.textContent).toContain('Mastery 75%')
+  it('allows Mastery 0% and keeps the footer on the lower track', () => {
+    const mount = renderRails({
+      scopeProgress: makeProgress({ totalCountries: 2, completeCountries: 0 }),
+    })
+    expect(mount.querySelector('[data-progress-entry]')?.textContent).toContain('Mastery 0%')
+    expect(mount.querySelector('[data-progress-entry]')?.textContent).toContain('0 / 2 Countries fully mastered')
+  })
+
+  it('preserves selected focus supporting text', () => {
+    const mount = renderRails({
+      scopeSummaries: [{
+        id: 'southern-europe',
+        label: 'Southern Europe',
+        progress: makeProgress({ totalCountries: 2 }),
+        selected: true,
+        status: 'Selected focus',
+      }],
+    })
+    const row = [...mount.querySelectorAll<HTMLButtonElement>('button')]
+      .find(button => button.textContent?.includes('Southern Europe'))
+    expect(row?.textContent).toContain('Selected focus')
+  })
+
+  it('uses the lower track for the scope footer percentage', () => {
+    const mount = renderRails({
+      scopeProgress: makeProgress({
+        totalCountries: 2,
+        completeCountries: 1,
+        locationToCountryMasteryRatio: 0.75,
+        countryToCapitalMasteryRatio: 0.5,
+      }),
+    })
+    expect(mount.querySelector('[data-progress-entry]')?.textContent).toContain('Mastery 50%')
     expect(mount.querySelector('[data-progress-entry]')?.textContent).toContain('1 / 2 Countries fully mastered')
   })
+
 })

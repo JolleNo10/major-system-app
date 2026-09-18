@@ -6,6 +6,7 @@ import type {
   RecallProgress,
 } from './recallProgress'
 import { deriveWorldCountriesCountryProgress } from './recallProgress'
+import type { WorldCountriesProficiency } from './recallMastery'
 
 export const WORLD_COUNTRIES_COUNTRY_CORE_STATES = [
   'unpractised',
@@ -26,6 +27,12 @@ export interface WorldCountriesScopeProgress {
   coreMasteryRatio: number
   complete: boolean
   countryStateCounts: Readonly<Record<WorldCountriesCountryCoreState, number>>
+  locationToCountryMasteredCountries: number
+  locationToCountryMasteryRatio: number
+  countryToCapitalMasteredCountries: number
+  countryToCapitalMasteryRatio: number
+  locationToCountryStateCounts: Readonly<Record<WorldCountriesProficiency, number>>
+  countryToCapitalStateCounts: Readonly<Record<WorldCountriesProficiency, number>>
   additionalMasteredSkills: number
   additionalSkillCount: number
   additionalMasteryRatio: number
@@ -41,6 +48,16 @@ function emptyStateCounts(): Record<WorldCountriesCountryCoreState, number> {
   }
 }
 
+function emptyAtomicStateCounts(): Record<WorldCountriesProficiency, number> {
+  return {
+    unpractised: 0,
+    weak: 0,
+    developing: 0,
+    strong: 0,
+    mastered: 0,
+  }
+}
+
 /** Aggregate current Country population directly into a geographic scope. */
 export function deriveWorldCountriesScopeProgress(
   scopeId: string,
@@ -49,14 +66,24 @@ export function deriveWorldCountriesScopeProgress(
 ): WorldCountriesScopeProgress {
   const uniqueCountryIds = [...new Set(countryIds)]
   const countryStates = emptyStateCounts()
+  const locationToCountryStates = emptyAtomicStateCounts()
+  const countryToCapitalStates = emptyAtomicStateCounts()
   let completeCountries = 0
   let coreMasteredSkills = 0
   let coreSkillCount = 0
+  let locationToCountryMasteredCountries = 0
+  let countryToCapitalMasteredCountries = 0
   let additionalMasteredSkills = 0
   let additionalSkillCount = 0
 
   for (const countryId of uniqueCountryIds) {
     const progress = countryProgress.get(countryId)
+    const locationToCountry = progress?.skills.get('location-to-country')?.proficiency ?? 'unpractised'
+    const countryToCapital = progress?.skills.get('country-to-capital')?.proficiency ?? 'unpractised'
+    locationToCountryStates[locationToCountry]++
+    countryToCapitalStates[countryToCapital]++
+    if (locationToCountry === 'mastered') locationToCountryMasteredCountries++
+    if (countryToCapital === 'mastered') countryToCapitalMasteredCountries++
     if (!progress) {
       countryStates.unpractised++
       coreSkillCount += 2
@@ -82,12 +109,31 @@ export function deriveWorldCountriesScopeProgress(
     coreMasteryRatio: coreSkillCount ? coreMasteredSkills / coreSkillCount : 0,
     complete: totalCountries > 0 && completeCountries === totalCountries,
     countryStateCounts: countryStates,
+    locationToCountryMasteredCountries,
+    locationToCountryMasteryRatio: totalCountries
+      ? locationToCountryMasteredCountries / totalCountries
+      : 0,
+    countryToCapitalMasteredCountries,
+    countryToCapitalMasteryRatio: totalCountries
+      ? countryToCapitalMasteredCountries / totalCountries
+      : 0,
+    locationToCountryStateCounts: locationToCountryStates,
+    countryToCapitalStateCounts: countryToCapitalStates,
     additionalMasteredSkills,
     additionalSkillCount,
     additionalMasteryRatio: additionalSkillCount
       ? additionalMasteredSkills / additionalSkillCount
       : 0,
   }
+}
+
+export function getWorldCountriesScopeDisplayedMasteryRatio(
+  progress: Pick<WorldCountriesScopeProgress, 'locationToCountryMasteryRatio' | 'countryToCapitalMasteryRatio'>,
+): number {
+  return Math.min(
+    progress.locationToCountryMasteryRatio,
+    progress.countryToCapitalMasteryRatio,
+  )
 }
 
 /** Build scope progress from atomic evidence without a separate Country cache. */

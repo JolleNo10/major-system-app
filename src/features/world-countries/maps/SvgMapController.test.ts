@@ -336,6 +336,68 @@ describe('SvgMapController loading and discovery', () => {
     expect(clicked).toEqual(['Multipart', 'Multipart', 'Multipart', 'Multipart', 'Multipart'])
   })
 
+  it('renders independent clipped inner glow layers for multipart Countries without replacing borders', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: MULTIPART_MAP })
+    const glow = { color: '#769A70', edgeIntensity: 111, fadeLength: 10, fadeBody: 31, edgeConcentration: 79 }
+
+    controller.setCountryInnerGlows({ Multipart: glow })
+    const layer = mount.querySelector('[data-svg-map-country-inner-glow]')
+    expect(layer).not.toBeNull()
+    expect(mount.querySelectorAll('[data-svg-map-country-inner-glow-clip="Multipart"]')).toHaveLength(2)
+    expect(mount.querySelectorAll('[data-svg-map-country-inner-glow-source]')).toHaveLength(72)
+    expect([...mount.querySelectorAll<SVGPathElement>('[data-svg-map-country-inner-glow-source]')].every(source => (
+      source.getAttribute('fill') === 'none'
+      && source.getAttribute('stroke') === '#769A70'
+      && source.getAttribute('vector-effect') === 'non-scaling-stroke'
+      && source.style.getPropertyValue('pointer-events') === 'none'
+      && source.getAttribute('clip-path')?.startsWith('url(#')
+    ))).toBe(true)
+    expect(path(mount, 'Multipart').style.getPropertyValue('stroke')).toBe('#252525')
+    expect(layer && path(mount, 'Multipart').compareDocumentPosition(layer) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy()
+
+    controller.setCountryInnerGlows({ Multipart: glow })
+    expect(mount.querySelectorAll('[data-svg-map-country-inner-glow-clip="Multipart"]')).toHaveLength(2)
+    expect(mount.querySelectorAll('[data-svg-map-country-inner-glow-defs]')).toHaveLength(1)
+
+    controller.setGroupOutlines([{ id: 'multipart-outline', countryIds: ['Multipart'], visible: true }])
+    controller.setGroupOutlinesVisible(['multipart-outline'])
+    expect(mount.querySelector('[data-svg-map-group-outline="multipart-outline"]')).not.toBeNull()
+    expect(mount.querySelector('[data-svg-map-country-inner-glow]')).not.toBeNull()
+
+    const layerBeforeHover = mount.querySelector('[data-svg-map-country-inner-glow]')
+    path(mount, 'Multipart').dispatchEvent(new Event('pointerenter'))
+    expect(mount.querySelector('[data-svg-map-country-inner-glow]')).toBe(layerBeforeHover)
+
+    controller.setMutedCountries(['Multipart'])
+    expect(mount.querySelector('[data-svg-map-country-inner-glow]')).toBeNull()
+    controller.clearMutedCountries()
+    expect(mount.querySelector('[data-svg-map-country-inner-glow]')).not.toBeNull()
+    controller.setHiddenCountries(['Multipart'])
+    expect(mount.querySelector('[data-svg-map-country-inner-glow]')).toBeNull()
+    controller.clearHiddenCountries()
+    expect(mount.querySelector('[data-svg-map-country-inner-glow]')).not.toBeNull()
+
+    expect(controller.clearCountryInnerGlows().activeIds).toEqual([])
+    expect(mount.querySelector('[data-svg-map-country-inner-glow]')).toBeNull()
+    expect(mount.querySelector('[data-svg-map-country-inner-glow-defs]')).toBeNull()
+  })
+
+  it('projects inner glow geometry through transforms and wrapped semantic copies', async () => {
+    const transformed = makeController()
+    await transformed.controller.load({ markup: TRANSFORMED_MAP })
+    transformed.controller.setCountryInnerGlows({ Transformed: { color: '#B5A678', edgeIntensity: 111, fadeLength: 10, fadeBody: 31, edgeConcentration: 79 } })
+    const transformedSource = transformed.mount.querySelector<SVGPathElement>('[data-svg-map-country-inner-glow-path="Transformed"] [data-svg-map-country-inner-glow-source]')
+    expect(transformedSource?.getAttribute('transform')).toBe('matrix(3 0 0 3 16 32)')
+    expect(transformedSource?.getAttribute('id')).toBeNull()
+
+    const oceania = makeController()
+    await oceania.controller.load({ markup: oceaniaSvg })
+    oceania.controller.setCountryInnerGlows({ Australia: { color: '#769A70', edgeIntensity: 111, fadeLength: 10, fadeBody: 31, edgeConcentration: 79 } })
+    expect(oceania.mount.querySelectorAll('[data-svg-map-country-inner-glow-country="Australia"] [data-svg-map-country-inner-glow-source]')).toHaveLength(72)
+    expect(oceania.mount.querySelector('[data-svg-map-country-inner-glow-path="Australia_wrap"]')).not.toBeNull()
+  })
+
   it('loads a URL and rejects invalid or embedded content', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
@@ -358,6 +420,7 @@ describe('SvgMapController persistent state', () => {
     const { mount, controller } = makeController()
     await controller.load({ markup: TEST_MAP })
     const renderNow = vi.spyOn(controller as unknown as { renderNow: () => void }, 'renderNow')
+    const glow = { color: '#769A70', edgeIntensity: 111, fadeLength: 10, fadeBody: 31, edgeConcentration: 79 }
 
     controller.updatePresentation({
       presentation: 'expanded',
@@ -371,6 +434,7 @@ describe('SvgMapController persistent state', () => {
       highlightedIds: ['Beta'],
       mutedIds: ['Gamma'],
       countryColors: new Map([['Delta', '#22c55e']]),
+      countryInnerGlows: [['Delta', glow]],
       countryLabels: {},
       namedIds: ['Beta'],
       hoveredId: null,
@@ -380,21 +444,25 @@ describe('SvgMapController persistent state', () => {
     expect(mount.querySelector<SVGSVGElement>('svg')?.style.aspectRatio).toBe('')
     expect(mount.querySelector<SVGSVGElement>('svg')?.getAttribute('preserveAspectRatio')).toBe('xMidYMid meet')
     expect(readViewBox(mount)).toEqual({ x: 0, y: 0, width: 100, height: 50 })
+    const glowLayer = mount.querySelector('[data-svg-map-country-inner-glow]')
+    expect(glowLayer).not.toBeNull()
 
     controller.updatePresentation({
       presentation: 'standard',
       settings: {},
       hoverGroups: [],
       groupOutlines: [],
-      hiddenIds: [],
+      hiddenIds: ['Alpha'],
       taskAssistance: null,
       highlightedIds: [],
-      mutedIds: [],
+      mutedIds: ['Gamma'],
       countryColors: [],
+      countryInnerGlows: [['Delta', glow]],
       countryLabels: {},
       namedIds: [],
-      hoveredId: null,
+      hoveredId: 'Delta',
     })
+    expect(mount.querySelector('[data-svg-map-country-inner-glow]') === glowLayer).toBe(true)
     expect(mount.querySelector<SVGSVGElement>('svg')?.style.aspectRatio).toBe('100 / 50')
     expect(mount.querySelector<SVGSVGElement>('svg')?.getAttribute('preserveAspectRatio')).toBeNull()
   })

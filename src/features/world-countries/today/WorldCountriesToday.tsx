@@ -23,13 +23,14 @@ import {
 import { flattenWorldCountriesRecallHistory, loadWorldCountriesRecallHistory, type WorldCountriesRecallHistory } from '@/features/world-countries/learning/recallHistory'
 import { recallTargetIdFor, WORLD_COUNTRIES_CORE_RECALL_SKILLS } from '@/features/world-countries/learning/recallTargets'
 import { deriveWorldCountriesScopeProgressForCountries } from '@/features/world-countries/learning/scopeProgress'
-import { deriveWorldCountriesPrimaryStatus, deriveWorldCountriesPrimaryStatusCounts, getCountryProgressColor, WORLD_COUNTRIES_PROGRESS_LABELS } from '@/features/world-countries/learning/progressPresentation'
+import { getCountryProgressColor, WORLD_COUNTRIES_PROGRESS_LABELS } from '@/features/world-countries/learning/progressPresentation'
 import { CountryLearningFlow } from '@/features/world-countries/learning/flows/CountryLearningFlow'
 import { CapitalLearningFlow } from '@/features/world-countries/learning/flows/CapitalLearningFlow'
 import type { LearningCompletedRegionAction, LearningCompletionCelebration, LearningCompletionHandoff, LearningRegionCompletion } from '@/features/world-countries/learning/flows/LearningComplete'
 import { LearningMilestoneCelebration } from '@/features/world-countries/learning/flows/LearningCelebration'
 import type { LearningSetMaximum } from '@/features/world-countries/learning/stagedLearningPlan'
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
+import { WORLD_COUNTRIES_CAPITAL_INNER_GLOW } from '@/features/world-countries/maps/worldCountriesMapPalette'
 import { MapSurface } from '@/features/world-countries/ui/MapSurface'
 import { WorldCountriesMapLegend } from '@/features/world-countries/ui/WorldCountriesMapLegend'
 import { TodayReviewSession, type WorldCountriesTodayReviewCheckpoint, type WorldCountriesTodayReviewCompletion } from './TodayReviewSession'
@@ -398,13 +399,13 @@ export function WorldCountriesToday({
     void resolveNextContinent()
     return () => { cancelled = true }
   }, [continent, continentCompletionLookup])
-  const primaryStatusByCountry = useMemo(() => new Map(scopedCountries.map(country => [
-    country.id,
-    deriveWorldCountriesPrimaryStatus(
-      learningReadinessByCountry.get(country.id) ?? 'NOT_LEARNED',
+  const countryProgressById = useMemo(
+    () => new Map(scopedCountries.map(country => [
+      country.id,
       deriveWorldCountriesCountryProgress(country.id, recallProgress ?? new Map()),
-    ),
-  ] as const)), [learningReadinessByCountry, recallProgress, scopedCountries])
+    ] as const)),
+    [recallProgress, scopedCountries],
+  )
   const progress = useMemo(
     () => recallProgress ? deriveWorldCountriesScopeProgressForCountries(
       continent ? `continent:${continent}` : 'world',
@@ -413,13 +414,16 @@ export function WorldCountriesToday({
     ) : null,
     [continent, recallProgress, scopedCountries],
   )
-  const countryColorsById = useMemo(() => {
-    return new Map([...primaryStatusByCountry].flatMap(([countryId, status]) => (
-      status.kind === 'recall'
-        ? [[countryId, getCountryProgressColor(status.state)] as const]
-        : []
-    )))
-  }, [primaryStatusByCountry])
+  const countryColorsById = useMemo(() => new Map(scopedCountries.flatMap(country => {
+    if (learningReadinessByCountry.get(country.id) !== 'COUNTRIES_AND_CAPITALS_LEARNED') return []
+    const state = countryProgressById.get(country.id)?.skills.get('location-to-country')?.proficiency ?? 'unpractised'
+    return [[country.id, getCountryProgressColor(state)] as const]
+  })), [countryProgressById, learningReadinessByCountry, scopedCountries])
+  const countryInnerGlowsById = useMemo(() => new Map(scopedCountries.flatMap(country => {
+    if (learningReadinessByCountry.get(country.id) !== 'COUNTRIES_AND_CAPITALS_LEARNED') return []
+    const state = countryProgressById.get(country.id)?.skills.get('country-to-capital')?.proficiency ?? 'unpractised'
+    return [[country.id, { color: getCountryProgressColor(state), ...WORLD_COUNTRIES_CAPITAL_INNER_GLOW }] as const]
+  })), [countryProgressById, learningReadinessByCountry, scopedCountries])
   const countryPatternsById = useMemo(() => new Map(scopedCountries.flatMap(country => (
     worldLearningComplete
       ? []
@@ -602,7 +606,6 @@ export function WorldCountriesToday({
   const scopeSummaries = useMemo(() => {
     void geographyRevision
     if (!recallProgress) return []
-    const learningStateList = getWorldCountriesLearningStateList(learningStates)
     if (!continent) {
       return getContinentsInEffectiveOrder(scopedCountries, getWorldMetadata()).map(candidate => {
         const entries = scopedCountries.filter(country => country.continent === candidate)
@@ -611,7 +614,6 @@ export function WorldCountriesToday({
           id: candidate,
           label: candidate,
           progress: deriveWorldCountriesScopeProgressForCountries(`continent:${candidate}`, entries, recallProgress),
-          distribution: deriveWorldCountriesPrimaryStatusCounts(entries, learningStateList, recallProgress),
           onSelect: onSelectContinent ? () => onSelectContinent(candidate, plan?.curriculumRecommendation?.continent ?? null) : undefined,
           selected: isSelected,
           status: isSelected && activeSubregionId
@@ -627,13 +629,12 @@ export function WorldCountriesToday({
         id: subregion.id,
         label: subregion.label,
         progress: deriveWorldCountriesScopeProgressForCountries(`subregion:${subregion.id}`, entries, recallProgress),
-        distribution: deriveWorldCountriesPrimaryStatusCounts(entries, learningStateList, recallProgress),
         onSelect: () => setSelectedSubregionId(subregion.id),
         selected: isSelected,
         status: isSelected ? 'Selected focus' : undefined,
       }
     })
-  }, [activeSubregionId, continent, geographyRevision, learningStates, onSelectContinent, plan, recallProgress, scopedCountries])
+  }, [activeSubregionId, continent, geographyRevision, onSelectContinent, plan, recallProgress, scopedCountries])
   const scopeLabel = continent ?? 'World'
   const navigateWorld = onWorld ?? (() => undefined)
   const reviewCompletionContinuation = reviewCompletion?.mode === 'review'
@@ -885,12 +886,16 @@ export function WorldCountriesToday({
       otherActions: [],
     }
   })()
-  const mapDescriptions = new Map([...primaryStatusByCountry].map(([countryId, status]) => [
-    countryId,
-    status.kind === 'learning'
-      ? `Learning: ${getWorldCountriesLearningReadinessLabel(status.readiness)}.`
-      : `Recall health: ${WORLD_COUNTRIES_PROGRESS_LABELS[status.state]}.`,
-  ] as const))
+  const mapDescriptions = new Map(scopedCountries.map(country => {
+    const readiness = learningReadinessByCountry.get(country.id) ?? 'NOT_LEARNED'
+    if (readiness !== 'COUNTRIES_AND_CAPITALS_LEARNED') {
+      return [country.id, `Learning: ${getWorldCountriesLearningReadinessLabel(readiness)}.`] as const
+    }
+    const countryProgress = countryProgressById.get(country.id)
+    const countryState = countryProgress?.skills.get('location-to-country')?.proficiency ?? 'unpractised'
+    const capitalState = countryProgress?.skills.get('country-to-capital')?.proficiency ?? 'unpractised'
+    return [country.id, `Country recall: ${WORLD_COUNTRIES_PROGRESS_LABELS[countryState]}. Capital recall: ${WORLD_COUNTRIES_PROGRESS_LABELS[capitalState]}.`] as const
+  }))
 
   return (
     <>
@@ -977,6 +982,7 @@ export function WorldCountriesToday({
                 countryPopulation={scopedCountries}
                 countryColorsById={countryColorsById}
                 countryPatternsById={countryPatternsById}
+                countryInnerGlowsById={countryInnerGlowsById}
                 selectedSubregionIds={activeSubregionId ? [activeSubregionId] : undefined}
                 selectionPresentation="outline-only"
                 countryAccessibleDescriptionsById={mapDescriptions}

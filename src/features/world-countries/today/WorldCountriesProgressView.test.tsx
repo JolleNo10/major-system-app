@@ -63,10 +63,10 @@ describe('World Countries progress hierarchy', () => {
     expect(mount.textContent).toContain('Europe')
     expect(mount.textContent).toContain('Countries fully mastered')
     expect(mount.textContent).toContain('regions with complete recall')
-    expect(mount.textContent).toContain('Not learned')
-    expect(mount.textContent).not.toContain('Early recall 1')
+    expect(mount.textContent).toContain('Early recall')
+    expect(mount.textContent).not.toContain('core recall distribution')
     expect(mount.querySelector('[data-testid="world-mastery-summary"]')).not.toBeNull()
-    expect(mount.querySelector('[aria-label="Africa core recall distribution"]')).not.toBeNull()
+    expect(mount.querySelector('[aria-label="Country recall distribution"]')).not.toBeNull()
     expect(mount.textContent).not.toContain('Northern Europe')
   })
 
@@ -78,7 +78,7 @@ describe('World Countries progress hierarchy', () => {
     expect(mount.textContent).toContain('Western Europe')
     expect(mount.textContent).toContain('Journey')
     expect(mount.textContent).toContain('Meet the countries')
-    expect(mount.querySelector('[aria-label="Northern Europe core recall distribution"]')).not.toBeNull()
+    expect(mount.querySelector('[aria-label="Country recall distribution"]')).not.toBeNull()
     expect(mount.textContent).not.toContain('Africa')
   })
 
@@ -116,13 +116,34 @@ describe('World Countries progress hierarchy', () => {
     expect(mount.textContent).toContain('Mastery · Mastered')
   })
 
-  it('gates Early recall behind both Learning layers', () => {
+  it('shows independent Country and Capital ladders regardless of Learning readiness', () => {
     const northern = countries.find(country => country.subregionId === 'northern-europe')!
-    const unlearned = renderProgress('Europe', [northern], [], [])
-    expect(unlearned.textContent).toContain('Not learned 1')
-    expect(unlearned.textContent).not.toContain('Early recall 1')
+    const mount = renderProgress('Europe', [northern], [], [])
+    expect(mount.querySelector('[aria-label="Country recall distribution"]')).not.toBeNull()
+    expect(mount.querySelector('[aria-label="Capital recall distribution"]')).not.toBeNull()
+    expect(mount.textContent).toContain('Country')
+    expect(mount.textContent).toContain('Capital')
+    expect(mount.textContent).toContain('Early recall 1')
+  })
 
-    const learned = renderProgress('Europe', [northern], [{ subregionId: northern.subregionId, countriesLearnedAt: 1, capitalsLearnedAt: 2 }])
-    expect(learned.textContent).toContain('Early recall 1')
+  it('uses lower-track Mastery while keeping strict overlap separate', () => {
+    const scopeCountries = countries.filter(country => ['NO', 'SE', 'DK', 'FI'].includes(country.id))
+    const attempts = scopeCountries.flatMap((country, countryIndex) => {
+      const location = countryIndex < 3 ? ['location-to-country'] : []
+      const capital = countryIndex < 2 ? ['country-to-capital'] : []
+      return [...location, ...capital].flatMap(skill => [1, 2, 3].map((day, index) => ({
+        itemId: `world-countries:${skill}:${country.id}`,
+        at: countryIndex * 100 + day + index,
+        ok: true,
+        ms: 100,
+        evidenceKind: 'recall' as const,
+        localDate: `2026-08-${String(day).padStart(2, '0')}`,
+      })))
+    })
+    const mount = renderProgress('World', scopeCountries, [], attempts)
+    expect(mount.querySelector('[data-testid="world-mastery-summary"]')?.textContent).toContain('Mastery 50%')
+    expect(mount.querySelector('[data-testid="world-mastery-summary"]')?.textContent).toContain('2 / 4 Countries fully mastered')
+    expect(mount.querySelectorAll('[data-recall-track]')).toHaveLength(2 * 2)
+    expect(mount.querySelectorAll('[data-recall-track]')).toHaveLength(4)
   })
 })

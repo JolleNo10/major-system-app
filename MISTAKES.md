@@ -101,3 +101,11 @@ and starved by a sibling: `[data-map-surface-dock-row] > [data-map-surface-dock]
   (`non-final`, `last`, `first`) rather than the condition it stands for,
   re-express the test before changing the code, and confirm a new regression
   test fails against the unfixed source.
+
+# Windows text transport
+
+- A multiline PowerShell-to-Python edit converted some non-ASCII arrows and
+  separators to literal question marks or mojibake in displayed output. The
+  root cause was relying on the shell transport for Unicode literals. Use
+  `chr(...)` for non-ASCII characters in direct-edit scripts, then inspect
+  codepoints in the resulting file before verification.

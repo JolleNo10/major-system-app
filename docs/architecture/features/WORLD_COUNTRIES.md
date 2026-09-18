@@ -283,15 +283,18 @@ another progress authority.
 ### Derived Progress view
 
 The derived Progress view keeps World -> Continent and Continent -> Subregion
-hierarchy. Its rows combine complete-country totals, the existing core recall
-state distribution, and, for Subregions, the existing Journey presentation.
-Scope progress also derives the primary Mastery percentage from currently
-mastered atomic core skills divided by active atomic core skills. The strict
-complete-Country count remains supporting context rather than the percentage
-denominator; for example, 9/10 mastered core skills can accompany 4/5 fully
-mastered Countries. Continent rows also show a core-recall-complete region
-rollup. Progress rails
-explain scope and state semantics and do not choose Review or Journey actions.
+hierarchy. Its rows combine strict complete-Country totals, separate Country
+and Capital atomic state distributions, and, for Subregions, the existing
+Journey presentation. Scope progress derives the primary displayed Mastery
+percentage as the lower of the two current Country and Capital mastered-
+Country ratios:
+`min(Country mastered / active Countries, Capital mastered / active Countries)`.
+`Countries fully mastered` remains a separate strict overlap count where both
+canonical core skills are currently Mastered. Compact bars use two touching
+tracks with Country on top and Capital below; detailed Progress rows label the
+two atomic ladders separately. Continent rows also show a core-recall-complete
+region rollup. Progress rails explain scope and state semantics and do not
+choose Review or Journey actions.
 
 ### Review spacing and recall projection
 
@@ -402,12 +405,14 @@ coordinator:
 
 ### World mastery overview
 
-World-level Drill setup exposes a compact, derived World core-mastery summary
-above the World map. It aggregates the existing Country core recall state over
-the active Country population, so the population is both the denominator and
-the source of every displayed state count. A Country is complete only when the
-existing Location → Country and Country → Capital core skills are Mastered;
-Capital → Country remains an additional skill.
+World-level Drill setup exposes a compact, derived World mastery summary
+above the World map. It aggregates independent Country and Capital atomic
+recall states over the active Country population, so the population is both the
+denominator and the source of every displayed state count. Its primary
+`Mastery N%` is the lower of the Country and Capital mastered-Country ratios;
+the separate `X / Y Countries fully mastered` count is the strict overlap where
+both existing Location → Country and Country → Capital core skills are
+Mastered. Capital → Country remains an additional skill.
 
 The summary is non-persisted presentation state. It is independent of Drill
 purpose and mode, while activity-specific map progress, Learning Readiness, and
@@ -508,19 +513,19 @@ back to the scope's planner recommendation when unfinished curriculum remains
 elsewhere. The selection is not persisted and is cleared or ignored when it
 leaves the active scope/population. World Home associates the
 active Subregion with its containing Continent row while preserving the same
-map progress. Normal Home/Continent maps use one primary status at a time:
-Not learned is neutral, Countries learned is a warm-neutral diagonal pattern,
-and an established Countries + Capitals layer is presented as solid Recall
-health. Early recall, Weak, Developing, Strong, and Mastered use the shared
-warm-to-green solid palette. The learner-facing map ladder therefore has seven
-states: Not learned, Countries learned, Early recall, Weak, Developing,
-Strong, and Mastered. The Learning patterns are derived from durable
-Subregion milestones or the existing historical established-layer fallback;
-they do not add per-Country flags or a new store. While Capital Learning is
-active after the Country layer is established, the diagonal pattern remains
-the stable underlying status through walkthrough, practice, mix, and final
-recall. When the Capital Learning milestone is completed, the Learning pattern
-is removed and the map moves directly to the current solid Recall-health state.
+map progress. Normal Home/Continent maps keep Learning presentation until
+both layers are established for a Country. Before handoff, Not learned is
+neutral and Countries learned is a warm-neutral diagonal pattern. After
+handoff, the Country atomic proficiency owns polygon fill and the Capital
+atomic proficiency owns the clipped inner edge/glow; both use the shared
+warm-to-green ladder and no display mode is offered. The Learning patterns are
+derived from durable Subregion milestones or the existing historical
+established-layer fallback; they do not add per-Country flags or a new store.
+While Capital Learning is active after the Country layer is established, the
+diagonal pattern remains the stable underlying status through walkthrough,
+practice, mix, and final recall. When the Capital Learning milestone is
+completed, the Learning pattern is removed and both atomic Recall channels
+become available.
 Durable guided Learning completion can expose a
 same-focus Country-to-Capital handoff before a later planner-derived
 next-region handoff; it keeps an explicit return action and never auto-starts
@@ -586,8 +591,12 @@ Durable Learning Readiness is derived from `countriesLearnedAt` and
 handoff boundary, not a separate learner-facing map-status rung. Normal map
 presentation exposes only Not learned and Countries learned during Learning,
 using `#5A5E66` as the neutral base and a `#3E3719` diagonal pattern at 0.46
-opacity, 1.8 width, and 11 pitch for Countries learned; both Learning layers
-complete then hand off to solid Recall health. A display-only Drill-evidence
+opacity, 1.8 width, and 11 pitch for Countries learned. Learning presentation
+remains until both layers are established for each Country; after handoff,
+`location-to-country` owns the polygon fill and `country-to-capital` owns a
+clipped inner edge/glow inside that same Country geometry. Both channels use
+the shared atomic Early recall, Weak, Developing, Strong, and Mastered ladder;
+there is no Country/Capital display mode or toggle. A display-only Drill-evidence
 bridge may promote a Subregion to Countries learned when every active Country
 has current Location -> Country proficiency of Developing or better. It never
 writes a Learning milestone or changes Drill evidence. This Drill setup
@@ -858,6 +867,15 @@ target-local and Country-fit cameras respectively.
   paths while existing transient hover, selection, task, and answer styling
   remains in the overlay layer; hidden or muted Countries are omitted and the
   declarative render reconstructs the edge and recall fill after interaction.
+  Capital status uses a separate generic caller-owned `SvgMapCountryInnerGlow`
+  seam: geometry is clipped to each individual Country path, pointerless,
+  declarative, and safe for multipart and wrapped authored copies. Hidden and
+  muted Countries omit the glow; transient hover, selection, task, and answer
+  treatments retain precedence, and persistent geometry is reconciled only when
+  assignments, visibility, or loaded geometry change. Reusing the grouped
+  outline/halo seam is rejected because it is outside-oriented and may group
+  adjacent geometry, while Capital status must remain an inward,
+  per-Country boundary treatment.
 - The generic `SvgMapCountryPattern` presentation seam renders caller-owned
   diagonal or crosshatch fills from SVG `<pattern>` definitions. World
   Countries Learning uses only the diagonal variant; the generic seam retains

@@ -1,5 +1,5 @@
 import { countries, type Continent, type Country, type CountryId } from '@/features/world-countries/data/countries'
-import type { SvgMapCountryPattern, SvgMapGroupOutline, SvgMapHoverGroup } from '@/features/world-countries/maps/SvgMapController'
+import type { SvgMapCountryInnerGlow, SvgMapCountryPattern, SvgMapGroupOutline, SvgMapHoverGroup } from '@/features/world-countries/maps/SvgMapController'
 import { countryToSvgIds } from '@/features/world-countries/maps/countryMapIds'
 import { getSubregionDefinition, type SubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
 import { getCountriesForContinent } from '@/features/world-countries/geography/queries'
@@ -167,6 +167,20 @@ export function createCountryPatternsById(
     return pattern === undefined
       ? []
       : resolveCountryToSvgIds(entry, discoveredSvgIds).map(id => [id, pattern] as const)
+  })
+}
+
+/** Translate per-Country inner glow data to every discovered multipart SVG ID. */
+export function createCountryInnerGlowsById(
+  entries: readonly Country[],
+  glowsByCountryId: ReadonlyMap<CountryId, SvgMapCountryInnerGlow>,
+  discoveredSvgIds: ReadonlySet<string> | readonly string[],
+): Array<readonly [string, SvgMapCountryInnerGlow]> {
+  return entries.flatMap(entry => {
+    const glow = glowsByCountryId.get(entry.id)
+    return glow === undefined
+      ? []
+      : resolveCountryToSvgIds(entry, discoveredSvgIds).map(id => [id, glow] as const)
   })
 }
 

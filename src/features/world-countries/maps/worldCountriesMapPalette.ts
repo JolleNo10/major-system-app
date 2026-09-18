@@ -5,3 +5,10 @@ export const WORLD_COUNTRIES_MAP_COUNTRY_STROKE_WIDTH = '1.05px'
 export const WORLD_COUNTRIES_MAP_LABEL_FILL = '#DDE0E5'
 export const WORLD_COUNTRIES_MAP_LABEL_OPACITY = 0.8
 export const WORLD_COUNTRIES_MAP_SELECTION_STROKE = '#73CDD4'
+
+export const WORLD_COUNTRIES_CAPITAL_INNER_GLOW = Object.freeze({
+  edgeIntensity: 111,
+  fadeLength: 10,
+  fadeBody: 31,
+  edgeConcentration: 79,
+})
