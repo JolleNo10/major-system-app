@@ -326,7 +326,14 @@ core skills, the first legacy local-day cluster is acquisition-equivalent and
 later clusters are performance-equivalent. The migration reruns at the
 composition boundary for the active Country population, leaves typed rows
 untouched, and can add missing synthetic Learning evidence for applicable
-milestones without using those milestones as runtime proficiency state.
+milestones without using those milestones as runtime proficiency state. A
+synthetic row is considered reconciled only after its strict durable write
+succeeds; a failed write rejects the migration so a later composition-boundary
+run can resume the idempotent reconciliation. The exported Capital compatibility
+backfill uses the same provenance distinction: only a successful same-day
+`recall` row with `attemptType: 'learning'` counts as already reconstructed
+Learning evidence. Same-day Review, Strengthen, Drill, Legacy, or untyped
+evidence never substitutes for that row.
 
 Three tempting alternatives are intentionally rejected: deriving Weak
 directly from Learning milestones would create a second status authority;

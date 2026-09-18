@@ -2,7 +2,7 @@ import type { Attempt } from '@/core/learning'
 import { getAllAttemptsOrThrow, rewriteAttemptsForItem } from '@/core/learning'
 import { countries as canonicalCountries, type Country } from '@/features/world-countries/data/countries'
 import { getAllSubregionLearningStates } from './subregionLearningStore'
-import { recordWorldCountriesAttempt } from './recallProgress'
+import { recordWorldCountriesAttemptOrThrow } from './recallProgress'
 import {
   parseWorldCountriesRecallTargetId,
   recallTargetIdFor,
@@ -88,8 +88,8 @@ function orderAttempts(attempts: readonly Attempt[]): Attempt[] {
 }
 
 /**
- * Best-effort, idempotent migration for the existing shared World Countries
- * attempt namespace. Core provides the rewrite seam; all inference stays here.
+ * Idempotent migration for the existing shared World Countries attempt
+ * namespace. Core provides the persistence seams; all inference stays here.
  */
 async function runWorldCountriesAttemptTypeMigration(
   options: WorldCountriesAttemptTypeMigrationOptions = {},
@@ -127,7 +127,7 @@ async function runWorldCountriesAttemptTypeMigration(
     if (learningItemIds.has(milestone.itemId)) continue
     const target = parseWorldCountriesRecallTargetId(milestone.itemId)
     if (!target) continue
-    await recordWorldCountriesAttempt(target.countryId, target.skill, {
+    await recordWorldCountriesAttemptOrThrow(target.countryId, target.skill, {
       at: milestone.learnedAt,
       ok: true,
       ms: WORLD_COUNTRIES_UNTIMED_ATTEMPT_MS,

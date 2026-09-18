@@ -80,6 +80,7 @@ describe('World Countries Capital evidence backfill', () => {
       ms: Number.NaN,
       evidenceKind: 'recall',
       localDate: '2026-09-12',
+      attemptType: 'learning',
     }))
     recordAttemptMock.mockClear()
 
@@ -119,5 +120,43 @@ describe('World Countries Capital evidence backfill', () => {
     const plan = await planWorldCountriesCapitalBackfill({ activeCountries })
 
     expect(plan.pending.map(entry => entry.countryId)).toEqual(['NO', 'SE'])
+  })
+
+  it.each(['review', 'drill', 'legacy', undefined] as const)(
+    'still reconstructs over same-day %s evidence',
+    async attemptType => {
+      markSubregionCapitalsLearned('northern-europe', learnedAt, activeCountries)
+      attemptsMock.value = [{
+        itemId: recallTargetIdFor('NO', 'country-to-capital'),
+        at: learnedAt,
+        ok: true,
+        ms: 2000,
+        evidenceKind: 'recall',
+        localDate: '2026-09-12',
+        ...(attemptType === undefined ? {} : { attemptType }),
+      }]
+
+      const plan = await planWorldCountriesCapitalBackfill({ activeCountries })
+
+      expect(plan.pending.map(entry => entry.countryId)).toEqual(['NO', 'SE'])
+    },
+  )
+
+  it('recognizes reconstructed Learning evidence on the second run', async () => {
+    markSubregionCapitalsLearned('northern-europe', learnedAt, activeCountries)
+    attemptsMock.value = ['NO', 'SE'].map(countryId => ({
+      itemId: recallTargetIdFor(countryId, 'country-to-capital'),
+      at: learnedAt,
+      ok: true,
+      ms: Number.NaN,
+      evidenceKind: 'recall',
+      localDate: '2026-09-12',
+      attemptType: 'learning',
+    }))
+
+    const plan = await planWorldCountriesCapitalBackfill({ activeCountries })
+
+    expect(plan.pending).toEqual([])
+    expect(plan.entries.every(entry => entry.action === 'already-recorded')).toBe(true)
   })
 })

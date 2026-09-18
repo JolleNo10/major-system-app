@@ -1,5 +1,5 @@
 import type { Attempt, AttemptEvidenceKind } from '@/core/learning'
-import { recordAttempt } from '@/core/learning'
+import { recordAttempt, recordAttemptOrThrow } from '@/core/learning'
 import type { CountryId } from '@/features/world-countries/data/countries'
 import {
   WORLD_COUNTRIES_ADDITIONAL_RECALL_SKILLS,
@@ -77,6 +77,16 @@ export interface RecordWorldCountriesAttempt extends Attempt {
   localDate?: string
 }
 
+function buildWorldCountriesAttempt(attempt: RecordWorldCountriesAttempt): Attempt {
+  const { evidenceKind, attemptType, ...attemptWithoutMetadata } = attempt
+  return {
+    ...attemptWithoutMetadata,
+    ...(evidenceKind === undefined ? {} : { evidenceKind }),
+    attemptType,
+    localDate: attempt.localDate ?? localDateForTimestamp(attempt.at),
+  }
+}
+
 /**
  * Record one atomic Country + skill attempt. Metadata is captured before the
  * shared adapter is called so later timezone changes cannot reclassify it.
@@ -86,16 +96,23 @@ export function recordWorldCountriesAttempt(
   skill: WorldCountriesRecallSkill,
   attempt: RecordWorldCountriesAttempt,
 ): Promise<void> {
-  const { evidenceKind, attemptType, ...attemptWithoutMetadata } = attempt
-  const recordedAttempt: Attempt = {
-    ...attemptWithoutMetadata,
-    ...(evidenceKind === undefined ? {} : { evidenceKind }),
-    attemptType,
-    localDate: attempt.localDate ?? localDateForTimestamp(attempt.at),
-  }
+  const recordedAttempt = buildWorldCountriesAttempt(attempt)
   return recordAttempt(
     recallTargetIdFor(countryId, skill),
     recordedAttempt,
+    { pruneHistory: false },
+  )
+}
+
+/** Record migration-owned durable evidence while propagating storage failures. */
+export function recordWorldCountriesAttemptOrThrow(
+  countryId: CountryId,
+  skill: WorldCountriesRecallSkill,
+  attempt: RecordWorldCountriesAttempt,
+): Promise<void> {
+  return recordAttemptOrThrow(
+    recallTargetIdFor(countryId, skill),
+    buildWorldCountriesAttempt(attempt),
     { pruneHistory: false },
   )
 }

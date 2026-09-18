@@ -1,5 +1,6 @@
 import {
   addAttemptRaw,
+  addAttemptRawOrThrow,
   getAllAttempts as getStoredAttempts,
   getAllAttemptsOrThrow as getStoredAttemptsOrThrow,
   getAttemptsForKey,
@@ -17,6 +18,17 @@ export function recordAttempt(
   return options === undefined
     ? addAttemptRaw(itemId, attempt)
     : addAttemptRaw(itemId, attempt, options)
+}
+
+/** Record durable evidence while propagating storage failures to the caller. */
+export function recordAttemptOrThrow(
+  itemId: RecallItemId,
+  attempt: Attempt,
+  options?: AttemptWriteOptions,
+): Promise<void> {
+  return options === undefined
+    ? addAttemptRawOrThrow(itemId, attempt)
+    : addAttemptRawOrThrow(itemId, attempt, options)
 }
 
 export const addAttempt = recordAttempt

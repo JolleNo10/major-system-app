@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto'
 import { describe, expect, it } from 'vitest'
 import { DAY_MS, HISTORY_MAX, HISTORY_RETENTION_DAYS } from './itemStore'
-import { addAttemptRaw, getAttemptsForKey, getDb, reqToPromise, rewriteAttemptsForKey, shouldPruneAttemptHistory } from './attemptStore'
+import { addAttemptRaw, addAttemptRawOrThrow, getAttemptsForKey, getDb, reqToPromise, rewriteAttemptsForKey, shouldPruneAttemptHistory } from './attemptStore'
 
 let testKey = 0
 
@@ -24,6 +24,37 @@ describe('attempt history retention policy', () => {
 
   it('allows a caller with durable evidence semantics to retain full history', () => {
     expect(shouldPruneAttemptHistory({ pruneHistory: false })).toBe(false)
+  })
+
+  it('strictly appends a record while preserving opaque metadata', async () => {
+    const key = uniqueKey('strict-append')
+    await addAttemptRawOrThrow(key, {
+      at: 10,
+      ok: true,
+      ms: 100,
+      attemptType: 'learning',
+      custom: { source: 'migration' },
+    } as Parameters<typeof addAttemptRawOrThrow>[1] & Record<string, unknown>, { pruneHistory: false })
+
+    await expect(getAttemptsForKey(key)).resolves.toEqual([expect.objectContaining({
+      at: 10,
+      ok: true,
+      ms: 100,
+      attemptType: 'learning',
+      custom: { source: 'migration' },
+    })])
+  })
+
+  it('propagates a write failure only through the strict append API', async () => {
+    const invalidAttempt = {
+      at: undefined,
+      ok: true,
+      ms: 100,
+    } as unknown as Parameters<typeof addAttemptRawOrThrow>[1]
+
+    await expect(addAttemptRawOrThrow(uniqueKey('strict-failure'), invalidAttempt))
+      .rejects.toBeDefined()
+    await expect(addAttemptRaw(uniqueKey('best-effort-failure'), invalidAttempt)).resolves.toBeUndefined()
   })
 
   it('prunes an attempt older than the generic retention window', async () => {

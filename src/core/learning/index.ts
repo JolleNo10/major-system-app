@@ -27,6 +27,7 @@ export {
   getAttempts,
   getAttemptsForItem,
   recordAttempt,
+  recordAttemptOrThrow,
   rewriteAttemptsForItem,
 } from './attempts'
 export {

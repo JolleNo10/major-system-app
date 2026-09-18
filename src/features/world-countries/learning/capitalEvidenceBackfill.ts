@@ -47,7 +47,10 @@ export interface WorldCountriesCapitalBackfillOptions {
 
 function hasQualifyingRecallOn(attempts: readonly Attempt[], localDate: string): boolean {
   return attempts.some(attempt => (
-    attempt.ok && attempt.evidenceKind === 'recall' && attempt.localDate === localDate
+    attempt.ok
+    && attempt.evidenceKind === 'recall'
+    && attempt.localDate === localDate
+    && attempt.attemptType === 'learning'
   ))
 }
 

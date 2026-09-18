@@ -159,15 +159,23 @@ follows the defining module and feature namespace.
   deletion removes both so deleted content cannot reappear.
 - Best-effort telemetry/attempt writes may swallow storage failures. Authored
   mnemonic writes propagate failures so editors can report quota problems.
+- The attempt store also exposes a strict throwing append seam through
+  `core/learning` for durable migrations. Ordinary interactive attempt writes
+  remain best-effort, but the World Countries provenance migration uses the
+  strict writer for synthetic Learning rows and does not report completion when
+  one of those required writes fails. Because it has no completion marker, the
+  migration is idempotent and resumable: a later composition-boundary run can
+  finish work after an earlier run persisted only part of its conversion.
 - World Countries runs an idempotent attempt-provenance migration at its
   composition boundary for the current active Country population. It rewrites
   only recognized `world-countries:<skill>:<CountryId>` attempts that lack a
   valid feature type, reconstructs one confident Learning row from applicable
   milestones when possible, marks other historical rows `legacy`, and writes
   synthetic Learning rows for active milestone memberships with no recoverable
-  row. Reconciliation reruns when active membership changes; typed rows are
-  preserved and no one-shot completion flag is used. The migration uses the
-  existing attempt object store in place, so the optional metadata adds no
+  row. A synthetic row is considered reconciled only after its strict append
+  succeeds. Reconciliation reruns when active membership changes; typed rows
+  are preserved and no one-shot completion flag is used. The migration uses
+  the existing attempt object store in place, so the optional metadata adds no
   object store, index, or IndexedDB version bump.
 
 ## Backup, import, and export

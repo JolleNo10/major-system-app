@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 const addAttemptRawMock = vi.hoisted(() => vi.fn(() => Promise.resolve()))
+const addAttemptRawOrThrowMock = vi.hoisted(() => vi.fn(() => Promise.resolve()))
 const rewriteAttemptsForKeyMock = vi.hoisted(() => vi.fn(async (_key: string, _rewrite: unknown) => undefined))
 const getStoredAttemptsMock = vi.hoisted(() => vi.fn(async () => ([
   {
@@ -15,13 +16,14 @@ const getStoredAttemptsMock = vi.hoisted(() => vi.fn(async () => ([
 
 vi.mock('@/core/scoring/attemptStore', () => ({
   addAttemptRaw: addAttemptRawMock,
+  addAttemptRawOrThrow: addAttemptRawOrThrowMock,
   getAllAttempts: getStoredAttemptsMock,
   getAllAttemptsOrThrow: getStoredAttemptsMock,
   getAttemptsForKey: vi.fn(() => Promise.resolve([])),
   rewriteAttemptsForKey: rewriteAttemptsForKeyMock,
 }))
 
-import { getAllAttempts, recordAttempt, rewriteAttemptsForItem } from './attempts'
+import { getAllAttempts, recordAttempt, recordAttemptOrThrow, rewriteAttemptsForItem } from './attempts'
 
 describe('shared learning evidence adapter', () => {
   it('preserves generic evidence metadata through the shared adapter', async () => {
@@ -59,6 +61,34 @@ describe('shared learning evidence adapter', () => {
       'world-countries:country-to-capital:NO',
       expect.objectContaining({ attemptType: 'review' }),
     )
+  })
+
+  it('delegates strict item-keyed writes without interpreting opaque metadata', async () => {
+    const attempt = {
+      at: 1,
+      ok: true,
+      ms: 400,
+      attemptType: 'learning',
+      custom: { source: 'migration' },
+    }
+
+    await recordAttemptOrThrow('world-countries:country-to-capital:NO', attempt)
+
+    expect(addAttemptRawOrThrowMock).toHaveBeenCalledWith(
+      'world-countries:country-to-capital:NO',
+      attempt,
+    )
+  })
+
+  it('propagates strict writer failures through the item-keyed adapter', async () => {
+    const failure = new Error('storage failed')
+    addAttemptRawOrThrowMock.mockRejectedValueOnce(failure)
+
+    await expect(recordAttemptOrThrow('world-countries:country-to-capital:NO', {
+      at: 1,
+      ok: true,
+      ms: 400,
+    })).rejects.toBe(failure)
   })
 
   it('exposes an opaque item-keyed rewrite seam', async () => {

@@ -8,6 +8,11 @@ const getAllAttemptsMock = vi.hoisted(() => vi.fn(async () => stored.attempts.ma
 const recordAttemptMock = vi.hoisted(() => vi.fn(async (itemId: string, attempt: Record<string, unknown>) => {
   stored.attempts.push({ itemId, ...attempt })
 }))
+const strictWriteState = vi.hoisted(() => ({ reject: false }))
+const recordAttemptOrThrowMock = vi.hoisted(() => vi.fn(async (itemId: string, attempt: Record<string, unknown>) => {
+  if (strictWriteState.reject) throw new Error('synthetic write failed')
+  stored.attempts.push({ itemId, ...attempt })
+}))
 const rewriteAttemptsForItemMock = vi.hoisted(() => vi.fn(async (
   itemId: string,
   rewrite: (attempt: Record<string, unknown>, index: number, history: readonly Record<string, unknown>[]) => Record<string, unknown> | void,
@@ -25,6 +30,7 @@ const rewriteAttemptsForItemMock = vi.hoisted(() => vi.fn(async (
 vi.mock('@/core/learning', () => ({
   getAllAttemptsOrThrow: getAllAttemptsMock,
   recordAttempt: recordAttemptMock,
+  recordAttemptOrThrow: recordAttemptOrThrowMock,
   rewriteAttemptsForItem: rewriteAttemptsForItemMock,
 }))
 
@@ -49,6 +55,7 @@ function setLearningState(fields: Record<string, number>): void {
 
 beforeEach(() => {
   stored.attempts = []
+  strictWriteState.reject = false
   localStorage.clear()
   vi.clearAllMocks()
 })
@@ -126,5 +133,22 @@ describe('World Countries attempt provenance migration', () => {
 
     expect([first.synthetic, second.synthetic].sort()).toEqual([0, 1])
     expect(stored.attempts).toHaveLength(1)
+  })
+
+  it('rejects a failed synthetic write and completes it on a later retry', async () => {
+    setLearningState({ countriesLearnedAt: milestoneAt })
+    strictWriteState.reject = true
+
+    await expect(migrateWorldCountriesAttemptTypes({ activeCountries: [norway] }))
+      .rejects.toThrow('synthetic write failed')
+    expect(stored.attempts).toHaveLength(0)
+
+    strictWriteState.reject = false
+    const retry = await migrateWorldCountriesAttemptTypes({ activeCountries: [norway] })
+    const repeated = await migrateWorldCountriesAttemptTypes({ activeCountries: [norway] })
+
+    expect(retry.synthetic).toBe(1)
+    expect(repeated.synthetic).toBe(0)
+    expect(stored.attempts.filter(attempt => attempt.attemptType === 'learning')).toHaveLength(1)
   })
 })

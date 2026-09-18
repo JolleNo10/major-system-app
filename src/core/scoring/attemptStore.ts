@@ -118,50 +118,68 @@ async function migrateOnce(db: IDBDatabase): Promise<void> {
 // Append one attempt under a raw key and prune that key's history
 // (time window + hard cap). Callers may disable pruning when their learning
 // semantics require complete retained evidence.
-export async function addAttemptRaw(
+async function appendAttemptRawOrThrow(
   key: string,
   attempt: Attempt,
   options: AttemptWriteOptions = {},
 ): Promise<void> {
   if (!hasIdb) return
-  try {
-    const db = await getDb()
-    const tx = db.transaction(STORE, 'readwrite')
-    const os = tx.objectStore(STORE)
-    os.add({ key, ...attempt } as AttemptRecord)
+  const db = await getDb()
+  const tx = db.transaction(STORE, 'readwrite')
+  const os = tx.objectStore(STORE)
+  os.add({ key, ...attempt } as AttemptRecord)
 
-    if (!shouldPruneAttemptHistory(options)) {
-      await txDone(tx)
-      return
-    }
+  if (!shouldPruneAttemptHistory(options)) {
+    await txDone(tx)
+    return
+  }
 
-    const idx = os.index('by_key_at')
-    const cutoff = attempt.at - HISTORY_RETENTION_DAYS * DAY_MS
+  const idx = os.index('by_key_at')
+  const cutoff = attempt.at - HISTORY_RETENTION_DAYS * DAY_MS
 
-    // [key, []] is the standard prefix upper bound — [] sorts above any number,
-    // so this matches every [key, at] entry regardless of the timestamp.
-    const keyRange = IDBKeyRange.bound([key], [key, []])
+  // [key, []] is the standard prefix upper bound — [] sorts above any number,
+  // so this matches every [key, at] entry regardless of the timestamp.
+  const keyRange = IDBKeyRange.bound([key], [key, []])
 
-    // Drop entries older than the retention window for this key (at < cutoff).
-    const oldRange = IDBKeyRange.bound([key], [key, cutoff], false, true)
-    idx.openCursor(oldRange).onsuccess = e => {
-      const cur = (e.target as IDBRequest<IDBCursorWithValue>).result
-      if (cur) { cur.delete(); cur.continue() }
-    }
+  // Drop entries older than the retention window for this key (at < cutoff).
+  const oldRange = IDBKeyRange.bound([key], [key, cutoff], false, true)
+  idx.openCursor(oldRange).onsuccess = e => {
+    const cur = (e.target as IDBRequest<IDBCursorWithValue>).result
+    if (cur) { cur.delete(); cur.continue() }
+  }
 
-    // Enforce the hard cap: delete oldest surplus beyond HISTORY_MAX.
-    const countReq = idx.count(keyRange)
-    countReq.onsuccess = () => {
-      let surplus = countReq.result - HISTORY_MAX
-      if (surplus > 0) {
-        idx.openCursor(keyRange).onsuccess = e => {
-          const cur = (e.target as IDBRequest<IDBCursorWithValue>).result
-          if (cur && surplus > 0) { cur.delete(); surplus--; cur.continue() }
-        }
+  // Enforce the hard cap: delete oldest surplus beyond HISTORY_MAX.
+  const countReq = idx.count(keyRange)
+  countReq.onsuccess = () => {
+    let surplus = countReq.result - HISTORY_MAX
+    if (surplus > 0) {
+      idx.openCursor(keyRange).onsuccess = e => {
+        const cur = (e.target as IDBRequest<IDBCursorWithValue>).result
+        if (cur && surplus > 0) { cur.delete(); surplus--; cur.continue() }
       }
     }
+  }
 
-    await txDone(tx)
+  await txDone(tx)
+}
+
+/** Append an attempt and propagate IndexedDB failures to a durable caller. */
+export async function addAttemptRawOrThrow(
+  key: string,
+  attempt: Attempt,
+  options: AttemptWriteOptions = {},
+): Promise<void> {
+  await appendAttemptRawOrThrow(key, attempt, options)
+}
+
+// Ordinary interactive attempt recording remains best-effort.
+export async function addAttemptRaw(
+  key: string,
+  attempt: Attempt,
+  options: AttemptWriteOptions = {},
+): Promise<void> {
+  try {
+    await appendAttemptRawOrThrow(key, attempt, options)
   } catch {
     /* non-critical */
   }
