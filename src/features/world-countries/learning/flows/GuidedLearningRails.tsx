@@ -35,6 +35,7 @@ export function GuidedLearningRails({
   onBack,
   backLabel = 'Back',
   onSkip,
+  onJumpToFinalRecall,
   skipLabel,
   practiceProgress: _practiceProgress,
 }: {
@@ -57,6 +58,7 @@ export function GuidedLearningRails({
   onBack?: () => void
   backLabel?: string
   onSkip?: () => void
+  onJumpToFinalRecall?: () => void
   skipLabel?: string
   practiceProgress?: LearningPracticeProgress | null
 }) {
@@ -184,16 +186,16 @@ export function GuidedLearningRails({
           />
         </WorldCountriesPanel>
       ),
-      right: showMemoryAid || onBack || onExit || onSkip ? (
+      right: showMemoryAid || onBack || onExit || onSkip || onJumpToFinalRecall ? (
         <div className="space-y-4">
-          {(onBack || onExit || onSkip) && <section aria-labelledby="guided-learning-actions-heading" className="space-y-2"><h3 id="guided-learning-actions-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Learning actions</h3>{onSkip && <button type="button" onClick={onSkip} className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-400 hover:border-cyan-500 hover:text-zinc-200">{skipLabel ?? 'Skip'}</button>}{onBack && <button type="button" onClick={onBack} className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">{backLabel}</button>}{onExit && <button type="button" onClick={onExit} className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2.5 text-sm text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Exit</button>}</section>}
+          {(onBack || onExit || onSkip || onJumpToFinalRecall) && <section aria-labelledby="guided-learning-actions-heading" className="space-y-2"><h3 id="guided-learning-actions-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Learning actions</h3>{onSkip && <button type="button" onClick={onSkip} className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-400 hover:border-cyan-500 hover:text-zinc-200">{skipLabel ?? 'Skip'}</button>}{onJumpToFinalRecall && <button type="button" onClick={onJumpToFinalRecall} className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-400 hover:border-cyan-500 hover:text-zinc-200">Jump to final recall</button>}{onBack && <button type="button" onClick={onBack} className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">{backLabel}</button>}{onExit && <button type="button" onClick={onExit} className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2.5 text-sm text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Exit</button>}</section>}
           {showSubregionMnemonic && subregion && (editingMnemonic === 'subregion' ? <GeographyMnemonicEditor targetId={subregionMnemonicId(subregion)} title="Subregion memory aid" subtitle={`Optional story or picture for this ordered ${entries.length}-country group`} countryIds={entries.map(entry => entry.id)} headerAction={mnemonicAction('subregion')} /> : <GeographyMnemonicView targetId={subregionMnemonicId(subregion)} title="Subregion memory aid" subtitle={`Optional story or picture for this ordered ${entries.length}-country group`} countryIds={entries.map(entry => entry.id)} headerAction={mnemonicAction('subregion')} />)}
           {showCapitalMnemonic && walkthroughCountry && <CountryCapitalMnemonicPanel country={walkthroughCountry} />}
         </div>
       ) : undefined,
       leftLabel: walkthroughPhase ? 'Learning' : finalPhase ? 'Learning context' : 'Learning order',
-      rightLabel: showMemoryAid && (onBack || onExit || onSkip) ? 'Learning tools' : showMemoryAid ? 'Memory aid' : onBack || onExit || onSkip ? 'Learning actions' : undefined,
-    }), [activeCountries, backLabel, beginOrderEdit, cancelOrder, completePhase, continent, currentSetIds, editingMnemonic, editingOrder, entries, finalPhase, introducedIds, learningScopeLabel, mnemonicAction, onBack, onClickOrderStateChange, onClickOrderToggle, onCountryHover, onExit, onOrderDraftChanged, onSkip, previousSetIds, saveOrder, showCapitalMnemonic, showMemoryAid, showSubregionMnemonic, skipLabel, stageKind, stageLabel, stageScopeLabel, subregion, track, walkthroughCountry, walkthroughPhase, walkthroughStageLabel, walkthroughStageScopeLabel])
+      rightLabel: showMemoryAid && (onBack || onExit || onSkip || onJumpToFinalRecall) ? 'Learning tools' : showMemoryAid ? 'Memory aid' : onBack || onExit || onSkip || onJumpToFinalRecall ? 'Learning actions' : undefined,
+    }), [activeCountries, backLabel, beginOrderEdit, cancelOrder, completePhase, continent, currentSetIds, editingMnemonic, editingOrder, entries, finalPhase, introducedIds, learningScopeLabel, mnemonicAction, onBack, onClickOrderStateChange, onClickOrderToggle, onCountryHover, onExit, onJumpToFinalRecall, onOrderDraftChanged, onSkip, previousSetIds, saveOrder, showCapitalMnemonic, showMemoryAid, showSubregionMnemonic, skipLabel, stageKind, stageLabel, stageScopeLabel, subregion, track, walkthroughCountry, walkthroughPhase, walkthroughStageLabel, walkthroughStageScopeLabel])
   useRails(rails)
 
   return null

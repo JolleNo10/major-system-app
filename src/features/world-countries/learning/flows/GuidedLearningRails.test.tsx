@@ -362,6 +362,37 @@ describe('GuidedLearningRails contextual authoring visibility', () => {
     expect([...mount.querySelectorAll('button')].map(button => button.textContent)).toEqual(['Next', 'Back', 'Exit'])
   })
 
+  it('renders the dedicated initial Final recall shortcut after the forward action', () => {
+    for (const [track, skipLabel] of [['countries', 'Skip to Find'], ['capitals', 'Skip to Recall']] as const) {
+      const mount = document.createElement('div')
+      document.body.append(mount)
+      const onOrderDraftChanged = vi.fn()
+      const onSkip = vi.fn()
+      const onJumpToFinalRecall = vi.fn()
+      const onExit = vi.fn()
+      act(() => {
+        root = createRoot(mount)
+        root.render(createElement(GuidedLearningRails, {
+          continent: 'Europe', subregion: 'northern-europe', entries, activeCountries: entries,
+          phase: 'walkthrough', track, stagePresentation: defaultStagePresentation,
+          onOrderDraftChanged, onSkip, skipLabel, onJumpToFinalRecall, onExit,
+        }))
+      })
+
+      const latestConfig = useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1]?.[0]
+      act(() => root?.render(createElement('div', null, latestConfig?.right)))
+      const buttons = [...mount.querySelectorAll('button')]
+      expect(buttons.slice(0, 3).map(button => button.textContent)).toEqual([skipLabel, 'Jump to final recall', 'Exit'])
+
+      act(() => buttons[1]?.click())
+      expect(onJumpToFinalRecall).toHaveBeenCalledOnce()
+      act(() => root?.unmount())
+      root = null
+      mount.remove()
+      useRailsMock.mockReset()
+    }
+  })
+
   it('keeps scheduler progress in the center task surface rather than the Learning rail', () => {
     const onBack = vi.fn()
     const { mount, config } = renderRails('location-practice', 'countries', undefined, { pct: 2 / 3, atTarget: 4, total: 6 }, onBack)

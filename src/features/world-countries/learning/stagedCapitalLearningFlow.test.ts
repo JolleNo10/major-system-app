@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   createStagedCapitalLearningFlow,
+  backStagedCapital,
+  jumpStagedCapitalToFinalRecall,
   skipStagedCapital,
   skipStagedCapitalFinalRecall,
   startStagedCapitalFinalRecall,
@@ -47,6 +49,44 @@ describe('staged capital learning flow', () => {
   it('inserts cumulative practice after the second Set', () => {
     const flow = createStagedCapitalLearningFlow({ countryIds: ['A', 'B', 'C', 'D'], maximum: 3, schedulerSettings: settings })
     expect(flow.plan.map(stage => stage.kind)).toEqual(['set', 'set', 'combined', 'final'])
+  })
+
+  it('jumps from the initial walkthrough to full Final recall with explicit origin state', () => {
+    const initial = createStagedCapitalLearningFlow({ countryIds: ['A', 'B', 'C', 'D'], maximum: 3, schedulerSettings: settings })
+    const jumped = jumpStagedCapitalToFinalRecall(initial)
+
+    expect(jumped.phase).toBe('final-recall')
+    expect(jumped.stageIndex).toBe(jumped.plan.length - 1)
+    expect(jumped.plan[jumped.stageIndex]?.kind).toBe('final')
+    expect(jumped.ordered?.order).toEqual(['A', 'B', 'C', 'D'])
+    expect(jumped.ordered?.rewindOnError).toBe(initial.rewindOnError)
+    expect(jumped.finalScopeReady).toBe(false)
+    expect(jumped.finalRecallOrigin).toBe('initial-walkthrough')
+    expect(jumped.practice).toBeNull()
+  })
+
+  it('does not jump from a non-initial walkthrough state', () => {
+    const initial = createStagedCapitalLearningFlow({ countryIds: ['A', 'B', 'C', 'D'], maximum: 3, schedulerSettings: settings })
+    const moved = { ...initial, walkthroughIndex: 1 }
+    const laterStage = { ...initial, stageIndex: 1 }
+    expect(jumpStagedCapitalToFinalRecall(moved)).toBe(moved)
+    expect(jumpStagedCapitalToFinalRecall(laterStage)).toBe(laterStage)
+  })
+
+  it('returns a shortcut-origin Final recall directly to the first walkthrough item', () => {
+    const initial = createStagedCapitalLearningFlow({ countryIds: ['A', 'B', 'C', 'D'], maximum: 3, schedulerSettings: settings })
+    const jumped = jumpStagedCapitalToFinalRecall(initial)
+    const backed = backStagedCapital(jumped)
+
+    expect(backed).toMatchObject({
+      phase: 'walkthrough',
+      stageIndex: 0,
+      walkthroughIndex: 0,
+      finalScopeReady: false,
+      finalRecallOrigin: null,
+      practice: null,
+      ordered: null,
+    })
   })
 
   it('only skips Final recall from the Final gate', () => {

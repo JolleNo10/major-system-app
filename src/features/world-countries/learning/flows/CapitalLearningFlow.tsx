@@ -20,6 +20,7 @@ import {
   createStagedCapitalLearningFlow,
   currentStagedCapitalIds,
   keepStagedCapitalPractising,
+  jumpStagedCapitalToFinalRecall,
   moveStagedCapitalWalkthrough,
   skipStagedCapital,
   skipStagedCapitalFinalRecall,
@@ -197,7 +198,8 @@ export function CapitalLearningFlow({
     || flow.phase === 'final-recall'
     || flow.phase === 'final-gate'
     || ((flow.phase === 'combined-practice' || flow.phase === 'combined-ready') && flow.stageIndex > 0)
-  const backLabel = flow.phase === 'final-recall' ? 'Back to Final recall' : 'Back'
+  const backLabel = flow.phase === 'final-recall' ? flow.finalRecallOrigin === 'initial-walkthrough' ? 'Back to learning' : 'Back to Final recall' : 'Back'
+  const canJumpToFinalRecall = Boolean(subregion && flow.phase === 'walkthrough' && flow.stageIndex === 0 && flow.walkthroughIndex === 0)
 
   useEffect(() => {
     onWalkthroughCountryChange?.(flow.phase === 'walkthrough' ? currentStagedCapitalIds(flow)[flow.walkthroughIndex] ?? null : null)
@@ -268,6 +270,7 @@ export function CapitalLearningFlow({
     onBack={backAvailable ? () => run(backStagedCapital) : undefined}
     backLabel={backLabel}
     onExit={onExit}
+    onJumpToFinalRecall={canJumpToFinalRecall ? () => run(jumpStagedCapitalToFinalRecall) : undefined}
     onSkip={flow.phase === 'final-gate' ? () => setFinalRecallSkipDialogOpen(true) : ['walkthrough', 'practice', 'set-ready', 'combined-practice', 'combined-ready'].includes(flow.phase) ? skip : undefined}
     skipLabel={flow.phase === 'final-gate' ? 'Skip final recall' : flow.phase === 'walkthrough' ? 'Skip to Recall' : flow.phase === 'practice' || flow.phase === 'combined-practice' ? 'Skip practice' : 'Next'}
     walkthroughCountryId={flow.phase === 'walkthrough' ? currentStagedCapitalIds(flow)[flow.walkthroughIndex] ?? null : null}

@@ -103,7 +103,7 @@ function renderLeftRail() {
   return mount
 }
 
-function renderFlow(flowEntries: readonly Country[] = entries, countriesEstablished = false, capitalsEstablished = false, recordCompletion = true, recordFinalRecallEvidence = recordCompletion): HTMLDivElement {
+function renderFlow(flowEntries: readonly Country[] = entries, countriesEstablished = false, capitalsEstablished = false, recordCompletion = true, recordFinalRecallEvidence = recordCompletion, subregionId: 'northern-europe' | null = 'northern-europe'): HTMLDivElement {
   const container = document.createElement('div')
   document.body.append(container)
   act(() => {
@@ -111,7 +111,7 @@ function renderFlow(flowEntries: readonly Country[] = entries, countriesEstablis
     root.render(
       <CountryLearningFlow
         continent="Europe"
-        subregion="northern-europe"
+        subregion={subregionId ?? undefined}
         entries={flowEntries}
         countriesEstablished={countriesEstablished}
         capitalsEstablished={capitalsEstablished}
@@ -151,6 +151,47 @@ function expectCountryWalkthrough(container: HTMLDivElement, task: unknown, coun
 }
 
 describe('CountryLearningFlow scheduler progress wiring', () => {
+  it('offers the initial Subregion shortcut and enters full Final recall directly', () => {
+    const container = renderFlow(fullWalkthroughEntries)
+    const initialRail = renderRail()
+    expect([...initialRail.querySelectorAll<HTMLButtonElement>('button')].slice(0, 3).map(button => button.textContent)).toEqual(['Skip to Find', 'Jump to final recall', 'Exit'])
+
+    act(() => [...initialRail.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Jump to final recall')?.click())
+
+    expect(container.querySelector('[data-testid="final-submit"]')).not.toBeNull()
+    expect(container.querySelector('[data-testid="final-start"]')).toBeNull()
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].task).toMatchObject({ direction: 'Final recall', progress: { current: 1, total: 4 } })
+    const finalRecallRail = renderLeftRail()
+    expect(finalRecallRail.textContent).toContain('Final recall')
+    expect(finalRecallRail.textContent).toContain('All 4 Countries')
+    expect(finalRecallRail.querySelectorAll('[data-learning-set="active-scope"]')).toHaveLength(4)
+
+    const backRail = renderRail()
+    act(() => [...backRail.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Back to learning')?.click())
+    expect(container.querySelector('[data-testid="start-location"]')).not.toBeNull()
+    expect(renderRail().textContent).toContain('Jump to final recall')
+
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="walkthrough-next"]')!.click())
+    expect(renderRail().textContent).not.toContain('Jump to final recall')
+  })
+
+  it('uses the existing Final recall evidence and completion path after a direct jump', () => {
+    const container = renderFlow()
+    const initialRail = renderRail()
+
+    act(() => [...initialRail.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Jump to final recall')?.click())
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-submit"]')!.click())
+
+    expect(recordAttemptMock).toHaveBeenCalledWith('NO', 'location-to-country', expect.objectContaining({ ok: true, evidenceKind: 'recall' }))
+    expect(getSubregionLearningState('northern-europe')).toMatchObject({ countriesLearnedAt: expect.any(Number) })
+  })
+
+  it('does not expose the Subregion shortcut for a temporary proficiency scope', () => {
+    const container = renderFlow(entries, false, false, true, true, null)
+    expect(container.querySelector('[data-testid="start-location"]')).not.toBeNull()
+    expect(renderRail().textContent).not.toContain('Jump to final recall')
+  })
+
   it('reports the actual completed Set outcome and truthful next stage', () => {
     const container = renderFlow(entries)
     expect(container.textContent).not.toContain('Set 1')

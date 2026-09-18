@@ -18,6 +18,7 @@ import {
   createStagedCountryLearningFlow,
   currentStagedCountryIds,
   keepStagedCountryPractising,
+  jumpStagedCountryToFinalRecall,
   moveStagedCountryWalkthrough,
   skipStagedCountry,
   skipStagedCountryFinalRecall,
@@ -207,8 +208,9 @@ export function CountryLearningFlow({
     || flow.phase === 'final-gate'
     || ((flow.phase === 'combined-practice' || flow.phase === 'combined-ready') && flow.stageIndex > 0)
   const backLabel = flow.phase === 'location-practice' ? 'Back to Meet countries'
-    : flow.phase === 'final-recall' ? 'Back to Final recall'
+    : flow.phase === 'final-recall' ? flow.finalRecallOrigin === 'initial-walkthrough' ? 'Back to learning' : 'Back to Final recall'
       : 'Back'
+  const canJumpToFinalRecall = Boolean(subregion && flow.phase === 'walkthrough' && flow.stageIndex === 0 && flow.walkthroughIndex === 0)
 
   const walkthroughCountry = stageEntries[flow.walkthroughIndex]
   const { mapEntries, presentation: mapPresentation, presentationKey } = deriveLearningMapPresentation({
@@ -282,6 +284,7 @@ export function CountryLearningFlow({
     onBack={backAvailable ? () => run(backStagedCountry) : undefined}
     backLabel={backLabel}
     onExit={onExit}
+    onJumpToFinalRecall={canJumpToFinalRecall ? () => run(jumpStagedCountryToFinalRecall) : undefined}
     onSkip={flow.phase === 'final-gate' ? () => setFinalRecallSkipDialogOpen(true) : ['walkthrough', 'location-practice', 'location-ready', 'practice', 'set-ready', 'combined-practice', 'combined-ready'].includes(flow.phase) ? skip : undefined}
     skipLabel={flow.phase === 'final-gate' ? 'Skip final recall' : flow.phase === 'walkthrough' ? 'Skip to Find' : flow.phase === 'location-practice' || flow.phase === 'location-ready' ? 'Next: Recall' : flow.phase === 'practice' || flow.phase === 'combined-practice' ? 'Skip practice' : 'Next'}
     practiceProgress={practiceProgress}

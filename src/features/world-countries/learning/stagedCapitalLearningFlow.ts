@@ -45,6 +45,7 @@ export interface StagedCapitalLearningFlowState {
   practice: SchedulerLearningSession | null
   ordered: OrderedRecallState<CountryId> | null
   finalScopeReady: boolean
+  finalRecallOrigin: 'initial-walkthrough' | null
   rewindOnError: number
   schedulerSettings: WorldCountriesSchedulerSettings
   maximum: LearningSetMaximum
@@ -52,14 +53,14 @@ export interface StagedCapitalLearningFlowState {
 
 function enterStage(state: StagedCapitalLearningFlowState, stageIndex: number, random: () => number) {
   const stage = state.plan[stageIndex]
-  if (!stage) return { ...state, stageIndex, phase: 'final-gate' as const, practice: null, ordered: null }
-  if (stage.kind === 'set') return { ...state, stageIndex, phase: 'walkthrough' as const, walkthroughIndex: 0, practice: null, ordered: null }
-  if (stage.kind === 'combined') return { ...state, stageIndex, phase: 'combined-practice' as const, practice: createSchedulerLearningSession(stage.ids, state.schedulerSettings, random), ordered: null }
-  return { ...state, stageIndex, phase: 'final-gate' as const, ordered: null }
+  if (!stage) return { ...state, stageIndex, phase: 'final-gate' as const, practice: null, ordered: null, finalRecallOrigin: null }
+  if (stage.kind === 'set') return { ...state, stageIndex, phase: 'walkthrough' as const, walkthroughIndex: 0, practice: null, ordered: null, finalRecallOrigin: null }
+  if (stage.kind === 'combined') return { ...state, stageIndex, phase: 'combined-practice' as const, practice: createSchedulerLearningSession(stage.ids, state.schedulerSettings, random), ordered: null, finalRecallOrigin: null }
+  return { ...state, stageIndex, phase: 'final-gate' as const, ordered: null, finalRecallOrigin: null }
 }
 
 function enterFinalRecall(state: StagedCapitalLearningFlowState, stageIndex: number) {
-  return { ...state, stageIndex, phase: 'final-recall' as const, ordered: createOrderedRecallSession({ order: state.countryIds, rewindOnError: state.rewindOnError }) }
+  return { ...state, stageIndex, phase: 'final-recall' as const, ordered: createOrderedRecallSession({ order: state.countryIds, rewindOnError: state.rewindOnError }), finalRecallOrigin: null }
 }
 
 function currentStage(state: StagedCapitalLearningFlowState) {
@@ -70,7 +71,7 @@ export function createStagedCapitalLearningFlow(config: StagedCapitalLearningCon
   const countryIds = [...new Set(config.countryIds)]
   return {
     phase: 'walkthrough', countryIds, plan: buildLearningPlan(countryIds, config.maximum), stageIndex: 0,
-    walkthroughIndex: 0, practice: null, ordered: null, finalScopeReady: false,
+    walkthroughIndex: 0, practice: null, ordered: null, finalScopeReady: false, finalRecallOrigin: null,
     rewindOnError: config.rewindOnError ?? 2, schedulerSettings: config.schedulerSettings, maximum: config.maximum,
   }
 }
@@ -153,6 +154,18 @@ export function keepStagedCapitalPractising(state: StagedCapitalLearningFlowStat
 }
 
 export function backStagedCapital(state: StagedCapitalLearningFlowState, random: () => number = Math.random) {
+  if (state.phase === 'final-recall' && state.finalRecallOrigin === 'initial-walkthrough') {
+    return {
+      ...state,
+      phase: 'walkthrough' as const,
+      stageIndex: 0,
+      walkthroughIndex: 0,
+      practice: null,
+      ordered: null,
+      finalScopeReady: false,
+      finalRecallOrigin: null,
+    }
+  }
   if (state.phase === 'final-recall') return { ...state, phase: 'final-gate' as const, ordered: null }
   if (state.phase === 'final-gate' && state.stageIndex > 0) return enterStage(state, state.stageIndex - 1, random)
   if (state.phase === 'practice') return { ...state, phase: 'walkthrough' as const, walkthroughIndex: 0, practice: null }
@@ -163,7 +176,22 @@ export function backStagedCapital(state: StagedCapitalLearningFlowState, random:
 
 export function startStagedCapitalFinalRecall(state: StagedCapitalLearningFlowState) {
   if (state.phase !== 'final-gate') return state
-  return { ...state, phase: 'final-recall' as const, ordered: createOrderedRecallSession({ order: state.countryIds, rewindOnError: state.rewindOnError }) }
+  return { ...state, phase: 'final-recall' as const, ordered: createOrderedRecallSession({ order: state.countryIds, rewindOnError: state.rewindOnError }), finalRecallOrigin: null }
+}
+
+export function jumpStagedCapitalToFinalRecall(state: StagedCapitalLearningFlowState) {
+  const finalStageIndex = state.plan.length - 1
+  if (state.phase !== 'walkthrough' || state.stageIndex !== 0 || state.walkthroughIndex !== 0 || state.plan[finalStageIndex]?.kind !== 'final') return state
+  return {
+    ...state,
+    stageIndex: finalStageIndex,
+    phase: 'final-recall' as const,
+    walkthroughIndex: 0,
+    practice: null,
+    ordered: createOrderedRecallSession({ order: state.countryIds, rewindOnError: state.rewindOnError }),
+    finalScopeReady: false,
+    finalRecallOrigin: 'initial-walkthrough' as const,
+  }
 }
 
 export function skipStagedCapitalFinalRecall(
@@ -179,5 +207,5 @@ export function submitStagedCapitalFinalAnswer(
 ): { state: StagedCapitalLearningFlowState; result: OrderedRecallResult<CountryId> } {
   if (!state.ordered || state.phase !== 'final-recall') throw new Error('Capital final recall is not active')
   const result = submitOrderedRecall(state.ordered, correct)
-  return { state: { ...state, ordered: result.state, phase: result.completedNow ? 'complete' : 'final-recall' }, result }
+  return { state: { ...state, ordered: result.state, phase: result.completedNow ? 'complete' : 'final-recall', finalRecallOrigin: result.completedNow ? null : state.finalRecallOrigin }, result }
 }

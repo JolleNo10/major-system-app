@@ -48,6 +48,7 @@ export interface StagedCountryLearningFlowState {
   practice: SchedulerLearningSession | null
   ordered: OrderedRecallState<CountryId> | null
   finalScopeReady: boolean
+  finalRecallOrigin: 'initial-walkthrough' | null
   rewindOnError: number
   schedulerSettings: WorldCountriesSchedulerSettings
   maximum: LearningSetMaximum
@@ -67,9 +68,9 @@ function enterStage(
   random: () => number,
 ): StagedCountryLearningFlowState {
   const stage = state.plan[stageIndex]
-  if (!stage) return { ...state, phase: 'final-gate', stageIndex, location: null, practice: null, ordered: null }
+  if (!stage) return { ...state, phase: 'final-gate', stageIndex, location: null, practice: null, ordered: null, finalRecallOrigin: null }
   if (stage.kind === 'set') {
-    return { ...state, stageIndex, phase: 'walkthrough', walkthroughIndex: 0, location: null, practice: null, ordered: null }
+    return { ...state, stageIndex, phase: 'walkthrough', walkthroughIndex: 0, location: null, practice: null, ordered: null, finalRecallOrigin: null }
   }
   if (stage.kind === 'combined') {
     return {
@@ -79,9 +80,10 @@ function enterStage(
       location: null,
       practice: createSchedulerLearningSession(stage.ids, state.schedulerSettings, random),
       ordered: null,
+      finalRecallOrigin: null,
     }
   }
-  return { ...state, stageIndex, phase: 'final-gate', ordered: null }
+  return { ...state, stageIndex, phase: 'final-gate', ordered: null, finalRecallOrigin: null }
 }
 
 function enterFinalRecall(state: StagedCountryLearningFlowState, stageIndex: number): StagedCountryLearningFlowState {
@@ -90,6 +92,7 @@ function enterFinalRecall(state: StagedCountryLearningFlowState, stageIndex: num
     stageIndex,
     phase: 'final-recall',
     ordered: createOrderedRecallSession({ order: state.countryIds, rewindOnError: state.rewindOnError }),
+    finalRecallOrigin: null,
   }
 }
 
@@ -107,6 +110,7 @@ export function createStagedCountryLearningFlow(
     practice: null,
     ordered: null,
     finalScopeReady: false,
+    finalRecallOrigin: null,
     rewindOnError: config.rewindOnError ?? 2,
     schedulerSettings: config.schedulerSettings,
     maximum: config.maximum,
@@ -260,6 +264,19 @@ export function backStagedCountry(
   state: StagedCountryLearningFlowState,
   random: () => number = Math.random,
 ): StagedCountryLearningFlowState {
+  if (state.phase === 'final-recall' && state.finalRecallOrigin === 'initial-walkthrough') {
+    return {
+      ...state,
+      phase: 'walkthrough',
+      stageIndex: 0,
+      walkthroughIndex: 0,
+      location: null,
+      practice: null,
+      ordered: null,
+      finalScopeReady: false,
+      finalRecallOrigin: null,
+    }
+  }
   if (state.phase === 'final-recall') return { ...state, phase: 'final-gate', ordered: null }
   if (state.phase === 'final-gate' && state.stageIndex > 0) return enterStage(state, state.stageIndex - 1, random)
   if (state.phase === 'location-practice') return { ...state, phase: 'walkthrough', walkthroughIndex: 0, location: null }
@@ -277,6 +294,25 @@ export function startStagedCountryFinalRecall(
     ...state,
     phase: 'final-recall',
     ordered: createOrderedRecallSession({ order: state.countryIds, rewindOnError: state.rewindOnError }),
+    finalRecallOrigin: null,
+  }
+}
+
+export function jumpStagedCountryToFinalRecall(
+  state: StagedCountryLearningFlowState,
+): StagedCountryLearningFlowState {
+  const finalStageIndex = state.plan.length - 1
+  if (state.phase !== 'walkthrough' || state.stageIndex !== 0 || state.walkthroughIndex !== 0 || state.plan[finalStageIndex]?.kind !== 'final') return state
+  return {
+    ...state,
+    stageIndex: finalStageIndex,
+    phase: 'final-recall',
+    walkthroughIndex: 0,
+    location: null,
+    practice: null,
+    ordered: createOrderedRecallSession({ order: state.countryIds, rewindOnError: state.rewindOnError }),
+    finalScopeReady: false,
+    finalRecallOrigin: 'initial-walkthrough',
   }
 }
 
@@ -293,5 +329,5 @@ export function submitStagedCountryFinalAnswer(
 ): { state: StagedCountryLearningFlowState; result: OrderedRecallResult<CountryId> } {
   if (!state.ordered || state.phase !== 'final-recall') throw new Error('Final recall is not active')
   const result = submitOrderedRecall(state.ordered, correct)
-  return { state: { ...state, ordered: result.state, phase: result.completedNow ? 'complete' : 'final-recall' }, result }
+  return { state: { ...state, ordered: result.state, phase: result.completedNow ? 'complete' : 'final-recall', finalRecallOrigin: result.completedNow ? null : state.finalRecallOrigin }, result }
 }

@@ -64,7 +64,7 @@ afterEach(() => {
   recordAttemptMock.mockClear()
 })
 
-function renderFlow(onPhaseChange: (phase: string) => void, flowEntries: readonly Country[] = entries, countriesEstablished = false, capitalsEstablished = false, recallProgress?: RecallProgress, recordCompletion = true, recordFinalRecallEvidence = recordCompletion): HTMLDivElement {
+function renderFlow(onPhaseChange: (phase: string) => void, flowEntries: readonly Country[] = entries, countriesEstablished = false, capitalsEstablished = false, recallProgress?: RecallProgress, recordCompletion = true, recordFinalRecallEvidence = recordCompletion, subregionId: 'northern-europe' | null = 'northern-europe'): HTMLDivElement {
   const container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
@@ -72,7 +72,7 @@ function renderFlow(onPhaseChange: (phase: string) => void, flowEntries: readonl
     root!.render(
       <CapitalLearningFlow
         continent="Europe"
-        subregion="northern-europe"
+        subregion={subregionId ?? undefined}
         entries={flowEntries}
         newItemsPerSet={3}
         schedulerSettings={{ masteryLatencyFactor: 1.4, sessionUnmasteredShare: 0.5 }}
@@ -132,6 +132,39 @@ function renderLeftRail() {
 }
 
 describe('CapitalLearningFlow orchestration', () => {
+  it('offers the initial Subregion shortcut and enters full Capital Final recall directly', () => {
+    const container = renderFlow(() => undefined, fullEntries)
+    const initialRail = renderRail()
+    expect([...initialRail.querySelectorAll<HTMLButtonElement>('button')].slice(0, 3).map(button => button.textContent)).toEqual(['Skip to Recall', 'Jump to final recall', 'Exit'])
+
+    act(() => [...initialRail.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Jump to final recall')?.click())
+
+    expect(container.querySelector('[data-testid="final-submit"]')).not.toBeNull()
+    expect(container.querySelector('[data-testid="final-start"]')).toBeNull()
+    expect(learningMapSurfaceMock.mock.calls[learningMapSurfaceMock.mock.calls.length - 1]?.[0].task).toMatchObject({ direction: 'Final recall', progress: { current: 1, total: 4 } })
+    const finalRecallRail = renderLeftRail()
+    expect(finalRecallRail.textContent).toContain('Final recall')
+    expect(finalRecallRail.textContent).toContain('All 4 Countries')
+    expect(finalRecallRail.querySelectorAll('[data-learning-set="active-scope"]')).toHaveLength(4)
+  })
+
+  it('uses the existing Country-to-Capital evidence and completion path after a direct jump', () => {
+    const container = renderFlow(() => undefined)
+    const initialRail = renderRail()
+
+    act(() => [...initialRail.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Jump to final recall')?.click())
+    act(() => container.querySelector<HTMLButtonElement>('[data-testid="final-submit"]')!.click())
+
+    expect(recordAttemptMock).toHaveBeenCalledWith('NO', 'country-to-capital', expect.objectContaining({ ok: true, evidenceKind: 'recall' }))
+    expect(getSubregionLearningState('northern-europe')).toMatchObject({ capitalsLearnedAt: expect.any(Number) })
+  })
+
+  it('does not expose the Subregion shortcut for a temporary proficiency scope', () => {
+    const container = renderFlow(() => undefined, entries, false, false, undefined, true, true, null)
+    expect(container.querySelector('[data-testid="start-practice"]')).not.toBeNull()
+    expect(renderRail().textContent).not.toContain('Jump to final recall')
+  })
+
   it('reports the actual completed Capital Set outcome', () => {
     const container = renderFlow(() => undefined)
     expect(container.textContent).not.toContain('Set 1')
