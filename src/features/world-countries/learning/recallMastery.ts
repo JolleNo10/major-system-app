@@ -1,4 +1,4 @@
-import type { Attempt, ItemProgress, RecallItemId } from '@/core/learning'
+import type { Attempt, AttemptEvidenceKind, ItemProgress, RecallItemId } from '@/core/learning'
 import {
   deriveWorldCountriesReviewEvents,
   isValidWorldCountriesLocalDate,
@@ -9,6 +9,7 @@ import {
   parseWorldCountriesRecallTargetId,
   WORLD_COUNTRIES_CORE_RECALL_SKILLS,
 } from './recallTargets'
+import type { WorldCountriesAttemptType } from './attemptTypes'
 
 /** Semantic proficiency for one atomic World Countries recall skill. */
 export type WorldCountriesProficiency =
@@ -22,6 +23,30 @@ export interface WorldCountriesAtomicProgress extends ItemProgress {
   /** Whether retained history ever met the explicit recall evidence requirement. */
   hasEverMastered: boolean
   proficiency: WorldCountriesProficiency
+}
+
+export type WorldCountriesAttemptEvaluationKind = 'acquisition' | 'performance'
+
+export interface WorldCountriesAttemptEvaluationStep {
+  at: number
+  ms: number
+  localDate?: string
+  ok: boolean
+  evidenceKind?: AttemptEvidenceKind
+  /** The provenance value as it was stored, including absent/unknown values. */
+  attemptType?: string
+  /** The compatibility interpretation used by the evaluator. */
+  effectiveAttemptType: WorldCountriesAttemptType
+  evaluatedAs: WorldCountriesAttemptEvaluationKind
+  masteryEligibleRecall: boolean
+  proficiencyAfter: WorldCountriesProficiency
+  masteredAfter: boolean
+}
+
+export interface WorldCountriesAtomicProgressEvaluation {
+  progress: WorldCountriesAtomicProgress
+  steps: readonly WorldCountriesAttemptEvaluationStep[]
+  masteryQualifyingRecallDates: readonly string[]
 }
 
 const WORLD_COUNTRIES_MASTERY_RECALL_DATES = 3
@@ -39,20 +64,8 @@ function isQualifyingRecallSuccess(attempt: Attempt): boolean {
     && isValidWorldCountriesLocalDate(attempt.localDate)
 }
 
-function masteryEvidenceDates(attempts: readonly Attempt[]): Set<string> {
-  return new Set(
-    attempts
-      .filter(isQualifyingRecallSuccess)
-      .map(attempt => attempt.localDate as string),
-  )
-}
-
 function meetsMasteryEvidenceDateRequirement(dates: ReadonlySet<string>): boolean {
   return dates.size >= WORLD_COUNTRIES_MASTERY_RECALL_DATES
-}
-
-function hasMasteryEvidence(attempts: readonly Attempt[]): boolean {
-  return meetsMasteryEvidenceDateRequirement(masteryEvidenceDates(attempts))
 }
 
 /**
@@ -114,6 +127,19 @@ function effectiveLegacyClusterDate(attempt: Attempt): string {
 interface AttemptProjection {
   acquisition: Attempt[]
   performance: Attempt[]
+  classifications: AttemptClassification[]
+}
+
+interface AttemptClassification {
+  attempt: Attempt
+  effectiveAttemptType: WorldCountriesAttemptType
+  evaluatedAs: WorldCountriesAttemptEvaluationKind
+}
+
+function effectiveAttemptType(attempt: Attempt): WorldCountriesAttemptType {
+  return isWorldCountriesAttemptType(attempt.attemptType)
+    ? attempt.attemptType
+    : 'legacy'
 }
 
 /**
@@ -127,32 +153,50 @@ function projectAttempts(
   const core = isCoreTarget(itemId)
   const acquisition: Attempt[] = []
   const performance: Attempt[] = []
+  const classifications: AttemptClassification[] = []
   let firstLegacyClusterDate: string | null = null
+  const hasExplicitLearning = core && sorted.some(attempt => attempt.attemptType === 'learning')
 
   for (const attempt of sorted) {
-    const attemptType = isWorldCountriesAttemptType(attempt.attemptType)
-      ? attempt.attemptType
-      : 'legacy'
+    const attemptType = effectiveAttemptType(attempt)
+    let evaluatedAs: WorldCountriesAttemptEvaluationKind = 'performance'
 
     if (core && attemptType === 'learning') {
       acquisition.push(attempt)
-      continue
-    }
-
-    if (core && attemptType === 'legacy') {
+      evaluatedAs = 'acquisition'
+    } else if (core && !hasExplicitLearning && attemptType === 'legacy') {
       const clusterDate = effectiveLegacyClusterDate(attempt)
       if (firstLegacyClusterDate === null) firstLegacyClusterDate = clusterDate
-      if (clusterDate === firstLegacyClusterDate) acquisition.push(attempt)
-      else performance.push(attempt)
-      continue
+      if (clusterDate === firstLegacyClusterDate) {
+        acquisition.push(attempt)
+        evaluatedAs = 'acquisition'
+      } else {
+        performance.push(attempt)
+      }
+    } else {
+      // Additional skills have no guided Learning owner, so all provenance
+      // values, including legacy, retain the ordinary performance semantics.
+      performance.push(attempt)
     }
 
-    // Additional skills have no guided Learning owner, so all provenance
-    // values, including legacy, retain the ordinary performance semantics.
-    performance.push(attempt)
+    classifications.push({ attempt, effectiveAttemptType: attemptType, evaluatedAs })
   }
 
-  return { acquisition, performance }
+  return { acquisition, performance, classifications }
+}
+
+function projectionFromClassifications(
+  classifications: readonly AttemptClassification[],
+): AttemptProjection {
+  return {
+    acquisition: classifications
+      .filter(classification => classification.evaluatedAs === 'acquisition')
+      .map(classification => classification.attempt),
+    performance: classifications
+      .filter(classification => classification.evaluatedAs === 'performance')
+      .map(classification => classification.attempt),
+    classifications: [...classifications],
+  }
 }
 
 /**
@@ -163,11 +207,16 @@ function projectAttempts(
 function deriveCurrentProficiency(
   attempts: readonly Attempt[],
   initialProficiency: WorldCountriesProficiency,
-): { proficiency: WorldCountriesProficiency; mastered: boolean } {
+): {
+  proficiency: WorldCountriesProficiency
+  mastered: boolean
+  masteryQualifyingRecallDates: readonly string[]
+} {
   let proficiency = initialProficiency
   let latestFailureIndex = -1
   let acceleratedRecoveryEligible = false
   let masteredLapseDate: string | null = null
+  const currentMasteryDates = new Set<string>()
   const reviewEvents = new Map(
     deriveWorldCountriesReviewEvents(attempts).map(event => [event.localDate, event]),
   )
@@ -176,6 +225,10 @@ function deriveCurrentProficiency(
   for (let index = 0; index < attempts.length; index += 1) {
     const attempt = attempts[index]!
     if (!attempt.ok) {
+      // Mastery dates are always evaluated after the latest failure boundary,
+      // including repeated failures on one local date. The lapse band itself
+      // still collapses repeated dated failures below.
+      currentMasteryDates.clear()
       const localDate = isValidWorldCountriesLocalDate(attempt.localDate)
         ? attempt.localDate
         : null
@@ -194,6 +247,10 @@ function deriveCurrentProficiency(
       proficiency = lowerProficiency(proficiency)
       latestFailureIndex = index
       continue
+    }
+
+    if (isQualifyingRecallSuccess(attempt)) {
+      currentMasteryDates.add(attempt.localDate as string)
     }
 
     const postFailureAttempts = attempts.slice(latestFailureIndex + 1, index + 1)
@@ -217,7 +274,7 @@ function deriveCurrentProficiency(
       continue
     }
 
-    const mastered = hasMasteryEvidence(postFailureAttempts)
+    const mastered = meetsMasteryEvidenceDateRequirement(currentMasteryDates)
     if (mastered) {
       proficiency = 'mastered'
       continue
@@ -226,19 +283,23 @@ function deriveCurrentProficiency(
     proficiency = strongerProficiency(successProficiency, proficiency)
   }
 
-  return { proficiency, mastered: proficiency === 'mastered' }
+  return {
+    proficiency,
+    mastered: proficiency === 'mastered',
+    masteryQualifyingRecallDates: [...currentMasteryDates].sort(),
+  }
 }
 
-/**
- * Derive World Countries proficiency from raw evidence. Milestones are not
- * consulted: they describe curriculum completion, while retained attempts
- * are the sole proficiency source.
- */
-export function deriveWorldCountriesAtomicProgress(
+interface DerivedProjection {
+  progress: WorldCountriesAtomicProgress
+  masteryQualifyingRecallDates: readonly string[]
+}
+
+function deriveProgressFromProjection(
   itemId: RecallItemId,
-  inputAttempts: readonly Attempt[],
-): WorldCountriesAtomicProgress {
-  const attempts = sortAttempts(inputAttempts)
+  attempts: readonly Attempt[],
+  projection: AttemptProjection,
+): DerivedProjection {
   const correct = attempts.filter(attempt => attempt.ok).length
   const wrong = attempts.length - correct
   const recent = attempts.slice(-3)
@@ -247,7 +308,6 @@ export function deriveWorldCountriesAtomicProgress(
     consecutiveCorrect++
   }
   const lastAttempt = attempts.length ? attempts[attempts.length - 1] : undefined
-  const projection = projectAttempts(itemId, attempts)
   const hasAcquisitionEvidence = projection.acquisition.length > 0
   const hasEverMastered = hasEverMasteryEvidence(projection.performance)
   const current = deriveCurrentProficiency(
@@ -262,20 +322,76 @@ export function deriveWorldCountriesAtomicProgress(
   const middle = Math.floor(sortedLatencies.length / 2)
 
   return {
-    itemId,
-    attempts: attempts.length,
-    correct,
-    wrong,
-    recentCorrect: recent.filter(attempt => attempt.ok).length,
-    consecutiveCorrect,
-    lastAttemptAt: lastAttempt?.at ?? null,
-    medianMs: sortedLatencies.length === 0
-      ? null
-      : sortedLatencies.length % 2 === 1
-        ? sortedLatencies[middle]
-        : (sortedLatencies[middle - 1] + sortedLatencies[middle]) / 2,
-    mastered: current.mastered,
-    hasEverMastered,
-    proficiency: current.proficiency,
+    progress: {
+      itemId,
+      attempts: attempts.length,
+      correct,
+      wrong,
+      recentCorrect: recent.filter(attempt => attempt.ok).length,
+      consecutiveCorrect,
+      lastAttemptAt: lastAttempt?.at ?? null,
+      medianMs: sortedLatencies.length === 0
+        ? null
+        : sortedLatencies.length % 2 === 1
+          ? sortedLatencies[middle]
+          : (sortedLatencies[middle - 1] + sortedLatencies[middle]) / 2,
+      mastered: current.mastered,
+      hasEverMastered,
+      proficiency: current.proficiency,
+    },
+    masteryQualifyingRecallDates: current.masteryQualifyingRecallDates,
   }
+}
+
+/**
+ * Derive World Countries proficiency from raw evidence. Milestones are not
+ * consulted: they describe curriculum completion, while retained attempts
+ * are the sole proficiency source.
+ */
+export function deriveWorldCountriesAtomicProgressEvaluation(
+  itemId: RecallItemId,
+  inputAttempts: readonly Attempt[],
+): WorldCountriesAtomicProgressEvaluation {
+  const attempts = sortAttempts(inputAttempts)
+  const projection = projectAttempts(itemId, attempts)
+  const final = deriveProgressFromProjection(itemId, attempts, projection)
+  const steps = projection.classifications.map((classification, index) => {
+    const prefixProjection = projectionFromClassifications(
+      projection.classifications.slice(0, index + 1),
+    )
+    const prefix = deriveProgressFromProjection(
+      itemId,
+      attempts.slice(0, index + 1),
+      prefixProjection,
+    )
+    const { attempt, effectiveAttemptType, evaluatedAs } = classification
+    return {
+      at: attempt.at,
+      ms: attempt.ms,
+      localDate: attempt.localDate,
+      ok: attempt.ok,
+      evidenceKind: attempt.evidenceKind,
+      attemptType: attempt.attemptType,
+      effectiveAttemptType,
+      evaluatedAs,
+      masteryEligibleRecall: evaluatedAs === 'performance' && isQualifyingRecallSuccess(attempt),
+      proficiencyAfter: prefix.progress.proficiency,
+      masteredAfter: prefix.progress.mastered,
+    }
+  })
+
+  return {
+    progress: final.progress,
+    steps,
+    masteryQualifyingRecallDates: final.masteryQualifyingRecallDates,
+  }
+}
+
+export function deriveWorldCountriesAtomicProgress(
+  itemId: RecallItemId,
+  inputAttempts: readonly Attempt[],
+): WorldCountriesAtomicProgress {
+  const attempts = sortAttempts(inputAttempts)
+  const projection = projectAttempts(itemId, attempts)
+  return deriveProgressFromProjection(itemId, attempts, projection).progress
 }

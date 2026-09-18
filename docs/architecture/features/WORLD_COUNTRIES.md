@@ -304,13 +304,16 @@ presents the resulting reason as concise `Why now` summary counts and the
 Review flow gives a per-prompt `Why now` explanation, including repeated
 difficulty and useful overdue wording. Proficiency is a projection of the
 retained attempts, not a stored status or a Learning milestone. For the core
-Country and Capital skills, explicit `learning` attempts and the first
-legacy effective-local-day cluster are acquisition evidence: they establish
-Weak only, never provide performance or mastery dates, and never downgrade a
-higher performance-derived result. `review`, `strengthen`, and `drill`
-attempts are performance evidence and may advance a target without prior
-Learning; later legacy clusters are performance evidence too. Additional
-skills retain their existing performance interpretation for legacy attempts.
+Country and Capital skills, explicit `learning` attempts are acquisition
+evidence. The first legacy effective-local-day cluster is
+acquisition-equivalent only when the target has no explicit Learning
+provenance; once explicit Learning exists, every Legacy/untyped/unknown row is
+performance evidence. Acquisition establishes Weak only, never provides
+performance or mastery dates, and never downgrades a higher
+performance-derived result. `review`, `strengthen`, and `drill` attempts are
+performance evidence and may advance a target without prior Learning. Later
+legacy clusters are performance evidence too. Additional skills retain their
+existing performance interpretation for legacy attempts.
 The performance timeline is filtered before lapse/recovery projection, so
 Learning-only failures cannot create a lapse. Current Mastery and
 `hasEverMastered` require successful qualifying explicit performance recall on
@@ -326,8 +329,10 @@ attempt does not alter the performance projection.
 Historical attempts without provenance are migrated conservatively. A
 milestone-matched same-day successful non-recognition attempt may become
 `learning`; other recognized World Countries attempts become `legacy`. For
-core skills, the first legacy local-day cluster is acquisition-equivalent and
-later clusters are performance-equivalent. The migration reruns at the
+core skills with no explicit Learning row, the first legacy local-day cluster
+is acquisition-equivalent and later clusters are performance-equivalent; when
+explicit Learning exists, all Legacy rows are performance evidence. The
+migration reruns at the
 composition boundary for the active Country population, leaves typed rows
 untouched, and can add missing synthetic Learning evidence for applicable
 milestones without using those milestones as runtime proficiency state. A
@@ -345,7 +350,15 @@ treating every old untyped attempt as performance would let historical
 Learning Final Recall inflate users directly to Developing/Strong; and
 guessing old Review versus Strengthen versus Drill would invent provenance
 that was never persisted even though those activities share proficiency
-semantics. `legacy` preserves the uncertainty honestly.
+semantics. `legacy` preserves the uncertainty honestly. Applying both the
+explicit-Learning and first-Legacy acquisition rules simultaneously was also
+rejected: migration can reconstruct an explicit Learning row while leaving
+other historical rows as Legacy, and consuming another Legacy cluster as
+acquisition would double-count acquisition and suppress genuine retained
+performance evidence. The feature-local atomic evaluator can expose a
+diagnostic trace of these classifications and status-after decisions; it is
+derived by the same evaluator as production progress and is not a second
+status authority.
 
 ### Playground activities
 
