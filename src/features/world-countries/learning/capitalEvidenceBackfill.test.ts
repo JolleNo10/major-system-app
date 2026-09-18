@@ -14,10 +14,21 @@ const attemptsMock = vi.hoisted(() => ({ value: [] as Array<{ itemId: string } &
 const recordAttemptMock = vi.hoisted(() => vi.fn(
   (_itemId: string, _attempt: Record<string, unknown>, _options?: unknown) => Promise.resolve(),
 ))
+const strictWriteState = vi.hoisted(() => ({ reject: false, failOnCall: null as number | null, calls: 0 }))
+const recordAttemptOrThrowMock = vi.hoisted(() => vi.fn(
+  async (itemId: string, attempt: Record<string, unknown>) => {
+    strictWriteState.calls += 1
+    if (strictWriteState.reject || strictWriteState.calls === strictWriteState.failOnCall) {
+      throw new Error('capital backfill write failed')
+    }
+    attemptsMock.value.push({ itemId, ...attempt })
+  },
+))
 vi.mock('@/core/learning', async importOriginal => ({
   ...(await importOriginal<typeof import('@/core/learning')>()),
   getAllAttemptsOrThrow: () => Promise.resolve(attemptsMock.value),
   recordAttempt: recordAttemptMock,
+  recordAttemptOrThrow: recordAttemptOrThrowMock,
 }))
 
 const activeCountries: Country[] = [
@@ -31,11 +42,15 @@ const learnedAt = new Date(2026, 8, 12, 12, 0, 0).getTime()
 
 beforeEach(() => {
   attemptsMock.value = []
+  strictWriteState.reject = false
+  strictWriteState.failOnCall = null
+  strictWriteState.calls = 0
 })
 
 afterEach(() => {
   localStorage.clear()
   recordAttemptMock.mockClear()
+  recordAttemptOrThrowMock.mockClear()
 })
 
 describe('World Countries Capital evidence backfill', () => {
@@ -62,9 +77,10 @@ describe('World Countries Capital evidence backfill', () => {
 
     const first = await applyWorldCountriesCapitalBackfill({ activeCountries })
     expect(first).toMatchObject({ written: 2, alreadyRecorded: 0 })
-    expect(recordAttemptMock).toHaveBeenCalledTimes(2)
-    expect(recordAttemptMock.mock.calls[0]?.[0]).toBe(recallTargetIdFor('NO', 'country-to-capital'))
-    expect(recordAttemptMock.mock.calls[0]?.[1]).toMatchObject({
+    expect(recordAttemptOrThrowMock).toHaveBeenCalledTimes(2)
+    expect(recordAttemptMock).not.toHaveBeenCalled()
+    expect(recordAttemptOrThrowMock.mock.calls[0]?.[0]).toBe(recallTargetIdFor('NO', 'country-to-capital'))
+    expect(recordAttemptOrThrowMock.mock.calls[0]?.[1]).toMatchObject({
       at: learnedAt,
       ok: true,
       evidenceKind: 'recall',
@@ -72,22 +88,12 @@ describe('World Countries Capital evidence backfill', () => {
       attemptType: 'learning',
     })
 
-    // The first run's rows are now retained evidence.
-    attemptsMock.value = ['NO', 'SE'].map(countryId => ({
-      itemId: recallTargetIdFor(countryId, 'country-to-capital'),
-      at: learnedAt,
-      ok: true,
-      ms: Number.NaN,
-      evidenceKind: 'recall',
-      localDate: '2026-09-12',
-      attemptType: 'learning',
-    }))
-    recordAttemptMock.mockClear()
+    recordAttemptOrThrowMock.mockClear()
 
     const second = await applyWorldCountriesCapitalBackfill({ activeCountries })
 
     expect(second).toMatchObject({ written: 0, alreadyRecorded: 2 })
-    expect(recordAttemptMock).not.toHaveBeenCalled()
+    expect(recordAttemptOrThrowMock).not.toHaveBeenCalled()
   })
 
   it('still reconstructs a Country whose existing Capital evidence is on another date', async () => {
@@ -122,7 +128,7 @@ describe('World Countries Capital evidence backfill', () => {
     expect(plan.pending.map(entry => entry.countryId)).toEqual(['NO', 'SE'])
   })
 
-  it.each(['review', 'drill', 'legacy', undefined] as const)(
+  it.each(['review', 'strengthen', 'drill', 'legacy', undefined] as const)(
     'still reconstructs over same-day %s evidence',
     async attemptType => {
       markSubregionCapitalsLearned('northern-europe', learnedAt, activeCountries)
@@ -158,5 +164,42 @@ describe('World Countries Capital evidence backfill', () => {
 
     expect(plan.pending).toEqual([])
     expect(plan.entries.every(entry => entry.action === 'already-recorded')).toBe(true)
+  })
+
+  it('rejects failed strict reconstruction and completes it on a later retry', async () => {
+    markSubregionCapitalsLearned('northern-europe', learnedAt, activeCountries)
+    strictWriteState.reject = true
+
+    await expect(applyWorldCountriesCapitalBackfill({ activeCountries }))
+      .rejects.toThrow('capital backfill write failed')
+    expect(attemptsMock.value).toEqual([])
+
+    strictWriteState.reject = false
+    const retry = await applyWorldCountriesCapitalBackfill({ activeCountries })
+    const repeated = await applyWorldCountriesCapitalBackfill({ activeCountries })
+
+    expect(retry).toMatchObject({ written: 2, alreadyRecorded: 0 })
+    expect(repeated).toMatchObject({ written: 0, alreadyRecorded: 2 })
+    expect(attemptsMock.value.filter(attempt => attempt.attemptType === 'learning')).toHaveLength(2)
+  })
+
+  it('resumes after a later row fails without duplicating the earlier row', async () => {
+    markSubregionCapitalsLearned('northern-europe', learnedAt, activeCountries)
+    strictWriteState.failOnCall = 2
+
+    await expect(applyWorldCountriesCapitalBackfill({ activeCountries }))
+      .rejects.toThrow('capital backfill write failed')
+    expect(attemptsMock.value.map(attempt => attempt.itemId)).toEqual([
+      recallTargetIdFor('NO', 'country-to-capital'),
+    ])
+
+    strictWriteState.failOnCall = null
+    const retry = await applyWorldCountriesCapitalBackfill({ activeCountries })
+
+    expect(retry).toMatchObject({ written: 1, alreadyRecorded: 1 })
+    expect(attemptsMock.value.map(attempt => attempt.itemId)).toEqual([
+      recallTargetIdFor('NO', 'country-to-capital'),
+      recallTargetIdFor('SE', 'country-to-capital'),
+    ])
   })
 })

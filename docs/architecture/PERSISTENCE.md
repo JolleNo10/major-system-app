@@ -163,9 +163,12 @@ follows the defining module and feature namespace.
   `core/learning` for durable migrations. Ordinary interactive attempt writes
   remain best-effort, but the World Countries provenance migration uses the
   strict writer for synthetic Learning rows and does not report completion when
-  one of those required writes fails. Because it has no completion marker, the
-  migration is idempotent and resumable: a later composition-boundary run can
-  finish work after an earlier run persisted only part of its conversion.
+  one of those required writes fails. Strict `OrThrow` reads and writes treat
+  an unavailable IndexedDB backend as a persistence failure rather than an
+  empty or no-op store; best-effort APIs retain their non-fatal fallback.
+  Because it has no completion marker, the migration is idempotent and
+  resumable: a later composition-boundary run can finish work after an earlier
+  run persisted only part of its conversion.
 - World Countries runs an idempotent attempt-provenance migration at its
   composition boundary for the current active Country population. It rewrites
   only recognized `world-countries:<skill>:<CountryId>` attempts that lack a
@@ -177,6 +180,9 @@ follows the defining module and feature namespace.
   are preserved and no one-shot completion flag is used. The migration uses
   the existing attempt object store in place, so the optional metadata adds no
   object store, index, or IndexedDB version bump.
+- The exported World Countries Capital evidence reconstruction uses the same
+  strict durable writer. It reports a row as written only after persistence
+  succeeds, and remains idempotent/resumable after a partial failure.
 
 ## Backup, import, and export
 

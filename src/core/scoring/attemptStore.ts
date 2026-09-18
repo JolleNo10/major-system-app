@@ -123,7 +123,7 @@ async function appendAttemptRawOrThrow(
   attempt: Attempt,
   options: AttemptWriteOptions = {},
 ): Promise<void> {
-  if (!hasIdb) return
+  if (!hasIdb) throw new Error('IndexedDB is unavailable')
   const db = await getDb()
   const tx = db.transaction(STORE, 'readwrite')
   const os = tx.objectStore(STORE)
@@ -239,7 +239,7 @@ export function getAttempts(dir: Direction, num: string): Promise<Attempt[]> {
 }
 
 export async function getAllAttemptsOrThrow(): Promise<Array<{ key: string } & Attempt>> {
-  if (!hasIdb) return []
+  if (!hasIdb) throw new Error('IndexedDB is unavailable')
   const db = await getDb()
   const os = db.transaction(STORE, 'readonly').objectStore(STORE)
   const recs = await reqToPromise(os.getAll())

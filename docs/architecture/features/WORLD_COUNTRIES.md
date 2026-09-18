@@ -267,8 +267,12 @@ Rows it reconstructs are historical Learning evidence and therefore use
 `attemptType: 'learning'`. The automatic attempt-provenance migration now
 also reconstructs missing Country and Capital Learning rows for the active
 population, but the backfill remains exported for callers that still need its
-plan/apply surface; both paths are idempotent and never overwrite earned
-evidence.
+plan/apply surface. Its apply path uses strict persistence and reports a
+reconstruction only after the Learning row is durably stored; if a later row
+fails, earlier rows remain and a subsequent run resumes safely. Both paths
+are idempotent and never overwrite earned evidence. Review, Strengthen, Drill,
+Legacy, and untyped evidence never substitutes for the Learning provenance row
+during this historical reconstruction.
 
 Learning and Review
 completion surfaces use existing milestone/evidence truth. Checkpoint docks

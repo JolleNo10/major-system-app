@@ -3,7 +3,7 @@ import { countries as canonicalCountries, type Country, type CountryId } from '@
 import { getSubregionDefinition, type SubregionId } from '@/features/world-countries/data/subregions'
 import { WORLD_COUNTRIES_UNTIMED_ATTEMPT_MS } from './finalRecallEvidence'
 import { loadWorldCountriesRecallHistory } from './recallHistory'
-import { recordWorldCountriesAttempt } from './recallProgress'
+import { recordWorldCountriesAttemptOrThrow } from './recallProgress'
 import { recallTargetIdFor } from './recallTargets'
 import { isValidWorldCountriesLocalDate, worldCountriesLocalDateForTimestamp } from './reviewSchedule'
 import { getAllSubregionLearningStates } from './subregionLearningStore'
@@ -123,7 +123,7 @@ export async function applyWorldCountriesCapitalBackfill(
   const plan = await planWorldCountriesCapitalBackfill(options)
 
   for (const entry of plan.pending) {
-    await recordWorldCountriesAttempt(entry.countryId, BACKFILL_SKILL, {
+    await recordWorldCountriesAttemptOrThrow(entry.countryId, BACKFILL_SKILL, {
       at: entry.learnedAt,
       ok: true,
       ms: WORLD_COUNTRIES_UNTIMED_ATTEMPT_MS,
