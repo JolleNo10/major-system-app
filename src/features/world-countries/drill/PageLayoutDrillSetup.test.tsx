@@ -8,11 +8,6 @@ import { PageLayoutProvider } from '@/app/layout/PageLayoutContext'
 import { SettingsProvider } from '@/app/settings/SettingsContext'
 import { WorldCountries } from '../WorldCountries'
 
-const migrateWorldCountriesAttemptTypesMock = vi.hoisted(() => vi.fn(() => Promise.resolve()))
-vi.mock('../learning/attemptTypeMigration', () => ({
-  migrateWorldCountriesAttemptTypes: migrateWorldCountriesAttemptTypesMock,
-}))
-
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 let root: Root | null = null
 afterEach(() => { act(() => root?.unmount()); root = null; document.body.replaceChildren(); localStorage.clear(); vi.unstubAllGlobals() })

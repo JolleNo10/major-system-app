@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import type { AnswerMode } from '@/core/types'
 import { useLayoutHeader } from '@/app/layout/PageLayoutContext'
 import { useSettings } from '@/app/settings/SettingsContext'
@@ -14,7 +14,6 @@ import { WorldCountriesQuiz } from '@/features/world-countries/practice/WorldCou
 import { WorldCountriesPlay } from './WorldCountriesPlay'
 import { WorldCountriesPopulationProvider } from './WorldCountriesPopulationContext'
 import type { WorldCountriesSetupActivity } from './drill/setupActivity'
-import { migrateWorldCountriesAttemptTypes } from './learning/attemptTypeMigration'
 
 type WorldCountriesArea = 'home' | 'continent' | 'play' | 'drill' | 'recite' | 'quiz'
 type DrillEntry = {
@@ -37,23 +36,6 @@ export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
     ),
     [settings.worldCountriesIncludedEntityGroups],
   )
-  const activePopulationKey = useMemo(
-    () => activeCountries.map(country => country.id).sort().join('|'),
-    [activeCountries],
-  )
-  const [attemptTypeMigration, setAttemptTypeMigration] = useState<'loading' | 'ready' | 'error'>('loading')
-
-  useEffect(() => {
-    let cancelled = false
-    setAttemptTypeMigration('loading')
-    void migrateWorldCountriesAttemptTypes({ activeCountries }).then(() => {
-      if (!cancelled) setAttemptTypeMigration('ready')
-    }, () => {
-      if (!cancelled) setAttemptTypeMigration('error')
-    })
-    return () => { cancelled = true }
-  }, [activeCountries, activePopulationKey])
-
   const goHome = () => {
     setDrillEntry(null)
     setContinent(null)
@@ -116,16 +98,12 @@ export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
 
   return (
     <WorldCountriesPopulationProvider countries={activeCountries}>
-      {attemptTypeMigration === 'loading' && <div role="status" className="p-6 text-sm text-zinc-400">Loading World Countries progress…</div>}
-      {attemptTypeMigration === 'error' && <div role="alert" className="p-6 text-sm text-red-300">World Countries progress could not be loaded.</div>}
-      {attemptTypeMigration === 'ready' && <>
-        {area === 'home' && <WorldCountriesToday answerMode={answerMode} onNavigate={openTodayNavigation} onSelectContinent={goToContinent} />}
-        {area === 'continent' && continent && <WorldCountriesToday answerMode={answerMode} continent={continent} worldJourneyContinent={worldJourneyContinent} onNavigate={openTodayNavigation} onSelectContinent={goToContinent} onWorld={goHome} />}
-        {area === 'play' && <WorldCountriesPlay scopeLabel={continent ?? 'World'} scopeContinent={continent ?? undefined} onBack={goToScope} onOpenRecite={() => openWorkflow('recite')} onOpenQuiz={() => openWorkflow('quiz')} onOpenLocateCountries={() => openDrillEntry({ activity: { kind: 'practice', mode: 'locate-countries' } })} onOpenLocateCapitals={() => openDrillEntry({ activity: { kind: 'practice', mode: 'locate-capitals' } })} onOpenCapitalPractice={() => openDrillEntry({ activity: { kind: 'practice', mode: 'capitals' } })} onOpenCustomDrill={() => openDrillEntry({ activity: { kind: 'drill' } })} />}
-        {area === 'drill' && <WorldCountriesDrill answerMode={answerMode} onExit={goToScope} initialActivity={drillEntry?.activity} initialScope={drillEntry?.initialScope} />}
-        {area === 'recite' && <WorldCountriesRecite answerMode={answerMode} onExit={goToScope} />}
-        {area === 'quiz' && <WorldCountriesQuiz answerMode={answerMode} onExit={goToScope} />}
-      </>}
+      {area === 'home' && <WorldCountriesToday answerMode={answerMode} onNavigate={openTodayNavigation} onSelectContinent={goToContinent} />}
+      {area === 'continent' && continent && <WorldCountriesToday answerMode={answerMode} continent={continent} worldJourneyContinent={worldJourneyContinent} onNavigate={openTodayNavigation} onSelectContinent={goToContinent} onWorld={goHome} />}
+      {area === 'play' && <WorldCountriesPlay scopeLabel={continent ?? 'World'} scopeContinent={continent ?? undefined} onBack={goToScope} onOpenRecite={() => openWorkflow('recite')} onOpenQuiz={() => openWorkflow('quiz')} onOpenLocateCountries={() => openDrillEntry({ activity: { kind: 'practice', mode: 'locate-countries' } })} onOpenLocateCapitals={() => openDrillEntry({ activity: { kind: 'practice', mode: 'locate-capitals' } })} onOpenCapitalPractice={() => openDrillEntry({ activity: { kind: 'practice', mode: 'capitals' } })} onOpenCustomDrill={() => openDrillEntry({ activity: { kind: 'drill' } })} />}
+      {area === 'drill' && <WorldCountriesDrill answerMode={answerMode} onExit={goToScope} initialActivity={drillEntry?.activity} initialScope={drillEntry?.initialScope} />}
+      {area === 'recite' && <WorldCountriesRecite answerMode={answerMode} onExit={goToScope} />}
+      {area === 'quiz' && <WorldCountriesQuiz answerMode={answerMode} onExit={goToScope} />}
     </WorldCountriesPopulationProvider>
   )
 }

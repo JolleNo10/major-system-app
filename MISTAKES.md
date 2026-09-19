@@ -109,3 +109,17 @@ and starved by a sibling: `[data-map-surface-dock-row] > [data-map-surface-dock]
   root cause was relying on the shell transport for Unicode literals. Use
   `chr(...)` for non-ASCII characters in direct-edit scripts, then inspect
   codepoints in the resulting file before verification.
+
+# App-wide logical data migrations
+
+World Countries attempt-provenance conversion was attached to the feature
+composition boundary, so normal feature entry repeatedly reconsidered and
+could re-execute compatibility work. The root cause was treating a logical
+data-model migration as ongoing feature behavior rather than a versioned
+application upgrade; retaining historical Country-population memberships
+then made active-membership-only reruns part of the design. Logical persisted
+data migrations must use the single app-level versioned registry and gate,
+convert the complete persisted model owned by each converter, remain
+retry-safe within a step, and advance the global version only after success.
+Normal feature entry must never decide whether an old logical model still
+needs conversion.

@@ -4,10 +4,9 @@ import { pushOverlay, popOverlay } from '@/core/ui/overlayGuard'
 const FOCUSABLE = 'button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])'
 
 // Modal overlay behaviour: register the overlay (so background drills ignore
-// keyboard input), move focus inside, trap Tab, close on Escape, and restore
-// focus to the trigger on unmount. Attach the returned handlers to a root
-// element that has role="dialog" aria-modal="true".
-export function useOverlay(ref: RefObject<HTMLElement | null>, onClose: () => void) {
+// keyboard input), move focus inside, trap Tab, optionally close on Escape,
+// and restore focus to the trigger on unmount.
+export function useOverlay(ref: RefObject<HTMLElement | null>, onClose: () => void, dismissible = true) {
   useEffect(() => {
     const root = ref.current
     const previouslyFocused = document.activeElement as HTMLElement | null
@@ -21,7 +20,7 @@ export function useOverlay(ref: RefObject<HTMLElement | null>, onClose: () => vo
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation()
-        onClose()
+        if (dismissible) onClose()
         return
       }
       if (e.key === 'Tab') {
@@ -40,5 +39,5 @@ export function useOverlay(ref: RefObject<HTMLElement | null>, onClose: () => vo
       popOverlay()
       previouslyFocused?.focus?.()
     }
-  }, [ref, onClose])
+  }, [ref, onClose, dismissible])
 }

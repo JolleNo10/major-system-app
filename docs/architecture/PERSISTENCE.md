@@ -61,6 +61,7 @@ Architecturally significant groups are:
 | --- | --- |
 | `core/scoring` | `major-item-data`, `major-attempts-migrated`, typing-speed state; schemas support Major/Pi scoring consumers. |
 | `core/ui` and `app/settings` | global answer/UI preferences and `major-settings`, including the World Countries `worldCountriesIncludedEntityGroups` group-ID selection and `worldCountriesNewItemsPerSet` (`3`, `4`, `5`, or `all`). Settings are app-owned even when features consume them. |
+| `app/dataMigrations` | `major-data-model-version`, the application-wide logical user-data version. |
 | Major System | `major-word-*`, `major-soundkey-*`, sequence/speed preferences. Layered word and sound-key records use `createWordStore`. |
 | Cards | `major-cardword-*`, `major-pao-*`, deck-memo histories, drill/suit/range preferences. Themed and PAO stores are independent even when PAO seeds Person values from Themed. |
 | Pi | `major-pi-*` session, selection, memoed/flawless, anchor, story-era, and maintenance state. Exact keys are defined beside their owners. |
@@ -68,6 +69,29 @@ Architecturally significant groups are:
 
 Small view preferences need not be catalogued here. Their ownership still
 follows the defining module and feature namespace.
+
+## App logical data-model version
+
+`src/app/dataMigrations/` owns the single monotonically increasing logical
+data-model marker in localStorage, `major-data-model-version`. Missing or
+invalid legacy state
+is version `0`; the current model after the World Countries provenance
+conversion is version `1`. This marker is separate from user preferences in
+`major-settings` and from the IndexedDB schema version
+(`DB_VERSION = 4`) owned by `src/core/scoring/attemptStore.ts`. Low-level
+IndexedDB schema upgrades and storage bootstrap remain persistence concerns,
+not logical user-data migrations.
+
+The app gate runs registered conversions in order before normal providers
+mount. It advances the marker only after each corresponding logical migration
+succeeds, including a strict successful marker write. A failure leaves the
+last successfully persisted version in place, so retry resumes at that step;
+converters must be idempotent/resumable within an individual step. A stored
+version newer than the running application's current version is never
+downgraded, and normal application code remains gated until a compatible app is
+used. Independent feature migration-version keys were rejected because
+application data can span multiple features and storage systems, requiring one
+compatibility boundary before normal application composition.
 
 ## Stable identities
 
@@ -166,20 +190,21 @@ follows the defining module and feature namespace.
   one of those required writes fails. Strict `OrThrow` reads and writes treat
   an unavailable IndexedDB backend as a persistence failure rather than an
   empty or no-op store; best-effort APIs retain their non-fatal fallback.
-  Because it has no completion marker, the migration is idempotent and
-  resumable: a later composition-boundary run can finish work after an earlier
-  run persisted only part of its conversion.
-- World Countries runs an idempotent attempt-provenance migration at its
-  composition boundary for the current active Country population. It rewrites
-  only recognized `world-countries:<skill>:<CountryId>` attempts that lack a
-  valid feature type, reconstructs one confident Learning row from applicable
-  milestones when possible, marks other historical rows `legacy`, and writes
-  synthetic Learning rows for active milestone memberships with no recoverable
-  row. A synthetic row is considered reconciled only after its strict append
-  succeeds. Reconciliation reruns when active membership changes; typed rows
-  are preserved and no one-shot completion flag is used. The migration uses
-  the existing attempt object store in place, so the optional metadata adds no
-  object store, index, or IndexedDB version bump.
+  The app-owned logical model version advances only after its registered
+  migration and the strict marker write succeed. Partial feature conversion
+  remains retry-safe so the same step can resume from its last committed app
+  version.
+- The app-owned logical migration `0 -> 1` invokes the World Countries
+  feature-owned provenance converter once for the complete persisted World
+  Countries model, including the current membership snapshot and all retained
+  Subregion membership-history snapshots. It rewrites only recognized
+  `world-countries:<skill>:<CountryId>` attempts, preserves valid typed rows,
+  classifies other untyped history as `legacy`, and synthesizes a missing
+  Learning row only from a persisted completion milestone. The global logical
+  model marker records successful completion; later active Country-set changes
+  do not rerun this compatibility conversion. The migration uses the existing
+  attempt object store in place, so optional attempt metadata adds no object
+  store, index, or IndexedDB version bump.
 - The exported World Countries Capital evidence reconstruction uses the same
   strict durable writer. It reports a row as written only after persistence
   succeeds, and remains idempotent/resumable after a partial failure.

@@ -5,9 +5,6 @@ import { countries } from '@/features/world-countries/data/countries'
 
 const stored = vi.hoisted(() => ({ attempts: [] as Array<Record<string, unknown>> }))
 const getAllAttemptsMock = vi.hoisted(() => vi.fn(async () => stored.attempts.map(attempt => ({ ...attempt }))))
-const recordAttemptMock = vi.hoisted(() => vi.fn(async (itemId: string, attempt: Record<string, unknown>) => {
-  stored.attempts.push({ itemId, ...attempt })
-}))
 const strictWriteState = vi.hoisted(() => ({ reject: false }))
 const recordAttemptOrThrowMock = vi.hoisted(() => vi.fn(async (itemId: string, attempt: Record<string, unknown>) => {
   if (strictWriteState.reject) throw new Error('synthetic write failed')
@@ -29,28 +26,37 @@ const rewriteAttemptsForItemMock = vi.hoisted(() => vi.fn(async (
 
 vi.mock('@/core/learning', () => ({
   getAllAttemptsOrThrow: getAllAttemptsMock,
-  recordAttempt: recordAttemptMock,
   recordAttemptOrThrow: recordAttemptOrThrowMock,
   rewriteAttemptsForItem: rewriteAttemptsForItemMock,
 }))
 
-vi.mock('./subregionLearningStore', () => ({
-  getAllSubregionLearningStates: (activeCountries: readonly unknown[]) => activeCountries.length > 0
-    ? JSON.parse(localStorage.getItem('world-countries-subregion-learning') ?? '[]')
-    : [],
-}))
-
-import { migrateWorldCountriesAttemptTypes } from './attemptTypeMigration'
+import { getAllSubregionLearningStates } from './subregionLearningStore'
+import { migrateWorldCountriesAttemptProvenance } from './attemptTypeMigration'
 import { recallTargetIdFor } from './recallTargets'
 
 const norway = countries.find(country => country.id === 'NO')!
+const iceland = countries.find(country => country.id === 'IS')!
+const sweden = countries.find(country => country.id === 'SE')!
+const finland = countries.find(country => country.id === 'FI')!
 const milestoneAt = Date.parse('2026-08-10T12:00:00Z')
 const milestoneDate = '2026-08-10'
 
-function setLearningState(fields: Record<string, number>): void {
+function setLearningState(
+  fields: Record<string, number>,
+  currentCountryIds = ['NO'],
+  history: Record<string, Record<string, number>> = {},
+): void {
+  const countryFingerprint = currentCountryIds.slice().sort().join('|')
   localStorage.setItem('world-countries-subregion-learning', JSON.stringify([
     { subregionId: norway.subregionId, ...fields },
   ]))
+  localStorage.setItem('world-countries-subregion-learning-membership', JSON.stringify({
+    [norway.subregionId]: { current: countryFingerprint, history },
+  }))
+}
+
+function attemptRows(countryId: string, skill: 'location-to-country' | 'country-to-capital') {
+  return stored.attempts.filter(attempt => attempt.itemId === recallTargetIdFor(countryId, skill))
 }
 
 beforeEach(() => {
@@ -61,26 +67,29 @@ beforeEach(() => {
 })
 
 describe('World Countries attempt provenance migration', () => {
-  it('types every untyped World Countries row while leaving other namespaces untouched', async () => {
+  it('types untyped recognized rows conservatively and leaves other IDs untouched', async () => {
     const itemId = recallTargetIdFor('NO', 'location-to-country')
     const other = { itemId: 'enc:42', at: 3, ok: true, ms: 10, custom: 'keep' }
+    const unknownCountry = { itemId: 'world-countries:location-to-country:ZZ', at: 5, ok: true, ms: 10 }
     stored.attempts.push(
       { itemId, at: milestoneAt - 86_400_000, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-09' },
       { itemId, at: milestoneAt - 60 * 60 * 1000, ok: true, ms: 100, evidenceKind: 'recall', localDate: milestoneDate },
       { itemId, at: milestoneAt + 86_400_000, ok: false, ms: 100, localDate: '2026-08-11' },
       other,
+      unknownCountry,
     )
     setLearningState({ countriesLearnedAt: milestoneAt })
 
-    const result = await migrateWorldCountriesAttemptTypes({ activeCountries: [norway] })
-    const targetRows = stored.attempts.filter(attempt => attempt.itemId === itemId)
+    const result = await migrateWorldCountriesAttemptProvenance()
+    const targetRows = attemptRows('NO', 'location-to-country')
 
     expect(result.rewritten).toBe(3)
     expect(targetRows.map(attempt => attempt.attemptType)).toEqual(['legacy', 'learning', 'legacy'])
     expect(stored.attempts.find(attempt => attempt.itemId === 'enc:42')).toEqual(other)
+    expect(stored.attempts.find(attempt => attempt.itemId === unknownCountry.itemId)).toEqual(unknownCountry)
   })
 
-  it('does not rewrite already typed rows or select recognition as Learning evidence', async () => {
+  it('preserves typed rows and excludes recognition from Learning recovery', async () => {
     const itemId = recallTargetIdFor('NO', 'location-to-country')
     stored.attempts.push(
       { itemId, at: milestoneAt, ok: true, ms: 100, evidenceKind: 'recognition', localDate: milestoneDate },
@@ -88,67 +97,141 @@ describe('World Countries attempt provenance migration', () => {
     )
     setLearningState({ countriesLearnedAt: milestoneAt })
 
-    const result = await migrateWorldCountriesAttemptTypes({ activeCountries: [norway] })
+    const result = await migrateWorldCountriesAttemptProvenance()
 
     expect(result.alreadyTyped).toBe(1)
-    expect(stored.attempts.filter(attempt => attempt.itemId === itemId).map(attempt => attempt.attemptType)).toEqual(['legacy', 'review', 'learning'])
-    expect(stored.attempts.filter(attempt => attempt.itemId === itemId).some(attempt => attempt.attemptType === 'learning')).toBe(true)
+    expect(attemptRows('NO', 'location-to-country').map(attempt => attempt.attemptType)).toEqual(['legacy', 'review', 'learning'])
   })
 
-  it('writes one synthetic Learning row for each applicable core milestone', async () => {
+  it('synthesizes one strict Learning row for each core milestone', async () => {
     setLearningState({ countriesLearnedAt: milestoneAt, capitalsLearnedAt: milestoneAt })
 
-    const result = await migrateWorldCountriesAttemptTypes({ activeCountries: [norway] })
-    const rows = stored.attempts
+    const result = await migrateWorldCountriesAttemptProvenance()
 
     expect(result.synthetic).toBe(2)
-    expect(rows).toHaveLength(2)
-    expect(rows).toEqual(expect.arrayContaining([
+    expect(stored.attempts).toHaveLength(2)
+    expect(stored.attempts).toEqual(expect.arrayContaining([
       expect.objectContaining({ itemId: recallTargetIdFor('NO', 'location-to-country'), ok: true, ms: Number.NaN, evidenceKind: 'recall', localDate: milestoneDate, attemptType: 'learning' }),
       expect.objectContaining({ itemId: recallTargetIdFor('NO', 'country-to-capital'), ok: true, ms: Number.NaN, evidenceKind: 'recall', localDate: milestoneDate, attemptType: 'learning' }),
     ]))
   })
 
-  it('is idempotent and reconciles a restored active membership', async () => {
-    setLearningState({ countriesLearnedAt: milestoneAt })
+  it('converts the current and every retained membership fingerprint in one run', async () => {
+    const earlierMilestone = Date.parse('2026-08-08T12:00:00Z')
+    setLearningState(
+      { countriesLearnedAt: milestoneAt, capitalsLearnedAt: milestoneAt },
+      ['IS', 'NO'],
+      { 'FI|SE': { countriesLearnedAt: earlierMilestone, capitalsLearnedAt: earlierMilestone } },
+    )
 
-    await migrateWorldCountriesAttemptTypes({ activeCountries: [] })
-    expect(stored.attempts).toHaveLength(0)
+    const result = await migrateWorldCountriesAttemptProvenance()
 
-    const restored = await migrateWorldCountriesAttemptTypes({ activeCountries: [norway] })
-    const repeated = await migrateWorldCountriesAttemptTypes({ activeCountries: [norway] })
+    expect(result.synthetic).toBe(8)
+    expect(['IS', 'NO', 'FI', 'SE'].every(countryId =>
+      attemptRows(countryId, 'location-to-country').some(attempt => attempt.attemptType === 'learning'),
+    )).toBe(true)
+    expect(['IS', 'NO', 'FI', 'SE'].every(countryId =>
+      attemptRows(countryId, 'country-to-capital').some(attempt => attempt.attemptType === 'learning'),
+    )).toBe(true)
 
-    expect(restored.synthetic).toBe(1)
-    expect(repeated.synthetic).toBe(0)
-    expect(stored.attempts).toHaveLength(1)
+    const attemptsReadDuringMigration = getAllAttemptsMock.mock.calls.length
+    getAllSubregionLearningStates([norway])
+    getAllSubregionLearningStates([iceland, norway])
+    expect(getAllAttemptsMock).toHaveBeenCalledTimes(attemptsReadDuringMigration)
+    expect(['IS', 'NO', 'FI', 'SE'].every(countryId =>
+      attemptRows(countryId, 'location-to-country').some(attempt => attempt.attemptType === 'learning'),
+    )).toBe(true)
   })
 
-  it('serializes overlapping runs so synthetic reconciliation stays idempotent', async () => {
+  it('recovers only the latest eligible attempt across all milestones for one item', async () => {
+    const earlierMilestone = Date.parse('2026-08-08T12:00:00Z')
+    const laterMilestone = Date.parse('2026-08-12T12:00:00Z')
+    const itemId = recallTargetIdFor('NO', 'location-to-country')
+    stored.attempts.push(
+      { itemId, at: earlierMilestone - 60 * 60 * 1000, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-08' },
+      { itemId, at: laterMilestone - 60 * 60 * 1000, ok: true, ms: 100, evidenceKind: 'recall', localDate: '2026-08-12' },
+    )
+    setLearningState(
+      { countriesLearnedAt: laterMilestone },
+      ['IS', 'NO'],
+      { 'NO|SE': { countriesLearnedAt: earlierMilestone } },
+    )
+
+    await migrateWorldCountriesAttemptProvenance()
+
+    expect(attemptRows('NO', 'location-to-country').map(attempt => attempt.attemptType)).toEqual(['legacy', 'learning'])
+  })
+
+  it('uses the earliest applicable milestone for synthetic Learning evidence', async () => {
+    const earlierMilestone = Date.parse('2026-08-08T12:00:00Z')
+    const laterMilestone = Date.parse('2026-08-12T12:00:00Z')
+    setLearningState(
+      { countriesLearnedAt: laterMilestone },
+      ['IS', 'NO'],
+      { 'NO|SE': { countriesLearnedAt: earlierMilestone } },
+    )
+
+    await migrateWorldCountriesAttemptProvenance()
+
+    const norwayLearning = attemptRows('NO', 'location-to-country').find(attempt => attempt.attemptType === 'learning')
+    expect(norwayLearning?.at).toBe(earlierMilestone)
+    expect(norwayLearning?.localDate).toBe('2026-08-08')
+  })
+
+  it('does not manufacture Country identity from malformed retained fingerprints', async () => {
+    localStorage.setItem('world-countries-subregion-learning', JSON.stringify([
+      { subregionId: norway.subregionId, countriesLearnedAt: milestoneAt },
+    ]))
+    localStorage.setItem('world-countries-subregion-learning-membership', JSON.stringify({
+      [norway.subregionId]: {
+        current: 'ZZ|NO',
+        history: {
+          'IS|NO|NO': { countriesLearnedAt: milestoneAt },
+          'NO|TR': { capitalsLearnedAt: milestoneAt },
+          'NO|ZZ': { countriesLearnedAt: milestoneAt },
+        },
+      },
+    }))
+
+    const result = await migrateWorldCountriesAttemptProvenance()
+
+    expect(result.synthetic).toBe(0)
+    expect(stored.attempts).toHaveLength(0)
+  })
+
+  it('succeeds without writes for an empty profile', async () => {
+    const result = await migrateWorldCountriesAttemptProvenance()
+
+    expect(result).toEqual({ rewritten: 0, synthetic: 0, alreadyTyped: 0 })
+    expect(stored.attempts).toHaveLength(0)
+    expect(recordAttemptOrThrowMock).not.toHaveBeenCalled()
+  })
+
+  it('serializes overlapping runs so synthetic writes remain idempotent', async () => {
     setLearningState({ countriesLearnedAt: milestoneAt })
 
     const [first, second] = await Promise.all([
-      migrateWorldCountriesAttemptTypes({ activeCountries: [norway] }),
-      migrateWorldCountriesAttemptTypes({ activeCountries: [norway] }),
+      migrateWorldCountriesAttemptProvenance(),
+      migrateWorldCountriesAttemptProvenance(),
     ])
 
     expect([first.synthetic, second.synthetic].sort()).toEqual([0, 1])
     expect(stored.attempts).toHaveLength(1)
   })
 
-  it('rejects a failed synthetic write and completes it on a later retry', async () => {
+  it('rejects a failed strict synthetic write and completes it on retry', async () => {
     setLearningState({ countriesLearnedAt: milestoneAt })
     strictWriteState.reject = true
 
-    await expect(migrateWorldCountriesAttemptTypes({ activeCountries: [norway] }))
-      .rejects.toThrow('synthetic write failed')
+    await expect(migrateWorldCountriesAttemptProvenance()).rejects.toThrow('synthetic write failed')
     expect(stored.attempts).toHaveLength(0)
 
     strictWriteState.reject = false
-    const retry = await migrateWorldCountriesAttemptTypes({ activeCountries: [norway] })
-    const repeated = await migrateWorldCountriesAttemptTypes({ activeCountries: [norway] })
+    const retry = await migrateWorldCountriesAttemptProvenance()
+    const repeated = await migrateWorldCountriesAttemptProvenance()
 
     expect(retry.synthetic).toBe(1)
     expect(repeated.synthetic).toBe(0)
-    expect(stored.attempts.filter(attempt => attempt.attemptType === 'learning')).toHaveLength(1)
+    expect(attemptRows('NO', 'location-to-country')).toHaveLength(1)
   })
 })

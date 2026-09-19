@@ -40,6 +40,21 @@ selects a mode from `src/app/modes.tsx`.
 - `src/features/` owns product-domain data, rules, workflows, and feature-local
   persistence adapters.
 
+`src/app/dataMigrations/` owns one application-wide logical user-data version,
+its ordered migration registry, sequencing, and the required gate mounted before
+normal providers and feature composition. Normal application code mounts only
+after the persisted logical model reaches `CURRENT_DATA_MODEL_VERSION`.
+Registry entries may call feature-owned converters through feature root
+barrels; conversion semantics remain in their owning features. Future Pi,
+Major System, Cards/PAO, World Countries, or cross-feature conversions extend
+this same registry rather than introducing parallel migration lifecycles.
+Per-feature startup gates and version flags were rejected because they duplicate
+orchestration, allow mixed logical models in one running app, and repeat costly
+compatibility work during ordinary feature entry. This logical version is
+separate from low-level persistence bootstrap and IndexedDB schema upgrades,
+which remain owned by their persistence implementations, including
+`core/scoring/attemptStore.ts`.
+
 `PageLayout` provides a standard fixed-center layout with optional side rails
 and one transient expanded-center presentation. In standard presentation the
 center remains 42rem / 672px at `xl+`, with the existing symmetric rail gutters

@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import '@/app/index.css'
 import App from '@/app/App'
+import { DataMigrationGate } from '@/app/dataMigrations/DataMigrationGate'
 import { SoundKeyProvider, WordsProvider } from '@/features/major-system'
 import { CardWordsProvider, PaoCardsProvider } from '@/features/cards'
 import { SettingsProvider } from '@/app/settings/SettingsContext'
@@ -26,18 +27,20 @@ if (import.meta.env.DEV) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <SettingsProvider>
-      <WordsProvider>
-        <CardWordsProvider>
-          <PaoCardsProvider>
-            <SoundKeyProvider>
-              <PageLayoutProvider>
-                <App />
-              </PageLayoutProvider>
-            </SoundKeyProvider>
-          </PaoCardsProvider>
-        </CardWordsProvider>
-      </WordsProvider>
-    </SettingsProvider>
+    <DataMigrationGate>
+      <SettingsProvider>
+        <WordsProvider>
+          <CardWordsProvider>
+            <PaoCardsProvider>
+              <SoundKeyProvider>
+                <PageLayoutProvider>
+                  <App />
+                </PageLayoutProvider>
+              </SoundKeyProvider>
+            </PaoCardsProvider>
+          </CardWordsProvider>
+        </WordsProvider>
+      </SettingsProvider>
+    </DataMigrationGate>
   </StrictMode>,
 )

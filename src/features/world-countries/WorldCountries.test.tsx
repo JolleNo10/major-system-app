@@ -2,17 +2,11 @@
 
 import { act, createElement, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { PageLayout } from '@/app/layout/PageLayout'
 import { PageLayoutProvider } from '@/app/layout/PageLayoutContext'
 import { SettingsProvider } from '@/app/settings/SettingsContext'
 import { WorldCountries } from './WorldCountries'
-
-const migrateWorldCountriesAttemptTypesMock = vi.hoisted(() => vi.fn(() => Promise.resolve()))
-
-vi.mock('./learning/attemptTypeMigration', () => ({
-  migrateWorldCountriesAttemptTypes: migrateWorldCountriesAttemptTypesMock,
-}))
 
 vi.mock('./drill/WorldCountriesDrill', () => ({
   WorldCountriesDrill: ({ onExit, initialActivity, initialScope }: { onExit?: () => void; initialActivity?: { kind: string; mode?: string }; initialScope?: { kind: string; subregionId?: string } }) => createElement('div', { 'data-testid': 'drill-workflow' }, createElement('button', { type: 'button', onClick: onExit }, 'Exit Drill'), ['Drill workflow', initialActivity?.kind ?? 'drill', initialActivity?.mode, initialScope?.kind, initialScope?.subregionId].filter(Boolean).join(' ')),
@@ -52,11 +46,6 @@ afterEach(() => {
   document.body.replaceChildren()
 })
 
-beforeEach(() => {
-  migrateWorldCountriesAttemptTypesMock.mockReset()
-  migrateWorldCountriesAttemptTypesMock.mockResolvedValue(undefined)
-})
-
 async function renderShell() {
   const mount = document.createElement('div')
   document.body.append(mount)
@@ -77,70 +66,6 @@ async function renderShell() {
 }
 
 describe('World Countries guided shell', () => {
-  it('keeps status-dependent workflows hidden while provenance migration is pending', async () => {
-    let resolveMigration!: () => void
-    migrateWorldCountriesAttemptTypesMock.mockReturnValueOnce(new Promise<void>(resolve => {
-      resolveMigration = resolve
-    }))
-
-    const mount = await renderShell()
-
-    expect(mount.querySelector('[role="status"]')?.textContent).toBe('Loading World Countries progress…')
-    expect(mount.querySelector('[data-testid="today-workflow"]')).toBeNull()
-    expect(mount.querySelector('[data-testid="drill-workflow"]')).toBeNull()
-    expect(mount.querySelector('[data-testid="recite-workflow"]')).toBeNull()
-    expect(mount.querySelector('[data-testid="quiz-workflow"]')).toBeNull()
-
-    await act(async () => {
-      resolveMigration()
-      await Promise.resolve()
-    })
-  })
-
-  it('mounts World Countries workflows only after migration succeeds', async () => {
-    let resolveMigration!: () => void
-    const migration = new Promise<void>(resolve => {
-      resolveMigration = resolve
-    })
-    migrateWorldCountriesAttemptTypesMock.mockReturnValueOnce(migration)
-
-    const mount = await renderShell()
-
-    expect(mount.querySelector('[data-testid="today-workflow"]')).toBeNull()
-    expect(migrateWorldCountriesAttemptTypesMock).toHaveBeenCalledWith(expect.objectContaining({
-      activeCountries: expect.arrayContaining([expect.objectContaining({ id: 'NO' })]),
-    }))
-
-    await act(async () => {
-      resolveMigration()
-      await migration
-    })
-
-    expect(mount.querySelector('[role="status"]')).toBeNull()
-    expect(mount.querySelector('[data-testid="today-workflow"]')).not.toBeNull()
-  })
-
-  it('keeps status-dependent workflows hidden when provenance migration fails', async () => {
-    let rejectMigration!: (reason?: unknown) => void
-    const migration = new Promise<void>((_resolve, reject) => {
-      rejectMigration = reject
-    })
-    migrateWorldCountriesAttemptTypesMock.mockReturnValueOnce(migration)
-
-    const mount = await renderShell()
-
-    await act(async () => {
-      rejectMigration(new Error('migration failed'))
-      await Promise.resolve()
-    })
-
-    expect(mount.querySelector('[role="alert"]')?.textContent).toBe('World Countries progress could not be loaded.')
-    expect(mount.querySelector('[data-testid="today-workflow"]')).toBeNull()
-    expect(mount.querySelector('[data-testid="drill-workflow"]')).toBeNull()
-    expect(mount.querySelector('[data-testid="recite-workflow"]')).toBeNull()
-    expect(mount.querySelector('[data-testid="quiz-workflow"]')).toBeNull()
-  })
-
   it('opens on Home without the redundant feature header or Playground shortcut', async () => {
     const mount = await renderShell()
 

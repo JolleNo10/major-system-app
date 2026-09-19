@@ -264,13 +264,15 @@ Developing, Strong, or Mastered.
 `learning/capitalEvidenceBackfill.ts` remains an explicit compatibility
 utility for Capital milestones recorded before Final recall wrote evidence.
 Rows it reconstructs are historical Learning evidence and therefore use
-`attemptType: 'learning'`. The automatic attempt-provenance migration now
-also reconstructs missing Country and Capital Learning rows for the active
-population, but the backfill remains exported for callers that still need its
-plan/apply surface. Its apply path uses strict persistence and reports a
-reconstruction only after the Learning row is durably stored; if a later row
-fails, earlier rows remain and a subsequent run resumes safely. Both paths
-are idempotent and never overwrite earned evidence. Review, Strengthen, Drill,
+`attemptType: 'learning'`. The app-owned logical `0 -> 1` migration also
+reconstructs missing Country and Capital Learning rows for every valid
+persisted membership snapshot, including retained Subregion membership history;
+it does not depend on the active Country population at migration time. The
+backfill remains exported for callers that still need its plan/apply surface.
+Its apply path uses strict persistence and reports a reconstruction only after
+the Learning row is durably stored; if a later row fails, earlier rows remain
+and a subsequent run resumes safely. Both paths are idempotent and never
+overwrite earned evidence. Review, Strengthen, Drill,
 Legacy, and untyped evidence never substitutes for the Learning provenance row
 during this historical reconstruction.
 
@@ -335,14 +337,21 @@ milestone-matched same-day successful non-recognition attempt may become
 core skills with no explicit Learning row, the first legacy local-day cluster
 is acquisition-equivalent and later clusters are performance-equivalent; when
 explicit Learning exists, all Legacy rows are performance evidence. The
-migration reruns at the
-composition boundary for the active Country population, leaves typed rows
-untouched, and can add missing synthetic Learning evidence for applicable
-milestones without using those milestones as runtime proficiency state. A
-synthetic row is considered reconciled only after its strict durable write
-succeeds; a failed write rejects the migration so a later composition-boundary
-run can resume the idempotent reconciliation. The exported Capital compatibility
-backfill uses the same provenance distinction: only a successful same-day
+app-owned global `0 -> 1` migration invokes this feature-owned converter before
+normal application providers mount. It covers the complete persisted learning
+model: the current snapshot associated with its membership fingerprint and
+every retained `history[fingerprint]` snapshot. Fingerprints are accepted only
+when they contain canonical Country IDs belonging to that Subregion; malformed
+data cannot invent Country identity. A Country/skill with several milestone
+dates needs only one durable Learning row: the latest qualifying historical
+attempt is recovered, or a synthetic row uses the earliest valid milestone.
+Valid typed rows remain untouched, and milestones do not become runtime
+proficiency state. Strict synthetic writes must succeed before the global app
+version can advance; partial conversion remains idempotent/resumable within
+that step. `WorldCountries.tsx` no longer gates entry or runs migration, and
+later Country-set changes do not rerun it because all retained memberships were
+converted before app model version `1` was committed. The exported Capital
+compatibility backfill uses the same provenance distinction: only a successful same-day
 `recall` row with `attemptType: 'learning'` counts as already reconstructed
 Learning evidence. Same-day Review, Strengthen, Drill, Legacy, or untyped
 evidence never substitutes for that row.

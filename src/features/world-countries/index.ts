@@ -2,6 +2,7 @@
 // docs/architecture/features/WORLD_COUNTRIES.md
 
 export { WorldCountries } from './WorldCountries'
+export { migrateWorldCountriesAttemptProvenance } from './learning/attemptTypeMigration'
 export {
   WORLD_COUNTRIES_ENTITY_GROUP_DEFINITIONS,
   normalizeWorldCountriesIncludedEntityGroups,

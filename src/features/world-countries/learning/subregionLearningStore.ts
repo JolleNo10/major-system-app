@@ -5,6 +5,7 @@ import { isSubregionId, type SubregionId } from '@/features/world-countries/data
 import type { SubregionLearningState } from '@/features/world-countries/learning/subregionLearningState'
 import {
   activeMembershipFingerprint,
+  enumerateRetainedSubregionLearningSnapshots,
   parseMembershipRecords,
   parseStoredStates,
   reconcileSubregionLearningMembership,
@@ -109,6 +110,13 @@ export function getAllSubregionLearningStates(
   activeCountries: readonly Country[] = countries,
 ): SubregionLearningState[] {
   return readActiveStates(activeCountries).map(state => ({ ...state }))
+}
+
+export function getAllRetainedSubregionLearningSnapshots(): ReturnType<typeof enumerateRetainedSubregionLearningSnapshots> {
+  return enumerateRetainedSubregionLearningSnapshots(
+    readJSON<unknown>(SUBREGION_LEARNING_STORAGE_KEY, []),
+    readJSON<unknown>(SUBREGION_LEARNING_MEMBERSHIP_KEY, {}),
+  )
 }
 
 export function getSubregionLearningState(
