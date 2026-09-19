@@ -149,3 +149,37 @@ needs conversion.
 - **Prevention:** Choose transient effects whose browser cost scales with the
   semantic shape. Name animation-frame timings as frame opportunities, not
   completed paint.
+
+# World Countries map cost lived in generated geometry
+
+- **What happened:** Three rounds of World map performance work tuned the
+  transient effect (`feMorphology`, then a luminance mask, then retaining the
+  result) while the dominant cost stayed untouched: the presentation
+  pre-materialized a clone of every member Country path. Outer boundaries
+  cloned each member twice per Continent and inner glows cloned each Country
+  path 37 times, so the 209-path World map carried well over a thousand
+  generated complex paths before any interaction.
+- **Root cause:** The effects were reviewed as pictures rather than as element
+  counts, and the DEV timers only measured JavaScript. Setting inline styles
+  and appending nodes marks work for the browser's later style, layout and
+  raster phases, so `performance.now()` deltas around that work systematically
+  under-report it and made the instrumentation look innocent.
+- **Prevention:** For map presentation, count the generated elements and the
+  geometry they duplicate before tuning the effect, and check whether the
+  count scales with Country population or learner progress. Do not treat a
+  JavaScript timer as evidence that DOM-producing work is cheap.
+
+# Concatenating authored SVG path data
+
+- **What happened:** Combining member Country paths into one path initially
+  promoted a leading lowercase `m` by uppercasing the whole command.
+- **Root cause:** A path's first moveto is absolute even when authored
+  lowercase, but only its *first coordinate pair* is. Any further pairs in
+  that command are implicit relative linetos, and `M`'s implicit lineto is
+  absolute, so uppercasing turned them into absolute coordinates. 158 of the
+  209 World paths are authored lowercase.
+- **Prevention:** When concatenating authored path data, promote only the
+  leading coordinate pair and move the remainder into an explicit `l`. Verify
+  geometry transforms numerically against the real asset - evaluating every
+  absolute point of the combined path against the members rendered separately
+  catches this, while a rendered screenshot may not.

@@ -153,36 +153,47 @@ export type SvgMapCountryInnerGlows =
   | Readonly<Record<string, SvgMapCountryInnerGlow | null>>
   | Iterable<readonly [string, SvgMapCountryInnerGlow | null]>
 
-export interface SvgMapCountryInnerGlowLayer {
-  width: number
-  opacity: number
+/** Filter-primitive form of one inward edge treatment, in source user units. */
+export interface SvgMapCountryInnerGlowFilterProfile {
+  /** Inward extent of the glow band. */
+  bandWidth: number
+  /** Gaussian softness applied to the inner edge of the band. */
+  blur: number
+  /** Peak alpha at the Country edge. */
+  edgeOpacity: number
+  /** Residual alpha carried across the Country body. */
+  bodyOpacity: number
 }
 
-export const SVG_MAP_COUNTRY_INNER_GLOW_LAYER_COUNT = 36
-
-/** Pure settled profile calculation shared by the declarative SVG renderer and tests. */
-export function calculateSvgMapCountryInnerGlowLayers(
+/**
+ * Express one inner glow as filter primitives instead of stacked strokes.
+ *
+ * The layered form this replaced drew 36 clipped stroke copies of every
+ * Country path, so a fully learned World map materialized thousands of
+ * clones. The alpha terms are carried over from that form unchanged; the
+ * geometry terms are its equivalent band, since the widest layer was centred
+ * on the edge and only its inner half was ever visible through the clip.
+ *
+ * `scale` is rendered source units per authored unit. The layered form used
+ * `vector-effect: non-scaling-stroke`, so the band held a constant on-screen
+ * width as the camera zoomed; dividing by the current camera scale keeps that
+ * behaviour, because filter primitives are sized in user space.
+ */
+export function calculateSvgMapCountryInnerGlowFilterProfile(
   glow: Pick<SvgMapCountryInnerGlow, 'edgeIntensity' | 'fadeLength' | 'fadeBody' | 'edgeConcentration'>,
-): readonly SvgMapCountryInnerGlowLayer[] {
-  const maxWidth = 8 + glow.fadeLength * 1.8
-  const minWidth = 1.8
-  const layerCount = SVG_MAP_COUNTRY_INNER_GLOW_LAYER_COUNT
-  const edgeAlpha = 1 - Math.exp(-glow.edgeIntensity / 55)
-  const bodyAlpha = edgeAlpha * (glow.fadeBody / 100) * 0.72
+  scale = 1,
+): SvgMapCountryInnerGlowFilterProfile {
+  const safeScale = Number.isFinite(scale) && scale > 0 ? scale : 1
+  const bandWidth = (8 + glow.fadeLength * 1.8) / 2 / safeScale
+  const edgeOpacity = 1 - Math.exp(-glow.edgeIntensity / 55)
+  const bodyOpacity = edgeOpacity * (glow.fadeBody / 100) * 0.72
   const concentrationExponent = 0.45 + (glow.edgeConcentration / 100) * 4.2
-  let previousTargetAlpha = 0
-
-  return Array.from({ length: layerCount }, (_, index) => {
-    const t = (index + 1) / layerCount
-    const width = maxWidth - (maxWidth - minWidth) * (index / (layerCount - 1))
-    const shaped = t ** concentrationExponent
-    const targetAlpha = bodyAlpha + (edgeAlpha - bodyAlpha) * shaped
-    const opacity = previousTargetAlpha >= 0.999
-      ? 0
-      : 1 - ((1 - targetAlpha) / (1 - previousTargetAlpha))
-    previousTargetAlpha = targetAlpha
-    return { width, opacity }
-  })
+  return {
+    bandWidth,
+    blur: Math.max(0.05, bandWidth / (2 * concentrationExponent)),
+    edgeOpacity,
+    bodyOpacity,
+  }
 }
 
 export const DEFAULT_SVG_MAP_SETTINGS: Readonly<SvgMapSettings> = Object.freeze({
@@ -326,26 +337,6 @@ function formatSvgMatrix(transform: SvgAffineTransform): string {
   const values = [transform.a, transform.b, transform.c, transform.d, transform.e, transform.f]
     .map(value => Number(value.toFixed(6)))
   return `matrix(${values.join(' ')})`
-}
-
-function createInnerGlowGeometry(
-  path: SVGPathElement,
-  mapSvg: SVGSVGElement,
-  document: Document,
-  sourceAttribute: string,
-): SVGPathElement {
-  const clone = path.cloneNode(true) as SVGPathElement
-  clone.removeAttribute('id')
-  clone.setAttribute(sourceAttribute, path.id.trim())
-  clone.setAttribute('pointer-events', 'none')
-  clone.style.setProperty('pointer-events', 'none', 'important')
-
-  const transform = readSvgElementTransformToLayer(path, mapSvg)
-  if (transform) {
-    clone.setAttribute('transform', formatSvgMatrix(transform))
-    clone.style.removeProperty('transform')
-  }
-  return clone
 }
 
 function createOutlineGeometry(
@@ -506,9 +497,6 @@ export class SvgMapController {
   private underlayGroupOutlineLayer: SVGGElement | null = null
   private overlayGroupOutlineLayer: SVGGElement | null = null
   private dirtyGroupOutlineCountryIds = new Set<string>()
-  private countryInnerGlowLayer: SVGGElement | null = null
-  private countryInnerGlowBaseFills = new Map<SVGPathElement, SVGPathElement>()
-  private countryInnerGlowSequence = 0
   private countryInnerGlowDirty = false
   private outlineSequence = 0
   private hoverPaintGeneration = 0
@@ -1598,11 +1586,8 @@ export class SvgMapController {
     }
     this.svg.querySelectorAll('defs[data-svg-map-country-pattern-defs]').forEach(defs => defs.remove())
 
-    const countryStylingStartedAt = perfEnabled ? performance.now() : 0
-    for (const country of this.countries.values()) {
-      this.renderCountryPresentation(country, reducedMotion, transition)
-    }
-    const countryStylingMs = perfEnabled ? performance.now() - countryStylingStartedAt : 0
+    // Country presentation references the glow filters by id, so the defs are
+    // materialized first.
     let innerGlowMs = 0
     if (this.countryInnerGlowDirty) {
       const innerGlowStartedAt = perfEnabled ? performance.now() : 0
@@ -1610,6 +1595,11 @@ export class SvgMapController {
       if (perfEnabled) innerGlowMs = performance.now() - innerGlowStartedAt
       this.countryInnerGlowDirty = false
     }
+    const countryStylingStartedAt = perfEnabled ? performance.now() : 0
+    for (const country of this.countries.values()) {
+      this.renderCountryPresentation(country, reducedMotion, transition)
+    }
+    const countryStylingMs = perfEnabled ? performance.now() - countryStylingStartedAt : 0
     const groupOutlineStartedAt = perfEnabled ? performance.now() : 0
     this.renderGroupOutlines()
     const groupOutlineMs = perfEnabled ? performance.now() - groupOutlineStartedAt : 0
@@ -1679,18 +1669,16 @@ export class SvgMapController {
 
     const hidden = this.hiddenCountries.has(country.id)
     const muted = this.mutedCountries.has(country.id)
-    const useInnerGlowBaseFill = this.countryInnerGlows.has(country.id) && !hidden && !muted
-    const sourceFill = useInnerGlowBaseFill && transientFill === null ? 'transparent' : fill
+    // The glow composites with the Country's own graphic, so it cannot be
+    // covered by that Country's fill and needs no separate base-fill copy.
+    const innerGlow = hidden || muted ? undefined : this.countryInnerGlows.get(country.id)
+    const innerGlowFilter = innerGlow ? `url(#${this.getCountryInnerGlowFilterId(innerGlow)})` : null
     for (const pathState of country.pathStates) {
-      const generatedBaseFill = this.countryInnerGlowBaseFills.get(pathState.path)
-      if (generatedBaseFill) {
-        this.setCountryInnerGlowBaseFill(generatedBaseFill, persistentBaseFill, pathState.originalFill)
-      }
-      setOverride(pathState.path, 'fill', sourceFill, pathState.originalFill)
+      setOverride(pathState.path, 'fill', fill, pathState.originalFill)
       setOverride(pathState.path, 'stroke', stroke, pathState.originalStroke)
       setOverride(pathState.path, 'stroke-width', strokeWidth, pathState.originalStrokeWidth)
       pathState.path.style.setProperty('transition', transition)
-      restoreStyle(pathState.path, 'filter', pathState.originalFilter)
+      setOverride(pathState.path, 'filter', innerGlowFilter, pathState.originalFilter)
       setOverride(pathState.path, 'visibility', hidden ? 'hidden' : null, pathState.originalVisibility)
       setOverride(pathState.path, 'pointer-events', hidden ? 'none' : null, pathState.originalPointerEvents)
     }
@@ -1716,21 +1704,6 @@ export class SvgMapController {
     return pattern
       ? this.getPatternUrl(pattern)
       : this.countryColors.get(countryId) ?? this.settings.countryFill
-  }
-
-  private setCountryInnerGlowBaseFill(
-    geometry: SVGPathElement,
-    fill: string | null,
-    originalFill: OriginalStyle,
-  ): void {
-    if (fill === null) {
-      restoreStyle(geometry, 'fill', originalFill)
-      return
-    }
-    if (geometry.style.getPropertyValue('fill') !== fill
-      || geometry.style.getPropertyPriority('fill') !== 'important') {
-      geometry.style.setProperty('fill', fill, 'important')
-    }
   }
 
   private setHoveredCountryAndNotify(id: string | null): void {
@@ -1792,120 +1765,109 @@ export class SvgMapController {
     this.countryInnerGlowDirty = true
   }
 
+  /** Rendered source units per authored unit for the live camera. */
+  private getCameraScale(): number {
+    const source = this.originalViewBox ? parseViewBox(this.originalViewBox) : null
+    const current = this.svg ? parseViewBox(this.svg.getAttribute('viewBox') ?? '') : null
+    if (!source || !current || !(current.width > 0) || !(source.width > 0)) return 1
+    return source.width / current.width
+  }
+
+  private getCountryInnerGlowFilterId(glow: SvgMapCountryInnerGlow): string {
+    const key = `${glow.color}|${glow.edgeIntensity}|${glow.fadeLength}|${glow.fadeBody}|${glow.edgeConcentration}`
+    const encoded = [...key].map(char => char.codePointAt(0)?.toString(16) ?? '').join('')
+    return `svg-map-country-inner-glow-${encoded}`
+  }
+
+  /**
+   * Materialize one filter per distinct glow rather than geometry per Country.
+   *
+   * Glow colors come from a small status palette, so a whole map normally
+   * needs a handful of filters no matter how many Countries carry a glow. The
+   * stacked-stroke form this replaced built a clipPath, a base fill copy and
+   * 36 stroked copies of every Country path, which grew with progress until a
+   * fully learned World map held thousands of cloned complex paths.
+   */
   private renderCountryInnerGlows(): void {
     const perfEnabled = import.meta.env.DEV
     const startedAt = perfEnabled ? performance.now() : 0
-    const logIfSlow = perfEnabled
-      ? () => {
-          const ms = performance.now() - startedAt
-          if (ms >= SLOW_MAP_OPERATION_THRESHOLD_MS) {
-            console.log('[WC perf] map-inner-glow', { ms, countriesWithGlow: this.countryInnerGlows.size })
-          }
-        }
-      : null
     this.removeCountryInnerGlowPresentation()
-    const firstPath = this.countries.values().next().value?.path
-    const mapSvg = firstPath?.ownerSVGElement
-    if (!mapSvg || this.countryInnerGlows.size === 0) {
-      logIfSlow?.()
-      return
-    }
+    const mapSvg = this.svg
+    if (!mapSvg || this.countryInnerGlows.size === 0) return
 
     const document = mapSvg.ownerDocument
+    const scale = this.getCameraScale()
     const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs')
     defs.setAttribute('data-svg-map-country-inner-glow-defs', '')
+
+    const created = new Set<string>()
+    for (const glow of this.countryInnerGlows.values()) {
+      const id = this.getCountryInnerGlowFilterId(glow)
+      if (created.has(id)) continue
+      created.add(id)
+      defs.append(this.createCountryInnerGlowFilter(id, glow, scale, document))
+    }
+    if (defs.childElementCount === 0) return
+
     mapSvg.insertBefore(defs, mapSvg.firstChild)
-
-    const layer = document.createElementNS('http://www.w3.org/2000/svg', 'g')
-    layer.setAttribute('data-svg-map-country-inner-glow', '')
-    layer.setAttribute('pointer-events', 'none')
-
-    for (const [countryId, glow] of this.countryInnerGlows) {
-      const country = this.countries.get(countryId)
-      if (!country || this.hiddenCountries.has(countryId) || this.mutedCountries.has(countryId)) continue
-      const layers = calculateSvgMapCountryInnerGlowLayers(glow)
-      const countryLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g')
-      countryLayer.setAttribute('data-svg-map-country-inner-glow-country', countryId)
-      countryLayer.setAttribute('pointer-events', 'none')
-
-      for (const pathState of country.pathStates) {
-        const clipId = `svg-map-country-inner-glow-clip-${this.countryInnerGlowSequence++}`
-        const clip = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath')
-        clip.setAttribute('id', clipId)
-        clip.setAttribute('data-svg-map-country-inner-glow-clip', countryId)
-        clip.setAttribute('clipPathUnits', 'userSpaceOnUse')
-        const clipGeometry = createInnerGlowGeometry(pathState.path, mapSvg, document, 'data-svg-map-country-inner-glow-clip-source')
-        clipGeometry.style.setProperty('fill', '#ffffff', 'important')
-        clipGeometry.style.setProperty('stroke', 'none', 'important')
-        clip.append(clipGeometry)
-        defs.append(clip)
-
-        const pathLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g')
-        pathLayer.setAttribute('data-svg-map-country-inner-glow-path', pathState.path.id.trim())
-        pathLayer.setAttribute('pointer-events', 'none')
-        const baseFill = createInnerGlowGeometry(
-          pathState.path,
-          mapSvg,
-          document,
-          'data-svg-map-country-inner-glow-base-source',
-        )
-        baseFill.setAttribute('data-svg-map-country-inner-glow-base', '')
-        baseFill.setAttribute('stroke', 'none')
-        baseFill.setAttribute('filter', 'none')
-        baseFill.style.setProperty('stroke', 'none', 'important')
-        baseFill.style.setProperty('filter', 'none', 'important')
-        baseFill.style.setProperty('transition', 'none', 'important')
-        this.setCountryInnerGlowBaseFill(
-          baseFill,
-          this.getCountryPersistentBaseFill(countryId),
-          pathState.originalFill,
-        )
-        this.countryInnerGlowBaseFills.set(pathState.path, baseFill)
-        pathLayer.append(baseFill)
-        for (const [index, profile] of layers.entries()) {
-          const geometry = createInnerGlowGeometry(pathState.path, mapSvg, document, 'data-svg-map-country-inner-glow-source')
-          geometry.setAttribute('data-svg-map-country-inner-glow-layer', String(index))
-          geometry.setAttribute('fill', 'none')
-          geometry.setAttribute('stroke', glow.color)
-          geometry.setAttribute('stroke-width', String(profile.width))
-          geometry.setAttribute('stroke-linecap', 'round')
-          geometry.setAttribute('stroke-linejoin', 'round')
-          geometry.setAttribute('vector-effect', 'non-scaling-stroke')
-          geometry.setAttribute('clip-path', `url(#${clipId})`)
-          geometry.style.setProperty('fill', 'none', 'important')
-          geometry.style.setProperty('stroke', glow.color, 'important')
-          geometry.style.setProperty('stroke-width', String(profile.width), 'important')
-          geometry.style.setProperty('stroke-linecap', 'round', 'important')
-          geometry.style.setProperty('stroke-linejoin', 'round', 'important')
-          geometry.style.setProperty('opacity', String(profile.opacity), 'important')
-          geometry.style.setProperty('pointer-events', 'none', 'important')
-          geometry.style.removeProperty('filter')
-          geometry.style.removeProperty('visibility')
-          pathLayer.append(geometry)
-        }
-        countryLayer.append(pathLayer)
+    if (perfEnabled) {
+      const ms = performance.now() - startedAt
+      if (ms >= SLOW_MAP_OPERATION_THRESHOLD_MS) {
+        console.log('[WC perf] map-inner-glow', {
+          ms,
+          countriesWithGlow: this.countryInnerGlows.size,
+          filters: created.size,
+        })
       }
-      if (countryLayer.childElementCount > 0) layer.append(countryLayer)
+    }
+  }
+
+  private createCountryInnerGlowFilter(
+    id: string,
+    glow: SvgMapCountryInnerGlow,
+    scale: number,
+    document: Document,
+  ): SVGFilterElement {
+    const profile = calculateSvgMapCountryInnerGlowFilterProfile(glow, scale)
+    const create = (name: string, attributes: Record<string, string>): SVGElement => {
+      const element = document.createElementNS('http://www.w3.org/2000/svg', name)
+      for (const [attribute, value] of Object.entries(attributes)) element.setAttribute(attribute, value)
+      return element
     }
 
-    if (layer.childElementCount === 0) {
-      defs.remove()
-      logIfSlow?.()
-      return
+    const filter = document.createElementNS('http://www.w3.org/2000/svg', 'filter') as SVGFilterElement
+    filter.setAttribute('id', id)
+    filter.setAttribute('data-svg-map-country-inner-glow-filter', '')
+    filter.setAttribute('color-interpolation-filters', 'sRGB')
+    filter.append(
+      // Everything further inward than the band, softened so the band fades
+      // instead of ending on a hard step.
+      create('feMorphology', {
+        in: 'SourceAlpha', operator: 'erode', radius: String(profile.bandWidth), result: 'core',
+      }),
+      create('feGaussianBlur', { in: 'core', stdDeviation: String(profile.blur), result: 'soft-core' }),
+      // The inward band is the Country minus that softened core.
+      create('feComposite', { in: 'SourceAlpha', in2: 'soft-core', operator: 'out', result: 'band' }),
+      create('feFlood', {
+        'flood-color': glow.color, 'flood-opacity': String(profile.edgeOpacity), result: 'edge-tint',
+      }),
+      create('feComposite', { in: 'edge-tint', in2: 'band', operator: 'in', result: 'edge-glow' }),
+      // The body keeps a residual tint, which the layered form carried as its
+      // minimum per-layer alpha.
+      create('feFlood', {
+        'flood-color': glow.color, 'flood-opacity': String(profile.bodyOpacity), result: 'body-tint',
+      }),
+      create('feComposite', { in: 'body-tint', in2: 'SourceAlpha', operator: 'in', result: 'body-glow' }),
+    )
+    const merge = document.createElementNS('http://www.w3.org/2000/svg', 'feMerge')
+    for (const source of ['SourceGraphic', 'body-glow', 'edge-glow']) {
+      merge.append(create('feMergeNode', { in: source }))
     }
-    let firstCountryElement: Element = firstPath
-    while (firstCountryElement.parentNode && firstCountryElement.parentNode !== mapSvg) {
-      firstCountryElement = firstCountryElement.parentNode as Element
-    }
-    mapSvg.insertBefore(layer, firstCountryElement)
-    this.countryInnerGlowLayer = layer
-    logIfSlow?.()
+    filter.append(merge)
+    return filter
   }
 
   private removeCountryInnerGlowPresentation(): void {
-    this.countryInnerGlowLayer?.remove()
-    this.countryInnerGlowLayer = null
-    this.countryInnerGlowBaseFills.clear()
     this.svg?.querySelectorAll('defs[data-svg-map-country-inner-glow-defs]').forEach(defs => defs.remove())
   }
 
@@ -2766,6 +2728,9 @@ export class SvgMapController {
   private applyViewBox(value: string): void {
     if (!this.svg) return
     this.svg.setAttribute('viewBox', value)
+    // Inner glow filter primitives are sized in user space, so the camera
+    // scale has to be folded back in to keep a constant on-screen band.
+    if (this.countryInnerGlows.size > 0) this.countryInnerGlowDirty = true
     this.syncExpandedSlotAspect()
     this.render()
   }

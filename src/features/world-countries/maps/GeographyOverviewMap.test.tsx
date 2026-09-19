@@ -156,11 +156,11 @@ describe('GeographyOverviewMap', () => {
     })
 
     const boundary = mount.querySelector('[data-svg-map-group-outline="continent-europe"]')
-    const innerGlow = mount.querySelector('[data-svg-map-country-inner-glow-country="Norway"]')
+    const innerGlow = mount.querySelector('[data-svg-map-country-inner-glow-filter]')
     const countryOutline = mount.querySelector('[data-svg-map-group-outline="country-edge-outline"]')
     const countryHalo = mount.querySelector('[data-svg-map-group-outline="country-edge-halo"]')
     const selectedSubregion = mount.querySelector('[data-svg-map-group-outline="subregion-northern-europe"]')
-    const norwayBaseFill = mount.querySelector('[data-svg-map-country-inner-glow-base-source="Norway"]')
+    const glowingNorway = mount.querySelector('path#Norway') as SVGPathElement
     expect(boundary).not.toBeNull()
     expect(boundary?.getAttribute('data-svg-map-group-outline-effect')).toBe('outer-boundary')
     expect(boundary?.getAttribute('visibility')).toBe('hidden')
@@ -169,8 +169,8 @@ describe('GeographyOverviewMap', () => {
     expect(countryOutline).not.toBeNull()
     expect(countryHalo).not.toBeNull()
     expect(selectedSubregion).not.toBeNull()
-    expect(norwayBaseFill).not.toBeNull()
-    expect((norwayBaseFill as SVGPathElement).style.fill).toBe('#B5A678')
+    expect(glowingNorway.style.filter).toBe('url(#' + innerGlow?.getAttribute('id') + ')')
+    expect(glowingNorway.style.fill).toBe('#B5A678')
 
     const originalCountryStyles = ['Norway', 'Sweden'].map(id => {
       const countryPath = mount.querySelector('path#' + id) as SVGPathElement
@@ -189,12 +189,12 @@ describe('GeographyOverviewMap', () => {
     expect(boundary?.getAttribute('visibility')).toBe('visible')
     expect(boundary?.getAttribute('opacity')).toBe('1')
     expect((mount.querySelector('[data-svg-map-group-outline="continent-europe"]') as Element | null)).toBe(boundary)
-    expect(mount.querySelector('[data-svg-map-country-inner-glow-country="Norway"]')).toBe(innerGlow)
+    expect(mount.querySelector('[data-svg-map-country-inner-glow-filter]')).toBe(innerGlow)
     expect(mount.querySelector('[data-svg-map-group-outline="country-edge-outline"]')).toBe(countryOutline)
     expect(mount.querySelector('[data-svg-map-group-outline="country-edge-halo"]')).toBe(countryHalo)
     expect(mount.querySelector('[data-svg-map-group-outline="subregion-northern-europe"]')).toBe(selectedSubregion)
-    expect(mount.querySelector('[data-svg-map-country-inner-glow-base-source="Norway"]')).toBe(norwayBaseFill)
-    expect((norwayBaseFill as SVGPathElement).style.fill).toBe('#B5A678')
+    expect(glowingNorway.style.filter).toBe('url(#' + innerGlow?.getAttribute('id') + ')')
+    expect(glowingNorway.style.fill).toBe('#B5A678')
     expect(['Norway', 'Sweden'].map(id => {
       const countryPath = mount.querySelector('path#' + id) as SVGPathElement
       return {
@@ -656,11 +656,15 @@ describe('GeographyOverviewMap', () => {
       await Promise.resolve(); await Promise.resolve()
     })
 
-    expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toBe('transparent')
-    expect((mount.querySelector('[data-svg-map-country-inner-glow-base-source="Norway"]') as SVGPathElement | null)?.style.fill).toBe('#B5A678')
-    expect((mount.querySelector('[data-svg-map-country-inner-glow-source="Norway"]') as SVGPathElement | null)?.getAttribute('stroke')).toBe('#769A70')
+    // The Country keeps its own semantic fill and references the glow filter.
+    const glowFilter = mount.querySelector('[data-svg-map-country-inner-glow-filter]')
+    expect(glowFilter).not.toBeNull()
+    expect([...glowFilter?.querySelectorAll('feFlood') ?? []].map(flood => flood.getAttribute('flood-color')))
+      .toEqual(['#769A70', '#769A70'])
+    expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toBe('#B5A678')
+    expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.filter)
+      .toBe('url(#' + glowFilter?.getAttribute('id') + ')')
     expect((mount.querySelector('path#Sweden') as SVGPathElement | null)?.style.fill).toMatch(/^url\(#svg-map-country-pattern-/)
-    expect(mount.querySelector('[data-svg-map-country-inner-glow-country="Norway"]')).not.toBeNull()
     const fetchCallsAfterLoad = fetchMock.mock.calls.length
 
     await act(async () => {
@@ -676,7 +680,9 @@ describe('GeographyOverviewMap', () => {
     })
 
     expect(fetchMock).toHaveBeenCalledTimes(fetchCallsAfterLoad)
-    expect(mount.querySelector('[data-svg-map-country-inner-glow-country="Norway"]')).not.toBeNull()
+    const recoloured = mount.querySelector('[data-svg-map-country-inner-glow-filter]')
+    expect([...recoloured?.querySelectorAll('feFlood') ?? []].map(flood => flood.getAttribute('flood-color')))
+      .toEqual(['#B5A678', '#B5A678'])
   })
 
   it('does not recompute explicit zoom when only semantic Country colors change', async () => {

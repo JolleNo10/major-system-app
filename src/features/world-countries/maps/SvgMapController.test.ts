@@ -3,7 +3,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import europeSvg from '@/features/world-countries/maps/assets/MapChart_Map_Europe.svg?raw'
 import oceaniaSvg from '@/features/world-countries/maps/assets/MapChart_Map_Oceania.svg?raw'
-import { SvgMapController, toAbsoluteLeadingMoveTo } from '@/features/world-countries/maps/SvgMapController'
+import {
+  SvgMapController,
+  calculateSvgMapCountryInnerGlowFilterProfile,
+  toAbsoluteLeadingMoveTo,
+} from '@/features/world-countries/maps/SvgMapController'
 import { getSyntheticDotSourceFingerprint } from './syntheticDots'
 
 const TEST_MAP = `
@@ -140,6 +144,34 @@ describe('toAbsoluteLeadingMoveTo', () => {
 
   it('leaves a leading moveto with a single pair as a plain absolute moveto', () => {
     expect(toAbsoluteLeadingMoveTo('m10,20c1 2 3 4 5 6')).toBe('M10 20c1 2 3 4 5 6')
+  })
+})
+
+describe('calculateSvgMapCountryInnerGlowFilterProfile', () => {
+  const glow = { edgeIntensity: 111, fadeLength: 10, fadeBody: 31, edgeConcentration: 79 }
+
+  it('keeps the alpha terms of the layered profile it replaced', () => {
+    const profile = calculateSvgMapCountryInnerGlowFilterProfile(glow)
+    // 1 - exp(-111 / 55), then scaled by fadeBody for the residual body tint.
+    expect(profile.edgeOpacity).toBeCloseTo(0.8669, 3)
+    expect(profile.bodyOpacity).toBeCloseTo(profile.edgeOpacity * 0.31 * 0.72, 6)
+    // Half of the widest layer (8 + 10 * 1.8), which was centred on the edge.
+    expect(profile.bandWidth).toBeCloseTo(13, 6)
+  })
+
+  it('shrinks the band with the camera so the glow holds a constant on-screen width', () => {
+    // The layered form used non-scaling-stroke; filter primitives are sized
+    // in user space, so zooming in has to shrink them by the same factor.
+    const zoomed = calculateSvgMapCountryInnerGlowFilterProfile(glow, 4)
+    expect(zoomed.bandWidth).toBeCloseTo(13 / 4, 6)
+    expect(zoomed.blur).toBeCloseTo(calculateSvgMapCountryInnerGlowFilterProfile(glow).blur / 4, 6)
+    expect(zoomed.edgeOpacity).toBeCloseTo(calculateSvgMapCountryInnerGlowFilterProfile(glow).edgeOpacity, 6)
+  })
+
+  it('falls back to an unscaled band for a degenerate camera scale', () => {
+    for (const scale of [0, -2, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(calculateSvgMapCountryInnerGlowFilterProfile(glow, scale).bandWidth).toBeCloseTo(13, 6)
+    }
   })
 })
 
@@ -365,79 +397,59 @@ describe('SvgMapController loading and discovery', () => {
     expect(clicked).toEqual(['Multipart', 'Multipart', 'Multipart', 'Multipart', 'Multipart'])
   })
 
-  it('renders the Country base fill and clipped Capital glow below the authored border', async () => {
+  it('renders the Capital glow as one filter per distinct glow across every Country path', async () => {
     const { mount, controller } = makeController()
     await controller.load({ markup: MULTIPART_MAP })
     const glow = { color: '#769A70', edgeIntensity: 111, fadeLength: 10, fadeBody: 31, edgeConcentration: 79 }
 
     controller.setCountryColors({ Multipart: '#B5A678' })
     controller.setCountryInnerGlows({ Multipart: glow })
-    const layer = mount.querySelector('[data-svg-map-country-inner-glow]')
-    expect(layer).not.toBeNull()
-    expect(mount.querySelectorAll('[data-svg-map-country-inner-glow-clip="Multipart"]')).toHaveLength(2)
-    expect(mount.querySelectorAll('[data-svg-map-country-inner-glow-source]')).toHaveLength(72)
-    expect(mount.querySelectorAll('[data-svg-map-country-inner-glow-base]')).toHaveLength(2)
-    expect([...mount.querySelectorAll<SVGPathElement>('[data-svg-map-country-inner-glow-source]')].every(source => (
-      source.getAttribute('fill') === 'none'
-      && source.getAttribute('stroke') === '#769A70'
-      && source.getAttribute('vector-effect') === 'non-scaling-stroke'
-      && source.style.getPropertyValue('pointer-events') === 'none'
-      && source.getAttribute('clip-path')?.startsWith('url(#')
-    ))).toBe(true)
 
-    const pathLayers = [...mount.querySelectorAll<SVGGElement>('[data-svg-map-country-inner-glow-path]')]
-    expect(pathLayers).toHaveLength(2)
-    for (const pathLayer of pathLayers) {
-      const [baseFill, firstGlow, ...remainingGlows] = [...pathLayer.children] as SVGPathElement[]
-      expect(baseFill?.hasAttribute('data-svg-map-country-inner-glow-base')).toBe(true)
-      expect(baseFill?.style.getPropertyValue('fill')).toBe('#B5A678')
-      expect(baseFill?.getAttribute('stroke')).toBe('none')
-      expect(baseFill?.style.getPropertyValue('stroke')).toBe('none')
-      expect(baseFill?.getAttribute('pointer-events')).toBe('none')
-      expect(baseFill?.style.getPropertyValue('pointer-events')).toBe('none')
-      expect(baseFill?.getAttribute('id')).toBeNull()
-      expect(baseFill?.getAttribute('filter')).toBe('none')
-      expect(baseFill?.style.getPropertyValue('filter')).toBe('none')
-      expect(baseFill?.style.getPropertyValue('transition')).toBe('none')
-      expect(firstGlow?.hasAttribute('data-svg-map-country-inner-glow-source')).toBe(true)
-      expect(remainingGlows).toHaveLength(35)
+    // One filter serves every Country carrying the same glow, instead of a
+    // clipPath plus 37 cloned paths per Country path.
+    const filters = [...mount.querySelectorAll('[data-svg-map-country-inner-glow-filter]')]
+    expect(filters).toHaveLength(1)
+    expect(filters[0].querySelector('feMorphology')?.getAttribute('operator')).toBe('erode')
+    expect(filters[0].querySelectorAll('feFlood')).toHaveLength(2)
+    for (const flood of filters[0].querySelectorAll('feFlood')) {
+      expect(flood.getAttribute('flood-color')).toBe('#769A70')
     }
+    expect(mount.querySelectorAll('path[data-svg-map-country-inner-glow-source]')).toHaveLength(0)
+    expect(mount.querySelectorAll('clipPath')).toHaveLength(0)
 
+    // The glow composites with the Country's own graphic, so the Country keeps
+    // its semantic fill and authored border rather than being made
+    // transparent behind a generated base-fill copy.
+    const filterId = filters[0].getAttribute('id')
     for (const source of [path(mount, 'Multipart'), path(mount, 'Multipart_fragment')]) {
-      expect(source.style.getPropertyValue('fill')).toBe('transparent')
+      expect(source.style.getPropertyValue('fill')).toBe('#B5A678')
       expect(source.style.getPropertyValue('stroke')).toBe('#252525')
-      expect(layer && layer.compareDocumentPosition(source) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(source.style.getPropertyValue('filter')).toBe('url(#' + filterId + ')')
     }
-    expect(layer && layer.compareDocumentPosition(label(mount, 'Multipart_label')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 
     controller.setCountryInnerGlows({ Multipart: glow })
-    expect(mount.querySelectorAll('[data-svg-map-country-inner-glow-clip="Multipart"]')).toHaveLength(2)
     expect(mount.querySelectorAll('[data-svg-map-country-inner-glow-defs]')).toHaveLength(1)
 
     controller.setGroupOutlines([{ id: 'multipart-outline', countryIds: ['Multipart'], visible: true }])
     controller.setGroupOutlinesVisible(['multipart-outline'])
     expect(mount.querySelector('[data-svg-map-group-outline="multipart-outline"]')).not.toBeNull()
-    expect(mount.querySelector('[data-svg-map-country-inner-glow]')).not.toBeNull()
+    expect(path(mount, 'Multipart').style.getPropertyValue('filter')).toBe('url(#' + filterId + ')')
 
-    const layerBeforeHover = mount.querySelector('[data-svg-map-country-inner-glow]')
     path(mount, 'Multipart').dispatchEvent(new Event('pointerenter'))
-    expect(mount.querySelector('[data-svg-map-country-inner-glow]')).toBe(layerBeforeHover)
+    expect(path(mount, 'Multipart').style.getPropertyValue('filter')).toBe('url(#' + filterId + ')')
 
     controller.setMutedCountries(['Multipart'])
-    expect(mount.querySelector('[data-svg-map-country-inner-glow]')).toBeNull()
-    expect(mount.querySelectorAll('[data-svg-map-country-inner-glow-base]')).toHaveLength(0)
+    expect(path(mount, 'Multipart').style.getPropertyValue('filter')).toBe('')
     controller.clearMutedCountries()
-    expect(mount.querySelector('[data-svg-map-country-inner-glow]')).not.toBeNull()
+    expect(path(mount, 'Multipart').style.getPropertyValue('filter')).toBe('url(#' + filterId + ')')
     controller.setHiddenCountries(['Multipart'])
-    expect(mount.querySelector('[data-svg-map-country-inner-glow]')).toBeNull()
-    expect(mount.querySelectorAll('[data-svg-map-country-inner-glow-base]')).toHaveLength(0)
+    expect(path(mount, 'Multipart').style.getPropertyValue('filter')).toBe('')
     controller.clearHiddenCountries()
-    expect(mount.querySelector('[data-svg-map-country-inner-glow]')).not.toBeNull()
+    expect(path(mount, 'Multipart').style.getPropertyValue('filter')).toBe('url(#' + filterId + ')')
 
     expect(controller.clearCountryInnerGlows().activeIds).toEqual([])
-    expect(mount.querySelector('[data-svg-map-country-inner-glow]')).toBeNull()
     expect(mount.querySelector('[data-svg-map-country-inner-glow-defs]')).toBeNull()
-    expect(mount.querySelectorAll('[data-svg-map-country-inner-glow-base]')).toHaveLength(0)
+    expect(path(mount, 'Multipart').style.getPropertyValue('filter')).toBe('')
     expect(path(mount, 'Multipart').style.getPropertyValue('fill')).toBe('#B5A678')
     expect(path(mount, 'Multipart_fragment').style.getPropertyValue('fill')).toBe('#B5A678')
 
@@ -445,30 +457,24 @@ describe('SvgMapController loading and discovery', () => {
     const previousSvg = mount.querySelector('svg')
     await controller.load({ markup: TEST_MAP })
     expect(mount.querySelector('svg')).not.toBe(previousSvg)
-    expect(mount.querySelector('[data-svg-map-country-inner-glow]')).toBeNull()
     expect(mount.querySelector('[data-svg-map-country-inner-glow-defs]')).toBeNull()
-    expect(mount.querySelector('[data-svg-map-country-inner-glow-base]')).toBeNull()
   })
 
-  it('updates the generated Country fill without rebuilding unchanged Capital glow geometry', async () => {
+  it('updates the Country fill without rebuilding unchanged Capital glow filters', async () => {
     const { mount, controller } = makeController()
     await controller.load({ markup: MULTIPART_MAP })
     const glow = { color: '#769A70', edgeIntensity: 111, fadeLength: 10, fadeBody: 31, edgeConcentration: 79 }
     controller.setCountryColors({ Multipart: '#B5A678' })
     controller.setCountryInnerGlows({ Multipart: glow })
     const renderGlows = vi.spyOn(controller as unknown as { renderCountryInnerGlows: () => void }, 'renderCountryInnerGlows')
-    const layer = mount.querySelector('[data-svg-map-country-inner-glow]')
-    const glowNodes = [...mount.querySelectorAll('[data-svg-map-country-inner-glow-source]')]
-    const clipNodes = [...mount.querySelectorAll('[data-svg-map-country-inner-glow-clip="Multipart"]')]
+    const filterNodes = [...mount.querySelectorAll('[data-svg-map-country-inner-glow-filter]')]
 
     controller.setCountryColors({ Multipart: '#769A70' })
 
-    expect(mount.querySelector('[data-svg-map-country-inner-glow]')).toBe(layer)
-    expect([...mount.querySelectorAll<SVGPathElement>('[data-svg-map-country-inner-glow-base]')].every(base => (
-      base.style.getPropertyValue('fill') === '#769A70'
-    ))).toBe(true)
-    expect([...mount.querySelectorAll('[data-svg-map-country-inner-glow-source]')]).toEqual(glowNodes)
-    expect([...mount.querySelectorAll('[data-svg-map-country-inner-glow-clip="Multipart"]')]).toEqual(clipNodes)
+    // The Country carries its own fill now, so a fill change is a plain style
+    // write and never touches the glow definitions.
+    expect(path(mount, 'Multipart').style.getPropertyValue('fill')).toBe('#769A70')
+    expect([...mount.querySelectorAll('[data-svg-map-country-inner-glow-filter]')]).toEqual(filterNodes)
     expect(renderGlows).not.toHaveBeenCalled()
   })
 
@@ -479,40 +485,43 @@ describe('SvgMapController loading and discovery', () => {
     controller.updateSettings({ countryFill: '#B5A678', hoverHighlight: true, hoverFill: '#22d3ee' })
     controller.setCountryInnerGlows({ Multipart: glow })
     const source = path(mount, 'Multipart')
-    const layer = mount.querySelector('[data-svg-map-country-inner-glow]')
-    const glowNodes = [...mount.querySelectorAll('[data-svg-map-country-inner-glow-source]')]
+    const filterNodes = [...mount.querySelectorAll('[data-svg-map-country-inner-glow-filter]')]
+    const glowFilter = 'url(#' + filterNodes[0].getAttribute('id') + ')'
 
-    expect(source.style.getPropertyValue('fill')).toBe('transparent')
+    expect(source.style.getPropertyValue('fill')).toBe('#B5A678')
     source.dispatchEvent(new Event('pointerenter'))
     expect(source.style.getPropertyValue('fill')).toBe('#22d3ee')
-    expect(mount.querySelector('[data-svg-map-country-inner-glow]')).toBe(layer)
+    expect(source.style.getPropertyValue('filter')).toBe(glowFilter)
     source.dispatchEvent(new Event('pointerleave'))
-    expect(source.style.getPropertyValue('fill')).toBe('transparent')
-    expect(mount.querySelector('[data-svg-map-country-inner-glow]')).toBe(layer)
+    expect(source.style.getPropertyValue('fill')).toBe('#B5A678')
 
     controller.setHighlighted(['Multipart'])
     expect(source.style.getPropertyValue('fill')).toBe('#0891b2')
     controller.clearHighlights()
-    expect(source.style.getPropertyValue('fill')).toBe('transparent')
-    expect(mount.querySelector('[data-svg-map-country-inner-glow]')).toBe(layer)
-    expect([...mount.querySelectorAll('[data-svg-map-country-inner-glow-source]')]).toEqual(glowNodes)
+    expect(source.style.getPropertyValue('fill')).toBe('#B5A678')
+    expect(source.style.getPropertyValue('filter')).toBe(glowFilter)
+    expect([...mount.querySelectorAll('[data-svg-map-country-inner-glow-filter]')]).toEqual(filterNodes)
   })
 
-  it('projects inner glow geometry through transforms and wrapped semantic copies', async () => {
+  it('applies one Capital glow filter to transformed and wrapped semantic copies alike', async () => {
+    // The filter is applied to the authored paths themselves, so transformed
+    // and wrapped copies need no projected clone to carry the treatment.
     const transformed = makeController()
     await transformed.controller.load({ markup: TRANSFORMED_MAP })
     transformed.controller.setCountryInnerGlows({ Transformed: { color: '#B5A678', edgeIntensity: 111, fadeLength: 10, fadeBody: 31, edgeConcentration: 79 } })
-    const transformedSource = transformed.mount.querySelector<SVGPathElement>('[data-svg-map-country-inner-glow-path="Transformed"] [data-svg-map-country-inner-glow-source]')
-    expect(transformedSource?.getAttribute('transform')).toBe('matrix(3 0 0 3 16 32)')
-    expect(transformedSource?.getAttribute('id')).toBeNull()
-    expect(transformed.mount.querySelector<SVGPathElement>('[data-svg-map-country-inner-glow-path="Transformed"] [data-svg-map-country-inner-glow-base]')?.getAttribute('transform')).toBe('matrix(3 0 0 3 16 32)')
+    const transformedFilter = transformed.mount.querySelector('[data-svg-map-country-inner-glow-filter]')
+    expect(transformedFilter).not.toBeNull()
+    expect(path(transformed.mount, 'Transformed').style.getPropertyValue('filter'))
+      .toBe('url(#' + transformedFilter?.getAttribute('id') + ')')
 
     const oceania = makeController()
     await oceania.controller.load({ markup: oceaniaSvg })
     oceania.controller.setCountryInnerGlows({ Australia: { color: '#769A70', edgeIntensity: 111, fadeLength: 10, fadeBody: 31, edgeConcentration: 79 } })
-    expect(oceania.mount.querySelectorAll('[data-svg-map-country-inner-glow-country="Australia"] [data-svg-map-country-inner-glow-source]')).toHaveLength(72)
-    expect(oceania.mount.querySelectorAll('[data-svg-map-country-inner-glow-country="Australia"] [data-svg-map-country-inner-glow-base]')).toHaveLength(2)
-    expect(oceania.mount.querySelector('[data-svg-map-country-inner-glow-path="Australia_wrap"] [data-svg-map-country-inner-glow-base]')).not.toBeNull()
+    const oceaniaFilters = [...oceania.mount.querySelectorAll('[data-svg-map-country-inner-glow-filter]')]
+    expect(oceaniaFilters).toHaveLength(1)
+    const expected = 'url(#' + oceaniaFilters[0].getAttribute('id') + ')'
+    expect(path(oceania.mount, 'Australia').style.getPropertyValue('filter')).toBe(expected)
+    expect(path(oceania.mount, 'Australia_wrap').style.getPropertyValue('filter')).toBe(expected)
   })
 
   it('loads a URL and rejects invalid or embedded content', async () => {
@@ -561,8 +570,8 @@ describe('SvgMapController persistent state', () => {
     expect(mount.querySelector<SVGSVGElement>('svg')?.style.aspectRatio).toBe('')
     expect(mount.querySelector<SVGSVGElement>('svg')?.getAttribute('preserveAspectRatio')).toBe('xMidYMid meet')
     expect(readViewBox(mount)).toEqual({ x: 0, y: 0, width: 100, height: 50 })
-    const glowLayer = mount.querySelector('[data-svg-map-country-inner-glow]')
-    expect(glowLayer).not.toBeNull()
+    const glowFilter = mount.querySelector('[data-svg-map-country-inner-glow-filter]')
+    expect(glowFilter).not.toBeNull()
 
     controller.updatePresentation({
       presentation: 'standard',
@@ -579,7 +588,7 @@ describe('SvgMapController persistent state', () => {
       namedIds: [],
       hoveredId: 'Delta',
     })
-    expect(mount.querySelector('[data-svg-map-country-inner-glow]') === glowLayer).toBe(true)
+    expect(mount.querySelector('[data-svg-map-country-inner-glow-filter]') === glowFilter).toBe(true)
     expect(mount.querySelector<SVGSVGElement>('svg')?.style.aspectRatio).toBe('100 / 50')
     expect(mount.querySelector<SVGSVGElement>('svg')?.getAttribute('preserveAspectRatio')).toBeNull()
   })
@@ -1476,22 +1485,23 @@ describe('SvgMapController persistent state', () => {
     controller.setCountryInnerGlows({
       Multipart: { color: '#769A70', edgeIntensity: 111, fadeLength: 10, fadeBody: 31, edgeConcentration: 79 },
     })
-    const layer = mount.querySelector('[data-svg-map-country-inner-glow]')
-    const baseFills = [...mount.querySelectorAll('[data-svg-map-country-inner-glow-base]')]
+    const filter = mount.querySelector('[data-svg-map-country-inner-glow-filter]')
+    const glowFilter = 'url(#' + filter?.getAttribute('id') + ')'
     const source = path(mount, 'Multipart')
 
     source.dispatchEvent(new Event('pointerenter'))
 
+    // Transient hover fill takes precedence, but the Country keeps carrying
+    // its glow filter rather than losing generated geometry.
     expect(source.style.fill).toBe('#22d3ee')
-    expect(layer?.isConnected).toBe(true)
-    expect(mount.querySelector('[data-svg-map-country-inner-glow]') === layer).toBe(true)
-    expect([...mount.querySelectorAll('[data-svg-map-country-inner-glow-base]')]).toEqual(baseFills)
+    expect(source.style.getPropertyValue('filter')).toBe(glowFilter)
+    expect(filter?.isConnected).toBe(true)
 
     source.dispatchEvent(new Event('pointerleave'))
 
-    expect(mount.querySelector('[data-svg-map-country-inner-glow]') === layer).toBe(true)
-    expect([...mount.querySelectorAll('[data-svg-map-country-inner-glow-base]')]).toEqual(baseFills)
-    expect(layer?.isConnected).toBe(true)
+    expect(mount.querySelector('[data-svg-map-country-inner-glow-filter]') === filter).toBe(true)
+    expect(source.style.getPropertyValue('filter')).toBe(glowFilter)
+    expect(filter?.isConnected).toBe(true)
   })
 
   it('retains outline structure while persistent and transient visibility changes independently', async () => {
@@ -1993,7 +2003,7 @@ describe('SvgMapController task assistance', () => {
     controller.setCountryColors({ Alpha: '#B5A678' })
     controller.setCountryInnerGlows({ Alpha: { color: '#769A70', edgeIntensity: 111, fadeLength: 10, fadeBody: 31, edgeConcentration: 79 } })
     controller.setTaskAssistance({ answerSelectionIds: ['Alpha'], learningAnchors: [alphaAnchor] })
-    const persistentGlow = mount.querySelector('[data-svg-map-country-inner-glow]')
+    const persistentGlow = mount.querySelector('[data-svg-map-country-inner-glow-filter]')
     const marker = mount.querySelector<SVGCircleElement>('[data-svg-map-task-marker="Alpha"]')
     const hit = mount.querySelector<SVGCircleElement>('[data-svg-map-task-hit-target="Alpha"]')
     if (!marker || !hit) throw new Error('Missing task target geometry')
@@ -2001,14 +2011,14 @@ describe('SvgMapController task assistance', () => {
     mount.querySelector('svg')?.dispatchEvent(new MouseEvent('pointermove', { clientX: 11, clientY: 11 }))
     expect(Number(marker.getAttribute('r'))).toBeCloseTo(6.875)
     expect(path(mount, 'Alpha').style.getPropertyValue('fill')).toBe('#22d3ee')
-    expect(mount.querySelector('[data-svg-map-country-inner-glow]')).toBe(persistentGlow)
+    expect(mount.querySelector('[data-svg-map-country-inner-glow-filter]')).toBe(persistentGlow)
     mount.querySelector('svg')?.dispatchEvent(new MouseEvent('click', { clientX: 11, clientY: 11 }))
     mount.querySelector('svg')?.dispatchEvent(new MouseEvent('click', { clientX: 11, clientY: 11 }))
     expect(clicked).toEqual(['Alpha', 'Alpha'])
     mount.querySelector('svg')?.dispatchEvent(new MouseEvent('pointerleave'))
     expect(mount.querySelector('[data-svg-map-task-representative-target="Alpha"]')).toBeNull()
-    expect(path(mount, 'Alpha').style.getPropertyValue('fill')).toBe('transparent')
-    expect(mount.querySelector('[data-svg-map-country-inner-glow]')).toBe(persistentGlow)
+    expect(path(mount, 'Alpha').style.getPropertyValue('fill')).toBe('#B5A678')
+    expect(mount.querySelector('[data-svg-map-country-inner-glow-filter]')).toBe(persistentGlow)
   })
 
   it('uses a bounded tiny halo locally and leaves ordinary source geometry selectable outside it', async () => {

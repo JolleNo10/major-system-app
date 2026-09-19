@@ -900,12 +900,20 @@ target-local and Country-fit cameras respectively.
   below source Country paths, while transient hover, selection, task, and answer
   styling remains in the overlay layer; declarative rendering restores the
   edge and recall fill after interaction. Capital status uses a separate
-  generic caller-owned `SvgMapCountryInnerGlow` seam: geometry is clipped to
-  each individual Country path, pointerless, declarative, and safe for
-  multipart and wrapped authored copies. Hidden and muted Countries omit the
-  glow; transient hover, selection, task, and answer treatments retain
-  precedence, and persistent geometry is reconciled only when assignments,
-  visibility, or loaded geometry change. Reusing the grouped outline/halo seam
+  generic caller-owned `SvgMapCountryInnerGlow` seam: one SVG filter per
+  distinct glow, referenced from the authored Country paths themselves, so
+  multipart and wrapped copies carry the treatment without projected clones.
+  Hidden and muted Countries omit the glow; transient hover, selection, task,
+  and answer treatments retain precedence, and filter definitions are
+  reconciled only when assignments or the camera scale change. Because the
+  glow composites with each Country's own graphic it cannot be covered by that
+  Country's fill, so the Country keeps its semantic fill instead of being made
+  transparent behind a generated base-fill copy. Filter primitives are sized
+  in user space, so the profile divides by the live camera scale to keep the
+  constant on-screen band the earlier `non-scaling-stroke` form had. Stacking
+  36 clipped stroke copies per Country path was rejected after measurement: it
+  grew with progress, so a fully learned World map materialized thousands of
+  cloned complex paths. Reusing the grouped outline/halo seam
   for Capital status is rejected because it is outside-oriented and may group
   adjacent geometry, while Capital status must remain an inward, per-Country
   boundary treatment.
