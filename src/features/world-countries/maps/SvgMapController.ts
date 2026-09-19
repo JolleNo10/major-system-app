@@ -38,10 +38,12 @@ export interface SvgMapHoverGroup {
   countryIds: readonly string[]
 }
 
+export type SvgMapGroupOutlineEffect = 'outline' | 'halo' | 'outer-boundary'
+
 export interface SvgMapGroupOutline {
   id: string
   countryIds: readonly string[]
-  effect?: 'outline' | 'halo'
+  effect?: SvgMapGroupOutlineEffect
   /** Underlays are for persistent decoration; the default preserves transient overlays. */
   placement?: 'underlay' | 'overlay'
   stroke?: string
@@ -350,10 +352,11 @@ function createOutlineGeometry(
   path: SVGPathElement,
   mapSvg: SVGSVGElement,
   document: Document,
+  sourceAttribute = 'data-svg-map-group-outline-source',
 ): SVGPathElement {
   const clone = path.cloneNode(true) as SVGPathElement
   clone.removeAttribute('id')
-  clone.setAttribute('data-svg-map-group-outline-source', path.id.trim())
+  clone.setAttribute(sourceAttribute, path.id.trim())
   clone.setAttribute('pointer-events', 'none')
   clone.style.setProperty('pointer-events', 'none', 'important')
 
@@ -378,6 +381,13 @@ function collectTextNodes(element: Element): Text[] {
   return nodes
 }
 
+function getOuterBoundaryStrokeWidth(strokeWidth: string | undefined): string {
+  const requested = strokeWidth?.trim() || '2.5'
+  const match = /^([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s*([a-z%]*)$/i.exec(requested)
+  if (!match) return '5'
+  return String(Math.max(0, Number(match[1]) * 2)) + match[2]
+}
+
 function uniqueStrings(values: Iterable<string>): string[] {
   return [...new Set(Array.from(values, value => value.trim()).filter(Boolean))]
 }
@@ -389,8 +399,8 @@ interface KeyboardListener {
 
 interface GeneratedGroupOutline {
   definition: SvgMapGroupOutline
-  filter: SVGFilterElement
   group: SVGGElement
+  resources: readonly SVGElement[]
 }
 
 function sameGroupOutlineStructure(left: SvgMapGroupOutline, right: SvgMapGroupOutline): boolean {
@@ -459,6 +469,7 @@ export class SvgMapController {
   private groupOutlines: SvgMapGroupOutline[] = []
   private visibleGroupOutlines = new Set<string>()
   private transientVisibleGroupOutlines = new Set<string>()
+  private pendingTransientGroupOutlineIds = new Set<string>()
   private outlinePresentations = new Map<string, GeneratedGroupOutline>()
   private underlayGroupOutlineLayer: SVGGElement | null = null
   private overlayGroupOutlineLayer: SVGGElement | null = null
@@ -1130,9 +1141,14 @@ export class SvgMapController {
     this.visibleGroupOutlines.forEach(id => {
       if (!normalized.has(id)) this.visibleGroupOutlines.delete(id)
     })
-    this.transientVisibleGroupOutlines.forEach(id => {
-      if (!normalized.has(id)) this.transientVisibleGroupOutlines.delete(id)
-    })
+    const retainedTransientIds = new Set(
+      [...this.transientVisibleGroupOutlines].filter(id => normalized.has(id)),
+    )
+    for (const id of this.pendingTransientGroupOutlineIds) {
+      if (normalized.has(id)) retainedTransientIds.add(id)
+    }
+    this.transientVisibleGroupOutlines = retainedTransientIds
+    this.pendingTransientGroupOutlineIds.clear()
     this.render()
     return { outlines: this.getGroupOutlines(), unknownIds: [...unknownIds] }
   }
@@ -1160,6 +1176,7 @@ export class SvgMapController {
     this.assertUsable()
     const { knownIds, unknownIds } = this.resolveOutlineIds(ids)
     const next = new Set(knownIds)
+    this.pendingTransientGroupOutlineIds = new Set(unknownIds)
     const changedIds = new Set([...this.transientVisibleGroupOutlines, ...next])
     for (const id of changedIds) {
       if (this.transientVisibleGroupOutlines.has(id) === next.has(id)) changedIds.delete(id)
@@ -1187,6 +1204,7 @@ export class SvgMapController {
     this.groupOutlines = []
     this.visibleGroupOutlines.clear()
     this.transientVisibleGroupOutlines.clear()
+    this.pendingTransientGroupOutlineIds.clear()
     this.render()
     return { outlines: [], unknownIds: [] }
   }
@@ -1433,12 +1451,7 @@ export class SvgMapController {
 
     this.hoveredNameOverride = nextNameOverride
     this.hoveredCountryId = nextCountryId
-    if (!this.settings.hoverHighlight && !this.settings.hoverShowName && this.hoveredNameOverride !== true) {
-      this.hoveredCountryId = null
-      this.hoveredIds.clear()
-    } else {
-      this.refreshHoveredIds()
-    }
+    this.refreshHoveredIds()
 
     const identityChanged = previousCountryId !== this.hoveredCountryId
       || previousNameOverride !== this.hoveredNameOverride
@@ -1448,11 +1461,17 @@ export class SvgMapController {
         && (previousHoveredIds.size > 0 || this.hoveredIds.size > 0))
     if (!visualChanged) return false
 
-    const affectedIds = new Set([...previousHoveredIds, ...this.hoveredIds])
-    const { reducedMotion, transition } = this.getCountryRenderContext()
-    for (const countryId of affectedIds) {
-      const country = this.countries.get(countryId)
-      if (country) this.renderCountryPresentation(country, reducedMotion, transition)
+    const countryHoverPresentationEnabled = this.settings.hoverHighlight
+      || this.settings.hoverShowName
+      || previousNameOverride === true
+      || this.hoveredNameOverride === true
+    if (countryHoverPresentationEnabled) {
+      const affectedIds = new Set([...previousHoveredIds, ...this.hoveredIds])
+      const { reducedMotion, transition } = this.getCountryRenderContext()
+      for (const countryId of affectedIds) {
+        const country = this.countries.get(countryId)
+        if (country) this.renderCountryPresentation(country, reducedMotion, transition)
+      }
     }
     return true
   }
@@ -1460,8 +1479,7 @@ export class SvgMapController {
   private refreshHoveredIds(): void {
     this.hoveredIds.clear()
     const id = this.hoveredCountryId
-    if (!id || !this.isHoverable(id)
-      || (!this.settings.hoverHighlight && !this.settings.hoverShowName && this.hoveredNameOverride !== true)) return
+    if (!id || !this.isHoverable(id)) return
 
     if (this.settings.hoverScope === 'single') {
       this.hoveredIds.add(id)
@@ -1592,6 +1610,7 @@ export class SvgMapController {
     transition: string,
   ): void {
     const hovered = this.hoveredIds.has(country.id)
+    const countryHovered = hovered && this.settings.hoverHighlight
     const taskHovered = this.taskAssistance.getHoveredCountryId() === country.id
     const pattern = this.countryPatterns.get(country.id)
     const hasSemanticColor = this.countryColors.has(country.id)
@@ -1599,7 +1618,7 @@ export class SvgMapController {
     const persistentBaseFill = this.getCountryPersistentBaseFill(country.id)
     const transientFill = taskHovered
       ? this.settings.hoverFill
-      : hovered && this.settings.hoverHighlight && !hasSemanticAppearance
+      : countryHovered && !hasSemanticAppearance
         ? this.settings.hoverFill
         : this.highlighted.has(country.id) && !hasSemanticAppearance
           ? this.settings.highlightFill
@@ -1612,13 +1631,13 @@ export class SvgMapController {
         : baseFill
 
     const styled = this.highlighted.has(country.id) || hasSemanticAppearance
-    const stroke = (taskHovered || (hovered && this.settings.hoverHighlight)) && this.settings.hoverStroke !== null
+    const stroke = (taskHovered || countryHovered) && this.settings.hoverStroke !== null
       ? this.settings.hoverStroke
       : styled && this.settings.highlightStroke !== null
         ? this.settings.highlightStroke
         : this.settings.countryStroke
-    const transientStroke = taskHovered || hovered || this.highlighted.has(country.id)
-    const strokeWidth = hovered && this.settings.hoverStrokeWidth !== null
+    const transientStroke = taskHovered || countryHovered || this.highlighted.has(country.id)
+    const strokeWidth = countryHovered && this.settings.hoverStrokeWidth !== null
       ? this.settings.hoverStrokeWidth
       : styled && this.settings.highlightStrokeWidth !== null
         ? this.settings.highlightStrokeWidth
@@ -1700,12 +1719,13 @@ export class SvgMapController {
     }
     this.countryHoverHandler?.(this.hoveredCountryId === id ? id : null)
     if (perfEnabled && visualChanged && view) {
+      // A later animation-frame callback is not a guarantee that SVG/GPU rasterization has completed.
       view.requestAnimationFrame(() => {
         view.requestAnimationFrame(() => {
           if (generation !== this.hoverPaintGeneration) return
           const ms = view.performance.now() - startedAt
           if (ms >= SLOW_MAP_OPERATION_THRESHOLD_MS) {
-            console.log('[WC perf] map-hover-paint', { ms, countryId: id })
+            console.log('[WC perf] map-hover-frame', { ms, countryId: id })
           }
         })
       })
@@ -1906,25 +1926,61 @@ export class SvgMapController {
     if (!outline) return
     const visible = this.visibleGroupOutlines.has(id) || this.transientVisibleGroupOutlines.has(id)
     let presentation = this.outlinePresentations.get(id)
-    if (visible && !presentation) {
+    if (!presentation && (visible || outline.effect === 'outer-boundary')) {
       presentation = this.createGroupOutlinePresentation(outline) ?? undefined
       if (presentation) this.outlinePresentations.set(id, presentation)
     }
     if (!presentation) return
+
+    if (outline.effect === 'outer-boundary') {
+      const perfEnabled = import.meta.env.DEV
+      const startedAt = perfEnabled ? performance.now() : 0
+      presentation.group.setAttribute('opacity', visible ? '1' : '0')
+      presentation.group.setAttribute('visibility', visible ? 'visible' : 'hidden')
+      if (perfEnabled) {
+        const ms = performance.now() - startedAt
+        if (ms >= SLOW_MAP_OPERATION_THRESHOLD_MS) {
+          console.log('[WC perf] map-outer-boundary-toggle', {
+            id,
+            visible,
+            ms,
+          })
+        }
+      }
+      return
+    }
+
     if (visible) presentation.group.removeAttribute('display')
     else presentation.group.setAttribute('display', 'none')
+  }
+
+  private getGroupOutlineDefs(mapSvg: SVGSVGElement): SVGDefsElement {
+    const document = mapSvg.ownerDocument
+    return mapSvg.querySelector<SVGDefsElement>('defs[data-svg-map-group-outline-defs]') ?? (() => {
+      const created = document.createElementNS('http://www.w3.org/2000/svg', 'defs')
+      created.setAttribute('data-svg-map-group-outline-defs', '')
+      mapSvg.insertBefore(created, mapSvg.firstChild)
+      return created
+    })()
   }
 
   private createGroupOutlinePresentation(outline: SvgMapGroupOutline): GeneratedGroupOutline | null {
     const mapSvg = this.svg
     if (!mapSvg) return null
+    const effect = outline.effect ?? 'outline'
     const hasVisibleGeometry = outline.countryIds.some(countryId => {
       const country = this.countries.get(countryId)
-      return country !== undefined && !this.hiddenCountries.has(countryId) && !this.mutedCountries.has(countryId)
+      return country !== undefined
+        && !this.hiddenCountries.has(countryId)
+        && (effect === 'outer-boundary' || !this.mutedCountries.has(countryId))
     })
     if (!hasVisibleGeometry) return null
 
     const document = mapSvg.ownerDocument
+    if (effect === 'outer-boundary') {
+      return this.createOuterBoundaryGroupOutlinePresentation(outline, mapSvg, document)
+    }
+
     const filterId = 'svg-map-group-outline-' + this.outlineSequence++
     const filter = document.createElementNS('http://www.w3.org/2000/svg', 'filter')
     filter.setAttribute('id', filterId)
@@ -1957,7 +2013,6 @@ export class SvgMapController {
     outside.setAttribute('operator', 'out')
     outside.setAttribute('result', 'outside')
 
-    const effect = outline.effect ?? 'outline'
     if (effect === 'halo') {
       const blur = document.createElementNS('http://www.w3.org/2000/svg', 'feGaussianBlur')
       blur.setAttribute('in', 'outside')
@@ -1973,13 +2028,7 @@ export class SvgMapController {
     } else {
       filter.append(dilated, flood, color, outside)
     }
-    const defs = mapSvg.querySelector<SVGDefsElement>('defs[data-svg-map-group-outline-defs]') ?? (() => {
-      const created = document.createElementNS('http://www.w3.org/2000/svg', 'defs')
-      created.setAttribute('data-svg-map-group-outline-defs', '')
-      mapSvg.insertBefore(created, mapSvg.firstChild)
-      return created
-    })()
-    defs.append(filter)
+    this.getGroupOutlineDefs(mapSvg).append(filter)
 
     const effectGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g')
     effectGroup.setAttribute('data-svg-map-group-outline', outline.id)
@@ -1993,9 +2042,119 @@ export class SvgMapController {
         effectGroup.append(createOutlineGeometry(pathState.path, mapSvg, document))
       }
     }
-    const placement = outline.placement ?? 'overlay'
-    this.getGroupOutlineLayer(placement).append(effectGroup)
-    return { definition: copyOutline(outline), filter, group: effectGroup }
+    this.getGroupOutlineLayer(outline.placement ?? 'overlay').append(effectGroup)
+    return { definition: copyOutline(outline), group: effectGroup, resources: [filter] }
+  }
+
+  private createOuterBoundaryGroupOutlinePresentation(
+    outline: SvgMapGroupOutline,
+    mapSvg: SVGSVGElement,
+    document: Document,
+  ): GeneratedGroupOutline | null {
+    const bounds = parseViewBox(this.originalViewBox ?? mapSvg.getAttribute('viewBox') ?? '')
+    if (!bounds || !isFinitePositiveViewBox(bounds)) return null
+
+    const perfEnabled = import.meta.env.DEV
+    const startedAt = perfEnabled ? performance.now() : 0
+    const maskId = 'svg-map-group-outline-' + this.outlineSequence++
+    const mask = document.createElementNS('http://www.w3.org/2000/svg', 'mask') as SVGMaskElement
+    mask.setAttribute('id', maskId)
+    mask.setAttribute('data-svg-map-group-outline-mask', outline.id)
+    mask.setAttribute('maskUnits', 'userSpaceOnUse')
+    mask.setAttribute('maskContentUnits', 'userSpaceOnUse')
+    mask.setAttribute('mask-type', 'luminance')
+    mask.style.setProperty('mask-type', 'luminance')
+    mask.setAttribute('x', String(bounds.x))
+    mask.setAttribute('y', String(bounds.y))
+    mask.setAttribute('width', String(bounds.width))
+    mask.setAttribute('height', String(bounds.height))
+
+    const background = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
+    background.setAttribute('x', String(bounds.x))
+    background.setAttribute('y', String(bounds.y))
+    background.setAttribute('width', String(bounds.width))
+    background.setAttribute('height', String(bounds.height))
+    background.setAttribute('fill', 'white')
+    background.setAttribute('stroke', 'none')
+    background.style.setProperty('fill', 'white', 'important')
+    background.style.setProperty('stroke', 'none', 'important')
+    mask.append(background)
+
+    const effectGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+    effectGroup.setAttribute('data-svg-map-group-outline', outline.id)
+    effectGroup.setAttribute('data-svg-map-group-outline-effect', 'outer-boundary')
+    effectGroup.setAttribute('data-svg-map-group-outline-placement', outline.placement ?? 'overlay')
+    effectGroup.setAttribute('pointer-events', 'none')
+    effectGroup.setAttribute('mask', 'url(#' + maskId + ')')
+    effectGroup.setAttribute('opacity', '0')
+    effectGroup.setAttribute('visibility', 'hidden')
+
+    const stroke = outline.stroke ?? '#22d3ee'
+    const rawStrokeWidth = getOuterBoundaryStrokeWidth(outline.strokeWidth)
+    let countries = 0
+    let paths = 0
+    for (const countryId of outline.countryIds) {
+      const country = this.countries.get(countryId)
+      if (!country || this.hiddenCountries.has(countryId)) continue
+      let countryPaths = 0
+      for (const pathState of country.pathStates) {
+        const maskGeometry = createOutlineGeometry(
+          pathState.path,
+          mapSvg,
+          document,
+          'data-svg-map-group-outline-mask-source',
+        )
+        maskGeometry.removeAttribute('filter')
+        maskGeometry.style.removeProperty('filter')
+        maskGeometry.style.setProperty('filter', 'none', 'important')
+        maskGeometry.setAttribute('fill', 'black')
+        maskGeometry.setAttribute('stroke', 'none')
+        maskGeometry.setAttribute('opacity', '1')
+        maskGeometry.setAttribute('fill-opacity', '1')
+        maskGeometry.style.setProperty('fill', 'black', 'important')
+        maskGeometry.style.setProperty('stroke', 'none', 'important')
+        maskGeometry.style.setProperty('opacity', '1', 'important')
+        maskGeometry.style.setProperty('fill-opacity', '1', 'important')
+        mask.append(maskGeometry)
+
+        const boundaryGeometry = createOutlineGeometry(pathState.path, mapSvg, document)
+        boundaryGeometry.removeAttribute('filter')
+        boundaryGeometry.style.removeProperty('filter')
+        boundaryGeometry.style.setProperty('filter', 'none', 'important')
+        boundaryGeometry.setAttribute('fill', 'none')
+        boundaryGeometry.setAttribute('stroke', stroke)
+        boundaryGeometry.setAttribute('stroke-width', rawStrokeWidth)
+        boundaryGeometry.setAttribute('stroke-linecap', 'round')
+        boundaryGeometry.setAttribute('stroke-linejoin', 'round')
+        boundaryGeometry.setAttribute('opacity', '1')
+        boundaryGeometry.setAttribute('stroke-opacity', '1')
+        boundaryGeometry.style.setProperty('fill', 'none', 'important')
+        boundaryGeometry.style.setProperty('stroke', stroke, 'important')
+        boundaryGeometry.style.setProperty('stroke-width', rawStrokeWidth, 'important')
+        boundaryGeometry.style.setProperty('stroke-linecap', 'round', 'important')
+        boundaryGeometry.style.setProperty('stroke-linejoin', 'round', 'important')
+        boundaryGeometry.style.setProperty('opacity', '1', 'important')
+        boundaryGeometry.style.setProperty('stroke-opacity', '1', 'important')
+        effectGroup.append(boundaryGeometry)
+
+        countries += countryPaths === 0 ? 1 : 0
+        countryPaths += 1
+        paths += 1
+      }
+    }
+    if (paths === 0) return null
+
+    this.getGroupOutlineDefs(mapSvg).append(mask)
+    this.getGroupOutlineLayer(outline.placement ?? 'overlay').append(effectGroup)
+    if (perfEnabled) {
+      console.log('[WC perf] map-outer-boundary-build', {
+        id: outline.id,
+        ms: performance.now() - startedAt,
+        countries,
+        paths,
+      })
+    }
+    return { definition: copyOutline(outline), group: effectGroup, resources: [mask] }
   }
 
   private getGroupOutlineLayer(placement: 'underlay' | 'overlay'): SVGGElement {
@@ -2030,9 +2189,11 @@ export class SvgMapController {
 
   private removeGroupOutlinePresentation(presentation: GeneratedGroupOutline): void {
     presentation.group.remove()
-    const defs = presentation.filter.parentElement
-    presentation.filter.remove()
-    if (defs?.matches('defs[data-svg-map-group-outline-defs]') && defs.childElementCount === 0) defs.remove()
+    for (const resource of presentation.resources) {
+      const defs = resource.parentElement
+      resource.remove()
+      if (defs?.matches('defs[data-svg-map-group-outline-defs]') && defs.childElementCount === 0) defs.remove()
+    }
   }
 
   private removeEmptyGroupOutlineLayers(): void {

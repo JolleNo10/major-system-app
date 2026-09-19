@@ -1258,6 +1258,79 @@ describe('SvgMapController persistent state', () => {
     expect((filterId ? mount.querySelector('#' + filterId) : null) === filter).toBe(true)
   })
 
+  it('pre-materializes mask-backed outer boundaries and retains them across visibility toggles', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    path(mount, 'Alpha').setAttribute('d', 'M 10 10 h 10 v 10 h -10 z')
+    path(mount, 'Beta').setAttribute('d', 'M 40 20 h 10 v 10 h -10 z')
+
+    expect(controller.setGroupOutlines([{
+      id: 'continent-africa',
+      countryIds: ['Alpha', 'Beta'],
+      effect: 'outer-boundary',
+      stroke: '#d4d4d8',
+      strokeWidth: '2px',
+    }]).outlines).toEqual([{
+      id: 'continent-africa',
+      countryIds: ['Alpha', 'Beta'],
+      effect: 'outer-boundary',
+      stroke: '#d4d4d8',
+      strokeWidth: '2px',
+    }])
+
+    const outline = mount.querySelector('[data-svg-map-group-outline="continent-africa"]')
+    expect(outline).not.toBeNull()
+    expect(outline?.getAttribute('data-svg-map-group-outline-effect')).toBe('outer-boundary')
+    expect(outline?.getAttribute('visibility')).toBe('hidden')
+    expect(outline?.getAttribute('opacity')).toBe('0')
+    expect(outline?.hasAttribute('filter')).toBe(false)
+
+    const maskId = outline?.getAttribute('mask')?.match(/^url\(#(.+)\)$/)?.[1]
+    const mask = maskId ? mount.querySelector('mask#' + maskId) : null
+    expect(mask).not.toBeNull()
+    expect(mask?.getAttribute('maskUnits')).toBe('userSpaceOnUse')
+    expect(mask?.getAttribute('maskContentUnits')).toBe('userSpaceOnUse')
+    expect(mask?.getAttribute('mask-type')).toBe('luminance')
+    expect([mask?.getAttribute('x'), mask?.getAttribute('y'), mask?.getAttribute('width'), mask?.getAttribute('height')])
+      .toEqual(['0', '0', '100', '50'])
+    expect(mask?.querySelector('rect')?.getAttribute('fill')).toBe('white')
+
+    for (const id of ['Alpha', 'Beta']) {
+      expect(mask?.querySelector('[data-svg-map-group-outline-mask-source="' + id + '"]')?.getAttribute('d'))
+        .toBe(path(mount, id).getAttribute('d'))
+    }
+    const boundaryPaths = [...(outline?.querySelectorAll<SVGPathElement>('[data-svg-map-group-outline-source]') ?? [])]
+    expect(boundaryPaths).toHaveLength(2)
+    for (const boundaryPath of boundaryPaths) {
+      expect(boundaryPath.getAttribute('fill')).toBe('none')
+      expect(boundaryPath.getAttribute('stroke')).toBe('#d4d4d8')
+      expect(boundaryPath.getAttribute('stroke-width')).toBe('4px')
+      expect(boundaryPath.getAttribute('stroke-linecap')).toBe('round')
+      expect(boundaryPath.getAttribute('stroke-linejoin')).toBe('round')
+    }
+    const outlineDefs = mount.querySelector('defs[data-svg-map-group-outline-defs]')
+    expect(outlineDefs?.querySelector('filter, feMorphology, feGaussianBlur')).toBeNull()
+
+    const maskNode = mask
+    const boundaryPathNodes = boundaryPaths
+    const renderNow = vi.spyOn(controller as unknown as { renderNow: () => void }, 'renderNow')
+    const renderCallsBeforeToggle = renderNow.mock.calls.length
+
+    controller.setTransientGroupOutlines(['continent-africa'])
+    expect(outline?.getAttribute('visibility')).toBe('visible')
+    expect(outline?.getAttribute('opacity')).toBe('1')
+    controller.setTransientGroupOutlines([])
+    expect(outline?.getAttribute('visibility')).toBe('hidden')
+    controller.setTransientGroupOutlines(['continent-africa'])
+
+    expect(mount.querySelector('[data-svg-map-group-outline="continent-africa"]')).toBe(outline)
+    expect(maskId ? mount.querySelector('mask#' + maskId) : null).toBe(maskNode)
+    const retainedPaths = [...(outline?.querySelectorAll<SVGPathElement>('[data-svg-map-group-outline-source]') ?? [])]
+    expect(retainedPaths).toHaveLength(boundaryPathNodes.length)
+    retainedPaths.forEach((node, index) => expect(node).toBe(boundaryPathNodes[index]))
+    expect(renderNow).toHaveBeenCalledTimes(renderCallsBeforeToggle)
+  })
+
   it('updates old and new grouped hover Countries without replacing unrelated persistent presentation', async () => {
     const { mount, controller } = makeController()
     await controller.load({ markup: TEST_MAP })
@@ -2030,6 +2103,48 @@ describe('SvgMapController task assistance', () => {
     controller.setCountryClickHandler(null)
     path(mount, 'Beta').dispatchEvent(new MouseEvent('click'))
     expect(clicked).toEqual(['Alpha'])
+  })
+
+  it('keeps pointer and group hover identity when Country hover styling is disabled', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    controller.setCountryColors({ Alpha: '#16a34a' })
+    controller.setHoverGroups([{ id: 'alpha-beta', countryIds: ['Alpha', 'Beta'] }])
+    controller.updateSettings({
+      hoverHighlight: false,
+      hoverShowName: false,
+      hoverScope: 'group',
+      hoverFill: '#22d3ee',
+      hoverStroke: '#d4d4d8',
+      hoverStrokeWidth: '4px',
+    })
+    const originalStyles = ['Alpha', 'Beta'].map(id => ({
+      fill: path(mount, id).style.getPropertyValue('fill'),
+      stroke: path(mount, id).style.getPropertyValue('stroke'),
+      strokeWidth: path(mount, id).style.getPropertyValue('stroke-width'),
+    }))
+    const hoverState = controller as unknown as {
+      hoveredCountryId: string | null
+      hoveredIds: Set<string>
+    }
+    const hovered: Array<string | null> = []
+    controller.setCountryHoverHandler(id => hovered.push(id))
+
+    path(mount, 'Alpha').dispatchEvent(new Event('pointerenter'))
+
+    expect(hoverState.hoveredCountryId).toBe('Alpha')
+    expect([...hoverState.hoveredIds]).toEqual(['Alpha', 'Beta'])
+    expect(hovered).toEqual(['Alpha'])
+    expect(['Alpha', 'Beta'].map(id => ({
+      fill: path(mount, id).style.getPropertyValue('fill'),
+      stroke: path(mount, id).style.getPropertyValue('stroke'),
+      strokeWidth: path(mount, id).style.getPropertyValue('stroke-width'),
+    }))).toEqual(originalStyles)
+
+    path(mount, 'Alpha').dispatchEvent(new Event('pointerleave'))
+    expect(hoverState.hoveredCountryId).toBeNull()
+    expect(hoverState.hoveredIds.size).toBe(0)
+    expect(hovered).toEqual(['Alpha', null])
   })
 
   it('is disabled by default and supports independent single hover effects', async () => {

@@ -334,12 +334,13 @@ export function GeographyOverviewMap({
       return {
         id: group.id,
         countryIds: group.countryIds,
+        ...(level === 'world' ? { effect: 'outer-boundary' as const } : {}),
         stroke: selected ? GEOGRAPHY_OVERVIEW_SELECTION_STROKE : GEOGRAPHY_OVERVIEW_HOVER_STROKE,
         strokeWidth: GEOGRAPHY_OVERVIEW_HOVER_STROKE_WIDTH,
         visible: selected,
       }
     }), ...selectedSubregionOutlines],
-    [countryEdgeOutlines, hoverGroups, selectedGroupIds, selectedSubregionOutlines],
+    [countryEdgeOutlines, hoverGroups, level, selectedGroupIds, selectedSubregionOutlines],
   )
   const transientGroupOutlineIds = useMemo(
     () => activeHoveredGroupId === null ? EMPTY_COUNTRY_IDS : [activeHoveredGroupId],
@@ -425,7 +426,7 @@ export function GeographyOverviewMap({
   const descriptions = countryDescriptions
   const mapSettings = useMemo(() => ({
     countryFill: WORLD_COUNTRIES_MAP_COUNTRY_FILL,
-    hoverHighlight: true,
+    hoverHighlight: level !== 'world',
     hoverShowName: level !== 'world',
     hoverScope: 'group' as const,
     hoverFill: GEOGRAPHY_OVERVIEW_HOVER_FILL,

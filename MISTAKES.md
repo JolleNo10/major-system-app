@@ -139,6 +139,13 @@ needs conversion.
 
 # Incremental World Countries map hover
 
-- **What happened:** Generic map hover used the full declarative SVG renderer, then its React echo could reapply broad presentation. Group-outline rendering also discarded and rebuilt generated SVG/filter geometry.
-- **Root cause:** Transient interaction and persistent presentation shared one coarse render path.
-- **Prevention:** Hover must update only affected transient presentation. Retain persistent generated geometry across hover and reconcile it only when its semantic inputs change.
+- **What happened:** The incremental-hover fix removed the full render, but
+  World Continent hover still used `feMorphology` across 40 to 50+ Countries.
+  It also labeled a nested-`requestAnimationFrame` measurement `paint`, though
+  that callback does not prove rasterization is visible.
+- **Root cause:** We measured JavaScript/DOM work without accounting for the
+  browser cost of large filtered groups; the log name overstated what an
+  animation-frame callback guarantees.
+- **Prevention:** Choose transient effects whose browser cost scales with the
+  semantic shape. Name animation-frame timings as frame opportunities, not
+  completed paint.

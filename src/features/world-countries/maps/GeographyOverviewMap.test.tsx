@@ -119,6 +119,108 @@ describe('GeographyOverviewMap', () => {
     expect(onCountryClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'NO', continent: 'Europe' }))
   })
 
+  it('shows only a retained World Continent boundary without restyling Countries or persistent presentation', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g><path id="Norway" d="M 10 10 h 20 v 20 h -20 z"/><text id="Norway_label">Norway</text></g><g><path id="Sweden" d="M 30 10 h 20 v 20 h -20 z"/><text id="Sweden_label">Sweden</text></g></svg>',
+    })))
+    const norway = countries.find(country => country.id === 'NO')!
+    const sweden = countries.find(country => country.id === 'SE')!
+    const onHoverGroup = vi.fn()
+    const mount = document.createElement('div')
+    document.body.append(mount)
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(GeographyOverviewMap, {
+        level: 'world',
+        countryPopulation: [norway, sweden],
+        selectedSubregionIds: ['northern-europe'],
+        selectionPresentation: 'outline-only',
+        countryColorsById: new Map([['NO', '#B5A678']]),
+        countryInnerGlowsById: new Map([['NO', {
+          color: '#769A70',
+          edgeIntensity: 111,
+          fadeLength: 10,
+          fadeBody: 31,
+          edgeConcentration: 79,
+        }]]),
+        countryEdgeTreatmentsById: new Map([
+          ['NO', 'outline' as const],
+          ['SE', 'halo' as const],
+        ]),
+        onHoverGroup,
+        ariaLabel: 'World map',
+      }))
+      await Promise.resolve(); await Promise.resolve()
+    })
+
+    const boundary = mount.querySelector('[data-svg-map-group-outline="continent-europe"]')
+    const innerGlow = mount.querySelector('[data-svg-map-country-inner-glow-country="Norway"]')
+    const countryOutline = mount.querySelector('[data-svg-map-group-outline="country-edge-outline"]')
+    const countryHalo = mount.querySelector('[data-svg-map-group-outline="country-edge-halo"]')
+    const selectedSubregion = mount.querySelector('[data-svg-map-group-outline="subregion-northern-europe"]')
+    const norwayBaseFill = mount.querySelector('[data-svg-map-country-inner-glow-base-source="Norway"]')
+    expect(boundary).not.toBeNull()
+    expect(boundary?.getAttribute('data-svg-map-group-outline-effect')).toBe('outer-boundary')
+    expect(boundary?.getAttribute('visibility')).toBe('hidden')
+    expect(boundary?.hasAttribute('filter')).toBe(false)
+    expect(innerGlow).not.toBeNull()
+    expect(countryOutline).not.toBeNull()
+    expect(countryHalo).not.toBeNull()
+    expect(selectedSubregion).not.toBeNull()
+    expect(norwayBaseFill).not.toBeNull()
+    expect((norwayBaseFill as SVGPathElement).style.fill).toBe('#B5A678')
+
+    const originalCountryStyles = ['Norway', 'Sweden'].map(id => {
+      const countryPath = mount.querySelector('path#' + id) as SVGPathElement
+      return {
+        fill: countryPath.style.fill,
+        stroke: countryPath.style.stroke,
+        strokeWidth: countryPath.style.strokeWidth,
+      }
+    })
+
+    await act(async () => {
+      mount.querySelector('path#Norway')?.dispatchEvent(new Event('pointerenter', { bubbles: true }))
+    })
+
+    expect(onHoverGroup).toHaveBeenLastCalledWith('continent-europe')
+    expect(boundary?.getAttribute('visibility')).toBe('visible')
+    expect(boundary?.getAttribute('opacity')).toBe('1')
+    expect((mount.querySelector('[data-svg-map-group-outline="continent-europe"]') as Element | null)).toBe(boundary)
+    expect(mount.querySelector('[data-svg-map-country-inner-glow-country="Norway"]')).toBe(innerGlow)
+    expect(mount.querySelector('[data-svg-map-group-outline="country-edge-outline"]')).toBe(countryOutline)
+    expect(mount.querySelector('[data-svg-map-group-outline="country-edge-halo"]')).toBe(countryHalo)
+    expect(mount.querySelector('[data-svg-map-group-outline="subregion-northern-europe"]')).toBe(selectedSubregion)
+    expect(mount.querySelector('[data-svg-map-country-inner-glow-base-source="Norway"]')).toBe(norwayBaseFill)
+    expect((norwayBaseFill as SVGPathElement).style.fill).toBe('#B5A678')
+    expect(['Norway', 'Sweden'].map(id => {
+      const countryPath = mount.querySelector('path#' + id) as SVGPathElement
+      return {
+        fill: countryPath.style.fill,
+        stroke: countryPath.style.stroke,
+        strokeWidth: countryPath.style.strokeWidth,
+      }
+    })).toEqual(originalCountryStyles)
+
+    await act(async () => {
+      mount.querySelector('path#Norway')?.dispatchEvent(new Event('pointerleave', { bubbles: true }))
+    })
+
+    expect(onHoverGroup).toHaveBeenLastCalledWith(null)
+    expect(boundary?.getAttribute('visibility')).toBe('hidden')
+    expect(boundary?.getAttribute('opacity')).toBe('0')
+    expect(['Norway', 'Sweden'].map(id => {
+      const countryPath = mount.querySelector('path#' + id) as SVGPathElement
+      return {
+        fill: countryPath.style.fill,
+        stroke: countryPath.style.stroke,
+        strokeWidth: countryPath.style.strokeWidth,
+      }
+    })).toEqual(originalCountryStyles)
+  })
+
   it('hides the embedded map credit without adding visible attribution', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g><text id="credit-text-svg">Created with mapchart.net</text></svg>' })))
     const mount = document.createElement('div'); document.body.append(mount)
@@ -149,6 +251,7 @@ describe('GeographyOverviewMap', () => {
     await act(async () => { mount.querySelector('path#France')?.dispatchEvent(new Event('pointerenter', { bubbles: true })) })
     expect(onHoverGroup).toHaveBeenLastCalledWith('subregion-western-europe')
     expect(mount.querySelector('[data-svg-map-group-outline="subregion-western-europe"]')).not.toBeNull()
+    expect(mount.querySelector('[data-svg-map-group-outline="subregion-western-europe"]')?.getAttribute('data-svg-map-group-outline-effect')).toBe('outline')
     await act(async () => { mount.querySelector('path#France')?.dispatchEvent(new Event('pointerleave', { bubbles: true })) })
     expect(onHoverGroup).toHaveBeenLastCalledWith(null)
 
@@ -402,7 +505,8 @@ describe('GeographyOverviewMap', () => {
     })
 
     expect(mount.querySelector('[data-svg-map-group-outline="subregion-northern-europe"]')).not.toBeNull()
-    expect(mount.querySelector('[data-svg-map-group-outline="continent-europe"]')).toBeNull()
+    const continentBoundary = mount.querySelector('[data-svg-map-group-outline="continent-europe"]')
+    expect(continentBoundary?.getAttribute('visibility')).toBe('hidden')
     expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toBe('#71717a')
     expect((mount.querySelector('path#France') as SVGPathElement | null)?.style.fill).toBe('#8b5cf6')
 

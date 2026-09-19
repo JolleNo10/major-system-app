@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   SvgMapController,
   type SvgMapCountryColors,
@@ -151,10 +151,11 @@ export function SvgMapView({
         setLoading(false)
         loadStateRef.current?.('ready')
         if (perfEnabled && view) {
+          // A later animation-frame callback is not a guarantee that SVG/GPU rasterization has completed.
           view.requestAnimationFrame(() => {
             view.requestAnimationFrame(() => {
               if (cancelled) return
-              console.log('[WC perf] map-load-paint', {
+              console.log('[WC perf] map-load-frame', {
                 source: svgUrl,
                 ms: view.performance.now() - startedAt,
                 countries: discovered.length,
@@ -208,7 +209,7 @@ export function SvgMapView({
     controller.hoverCountry(hoveredId)
   }, [countries, hoveredId])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const controller = controllerRef.current
     if (!controller || countries.length === 0) return
     controller.setTransientGroupOutlines(transientGroupOutlineIds)

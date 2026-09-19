@@ -869,22 +869,32 @@ target-local and Country-fit cameras respectively.
   dots use the same task interaction/presentation pipeline; synthetic dots are
   task-scoped map presentation and never alter canonical geography or ordinary
   map rendering.
-- The generic `SvgMapGroupOutline` presentation seam supports optional
-  outline/halo effect and underlay/overlay placement. Geography adapters
-  translate caller-owned per-Country edge treatments into grouped,
-  multipart-safe underlays. Persistent edge layers render below source Country
-  paths while existing transient hover, selection, task, and answer styling
-  remains in the overlay layer; hidden or muted Countries are omitted and the
-  declarative render reconstructs the edge and recall fill after interaction.
-  Capital status uses a separate generic caller-owned `SvgMapCountryInnerGlow`
-  seam: geometry is clipped to each individual Country path, pointerless,
-  declarative, and safe for multipart and wrapped authored copies. Hidden and
-  muted Countries omit the glow; transient hover, selection, task, and answer
-  treatments retain precedence, and persistent geometry is reconciled only when
-  assignments, visibility, or loaded geometry change. Reusing the grouped
-  outline/halo seam is rejected because it is outside-oriented and may group
-  adjacent geometry, while Capital status must remain an inward,
-  per-Country boundary treatment.
+- The generic `SvgMapGroupOutline` presentation seam supports outline, halo,
+  and lightweight `outer-boundary` effects with underlay/overlay placement.
+  World Continent hover uses `outer-boundary` so only the exterior Continent
+  edge is emphasized while Country progress fills and strokes remain untouched.
+  The effect derives from current member Country paths through a prebuilt
+  luminance mask, suppressing internal borders without introducing a second
+  geographic source of truth. Outer-boundary definitions are pre-materialized
+  and retained for the loaded map, then toggled through transient visibility.
+  Runtime morphology/filter union was rejected because large World Continent
+  groups rendered poorly; separately authored duplicate Continent geometry was
+  rejected because it would drift from the World map; runtime polygon-boolean
+  union was rejected as unnecessary complexity. Geography adapters translate
+  caller-owned per-Country edge treatments into grouped, multipart-safe
+  underlays. Persistent edge layers omit hidden or muted Countries and render
+  below source Country paths, while transient hover, selection, task, and answer
+  styling remains in the overlay layer; declarative rendering restores the
+  edge and recall fill after interaction. Capital status uses a separate
+  generic caller-owned `SvgMapCountryInnerGlow` seam: geometry is clipped to
+  each individual Country path, pointerless, declarative, and safe for
+  multipart and wrapped authored copies. Hidden and muted Countries omit the
+  glow; transient hover, selection, task, and answer treatments retain
+  precedence, and persistent geometry is reconciled only when assignments,
+  visibility, or loaded geometry change. Reusing the grouped outline/halo seam
+  for Capital status is rejected because it is outside-oriented and may group
+  adjacent geometry, while Capital status must remain an inward, per-Country
+  boundary treatment.
 - The generic `SvgMapCountryPattern` presentation seam renders caller-owned
   diagonal or crosshatch fills from SVG `<pattern>` definitions. World
   Countries Learning uses only the diagonal variant; the generic seam retains
