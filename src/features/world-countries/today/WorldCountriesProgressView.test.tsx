@@ -126,7 +126,7 @@ describe('World Countries progress hierarchy', () => {
     expect(mount.textContent).toContain('Early recall 1')
   })
 
-  it('uses lower-track Mastery while keeping strict overlap separate', () => {
+  it('headlines the highest reached rung while keeping strict overlap separate', () => {
     const scopeCountries = countries.filter(country => ['NO', 'SE', 'DK', 'FI'].includes(country.id))
     const attempts = scopeCountries.flatMap((country, countryIndex) => {
       const location = countryIndex < 3 ? ['location-to-country'] : []
@@ -140,8 +140,13 @@ describe('World Countries progress hierarchy', () => {
         localDate: `2026-08-${String(day).padStart(2, '0')}`,
       })))
     })
-    const mount = renderProgress('World', scopeCountries, [], attempts)
-    expect(mount.querySelector('[data-testid="world-mastery-summary"]')?.textContent).toContain('Mastery 50%')
+    const mount = renderProgress(
+      'World',
+      scopeCountries,
+      [{ subregionId: 'northern-europe', countriesLearnedAt: 1, capitalsLearnedAt: 2 }],
+      attempts,
+    )
+    expect(mount.querySelector('[data-testid="world-mastery-summary"]')?.textContent).toContain('Mastered 50%')
     expect(mount.querySelector('[data-testid="world-mastery-summary"]')?.textContent).toContain('2 / 4 Countries fully mastered')
     expect(mount.querySelectorAll('[data-recall-track]')).toHaveLength(2 * 2)
     expect(mount.querySelectorAll('[data-recall-track]')).toHaveLength(4)

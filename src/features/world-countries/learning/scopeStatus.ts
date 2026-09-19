@@ -56,6 +56,11 @@ export interface WorldCountriesScopeStatus {
   countLabel: string
 }
 
+/** Render a scope headline, omitting the share on the percentage-less Learning rungs. */
+export function formatWorldCountriesScopeStatus(status: WorldCountriesScopeStatus): string {
+  return status.percent === null ? status.label : `${status.label} ${status.percent}%`
+}
+
 export function isWorldCountriesLearningTier(tier: WorldCountriesScopeStatusTier): boolean {
   return (LEARNING_TIERS as readonly WorldCountriesScopeStatusTier[]).includes(tier)
 }

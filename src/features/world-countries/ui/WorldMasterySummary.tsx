@@ -1,9 +1,20 @@
 import { WORLD_COUNTRIES_CORE_FINISH_LINE_EXPLANATION } from '@/features/world-countries/learning/progressPresentation'
 import { getWorldCountriesScopeDisplayedMasteryRatio, type WorldCountriesScopeProgress } from '@/features/world-countries/learning/scopeProgress'
+import { formatWorldCountriesScopeStatus, type WorldCountriesScopeStatus } from '@/features/world-countries/learning/scopeStatus'
 import { WorldCountriesDualRecallBar } from './WorldCountriesDualRecallBar'
 
 /** Workflow-neutral core mastery summary shared by guided and setup surfaces. */
-export function WorldMasterySummary({ progress, scopeLabel = 'World' }: { progress: WorldCountriesScopeProgress | null; scopeLabel?: string }) {
+export function WorldMasterySummary({ progress, scopeStatus, scopeLabel = 'World' }: {
+  progress: WorldCountriesScopeProgress | null
+  /**
+   * Highest ladder rung this scope has reached; the finish-line count stays
+   * separate. Omit it to keep the strict mastery headline: Drill setup still
+   * does, because its recall rungs would be gated behind guided-Learning
+   * milestones that Drill evidence never sets, and that view is being reworked.
+   */
+  scopeStatus?: WorldCountriesScopeStatus | null
+  scopeLabel?: string
+}) {
   const title = scopeLabel === 'World' ? 'World mastery' : `${scopeLabel} progress`
   return (
     <section
@@ -16,11 +27,15 @@ export function WorldMasterySummary({ progress, scopeLabel = 'World' }: { progre
           <h2 id="world-mastery-heading" className="text-xs font-semibold uppercase tracking-wider text-cyan-300">{title}</h2>
           <p className="mt-1 text-xs text-zinc-500">Core Country finish line across the active {scopeLabel} population.</p>
         </div>
-        {progress === null ? (
+        {progress === null || scopeStatus === null ? (
           <p role="status" aria-live="polite" className="text-sm text-zinc-400">Loading mastery…</p>
-        ) : (
+        ) : scopeStatus === undefined ? (
           <p className="font-semibold tabular-nums text-zinc-100">
-            Mastery <span className="text-cyan-300">{formatDisplayedMasteryPercentage(progress)}%</span>
+            Mastery <span className="text-cyan-300">{Math.round(getWorldCountriesScopeDisplayedMasteryRatio(progress) * 100)}%</span>
+          </p>
+        ) : (
+          <p className="font-semibold tabular-nums text-cyan-300">
+            {formatWorldCountriesScopeStatus(scopeStatus)}
           </p>
         )}
       </div>
@@ -39,8 +54,4 @@ export function WorldMasterySummary({ progress, scopeLabel = 'World' }: { progre
       )}
     </section>
   )
-}
-
-function formatDisplayedMasteryPercentage(progress: WorldCountriesScopeProgress): number {
-  return Math.round(getWorldCountriesScopeDisplayedMasteryRatio(progress) * 100)
 }

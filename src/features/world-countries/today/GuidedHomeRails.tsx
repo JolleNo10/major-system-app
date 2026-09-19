@@ -3,7 +3,7 @@ import { useRails } from '@/app/layout/PageLayoutContext'
 import type { Continent } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition } from '@/features/world-countries/data/subregions'
 import type { WorldCountriesScopeProgress } from '@/features/world-countries/learning/scopeProgress'
-import type { WorldCountriesScopeStatus } from '@/features/world-countries/learning/scopeStatus'
+import { formatWorldCountriesScopeStatus, type WorldCountriesScopeStatus } from '@/features/world-countries/learning/scopeStatus'
 import { GeographyBreadcrumbs } from '@/features/world-countries/ui/GeographyBreadcrumbs'
 import { WorldCountriesDualRecallBar } from '@/features/world-countries/ui/WorldCountriesDualRecallBar'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
@@ -20,11 +20,6 @@ export interface GuidedHomeScopeSummary {
   onSelect?: () => void
   selected?: boolean
   status?: string
-}
-
-/** Render a scope headline, omitting the share on the percentage-less Learning rungs. */
-function formatScopeStatus(status: WorldCountriesScopeStatus): string {
-  return status.percent === null ? status.label : `${status.label} ${status.percent}%`
 }
 
 export function GuidedHomeRails({
@@ -142,7 +137,7 @@ export function GuidedHomeRails({
               >
                 <span className="flex items-center justify-between gap-2 text-sm font-semibold">
                   <span>{summary.label}</span>
-                  <span className="text-xs tabular-nums text-zinc-500">{formatScopeStatus(summary.scopeStatus)}</span>
+                  <span className="text-xs tabular-nums text-zinc-500">{formatWorldCountriesScopeStatus(summary.scopeStatus)}</span>
                 </span>
                 <WorldCountriesDualRecallBar
                   totalCountries={summary.progress.totalCountries}
@@ -160,7 +155,7 @@ export function GuidedHomeRails({
           {scopeProgress && scopeStatus ? (
             <p className="mt-1 flex items-baseline justify-between gap-2 text-sm text-zinc-300">
               <span className="font-semibold tabular-nums">{scopeStatus.countLabel}</span>
-              <span className="text-xs tabular-nums text-zinc-500">{formatScopeStatus(scopeStatus)}</span>
+              <span className="text-xs tabular-nums text-zinc-500">{formatWorldCountriesScopeStatus(scopeStatus)}</span>
             </p>
           ) : (
             <p role="status" aria-live="polite" className="mt-2 text-xs text-zinc-500">{evidenceStatus === 'loading' ? 'Progress is loading.' : 'Progress is unavailable right now.'}</p>

@@ -4,8 +4,10 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it } from 'vitest'
 import { countries } from '@/features/world-countries/data/countries'
-import { deriveWorldCountriesRecallProgress } from '@/features/world-countries/learning/recallProgress'
+import { deriveWorldCountriesCountryProgress, deriveWorldCountriesRecallProgress } from '@/features/world-countries/learning/recallProgress'
 import { deriveWorldCountriesScopeProgressForCountries } from '@/features/world-countries/learning/scopeProgress'
+import { deriveWorldCountriesScopeStatus } from '@/features/world-countries/learning/scopeStatus'
+import type { WorldCountriesLearningReadiness } from '@/features/world-countries/learning/learningReadiness'
 import { WorldMasterySummary } from './WorldMasterySummary'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -39,24 +41,31 @@ function renderSummary() {
     skills: ['location-to-country', 'country-to-capital'],
   }, attempts.map(attempt => ({ attemptType: 'review' as const, ...attempt })))
   const progress = deriveWorldCountriesScopeProgressForCountries('world', scopeCountries, recallProgress)
+  const scopeStatus = deriveWorldCountriesScopeStatus(
+    scopeCountries.map(country => country.id),
+    new Map(scopeCountries.map(country => [country.id, 'COUNTRIES_AND_CAPITALS_LEARNED' as WorldCountriesLearningReadiness])),
+    new Map(scopeCountries.map(country => [country.id, deriveWorldCountriesCountryProgress(country.id, recallProgress)])),
+  )
   const mount = document.createElement('div')
   document.body.append(mount)
   act(() => {
     root = createRoot(mount)
-    root.render(createElement(WorldMasterySummary, { progress }))
+    root.render(createElement(WorldMasterySummary, { progress, scopeStatus }))
   })
   return { mount, progress }
 }
 
 describe('WorldMasterySummary', () => {
-  it('uses the lower track as Mastery while keeping strict completion separate', () => {
+  it('headlines the highest reached rung while keeping strict completion separate', () => {
     const { mount, progress } = renderSummary()
     const text = mount.querySelector('[data-testid="world-mastery-summary"]')?.textContent ?? ''
 
+    // Two of the four Countries have both core skills Mastered, so the scope
+    // has reached the top rung; the atomic tracks stay further apart.
     expect(progress.locationToCountryMasteryRatio).toBe(3 / 4)
     expect(progress.countryToCapitalMasteryRatio).toBe(2 / 4)
-    expect(text).toContain('Mastery 50%')
-    expect(text).not.toContain('Mastery 63%')
+    expect(text).toContain('Mastered 50%')
+    expect(text).not.toContain('Mastery')
     expect(text).toContain('2 / 4 Countries fully mastered')
     expect(text).not.toContain('5 / 8')
   })

@@ -298,10 +298,11 @@ two atomic ladders separately. Continent rows also show a core-recall-complete
 region rollup. Progress rails explain scope and state semantics and do not
 choose Review or Journey actions.
 
-### Guided Home scope headline
+### Scope status headline
 
-The guided Home geography rail headlines each Continent/Subregion row, and its
-own scope footer, with the **highest rung the scope has reached** rather than a
+The guided Home geography rail headlines each Continent/Subregion row and its
+own scope footer, and the derived Progress view headlines its mastery card and
+each of its rows, with the **highest rung the scope has reached** rather than a
 mastery percentage. The rung ladder is the one the map legend already shows:
 `Not learned -> Learned -> Early recall -> Weak -> Developing -> Strong ->
 Mastered`, where the recall rungs stay gated behind Learning Readiness exactly
@@ -319,10 +320,24 @@ because that is indistinguishable from the empty promoted rung.
 Headlining the top rung was rejected after it shipped: every scope read
 `Mastery 0%` until Countries were fully mastered, which restated the
 `0 / n Countries fully mastered` line directly beneath it and hid all
-intermediate progress. This rule is scoped to the guided Home rail; the Drill
-setup `WorldMasterySummary` and the derived Progress view keep the strict
-`min(Country, Capital)` mastery ratio, because those surfaces are about the
-mastery finish line specifically.
+intermediate progress.
+
+A rung is per-Country and conjunctive, matching how the map colours Countries:
+a Country is Mastered only when both core skills are. A scope can therefore
+report `Mastered 0%` while the compact bars show Mastered segments on both
+atomic tracks, because those tracks are a finer per-skill view - one Country
+can be Mastered on Location → Country while a different one is Mastered on
+Country → Capital, leaving neither Country Mastered. Deriving the rung from
+the weaker atomic track instead was rejected: it agrees with the bars but its
+percentage describes no actual set of Countries, so it cannot share the
+`n / total Countries fully mastered` count.
+
+`WorldMasterySummary` takes the rung as an optional prop and keeps the strict
+`min(Country, Capital)` headline when it is omitted. Drill setup omits it on
+purpose: its recall rungs would be gated behind guided-Learning milestones
+that Drill evidence never sets, so the card would read `Not learned` above its
+own `n / total Countries fully mastered`. That surface is pending rework;
+until then the gate stays a guided-curriculum concept.
 
 ### Review spacing and recall projection
 

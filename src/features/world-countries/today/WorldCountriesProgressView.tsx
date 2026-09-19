@@ -4,10 +4,11 @@ import type { Continent, Country } from '@/features/world-countries/data/countri
 import { getContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
 import { getContinentsInEffectiveOrder, getSubregionsForContinentInEffectiveOrder } from '@/features/world-countries/geography/queries'
 import { getWorldMetadata } from '@/features/world-countries/geography/worldMetadataStore'
-import type { RecallProgress } from '@/features/world-countries/learning/recallProgress'
-import { deriveWorldCountriesScopeProgressForCountries, getWorldCountriesScopeDisplayedMasteryRatio, type WorldCountriesScopeProgress } from '@/features/world-countries/learning/scopeProgress'
+import { deriveWorldCountriesCountryProgress, type RecallProgress } from '@/features/world-countries/learning/recallProgress'
+import { deriveWorldCountriesScopeProgressForCountries, type WorldCountriesScopeProgress } from '@/features/world-countries/learning/scopeProgress'
+import { deriveWorldCountriesScopeStatus, formatWorldCountriesScopeStatus, type WorldCountriesScopeStatus } from '@/features/world-countries/learning/scopeStatus'
 import type { LearningStates } from '@/features/world-countries/learning/learningProgress'
-import { getWorldCountriesLearningStateList } from '@/features/world-countries/learning/learningReadiness'
+import { createWorldCountriesEstablishedLearningReadinessByCountry, getWorldCountriesLearningStateList } from '@/features/world-countries/learning/learningReadiness'
 import { getWorldCountriesProgressLegend, WORLD_COUNTRIES_ATOMIC_PROFICIENCY_STATES, WORLD_COUNTRIES_CORE_FINISH_LINE_EXPLANATION, WORLD_COUNTRIES_PROGRESS_LABELS } from '@/features/world-countries/learning/progressPresentation'
 import { GeographyBreadcrumbs } from '@/features/world-countries/ui/GeographyBreadcrumbs'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
@@ -19,6 +20,8 @@ interface ProgressRowData {
   id: string
   label: string
   progress: WorldCountriesScopeProgress
+  /** Highest ladder rung this row has reached; drives the headline and count. */
+  scopeStatus: WorldCountriesScopeStatus
   regionSummary?: string
   journeyPosition?: {
     journey: string
@@ -43,9 +46,40 @@ export function WorldCountriesProgressView({
   learningStates: LearningStates
   onBack: () => void
 }) {
+  // The guided Home rail and this view must place a scope on the same rung,
+  // so both read the same Learning Readiness and Country progress.
+  const readinessByCountry = useMemo(
+    () => createWorldCountriesEstablishedLearningReadinessByCountry(
+      scopeCountries,
+      learningStates,
+      recallProgress ?? new Map(),
+    ),
+    [learningStates, recallProgress, scopeCountries],
+  )
+  const countryProgressById = useMemo(
+    () => new Map(scopeCountries.map(country => [
+      country.id,
+      deriveWorldCountriesCountryProgress(country.id, recallProgress ?? new Map()),
+    ] as const)),
+    [recallProgress, scopeCountries],
+  )
+  const scopeStatus = useMemo(
+    () => deriveWorldCountriesScopeStatus(
+      scopeCountries.map(country => country.id),
+      readinessByCountry,
+      countryProgressById,
+    ),
+    [countryProgressById, readinessByCountry, scopeCountries],
+  )
+
   const rows = useMemo<ProgressRowData[]>(() => {
     if (!recallProgress) return []
     const activeSubregionIds = [...new Set(scopeCountries.map(country => country.subregionId))]
+    const statusFor = (entries: readonly Country[]) => deriveWorldCountriesScopeStatus(
+      entries.map(country => country.id),
+      readinessByCountry,
+      countryProgressById,
+    )
 
     if (!scopeContinent) {
       return getContinentsInEffectiveOrder(scopeCountries, getWorldMetadata()).map(continent => {
@@ -63,6 +97,7 @@ export function WorldCountriesProgressView({
           id: `continent:${continent}`,
           label: continent,
           progress: deriveWorldCountriesScopeProgressForCountries(`continent:${continent}`, continentCountries, recallProgress),
+          scopeStatus: statusFor(continentCountries),
           regionSummary: `${completeRegions} of ${continentSubregions.length} regions with complete recall`,
         }
       })
@@ -82,6 +117,7 @@ export function WorldCountriesProgressView({
           scopeCountries.filter(country => country.subregionId === subregion.id),
           recallProgress,
         ),
+        scopeStatus: statusFor(scopeCountries.filter(country => country.subregionId === subregion.id)),
         journeyPosition: getJourneyProgressLabel(deriveWorldCountriesJourneyPresentation({
           subregionId: subregion.id,
           entries: scopeCountries,
@@ -89,7 +125,7 @@ export function WorldCountriesProgressView({
           recallProgress,
         })),
       }))
-  }, [learningStates, recallProgress, scopeContinent, scopeCountries])
+  }, [countryProgressById, learningStates, readinessByCountry, recallProgress, scopeContinent, scopeCountries])
 
   const rails = useMemo(() => ({
     left: <WorldCountriesPanel className="space-y-4"><GeographyBreadcrumbs items={[{ label: 'World', current: scopeLabel === 'World' }, ...(scopeLabel === 'World' ? [] : [{ label: scopeLabel, current: true }])]} /><div><p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Progress</p><h2 className="mt-1 text-lg font-bold text-zinc-100">Your learning map</h2><p className="mt-2 text-sm leading-relaxed text-zinc-400">Progress is derived from retained recall and existing Learning milestones.</p></div><button type="button" onClick={onBack} className="w-full rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Back to {scopeLabel}</button></WorldCountriesPanel>,
@@ -102,26 +138,25 @@ export function WorldCountriesProgressView({
   return (
     <section className="space-y-4 animate-fade-in" aria-labelledby="world-countries-progress-heading">
       <div className="space-y-1"><p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">World Countries · Progress</p><h1 id="world-countries-progress-heading" className="text-2xl font-black text-zinc-100">{scopeLabel} progress</h1><p className="text-sm text-zinc-500">A concise view of current recall and Learning state.</p></div>
-      <WorldMasterySummary progress={progress} scopeLabel={scopeLabel} />
+      <WorldMasterySummary progress={progress} scopeStatus={progress === null ? null : scopeStatus} scopeLabel={scopeLabel} />
       {progress === null ? <p role="status" className="text-sm text-zinc-400">Loading progress…</p> : rows.length === 0 ? <p className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-sm text-zinc-400">No active Countries are available in this scope.</p> : <div className="grid gap-3 sm:grid-cols-2">{rows.map(row => <ProgressRow key={row.id} {...row} />)}</div>}
     </section>
   )
 }
 
-function ProgressRow({ label, progress, regionSummary, journeyPosition }: ProgressRowData) {
-  const percentage = Math.round(getWorldCountriesScopeDisplayedMasteryRatio(progress) * 100)
+function ProgressRow({ label, progress, scopeStatus, regionSummary, journeyPosition }: ProgressRowData) {
   return (
     <WorldCountriesPanel as="article" className="space-y-3">
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-semibold text-zinc-100">{label}</h2>
-        <span className="text-xs tabular-nums text-cyan-300">Mastery {percentage}%</span>
+        <span className="text-xs tabular-nums text-cyan-300">{formatWorldCountriesScopeStatus(scopeStatus)}</span>
       </div>
       <WorldCountriesDualRecallBar
         totalCountries={progress.totalCountries}
         countryCounts={progress.locationToCountryStateCounts}
         capitalCounts={progress.countryToCapitalStateCounts}
       />
-      <p className="text-sm font-semibold text-zinc-200">{progress.completeCountries} / {progress.totalCountries} Countries fully mastered</p>
+      <p className="text-sm font-semibold text-zinc-200">{scopeStatus.countLabel}</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <ProgressStateDistribution label="Country" counts={progress.locationToCountryStateCounts} />
         <ProgressStateDistribution label="Capital" counts={progress.countryToCapitalStateCounts} />
