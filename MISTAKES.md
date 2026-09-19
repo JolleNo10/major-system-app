@@ -123,3 +123,16 @@ convert the complete persisted model owned by each converter, remain
 retry-safe within a step, and advance the global version only after success.
 Normal feature entry must never decide whether an old logical model still
 needs conversion.
+
+# Development performance diagnostics
+
+- **What happened:** A temporary World Countries diagnostic ran from an
+  automatic React effect and evaluated detailed status traces for every
+  Country/core-skill target in scope.
+- **Why it was a problem:** Evaluator traces cost substantially more than
+  ordinary status derivation and ran whenever Today dependencies changed.
+  That made development performance less representative and could mask the
+  actual runtime bottleneck.
+- **Prevention:** Keep heavy traces explicit/on-demand. Automatic DEV
+  instrumentation should time existing work with lightweight timers and small
+  summaries rather than derive whole-dataset state just for logging.

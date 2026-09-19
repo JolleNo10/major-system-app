@@ -55,8 +55,22 @@ export function deriveWorldCountriesRecallHistory(
 export async function loadWorldCountriesRecallHistory(
   config: RecallHistoryConfig,
 ): Promise<WorldCountriesRecallHistory> {
+  const totalStartedAt = import.meta.env.DEV ? performance.now() : 0
+  const storeStartedAt = import.meta.env.DEV ? performance.now() : 0
   const attempts = await getAllAttemptsOrThrow()
-  return deriveWorldCountriesRecallHistory(config, attempts as unknown as WorldCountriesRecallHistoryAttempt[])
+  const storeReadMs = import.meta.env.DEV ? performance.now() - storeStartedAt : 0
+  const groupingStartedAt = import.meta.env.DEV ? performance.now() : 0
+  const history = deriveWorldCountriesRecallHistory(config, attempts as unknown as WorldCountriesRecallHistoryAttempt[])
+  if (import.meta.env.DEV) {
+    console.log('[WC perf] recall-history', {
+      storeReadMs,
+      groupingMs: performance.now() - groupingStartedAt,
+      totalMs: performance.now() - totalStartedAt,
+      storedAttemptCount: attempts.length,
+      requestedTargetCount: history.size,
+    })
+  }
+  return history
 }
 
 export function flattenWorldCountriesRecallHistory(

@@ -13,6 +13,8 @@ import {
 } from './svgGeometry'
 import { fitViewBoxToAspect, parseViewBox, type SvgViewBoxRect } from './viewBoxFit'
 
+const SLOW_MAP_OPERATION_THRESHOLD_MS = 16
+
 export type {
   SvgMapLearningAnchor,
   SvgMapSyntheticDot,
@@ -496,50 +498,84 @@ export class SvgMapController {
   }
 
   async load(source: SvgMapSource): Promise<readonly SvgMapCountry[]> {
-    this.assertUsable()
-    const version = ++this.loadVersion
-    this.abortController?.abort()
-    this.abortController = null
+    const perfEnabled = import.meta.env.DEV
+    const totalStartedAt = perfEnabled ? performance.now() : 0
+    let fetchMs = 0
+    let parseMs = 0
+    let setupAndInitialRenderMs = 0
+    try {
+      this.assertUsable()
+      const version = ++this.loadVersion
+      this.abortController?.abort()
+      this.abortController = null
 
-    let markup: string
-    if ('markup' in source) {
-      markup = source.markup
-    } else {
-      const abortController = new AbortController()
-      this.abortController = abortController
-      const response = await fetch(source.url, { signal: abortController.signal })
-      if (!response.ok) throw new Error(`SVG map request failed with ${response.status}`)
-      markup = await response.text()
+      const fetchStartedAt = perfEnabled ? performance.now() : 0
+      let markup: string
+      try {
+        if ('markup' in source) {
+          markup = source.markup
+        } else {
+          const abortController = new AbortController()
+          this.abortController = abortController
+          const response = await fetch(source.url, { signal: abortController.signal })
+          if (!response.ok) throw new Error(`SVG map request failed with ${response.status}`)
+          markup = await response.text()
+        }
+      } finally {
+        if (perfEnabled) fetchMs = performance.now() - fetchStartedAt
+      }
+
+      if (version !== this.loadVersion || this.destroyed) return []
+
+      const parseStartedAt = perfEnabled ? performance.now() : 0
+      let root: Element
+      try {
+        const parsed = new DOMParser().parseFromString(markup, 'image/svg+xml')
+        root = parsed.documentElement
+        if (root.localName.toLowerCase() !== 'svg' || parsed.querySelector('parsererror')) {
+          throw new Error('SVG map source does not contain a valid SVG root')
+        }
+        this.validateSvg(root)
+      } finally {
+        if (perfEnabled) parseMs = performance.now() - parseStartedAt
+      }
+
+      const setupStartedAt = perfEnabled ? performance.now() : 0
+      try {
+        this.resetMap()
+        const imported = this.mount.ownerDocument.importNode(root, true) as unknown as SVGSVGElement
+        imported.setAttribute('aria-hidden', 'true')
+        imported.setAttribute('focusable', 'false')
+        this.mount.replaceChildren(imported)
+        this.svg = imported
+        this.backgroundElement = imported.querySelector<SVGElement>('#svg-background')
+        this.originalBackgroundFill = this.backgroundElement ? captureStyle(this.backgroundElement, 'fill') : null
+        this.originalBackgroundColor = captureStyle(imported, 'background-color')
+        this.originalViewBox = imported.getAttribute('viewBox')
+        this.originalPreserveAspectRatio = imported.getAttribute('preserveAspectRatio')
+        this.syncLayoutPresentation()
+        this.observeResize()
+        this.bindDiscoveredCountries(imported, markup)
+        this.attachHoverListeners()
+        this.taskAssistance.attach(imported)
+        this.render()
+
+        return this.getCountries()
+      } finally {
+        if (perfEnabled) setupAndInitialRenderMs = performance.now() - setupStartedAt
+      }
+    } finally {
+      if (perfEnabled) {
+        console.log('[WC perf] map-load', {
+          source: 'url' in source ? source.url : 'inline markup',
+          fetchMs,
+          parseMs,
+          setupAndInitialRenderMs,
+          totalMs: performance.now() - totalStartedAt,
+          countries: this.countries.size,
+        })
+      }
     }
-
-    if (version !== this.loadVersion || this.destroyed) return []
-
-    const parsed = new DOMParser().parseFromString(markup, 'image/svg+xml')
-    const root = parsed.documentElement
-    if (root.localName.toLowerCase() !== 'svg' || parsed.querySelector('parsererror')) {
-      throw new Error('SVG map source does not contain a valid SVG root')
-    }
-    this.validateSvg(root)
-
-    this.resetMap()
-    const imported = this.mount.ownerDocument.importNode(root, true) as unknown as SVGSVGElement
-    imported.setAttribute('aria-hidden', 'true')
-    imported.setAttribute('focusable', 'false')
-    this.mount.replaceChildren(imported)
-    this.svg = imported
-    this.backgroundElement = imported.querySelector<SVGElement>('#svg-background')
-    this.originalBackgroundFill = this.backgroundElement ? captureStyle(this.backgroundElement, 'fill') : null
-    this.originalBackgroundColor = captureStyle(imported, 'background-color')
-    this.originalViewBox = imported.getAttribute('viewBox')
-    this.originalPreserveAspectRatio = imported.getAttribute('preserveAspectRatio')
-    this.syncLayoutPresentation()
-    this.observeResize()
-    this.bindDiscoveredCountries(imported, markup)
-    this.attachHoverListeners()
-    this.taskAssistance.attach(imported)
-    this.render()
-
-    return this.getCountries()
   }
 
   getCountries(): readonly SvgMapCountry[] {
@@ -576,6 +612,8 @@ export class SvgMapController {
   /** Apply all React-owned map presentation state with one final DOM render. */
   updatePresentation(state: SvgMapPresentationState): void {
     this.assertUsable()
+    const perfEnabled = import.meta.env.DEV
+    const startedAt = perfEnabled ? performance.now() : 0
     this.renderBatchDepth += 1
     this.renderPending = true
     try {
@@ -610,6 +648,12 @@ export class SvgMapController {
       if (this.renderBatchDepth === 0 && this.renderPending) {
         this.renderPending = false
         this.renderNow()
+      }
+      if (perfEnabled) {
+        const ms = performance.now() - startedAt
+        if (ms >= SLOW_MAP_OPERATION_THRESHOLD_MS) {
+          console.log('[WC perf] map-presentation', { ms, hoveredId: state.hoveredId })
+        }
       }
     }
   }
@@ -1411,6 +1455,8 @@ export class SvgMapController {
 
   private renderNow(): void {
     if (!this.svg) return
+    const perfEnabled = import.meta.env.DEV
+    const totalStartedAt = perfEnabled ? performance.now() : 0
     const view = this.mount.ownerDocument.defaultView
     const reducedMotion = view?.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
     const transition = reducedMotion || this.settings.transitionMs === 0
@@ -1428,6 +1474,7 @@ export class SvgMapController {
     }
     this.svg.querySelectorAll('defs[data-svg-map-country-pattern-defs]').forEach(defs => defs.remove())
 
+    const countryStylingStartedAt = perfEnabled ? performance.now() : 0
     for (const country of this.countries.values()) {
       const hovered = this.hoveredIds.has(country.id)
       const taskHovered = this.taskAssistance.getHoveredCountryId() === country.id
@@ -1497,11 +1544,28 @@ export class SvgMapController {
       setOverride(country.label, 'opacity', this.settings.labelOpacity === null ? null : String(this.settings.labelOpacity), country.originalLabelOpacity)
       this.taskAssistance.renderCountryTaskState(country, fill, hidden, reducedMotion)
     }
+    const countryStylingMs = perfEnabled ? performance.now() - countryStylingStartedAt : 0
+    let innerGlowMs = 0
     if (this.countryInnerGlowDirty) {
+      const innerGlowStartedAt = perfEnabled ? performance.now() : 0
       this.renderCountryInnerGlows()
+      if (perfEnabled) innerGlowMs = performance.now() - innerGlowStartedAt
       this.countryInnerGlowDirty = false
     }
+    const groupOutlineStartedAt = perfEnabled ? performance.now() : 0
     this.renderGroupOutlines()
+    if (perfEnabled) {
+      const totalMs = performance.now() - totalStartedAt
+      if (totalMs >= SLOW_MAP_OPERATION_THRESHOLD_MS) {
+        console.log('[WC perf] map-render', {
+          totalMs,
+          countries: this.countries.size,
+          countryStylingMs,
+          innerGlowMs,
+          groupOutlineMs: performance.now() - groupOutlineStartedAt,
+        })
+      }
+    }
   }
 
   private getCountryPersistentBaseFill(countryId: string): string | null {
@@ -1527,7 +1591,19 @@ export class SvgMapController {
   }
 
   private setHoveredCountryAndNotify(id: string | null): void {
+    const perfEnabled = import.meta.env.DEV
+    const startedAt = perfEnabled ? performance.now() : 0
     this.setHoveredCountry(id)
+    if (perfEnabled) {
+      const ms = performance.now() - startedAt
+      if (ms >= SLOW_MAP_OPERATION_THRESHOLD_MS) {
+        console.log('[WC perf] map-hover', {
+          ms,
+          countryId: id,
+          hoveredCountries: this.hoveredIds.size,
+        })
+      }
+    }
     this.countryHoverHandler?.(this.hoveredCountryId === id ? id : null)
   }
 
@@ -1560,10 +1636,23 @@ export class SvgMapController {
   }
 
   private renderCountryInnerGlows(): void {
+    const perfEnabled = import.meta.env.DEV
+    const startedAt = perfEnabled ? performance.now() : 0
+    const logIfSlow = perfEnabled
+      ? () => {
+          const ms = performance.now() - startedAt
+          if (ms >= SLOW_MAP_OPERATION_THRESHOLD_MS) {
+            console.log('[WC perf] map-inner-glow', { ms, countriesWithGlow: this.countryInnerGlows.size })
+          }
+        }
+      : null
     this.removeCountryInnerGlowPresentation()
     const firstPath = this.countries.values().next().value?.path
     const mapSvg = firstPath?.ownerSVGElement
-    if (!mapSvg || this.countryInnerGlows.size === 0) return
+    if (!mapSvg || this.countryInnerGlows.size === 0) {
+      logIfSlow?.()
+      return
+    }
 
     const document = mapSvg.ownerDocument
     const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs')
@@ -1644,6 +1733,7 @@ export class SvgMapController {
 
     if (layer.childElementCount === 0) {
       defs.remove()
+      logIfSlow?.()
       return
     }
     let firstCountryElement: Element = firstPath
@@ -1652,6 +1742,7 @@ export class SvgMapController {
     }
     mapSvg.insertBefore(layer, firstCountryElement)
     this.countryInnerGlowLayer = layer
+    logIfSlow?.()
   }
 
   private removeCountryInnerGlowPresentation(): void {
@@ -1662,16 +1753,34 @@ export class SvgMapController {
   }
 
   private renderGroupOutlines(): void {
+    const perfEnabled = import.meta.env.DEV
+    const startedAt = perfEnabled ? performance.now() : 0
+    let activeOutlineCount = 0
+    const logIfSlow = perfEnabled
+      ? () => {
+          const ms = performance.now() - startedAt
+          if (ms >= SLOW_MAP_OPERATION_THRESHOLD_MS) {
+            console.log('[WC perf] map-group-outlines', { ms, activeOutlines: activeOutlineCount })
+          }
+        }
+      : null
     this.outlineLayers.forEach(layer => layer.remove())
     this.outlineLayers = []
 
     const firstPath = this.countries.values().next().value?.path
     const mapSvg = firstPath?.ownerSVGElement
-    if (!mapSvg) return
+    if (!mapSvg) {
+      logIfSlow?.()
+      return
+    }
 
     mapSvg.querySelectorAll('filter[data-svg-map-group-outline-filter]').forEach(filter => filter.remove())
     const activeOutlines = this.groupOutlines.filter(outline => this.visibleGroupOutlines.has(outline.id))
-    if (activeOutlines.length === 0) return
+    activeOutlineCount = activeOutlines.length
+    if (activeOutlines.length === 0) {
+      logIfSlow?.()
+      return
+    }
 
     const document = mapSvg.ownerDocument
     const createLayer = (placement: 'underlay' | 'overlay'): SVGGElement => {
@@ -1770,6 +1879,7 @@ export class SvgMapController {
       mapSvg.append(overlayLayer)
       this.outlineLayers.push(overlayLayer)
     }
+    logIfSlow?.()
   }
 
   private getPatternUrl(pattern: SvgMapCountryPattern): string {
