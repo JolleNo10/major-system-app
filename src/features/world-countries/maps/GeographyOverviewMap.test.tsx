@@ -486,6 +486,35 @@ describe('GeographyOverviewMap', () => {
     expect(mount.querySelector('[data-svg-map-group-outline="subregion-western-europe"]')?.getAttribute('display')).not.toBe('none')
   })
 
+  it('toggles World Continent hover without reapplying presentation to every discovered Country', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => europeSvg })))
+    const mount = document.createElement('div'); document.body.append(mount)
+    const updatePresentation = vi.spyOn(SvgMapController.prototype, 'updatePresentation')
+
+    await act(async () => {
+      root = createRoot(mount)
+      root.render(createElement(GeographyOverviewMap, { level: 'world', ariaLabel: 'World map' }))
+      await Promise.resolve(); await Promise.resolve()
+    })
+
+    // Hovering must reach the retained Continent outline only. Returning a
+    // fresh empty muted/scoped array changed `mutedIds` identity on every
+    // pointer move, which reapplied the whole declarative presentation across
+    // all discovered Countries - the dominant cost on the 209-path World map.
+    const callsAfterLoad = updatePresentation.mock.calls.length
+    await act(async () => {
+      mount.querySelector('path#Norway')?.dispatchEvent(new Event('pointerenter', { bubbles: true }))
+      await Promise.resolve(); await Promise.resolve()
+    })
+    expect(updatePresentation).toHaveBeenCalledTimes(callsAfterLoad)
+
+    await act(async () => {
+      mount.querySelector('path#Norway')?.dispatchEvent(new Event('pointerleave', { bubbles: true }))
+      await Promise.resolve(); await Promise.resolve()
+    })
+    expect(updatePresentation).toHaveBeenCalledTimes(callsAfterLoad)
+  })
+
   it('outlines a selected World Subregion without selecting its containing Continent or replacing progress fills', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g><path id="Norway"/><text id="Norway_label">Norway</text></g><g><path id="France"/><text id="France_label">France</text></g></svg>' })))
     const onCountryClick = vi.fn()

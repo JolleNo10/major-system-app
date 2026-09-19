@@ -211,7 +211,7 @@ export function GeographyOverviewMap({
   const [mapHoveredGroupId, setMapHoveredGroupId] = useState<string | null>(null)
   const activeHoveredGroupId = interactive ? hoveredGroupId ?? mapHoveredGroupId : null
   const hoveredGroupSvgIds = useMemo(
-    () => hoverGroups.find(group => group.id === activeHoveredGroupId)?.countryIds ?? [],
+    () => hoverGroups.find(group => group.id === activeHoveredGroupId)?.countryIds ?? EMPTY_COUNTRY_IDS,
     [activeHoveredGroupId, hoverGroups],
   )
   const hasContinentScope = level === 'continent'
@@ -229,7 +229,7 @@ export function GeographyOverviewMap({
         ? hoveredGroupSvgIds
         : hasContinentScope
           ? visibleSvgIds
-          : [], [focusSvgIds, focusedSubregionId, hasContinentScope, hasHoveredSubregionScope, hasSelectedCountries, hasSelectedSubregions, hoveredGroupSvgIds, selectedSvgIds, visibleSvgIds])
+          : EMPTY_COUNTRY_IDS, [focusSvgIds, focusedSubregionId, hasContinentScope, hasHoveredSubregionScope, hasSelectedCountries, hasSelectedSubregions, hoveredGroupSvgIds, selectedSvgIds, visibleSvgIds])
   const hasScopedCountries = Boolean(
     focusedSubregionId || selectedCountryIds !== undefined || selectedSubregionIds !== undefined || hasHoveredSubregionScope || hasContinentScope,
   )
@@ -253,8 +253,11 @@ export function GeographyOverviewMap({
     if (!entry) return
     onCountryClick?.(entry)
   }, [interactive, onCountryClick, restrictCountryClicks, scopedSvgIds, visibleCountries])
+  // A fresh empty array here would change `mutedIds` identity on every hover
+  // and re-run the whole declarative presentation over every discovered
+  // Country, which is the dominant cost on the 209-path World map.
   const mutedSvgIds = useMemo(() => {
-    if (!hasScopedCountries || selectionPresentation === 'outline-only') return []
+    if (!hasScopedCountries || selectionPresentation === 'outline-only') return EMPTY_COUNTRY_IDS
     const activeIds = new Set(
       hasGeographicSelection
         ? [...scopedSvgIds, ...hoveredGroupSvgIds]

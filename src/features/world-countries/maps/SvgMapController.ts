@@ -388,6 +388,38 @@ function getOuterBoundaryStrokeWidth(strokeWidth: string | undefined): string {
   return String(Math.max(0, Number(match[1]) * 2)) + match[2]
 }
 
+/**
+ * Promote a path's leading `m` so the data can be concatenated after other
+ * geometry.
+ *
+ * A path's own first moveto is absolute even when authored lowercase, but the
+ * same command following other geometry is relative, so each member of a
+ * concatenation has to be promoted or it lands at an offset.
+ *
+ * Only the *first coordinate pair* of a leading `m` is absolute. Any further
+ * pairs in that command are implicit relative linetos, and `M`'s implicit
+ * lineto is absolute, so they have to move into an explicit `l` rather than
+ * inherit the promoted command.
+ */
+export function toAbsoluteLeadingMoveTo(pathData: string): string {
+  const trimmed = pathData.trim()
+  if (!trimmed.startsWith('m')) return trimmed
+
+  const scanner = /[\s,]*([+-]?(?:\d*\.\d+|\d+\.?)(?:[eE][+-]?\d+)?)/y
+  scanner.lastIndex = 1
+  const numbers: string[] = []
+  let consumed = 1
+  for (let match = scanner.exec(trimmed); match; match = scanner.exec(trimmed)) {
+    numbers.push(match[1])
+    consumed = scanner.lastIndex
+  }
+  if (numbers.length < 2) return trimmed
+
+  return 'M' + numbers[0] + ' ' + numbers[1]
+    + (numbers.length > 2 ? ' l' + numbers.slice(2).join(' ') : '')
+    + trimmed.slice(consumed)
+}
+
 function uniqueStrings(values: Iterable<string>): string[] {
   return [...new Set(Array.from(values, value => value.trim()).filter(Boolean))]
 }
@@ -2046,16 +2078,119 @@ export class SvgMapController {
     return { definition: copyOutline(outline), group: effectGroup, resources: [filter] }
   }
 
+  /**
+   * Collect member geometry as concatenated path data, one entry per distinct
+   * transform. Members of a single authored map almost always share one
+   * transform, so a Continent normally collapses to a single path.
+   */
+  private collectOuterBoundaryGeometry(
+    outline: SvgMapGroupOutline,
+    mapSvg: SVGSVGElement,
+  ): {
+    buckets: Array<{ transform: string | null; data: string[]; countries: number }>
+    eligiblePaths: number
+  } {
+    const buckets = new Map<string, { transform: string | null; data: string[]; countries: number }>()
+    let eligiblePaths = 0
+    for (const countryId of outline.countryIds) {
+      const country = this.countries.get(countryId)
+      if (!country || this.hiddenCountries.has(countryId)) continue
+      const countryBuckets = new Set<string>()
+      for (const pathState of country.pathStates) {
+        eligiblePaths += 1
+        const data = pathState.path.getAttribute('d')?.trim()
+        if (!data) continue
+        const matrix = readSvgElementTransformToLayer(pathState.path, mapSvg)
+        const transform = matrix ? formatSvgMatrix(matrix) : null
+        const key = transform ?? ''
+        const bucket = buckets.get(key) ?? { transform, data: [], countries: 0 }
+        bucket.data.push(toAbsoluteLeadingMoveTo(data))
+        if (!countryBuckets.has(key)) {
+          bucket.countries += 1
+          countryBuckets.add(key)
+        }
+        buckets.set(key, bucket)
+      }
+    }
+    return { buckets: [...buckets.values()], eligiblePaths }
+  }
+
+  /**
+   * Size the mask region to the group's own geometry.
+   *
+   * Everything outside a mask region is masked out, so the region only has to
+   * cover the group plus one stroke width of overscan. Covering the whole
+   * source viewBox instead made every Continent pay a world-sized offscreen
+   * raster for a Continent-sized effect.
+   */
+  private getOuterBoundaryMaskBounds(
+    outline: SvgMapGroupOutline,
+    hasTransformedGeometry: boolean,
+    strokeWidth: string,
+  ): SvgViewBoxRect | null {
+    const sourceBounds = parseViewBox(this.originalViewBox ?? this.svg?.getAttribute('viewBox') ?? '')
+    const fallback = sourceBounds && isFinitePositiveViewBox(sourceBounds) ? sourceBounds : null
+    // Member bounds are read in each path's own space, so a transformed member
+    // cannot be unioned with the rest without re-projecting it.
+    if (hasTransformedGeometry) return fallback
+
+    const boxes: SvgViewBoxRect[] = []
+    for (const countryId of outline.countryIds) {
+      const country = this.countries.get(countryId)
+      if (!country || this.hiddenCountries.has(countryId)) continue
+      for (const pathState of country.pathStates) boxes.push(...this.getCountryBox(pathState.path))
+    }
+    const union = this.getBoundsUnion(boxes)
+    if (!union) return fallback
+
+    const overscan = (Number.parseFloat(strokeWidth) || 0) + 1
+    return {
+      x: union.x - overscan,
+      y: union.y - overscan,
+      width: union.width + overscan * 2,
+      height: union.height + overscan * 2,
+    }
+  }
+
+  /**
+   * Render the group's exterior edge as a masked stroke over concatenated
+   * member geometry.
+   *
+   * The stroke has to be an overlay: along a land border with a non-member
+   * Country the outer half of the stroke falls inside that neighbour, so an
+   * underlay would be covered by the neighbour's opaque fill and the boundary
+   * would vanish across, for example, Russia's southern frontier. The mask
+   * removes the inner half instead, which works over neighbours and ocean
+   * alike.
+   *
+   * Both the mask content and the stroke are one concatenated path per
+   * distinct transform rather than one clone per member Country. Cloning every
+   * member twice pre-materialized ~418 extra paths on the World map before a
+   * single hover; concatenating collapses that to a handful while drawing the
+   * same geometry. `feMorphology` was rejected earlier because large Continent
+   * groups rendered poorly, and runtime polygon-boolean union stays rejected:
+   * only 2.5% of authored border segments are vertex-shared between
+   * neighbours, so a union needs tolerance snapping to avoid sliver artefacts.
+   */
   private createOuterBoundaryGroupOutlinePresentation(
     outline: SvgMapGroupOutline,
     mapSvg: SVGSVGElement,
     document: Document,
   ): GeneratedGroupOutline | null {
-    const bounds = parseViewBox(this.originalViewBox ?? mapSvg.getAttribute('viewBox') ?? '')
-    if (!bounds || !isFinitePositiveViewBox(bounds)) return null
-
     const perfEnabled = import.meta.env.DEV
     const startedAt = perfEnabled ? performance.now() : 0
+    const { buckets, eligiblePaths } = this.collectOuterBoundaryGeometry(outline, mapSvg)
+    if (eligiblePaths === 0) return null
+
+    const stroke = outline.stroke ?? '#22d3ee'
+    const rawStrokeWidth = getOuterBoundaryStrokeWidth(outline.strokeWidth)
+    const bounds = this.getOuterBoundaryMaskBounds(
+      outline,
+      buckets.some(bucket => bucket.transform !== null),
+      rawStrokeWidth,
+    )
+    if (!bounds) return null
+
     const maskId = 'svg-map-group-outline-' + this.outlineSequence++
     const mask = document.createElementNS('http://www.w3.org/2000/svg', 'mask') as SVGMaskElement
     mask.setAttribute('id', maskId)
@@ -2076,8 +2211,6 @@ export class SvgMapController {
     background.setAttribute('height', String(bounds.height))
     background.setAttribute('fill', 'white')
     background.setAttribute('stroke', 'none')
-    background.style.setProperty('fill', 'white', 'important')
-    background.style.setProperty('stroke', 'none', 'important')
     mask.append(background)
 
     const effectGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g')
@@ -2089,60 +2222,29 @@ export class SvgMapController {
     effectGroup.setAttribute('opacity', '0')
     effectGroup.setAttribute('visibility', 'hidden')
 
-    const stroke = outline.stroke ?? '#22d3ee'
-    const rawStrokeWidth = getOuterBoundaryStrokeWidth(outline.strokeWidth)
-    let countries = 0
-    let paths = 0
-    for (const countryId of outline.countryIds) {
-      const country = this.countries.get(countryId)
-      if (!country || this.hiddenCountries.has(countryId)) continue
-      let countryPaths = 0
-      for (const pathState of country.pathStates) {
-        const maskGeometry = createOutlineGeometry(
-          pathState.path,
-          mapSvg,
-          document,
-          'data-svg-map-group-outline-mask-source',
-        )
-        maskGeometry.removeAttribute('filter')
-        maskGeometry.style.removeProperty('filter')
-        maskGeometry.style.setProperty('filter', 'none', 'important')
-        maskGeometry.setAttribute('fill', 'black')
-        maskGeometry.setAttribute('stroke', 'none')
-        maskGeometry.setAttribute('opacity', '1')
-        maskGeometry.setAttribute('fill-opacity', '1')
-        maskGeometry.style.setProperty('fill', 'black', 'important')
-        maskGeometry.style.setProperty('stroke', 'none', 'important')
-        maskGeometry.style.setProperty('opacity', '1', 'important')
-        maskGeometry.style.setProperty('fill-opacity', '1', 'important')
-        mask.append(maskGeometry)
+    for (const bucket of buckets) {
+      const data = bucket.data.join(' ')
 
-        const boundaryGeometry = createOutlineGeometry(pathState.path, mapSvg, document)
-        boundaryGeometry.removeAttribute('filter')
-        boundaryGeometry.style.removeProperty('filter')
-        boundaryGeometry.style.setProperty('filter', 'none', 'important')
-        boundaryGeometry.setAttribute('fill', 'none')
-        boundaryGeometry.setAttribute('stroke', stroke)
-        boundaryGeometry.setAttribute('stroke-width', rawStrokeWidth)
-        boundaryGeometry.setAttribute('stroke-linecap', 'round')
-        boundaryGeometry.setAttribute('stroke-linejoin', 'round')
-        boundaryGeometry.setAttribute('opacity', '1')
-        boundaryGeometry.setAttribute('stroke-opacity', '1')
-        boundaryGeometry.style.setProperty('fill', 'none', 'important')
-        boundaryGeometry.style.setProperty('stroke', stroke, 'important')
-        boundaryGeometry.style.setProperty('stroke-width', rawStrokeWidth, 'important')
-        boundaryGeometry.style.setProperty('stroke-linecap', 'round', 'important')
-        boundaryGeometry.style.setProperty('stroke-linejoin', 'round', 'important')
-        boundaryGeometry.style.setProperty('opacity', '1', 'important')
-        boundaryGeometry.style.setProperty('stroke-opacity', '1', 'important')
-        effectGroup.append(boundaryGeometry)
+      const maskGeometry = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+      maskGeometry.setAttribute('data-svg-map-group-outline-mask-source', outline.id)
+      maskGeometry.setAttribute('d', data)
+      if (bucket.transform) maskGeometry.setAttribute('transform', bucket.transform)
+      maskGeometry.setAttribute('fill', 'black')
+      maskGeometry.setAttribute('stroke', 'none')
+      mask.append(maskGeometry)
 
-        countries += countryPaths === 0 ? 1 : 0
-        countryPaths += 1
-        paths += 1
-      }
+      const boundary = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+      boundary.setAttribute('data-svg-map-group-outline-source', outline.id)
+      boundary.setAttribute('d', data)
+      if (bucket.transform) boundary.setAttribute('transform', bucket.transform)
+      boundary.setAttribute('fill', 'none')
+      boundary.setAttribute('stroke', stroke)
+      boundary.setAttribute('stroke-width', rawStrokeWidth)
+      boundary.setAttribute('stroke-linecap', 'round')
+      boundary.setAttribute('stroke-linejoin', 'round')
+      boundary.setAttribute('pointer-events', 'none')
+      effectGroup.append(boundary)
     }
-    if (paths === 0) return null
 
     this.getGroupOutlineDefs(mapSvg).append(mask)
     this.getGroupOutlineLayer(outline.placement ?? 'overlay').append(effectGroup)
@@ -2150,8 +2252,9 @@ export class SvgMapController {
       console.log('[WC perf] map-outer-boundary-build', {
         id: outline.id,
         ms: performance.now() - startedAt,
-        countries,
-        paths,
+        countries: buckets.reduce((total, bucket) => total + bucket.countries, 0),
+        paths: buckets.length,
+        maskArea: Math.round(bounds.width * bounds.height),
       })
     }
     return { definition: copyOutline(outline), group: effectGroup, resources: [mask] }

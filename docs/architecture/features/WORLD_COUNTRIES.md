@@ -877,10 +877,24 @@ target-local and Country-fit cameras respectively.
   luminance mask, suppressing internal borders without introducing a second
   geographic source of truth. Outer-boundary definitions are pre-materialized
   and retained for the loaded map, then toggled through transient visibility.
-  Runtime morphology/filter union was rejected because large World Continent
-  groups rendered poorly; separately authored duplicate Continent geometry was
-  rejected because it would drift from the World map; runtime polygon-boolean
-  union was rejected as unnecessary complexity. Geography adapters translate
+  Mask content and boundary stroke are each one concatenated path per distinct
+  member transform, not one clone per member Country: cloning every member
+  twice pre-materialized roughly 418 extra paths on the World map before any
+  hover. Concatenation must promote each member's leading `m`, because a
+  path's own first moveto is absolute while the same command following other
+  geometry is relative, and only its first coordinate pair is absolute. The
+  mask region is sized to the group's own bounds plus a stroke width; covering
+  the whole source viewBox made a Continent-sized effect pay a world-sized
+  offscreen raster. The stroke must stay an overlay, because along a land
+  border with a non-member Country its outer half falls inside that
+  neighbour, so an underlay relying on paint order loses the boundary across
+  frontiers such as Russia's. Runtime morphology/filter union was rejected
+  because large World Continent groups rendered poorly; separately authored
+  duplicate Continent geometry was rejected because it would drift from the
+  World map; runtime polygon-boolean union stays rejected because only 2.5% of
+  authored border segments are vertex-shared between neighbours, so union by
+  segment cancellation does not work and a robust union needs tolerance
+  snapping to avoid sliver artefacts. Geography adapters translate
   caller-owned per-Country edge treatments into grouped, multipart-safe
   underlays. Persistent edge layers omit hidden or muted Countries and render
   below source Country paths, while transient hover, selection, task, and answer

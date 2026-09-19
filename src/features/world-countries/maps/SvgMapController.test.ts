@@ -3,7 +3,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import europeSvg from '@/features/world-countries/maps/assets/MapChart_Map_Europe.svg?raw'
 import oceaniaSvg from '@/features/world-countries/maps/assets/MapChart_Map_Oceania.svg?raw'
-import { SvgMapController } from '@/features/world-countries/maps/SvgMapController'
+import { SvgMapController, toAbsoluteLeadingMoveTo } from '@/features/world-countries/maps/SvgMapController'
 import { getSyntheticDotSourceFingerprint } from './syntheticDots'
 
 const TEST_MAP = `
@@ -112,6 +112,35 @@ afterEach(() => {
   while (controllers.length) controllers.pop()?.destroy()
   document.body.replaceChildren()
   vi.restoreAllMocks()
+})
+
+describe('toAbsoluteLeadingMoveTo', () => {
+  // A path's own first moveto is absolute even when authored lowercase, but
+  // once that path is appended after other geometry the same lowercase command
+  // becomes relative to the previous point. 158 of the 209 World map paths are
+  // authored this way, so concatenating them unpromoted silently displaces
+  // every member after the first.
+  it('promotes only the first coordinate pair of a lowercase leading moveto', () => {
+    // The trailing pairs are implicit *relative* linetos. `M`'s implicit
+    // lineto is absolute, so they have to become an explicit `l`.
+    expect(toAbsoluteLeadingMoveTo('m262.35 173.5-.4-.04-1 .45z')).toBe('M262.35 173.5 l-.4 -.04 -1 .45z')
+  })
+
+  it('leaves an already absolute leading moveto untouched', () => {
+    expect(toAbsoluteLeadingMoveTo('M 10 10 h 10 v 10 z')).toBe('M 10 10 h 10 v 10 z')
+  })
+
+  it('keeps relative movetos that follow the first command relative', () => {
+    expect(toAbsoluteLeadingMoveTo('  m1 1 l2 2 m3 3 l4 4  ')).toBe('M1 1 l2 2 m3 3 l4 4')
+  })
+
+  it('does not mistake exponent notation for a new command', () => {
+    expect(toAbsoluteLeadingMoveTo('m1e2 2e-3 4 5H9')).toBe('M1e2 2e-3 l4 5H9')
+  })
+
+  it('leaves a leading moveto with a single pair as a plain absolute moveto', () => {
+    expect(toAbsoluteLeadingMoveTo('m10,20c1 2 3 4 5 6')).toBe('M10 20c1 2 3 4 5 6')
+  })
 })
 
 describe('SvgMapController loading and discovery', () => {
@@ -1258,7 +1287,7 @@ describe('SvgMapController persistent state', () => {
     expect((filterId ? mount.querySelector('#' + filterId) : null) === filter).toBe(true)
   })
 
-  it('pre-materializes mask-backed outer boundaries and retains them across visibility toggles', async () => {
+  it('pre-materializes concatenated masked outer boundaries and retains them across visibility toggles', async () => {
     const { mount, controller } = makeController()
     await controller.load({ markup: TEST_MAP })
     path(mount, 'Alpha').setAttribute('d', 'M 10 10 h 10 v 10 h -10 z')
@@ -1291,16 +1320,20 @@ describe('SvgMapController persistent state', () => {
     expect(mask?.getAttribute('maskUnits')).toBe('userSpaceOnUse')
     expect(mask?.getAttribute('maskContentUnits')).toBe('userSpaceOnUse')
     expect(mask?.getAttribute('mask-type')).toBe('luminance')
-    expect([mask?.getAttribute('x'), mask?.getAttribute('y'), mask?.getAttribute('width'), mask?.getAttribute('height')])
-      .toEqual(['0', '0', '100', '50'])
     expect(mask?.querySelector('rect')?.getAttribute('fill')).toBe('white')
 
-    for (const id of ['Alpha', 'Beta']) {
-      expect(mask?.querySelector('[data-svg-map-group-outline-mask-source="' + id + '"]')?.getAttribute('d'))
-        .toBe(path(mount, id).getAttribute('d'))
-    }
+    // Member geometry is concatenated into one path per transform rather than
+    // cloned per Country: cloning pre-materialized ~418 extra paths on the
+    // World map before a single hover.
+    const combined = path(mount, 'Alpha').getAttribute('d') + ' ' + path(mount, 'Beta').getAttribute('d')
+    const maskPaths = [...(mask?.querySelectorAll<SVGPathElement>('[data-svg-map-group-outline-mask-source]') ?? [])]
+    expect(maskPaths).toHaveLength(1)
+    expect(maskPaths[0].getAttribute('d')).toBe(combined)
+    expect(maskPaths[0].getAttribute('fill')).toBe('black')
+
     const boundaryPaths = [...(outline?.querySelectorAll<SVGPathElement>('[data-svg-map-group-outline-source]') ?? [])]
-    expect(boundaryPaths).toHaveLength(2)
+    expect(boundaryPaths).toHaveLength(1)
+    expect(boundaryPaths[0].getAttribute('d')).toBe(combined)
     for (const boundaryPath of boundaryPaths) {
       expect(boundaryPath.getAttribute('fill')).toBe('none')
       expect(boundaryPath.getAttribute('stroke')).toBe('#d4d4d8')
@@ -1329,6 +1362,48 @@ describe('SvgMapController persistent state', () => {
     expect(retainedPaths).toHaveLength(boundaryPathNodes.length)
     retainedPaths.forEach((node, index) => expect(node).toBe(boundaryPathNodes[index]))
     expect(renderNow).toHaveBeenCalledTimes(renderCallsBeforeToggle)
+  })
+
+  it('sizes the outer-boundary mask to the group rather than the whole source map', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    path(mount, 'Alpha').setAttribute('d', 'M 10 10 h 10 v 10 h -10 z')
+    path(mount, 'Beta').setAttribute('d', 'M 40 20 h 10 v 10 h -10 z')
+
+    // Everything outside a mask region is masked out, so the region only has
+    // to cover the group plus a stroke width. Using the full source viewBox
+    // made a Continent-sized effect pay a world-sized offscreen raster.
+    const boxes: Record<string, DOMRect> = {
+      Alpha: { x: 10, y: 10, width: 10, height: 10 } as DOMRect,
+      Beta: { x: 40, y: 20, width: 10, height: 10 } as DOMRect,
+    }
+    // jsdom has no getBBox at all, so it is defined here rather than spied on.
+    const prototype = SVGElement.prototype as unknown as { getBBox?: () => DOMRect }
+    prototype.getBBox = function (this: SVGElement) {
+      return boxes[this.id] ?? ({ x: 0, y: 0, width: 0, height: 0 } as DOMRect)
+    }
+    try {
+
+      controller.setGroupOutlines([{
+        id: 'continent-africa',
+        countryIds: ['Alpha', 'Beta'],
+        effect: 'outer-boundary',
+        stroke: '#d4d4d8',
+        strokeWidth: '2px',
+      }])
+
+      const outline = mount.querySelector('[data-svg-map-group-outline="continent-africa"]')
+      const maskId = outline?.getAttribute('mask')?.match(/^url\(#(.+)\)$/)?.[1]
+      const mask = maskId ? mount.querySelector('mask#' + maskId) : null
+
+      // Union of the members is (10,10)-(50,30); the 4px stroke is centred on
+      // the boundary, so the region carries 5 units of overscan on each side.
+      const region = ['x', 'y', 'width', 'height'].map(name => mask?.getAttribute(name))
+      expect(region).toEqual(['5', '5', '50', '30'])
+      expect(mount.querySelector('svg')?.getAttribute('viewBox')).toBe('0 0 100 50')
+    } finally {
+      delete prototype.getBBox
+    }
   })
 
   it('updates old and new grouped hover Countries without replacing unrelated persistent presentation', async () => {
