@@ -298,6 +298,32 @@ two atomic ladders separately. Continent rows also show a core-recall-complete
 region rollup. Progress rails explain scope and state semantics and do not
 choose Review or Journey actions.
 
+### Guided Home scope headline
+
+The guided Home geography rail headlines each Continent/Subregion row, and its
+own scope footer, with the **highest rung the scope has reached** rather than a
+mastery percentage. The rung ladder is the one the map legend already shows:
+`Not learned -> Learned -> Early recall -> Weak -> Developing -> Strong ->
+Mastered`, where the recall rungs stay gated behind Learning Readiness exactly
+as `deriveWorldCountriesPrimaryStatus` gates them. The percentage is the share
+of the scope sitting on that rung, and the supporting count restates the same
+rung.
+
+A full rung is a finished rung, so a scope at 100% of anything below the top
+reports the next rung at 0%: that is the work that remains. The two Learning
+rungs are milestones rather than a health share, so they carry no percentage
+and never promote - a fully learned scope reads `Learned`, not
+`Early recall 0%`. A rung that has been reached never rounds down to 0%,
+because that is indistinguishable from the empty promoted rung.
+
+Headlining the top rung was rejected after it shipped: every scope read
+`Mastery 0%` until Countries were fully mastered, which restated the
+`0 / n Countries fully mastered` line directly beneath it and hid all
+intermediate progress. This rule is scoped to the guided Home rail; the Drill
+setup `WorldMasterySummary` and the derived Progress view keep the strict
+`min(Country, Capital)` mastery ratio, because those surfaces are about the
+mastery finish line specifically.
+
 ### Review spacing and recall projection
 
 World Countries review spacing is also derived from retained raw attempts. The
@@ -1116,6 +1142,7 @@ flowchart TD
 - `src/features/world-countries/geography/subregionScope.ts`
 - `src/features/world-countries/today/WorldCountriesToday.tsx`
 - `src/features/world-countries/today/GuidedHomeRails.tsx`
+- `src/features/world-countries/learning/scopeStatus.ts`
 - `src/features/world-countries/today/ContinentCompletionDialog.tsx`
 - `src/features/world-countries/today/WorldCountriesProgressView.tsx`
 - `src/features/world-countries/today/journeyPresentation.ts`

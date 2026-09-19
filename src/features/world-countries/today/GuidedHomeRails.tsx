@@ -2,8 +2,8 @@ import { useMemo } from 'react'
 import { useRails } from '@/app/layout/PageLayoutContext'
 import type { Continent } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition } from '@/features/world-countries/data/subregions'
-import { getWorldCountriesScopeDisplayedMasteryRatio } from '@/features/world-countries/learning/scopeProgress'
 import type { WorldCountriesScopeProgress } from '@/features/world-countries/learning/scopeProgress'
+import type { WorldCountriesScopeStatus } from '@/features/world-countries/learning/scopeStatus'
 import { GeographyBreadcrumbs } from '@/features/world-countries/ui/GeographyBreadcrumbs'
 import { WorldCountriesDualRecallBar } from '@/features/world-countries/ui/WorldCountriesDualRecallBar'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
@@ -15,9 +15,16 @@ export interface GuidedHomeScopeSummary {
   id: string
   label: string
   progress: WorldCountriesScopeProgress
+  /** Highest ladder rung this scope has reached; drives the headline and count. */
+  scopeStatus: WorldCountriesScopeStatus
   onSelect?: () => void
   selected?: boolean
   status?: string
+}
+
+/** Render a scope headline, omitting the share on the percentage-less Learning rungs. */
+function formatScopeStatus(status: WorldCountriesScopeStatus): string {
+  return status.percent === null ? status.label : `${status.label} ${status.percent}%`
 }
 
 export function GuidedHomeRails({
@@ -33,6 +40,7 @@ export function GuidedHomeRails({
   refreshing,
   scopeSummaries,
   scopeProgress,
+  scopeStatus,
   onWorld,
   onOpenProgress,
   onRelearnCountries,
@@ -50,6 +58,7 @@ export function GuidedHomeRails({
   refreshing: boolean
   scopeSummaries: readonly GuidedHomeScopeSummary[]
   scopeProgress: GuidedHomeScopeSummary['progress'] | null
+  scopeStatus: WorldCountriesScopeStatus | null
   onWorld: () => void
   onOpenProgress: () => void
   onRelearnCountries?: () => void
@@ -121,41 +130,37 @@ export function GuidedHomeRails({
         </div>
         {scopeSummaries.length > 0 && (
           <div className="space-y-2" aria-label={level === 'world' ? 'Continents' : 'Subregions'}>
-            {scopeSummaries.map(summary => {
-              const masteryPercent = Math.round(getWorldCountriesScopeDisplayedMasteryRatio(summary.progress) * 100)
-              const headline = { label: 'Mastery', percent: masteryPercent }
-              return (
-                <button
-                  key={summary.id}
-                  type="button"
-                  onClick={summary.onSelect}
-                  disabled={!summary.onSelect}
-                  aria-current={summary.selected ? 'true' : undefined}
-                  data-active-focus={summary.selected ? 'true' : undefined}
-                  className={`w-full rounded-lg border px-2 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70 disabled:cursor-default ${summary.selected ? 'border-cyan-500/70 bg-cyan-500/10 text-cyan-100' : 'border-transparent text-zinc-300 enabled:hover:border-zinc-700 enabled:hover:bg-zinc-800'}`}
-                >
-                  <span className="flex items-center justify-between gap-2 text-sm font-semibold">
-                    <span>{summary.label}</span>
-                    <span className="text-xs tabular-nums text-zinc-500">{headline.label}{headline.percent === undefined ? '' : ` ${headline.percent}%`}</span>
-                  </span>
-                  <WorldCountriesDualRecallBar
-                    totalCountries={summary.progress.totalCountries}
-                    countryCounts={summary.progress.locationToCountryStateCounts}
-                    capitalCounts={summary.progress.countryToCapitalStateCounts}
-                    className="mt-1"
-                  />
-                  <span className="mt-1 block text-xs text-zinc-500">{summary.status ?? `${summary.progress.completeCountries} / ${summary.progress.totalCountries} Countries fully mastered`}</span>
-                </button>
-              )
-            })}
+            {scopeSummaries.map(summary => (
+              <button
+                key={summary.id}
+                type="button"
+                onClick={summary.onSelect}
+                disabled={!summary.onSelect}
+                aria-current={summary.selected ? 'true' : undefined}
+                data-active-focus={summary.selected ? 'true' : undefined}
+                className={`w-full rounded-lg border px-2 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70 disabled:cursor-default ${summary.selected ? 'border-cyan-500/70 bg-cyan-500/10 text-cyan-100' : 'border-transparent text-zinc-300 enabled:hover:border-zinc-700 enabled:hover:bg-zinc-800'}`}
+              >
+                <span className="flex items-center justify-between gap-2 text-sm font-semibold">
+                  <span>{summary.label}</span>
+                  <span className="text-xs tabular-nums text-zinc-500">{formatScopeStatus(summary.scopeStatus)}</span>
+                </span>
+                <WorldCountriesDualRecallBar
+                  totalCountries={summary.progress.totalCountries}
+                  countryCounts={summary.progress.locationToCountryStateCounts}
+                  capitalCounts={summary.progress.countryToCapitalStateCounts}
+                  className="mt-1"
+                />
+                <span className="mt-1 block text-xs text-zinc-500">{summary.status ?? summary.scopeStatus.countLabel}</span>
+              </button>
+            ))}
           </div>
         )}
         <div data-progress-entry className="border-t border-zinc-800 pt-4" aria-labelledby="world-countries-scope-progress-heading">
           <p id="world-countries-scope-progress-heading" className="text-xs font-semibold uppercase tracking-wider text-cyan-400">{scopeName} progress</p>
-          {scopeProgress ? (
+          {scopeProgress && scopeStatus ? (
             <p className="mt-1 flex items-baseline justify-between gap-2 text-sm text-zinc-300">
-              <span className="font-semibold tabular-nums">{scopeProgress.completeCountries} / {scopeProgress.totalCountries} Countries fully mastered</span>
-              <span className="text-xs tabular-nums text-zinc-500">Mastery {Math.round(getWorldCountriesScopeDisplayedMasteryRatio(scopeProgress) * 100)}%</span>
+              <span className="font-semibold tabular-nums">{scopeStatus.countLabel}</span>
+              <span className="text-xs tabular-nums text-zinc-500">{formatScopeStatus(scopeStatus)}</span>
             </p>
           ) : (
             <p role="status" aria-live="polite" className="mt-2 text-xs text-zinc-500">{evidenceStatus === 'loading' ? 'Progress is loading.' : 'Progress is unavailable right now.'}</p>
@@ -177,7 +182,7 @@ export function GuidedHomeRails({
     ),
     leftLabel: 'Geography',
     rightLabel: 'Review and journey',
-  }), [activeLearningAvailable, continent, evidenceStatus, journey, level, onOpenProgress, onRelearnCapitals, onRelearnCountries, onWorld, refreshing, reviewPanel, scopeName, scopeProgress, scopeSummaries])
+  }), [activeLearningAvailable, continent, evidenceStatus, journey, level, onOpenProgress, onRelearnCapitals, onRelearnCountries, onWorld, refreshing, reviewPanel, scopeName, scopeProgress, scopeStatus, scopeSummaries])
   useRails(rails)
   return null
 }

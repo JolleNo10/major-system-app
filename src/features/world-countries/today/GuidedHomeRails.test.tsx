@@ -3,6 +3,12 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { countries } from '@/features/world-countries/data/countries'
 import type { WorldCountriesScopeProgress } from '@/features/world-countries/learning/scopeProgress'
+import {
+  WORLD_COUNTRIES_SCOPE_STATUS_TIERS,
+  deriveWorldCountriesScopeStatusFromCounts,
+  type WorldCountriesScopeStatus,
+  type WorldCountriesScopeStatusTier,
+} from '@/features/world-countries/learning/scopeStatus'
 import { GuidedHomeRails } from './GuidedHomeRails'
 import { WORLD_COUNTRIES_JOURNEY_STAGES, type WorldCountriesJourneyPresentation } from './journeyPresentation'
 import type { WorldCountriesTodayReviewOpportunity } from './todayPlan'
@@ -45,6 +51,7 @@ function renderRails(overrides: Partial<Parameters<typeof GuidedHomeRails>[0]> =
     refreshing: false,
     scopeSummaries: [],
     scopeProgress: null,
+    scopeStatus: null,
     onWorld: vi.fn(),
     onOpenProgress: vi.fn(),
     ...overrides,
@@ -57,6 +64,18 @@ function renderRails(overrides: Partial<Parameters<typeof GuidedHomeRails>[0]> =
   railRoot = createRoot(railMount)
   act(() => railRoot?.render(createElement('div', null, rails?.left ?? null, rails?.right ?? null)))
   return railMount
+}
+
+/** Build a status through the real derivation so the rail tests exercise the rules. */
+function makeStatus(
+  partial: Partial<Record<WorldCountriesScopeStatusTier, number>>,
+  totalCountries: number,
+): WorldCountriesScopeStatus {
+  const tierCounts = {
+    ...Object.fromEntries(WORLD_COUNTRIES_SCOPE_STATUS_TIERS.map(tier => [tier, 0])),
+    ...partial,
+  } as Record<WorldCountriesScopeStatusTier, number>
+  return deriveWorldCountriesScopeStatusFromCounts(tierCounts, totalCountries)
 }
 
 function makeProgress(overrides: Partial<WorldCountriesScopeProgress> = {}): WorldCountriesScopeProgress {
@@ -281,6 +300,7 @@ describe('Guided World Countries home rails', () => {
         id: 'southern-europe',
         label: 'Southern Europe',
         progress: makeProgress({ completeCountries: 1, totalCountries: 2, completionRatio: 0.5 }),
+        scopeStatus: makeStatus({ complete: 1, strong: 1 }, 2),
         onSelect,
         selected: true,
         status: 'Selected focus',
@@ -375,7 +395,7 @@ describe('Guided World Countries home rails', () => {
 
   it('keeps geography choices and places Progress in the geography footer', () => {
     const onOpenProgress = vi.fn()
-    const worldMount = renderRails({ level: 'world', scopeProgress: makeProgress({ completeCountries: 1, totalCountries: 1, completionRatio: 1, locationToCountryMasteryRatio: 1, countryToCapitalMasteryRatio: 1 }), onOpenProgress })
+    const worldMount = renderRails({ level: 'world', scopeProgress: makeProgress({ completeCountries: 1, totalCountries: 1, completionRatio: 1, locationToCountryMasteryRatio: 1, countryToCapitalMasteryRatio: 1 }), scopeStatus: makeStatus({ complete: 1 }, 1), onOpenProgress })
     expect(worldMount.textContent).toContain('Explore the world')
     expect(worldMount.textContent).toContain('Choose a continent')
     expect(worldMount.textContent).toContain('World progress')
@@ -391,7 +411,7 @@ describe('Guided World Countries home rails', () => {
     railRoot = null
     document.body.replaceChildren()
 
-    const continentMount = renderRails({ level: 'continent', continent: 'Europe', scopeProgress: makeProgress({ completeCountries: 1, totalCountries: 1, completionRatio: 1, locationToCountryMasteryRatio: 1, countryToCapitalMasteryRatio: 1 }) })
+    const continentMount = renderRails({ level: 'continent', continent: 'Europe', scopeProgress: makeProgress({ completeCountries: 1, totalCountries: 1, completionRatio: 1, locationToCountryMasteryRatio: 1, countryToCapitalMasteryRatio: 1 }), scopeStatus: makeStatus({ complete: 1 }, 1) })
     expect(continentMount.textContent).toContain('Learning regions')
     expect(continentMount.textContent).toContain('Choose a region')
     expect(continentMount.textContent).toContain('Europe progress')
@@ -399,26 +419,78 @@ describe('Guided World Countries home rails', () => {
     expect(continentMount.textContent).not.toContain('Back to World')
   })
 
-  it('keeps the atomic Mastery label for a non-zero mastery ratio', () => {
+  it('headlines the highest rung a scope has reached rather than its mastery share', () => {
     const mount = renderRails({
       scopeSummaries: [{
         id: 'northern-europe',
         label: 'Northern Europe',
         progress: makeProgress({ completeCountries: 9, totalCountries: 20, completionRatio: 0.45, locationToCountryMasteryRatio: 0.55, countryToCapitalMasteryRatio: 0.45 }),
+        scopeStatus: makeStatus({ complete: 9, developing: 11 }, 20),
         onSelect: vi.fn(),
         selected: true,
         status: 'Selected focus',
       }],
       scopeProgress: makeProgress({ completeCountries: 12, totalCountries: 48, completionRatio: 0.25, locationToCountryMasteryRatio: 0.4, countryToCapitalMasteryRatio: 0.25 }),
+      scopeStatus: makeStatus({ complete: 12, weak: 36 }, 48),
     })
 
     const geographyRow = [...mount.querySelectorAll<HTMLButtonElement>('button')]
       .find(button => button.textContent?.includes('Northern Europe'))
-    expect(geographyRow?.textContent).toContain('Mastery 45%')
-    expect(mount.querySelector('[data-progress-entry]')?.textContent).toContain('Mastery 25%')
+    expect(geographyRow?.textContent).toContain('Mastered 45%')
+    expect(mount.querySelector('[data-progress-entry]')?.textContent).toContain('Mastered 25%')
+    expect(mount.querySelector('[data-progress-entry]')?.textContent).toContain('12 / 48 Countries fully mastered')
   })
 
-  it('always shows lower-track Mastery with both compact recall tracks', () => {
+  it('headlines a mid-ladder rung when nothing above it has been reached', () => {
+    const mount = renderRails({
+      scopeSummaries: [{
+        id: 'northern-europe',
+        label: 'Northern Europe',
+        progress: makeProgress({ totalCountries: 50 }),
+        scopeStatus: makeStatus({ strong: 2, developing: 8, NOT_LEARNED: 40 }, 50),
+        onSelect: vi.fn(),
+      }],
+    })
+    const row = [...mount.querySelectorAll<HTMLButtonElement>('button')]
+      .find(button => button.textContent?.includes('Northern Europe'))
+    expect(row?.textContent).toContain('Strong 4%')
+    expect(row?.textContent).toContain('2 / 50 Countries strong')
+    expect(row?.textContent).not.toContain('Mastery')
+  })
+
+  it('renders the Learning rungs without a percentage', () => {
+    const mount = renderRails({
+      scopeSummaries: [
+        {
+          id: 'oceania',
+          label: 'Oceania',
+          progress: makeProgress({ totalCountries: 14 }),
+          scopeStatus: makeStatus({ NOT_LEARNED: 14 }, 14),
+          onSelect: vi.fn(),
+        },
+        {
+          id: 'asia',
+          label: 'Asia',
+          progress: makeProgress({ totalCountries: 48 }),
+          scopeStatus: makeStatus({ COUNTRIES_LEARNED: 12, NOT_LEARNED: 36 }, 48),
+          onSelect: vi.fn(),
+        },
+      ],
+    })
+    const rows = [...mount.querySelectorAll<HTMLButtonElement>('button')]
+    const oceania = rows.find(button => button.textContent?.includes('Oceania'))
+    const asia = rows.find(button => button.textContent?.includes('Asia'))
+
+    expect(oceania?.textContent).toContain('Not learned')
+    expect(oceania?.textContent).toContain('0 / 14 Countries learned')
+    expect(oceania?.textContent).not.toContain('%')
+
+    expect(asia?.textContent).toContain('Learned')
+    expect(asia?.textContent).toContain('12 / 48 Countries learned')
+    expect(asia?.textContent).not.toContain('%')
+  })
+
+  it('shows the highest rung alongside both compact recall tracks', () => {
     const mount = renderRails({
       scopeSummaries: [{
         id: 'northern-europe',
@@ -433,24 +505,25 @@ describe('Guided World Countries home rails', () => {
           locationToCountryStateCounts: { unpractised: 0, weak: 0, developing: 1, strong: 0, mastered: 3 },
           countryToCapitalStateCounts: { unpractised: 0, weak: 1, developing: 1, strong: 0, mastered: 2 },
         }),
+        scopeStatus: makeStatus({ complete: 2, developing: 2 }, 4),
         onSelect: vi.fn(),
       }],
     })
     const geographyRow = [...mount.querySelectorAll<HTMLButtonElement>('button')]
       .find(button => button.textContent?.includes('Northern Europe'))
-    expect(geographyRow?.textContent).toContain('Mastery 50%')
-    expect(geographyRow?.textContent).not.toContain('Mastery 75%')
+    expect(geographyRow?.textContent).toContain('Mastered 50%')
     expect(geographyRow?.textContent).toContain('2 / 4 Countries fully mastered')
     expect(geographyRow?.querySelectorAll('[data-recall-track]')).toHaveLength(2)
     expect(geographyRow?.querySelector('[data-recall-track="country"]')).not.toBeNull()
     expect(geographyRow?.querySelector('[data-recall-track="capital"]')).not.toBeNull()
   })
 
-  it('allows Mastery 0% and keeps the footer on the lower track', () => {
+  it('promotes a footer sitting at a full rung to the next rung at zero', () => {
     const mount = renderRails({
       scopeProgress: makeProgress({ totalCountries: 2, completeCountries: 0 }),
+      scopeStatus: makeStatus({ strong: 2 }, 2),
     })
-    expect(mount.querySelector('[data-progress-entry]')?.textContent).toContain('Mastery 0%')
+    expect(mount.querySelector('[data-progress-entry]')?.textContent).toContain('Mastered 0%')
     expect(mount.querySelector('[data-progress-entry]')?.textContent).toContain('0 / 2 Countries fully mastered')
   })
 
@@ -460,6 +533,7 @@ describe('Guided World Countries home rails', () => {
         id: 'southern-europe',
         label: 'Southern Europe',
         progress: makeProgress({ totalCountries: 2 }),
+        scopeStatus: makeStatus({ NOT_LEARNED: 2 }, 2),
         selected: true,
         status: 'Selected focus',
       }],
@@ -469,7 +543,7 @@ describe('Guided World Countries home rails', () => {
     expect(row?.textContent).toContain('Selected focus')
   })
 
-  it('uses the lower track for the scope footer percentage', () => {
+  it('uses the highest rung for the scope footer', () => {
     const mount = renderRails({
       scopeProgress: makeProgress({
         totalCountries: 2,
@@ -477,8 +551,9 @@ describe('Guided World Countries home rails', () => {
         locationToCountryMasteryRatio: 0.75,
         countryToCapitalMasteryRatio: 0.5,
       }),
+      scopeStatus: makeStatus({ complete: 1, strong: 1 }, 2),
     })
-    expect(mount.querySelector('[data-progress-entry]')?.textContent).toContain('Mastery 50%')
+    expect(mount.querySelector('[data-progress-entry]')?.textContent).toContain('Mastered 50%')
     expect(mount.querySelector('[data-progress-entry]')?.textContent).toContain('1 / 2 Countries fully mastered')
   })
 

@@ -411,8 +411,11 @@ describe('World Countries Today', () => {
     const progressEntry = railMount.querySelector('[data-progress-entry]')
 
     expect(progressEntry?.textContent).toContain('World progress')
-    expect(progressEntry?.textContent).toContain('0 / 1 Countries fully mastered')
-    expect(progressEntry?.textContent).toContain('0%')
+    // Nothing is learned in this fixture, so the footer reports the bottom
+    // rung of the ladder, which carries no percentage.
+    expect(progressEntry?.textContent).toContain('Not learned')
+    expect(progressEntry?.textContent).toContain('0 / 1 Countries learned')
+    expect(progressEntry?.textContent).not.toContain('%')
     expect(railMount.querySelector('[aria-label="World Countries secondary actions"]')).toBeNull()
 
     await act(async () => railMount.querySelector<HTMLButtonElement>('[data-progress-action]')?.click())
@@ -426,7 +429,7 @@ describe('World Countries Today', () => {
     const railMount = renderLatestRails()
 
     expect(railMount.querySelector('[data-progress-entry]')?.textContent).toContain('Europe progress')
-    expect(railMount.querySelector('[data-progress-entry]')?.textContent).toContain('0 / 2 Countries fully mastered')
+    expect(railMount.querySelector('[data-progress-entry]')?.textContent).toContain('0 / 2 Countries learned')
 
     await act(async () => railMount.querySelector<HTMLButtonElement>('[data-progress-action]')?.click())
 
