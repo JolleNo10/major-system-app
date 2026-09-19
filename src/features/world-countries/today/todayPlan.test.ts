@@ -262,7 +262,7 @@ describe('World Countries Today plan', () => {
     })
   })
 
-  it('counts established unpractised targets as fragile', () => {
+  it('counts established learned targets as fragile', () => {
     const entries = countries.slice(0, 8)
     const plan = buildWorldCountriesTodayPlan({
       activeCountries: entries,

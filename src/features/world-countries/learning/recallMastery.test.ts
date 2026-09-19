@@ -93,7 +93,7 @@ describe('World Countries atomic mastery evaluation', () => {
     ])
 
     expect(performanceFailure.proficiency).toBe('developing')
-    expect(learningFailure.proficiency).toBe('weak')
+    expect(learningFailure.proficiency).toBe('learned')
   })
 
   it('keeps untyped and unknown provenance on the Legacy compatibility path', () => {
@@ -122,7 +122,7 @@ describe('World Countries atomic mastery evaluation', () => {
 
     expect(evaluation.progress).toEqual(progress)
     expect(evaluation.steps.map(step => [step.evaluatedAs, step.proficiencyAfter, step.masteredAfter])).toEqual([
-      ['acquisition', 'weak', false],
+      ['acquisition', 'learned', false],
       ['performance', 'developing', false],
       ['performance', 'strong', false],
       ['performance', 'mastered', true],

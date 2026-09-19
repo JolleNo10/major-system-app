@@ -6,10 +6,11 @@ import type {
   RecallProgress,
 } from './recallProgress'
 import { deriveWorldCountriesCountryProgress } from './recallProgress'
-import type { WorldCountriesProficiency } from './recallMastery'
+import { isWorldCountriesSkillLearned, type WorldCountriesLearningReadiness } from './learningReadiness'
+import { WORLD_COUNTRIES_SKILL_STATUSES, type WorldCountriesSkillStatus } from './progressPresentation'
 
 export const WORLD_COUNTRIES_COUNTRY_CORE_STATES = [
-  'unpractised',
+  'learned',
   'weak',
   'developing',
   'strong',
@@ -31,8 +32,8 @@ export interface WorldCountriesScopeProgress {
   locationToCountryMasteryRatio: number
   countryToCapitalMasteredCountries: number
   countryToCapitalMasteryRatio: number
-  locationToCountryStateCounts: Readonly<Record<WorldCountriesProficiency, number>>
-  countryToCapitalStateCounts: Readonly<Record<WorldCountriesProficiency, number>>
+  locationToCountryStateCounts: Readonly<Record<WorldCountriesSkillStatus, number>>
+  countryToCapitalStateCounts: Readonly<Record<WorldCountriesSkillStatus, number>>
   additionalMasteredSkills: number
   additionalSkillCount: number
   additionalMasteryRatio: number
@@ -40,7 +41,7 @@ export interface WorldCountriesScopeProgress {
 
 function emptyStateCounts(): Record<WorldCountriesCountryCoreState, number> {
   return {
-    unpractised: 0,
+    learned: 0,
     weak: 0,
     developing: 0,
     strong: 0,
@@ -48,14 +49,10 @@ function emptyStateCounts(): Record<WorldCountriesCountryCoreState, number> {
   }
 }
 
-function emptyAtomicStateCounts(): Record<WorldCountriesProficiency, number> {
-  return {
-    unpractised: 0,
-    weak: 0,
-    developing: 0,
-    strong: 0,
-    mastered: 0,
-  }
+function emptyAtomicStateCounts(): Record<WorldCountriesSkillStatus, number> {
+  return Object.fromEntries(
+    WORLD_COUNTRIES_SKILL_STATUSES.map(status => [status, 0]),
+  ) as Record<WorldCountriesSkillStatus, number>
 }
 
 /** Aggregate current Country population directly into a geographic scope. */
@@ -63,6 +60,12 @@ export function deriveWorldCountriesScopeProgress(
   scopeId: string,
   countryIds: readonly CountryId[],
   countryProgress: ReadonlyMap<CountryId, WorldCountriesCountryProgress>,
+  /**
+   * Supply Learning Readiness to report a skill below its own Learning layer
+   * as `NOT_LEARNED` instead of the `learned` floor. Without it every skill
+   * is treated as learned, which overstates a scope the learner has not met.
+   */
+  readinessByCountry?: ReadonlyMap<CountryId, WorldCountriesLearningReadiness>,
 ): WorldCountriesScopeProgress {
   const uniqueCountryIds = [...new Set(countryIds)]
   const countryStates = emptyStateCounts()
@@ -78,14 +81,22 @@ export function deriveWorldCountriesScopeProgress(
 
   for (const countryId of uniqueCountryIds) {
     const progress = countryProgress.get(countryId)
-    const locationToCountry = progress?.skills.get('location-to-country')?.proficiency ?? 'unpractised'
-    const countryToCapital = progress?.skills.get('country-to-capital')?.proficiency ?? 'unpractised'
+    const readiness = readinessByCountry?.get(countryId)
+    const skillStatus = (
+      skill: 'location-to-country' | 'country-to-capital',
+    ): WorldCountriesSkillStatus => (
+      readiness !== undefined && !isWorldCountriesSkillLearned(skill, readiness)
+        ? 'NOT_LEARNED'
+        : progress?.skills.get(skill)?.proficiency ?? 'learned'
+    )
+    const locationToCountry = skillStatus('location-to-country')
+    const countryToCapital = skillStatus('country-to-capital')
     locationToCountryStates[locationToCountry]++
     countryToCapitalStates[countryToCapital]++
     if (locationToCountry === 'mastered') locationToCountryMasteredCountries++
     if (countryToCapital === 'mastered') countryToCapitalMasteredCountries++
     if (!progress) {
-      countryStates.unpractised++
+      countryStates.learned++
       coreSkillCount += 2
       continue
     }
@@ -141,6 +152,7 @@ export function deriveWorldCountriesScopeProgressFromEvidence(
   scopeId: string,
   countryIds: readonly CountryId[],
   itemProgress: RecallProgress,
+  readinessByCountry?: ReadonlyMap<CountryId, WorldCountriesLearningReadiness>,
 ): WorldCountriesScopeProgress {
   const countryProgress = new Map(
     [...new Set(countryIds)].map(countryId => [
@@ -148,7 +160,7 @@ export function deriveWorldCountriesScopeProgressFromEvidence(
       deriveWorldCountriesCountryProgress(countryId, itemProgress),
     ]),
   )
-  return deriveWorldCountriesScopeProgress(scopeId, countryIds, countryProgress)
+  return deriveWorldCountriesScopeProgress(scopeId, countryIds, countryProgress, readinessByCountry)
 }
 
 /** Derive a scope from canonical Country records supplied by the feature. */
@@ -156,11 +168,13 @@ export function deriveWorldCountriesScopeProgressForCountries(
   scopeId: string,
   scopeCountries: readonly Pick<Country, 'id'>[],
   itemProgress: RecallProgress,
+  readinessByCountry?: ReadonlyMap<CountryId, WorldCountriesLearningReadiness>,
 ): WorldCountriesScopeProgress {
   return deriveWorldCountriesScopeProgressFromEvidence(
     scopeId,
     scopeCountries.map(country => country.id),
     itemProgress,
+    readinessByCountry,
   )
 }
 

@@ -123,7 +123,7 @@ describe('DrillSetup activity boundary', () => {
     expect(mount.textContent).toContain('World mastery')
     expect(mount.textContent).toContain('1 / 4 Countries fully mastered')
     expect(mount.textContent).toContain('25%')
-    expect(mount.textContent).toContain('Early recall 1')
+    expect(mount.textContent).toContain('Learned 1')
     expect(mount.textContent).toContain('Weak 1')
     expect(mount.textContent).toContain('Developing 1')
     expect(mount.textContent).toContain('Strong 0')
@@ -146,7 +146,7 @@ describe('DrillSetup activity boundary', () => {
     })
   })
 
-  it('shows active Countries with no evidence as Early recall', async () => {
+  it('shows active Countries with no evidence at the Learned floor', async () => {
     const entries = [
       { id: 'NO', country: 'Norway', capital: 'Oslo', continent: 'Europe' as const, subregionId: 'northern-europe' as const, subregion: 'Northern Europe' },
       { id: 'SE', country: 'Sweden', capital: 'Stockholm', continent: 'Europe' as const, subregionId: 'northern-europe' as const, subregion: 'Northern Europe' },
@@ -156,7 +156,7 @@ describe('DrillSetup activity boundary', () => {
 
     expect(mount.textContent).toContain('0 / 2 Countries fully mastered')
     expect(mount.textContent).toContain('0%')
-    expect(mount.textContent).toContain('Early recall 2')
+    expect(mount.textContent).toContain('Learned 2')
     expect(mount.textContent).toContain('Mastered 0')
   })
 

@@ -183,3 +183,19 @@ needs conversion.
   geometry transforms numerically against the real asset - evaluating every
   absolute point of the combined path against the members rendered separately
   catches this, while a rendered screenshot may not.
+
+# A status that another layer overwrote
+
+- **What happened:** World Countries carried an `unpractised` proficiency,
+  shown as "Early recall", that was effectively unreachable: finishing guided
+  Learning wrote acquisition evidence which immediately pushed the band to
+  `weak`. The status only ever surfaced as a data gap, and `weak` silently
+  conflated "just taught" with "keeps failing".
+- **Root cause:** The state machine's floor and the thing that set its
+  starting value lived in different concerns, so adding the floor was not
+  enough to make it reachable. Nothing tested the transition *into* the floor,
+  only the transitions out of it.
+- **Prevention:** When a state is added to an ordered scale, assert the entry
+  transition, not just the exits. If a state cannot be produced by any
+  ordinary sequence of user actions, it is not a status - it is either a
+  data-gap marker that should be named as one, or dead.

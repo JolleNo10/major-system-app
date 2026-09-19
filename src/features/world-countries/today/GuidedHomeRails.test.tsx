@@ -4,10 +4,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { countries } from '@/features/world-countries/data/countries'
 import type { WorldCountriesScopeProgress } from '@/features/world-countries/learning/scopeProgress'
 import {
-  WORLD_COUNTRIES_SCOPE_STATUS_TIERS,
+  WORLD_COUNTRIES_STATUSES,
   deriveWorldCountriesScopeStatusFromCounts,
   type WorldCountriesScopeStatus,
-  type WorldCountriesScopeStatusTier,
+  type WorldCountriesStatus,
 } from '@/features/world-countries/learning/scopeStatus'
 import { GuidedHomeRails } from './GuidedHomeRails'
 import { WORLD_COUNTRIES_JOURNEY_STAGES, type WorldCountriesJourneyPresentation } from './journeyPresentation'
@@ -68,27 +68,25 @@ function renderRails(overrides: Partial<Parameters<typeof GuidedHomeRails>[0]> =
 
 /** Build a status through the real derivation so the rail tests exercise the rules. */
 function makeStatus(
-  partial: Partial<Record<WorldCountriesScopeStatusTier, number>>,
+  partial: Partial<Record<WorldCountriesStatus, number>>,
   totalCountries: number,
 ): WorldCountriesScopeStatus {
   const tierCounts = {
-    ...Object.fromEntries(WORLD_COUNTRIES_SCOPE_STATUS_TIERS.map(tier => [tier, 0])),
+    ...Object.fromEntries(WORLD_COUNTRIES_STATUSES.map(tier => [tier, 0])),
     ...partial,
-  } as Record<WorldCountriesScopeStatusTier, number>
+  } as Record<WorldCountriesStatus, number>
   return deriveWorldCountriesScopeStatusFromCounts(tierCounts, totalCountries)
 }
 
 function makeProgress(overrides: Partial<WorldCountriesScopeProgress> = {}): WorldCountriesScopeProgress {
   const totalCountries = overrides.totalCountries ?? 1
-  const countryCounts = overrides.locationToCountryStateCounts ?? {
-    unpractised: totalCountries,
+  const countryCounts = overrides.locationToCountryStateCounts ?? { NOT_LEARNED: 0, learned: totalCountries,
     weak: 0,
     developing: 0,
     strong: 0,
     mastered: 0,
   }
-  const capitalCounts = overrides.countryToCapitalStateCounts ?? {
-    unpractised: totalCountries,
+  const capitalCounts = overrides.countryToCapitalStateCounts ?? { NOT_LEARNED: 0, learned: totalCountries,
     weak: 0,
     developing: 0,
     strong: 0,
@@ -104,7 +102,7 @@ function makeProgress(overrides: Partial<WorldCountriesScopeProgress> = {}): Wor
     coreSkillCount: totalCountries * 2,
     coreMasteryRatio: 0,
     complete: false,
-    countryStateCounts: { unpractised: totalCountries, weak: 0, developing: 0, strong: 0, complete: 0 },
+    countryStateCounts: { learned: totalCountries, weak: 0, developing: 0, strong: 0, complete: 0 },
     locationToCountryMasteredCountries: 0,
     locationToCountryMasteryRatio: 0,
     countryToCapitalMasteredCountries: 0,
@@ -502,8 +500,8 @@ describe('Guided World Countries home rails', () => {
           locationToCountryMasteryRatio: 0.75,
           countryToCapitalMasteredCountries: 2,
           countryToCapitalMasteryRatio: 0.5,
-          locationToCountryStateCounts: { unpractised: 0, weak: 0, developing: 1, strong: 0, mastered: 3 },
-          countryToCapitalStateCounts: { unpractised: 0, weak: 1, developing: 1, strong: 0, mastered: 2 },
+          locationToCountryStateCounts: { NOT_LEARNED: 0, learned: 0, weak: 0, developing: 1, strong: 0, mastered: 3 },
+          countryToCapitalStateCounts: { NOT_LEARNED: 0, learned: 0, weak: 1, developing: 1, strong: 0, mastered: 2 },
         }),
         scopeStatus: makeStatus({ complete: 2, developing: 2 }, 4),
         onSelect: vi.fn(),

@@ -27,24 +27,24 @@ describe('World Countries progress presentation semantics', () => {
 
     expect(getCountryProgressState(progress, 'core')).toBe('complete')
     expect(getCountryProgressState(progress, 'capital-to-country')).toBe('weak')
-    expect(getCountryProgressColor('unpractised')).toBe('#90796F')
+    expect(getCountryProgressColor('learned')).toBe('#90796F')
     expect(getCountryProgressColor('weak')).toBe('#BC9C7B')
     expect(getCountryProgressColor('developing')).toBe('#B5A678')
     expect(getCountryProgressColor('strong')).toBe('#769A70')
     expect(getCountryProgressColor('complete')).toBe('#3A7F70')
     expect(getCountryProgressColor('mastered')).toBe('#3A7F70')
-    expect(getWorldCountriesProgressLegend('core')).toBe('Early recall · Weak · Developing · Strong · Mastered')
-    expect(getWorldCountriesProgressLegend('skill')).toBe('Early recall · Weak · Developing · Strong · Mastered')
+    expect(getWorldCountriesProgressLegend('core')).toBe('Learned · Weak · Developing · Strong · Mastered')
+    expect(getWorldCountriesProgressLegend('skill')).toBe('Learned · Weak · Developing · Strong · Mastered')
   })
 
-  it('keeps Early recall in Recall health instead of relabelling Learning states', () => {
+  it('routes a fully learned Country to the Learned recall floor', () => {
     const progress = deriveWorldCountriesCountryProgress('NO', new Map())
     expect(deriveWorldCountriesPrimaryStatus('NOT_LEARNED', progress)).toEqual({ kind: 'learning', readiness: 'NOT_LEARNED' })
     expect(deriveWorldCountriesPrimaryStatus('COUNTRIES_LEARNED', progress)).toEqual({ kind: 'learning', readiness: 'COUNTRIES_LEARNED' })
-    expect(deriveWorldCountriesPrimaryStatus('COUNTRIES_AND_CAPITALS_LEARNED', progress)).toEqual({ kind: 'recall', state: 'unpractised' })
+    expect(deriveWorldCountriesPrimaryStatus('COUNTRIES_AND_CAPITALS_LEARNED', progress)).toEqual({ kind: 'recall', state: 'learned' })
 
     const counts = deriveWorldCountriesPrimaryStatusCounts([{ id: 'NO', subregionId: 'northern-europe' }], [], new Map())
     expect(counts.find(entry => entry.state === 'NOT_LEARNED')).toMatchObject({ label: 'Not learned', count: 1 })
-    expect(counts.find(entry => entry.state === 'unpractised')).toMatchObject({ label: 'Early recall', count: 0 })
+    expect(counts.find(entry => entry.state === 'learned')).toMatchObject({ label: 'Learned', count: 0 })
   })
 })

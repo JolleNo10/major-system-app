@@ -28,13 +28,13 @@ function attempt(
 }
 
 describe('World Countries recall progress', () => {
-  it('reports no attempts as Unpractised', () => {
+  it('reports no attempts as Learned', () => {
     const progress = deriveWorldCountriesRecallProgress({ countryIds: ['NO'], skills: ['location-to-country'] }, [])
       .get(recallTargetIdFor('NO', 'location-to-country'))!
-    expect(progress.proficiency).toBe('unpractised')
+    expect(progress.proficiency).toBe('learned')
   })
 
-  it('keeps one or many Learning successes at Weak', () => {
+  it('keeps one or many Learning successes at Learned', () => {
     const one = deriveWorldCountriesAtomicProgress(recallTargetIdFor('NO', 'location-to-country'), [
       attempt('NO', 'location-to-country', 1, true, '2026-08-10', 'recall', 'learning'),
     ])
@@ -43,20 +43,38 @@ describe('World Countries recall progress', () => {
       attempt('NO', 'location-to-country', 2, true, '2026-08-11', 'recall', 'learning'),
       attempt('NO', 'location-to-country', 3, true, '2026-08-12', 'recall', 'learning'),
     ])
-    expect(one.proficiency).toBe('weak')
-    expect(many.proficiency).toBe('weak')
+    // Learning teaches the Country; only a recall attempt moves it off the
+    // floor, and Weak is reserved for having actually failed one.
+    expect(one.proficiency).toBe('learned')
+    expect(many.proficiency).toBe('learned')
     expect(many.mastered).toBe(false)
   })
 
-  it('keeps Learning failures, retries, and repair repetitions at Weak', () => {
+  it('keeps Learning failures, retries, and repair repetitions at Learned', () => {
     const progress = deriveWorldCountriesAtomicProgress(recallTargetIdFor('NO', 'location-to-country'), [
       attempt('NO', 'location-to-country', 1, false, '2026-08-10', 'recall', 'learning'),
       attempt('NO', 'location-to-country', 2, true, '2026-08-10', 'recall', 'learning'),
       attempt('NO', 'location-to-country', 3, false, '2026-08-11', 'recall', 'learning'),
       attempt('NO', 'location-to-country', 4, true, '2026-08-11', 'recall', 'learning'),
     ])
-    expect(progress.proficiency).toBe('weak')
+    expect(progress.proficiency).toBe('learned')
     expect(progress.mastered).toBe(false)
+  })
+
+  it('leaves Learned for Developing on a success and for Weak on a failure', () => {
+    const taught = [attempt('NO', 'location-to-country', 1, true, '2026-08-10', 'recall', 'learning')] as const
+    const success = deriveWorldCountriesAtomicProgress(recallTargetIdFor('NO', 'location-to-country'), [
+      ...taught,
+      attempt('NO', 'location-to-country', 2, true, '2026-08-11', 'recall', 'review'),
+    ])
+    const failure = deriveWorldCountriesAtomicProgress(recallTargetIdFor('NO', 'location-to-country'), [
+      ...taught,
+      attempt('NO', 'location-to-country', 2, false, '2026-08-11', 'recall', 'review'),
+    ])
+
+    // Weak means the Country was asked for and missed, so a success skips it.
+    expect(success.proficiency).toBe('developing')
+    expect(failure.proficiency).toBe('weak')
   })
 
   it.each([
@@ -255,7 +273,7 @@ describe('World Countries recall progress', () => {
       { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 2, ok: true, ms: 500, attemptType: 'legacy', localDate: '2026-08-10', evidenceKind: 'recall' },
     ]).get(recallTargetIdFor('NO', 'country-to-capital'))!
 
-    expect(progress.proficiency).toBe('weak')
+    expect(progress.proficiency).toBe('learned')
     expect(progress.mastered).toBe(false)
     expect(progress.hasEverMastered).toBe(false)
   })
@@ -541,7 +559,7 @@ describe('World Countries recall progress', () => {
     const country = deriveWorldCountriesCountryProgress('NO', progress)
     expect(country.coreState).toBe('developing')
     expect(country.complete).toBe(false)
-    expect(country.skills.get('capital-to-country')?.proficiency).toBe('unpractised')
+    expect(country.skills.get('capital-to-country')?.proficiency).toBe('learned')
   })
 
   it('derives the requested Country aggregation without recursively averaging scopes', () => {

@@ -373,17 +373,18 @@ export function WorldCountriesToday({
       continent ? `continent:${continent}` : 'world',
       scopedCountries,
       recallProgress,
+      learningReadinessByCountry,
     ) : null,
-    [continent, recallProgress, scopedCountries],
+    [continent, learningReadinessByCountry, recallProgress, scopedCountries],
   )
   const countryColorsById = useMemo(() => new Map(scopedCountries.flatMap(country => {
     if (learningReadinessByCountry.get(country.id) !== 'COUNTRIES_AND_CAPITALS_LEARNED') return []
-    const state = countryProgressById.get(country.id)?.skills.get('location-to-country')?.proficiency ?? 'unpractised'
+    const state = countryProgressById.get(country.id)?.skills.get('location-to-country')?.proficiency ?? 'learned'
     return [[country.id, getCountryProgressColor(state)] as const]
   })), [countryProgressById, learningReadinessByCountry, scopedCountries])
   const countryInnerGlowsById = useMemo(() => new Map(scopedCountries.flatMap(country => {
     if (learningReadinessByCountry.get(country.id) !== 'COUNTRIES_AND_CAPITALS_LEARNED') return []
-    const state = countryProgressById.get(country.id)?.skills.get('country-to-capital')?.proficiency ?? 'unpractised'
+    const state = countryProgressById.get(country.id)?.skills.get('country-to-capital')?.proficiency ?? 'learned'
     return [[country.id, { color: getCountryProgressColor(state), ...WORLD_COUNTRIES_CAPITAL_INNER_GLOW }] as const]
   })), [countryProgressById, learningReadinessByCountry, scopedCountries])
   const countryPatternsById = useMemo(() => new Map(scopedCountries.flatMap(country => (
@@ -575,7 +576,7 @@ export function WorldCountriesToday({
         return {
           id: candidate,
           label: candidate,
-          progress: deriveWorldCountriesScopeProgressForCountries(`continent:${candidate}`, entries, recallProgress),
+          progress: deriveWorldCountriesScopeProgressForCountries(`continent:${candidate}`, entries, recallProgress, learningReadinessByCountry),
           scopeStatus: deriveWorldCountriesScopeStatus(
             entries.map(country => country.id),
             learningReadinessByCountry,
@@ -595,7 +596,7 @@ export function WorldCountriesToday({
       return {
         id: subregion.id,
         label: subregion.label,
-        progress: deriveWorldCountriesScopeProgressForCountries(`subregion:${subregion.id}`, entries, recallProgress),
+        progress: deriveWorldCountriesScopeProgressForCountries(`subregion:${subregion.id}`, entries, recallProgress, learningReadinessByCountry),
         scopeStatus: deriveWorldCountriesScopeStatus(
           entries.map(country => country.id),
           learningReadinessByCountry,
@@ -872,8 +873,8 @@ export function WorldCountriesToday({
       return [country.id, `Learning: ${getWorldCountriesLearningReadinessLabel(readiness)}.`] as const
     }
     const countryProgress = countryProgressById.get(country.id)
-    const countryState = countryProgress?.skills.get('location-to-country')?.proficiency ?? 'unpractised'
-    const capitalState = countryProgress?.skills.get('country-to-capital')?.proficiency ?? 'unpractised'
+    const countryState = countryProgress?.skills.get('location-to-country')?.proficiency ?? 'learned'
+    const capitalState = countryProgress?.skills.get('country-to-capital')?.proficiency ?? 'learned'
     return [country.id, `Country recall: ${WORLD_COUNTRIES_PROGRESS_LABELS[countryState]}. Capital recall: ${WORLD_COUNTRIES_PROGRESS_LABELS[capitalState]}.`] as const
   }))
 

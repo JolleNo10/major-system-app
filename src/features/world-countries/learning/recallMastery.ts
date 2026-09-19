@@ -13,7 +13,7 @@ import type { WorldCountriesAttemptType } from './attemptTypes'
 
 /** Semantic proficiency for one atomic World Countries recall skill. */
 export type WorldCountriesProficiency =
-  | 'unpractised'
+  | 'learned'
   | 'weak'
   | 'developing'
   | 'strong'
@@ -87,7 +87,7 @@ function hasEverMasteryEvidence(attempts: readonly Attempt[]): boolean {
 }
 
 const PROFICIENCY_RANK: Readonly<Record<WorldCountriesProficiency, number>> = {
-  unpractised: 0,
+  learned: 0,
   weak: 1,
   developing: 2,
   strong: 3,
@@ -107,7 +107,7 @@ function lowerProficiency(proficiency: WorldCountriesProficiency): WorldCountrie
     case 'strong': return 'developing'
     case 'developing': return 'weak'
     case 'weak': return 'weak'
-    case 'unpractised': return 'weak'
+    case 'learned': return 'weak'
   }
 }
 
@@ -308,12 +308,12 @@ function deriveProgressFromProjection(
     consecutiveCorrect++
   }
   const lastAttempt = attempts.length ? attempts[attempts.length - 1] : undefined
-  const hasAcquisitionEvidence = projection.acquisition.length > 0
   const hasEverMastered = hasEverMasteryEvidence(projection.performance)
-  const current = deriveCurrentProficiency(
-    projection.performance,
-    hasAcquisitionEvidence ? 'weak' : 'unpractised',
-  )
+  // `learned` is the floor of the scale: the Country has been taught but no
+  // recall attempt has moved it yet. Acquisition evidence used to push the
+  // band straight to `weak`, which made `learned` unreachable and left a
+  // freshly taught Country indistinguishable from one that keeps failing.
+  const current = deriveCurrentProficiency(projection.performance, 'learned')
 
   const validLatencies = attempts
     .map(attempt => attempt.ms)

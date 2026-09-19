@@ -139,7 +139,7 @@ function isTargetEstablishedForReadiness(
 }
 
 function createsConsolidationPressure(proficiency: WorldCountriesProficiency): boolean {
-  return proficiency === 'unpractised'
+  return proficiency === 'learned'
     || proficiency === 'weak'
     || proficiency === 'developing'
 }
@@ -231,7 +231,7 @@ function compareCandidates(
 
 function proficiencyIndex(proficiency: WorldCountriesProficiency): number {
   switch (proficiency) {
-    case 'unpractised': return 0
+    case 'learned': return 0
     case 'weak': return 1
     case 'developing': return 2
     case 'strong': return 3
@@ -247,8 +247,8 @@ function compareConsolidationCandidates(
 ): number {
   const leftProgress = progressByTarget.get(recallTargetIdFor(left.target.countryId, left.target.skill))
   const rightProgress = progressByTarget.get(recallTargetIdFor(right.target.countryId, right.target.skill))
-  const proficiencyOrder = proficiencyIndex(leftProgress?.proficiency ?? 'unpractised')
-    - proficiencyIndex(rightProgress?.proficiency ?? 'unpractised')
+  const proficiencyOrder = proficiencyIndex(leftProgress?.proficiency ?? 'learned')
+    - proficiencyIndex(rightProgress?.proficiency ?? 'learned')
   if (proficiencyOrder !== 0) return proficiencyOrder
 
   const failureOrder = (right.schedule.latestFailureAt ?? 0) - (left.schedule.latestFailureAt ?? 0)

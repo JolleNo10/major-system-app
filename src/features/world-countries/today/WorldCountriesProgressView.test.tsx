@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { countries, type Continent } from '@/features/world-countries/data/countries'
 import { deriveWorldCountriesRecallProgress } from '@/features/world-countries/learning/recallProgress'
 import { deriveWorldCountriesScopeProgressForCountries } from '@/features/world-countries/learning/scopeProgress'
+import { createWorldCountriesEstablishedLearningReadinessByCountry } from '@/features/world-countries/learning/learningReadiness'
 import { WorldCountriesProgressView } from './WorldCountriesProgressView'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -36,6 +37,7 @@ function renderProgress(
     scopeLabel === 'World' ? 'world' : `continent:${scopeLabel}`,
     scopeCountries,
     recallProgress,
+    createWorldCountriesEstablishedLearningReadinessByCountry(scopeCountries, learningStates, recallProgress),
   )
   const mount = document.createElement('div')
   document.body.append(mount)
@@ -63,7 +65,7 @@ describe('World Countries progress hierarchy', () => {
     expect(mount.textContent).toContain('Europe')
     expect(mount.textContent).toContain('Countries fully mastered')
     expect(mount.textContent).toContain('regions with complete recall')
-    expect(mount.textContent).toContain('Early recall')
+    expect(mount.textContent).toContain('Not learned')
     expect(mount.textContent).not.toContain('core recall distribution')
     expect(mount.querySelector('[data-testid="world-mastery-summary"]')).not.toBeNull()
     expect(mount.querySelector('[aria-label="Country recall distribution"]')).not.toBeNull()
@@ -116,14 +118,21 @@ describe('World Countries progress hierarchy', () => {
     expect(mount.textContent).toContain('Mastery · Mastered')
   })
 
-  it('shows independent Country and Capital ladders regardless of Learning readiness', () => {
+  it('reports each recall ladder against its own Learning layer', () => {
     const northern = countries.find(country => country.subregionId === 'northern-europe')!
     const mount = renderProgress('Europe', [northern], [], [])
     expect(mount.querySelector('[aria-label="Country recall distribution"]')).not.toBeNull()
     expect(mount.querySelector('[aria-label="Capital recall distribution"]')).not.toBeNull()
-    expect(mount.textContent).toContain('Country')
-    expect(mount.textContent).toContain('Capital')
-    expect(mount.textContent).toContain('Early recall 1')
+    // Nothing is learned, so neither ladder can claim recall health yet.
+    expect(mount.textContent).toContain('Not learned 1')
+    expect(mount.textContent).not.toContain('Learned 1')
+
+    // Learning the Countries layer moves only the Country ladder off the floor.
+    const countriesOnly = renderProgress('Europe', [northern], [{ subregionId: northern.subregionId, countriesLearnedAt: 1 }], [])
+    const countryTrack = countriesOnly.querySelector('[aria-label="Country recall distribution"]')
+    const capitalTrack = countriesOnly.querySelector('[aria-label="Capital recall distribution"]')
+    expect(countryTrack?.textContent).toContain('Learned 1')
+    expect(capitalTrack?.textContent).toContain('Not learned 1')
   })
 
   it('headlines the highest reached rung while keeping strict overlap separate', () => {

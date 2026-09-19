@@ -49,7 +49,7 @@ describe('World Countries Final recall evidence', () => {
     ])
 
     expect(progress.medianMs).toBe(2500)
-    expect(progress.proficiency).toBe('weak')
+    expect(progress.proficiency).toBe('learned')
     expect(progress.mastered).toBe(false)
     expect(progress.hasEverMastered).toBe(false)
   })

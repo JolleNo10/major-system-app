@@ -5,7 +5,7 @@ import { countries } from '@/features/world-countries/data/countries'
 import { getSubregionsForContinentInEffectiveOrder } from '@/features/world-countries/geography/queries'
 import { getContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
 import { markSubregionCapitalsLearned, markSubregionCountriesLearned } from '@/features/world-countries/learning/subregionLearningStore'
-import { WORLD_COUNTRIES_ATOMIC_PROFICIENCY_STATES, WORLD_COUNTRIES_PROGRESS_LABELS, getCountryProgressColor } from '@/features/world-countries/learning/progressPresentation'
+import { WORLD_COUNTRIES_RECALL_HEALTH_STATES, WORLD_COUNTRIES_PROGRESS_LABELS, getCountryProgressColor } from '@/features/world-countries/learning/progressPresentation'
 import { JOURNEY_PREFERENCE_STORAGE_KEY } from './journeyPreferenceStore'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -274,17 +274,19 @@ describe('World Countries Today', () => {
 
     expect(mount.querySelector('[data-testid="world-mastery-summary"]')).toBeNull()
     expect(legend?.getAttribute('aria-label')).toBe('Map legend: learning and recall health')
-    expect(states.map(entry => entry.dataset.progressState)).toEqual([...WORLD_COUNTRIES_ATOMIC_PROFICIENCY_STATES])
-    expect(states.map(entry => entry.textContent)).toEqual(WORLD_COUNTRIES_ATOMIC_PROFICIENCY_STATES.map(state => WORLD_COUNTRIES_PROGRESS_LABELS[state]))
+    expect(states.map(entry => entry.dataset.progressState)).toEqual([...WORLD_COUNTRIES_RECALL_HEALTH_STATES])
+    expect(states.map(entry => entry.textContent)).toEqual(WORLD_COUNTRIES_RECALL_HEALTH_STATES.map(state => WORLD_COUNTRIES_PROGRESS_LABELS[state]))
     expect(states.map(entry => entry.querySelector<HTMLElement>('[aria-hidden="true"]')?.style.backgroundColor)).toEqual(
-      WORLD_COUNTRIES_ATOMIC_PROFICIENCY_STATES.map(state => {
+      WORLD_COUNTRIES_RECALL_HEALTH_STATES.map(state => {
         const expectedSwatch = document.createElement('span')
         expectedSwatch.style.backgroundColor = getCountryProgressColor(state)
         return expectedSwatch.style.backgroundColor
       }),
     )
     const learningStates = [...legend?.querySelectorAll<HTMLElement>('[data-learning-state]') ?? []]
-    expect(learningStates.map(entry => entry.textContent)).toEqual(['Not learned', 'Countries learned'])
+    // The Learning group carries all three milestones; "Learned" is the last
+    // of them, not a recall-health reading.
+    expect(learningStates.map(entry => entry.textContent)).toEqual(['Not learned', 'Countries learned', 'Learned'])
     expect(learningStates[1]?.querySelector<HTMLElement>('[aria-hidden="true"]')?.style.backgroundImage).toContain('135deg')
     expect(learningStates[1]?.querySelector<HTMLElement>('[aria-hidden="true"]')?.style.backgroundImage).toContain('rgba(62, 55, 25, 0.46)')
     expect(learningStates[1]?.querySelector<HTMLElement>('[aria-hidden="true"]')?.style.backgroundImage).not.toContain('#d6c7ad')

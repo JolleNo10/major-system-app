@@ -9,7 +9,7 @@ import { deriveWorldCountriesScopeProgressForCountries, type WorldCountriesScope
 import { deriveWorldCountriesScopeStatus, formatWorldCountriesScopeStatus, type WorldCountriesScopeStatus } from '@/features/world-countries/learning/scopeStatus'
 import type { LearningStates } from '@/features/world-countries/learning/learningProgress'
 import { createWorldCountriesEstablishedLearningReadinessByCountry, getWorldCountriesLearningStateList } from '@/features/world-countries/learning/learningReadiness'
-import { getWorldCountriesProgressLegend, WORLD_COUNTRIES_ATOMIC_PROFICIENCY_STATES, WORLD_COUNTRIES_CORE_FINISH_LINE_EXPLANATION, WORLD_COUNTRIES_PROGRESS_LABELS } from '@/features/world-countries/learning/progressPresentation'
+import { getWorldCountriesProgressLegend, getWorldCountriesSkillStatusLabel, WORLD_COUNTRIES_CORE_FINISH_LINE_EXPLANATION, WORLD_COUNTRIES_SKILL_STATUSES, type WorldCountriesSkillStatus } from '@/features/world-countries/learning/progressPresentation'
 import { GeographyBreadcrumbs } from '@/features/world-countries/ui/GeographyBreadcrumbs'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
 import { WorldCountriesDualRecallBar } from '@/features/world-countries/ui/WorldCountriesDualRecallBar'
@@ -96,7 +96,7 @@ export function WorldCountriesProgressView({
         return {
           id: `continent:${continent}`,
           label: continent,
-          progress: deriveWorldCountriesScopeProgressForCountries(`continent:${continent}`, continentCountries, recallProgress),
+          progress: deriveWorldCountriesScopeProgressForCountries(`continent:${continent}`, continentCountries, recallProgress, readinessByCountry),
           scopeStatus: statusFor(continentCountries),
           regionSummary: `${completeRegions} of ${continentSubregions.length} regions with complete recall`,
         }
@@ -116,6 +116,7 @@ export function WorldCountriesProgressView({
           `subregion:${subregion.id}`,
           scopeCountries.filter(country => country.subregionId === subregion.id),
           recallProgress,
+          readinessByCountry,
         ),
         scopeStatus: statusFor(scopeCountries.filter(country => country.subregionId === subregion.id)),
         journeyPosition: getJourneyProgressLabel(deriveWorldCountriesJourneyPresentation({
@@ -167,13 +168,13 @@ function ProgressRow({ label, progress, scopeStatus, regionSummary, journeyPosit
   )
 }
 
-function ProgressStateDistribution({ label, counts }: { label: 'Country' | 'Capital'; counts: Readonly<Record<(typeof WORLD_COUNTRIES_ATOMIC_PROFICIENCY_STATES)[number], number>> }) {
+function ProgressStateDistribution({ label, counts }: { label: 'Country' | 'Capital'; counts: Readonly<Record<WorldCountriesSkillStatus, number>> }) {
   return (
     <section aria-label={`${label} recall distribution`} className="space-y-1.5">
       <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">{label}</h3>
       <ul aria-label={`${label} recall state counts`} className="space-y-1 text-[11px] text-zinc-400">
-        {WORLD_COUNTRIES_ATOMIC_PROFICIENCY_STATES.map(state => (
-          <li key={state} data-progress-state={state} className="tabular-nums">{WORLD_COUNTRIES_PROGRESS_LABELS[state]} {counts[state]}</li>
+        {WORLD_COUNTRIES_SKILL_STATUSES.map(state => (
+          <li key={state} data-progress-state={state} className="tabular-nums">{getWorldCountriesSkillStatusLabel(state)} {counts[state]}</li>
         ))}
       </ul>
     </section>

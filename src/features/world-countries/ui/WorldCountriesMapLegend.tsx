@@ -1,4 +1,4 @@
-import { WORLD_COUNTRIES_ATOMIC_PROFICIENCY_STATES, getCountryProgressColor, WORLD_COUNTRIES_PROGRESS_LABELS } from '@/features/world-countries/learning/progressPresentation'
+import { WORLD_COUNTRIES_RECALL_HEALTH_STATES, getCountryProgressColor, WORLD_COUNTRIES_PROGRESS_LABELS } from '@/features/world-countries/learning/progressPresentation'
 import {
   WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES,
 } from '@/features/world-countries/learning/learningReadiness'
@@ -15,9 +15,13 @@ export function WorldCountriesMapLegend({ learningComplete = false }: { learning
         <section aria-label="Learning" className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
           <p className="font-semibold uppercase tracking-wider text-zinc-500">Learning</p>
           <ul className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-            {WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES.map(entry => (
+            {[
+              ...WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES,
+              // The last Learning milestone: taught, not yet recalled.
+              { state: 'learned', label: WORLD_COUNTRIES_PROGRESS_LABELS.learned, color: getCountryProgressColor('learned') },
+            ].map(entry => (
               <li key={entry.state} data-learning-state={entry.state} className="inline-flex items-center gap-1.5">
-                <span aria-hidden="true" className="h-2.5 w-2.5 shrink-0 rounded-sm border border-white/15" style={{ backgroundColor: entry.color, ...entry.swatchStyle }} />
+                <span aria-hidden="true" className="h-2.5 w-2.5 shrink-0 rounded-sm border border-white/15" style={{ backgroundColor: entry.color, ...('swatchStyle' in entry ? entry.swatchStyle : {}) }} />
                 <span>{entry.label}</span>
               </li>
             ))}
@@ -27,7 +31,7 @@ export function WorldCountriesMapLegend({ learningComplete = false }: { learning
       <section aria-label="Recall health" className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
         <p className="font-semibold uppercase tracking-wider text-zinc-500">Recall health</p>
         <ul className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-          {WORLD_COUNTRIES_ATOMIC_PROFICIENCY_STATES.map(state => (
+          {WORLD_COUNTRIES_RECALL_HEALTH_STATES.map(state => (
             <li key={state} data-progress-state={state} className="inline-flex items-center gap-1.5">
               <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full border border-white/15" style={{ backgroundColor: getCountryProgressColor(state) }} />
               <span>{WORLD_COUNTRIES_PROGRESS_LABELS[state]}</span>

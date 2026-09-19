@@ -4,30 +4,32 @@ import { deriveWorldCountriesPrimaryStatus, WORLD_COUNTRIES_PROGRESS_LABELS } fr
 import type { WorldCountriesCountryProgress } from './recallProgress'
 
 /**
- * The single ladder a scope headline walks, lowest rung first.
+ * The seven statuses a Country or scope can hold, lowest first.
  *
- * This is the two-row legend the map already shows: the Learning milestones
- * followed by the recall-health states a Country only enters once its
- * Countries and Capitals are both learned.
+ * The first three are Learning milestones and the last four are recall
+ * health. `learned` is the join: both Learning layers are complete and no
+ * recall attempt has moved the Country yet. A success from there goes to
+ * `developing` and a failure goes to `weak`, so `weak` is only ever reached
+ * by failing.
  */
-export const WORLD_COUNTRIES_SCOPE_STATUS_TIERS = [
+export const WORLD_COUNTRIES_STATUSES = [
   'NOT_LEARNED',
   'COUNTRIES_LEARNED',
-  'unpractised',
+  'learned',
   'weak',
   'developing',
   'strong',
   'complete',
 ] as const
 
-export type WorldCountriesScopeStatusTier = typeof WORLD_COUNTRIES_SCOPE_STATUS_TIERS[number]
+export type WorldCountriesStatus = typeof WORLD_COUNTRIES_STATUSES[number]
 
-const LEARNING_TIERS = ['NOT_LEARNED', 'COUNTRIES_LEARNED'] as const satisfies readonly WorldCountriesScopeStatusTier[]
+const LEARNING_STATUSES = ['NOT_LEARNED', 'COUNTRIES_LEARNED', 'learned'] as const satisfies readonly WorldCountriesStatus[]
 
-const TIER_LABELS: Readonly<Record<WorldCountriesScopeStatusTier, string>> = {
+const STATUS_LABELS: Readonly<Record<WorldCountriesStatus, string>> = {
   NOT_LEARNED: 'Not learned',
-  COUNTRIES_LEARNED: 'Learned',
-  unpractised: WORLD_COUNTRIES_PROGRESS_LABELS.unpractised,
+  COUNTRIES_LEARNED: 'Countries learned',
+  learned: WORLD_COUNTRIES_PROGRESS_LABELS.learned,
   weak: WORLD_COUNTRIES_PROGRESS_LABELS.weak,
   developing: WORLD_COUNTRIES_PROGRESS_LABELS.developing,
   strong: WORLD_COUNTRIES_PROGRESS_LABELS.strong,
@@ -35,10 +37,10 @@ const TIER_LABELS: Readonly<Record<WorldCountriesScopeStatusTier, string>> = {
 }
 
 /** Trailing noun for the "<n> / <total> Countries …" count beneath a headline. */
-const TIER_COUNT_NOUNS: Readonly<Record<WorldCountriesScopeStatusTier, string>> = {
+const STATUS_COUNT_NOUNS: Readonly<Record<WorldCountriesStatus, string>> = {
   NOT_LEARNED: 'learned',
   COUNTRIES_LEARNED: 'learned',
-  unpractised: 'in early recall',
+  learned: 'learned',
   weak: 'weak',
   developing: 'developing',
   strong: 'strong',
@@ -46,102 +48,104 @@ const TIER_COUNT_NOUNS: Readonly<Record<WorldCountriesScopeStatusTier, string>> 
 }
 
 export interface WorldCountriesScopeStatus {
-  tier: WorldCountriesScopeStatusTier
+  status: WorldCountriesStatus
   label: string
-  /** Null on the Learning rungs, which are milestones rather than a health share. */
+  /** Null on the Learning statuses, which are milestones rather than a health share. */
   percent: number | null
-  countAtTier: number
+  countAtStatus: number
   totalCountries: number
-  /** Ready-to-render "<n> / <total> Countries …" line for this tier. */
+  /** Ready-to-render "<n> / <total> Countries …" line for this status. */
   countLabel: string
 }
 
-/** Render a scope headline, omitting the share on the percentage-less Learning rungs. */
+/** Render a scope headline, omitting the share on the percentage-less Learning statuses. */
 export function formatWorldCountriesScopeStatus(status: WorldCountriesScopeStatus): string {
   return status.percent === null ? status.label : `${status.label} ${status.percent}%`
 }
 
-export function isWorldCountriesLearningTier(tier: WorldCountriesScopeStatusTier): boolean {
-  return (LEARNING_TIERS as readonly WorldCountriesScopeStatusTier[]).includes(tier)
+export function isWorldCountriesLearningStatus(status: WorldCountriesStatus): boolean {
+  return (LEARNING_STATUSES as readonly WorldCountriesStatus[]).includes(status)
 }
 
-/** Place one Country on the ladder; recall health is gated behind Learning. */
-export function getWorldCountriesCountryStatusTier(
+/** Place one Country on the status list; recall health is gated behind Learning. */
+export function getWorldCountriesCountryStatus(
   readiness: WorldCountriesLearningReadiness,
   progress: WorldCountriesCountryProgress,
-): WorldCountriesScopeStatusTier {
+): WorldCountriesStatus {
   const status = deriveWorldCountriesPrimaryStatus(readiness, progress)
   if (status.kind === 'learning') {
-    // A Country that has learned both tracks always routes to the recall
-    // rungs above, so only the two Learning rungs can reach this branch.
-    return status.readiness === 'COUNTRIES_AND_CAPITALS_LEARNED' ? 'unpractised' : status.readiness
+    // A Country that has completed both layers always routes to the recall
+    // branch, so only the two incomplete Learning milestones reach this one.
+    return status.readiness === 'COUNTRIES_AND_CAPITALS_LEARNED' ? 'learned' : status.readiness
   }
   // The core perspective reports 'complete' rather than the atomic 'mastered'.
   return status.state === 'mastered' ? 'complete' : status.state
 }
 
-export function countWorldCountriesScopeStatusTiers(
+export function countWorldCountriesStatuses(
   countryIds: readonly CountryId[],
   readinessByCountry: ReadonlyMap<CountryId, WorldCountriesLearningReadiness>,
   progressByCountry: ReadonlyMap<CountryId, WorldCountriesCountryProgress>,
-): Record<WorldCountriesScopeStatusTier, number> {
+): Record<WorldCountriesStatus, number> {
   const counts = Object.fromEntries(
-    WORLD_COUNTRIES_SCOPE_STATUS_TIERS.map(tier => [tier, 0]),
-  ) as Record<WorldCountriesScopeStatusTier, number>
+    WORLD_COUNTRIES_STATUSES.map(status => [status, 0]),
+  ) as Record<WorldCountriesStatus, number>
 
   for (const countryId of countryIds) {
     const progress = progressByCountry.get(countryId)
     const readiness = readinessByCountry.get(countryId) ?? 'NOT_LEARNED'
     if (!progress) {
-      counts[readiness === 'COUNTRIES_AND_CAPITALS_LEARNED' ? 'unpractised' : readiness]++
+      counts[readiness === 'COUNTRIES_AND_CAPITALS_LEARNED' ? 'learned' : readiness]++
       continue
     }
-    counts[getWorldCountriesCountryStatusTier(readiness, progress)]++
+    counts[getWorldCountriesCountryStatus(readiness, progress)]++
   }
   return counts
 }
 
 /**
- * Report the highest rung a scope has actually reached, not its mastery share.
+ * Report the highest status a scope has actually reached, not its mastery
+ * share.
  *
- * The headline used to be hardcoded to the top rung, so every scope read
+ * The headline used to be hardcoded to the top status, so every scope read
  * "Mastery 0%" until Countries were fully mastered and simply restated the
  * "0 / n Countries fully mastered" line beneath it.
  *
- * A rung that is already full is a finished rung, so a scope sitting at 100%
- * of anything below the top reports the next rung at 0% instead: that is the
- * work that remains. The Learning rungs are milestones rather than a health
- * share, so they carry no percentage and never promote - a fully learned
- * scope reads "Learned" rather than "Early recall 0%".
+ * A full status is a finished status, so a scope sitting at 100% of anything
+ * below the top reports the next one at 0% instead: that is the work that
+ * remains. The Learning statuses are milestones rather than a health share,
+ * so they carry no percentage and never promote - a fully learned scope reads
+ * "Learned" rather than "Weak 0%".
  */
 export function deriveWorldCountriesScopeStatusFromCounts(
-  counts: Readonly<Record<WorldCountriesScopeStatusTier, number>>,
+  counts: Readonly<Record<WorldCountriesStatus, number>>,
   totalCountries: number,
 ): WorldCountriesScopeStatus {
-  const reached = [...WORLD_COUNTRIES_SCOPE_STATUS_TIERS]
+  const reached = [...WORLD_COUNTRIES_STATUSES]
     .reverse()
-    .find(tier => counts[tier] > 0) ?? 'NOT_LEARNED'
+    .find(status => counts[status] > 0) ?? 'NOT_LEARNED'
 
-  const index = WORLD_COUNTRIES_SCOPE_STATUS_TIERS.indexOf(reached)
-  const isTop = index === WORLD_COUNTRIES_SCOPE_STATUS_TIERS.length - 1
+  const index = WORLD_COUNTRIES_STATUSES.indexOf(reached)
+  const isTop = index === WORLD_COUNTRIES_STATUSES.length - 1
   const full = totalCountries > 0 && counts[reached] === totalCountries
-  const tier = !isWorldCountriesLearningTier(reached) && full && !isTop
-    ? WORLD_COUNTRIES_SCOPE_STATUS_TIERS[index + 1]
+  const status = !isWorldCountriesLearningStatus(reached) && full && !isTop
+    ? WORLD_COUNTRIES_STATUSES[index + 1]
     : reached
 
-  const countAtTier = isWorldCountriesLearningTier(tier)
-    // Both Learning rungs report the same milestone: how much of the scope is
-    // learned at all. "<all> / <all> Countries not learned" carries nothing.
+  const countAtStatus = isWorldCountriesLearningStatus(status)
+    // The Learning statuses all report the same milestone: how much of the
+    // scope is learned at all. "<all> / <all> Countries not learned" carries
+    // nothing.
     ? totalCountries - counts.NOT_LEARNED
-    : counts[tier]
+    : counts[status]
 
   return {
-    tier,
-    label: TIER_LABELS[tier],
-    percent: isWorldCountriesLearningTier(tier) ? null : toPercent(countAtTier, totalCountries),
-    countAtTier,
+    status,
+    label: STATUS_LABELS[status],
+    percent: isWorldCountriesLearningStatus(status) ? null : toPercent(countAtStatus, totalCountries),
+    countAtStatus,
     totalCountries,
-    countLabel: `${countAtTier} / ${totalCountries} Countries ${TIER_COUNT_NOUNS[tier]}`,
+    countLabel: `${countAtStatus} / ${totalCountries} Countries ${STATUS_COUNT_NOUNS[status]}`,
   }
 }
 
@@ -152,14 +156,14 @@ export function deriveWorldCountriesScopeStatus(
 ): WorldCountriesScopeStatus {
   const uniqueCountryIds = [...new Set(countryIds)]
   return deriveWorldCountriesScopeStatusFromCounts(
-    countWorldCountriesScopeStatusTiers(uniqueCountryIds, readinessByCountry, progressByCountry),
+    countWorldCountriesStatuses(uniqueCountryIds, readinessByCountry, progressByCountry),
     uniqueCountryIds.length,
   )
 }
 
 function toPercent(count: number, total: number): number {
   if (total <= 0 || count <= 0) return 0
-  // A rung that has been reached must never read as 0%, or it is
-  // indistinguishable from the empty next rung the promotion rule reports.
+  // A status that has been reached must never read as 0%, or it is
+  // indistinguishable from the empty next status the promotion rule reports.
   return Math.max(1, Math.round((count / total) * 100))
 }

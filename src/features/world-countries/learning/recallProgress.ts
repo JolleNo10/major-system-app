@@ -118,7 +118,7 @@ export function recordWorldCountriesAttemptOrThrow(
 }
 
 export type WorldCountriesCountryCoreState =
-  | 'unpractised'
+  | 'learned'
   | 'weak'
   | 'developing'
   | 'strong'
@@ -159,8 +159,8 @@ function progressFor(
 function deriveCoreState(
   coreSkills: readonly WorldCountriesAtomicProgress[],
 ): WorldCountriesCountryCoreState {
-  if (coreSkills.length === 0 || coreSkills.every(skill => skill.proficiency === 'unpractised')) {
-    return 'unpractised'
+  if (coreSkills.length === 0 || coreSkills.every(skill => skill.proficiency === 'learned')) {
+    return 'learned'
   }
   if (coreSkills.some(skill => skill.proficiency === 'weak')) return 'weak'
   if (coreSkills.every(skill => skill.proficiency === 'mastered')) return 'complete'

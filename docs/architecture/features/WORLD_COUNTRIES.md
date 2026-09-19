@@ -302,20 +302,42 @@ choose Review or Journey actions.
 
 The guided Home geography rail headlines each Continent/Subregion row and its
 own scope footer, and the derived Progress view headlines its mastery card and
-each of its rows, with the **highest rung the scope has reached** rather than a
-mastery percentage. The rung ladder is the one the map legend already shows:
-`Not learned -> Learned -> Early recall -> Weak -> Developing -> Strong ->
-Mastered`, where the recall rungs stay gated behind Learning Readiness exactly
-as `deriveWorldCountriesPrimaryStatus` gates them. The percentage is the share
-of the scope sitting on that rung, and the supporting count restates the same
-rung.
+each of its rows, with the **highest status the scope has reached** rather than a
+mastery percentage.
 
-A full rung is a finished rung, so a scope at 100% of anything below the top
-reports the next rung at 0%: that is the work that remains. The two Learning
-rungs are milestones rather than a health share, so they carry no percentage
-and never promote - a fully learned scope reads `Learned`, not
-`Early recall 0%`. A rung that has been reached never rounds down to 0%,
-because that is indistinguishable from the empty promoted rung.
+There are seven statuses, in `WORLD_COUNTRIES_STATUSES`:
+
+| Status | Meaning |
+|---|---|
+| `Not learned` | The Countries layer is not established |
+| `Countries learned` | Locations taught; Capitals not yet |
+| `Learned` | Both layers taught; no recall attempt has moved the Country |
+| `Weak` | A recall attempt failed |
+| `Developing` | One success since the last miss |
+| `Strong` | Two or more successes since the last miss |
+| `Mastered` | Correct on three different days since the last miss, on both skills |
+
+The first three are Learning milestones and the last four are recall health.
+`Learned` is the join between them, and it is the floor of the recall scale
+rather than a separate concept: a success from there goes to `Developing` and
+a failure goes to `Weak`, so **`Weak` is only ever reached by failing**. The
+recall statuses stay gated behind Learning Readiness exactly as
+`deriveWorldCountriesPrimaryStatus` gates them. The percentage is the share of
+the scope sitting on that status, and the supporting count restates it.
+
+A full status is a finished status, so a scope at 100% of anything below the
+top reports the next one at 0%: that is the work that remains. The three
+Learning statuses are milestones rather than a health share, so they carry no
+percentage and never promote - a fully learned scope reads `Learned`, not
+`Weak 0%`. A status that has been reached never rounds down to 0%, because
+that is indistinguishable from the empty promoted status.
+
+`Early recall` was removed. It was the label for an internal `unpractised`
+state that finishing guided Learning immediately overwrote with `weak`, so it
+was unreachable in normal use and only ever surfaced as a data gap, while
+`Weak` conflated "just taught" with "keeps failing". The state was renamed to
+`learned` and the acquisition bump dropped, which makes it the reachable
+`Learned` milestone and leaves `Weak` meaning only what it says.
 
 Headlining the top rung was rejected after it shipped: every scope read
 `Mastery 0%` until Countries were fully mastered, which restated the
@@ -645,7 +667,7 @@ opacity, 1.8 width, and 11 pitch for Countries learned. Learning presentation
 remains until both layers are established for each Country; after handoff,
 `location-to-country` owns the polygon fill and `country-to-capital` owns a
 clipped inner edge/glow inside that same Country geometry. Both channels use
-the shared atomic Early recall, Weak, Developing, Strong, and Mastered ladder;
+the shared atomic Learned, Weak, Developing, Strong, and Mastered ladder;
 there is no Country/Capital display mode or toggle. A display-only Drill-evidence
 bridge may promote a Subregion to Countries learned when every active Country
 has current Location -> Country proficiency of Developing or better. It never
@@ -657,14 +679,23 @@ above before recommending Capital Learning.
 Today map status uses the established-layer form of this truth: a durable
 layer is authoritative, while the existing all-active-Country historical
 `hasEverMastered` fallback may establish the display/planning signal without
-writing a milestone. `Early recall` is a Recall-health label for internal
-`unpractised`, not a global synonym for an untouched Country; primary ladder
-surfaces gate it until both Learning layers are established. Later failures can weaken current recall and increase
+writing a milestone. `Learned` is the floor of the recall scale and the
+last Learning milestone; primary status surfaces gate it until both Learning
+layers are established. Later failures can weaken current recall and increase
 Review urgency, but do not reopen a Learning pattern. The Home legend and
 Country accessible descriptions expose the current status in text: Learning
-lists Not learned and Countries learned with a real diagonal pattern swatch;
-Recall health lists Early recall, Weak, Developing, Strong, and Mastered with
-solid swatches. Dedicated readiness surfaces may use text to describe the
+lists Not learned, Countries learned - with a real diagonal pattern swatch -
+and Learned; Recall health lists Weak, Developing, Strong, and Mastered with
+solid swatches.
+
+Per-skill distributions and the compact two-track bars read each track
+against **its own** Learning layer through `isWorldCountriesSkillLearned`, so
+a skill below its layer reports `NOT_LEARNED` rather than the `Learned`
+floor - that floor asserts the Country was taught, which is not true of one
+the learner has never met. Scope progress therefore takes Learning Readiness
+as an optional argument; omitting it treats every skill as learned, which is
+what Drill setup does deliberately, because Drill evidence never sets a
+Learning milestone and gating there would hide real progress. Dedicated readiness surfaces may use text to describe the
 internal Countries + Capitals milestone, but do not add a third map pattern.
 
 The standalone Learn Capitals flow remains runnable from its intentional

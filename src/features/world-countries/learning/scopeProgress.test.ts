@@ -68,7 +68,7 @@ describe('World Countries scope progress', () => {
       completeCountries: 2,
       completionRatio: 0.5,
       countryStateCounts: {
-        unpractised: 0,
+        learned: 0,
         weak: 2,
         developing: 0,
         strong: 0,
@@ -112,7 +112,7 @@ describe('World Countries scope progress', () => {
     const progress = deriveWorldCountriesWorldProgress(itemProgress, countries.filter(country => country.id === 'NO'))
 
     expect(progress.completeCountries).toBe(0)
-    expect(progress.countryStateCounts.unpractised).toBe(1)
+    expect(progress.countryStateCounts.learned).toBe(1)
     expect(progress.countryStateCounts.complete).toBe(0)
   })
 
@@ -122,7 +122,7 @@ describe('World Countries scope progress', () => {
     expect(progress.scopeId).toBe('subregion:northern-europe')
     expect(progress.totalCountries).toBeGreaterThan(0)
     expect(progress.completeCountries).toBe(0)
-    expect(progress.countryStateCounts.unpractised).toBe(progress.totalCountries)
+    expect(progress.countryStateCounts.learned).toBe(progress.totalCountries)
   })
 
   it('uses the active World population for every mastery count', () => {
@@ -159,7 +159,7 @@ describe('World Countries scope progress', () => {
       coreMasteryRatio: 0.5,
       complete: false,
       countryStateCounts: {
-        unpractised: 0,
+        learned: 0,
         weak: 1,
         developing: 0,
         strong: 0,
@@ -190,17 +190,17 @@ describe('World Countries scope progress', () => {
     expect(progress.countryToCapitalMasteredCountries).toBe(3)
     expect(progress.locationToCountryMasteryRatio).toBe(0.75)
     expect(progress.countryToCapitalMasteryRatio).toBe(0.75)
-    expect(progress.locationToCountryStateCounts).toEqual({ unpractised: 1, weak: 0, developing: 0, strong: 0, mastered: 3 })
-    expect(progress.countryToCapitalStateCounts).toEqual({ unpractised: 1, weak: 0, developing: 0, strong: 0, mastered: 3 })
+    expect(progress.locationToCountryStateCounts).toEqual({ NOT_LEARNED: 0, learned: 1, weak: 0, developing: 0, strong: 0, mastered: 3 })
+    expect(progress.countryToCapitalStateCounts).toEqual({ NOT_LEARNED: 0, learned: 1, weak: 0, developing: 0, strong: 0, mastered: 3 })
     expect(progress.completeCountries).toBe(2)
     expect(getWorldCountriesScopeDisplayedMasteryRatio(progress)).toBe(0.75)
   })
 
-  it('defaults missing Country and Capital evidence to separate unpractised buckets', () => {
+  it('defaults missing Country and Capital evidence to separate learned buckets', () => {
     const progress = deriveWorldCountriesWorldProgress(new Map(), countries.filter(country => country.id === 'NO'))
 
-    expect(progress.locationToCountryStateCounts).toEqual({ unpractised: 1, weak: 0, developing: 0, strong: 0, mastered: 0 })
-    expect(progress.countryToCapitalStateCounts).toEqual({ unpractised: 1, weak: 0, developing: 0, strong: 0, mastered: 0 })
+    expect(progress.locationToCountryStateCounts).toEqual({ NOT_LEARNED: 0, learned: 1, weak: 0, developing: 0, strong: 0, mastered: 0 })
+    expect(progress.countryToCapitalStateCounts).toEqual({ NOT_LEARNED: 0, learned: 1, weak: 0, developing: 0, strong: 0, mastered: 0 })
     expect(progress.locationToCountryMasteredCountries).toBe(0)
     expect(progress.countryToCapitalMasteredCountries).toBe(0)
   })

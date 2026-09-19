@@ -1,32 +1,32 @@
 import {
-  getCountryProgressColor,
-  WORLD_COUNTRIES_ATOMIC_PROFICIENCY_STATES,
-  WORLD_COUNTRIES_PROGRESS_LABELS,
+  getWorldCountriesSkillStatusColor,
+  getWorldCountriesSkillStatusLabel,
+  WORLD_COUNTRIES_SKILL_STATUSES,
+  type WorldCountriesSkillStatus,
 } from '@/features/world-countries/learning/progressPresentation'
-import type { WorldCountriesProficiency } from '@/features/world-countries/learning/recallMastery'
 
 export interface WorldCountriesDualRecallBarProps {
   totalCountries: number
-  countryCounts: Readonly<Record<WorldCountriesProficiency, number>>
-  capitalCounts: Readonly<Record<WorldCountriesProficiency, number>>
+  countryCounts: Readonly<Record<WorldCountriesSkillStatus, number>>
+  capitalCounts: Readonly<Record<WorldCountriesSkillStatus, number>>
   className?: string
 }
 
 function trackSummary(
   label: string,
-  counts: Readonly<Record<WorldCountriesProficiency, number>>,
+  counts: Readonly<Record<WorldCountriesSkillStatus, number>>,
 ): string {
-  return `${label} recall: ${[...WORLD_COUNTRIES_ATOMIC_PROFICIENCY_STATES]
+  return `${label} recall: ${[...WORLD_COUNTRIES_SKILL_STATUSES]
     .reverse()
-    .map(state => `${WORLD_COUNTRIES_PROGRESS_LABELS[state]} ${counts[state]}`)
+    .map(state => `${getWorldCountriesSkillStatusLabel(state)} ${counts[state]}`)
     .join(', ')}`
 }
 
 function renderSegments(
-  counts: Readonly<Record<WorldCountriesProficiency, number>>,
+  counts: Readonly<Record<WorldCountriesSkillStatus, number>>,
   totalCountries: number,
 ) {
-  return [...WORLD_COUNTRIES_ATOMIC_PROFICIENCY_STATES].reverse().map(state => {
+  return [...WORLD_COUNTRIES_SKILL_STATUSES].reverse().map(state => {
     const count = counts[state]
     if (count <= 0) return null
     return (
@@ -35,7 +35,7 @@ function renderSegments(
         data-progress-state={state}
         aria-hidden="true"
         className="block h-full shrink-0"
-        style={{ width: `${(count / Math.max(1, totalCountries)) * 100}%`, backgroundColor: getCountryProgressColor(state) }}
+        style={{ width: `${(count / Math.max(1, totalCountries)) * 100}%`, backgroundColor: getWorldCountriesSkillStatusColor(state) }}
       />
     )
   })
@@ -43,7 +43,7 @@ function renderSegments(
 
 function RecallTrack({ track, counts, totalCountries }: {
   track: 'country' | 'capital'
-  counts: Readonly<Record<WorldCountriesProficiency, number>>
+  counts: Readonly<Record<WorldCountriesSkillStatus, number>>
   totalCountries: number
 }) {
   return (

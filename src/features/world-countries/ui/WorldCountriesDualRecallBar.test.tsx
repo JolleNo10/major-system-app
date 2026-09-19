@@ -19,8 +19,8 @@ function renderBar() {
   root = createRoot(mount)
   act(() => root?.render(createElement(WorldCountriesDualRecallBar, {
     totalCountries: 4,
-    countryCounts: { unpractised: 0, weak: 1, developing: 0, strong: 1, mastered: 2 },
-    capitalCounts: { unpractised: 1, weak: 0, developing: 1, strong: 0, mastered: 2 },
+    countryCounts: { NOT_LEARNED: 0, learned: 0, weak: 1, developing: 0, strong: 1, mastered: 2 },
+    capitalCounts: { NOT_LEARNED: 0, learned: 1, weak: 0, developing: 1, strong: 0, mastered: 2 },
   })))
   return mount
 }
@@ -34,7 +34,7 @@ describe('WorldCountriesDualRecallBar', () => {
     expect(tracks[1]?.querySelectorAll('[data-progress-state]')).toHaveLength(3)
     expect(tracks[0]?.querySelector('[data-progress-state="mastered"]')?.getAttribute('style')).toContain('width: 50%')
     expect(tracks[0]?.querySelector('[data-progress-state="strong"]')?.getAttribute('style')).toContain('width: 25%')
-    expect(tracks[1]?.querySelector('[data-progress-state="unpractised"]')?.getAttribute('style')).toContain('width: 25%')
+    expect(tracks[1]?.querySelector('[data-progress-state="learned"]')?.getAttribute('style')).toContain('width: 25%')
   })
 
   it('provides one accessible summary for both dimensions without visible track percentages', () => {
@@ -48,7 +48,7 @@ describe('WorldCountriesDualRecallBar', () => {
 
   it('omits zero-count segments', () => {
     const mount = renderBar()
-    expect(mount.querySelector('[data-recall-track="country"] [data-progress-state="unpractised"]')).toBeNull()
+    expect(mount.querySelector('[data-recall-track="country"] [data-progress-state="learned"]')).toBeNull()
     expect(mount.querySelector('[data-recall-track="capital"] [data-progress-state="weak"]')).toBeNull()
   })
 })

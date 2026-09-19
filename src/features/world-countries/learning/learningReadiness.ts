@@ -106,6 +106,21 @@ export const WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES: readonly Progres
   }),
 ]
 
+/**
+ * Whether one core skill's own Learning layer is established.
+ *
+ * Country locations come with the first layer; Capitals need the second. A
+ * skill below its layer has no recall health to report yet.
+ */
+export function isWorldCountriesSkillLearned(
+  skill: WorldCountriesCoreRecallSkill,
+  readiness: WorldCountriesLearningReadiness,
+): boolean {
+  return skill === 'location-to-country'
+    ? readiness !== 'NOT_LEARNED'
+    : readiness === 'COUNTRIES_AND_CAPITALS_LEARNED'
+}
+
 export function getWorldCountriesLearningReadinessLabel(readiness: WorldCountriesLearningReadiness): string {
   return WORLD_COUNTRIES_LEARNING_READINESS_LABELS[readiness]
 }

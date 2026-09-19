@@ -9,7 +9,7 @@ export type WorldCountriesProgressState = WorldCountriesCountryCoreState | World
 export type WorldCountriesProgressLegendKind = 'core' | 'skill'
 
 export const WORLD_COUNTRIES_ATOMIC_PROFICIENCY_STATES = [
-  'unpractised',
+  'learned',
   'weak',
   'developing',
   'strong',
@@ -28,7 +28,7 @@ export interface WorldCountriesPrimaryStatusCount {
 }
 
 export const WORLD_COUNTRIES_PROGRESS_LABELS: Readonly<Record<WorldCountriesProgressState, string>> = {
-  unpractised: 'Early recall',
+  learned: 'Learned',
   weak: 'Weak',
   developing: 'Developing',
   strong: 'Strong',
@@ -36,10 +36,51 @@ export const WORLD_COUNTRIES_PROGRESS_LABELS: Readonly<Record<WorldCountriesProg
   complete: 'Mastered',
 }
 
+/**
+ * One atomic skill's place on the status list.
+ *
+ * A skill whose own Learning layer is not established has no recall health
+ * yet, so it reports `NOT_LEARNED` rather than the `learned` floor - that
+ * floor means "taught, never recalled", which is a claim we cannot make about
+ * a Country the learner has never seen.
+ */
+export type WorldCountriesSkillStatus = 'NOT_LEARNED' | WorldCountriesProficiency
+
+export const WORLD_COUNTRIES_SKILL_STATUSES = [
+  'NOT_LEARNED',
+  'learned',
+  'weak',
+  'developing',
+  'strong',
+  'mastered',
+] as const satisfies readonly WorldCountriesSkillStatus[]
+
+/**
+ * The statuses that describe recall health, excluding the `learned` floor.
+ *
+ * `learned` is the last Learning milestone rather than a health reading: it
+ * says the Country has been taught and never recalled, so the legend groups
+ * it with Learning.
+ */
+export const WORLD_COUNTRIES_RECALL_HEALTH_STATES = [
+  'weak',
+  'developing',
+  'strong',
+  'mastered',
+] as const satisfies readonly WorldCountriesProficiency[]
+
+export function getWorldCountriesSkillStatusLabel(status: WorldCountriesSkillStatus): string {
+  return status === 'NOT_LEARNED' ? 'Not learned' : WORLD_COUNTRIES_PROGRESS_LABELS[status]
+}
+
+export function getWorldCountriesSkillStatusColor(status: WorldCountriesSkillStatus): string {
+  return status === 'NOT_LEARNED' ? WORLD_COUNTRIES_LEARNING_BASE : getCountryProgressColor(status)
+}
+
 export const WORLD_COUNTRIES_CORE_FINISH_LINE_EXPLANATION = 'Mastered requires both Location → Country and Country → Capital to be Mastered.'
 
 export const WORLD_COUNTRIES_PROGRESS_COLORS: Readonly<Record<WorldCountriesProgressState, string>> = {
-  unpractised: '#90796F',
+  learned: '#90796F',
   weak: '#BC9C7B',
   developing: '#B5A678',
   strong: '#769A70',
@@ -47,8 +88,8 @@ export const WORLD_COUNTRIES_PROGRESS_COLORS: Readonly<Record<WorldCountriesProg
   complete: '#3A7F70',
 }
 
-const CORE_PROGRESS_LEGEND = 'Early recall · Weak · Developing · Strong · Mastered'
-const SKILL_PROGRESS_LEGEND = 'Early recall · Weak · Developing · Strong · Mastered'
+const CORE_PROGRESS_LEGEND = 'Learned · Weak · Developing · Strong · Mastered'
+const SKILL_PROGRESS_LEGEND = 'Learned · Weak · Developing · Strong · Mastered'
 
 /** Return the semantic state a map should render for a Country. */
 export function getCountryProgressState(
@@ -56,7 +97,7 @@ export function getCountryProgressState(
   perspective: WorldCountriesProgressPerspective = 'core',
 ): WorldCountriesProgressState {
   if (perspective === 'core') return progress.coreState
-  return progress.skills.get(perspective)?.proficiency ?? 'unpractised'
+  return progress.skills.get(perspective)?.proficiency ?? 'learned'
 }
 
 export function getCountryProgressColor(state: WorldCountriesProgressState): string {
@@ -107,7 +148,7 @@ export function deriveWorldCountriesPrimaryStatusCounts(
   }
   ensure('NOT_LEARNED', 'Not learned', WORLD_COUNTRIES_LEARNING_BASE)
   ensure('COUNTRIES_LEARNED', 'Countries learned', WORLD_COUNTRIES_LEARNING_COUNTRIES_COLOR)
-  for (const state of ['unpractised', 'weak', 'developing', 'strong', 'complete'] as const) {
+  for (const state of ['learned', 'weak', 'developing', 'strong', 'complete'] as const) {
     ensure(state, WORLD_COUNTRIES_PROGRESS_LABELS[state], getCountryProgressColor(state))
   }
 

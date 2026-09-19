@@ -4,19 +4,19 @@ import { deriveWorldCountriesCountryProgress, deriveWorldCountriesRecallProgress
 import { WORLD_COUNTRIES_CORE_RECALL_SKILLS, recallTargetIdFor } from './recallTargets'
 import type { WorldCountriesLearningReadiness } from './learningReadiness'
 import {
-  WORLD_COUNTRIES_SCOPE_STATUS_TIERS,
+  WORLD_COUNTRIES_STATUSES,
   deriveWorldCountriesScopeStatus,
   deriveWorldCountriesScopeStatusFromCounts,
-  type WorldCountriesScopeStatusTier,
+  type WorldCountriesStatus,
 } from './scopeStatus'
 
 function counts(
-  partial: Partial<Record<WorldCountriesScopeStatusTier, number>>,
-): Record<WorldCountriesScopeStatusTier, number> {
+  partial: Partial<Record<WorldCountriesStatus, number>>,
+): Record<WorldCountriesStatus, number> {
   return {
-    ...Object.fromEntries(WORLD_COUNTRIES_SCOPE_STATUS_TIERS.map(tier => [tier, 0])),
+    ...Object.fromEntries(WORLD_COUNTRIES_STATUSES.map(tier => [tier, 0])),
     ...partial,
-  } as Record<WorldCountriesScopeStatusTier, number>
+  } as Record<WorldCountriesStatus, number>
 }
 
 describe('deriveWorldCountriesScopeStatus', () => {
@@ -63,35 +63,46 @@ describe('deriveWorldCountriesScopeStatus', () => {
     expect(status.countLabel).toBe('0 / 14 Countries learned')
   })
 
-  it('reports the Learned rung with no percentage, full or partial', () => {
-    // Learning rungs are milestones rather than a health share, so they never
-    // promote: a fully learned scope reads "Learned", not "Early recall 0%".
+  it('reports the Countries learned status with no percentage, full or partial', () => {
     const partial = deriveWorldCountriesScopeStatusFromCounts(
       counts({ COUNTRIES_LEARNED: 12, NOT_LEARNED: 36 }),
       48,
     )
-    expect(partial.label).toBe('Learned')
+    expect(partial.label).toBe('Countries learned')
     expect(partial.percent).toBeNull()
     expect(partial.countLabel).toBe('12 / 48 Countries learned')
 
     const full = deriveWorldCountriesScopeStatusFromCounts(counts({ COUNTRIES_LEARNED: 48 }), 48)
-    expect(full.label).toBe('Learned')
+    expect(full.label).toBe('Countries learned')
     expect(full.percent).toBeNull()
     expect(full.countLabel).toBe('48 / 48 Countries learned')
   })
 
-  it('treats early recall as a percentage rung once Capitals are learned too', () => {
-    const status = deriveWorldCountriesScopeStatusFromCounts(
-      counts({ unpractised: 5, COUNTRIES_LEARNED: 10, NOT_LEARNED: 35 }),
+  it('reports the Learned status with no percentage and never promotes it to Weak', () => {
+    // Learning statuses are milestones rather than a health share. Weak is
+    // reached only by failing a recall, so a fully learned scope that has
+    // never been reviewed reads "Learned", not "Weak 0%".
+    const partial = deriveWorldCountriesScopeStatusFromCounts(
+      counts({ learned: 20, COUNTRIES_LEARNED: 10, NOT_LEARNED: 20 }),
       50,
     )
-    expect(status.label).toBe('Early recall')
-    expect(status.percent).toBe(10)
-    expect(status.countLabel).toBe('5 / 50 Countries in early recall')
+    expect(partial.label).toBe('Learned')
+    expect(partial.percent).toBeNull()
+    expect(partial.countLabel).toBe('30 / 50 Countries learned')
 
-    const full = deriveWorldCountriesScopeStatusFromCounts(counts({ unpractised: 50 }), 50)
-    expect(full.label).toBe('Weak')
-    expect(full.percent).toBe(0)
+    const full = deriveWorldCountriesScopeStatusFromCounts(counts({ learned: 50 }), 50)
+    expect(full.label).toBe('Learned')
+    expect(full.percent).toBeNull()
+  })
+
+  it('reports Weak only once a Country has actually failed a recall', () => {
+    const status = deriveWorldCountriesScopeStatusFromCounts(
+      counts({ weak: 5, learned: 10, NOT_LEARNED: 35 }),
+      50,
+    )
+    expect(status.label).toBe('Weak')
+    expect(status.percent).toBe(10)
+    expect(status.countLabel).toBe('5 / 50 Countries weak')
   })
 
   it('never renders a reached rung as 0%', () => {
@@ -152,7 +163,7 @@ describe('deriveWorldCountriesScopeStatus over Country evidence', () => {
 
     const status = deriveWorldCountriesScopeStatus(['NO'], readiness, progressByCountry)
 
-    expect(status.tier).not.toBe('NOT_LEARNED')
+    expect(status.status).not.toBe('NOT_LEARNED')
     expect(status.percent).not.toBeNull()
   })
 
@@ -164,7 +175,7 @@ describe('deriveWorldCountriesScopeStatus over Country evidence', () => {
 
     const status = deriveWorldCountriesScopeStatus(['NO', 'SE'], readiness, new Map())
 
-    expect(status.label).toBe('Learned')
+    expect(status.label).toBe('Countries learned')
     expect(status.countLabel).toBe('1 / 2 Countries learned')
   })
 
