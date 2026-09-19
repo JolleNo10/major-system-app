@@ -37,6 +37,7 @@ export interface SvgMapViewProps {
   selectableIds?: readonly string[]
   hoverGroups?: readonly SvgMapHoverGroup[]
   groupOutlines?: readonly SvgMapGroupOutline[]
+  transientGroupOutlineIds?: readonly string[]
   hoveredId?: string | null
   countryColors?: SvgMapCountryColors
   countryPatterns?: SvgMapCountryPatterns
@@ -65,6 +66,7 @@ export function SvgMapView({
   selectableIds,
   hoverGroups,
   groupOutlines = EMPTY_GROUP_OUTLINES,
+  transientGroupOutlineIds = EMPTY_IDS,
   hoveredId = null,
   countryColors = EMPTY_COUNTRY_COLORS,
   countryPatterns = EMPTY_COUNTRY_PATTERNS,
@@ -114,6 +116,8 @@ export function SvgMapView({
     const mount = mountRef.current
     if (!mount) return
     let cancelled = false
+    const perfEnabled = import.meta.env.DEV
+    const view = mount.ownerDocument.defaultView
     const viewportElement = mount.closest<HTMLElement>('[data-map-surface-map]') ?? undefined
     const controller = new SvgMapController(mount, {
       backgroundFill: WORLD_COUNTRIES_MAP_BACKGROUND,
@@ -131,6 +135,7 @@ export function SvgMapView({
     setError(false)
     loadStateRef.current?.('loading')
 
+    const startedAt = perfEnabled ? (view?.performance.now() ?? performance.now()) : 0
     void controller.load({ url: svgUrl })
       .then(discovered => {
         if (cancelled) return
@@ -145,6 +150,18 @@ export function SvgMapView({
         loadedRef.current?.(discovered)
         setLoading(false)
         loadStateRef.current?.('ready')
+        if (perfEnabled && view) {
+          view.requestAnimationFrame(() => {
+            view.requestAnimationFrame(() => {
+              if (cancelled) return
+              console.log('[WC perf] map-load-paint', {
+                source: svgUrl,
+                ms: view.performance.now() - startedAt,
+                countries: discovered.length,
+              })
+            })
+          })
+        }
       })
       .catch(reason => {
         if (cancelled || (reason instanceof DOMException && reason.name === 'AbortError')) return
@@ -182,9 +199,20 @@ export function SvgMapView({
       countryInnerGlows: stableCountryInnerGlows,
       countryLabels,
       namedIds,
-      hoveredId,
     })
-  }, [countries, countryInnerGlowsSignature, countryLabels, countryPatternsSignature, groupOutlines, hiddenIds, highlightedIds, hoverGroups, hoveredId, hoverableIds, mutedIds, namedIds, presentation, selectableIds, settings, stableCountryColors, stableCountryInnerGlows, stableCountryPatterns, taskAssistance])
+  }, [countries, countryInnerGlowsSignature, countryLabels, countryPatternsSignature, groupOutlines, hiddenIds, highlightedIds, hoverGroups, hoverableIds, mutedIds, namedIds, presentation, selectableIds, settings, stableCountryColors, stableCountryInnerGlows, stableCountryPatterns, taskAssistance])
+
+  useEffect(() => {
+    const controller = controllerRef.current
+    if (!controller || countries.length === 0) return
+    controller.hoverCountry(hoveredId)
+  }, [countries, hoveredId])
+
+  useEffect(() => {
+    const controller = controllerRef.current
+    if (!controller || countries.length === 0) return
+    controller.setTransientGroupOutlines(transientGroupOutlineIds)
+  }, [countries, transientGroupOutlineIds])
 
   useEffect(() => {
     const controller = controllerRef.current

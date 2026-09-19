@@ -336,10 +336,14 @@ export function GeographyOverviewMap({
         countryIds: group.countryIds,
         stroke: selected ? GEOGRAPHY_OVERVIEW_SELECTION_STROKE : GEOGRAPHY_OVERVIEW_HOVER_STROKE,
         strokeWidth: GEOGRAPHY_OVERVIEW_HOVER_STROKE_WIDTH,
-        visible: selected || group.id === activeHoveredGroupId,
+        visible: selected,
       }
     }), ...selectedSubregionOutlines],
-    [activeHoveredGroupId, countryEdgeOutlines, hoverGroups, selectedGroupIds, selectedSubregionOutlines],
+    [countryEdgeOutlines, hoverGroups, selectedGroupIds, selectedSubregionOutlines],
+  )
+  const transientGroupOutlineIds = useMemo(
+    () => activeHoveredGroupId === null ? EMPTY_COUNTRY_IDS : [activeHoveredGroupId],
+    [activeHoveredGroupId],
   )
   const taskAssistance = useMemo(() => {
     if (taskTargetCountryId === null) return null
@@ -438,6 +442,7 @@ export function GeographyOverviewMap({
         settings={mapSettings}
         hoverGroups={hoverGroups}
         groupOutlines={groupOutlines}
+        transientGroupOutlineIds={transientGroupOutlineIds}
         highlightedIds={highlightedSvgIds}
         hiddenIds={hiddenSvgIds}
         hoverableIds={hoverableSvgIds}

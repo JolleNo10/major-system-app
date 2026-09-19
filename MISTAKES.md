@@ -136,3 +136,9 @@ needs conversion.
 - **Prevention:** Keep heavy traces explicit/on-demand. Automatic DEV
   instrumentation should time existing work with lightweight timers and small
   summaries rather than derive whole-dataset state just for logging.
+
+# Incremental World Countries map hover
+
+- **What happened:** Generic map hover used the full declarative SVG renderer, then its React echo could reapply broad presentation. Group-outline rendering also discarded and rebuilt generated SVG/filter geometry.
+- **Root cause:** Transient interaction and persistent presentation shared one coarse render path.
+- **Prevention:** Hover must update only affected transient presentation. Retain persistent generated geometry across hover and reconcile it only when its semantic inputs change.

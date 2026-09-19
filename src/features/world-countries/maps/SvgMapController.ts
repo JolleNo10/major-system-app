@@ -99,7 +99,7 @@ export interface SvgMapPresentationState {
   countryInnerGlows?: SvgMapCountryInnerGlows
   countryLabels: Readonly<Record<string, string>>
   namedIds: readonly string[]
-  hoveredId: string | null
+  hoveredId?: string | null
 }
 
 export interface SvgMapSettings {
@@ -387,6 +387,22 @@ interface KeyboardListener {
   keydown: EventListener
 }
 
+interface GeneratedGroupOutline {
+  definition: SvgMapGroupOutline
+  filter: SVGFilterElement
+  group: SVGGElement
+}
+
+function sameGroupOutlineStructure(left: SvgMapGroupOutline, right: SvgMapGroupOutline): boolean {
+  return left.id === right.id
+    && left.countryIds.length === right.countryIds.length
+    && left.countryIds.every((id, index) => id === right.countryIds[index])
+    && left.effect === right.effect
+    && left.placement === right.placement
+    && left.stroke === right.stroke
+    && left.strokeWidth === right.strokeWidth
+}
+
 function isFinitePositiveViewBox(bounds: SvgViewBoxRect): boolean {
   return [bounds.x, bounds.y, bounds.width, bounds.height].every(Number.isFinite)
     && bounds.width > 0
@@ -442,12 +458,17 @@ export class SvgMapController {
   private hoverGroups: SvgMapHoverGroup[] = []
   private groupOutlines: SvgMapGroupOutline[] = []
   private visibleGroupOutlines = new Set<string>()
-  private outlineLayers: SVGGElement[] = []
+  private transientVisibleGroupOutlines = new Set<string>()
+  private outlinePresentations = new Map<string, GeneratedGroupOutline>()
+  private underlayGroupOutlineLayer: SVGGElement | null = null
+  private overlayGroupOutlineLayer: SVGGElement | null = null
+  private dirtyGroupOutlineCountryIds = new Set<string>()
   private countryInnerGlowLayer: SVGGElement | null = null
   private countryInnerGlowBaseFills = new Map<SVGPathElement, SVGPathElement>()
   private countryInnerGlowSequence = 0
   private countryInnerGlowDirty = false
   private outlineSequence = 0
+  private hoverPaintGeneration = 0
   private hoveredCountryId: string | null = null
   private hoveredNameOverride: boolean | null = null
   private hoveredIds = new Set<string>()
@@ -642,7 +663,7 @@ export class SvgMapController {
       if (Object.keys(state.countryLabels).length > 0) this.setCountryLabels(state.countryLabels)
       if (previouslyNamed.length > 0) this.setNamesVisible(previouslyNamed, false)
       if (state.namedIds.length > 0) this.setNamesVisible(state.namedIds, true)
-      this.hoverCountry(state.hoveredId)
+      if (state.hoveredId !== undefined) this.hoverCountry(state.hoveredId)
     } finally {
       this.renderBatchDepth -= 1
       if (this.renderBatchDepth === 0 && this.renderPending) {
@@ -652,7 +673,7 @@ export class SvgMapController {
       if (perfEnabled) {
         const ms = performance.now() - startedAt
         if (ms >= SLOW_MAP_OPERATION_THRESHOLD_MS) {
-          console.log('[WC perf] map-presentation', { ms, hoveredId: state.hoveredId })
+          console.log('[WC perf] map-presentation', { ms, hoveredId: state.hoveredId ?? null })
         }
       }
     }
@@ -801,8 +822,11 @@ export class SvgMapController {
     const { knownIds, unknownIds } = this.resolveKnown(ids)
     const next = new Set(knownIds)
     const changed = !sameStringSet(this.mutedCountries, next)
+    if (changed) {
+      this.markGroupOutlineCountriesDirty(this.mutedCountries, next)
+      this.countryInnerGlowDirty = true
+    }
     this.mutedCountries = next
-    if (changed) this.countryInnerGlowDirty = true
     this.render()
     return { activeIds: [...this.mutedCountries], unknownIds }
   }
@@ -810,7 +834,9 @@ export class SvgMapController {
   clearMutedCountries(): SvgMapMutationResult {
     this.assertUsable()
     if (this.mutedCountries.size > 0) {
+      const previous = new Set(this.mutedCountries)
       this.mutedCountries.clear()
+      this.markGroupOutlineCountriesDirty(previous, this.mutedCountries)
       this.countryInnerGlowDirty = true
     }
     this.render()
@@ -823,13 +849,16 @@ export class SvgMapController {
     const { knownIds, unknownIds } = this.resolveKnown(ids)
     const next = new Set(knownIds)
     const changed = !sameStringSet(this.hiddenCountries, next)
+    if (changed) {
+      this.markGroupOutlineCountriesDirty(this.hiddenCountries, next)
+      this.countryInnerGlowDirty = true
+    }
     this.hiddenCountries = next
     if (this.hoveredCountryId !== null && !this.isHoverable(this.hoveredCountryId)) {
       this.hoveredCountryId = null
       this.hoveredNameOverride = null
     }
     this.refreshHoveredIds()
-    if (changed) this.countryInnerGlowDirty = true
     this.render()
     return { activeIds: this.getHiddenCountryIds(), unknownIds }
   }
@@ -841,7 +870,9 @@ export class SvgMapController {
   clearHiddenCountries(): SvgMapMutationResult {
     this.assertUsable()
     if (this.hiddenCountries.size > 0) {
+      const previous = new Set(this.hiddenCountries)
       this.hiddenCountries.clear()
+      this.markGroupOutlineCountriesDirty(previous, this.hiddenCountries)
       this.countryInnerGlowDirty = true
     }
     this.refreshHoveredIds()
@@ -1099,6 +1130,9 @@ export class SvgMapController {
     this.visibleGroupOutlines.forEach(id => {
       if (!normalized.has(id)) this.visibleGroupOutlines.delete(id)
     })
+    this.transientVisibleGroupOutlines.forEach(id => {
+      if (!normalized.has(id)) this.transientVisibleGroupOutlines.delete(id)
+    })
     this.render()
     return { outlines: this.getGroupOutlines(), unknownIds: [...unknownIds] }
   }
@@ -1122,10 +1156,37 @@ export class SvgMapController {
     return { activeIds: this.getVisibleGroupOutlineIds(), unknownIds }
   }
 
+  setTransientGroupOutlines(ids: Iterable<string>): SvgMapMutationResult {
+    this.assertUsable()
+    const { knownIds, unknownIds } = this.resolveOutlineIds(ids)
+    const next = new Set(knownIds)
+    const changedIds = new Set([...this.transientVisibleGroupOutlines, ...next])
+    for (const id of changedIds) {
+      if (this.transientVisibleGroupOutlines.has(id) === next.has(id)) changedIds.delete(id)
+    }
+    if (changedIds.size === 0) return { activeIds: [...this.transientVisibleGroupOutlines], unknownIds }
+
+    this.transientVisibleGroupOutlines = next
+    const perfEnabled = import.meta.env.DEV
+    const startedAt = perfEnabled ? performance.now() : 0
+    for (const id of changedIds) this.syncGroupOutlineVisibility(id)
+    if (perfEnabled) {
+      const ms = performance.now() - startedAt
+      if (ms >= SLOW_MAP_OPERATION_THRESHOLD_MS) {
+        console.log('[WC perf] map-group-outlines', {
+          ms,
+          activeOutlines: this.getEffectiveGroupOutlineCount(),
+        })
+      }
+    }
+    return { activeIds: [...this.transientVisibleGroupOutlines], unknownIds }
+  }
+
   clearGroupOutlines(): SvgMapGroupOutlineResult {
     this.assertUsable()
     this.groupOutlines = []
     this.visibleGroupOutlines.clear()
+    this.transientVisibleGroupOutlines.clear()
     this.render()
     return { outlines: [], unknownIds: [] }
   }
@@ -1359,24 +1420,41 @@ export class SvgMapController {
     this.keyboardListeners = []
   }
 
-  private setHoveredCountry(id: string | null, showName?: boolean): void {
-    this.hoveredNameOverride = id === null || showName === undefined ? null : showName
-    if (id !== null && !this.isHoverable(id)) {
-      this.hoveredCountryId = null
-      this.hoveredNameOverride = null
-      this.hoveredIds.clear()
-      this.render()
-      return
+  private setHoveredCountry(id: string | null, showName?: boolean): boolean {
+    const previousCountryId = this.hoveredCountryId
+    const previousNameOverride = this.hoveredNameOverride
+    const previousHoveredIds = new Set(this.hoveredIds)
+    let nextCountryId = id
+    let nextNameOverride = id === null || showName === undefined ? null : showName
+    if (nextCountryId !== null && !this.isHoverable(nextCountryId)) {
+      nextCountryId = null
+      nextNameOverride = null
     }
+
+    this.hoveredNameOverride = nextNameOverride
+    this.hoveredCountryId = nextCountryId
     if (!this.settings.hoverHighlight && !this.settings.hoverShowName && this.hoveredNameOverride !== true) {
       this.hoveredCountryId = null
       this.hoveredIds.clear()
-      this.render()
-      return
+    } else {
+      this.refreshHoveredIds()
     }
-    this.hoveredCountryId = id
-    this.refreshHoveredIds()
-    this.render()
+
+    const identityChanged = previousCountryId !== this.hoveredCountryId
+      || previousNameOverride !== this.hoveredNameOverride
+    if (identityChanged) this.hoverPaintGeneration += 1
+    const visualChanged = !sameStringSet(previousHoveredIds, this.hoveredIds)
+      || (previousNameOverride !== this.hoveredNameOverride
+        && (previousHoveredIds.size > 0 || this.hoveredIds.size > 0))
+    if (!visualChanged) return false
+
+    const affectedIds = new Set([...previousHoveredIds, ...this.hoveredIds])
+    const { reducedMotion, transition } = this.getCountryRenderContext()
+    for (const countryId of affectedIds) {
+      const country = this.countries.get(countryId)
+      if (country) this.renderCountryPresentation(country, reducedMotion, transition)
+    }
+    return true
   }
 
   private refreshHoveredIds(): void {
@@ -1457,11 +1535,7 @@ export class SvgMapController {
     if (!this.svg) return
     const perfEnabled = import.meta.env.DEV
     const totalStartedAt = perfEnabled ? performance.now() : 0
-    const view = this.mount.ownerDocument.defaultView
-    const reducedMotion = view?.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
-    const transition = reducedMotion || this.settings.transitionMs === 0
-      ? 'none'
-      : `fill ${this.settings.transitionMs}ms ease, stroke ${this.settings.transitionMs}ms ease, stroke-width ${this.settings.transitionMs}ms ease`
+    const { reducedMotion, transition } = this.getCountryRenderContext()
 
     this.taskAssistance.sync()
     if (this.settings.backgroundFill === null) {
@@ -1476,73 +1550,7 @@ export class SvgMapController {
 
     const countryStylingStartedAt = perfEnabled ? performance.now() : 0
     for (const country of this.countries.values()) {
-      const hovered = this.hoveredIds.has(country.id)
-      const taskHovered = this.taskAssistance.getHoveredCountryId() === country.id
-      const pattern = this.countryPatterns.get(country.id)
-      const hasSemanticColor = this.countryColors.has(country.id)
-      const hasSemanticAppearance = hasSemanticColor || pattern !== undefined
-      const persistentBaseFill = this.getCountryPersistentBaseFill(country.id)
-      const transientFill = taskHovered
-        ? this.settings.hoverFill
-        : hovered && this.settings.hoverHighlight && !hasSemanticAppearance
-          ? this.settings.hoverFill
-          : this.highlighted.has(country.id) && !hasSemanticAppearance
-            ? this.settings.highlightFill
-            : null
-      const baseFill = transientFill ?? persistentBaseFill
-      const fill = taskHovered
-        ? this.settings.hoverFill
-        : this.mutedCountries.has(country.id)
-        ? this.settings.mutedFill
-        : baseFill
-
-      const styled = this.highlighted.has(country.id) || hasSemanticAppearance
-      const stroke = (taskHovered || (hovered && this.settings.hoverHighlight)) && this.settings.hoverStroke !== null
-        ? this.settings.hoverStroke
-        : styled && this.settings.highlightStroke !== null
-          ? this.settings.highlightStroke
-          : this.settings.countryStroke
-      const transientStroke = taskHovered || hovered || this.highlighted.has(country.id)
-      const strokeWidth = hovered && this.settings.hoverStrokeWidth !== null
-        ? this.settings.hoverStrokeWidth
-        : styled && this.settings.highlightStrokeWidth !== null
-          ? this.settings.highlightStrokeWidth
-          : transientStroke
-            ? null
-            : this.settings.countryStrokeWidth
-
-      const hidden = this.hiddenCountries.has(country.id)
-      const muted = this.mutedCountries.has(country.id)
-      const useInnerGlowBaseFill = this.countryInnerGlows.has(country.id) && !hidden && !muted
-      const sourceFill = useInnerGlowBaseFill && transientFill === null ? 'transparent' : fill
-      for (const pathState of country.pathStates) {
-        const generatedBaseFill = this.countryInnerGlowBaseFills.get(pathState.path)
-        if (generatedBaseFill) {
-          this.setCountryInnerGlowBaseFill(generatedBaseFill, persistentBaseFill, pathState.originalFill)
-        }
-        setOverride(pathState.path, 'fill', sourceFill, pathState.originalFill)
-        setOverride(pathState.path, 'stroke', stroke, pathState.originalStroke)
-        setOverride(pathState.path, 'stroke-width', strokeWidth, pathState.originalStrokeWidth)
-        pathState.path.style.setProperty('transition', transition)
-        restoreStyle(pathState.path, 'filter', pathState.originalFilter)
-        setOverride(pathState.path, 'visibility', hidden ? 'hidden' : null, pathState.originalVisibility)
-        setOverride(pathState.path, 'pointer-events', hidden ? 'none' : null, pathState.originalPointerEvents)
-      }
-      if (isMultipartCountry(country)) country.group.setAttribute('tabindex', hidden ? '-1' : '0')
-
-      this.renderCountryLabel(country, this.countryLabelOverrides.get(country.id) ?? null)
-      const showHoverName = this.hoveredNameOverride ?? this.settings.hoverShowName
-      const showLabel = !hidden && (this.settings.showAllNames
-        || this.named.has(country.id)
-        || (this.settings.showHighlightedNames && this.highlighted.has(country.id))
-        || (showHoverName && hovered))
-      country.label.style.setProperty('display', showLabel ? 'inline' : 'none', 'important')
-      country.label.style.setProperty('pointer-events', 'none', 'important')
-      for (const paint of country.labelPaint) {
-        setOverride(paint.element, 'fill', this.settings.labelFill, paint.originalFill)
-      }
-      setOverride(country.label, 'opacity', this.settings.labelOpacity === null ? null : String(this.settings.labelOpacity), country.originalLabelOpacity)
-      this.taskAssistance.renderCountryTaskState(country, fill, hidden, reducedMotion)
+      this.renderCountryPresentation(country, reducedMotion, transition)
     }
     const countryStylingMs = perfEnabled ? performance.now() - countryStylingStartedAt : 0
     let innerGlowMs = 0
@@ -1554,6 +1562,7 @@ export class SvgMapController {
     }
     const groupOutlineStartedAt = perfEnabled ? performance.now() : 0
     this.renderGroupOutlines()
+    const groupOutlineMs = perfEnabled ? performance.now() - groupOutlineStartedAt : 0
     if (perfEnabled) {
       const totalMs = performance.now() - totalStartedAt
       if (totalMs >= SLOW_MAP_OPERATION_THRESHOLD_MS) {
@@ -1562,10 +1571,93 @@ export class SvgMapController {
           countries: this.countries.size,
           countryStylingMs,
           innerGlowMs,
-          groupOutlineMs: performance.now() - groupOutlineStartedAt,
+          groupOutlineMs,
         })
       }
     }
+  }
+
+  private getCountryRenderContext(): { reducedMotion: boolean; transition: string } {
+    const view = this.mount.ownerDocument.defaultView
+    const reducedMotion = view?.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+    const transition = reducedMotion || this.settings.transitionMs === 0
+      ? 'none'
+      : 'fill ' + this.settings.transitionMs + 'ms ease, stroke ' + this.settings.transitionMs + 'ms ease, stroke-width ' + this.settings.transitionMs + 'ms ease'
+    return { reducedMotion, transition }
+  }
+
+  private renderCountryPresentation(
+    country: InternalCountry,
+    reducedMotion: boolean,
+    transition: string,
+  ): void {
+    const hovered = this.hoveredIds.has(country.id)
+    const taskHovered = this.taskAssistance.getHoveredCountryId() === country.id
+    const pattern = this.countryPatterns.get(country.id)
+    const hasSemanticColor = this.countryColors.has(country.id)
+    const hasSemanticAppearance = hasSemanticColor || pattern !== undefined
+    const persistentBaseFill = this.getCountryPersistentBaseFill(country.id)
+    const transientFill = taskHovered
+      ? this.settings.hoverFill
+      : hovered && this.settings.hoverHighlight && !hasSemanticAppearance
+        ? this.settings.hoverFill
+        : this.highlighted.has(country.id) && !hasSemanticAppearance
+          ? this.settings.highlightFill
+          : null
+    const baseFill = transientFill ?? persistentBaseFill
+    const fill = taskHovered
+      ? this.settings.hoverFill
+      : this.mutedCountries.has(country.id)
+        ? this.settings.mutedFill
+        : baseFill
+
+    const styled = this.highlighted.has(country.id) || hasSemanticAppearance
+    const stroke = (taskHovered || (hovered && this.settings.hoverHighlight)) && this.settings.hoverStroke !== null
+      ? this.settings.hoverStroke
+      : styled && this.settings.highlightStroke !== null
+        ? this.settings.highlightStroke
+        : this.settings.countryStroke
+    const transientStroke = taskHovered || hovered || this.highlighted.has(country.id)
+    const strokeWidth = hovered && this.settings.hoverStrokeWidth !== null
+      ? this.settings.hoverStrokeWidth
+      : styled && this.settings.highlightStrokeWidth !== null
+        ? this.settings.highlightStrokeWidth
+        : transientStroke
+          ? null
+          : this.settings.countryStrokeWidth
+
+    const hidden = this.hiddenCountries.has(country.id)
+    const muted = this.mutedCountries.has(country.id)
+    const useInnerGlowBaseFill = this.countryInnerGlows.has(country.id) && !hidden && !muted
+    const sourceFill = useInnerGlowBaseFill && transientFill === null ? 'transparent' : fill
+    for (const pathState of country.pathStates) {
+      const generatedBaseFill = this.countryInnerGlowBaseFills.get(pathState.path)
+      if (generatedBaseFill) {
+        this.setCountryInnerGlowBaseFill(generatedBaseFill, persistentBaseFill, pathState.originalFill)
+      }
+      setOverride(pathState.path, 'fill', sourceFill, pathState.originalFill)
+      setOverride(pathState.path, 'stroke', stroke, pathState.originalStroke)
+      setOverride(pathState.path, 'stroke-width', strokeWidth, pathState.originalStrokeWidth)
+      pathState.path.style.setProperty('transition', transition)
+      restoreStyle(pathState.path, 'filter', pathState.originalFilter)
+      setOverride(pathState.path, 'visibility', hidden ? 'hidden' : null, pathState.originalVisibility)
+      setOverride(pathState.path, 'pointer-events', hidden ? 'none' : null, pathState.originalPointerEvents)
+    }
+    if (isMultipartCountry(country)) country.group.setAttribute('tabindex', hidden ? '-1' : '0')
+
+    this.renderCountryLabel(country, this.countryLabelOverrides.get(country.id) ?? null)
+    const showHoverName = this.hoveredNameOverride ?? this.settings.hoverShowName
+    const showLabel = !hidden && (this.settings.showAllNames
+      || this.named.has(country.id)
+      || (this.settings.showHighlightedNames && this.highlighted.has(country.id))
+      || (showHoverName && hovered))
+    country.label.style.setProperty('display', showLabel ? 'inline' : 'none', 'important')
+    country.label.style.setProperty('pointer-events', 'none', 'important')
+    for (const paint of country.labelPaint) {
+      setOverride(paint.element, 'fill', this.settings.labelFill, paint.originalFill)
+    }
+    setOverride(country.label, 'opacity', this.settings.labelOpacity === null ? null : String(this.settings.labelOpacity), country.originalLabelOpacity)
+    this.taskAssistance.renderCountryTaskState(country, fill, hidden, reducedMotion)
   }
 
   private getCountryPersistentBaseFill(countryId: string): string | null {
@@ -1592,10 +1684,12 @@ export class SvgMapController {
 
   private setHoveredCountryAndNotify(id: string | null): void {
     const perfEnabled = import.meta.env.DEV
-    const startedAt = perfEnabled ? performance.now() : 0
-    this.setHoveredCountry(id)
+    const view = this.mount.ownerDocument.defaultView
+    const startedAt = perfEnabled ? (view?.performance.now() ?? performance.now()) : 0
+    const visualChanged = this.setHoveredCountry(id)
+    const generation = this.hoverPaintGeneration
     if (perfEnabled) {
-      const ms = performance.now() - startedAt
+      const ms = (view?.performance.now() ?? performance.now()) - startedAt
       if (ms >= SLOW_MAP_OPERATION_THRESHOLD_MS) {
         console.log('[WC perf] map-hover', {
           ms,
@@ -1605,6 +1699,17 @@ export class SvgMapController {
       }
     }
     this.countryHoverHandler?.(this.hoveredCountryId === id ? id : null)
+    if (perfEnabled && visualChanged && view) {
+      view.requestAnimationFrame(() => {
+        view.requestAnimationFrame(() => {
+          if (generation !== this.hoverPaintGeneration) return
+          const ms = view.performance.now() - startedAt
+          if (ms >= SLOW_MAP_OPERATION_THRESHOLD_MS) {
+            console.log('[WC perf] map-hover-paint', { ms, countryId: id })
+          }
+        })
+      })
+    }
   }
 
   private renderCountryLabel(country: InternalCountry, override: string | null): void {
@@ -1755,131 +1860,196 @@ export class SvgMapController {
   private renderGroupOutlines(): void {
     const perfEnabled = import.meta.env.DEV
     const startedAt = perfEnabled ? performance.now() : 0
-    let activeOutlineCount = 0
-    const logIfSlow = perfEnabled
-      ? () => {
-          const ms = performance.now() - startedAt
-          if (ms >= SLOW_MAP_OPERATION_THRESHOLD_MS) {
-            console.log('[WC perf] map-group-outlines', { ms, activeOutlines: activeOutlineCount })
-          }
-        }
-      : null
-    this.outlineLayers.forEach(layer => layer.remove())
-    this.outlineLayers = []
-
-    const firstPath = this.countries.values().next().value?.path
-    const mapSvg = firstPath?.ownerSVGElement
+    const mapSvg = this.svg
     if (!mapSvg) {
-      logIfSlow?.()
+      this.logGroupOutlineRenderIfSlow(perfEnabled, startedAt)
       return
     }
 
-    mapSvg.querySelectorAll('filter[data-svg-map-group-outline-filter]').forEach(filter => filter.remove())
-    const activeOutlines = this.groupOutlines.filter(outline => this.visibleGroupOutlines.has(outline.id))
-    activeOutlineCount = activeOutlines.length
-    if (activeOutlines.length === 0) {
-      logIfSlow?.()
-      return
+    const definitions = new Map(this.groupOutlines.map(outline => [outline.id, outline]))
+    for (const [id, presentation] of this.outlinePresentations) {
+      const next = definitions.get(id)
+      const countryGeometryChanged = next?.countryIds.some(countryId => this.dirtyGroupOutlineCountryIds.has(countryId)) ?? false
+      if (!next || !sameGroupOutlineStructure(presentation.definition, next) || countryGeometryChanged) {
+        this.removeGroupOutlinePresentation(presentation)
+        this.outlinePresentations.delete(id)
+      }
     }
+    this.dirtyGroupOutlineCountryIds.clear()
+
+    for (const outline of this.groupOutlines) this.syncGroupOutlineVisibility(outline.id)
+    this.removeEmptyGroupOutlineLayers()
+    this.logGroupOutlineRenderIfSlow(perfEnabled, startedAt)
+  }
+
+  private logGroupOutlineRenderIfSlow(perfEnabled: boolean, startedAt: number): void {
+    if (!perfEnabled) return
+    const ms = performance.now() - startedAt
+    if (ms >= SLOW_MAP_OPERATION_THRESHOLD_MS) {
+      console.log('[WC perf] map-group-outlines', {
+        ms,
+        activeOutlines: this.getEffectiveGroupOutlineCount(),
+      })
+    }
+  }
+
+  private getEffectiveGroupOutlineCount(): number {
+    let count = 0
+    for (const outline of this.groupOutlines) {
+      if (this.visibleGroupOutlines.has(outline.id) || this.transientVisibleGroupOutlines.has(outline.id)) count += 1
+    }
+    return count
+  }
+
+  private syncGroupOutlineVisibility(id: string): void {
+    const outline = this.groupOutlines.find(candidate => candidate.id === id)
+    if (!outline) return
+    const visible = this.visibleGroupOutlines.has(id) || this.transientVisibleGroupOutlines.has(id)
+    let presentation = this.outlinePresentations.get(id)
+    if (visible && !presentation) {
+      presentation = this.createGroupOutlinePresentation(outline) ?? undefined
+      if (presentation) this.outlinePresentations.set(id, presentation)
+    }
+    if (!presentation) return
+    if (visible) presentation.group.removeAttribute('display')
+    else presentation.group.setAttribute('display', 'none')
+  }
+
+  private createGroupOutlinePresentation(outline: SvgMapGroupOutline): GeneratedGroupOutline | null {
+    const mapSvg = this.svg
+    if (!mapSvg) return null
+    const hasVisibleGeometry = outline.countryIds.some(countryId => {
+      const country = this.countries.get(countryId)
+      return country !== undefined && !this.hiddenCountries.has(countryId) && !this.mutedCountries.has(countryId)
+    })
+    if (!hasVisibleGeometry) return null
 
     const document = mapSvg.ownerDocument
-    const createLayer = (placement: 'underlay' | 'overlay'): SVGGElement => {
-      const layer = document.createElementNS('http://www.w3.org/2000/svg', 'g')
-      layer.setAttribute('data-svg-map-group-outlines', '')
-      layer.setAttribute('data-svg-map-group-outline-placement', placement)
-      layer.setAttribute('pointer-events', 'none')
-      return layer
+    const filterId = 'svg-map-group-outline-' + this.outlineSequence++
+    const filter = document.createElementNS('http://www.w3.org/2000/svg', 'filter')
+    filter.setAttribute('id', filterId)
+    filter.setAttribute('data-svg-map-group-outline-filter', '')
+    filter.setAttribute('x', '-20%')
+    filter.setAttribute('y', '-20%')
+    filter.setAttribute('width', '140%')
+    filter.setAttribute('height', '140%')
+
+    const radius = Math.max(0.5, (Number.parseFloat(outline.strokeWidth ?? '2.5') || 2.5) / 2)
+    const dilated = document.createElementNS('http://www.w3.org/2000/svg', 'feMorphology')
+    dilated.setAttribute('in', 'SourceAlpha')
+    dilated.setAttribute('operator', 'dilate')
+    dilated.setAttribute('radius', String(radius))
+    dilated.setAttribute('result', 'dilated')
+
+    const flood = document.createElementNS('http://www.w3.org/2000/svg', 'feFlood')
+    flood.setAttribute('flood-color', outline.stroke ?? '#22d3ee')
+    flood.setAttribute('result', 'outline-color')
+
+    const color = document.createElementNS('http://www.w3.org/2000/svg', 'feComposite')
+    color.setAttribute('in', 'outline-color')
+    color.setAttribute('in2', 'dilated')
+    color.setAttribute('operator', 'in')
+    color.setAttribute('result', 'outline')
+
+    const outside = document.createElementNS('http://www.w3.org/2000/svg', 'feComposite')
+    outside.setAttribute('in', 'outline')
+    outside.setAttribute('in2', 'SourceAlpha')
+    outside.setAttribute('operator', 'out')
+    outside.setAttribute('result', 'outside')
+
+    const effect = outline.effect ?? 'outline'
+    if (effect === 'halo') {
+      const blur = document.createElementNS('http://www.w3.org/2000/svg', 'feGaussianBlur')
+      blur.setAttribute('in', 'outside')
+      blur.setAttribute('stdDeviation', String(Math.max(1, radius * 1.5)))
+      blur.setAttribute('result', 'halo')
+      const merge = document.createElementNS('http://www.w3.org/2000/svg', 'feMerge')
+      const haloNode = document.createElementNS('http://www.w3.org/2000/svg', 'feMergeNode')
+      haloNode.setAttribute('in', 'halo')
+      const outlineNode = document.createElementNS('http://www.w3.org/2000/svg', 'feMergeNode')
+      outlineNode.setAttribute('in', 'outside')
+      merge.append(haloNode, outlineNode)
+      filter.append(dilated, flood, color, outside, blur, merge)
+    } else {
+      filter.append(dilated, flood, color, outside)
     }
-    const underlayLayer = createLayer('underlay')
-    const overlayLayer = createLayer('overlay')
+    const defs = mapSvg.querySelector<SVGDefsElement>('defs[data-svg-map-group-outline-defs]') ?? (() => {
+      const created = document.createElementNS('http://www.w3.org/2000/svg', 'defs')
+      created.setAttribute('data-svg-map-group-outline-defs', '')
+      mapSvg.insertBefore(created, mapSvg.firstChild)
+      return created
+    })()
+    defs.append(filter)
 
-    for (const outline of activeOutlines) {
-      const filterId = `svg-map-group-outline-${this.outlineSequence++}`
-      const filter = document.createElementNS('http://www.w3.org/2000/svg', 'filter')
-      filter.setAttribute('id', filterId)
-      filter.setAttribute('data-svg-map-group-outline-filter', '')
-      filter.setAttribute('x', '-20%')
-      filter.setAttribute('y', '-20%')
-      filter.setAttribute('width', '140%')
-      filter.setAttribute('height', '140%')
-
-      const radius = Math.max(0.5, (Number.parseFloat(outline.strokeWidth ?? '2.5') || 2.5) / 2)
-      const dilated = document.createElementNS('http://www.w3.org/2000/svg', 'feMorphology')
-      dilated.setAttribute('in', 'SourceAlpha')
-      dilated.setAttribute('operator', 'dilate')
-      dilated.setAttribute('radius', String(radius))
-      dilated.setAttribute('result', 'dilated')
-
-      const flood = document.createElementNS('http://www.w3.org/2000/svg', 'feFlood')
-      flood.setAttribute('flood-color', outline.stroke ?? '#22d3ee')
-      flood.setAttribute('result', 'outline-color')
-
-      const color = document.createElementNS('http://www.w3.org/2000/svg', 'feComposite')
-      color.setAttribute('in', 'outline-color')
-      color.setAttribute('in2', 'dilated')
-      color.setAttribute('operator', 'in')
-      color.setAttribute('result', 'outline')
-
-      const outside = document.createElementNS('http://www.w3.org/2000/svg', 'feComposite')
-      outside.setAttribute('in', 'outline')
-      outside.setAttribute('in2', 'SourceAlpha')
-      outside.setAttribute('operator', 'out')
-      outside.setAttribute('result', 'outside')
-
-      const effect = outline.effect ?? 'outline'
-      if (effect === 'halo') {
-        const blur = document.createElementNS('http://www.w3.org/2000/svg', 'feGaussianBlur')
-        blur.setAttribute('in', 'outside')
-        blur.setAttribute('stdDeviation', String(Math.max(1, radius * 1.5)))
-        blur.setAttribute('result', 'halo')
-        const merge = document.createElementNS('http://www.w3.org/2000/svg', 'feMerge')
-        const haloNode = document.createElementNS('http://www.w3.org/2000/svg', 'feMergeNode')
-        haloNode.setAttribute('in', 'halo')
-        const outlineNode = document.createElementNS('http://www.w3.org/2000/svg', 'feMergeNode')
-        outlineNode.setAttribute('in', 'outside')
-        merge.append(haloNode, outlineNode)
-        filter.append(dilated, flood, color, outside, blur, merge)
-      } else {
-        filter.append(dilated, flood, color, outside)
+    const effectGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+    effectGroup.setAttribute('data-svg-map-group-outline', outline.id)
+    effectGroup.setAttribute('data-svg-map-group-outline-effect', effect)
+    effectGroup.setAttribute('data-svg-map-group-outline-placement', outline.placement ?? 'overlay')
+    effectGroup.setAttribute('filter', 'url(#' + filterId + ')')
+    for (const countryId of outline.countryIds) {
+      const country = this.countries.get(countryId)
+      if (!country || this.hiddenCountries.has(countryId) || this.mutedCountries.has(countryId)) continue
+      for (const pathState of country.pathStates) {
+        effectGroup.append(createOutlineGeometry(pathState.path, mapSvg, document))
       }
-      const defs = mapSvg.querySelector('defs') ?? (() => {
-        const created = document.createElementNS('http://www.w3.org/2000/svg', 'defs')
-        mapSvg.insertBefore(created, mapSvg.firstChild)
-        return created
-      })()
-      defs.append(filter)
+    }
+    const placement = outline.placement ?? 'overlay'
+    this.getGroupOutlineLayer(placement).append(effectGroup)
+    return { definition: copyOutline(outline), filter, group: effectGroup }
+  }
 
-      const outlineGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g')
-      outlineGroup.setAttribute('data-svg-map-group-outline', outline.id)
-      outlineGroup.setAttribute('data-svg-map-group-outline-effect', effect)
-      outlineGroup.setAttribute('data-svg-map-group-outline-placement', outline.placement ?? 'overlay')
-      outlineGroup.setAttribute('filter', `url(#${filterId})`)
-      for (const countryId of outline.countryIds) {
-        const country = this.countries.get(countryId)
-        if (!country || this.hiddenCountries.has(countryId) || this.mutedCountries.has(countryId)) continue
-        for (const pathState of country.pathStates) {
-          outlineGroup.append(createOutlineGeometry(pathState.path, mapSvg, document))
+  private getGroupOutlineLayer(placement: 'underlay' | 'overlay'): SVGGElement {
+    const mapSvg = this.svg
+    if (!mapSvg) throw new Error('Cannot render an outline without a loaded map')
+
+    const existing = placement === 'underlay' ? this.underlayGroupOutlineLayer : this.overlayGroupOutlineLayer
+    if (existing) return existing
+
+    const layer = mapSvg.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'g')
+    layer.setAttribute('data-svg-map-group-outlines', '')
+    layer.setAttribute('data-svg-map-group-outline-placement', placement)
+    layer.setAttribute('pointer-events', 'none')
+    if (placement === 'underlay') {
+      const firstPath = this.countries.values().next().value?.path
+      if (firstPath) {
+        let firstCountryElement: Element = firstPath
+        while (firstCountryElement.parentNode && firstCountryElement.parentNode !== mapSvg) {
+          firstCountryElement = firstCountryElement.parentNode as Element
         }
+        mapSvg.insertBefore(layer, firstCountryElement)
+      } else {
+        mapSvg.insertBefore(layer, mapSvg.firstChild)
       }
-      if (outlineGroup.childElementCount > 0) {
-        const layer = outline.placement === 'underlay' ? underlayLayer : overlayLayer
-        layer.append(outlineGroup)
-      }
+      this.underlayGroupOutlineLayer = layer
+    } else {
+      mapSvg.append(layer)
+      this.overlayGroupOutlineLayer = layer
     }
+    return layer
+  }
 
-    let firstCountryElement: Element = firstPath
-    while (firstCountryElement.parentNode && firstCountryElement.parentNode !== mapSvg) {
-      firstCountryElement = firstCountryElement.parentNode as Element
+  private removeGroupOutlinePresentation(presentation: GeneratedGroupOutline): void {
+    presentation.group.remove()
+    const defs = presentation.filter.parentElement
+    presentation.filter.remove()
+    if (defs?.matches('defs[data-svg-map-group-outline-defs]') && defs.childElementCount === 0) defs.remove()
+  }
+
+  private removeEmptyGroupOutlineLayers(): void {
+    if (this.underlayGroupOutlineLayer?.childElementCount === 0) {
+      this.underlayGroupOutlineLayer.remove()
+      this.underlayGroupOutlineLayer = null
     }
-    if (underlayLayer.childElementCount > 0) {
-      mapSvg.insertBefore(underlayLayer, firstCountryElement)
-      this.outlineLayers.push(underlayLayer)
+    if (this.overlayGroupOutlineLayer?.childElementCount === 0) {
+      this.overlayGroupOutlineLayer.remove()
+      this.overlayGroupOutlineLayer = null
     }
-    if (overlayLayer.childElementCount > 0) {
-      mapSvg.append(overlayLayer)
-      this.outlineLayers.push(overlayLayer)
+  }
+
+  private markGroupOutlineCountriesDirty(previous: ReadonlySet<string>, next: ReadonlySet<string>): void {
+    for (const countryId of new Set([...previous, ...next])) {
+      if (previous.has(countryId) !== next.has(countryId)) this.dirtyGroupOutlineCountryIds.add(countryId)
     }
-    logIfSlow?.()
   }
 
   private getPatternUrl(pattern: SvgMapCountryPattern): string {
@@ -2414,7 +2584,12 @@ export class SvgMapController {
     this.hoverGroups = []
     this.groupOutlines = []
     this.visibleGroupOutlines.clear()
-    this.outlineLayers = []
+    this.transientVisibleGroupOutlines.clear()
+    this.outlinePresentations.clear()
+    this.underlayGroupOutlineLayer = null
+    this.overlayGroupOutlineLayer = null
+    this.dirtyGroupOutlineCountryIds.clear()
+    this.hoverPaintGeneration += 1
     this.hoveredCountryId = null
     this.hoveredNameOverride = null
     this.hoveredIds.clear()

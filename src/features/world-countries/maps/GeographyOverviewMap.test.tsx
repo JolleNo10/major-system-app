@@ -337,10 +337,40 @@ describe('GeographyOverviewMap', () => {
     await act(async () => { root = createRoot(mount); root.render(createElement(GeographyOverviewMap, { level: 'continent', continent: 'Europe', selectedSubregionIds: ['northern-europe'], selectionPresentation: 'outline-only', countryColorsById: new Map([['NO', '#71717a'], ['FR', '#8b5cf6']]), countryAccessibleDescriptionsById: new Map([['NO', 'Learning Readiness: Countries learned.']]), ariaLabel: 'Europe map' })); await Promise.resolve(); await Promise.resolve() })
     expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toBe('#71717a')
     expect((mount.querySelector('path#France') as SVGPathElement | null)?.style.fill).toBe('#8b5cf6')
-    expect(mount.querySelector('[data-svg-map-group-outline="subregion-northern-europe"]')).not.toBeNull()
+    expect(mount.querySelector('[data-svg-map-group-outline="subregion-northern-europe"]')?.getAttribute('display')).not.toBe('none')
     expect(mount.querySelector('[data-svg-map-group-outline="subregion-western-europe"]')).toBeNull()
     expect(mount.textContent).toContain('Learning Readiness')
     expect(mount.textContent).toContain('Countries learned')
+
+    await act(async () => {
+      root?.render(createElement(GeographyOverviewMap, {
+        level: 'continent',
+        continent: 'Europe',
+        selectedSubregionIds: ['northern-europe'],
+        hoveredGroupId: 'subregion-western-europe',
+        selectionPresentation: 'outline-only',
+        countryColorsById: new Map([['NO', '#71717a'], ['FR', '#8b5cf6']]),
+        ariaLabel: 'Europe map',
+      }))
+      await Promise.resolve(); await Promise.resolve()
+    })
+    expect(mount.querySelector('[data-svg-map-group-outline="subregion-northern-europe"]')?.getAttribute('display')).not.toBe('none')
+    expect(mount.querySelector('[data-svg-map-group-outline="subregion-western-europe"]')?.getAttribute('display')).not.toBe('none')
+
+    await act(async () => {
+      root?.render(createElement(GeographyOverviewMap, {
+        level: 'continent',
+        continent: 'Europe',
+        selectedSubregionIds: ['northern-europe'],
+        hoveredGroupId: null,
+        selectionPresentation: 'outline-only',
+        countryColorsById: new Map([['NO', '#71717a'], ['FR', '#8b5cf6']]),
+        ariaLabel: 'Europe map',
+      }))
+      await Promise.resolve(); await Promise.resolve()
+    })
+    expect(mount.querySelector('[data-svg-map-group-outline="subregion-northern-europe"]')?.getAttribute('display')).not.toBe('none')
+    expect(mount.querySelector('[data-svg-map-group-outline="subregion-western-europe"]')?.getAttribute('display')).toBe('none')
 
     await act(async () => {
       root?.render(createElement(GeographyOverviewMap, { level: 'continent', continent: 'Europe', selectedSubregionIds: ['western-europe'], selectionPresentation: 'outline-only', countryColorsById: new Map([['NO', '#71717a'], ['FR', '#8b5cf6']]), ariaLabel: 'Europe map' }))
@@ -348,8 +378,9 @@ describe('GeographyOverviewMap', () => {
     })
     expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toBe('#71717a')
     expect((mount.querySelector('path#France') as SVGPathElement | null)?.style.fill).toBe('#8b5cf6')
-    expect(mount.querySelector('[data-svg-map-group-outline="subregion-northern-europe"]')).toBeNull()
-    expect(mount.querySelector('[data-svg-map-group-outline="subregion-western-europe"]')).not.toBeNull()
+    const northernOutline = mount.querySelector('[data-svg-map-group-outline="subregion-northern-europe"]')
+    expect(northernOutline === null || northernOutline.getAttribute('display') === 'none').toBe(true)
+    expect(mount.querySelector('[data-svg-map-group-outline="subregion-western-europe"]')?.getAttribute('display')).not.toBe('none')
   })
 
   it('outlines a selected World Subregion without selecting its containing Continent or replacing progress fills', async () => {
@@ -386,8 +417,9 @@ describe('GeographyOverviewMap', () => {
       }))
       await Promise.resolve(); await Promise.resolve()
     })
-    expect(mount.querySelector('[data-svg-map-group-outline="subregion-northern-europe"]')).toBeNull()
-    expect(mount.querySelector('[data-svg-map-group-outline="subregion-western-europe"]')).not.toBeNull()
+    const northernOutline = mount.querySelector('[data-svg-map-group-outline="subregion-northern-europe"]')
+    expect(northernOutline === null || northernOutline.getAttribute('display') === 'none').toBe(true)
+    expect(mount.querySelector('[data-svg-map-group-outline="subregion-western-europe"]')?.getAttribute('display')).not.toBe('none')
     expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toBe('#71717a')
     expect((mount.querySelector('path#France') as SVGPathElement | null)?.style.fill).toBe('#8b5cf6')
 

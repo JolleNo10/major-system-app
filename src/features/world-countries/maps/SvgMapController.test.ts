@@ -1250,9 +1250,178 @@ describe('SvgMapController persistent state', () => {
     expect(outline?.getAttribute('filter')).toMatch(/^url\(#svg-map-group-outline-/)
     expect(mount.querySelector('feMorphology')?.getAttribute('operator')).toBe('dilate')
 
+    const filterId = outline?.getAttribute('filter')?.match(/^url\(#(.+)\)$/)?.[1]
+    const filter = filterId ? mount.querySelector('#' + filterId) : null
     controller.setGroupOutlinesVisible(['alpha-beta'], false)
-    expect(mount.querySelector('[data-svg-map-group-outline="alpha-beta"]')).toBeNull()
-    expect(mount.querySelector('filter[data-svg-map-group-outline-filter]')).toBeNull()
+    expect(mount.querySelector('[data-svg-map-group-outline="alpha-beta"]') === outline).toBe(true)
+    expect(outline?.getAttribute('display')).toBe('none')
+    expect((filterId ? mount.querySelector('#' + filterId) : null) === filter).toBe(true)
+  })
+
+  it('updates old and new grouped hover Countries without replacing unrelated persistent presentation', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+
+    path(mount, 'Gamma').setAttribute('d', 'M 20 20 h 10 v 10 h -10 z')
+    controller.updateSettings({ hoverHighlight: true, hoverShowName: true, hoverScope: 'group', hoverFill: '#22d3ee' })
+    controller.setHoverGroups([
+      { id: 'alpha-beta', countryIds: ['Alpha', 'Beta'] },
+      { id: 'gamma-delta', countryIds: ['Gamma', 'Delta'] },
+    ])
+    controller.setGroupOutlines([{ id: 'persistent-gamma', countryIds: ['Gamma'], visible: true }])
+
+    const persistentOutline = mount.querySelector('[data-svg-map-group-outline="persistent-gamma"]')
+    const unrelatedFill = path(mount, 'Gamma').style.fill
+    const alphaBaseFill = path(mount, 'Alpha').style.fill
+    const betaBaseFill = path(mount, 'Beta').style.fill
+    const deltaBaseFill = path(mount, 'Delta').style.fill
+    expect(persistentOutline).not.toBeNull()
+
+    controller.hoverCountry('Alpha')
+
+    expect(path(mount, 'Alpha').style.fill).toBe('#22d3ee')
+    expect(path(mount, 'Beta').style.fill).toBe('#22d3ee')
+    expect(label(mount, 'Alpha_label').style.display).toBe('inline')
+    expect(label(mount, 'Beta_label').style.display).toBe('inline')
+    expect(path(mount, 'Gamma').style.fill).toBe(unrelatedFill)
+    expect(mount.querySelector('[data-svg-map-group-outline="persistent-gamma"]') === persistentOutline).toBe(true)
+
+    controller.hoverCountry('Gamma')
+
+    expect(path(mount, 'Alpha').style.fill).toBe(alphaBaseFill)
+    expect(path(mount, 'Beta').style.fill).toBe(betaBaseFill)
+    expect(label(mount, 'Alpha_label').style.display).toBe('none')
+    expect(label(mount, 'Beta_label').style.display).toBe('none')
+    expect(path(mount, 'Gamma').style.fill).toBe('#22d3ee')
+    expect(path(mount, 'Delta').style.fill).toBe('#22d3ee')
+    expect(label(mount, 'Short_label').style.display).toBe('inline')
+    expect(label(mount, 'Delta_label').style.display).toBe('inline')
+    expect(mount.querySelector('[data-svg-map-group-outline="persistent-gamma"]') === persistentOutline).toBe(true)
+
+    controller.hoverCountry(null)
+
+    expect(path(mount, 'Gamma').style.fill).toBe(unrelatedFill)
+    expect(path(mount, 'Delta').style.fill).toBe(deltaBaseFill)
+    expect(label(mount, 'Short_label').style.display).toBe('none')
+    expect(label(mount, 'Delta_label').style.display).toBe('none')
+    expect(mount.querySelector('[data-svg-map-group-outline="persistent-gamma"]') === persistentOutline).toBe(true)
+  })
+
+  it('does not reconstruct persistent presentation for an identical controlled hover', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    path(mount, 'Gamma').setAttribute('d', 'M 20 20 h 10 v 10 h -10 z')
+    controller.updateSettings({ hoverHighlight: true, hoverScope: 'group' })
+    controller.setGroupOutlines([{ id: 'persistent-gamma', countryIds: ['Gamma'], visible: true }])
+
+    controller.hoverCountry('Alpha')
+    const persistentOutline = mount.querySelector('[data-svg-map-group-outline="persistent-gamma"]')
+    controller.hoverCountry('Alpha')
+
+    expect(mount.querySelector('[data-svg-map-group-outline="persistent-gamma"]') === persistentOutline).toBe(true)
+  })
+
+  it('keeps Capital inner-glow geometry connected across ordinary hover and clear', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: MULTIPART_MAP })
+    controller.updateSettings({ hoverHighlight: true, hoverFill: '#22d3ee' })
+    controller.setCountryInnerGlows({
+      Multipart: { color: '#769A70', edgeIntensity: 111, fadeLength: 10, fadeBody: 31, edgeConcentration: 79 },
+    })
+    const layer = mount.querySelector('[data-svg-map-country-inner-glow]')
+    const baseFills = [...mount.querySelectorAll('[data-svg-map-country-inner-glow-base]')]
+    const source = path(mount, 'Multipart')
+
+    source.dispatchEvent(new Event('pointerenter'))
+
+    expect(source.style.fill).toBe('#22d3ee')
+    expect(layer?.isConnected).toBe(true)
+    expect(mount.querySelector('[data-svg-map-country-inner-glow]') === layer).toBe(true)
+    expect([...mount.querySelectorAll('[data-svg-map-country-inner-glow-base]')]).toEqual(baseFills)
+
+    source.dispatchEvent(new Event('pointerleave'))
+
+    expect(mount.querySelector('[data-svg-map-country-inner-glow]') === layer).toBe(true)
+    expect([...mount.querySelectorAll('[data-svg-map-country-inner-glow-base]')]).toEqual(baseFills)
+    expect(layer?.isConnected).toBe(true)
+  })
+
+  it('retains outline structure while persistent and transient visibility changes independently', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    controller.setGroupOutlines([
+      { id: 'selected-alpha', countryIds: ['Alpha'], visible: true, stroke: '#22d3ee' },
+      { id: 'hover-beta', countryIds: ['Beta'], stroke: '#facc15' },
+    ])
+
+    const selected = mount.querySelector('[data-svg-map-group-outline="selected-alpha"]')
+    const selectedFilterId = selected?.getAttribute('filter')?.match(/^url\(#(.+)\)$/)?.[1]
+    const selectedFilter = selectedFilterId ? mount.querySelector('#' + selectedFilterId) : null
+
+    controller.setTransientGroupOutlines(['hover-beta'])
+    const transient = mount.querySelector('[data-svg-map-group-outline="hover-beta"]')
+    const transientFilterId = transient?.getAttribute('filter')?.match(/^url\(#(.+)\)$/)?.[1]
+    const transientFilter = transientFilterId ? mount.querySelector('#' + transientFilterId) : null
+
+    expect(transient).not.toBeNull()
+    expect(transient?.getAttribute('display')).not.toBe('none')
+    expect(selected).not.toBeNull()
+    expect(selected?.getAttribute('display')).not.toBe('none')
+
+    controller.setTransientGroupOutlines([])
+
+    expect(mount.querySelector('[data-svg-map-group-outline="hover-beta"]') === transient).toBe(true)
+    expect(transient?.getAttribute('display')).toBe('none')
+    expect((transientFilterId ? mount.querySelector('#' + transientFilterId) : null) === transientFilter).toBe(true)
+    expect(mount.querySelector('[data-svg-map-group-outline="selected-alpha"]') === selected).toBe(true)
+    expect(selected?.getAttribute('display')).not.toBe('none')
+    expect((selectedFilterId ? mount.querySelector('#' + selectedFilterId) : null) === selectedFilter).toBe(true)
+
+    controller.setTransientGroupOutlines(['hover-beta'])
+    expect(mount.querySelector('[data-svg-map-group-outline="hover-beta"]') === transient).toBe(true)
+    expect(transient?.getAttribute('display')).not.toBe('none')
+  })
+
+  it('keeps cached outline filters separate from replaceable Country pattern definitions', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    controller.setCountryPatterns({
+      Alpha: { kind: 'diagonal', baseColor: '#52525b', lineColor: '#27272a' },
+    })
+    path(mount, 'Gamma').setAttribute('d', 'M 20 20 h 10 v 10 h -10 z')
+    controller.setGroupOutlines([{ id: 'persistent-gamma', countryIds: ['Gamma'], visible: true }])
+
+    const outline = mount.querySelector('[data-svg-map-group-outline="persistent-gamma"]')
+    const filterId = outline?.getAttribute('filter')?.match(/^url\(#(.+)\)$/)?.[1]
+    const filter = filterId ? mount.querySelector('#' + filterId) : null
+    expect(filter?.closest('defs')?.hasAttribute('data-svg-map-group-outline-defs')).toBe(true)
+
+    controller.setHighlighted(['Beta'])
+
+    expect(mount.querySelector('[data-svg-map-group-outline="persistent-gamma"]') === outline).toBe(true)
+    expect((filterId ? mount.querySelector('#' + filterId) : null) === filter).toBe(true)
+    expect(filter?.isConnected).toBe(true)
+    expect(mount.querySelector('defs[data-svg-map-country-pattern-defs]')).not.toBeNull()
+  })
+
+  it('rebuilds only a structurally changed outline definition', async () => {
+    const { mount, controller } = makeController()
+    await controller.load({ markup: TEST_MAP })
+    const definition = { id: 'selected-alpha', countryIds: ['Alpha'], visible: true, stroke: '#22d3ee', strokeWidth: '2px' }
+    controller.setGroupOutlines([definition])
+    const before = mount.querySelector('[data-svg-map-group-outline="selected-alpha"]')
+    const beforeFilterId = before?.getAttribute('filter')?.match(/^url\(#(.+)\)$/)?.[1]
+    const beforeFilter = beforeFilterId ? mount.querySelector('#' + beforeFilterId) : null
+
+    controller.setGroupOutlines([{ ...definition, stroke: '#facc15', strokeWidth: '5px' }])
+
+    const after = mount.querySelector('[data-svg-map-group-outline="selected-alpha"]')
+    const afterFilterId = after?.getAttribute('filter')?.match(/^url\(#(.+)\)$/)?.[1]
+    const afterFilter = afterFilterId ? mount.querySelector('#' + afterFilterId) : null
+    expect(after === before).toBe(false)
+    expect(afterFilter === beforeFilter).toBe(false)
+    expect(afterFilter?.querySelector('feFlood')?.getAttribute('flood-color')).toBe('#facc15')
+    expect(afterFilter?.querySelector('feMorphology')?.getAttribute('radius')).toBe('2.5')
   })
 
   it('keeps real France outline copies pointer-transparent above authored pointer-events', async () => {
