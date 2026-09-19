@@ -160,8 +160,11 @@ export type SvgMapCountryInnerGlows =
  * middle and flood the shape. On the bundled World map 161 of 209 Countries
  * have a short side under twice the requested band, so without this cap the
  * treatment only reads correctly on the ten or so largest Countries.
+ *
+ * Only geometry with a short side of roughly 130 source units or more still
+ * carries the full authored band, so the largest Countries are unaffected.
  */
-export const SVG_MAP_COUNTRY_INNER_GLOW_MAX_BAND_RATIO = 0.15
+export const SVG_MAP_COUNTRY_INNER_GLOW_MAX_BAND_RATIO = 0.1
 
 /**
  * Band widths are snapped to this geometric ladder so a map needs a handful
