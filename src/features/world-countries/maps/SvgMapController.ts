@@ -442,6 +442,7 @@ export class SvgMapController {
   private visibleGroupOutlines = new Set<string>()
   private outlineLayers: SVGGElement[] = []
   private countryInnerGlowLayer: SVGGElement | null = null
+  private countryInnerGlowBaseFills = new Map<SVGPathElement, SVGPathElement>()
   private countryInnerGlowSequence = 0
   private countryInnerGlowDirty = false
   private outlineSequence = 0
@@ -1433,16 +1434,15 @@ export class SvgMapController {
       const pattern = this.countryPatterns.get(country.id)
       const hasSemanticColor = this.countryColors.has(country.id)
       const hasSemanticAppearance = hasSemanticColor || pattern !== undefined
-      const baseFill = taskHovered
+      const persistentBaseFill = this.getCountryPersistentBaseFill(country.id)
+      const transientFill = taskHovered
         ? this.settings.hoverFill
         : hovered && this.settings.hoverHighlight && !hasSemanticAppearance
-        ? this.settings.hoverFill
-        : pattern
-          ? this.getPatternUrl(pattern)
-          : this.countryColors.get(country.id)
-          ?? (this.highlighted.has(country.id)
+          ? this.settings.hoverFill
+          : this.highlighted.has(country.id) && !hasSemanticAppearance
             ? this.settings.highlightFill
-            : this.settings.countryFill)
+            : null
+      const baseFill = transientFill ?? persistentBaseFill
       const fill = taskHovered
         ? this.settings.hoverFill
         : this.mutedCountries.has(country.id)
@@ -1465,8 +1465,15 @@ export class SvgMapController {
             : this.settings.countryStrokeWidth
 
       const hidden = this.hiddenCountries.has(country.id)
+      const muted = this.mutedCountries.has(country.id)
+      const useInnerGlowBaseFill = this.countryInnerGlows.has(country.id) && !hidden && !muted
+      const sourceFill = useInnerGlowBaseFill && transientFill === null ? 'transparent' : fill
       for (const pathState of country.pathStates) {
-        setOverride(pathState.path, 'fill', fill, pathState.originalFill)
+        const generatedBaseFill = this.countryInnerGlowBaseFills.get(pathState.path)
+        if (generatedBaseFill) {
+          this.setCountryInnerGlowBaseFill(generatedBaseFill, persistentBaseFill, pathState.originalFill)
+        }
+        setOverride(pathState.path, 'fill', sourceFill, pathState.originalFill)
         setOverride(pathState.path, 'stroke', stroke, pathState.originalStroke)
         setOverride(pathState.path, 'stroke-width', strokeWidth, pathState.originalStrokeWidth)
         pathState.path.style.setProperty('transition', transition)
@@ -1495,6 +1502,28 @@ export class SvgMapController {
       this.countryInnerGlowDirty = false
     }
     this.renderGroupOutlines()
+  }
+
+  private getCountryPersistentBaseFill(countryId: string): string | null {
+    const pattern = this.countryPatterns.get(countryId)
+    return pattern
+      ? this.getPatternUrl(pattern)
+      : this.countryColors.get(countryId) ?? this.settings.countryFill
+  }
+
+  private setCountryInnerGlowBaseFill(
+    geometry: SVGPathElement,
+    fill: string | null,
+    originalFill: OriginalStyle,
+  ): void {
+    if (fill === null) {
+      restoreStyle(geometry, 'fill', originalFill)
+      return
+    }
+    if (geometry.style.getPropertyValue('fill') !== fill
+      || geometry.style.getPropertyPriority('fill') !== 'important') {
+      geometry.style.setProperty('fill', fill, 'important')
+    }
   }
 
   private setHoveredCountryAndNotify(id: string | null): void {
@@ -1568,6 +1597,25 @@ export class SvgMapController {
         const pathLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g')
         pathLayer.setAttribute('data-svg-map-country-inner-glow-path', pathState.path.id.trim())
         pathLayer.setAttribute('pointer-events', 'none')
+        const baseFill = createInnerGlowGeometry(
+          pathState.path,
+          mapSvg,
+          document,
+          'data-svg-map-country-inner-glow-base-source',
+        )
+        baseFill.setAttribute('data-svg-map-country-inner-glow-base', '')
+        baseFill.setAttribute('stroke', 'none')
+        baseFill.setAttribute('filter', 'none')
+        baseFill.style.setProperty('stroke', 'none', 'important')
+        baseFill.style.setProperty('filter', 'none', 'important')
+        baseFill.style.setProperty('transition', 'none', 'important')
+        this.setCountryInnerGlowBaseFill(
+          baseFill,
+          this.getCountryPersistentBaseFill(countryId),
+          pathState.originalFill,
+        )
+        this.countryInnerGlowBaseFills.set(pathState.path, baseFill)
+        pathLayer.append(baseFill)
         for (const [index, profile] of layers.entries()) {
           const geometry = createInnerGlowGeometry(pathState.path, mapSvg, document, 'data-svg-map-country-inner-glow-source')
           geometry.setAttribute('data-svg-map-country-inner-glow-layer', String(index))
@@ -1609,6 +1657,7 @@ export class SvgMapController {
   private removeCountryInnerGlowPresentation(): void {
     this.countryInnerGlowLayer?.remove()
     this.countryInnerGlowLayer = null
+    this.countryInnerGlowBaseFills.clear()
     this.svg?.querySelectorAll('defs[data-svg-map-country-inner-glow-defs]').forEach(defs => defs.remove())
   }
 

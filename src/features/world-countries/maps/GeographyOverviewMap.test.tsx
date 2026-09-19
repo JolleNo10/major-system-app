@@ -483,7 +483,7 @@ describe('GeographyOverviewMap', () => {
       root.render(createElement(GeographyOverviewMap, {
         level: 'world',
         countryPopulation: [norway, sweden],
-        countryColorsById: new Map([['NO', '#769A70']]),
+        countryColorsById: new Map([['NO', '#B5A678']]),
         countryPatternsById: new Map([['SE', diagonal]]),
         countryInnerGlowsById: new Map([['NO', glow]]),
         ariaLabel: 'World map',
@@ -491,7 +491,9 @@ describe('GeographyOverviewMap', () => {
       await Promise.resolve(); await Promise.resolve()
     })
 
-    expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toBe('#769A70')
+    expect((mount.querySelector('path#Norway') as SVGPathElement | null)?.style.fill).toBe('transparent')
+    expect((mount.querySelector('[data-svg-map-country-inner-glow-base-source="Norway"]') as SVGPathElement | null)?.style.fill).toBe('#B5A678')
+    expect((mount.querySelector('[data-svg-map-country-inner-glow-source="Norway"]') as SVGPathElement | null)?.getAttribute('stroke')).toBe('#769A70')
     expect((mount.querySelector('path#Sweden') as SVGPathElement | null)?.style.fill).toMatch(/^url\(#svg-map-country-pattern-/)
     expect(mount.querySelector('[data-svg-map-country-inner-glow-country="Norway"]')).not.toBeNull()
     const fetchCallsAfterLoad = fetchMock.mock.calls.length
@@ -500,7 +502,7 @@ describe('GeographyOverviewMap', () => {
       root?.render(createElement(GeographyOverviewMap, {
         level: 'world',
         countryPopulation: [norway, sweden],
-        countryColorsById: new Map([['NO', '#769A70']]),
+        countryColorsById: new Map([['NO', '#B5A678']]),
         countryPatternsById: new Map([['SE', diagonal]]),
         countryInnerGlowsById: new Map([['NO', { ...glow, color: '#B5A678' }]]),
         ariaLabel: 'World map',
