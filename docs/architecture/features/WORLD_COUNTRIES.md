@@ -951,7 +951,15 @@ target-local and Country-fit cameras respectively.
   Country's fill, so the Country keeps its semantic fill instead of being made
   transparent behind a generated base-fill copy. Filter primitives are sized
   in user space, so the profile divides by the live camera scale to keep the
-  constant on-screen band the earlier `non-scaling-stroke` form had. Stacking
+  constant on-screen band the earlier `non-scaling-stroke` form had. The band
+  is drawn inward from every edge, so it is also capped to a share of the
+  geometry's short side and snapped to a short ladder of widths: uncapped, the
+  band met in the middle of 161 of the 209 bundled World Countries and only
+  read correctly on the ten or so largest. The cap is measured per authored
+  path rather than per Country, so each part of a multipart Country is fitted
+  to its own geometry; it is in source units while the requested width shrinks
+  with the camera, so zooming a small Country up restores the full on-screen
+  band. Stacking
   36 clipped stroke copies per Country path was rejected after measurement: it
   grew with progress, so a fully learned World map materialized thousands of
   cloned complex paths. Reusing the grouped outline/halo seam

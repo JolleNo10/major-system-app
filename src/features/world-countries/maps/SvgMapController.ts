@@ -153,6 +153,30 @@ export type SvgMapCountryInnerGlows =
   | Readonly<Record<string, SvgMapCountryInnerGlow | null>>
   | Iterable<readonly [string, SvgMapCountryInnerGlow | null]>
 
+/**
+ * Largest share of a geometry's short side the inward glow band may take.
+ *
+ * The band is drawn inward from every edge, so at 0.5 it would meet in the
+ * middle and flood the shape. On the bundled World map 161 of 209 Countries
+ * have a short side under twice the requested band, so without this cap the
+ * treatment only reads correctly on the ten or so largest Countries.
+ */
+export const SVG_MAP_COUNTRY_INNER_GLOW_MAX_BAND_RATIO = 0.15
+
+/**
+ * Band widths are snapped to this geometric ladder so a map needs a handful
+ * of filters rather than one per Country. The ~1.5x steps are imperceptible
+ * on a soft glow.
+ */
+const SVG_MAP_COUNTRY_INNER_GLOW_BAND_STEPS = [0.3, 0.45, 0.7, 1, 1.5, 2.2, 3.3, 5, 7.5, 11, 16, 24] as const
+
+export function snapSvgMapCountryInnerGlowBandWidth(bandWidth: number): number {
+  if (!Number.isFinite(bandWidth) || bandWidth <= 0) return SVG_MAP_COUNTRY_INNER_GLOW_BAND_STEPS[0]
+  return SVG_MAP_COUNTRY_INNER_GLOW_BAND_STEPS.reduce((closest, step) => (
+    Math.abs(Math.log(step / bandWidth)) < Math.abs(Math.log(closest / bandWidth)) ? step : closest
+  ))
+}
+
 /** Filter-primitive form of one inward edge treatment, in source user units. */
 export interface SvgMapCountryInnerGlowFilterProfile {
   /** Inward extent of the glow band. */
@@ -182,9 +206,16 @@ export interface SvgMapCountryInnerGlowFilterProfile {
 export function calculateSvgMapCountryInnerGlowFilterProfile(
   glow: Pick<SvgMapCountryInnerGlow, 'edgeIntensity' | 'fadeLength' | 'fadeBody' | 'edgeConcentration'>,
   scale = 1,
+  maxBandWidth = Number.POSITIVE_INFINITY,
 ): SvgMapCountryInnerGlowFilterProfile {
   const safeScale = Number.isFinite(scale) && scale > 0 ? scale : 1
-  const bandWidth = (8 + glow.fadeLength * 1.8) / 2 / safeScale
+  const requested = (8 + glow.fadeLength * 1.8) / 2 / safeScale
+  // Only the cap is snapped. Geometry large enough to carry the full band
+  // keeps its exact width, so the largest Countries are left as authored.
+  const cap = Number.isFinite(maxBandWidth)
+    ? snapSvgMapCountryInnerGlowBandWidth(Math.max(0, maxBandWidth))
+    : Number.POSITIVE_INFINITY
+  const bandWidth = Math.min(requested, cap)
   const edgeOpacity = 1 - Math.exp(-glow.edgeIntensity / 55)
   const bodyOpacity = edgeOpacity * (glow.fadeBody / 100) * 0.72
   const concentrationExponent = 0.45 + (glow.edgeConcentration / 100) * 4.2
@@ -498,6 +529,9 @@ export class SvgMapController {
   private overlayGroupOutlineLayer: SVGGElement | null = null
   private dirtyGroupOutlineCountryIds = new Set<string>()
   private countryInnerGlowDirty = false
+  /** Source-space bounds never change while one SVG is loaded. */
+  private geometryBoundsCache = new Map<SVGPathElement, SvgViewBoxRect | null>()
+  private countryInnerGlowFilterIds = new Map<SVGPathElement, string>()
   private outlineSequence = 0
   private hoverPaintGeneration = 0
   private hoveredCountryId: string | null = null
@@ -1671,9 +1705,10 @@ export class SvgMapController {
     const muted = this.mutedCountries.has(country.id)
     // The glow composites with the Country's own graphic, so it cannot be
     // covered by that Country's fill and needs no separate base-fill copy.
-    const innerGlow = hidden || muted ? undefined : this.countryInnerGlows.get(country.id)
-    const innerGlowFilter = innerGlow ? `url(#${this.getCountryInnerGlowFilterId(innerGlow)})` : null
+    const glowing = !hidden && !muted && this.countryInnerGlows.has(country.id)
     for (const pathState of country.pathStates) {
+      const filterId = glowing ? this.countryInnerGlowFilterIds.get(pathState.path) : undefined
+      const innerGlowFilter = filterId ? `url(#${filterId})` : null
       setOverride(pathState.path, 'fill', fill, pathState.originalFill)
       setOverride(pathState.path, 'stroke', stroke, pathState.originalStroke)
       setOverride(pathState.path, 'stroke-width', strokeWidth, pathState.originalStrokeWidth)
@@ -1773,20 +1808,55 @@ export class SvgMapController {
     return source.width / current.width
   }
 
-  private getCountryInnerGlowFilterId(glow: SvgMapCountryInnerGlow): string {
-    const key = `${glow.color}|${glow.edgeIntensity}|${glow.fadeLength}|${glow.fadeBody}|${glow.edgeConcentration}`
+  private getCountryInnerGlowFilterId(glow: SvgMapCountryInnerGlow, bandWidth: number): string {
+    const key = `${glow.color}|${glow.edgeIntensity}|${glow.fadeLength}|${glow.fadeBody}|${glow.edgeConcentration}|${bandWidth}`
     const encoded = [...key].map(char => char.codePointAt(0)?.toString(16) ?? '').join('')
     return `svg-map-country-inner-glow-${encoded}`
   }
 
+  private getCachedGeometryBounds(path: SVGPathElement): SvgViewBoxRect | null {
+    const cached = this.geometryBoundsCache.get(path)
+    if (cached !== undefined) return cached
+    const bounds = readSvgGeometryBounds(path)
+    this.geometryBoundsCache.set(path, bounds)
+    return bounds
+  }
+
   /**
-   * Materialize one filter per distinct glow rather than geometry per Country.
+   * Fit the band to the geometry it sits inside.
    *
-   * Glow colors come from a small status palette, so a whole map normally
-   * needs a handful of filters no matter how many Countries carry a glow. The
-   * stacked-stroke form this replaced built a clipPath, a base fill copy and
-   * 36 stroked copies of every Country path, which grew with progress until a
-   * fully learned World map held thousands of cloned complex paths.
+   * The cap is in source units and the requested width shrinks with the
+   * camera, so zooming into a small Country restores the full on-screen band
+   * once it is large enough on screen to carry one.
+   */
+  private getCountryInnerGlowProfile(
+    path: SVGPathElement,
+    glow: SvgMapCountryInnerGlow,
+    scale: number,
+  ): SvgMapCountryInnerGlowFilterProfile {
+    const bounds = this.getCachedGeometryBounds(path)
+    const shortSide = bounds ? Math.min(bounds.width, bounds.height) : Number.POSITIVE_INFINITY
+    return calculateSvgMapCountryInnerGlowFilterProfile(
+      glow,
+      scale,
+      shortSide * SVG_MAP_COUNTRY_INNER_GLOW_MAX_BAND_RATIO,
+    )
+  }
+
+  /**
+   * Materialize one filter per distinct glow and band width, rather than
+   * geometry per Country.
+   *
+   * Glow colors come from a small status palette and band widths are snapped
+   * to a short ladder, so a whole map needs a handful of filters no matter
+   * how many Countries carry a glow. The stacked-stroke form this replaced
+   * built a clipPath, a base fill copy and 36 stroked copies of every Country
+   * path, which grew with progress until a fully learned World map held
+   * thousands of cloned complex paths.
+   *
+   * The band is sized per authored path rather than per Country, so each part
+   * of a multipart Country is fitted to its own geometry instead of to the
+   * bounding box spanning all of them.
    */
   private renderCountryInnerGlows(): void {
     const perfEnabled = import.meta.env.DEV
@@ -1801,11 +1871,17 @@ export class SvgMapController {
     defs.setAttribute('data-svg-map-country-inner-glow-defs', '')
 
     const created = new Set<string>()
-    for (const glow of this.countryInnerGlows.values()) {
-      const id = this.getCountryInnerGlowFilterId(glow)
-      if (created.has(id)) continue
-      created.add(id)
-      defs.append(this.createCountryInnerGlowFilter(id, glow, scale, document))
+    for (const [countryId, glow] of this.countryInnerGlows) {
+      const country = this.countries.get(countryId)
+      if (!country) continue
+      for (const pathState of country.pathStates) {
+        const profile = this.getCountryInnerGlowProfile(pathState.path, glow, scale)
+        const id = this.getCountryInnerGlowFilterId(glow, profile.bandWidth)
+        this.countryInnerGlowFilterIds.set(pathState.path, id)
+        if (created.has(id)) continue
+        created.add(id)
+        defs.append(this.createCountryInnerGlowFilter(id, glow, profile, document))
+      }
     }
     if (defs.childElementCount === 0) return
 
@@ -1825,10 +1901,9 @@ export class SvgMapController {
   private createCountryInnerGlowFilter(
     id: string,
     glow: SvgMapCountryInnerGlow,
-    scale: number,
+    profile: SvgMapCountryInnerGlowFilterProfile,
     document: Document,
   ): SVGFilterElement {
-    const profile = calculateSvgMapCountryInnerGlowFilterProfile(glow, scale)
     const create = (name: string, attributes: Record<string, string>): SVGElement => {
       const element = document.createElementNS('http://www.w3.org/2000/svg', name)
       for (const [attribute, value] of Object.entries(attributes)) element.setAttribute(attribute, value)
@@ -1868,6 +1943,7 @@ export class SvgMapController {
   }
 
   private removeCountryInnerGlowPresentation(): void {
+    this.countryInnerGlowFilterIds.clear()
     this.svg?.querySelectorAll('defs[data-svg-map-country-inner-glow-defs]').forEach(defs => defs.remove())
   }
 
@@ -2803,6 +2879,7 @@ export class SvgMapController {
     this.countryPatterns.clear()
     this.countryInnerGlows.clear()
     this.removeCountryInnerGlowPresentation()
+    this.geometryBoundsCache.clear()
     this.countryInnerGlowDirty = false
     this.mutedCountries.clear()
     this.hiddenCountries.clear()

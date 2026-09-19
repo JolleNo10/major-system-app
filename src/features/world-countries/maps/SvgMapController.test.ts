@@ -4,8 +4,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import europeSvg from '@/features/world-countries/maps/assets/MapChart_Map_Europe.svg?raw'
 import oceaniaSvg from '@/features/world-countries/maps/assets/MapChart_Map_Oceania.svg?raw'
 import {
+  SVG_MAP_COUNTRY_INNER_GLOW_MAX_BAND_RATIO,
   SvgMapController,
   calculateSvgMapCountryInnerGlowFilterProfile,
+  snapSvgMapCountryInnerGlowBandWidth,
   toAbsoluteLeadingMoveTo,
 } from '@/features/world-countries/maps/SvgMapController'
 import { getSyntheticDotSourceFingerprint } from './syntheticDots'
@@ -166,6 +168,49 @@ describe('calculateSvgMapCountryInnerGlowFilterProfile', () => {
     expect(zoomed.bandWidth).toBeCloseTo(13 / 4, 6)
     expect(zoomed.blur).toBeCloseTo(calculateSvgMapCountryInnerGlowFilterProfile(glow).blur / 4, 6)
     expect(zoomed.edgeOpacity).toBeCloseTo(calculateSvgMapCountryInnerGlowFilterProfile(glow).edgeOpacity, 6)
+  })
+
+  it('fits the band to small geometry so the glow cannot flood it', () => {
+    // The band is drawn inward from every edge, so an uncapped 13-unit band
+    // meets in the middle of anything narrower than 26 units. On the bundled
+    // World map that is 161 of 209 Countries.
+    const small = calculateSvgMapCountryInnerGlowFilterProfile(
+      glow,
+      1,
+      12 * SVG_MAP_COUNTRY_INNER_GLOW_MAX_BAND_RATIO,
+    )
+    expect(small.bandWidth).toBeLessThan(12 / 2)
+    expect(small.blur).toBeLessThan(calculateSvgMapCountryInnerGlowFilterProfile(glow).blur)
+  })
+
+  it('leaves geometry large enough to carry the full band exactly as authored', () => {
+    const large = calculateSvgMapCountryInnerGlowFilterProfile(
+      glow,
+      1,
+      170 * SVG_MAP_COUNTRY_INNER_GLOW_MAX_BAND_RATIO,
+    )
+    expect(large.bandWidth).toBeCloseTo(13, 6)
+  })
+
+  it('restores the full band when the camera zooms a small Country up', () => {
+    // The cap is in source units while the requested width shrinks with the
+    // camera, so a Country that is small on the World map carries a full
+    // on-screen band once it fills the viewport.
+    const cap = 12 * SVG_MAP_COUNTRY_INNER_GLOW_MAX_BAND_RATIO
+    const zoomedOut = calculateSvgMapCountryInnerGlowFilterProfile(glow, 1, cap)
+    const zoomedIn = calculateSvgMapCountryInnerGlowFilterProfile(glow, 20, cap)
+    expect(zoomedOut.bandWidth).toBeCloseTo(snapSvgMapCountryInnerGlowBandWidth(cap), 6)
+    expect(zoomedIn.bandWidth).toBeCloseTo(13 / 20, 6)
+    expect(zoomedIn.bandWidth).toBeLessThan(zoomedOut.bandWidth)
+  })
+
+  it('snaps capped bands onto a short ladder so a map needs few filters', () => {
+    const snapped = new Set(
+      Array.from({ length: 200 }, (_, index) => snapSvgMapCountryInnerGlowBandWidth(0.05 + index * 0.12)),
+    )
+    expect(snapped.size).toBeLessThanOrEqual(12)
+    expect(snapSvgMapCountryInnerGlowBandWidth(0)).toBeGreaterThan(0)
+    expect(snapSvgMapCountryInnerGlowBandWidth(Number.NaN)).toBeGreaterThan(0)
   })
 
   it('falls back to an unscaled band for a degenerate camera scale', () => {
