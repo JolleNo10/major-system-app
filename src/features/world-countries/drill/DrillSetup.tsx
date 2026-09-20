@@ -31,7 +31,7 @@ const EMPTY_PROFICIENCY_SCOPE: WorldCountriesProficiencyScope = {
 }
 
 export function DrillSetup({
-  level, setupContinent, selection, selectionMetadata, mode, order, activity, practiceInteraction, onPracticeInteractionChange, scopeSource = 'geography', onScopeSourceChange = () => undefined, proficiencySelection = [], learningStates, hoveredGroupId, onHoverGroup, onSelectionChange, onProficiencySelectionChange = () => undefined, onModeChange, onOrderChange, onStart, onWorld, onSelectContinent, onToggleWorld, onExit, entries = countries,
+  level, setupContinent, selection, selectionMetadata, mode, order, activity, practiceInteraction, onPracticeInteractionChange, scopeSource = 'geography', onScopeSourceChange = () => undefined, proficiencySelection = [], learningStates, hoveredGroupId, onHoverGroup, onSelectionChange, onProficiencySelectionChange = () => undefined, onModeChange, onOrderChange, onStart, onWorld, onSelectContinent, onToggleWorld, onExit, onOpenPlayground, entries = countries,
 }: {
   level: 'world' | 'continent'
   setupContinent: Continent | null
@@ -57,6 +57,7 @@ export function DrillSetup({
   onSelectContinent: (continent: Continent) => void
   onToggleWorld: () => void
   onExit?: () => void
+  onOpenPlayground?: () => void
   entries?: readonly Country[]
 }) {
   const geographyRevision = useWorldCountriesGeographyRevision()

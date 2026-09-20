@@ -43,6 +43,7 @@ export function DrillSetupRails({
   onModeChange,
   onOrderChange,
   onExit,
+  onOpenPlayground,
   entries = countries,
   worldOrder,
   subregionOrder,
@@ -80,6 +81,7 @@ export function DrillSetupRails({
   onModeChange: (mode: WorldCountriesDrillMode) => void
   onOrderChange: (order: WorldCountriesDrillOrder) => void
   onExit?: () => void
+  onOpenPlayground?: () => void
   entries?: readonly Country[]
   worldOrder: readonly Continent[]
   subregionOrder: readonly SubregionDefinition[]
@@ -134,10 +136,10 @@ export function DrillSetupRails({
         />
       </section>
     ),
-    right: <div className="space-y-3"><WorldCountriesPanel className="space-y-3">{activity.kind === 'drill' ? <CurrentDrillPanel mode={mode} order={order} groupName={modeGroupName} onModeChange={onModeChange} onOrderChange={onOrderChange} countryScope={countryScope} /> : <FixedPracticePanel mode={activity.mode} interaction={practiceInteraction} onInteractionChange={onPracticeInteractionChange} countryScope={countryScope} />}</WorldCountriesPanel>{onExit && <button type="button" onClick={onExit} className="w-full rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Back to guided home</button>}</div>,
+    right: <div className="space-y-3"><WorldCountriesPanel className="space-y-3">{activity.kind === 'drill' ? <CurrentDrillPanel mode={mode} order={order} groupName={modeGroupName} onModeChange={onModeChange} onOrderChange={onOrderChange} countryScope={countryScope} /> : <FixedPracticePanel mode={activity.mode} interaction={practiceInteraction} onInteractionChange={onPracticeInteractionChange} countryScope={countryScope} />}</WorldCountriesPanel>{(onExit || onOpenPlayground) && <div className="space-y-2">{onExit && <button type="button" onClick={onExit} className="w-full rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Back to guided home</button>}{onOpenPlayground && <button type="button" data-drill-open-playground onClick={onOpenPlayground} className="w-full rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Playground</button>}</div>}</div>,
     leftLabel: 'Geography',
     rightLabel: activity.kind === 'drill' ? 'Drill' : 'Practice',
-  }), [activity, continent, countryScope, onPracticeInteractionChange, practiceInteraction, editingOrder, entries, hoveredGroupId, level, mode, modeGroupName, onBeginOrderEdit, onCancelOrderEdit, onDraftSubregionOrder, onDraftWorldOrder, onExit, onHoverGroup, onModeChange, onOrderChange, onSaveSubregionOrder, onSaveWorldOrder, onSelectContinent, onSelectEntireContinent, onToggleContinent, onToggleSubregion, onToggleWorld, onWorld, order, proficiencySelected, selection, selectionMetadata, subregions, worldOrder])
+  }), [activity, continent, countryScope, onOpenPlayground, onPracticeInteractionChange, practiceInteraction, editingOrder, entries, hoveredGroupId, level, mode, modeGroupName, onBeginOrderEdit, onCancelOrderEdit, onDraftSubregionOrder, onDraftWorldOrder, onExit, onHoverGroup, onModeChange, onOrderChange, onSaveSubregionOrder, onSaveWorldOrder, onSelectContinent, onSelectEntireContinent, onToggleContinent, onToggleSubregion, onToggleWorld, onWorld, order, proficiencySelected, selection, selectionMetadata, subregions, worldOrder])
   useRails(rails)
   return null
 }

@@ -510,8 +510,16 @@ no primary action there.
 Two screens showing one status ladder must not disagree about how it reads, so
 the header and the `learningComplete` predicate behind the legend are shared
 rather than reimplemented per screen. A bespoke setup layout was rejected twice
-before this: it duplicated the layout header's title, gave the loudest slot to
-a progress card instead of the map, and pushed Start below the fold.
+before this: it gave the loudest slot to a progress card instead of the map,
+and pushed Start below the fold.
+
+World Countries publishes no `useLayoutHeader` content. Every area's title is
+its own centre header and every area's navigation lives in its rails — Drill
+setup's `Back to guided home` and `Playground`, Playground's breadcrumbs and
+back button, Recite's and Quiz's own exits. The former feature header was
+removed because it repeated the application title above a second title, offered
+a back affordance each area already had, and pushed the centre down so the same
+map started at a different height on Home than in Drill setup.
 
 Drill and Recite consume the same feature-local geography seam for a World-wide
 selection of stable `SubregionId` values.

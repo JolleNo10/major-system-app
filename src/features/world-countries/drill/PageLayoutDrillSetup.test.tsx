@@ -35,11 +35,10 @@ describe('World Countries activity boundary', () => {
   it('defaults to Home and reaches configurable Drill through Playground', async () => {
     const mount = await renderShell()
     expect(mount.querySelector('[role="tablist"]')).toBeNull()
-    expect(mount.textContent).toContain('World Countries')
-    expect(mount.textContent).toContain('Playground')
+    expect(mount.textContent).toContain('Your world')
     expect(mount.textContent).not.toContain('Due reviews')
 
-    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Playground')?.click())
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-today-action="playground"]')?.click())
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-play-activity="custom-drill"]')?.click())
     expect(mount.textContent).toContain('Geography')
     expect(mount.textContent).not.toContain('Purpose')
@@ -53,7 +52,7 @@ describe('World Countries activity boundary', () => {
   it('opens each Playground Practice card in a fixed setup', async () => {
     localStorage.setItem('world-countries-drill-preferences', JSON.stringify({ subregionIds: ['northern-europe'], mode: 'countries', order: 'ordered' }))
     const mount = await renderShell()
-    await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Playground')?.click())
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-today-action="playground"]')?.click())
     for (const [activity, label] of [
       ['locate-countries', 'Locate Countries'],
       ['countries-from-capitals', 'Countries from Capitals'],
@@ -67,7 +66,8 @@ describe('World Countries activity boundary', () => {
       expect(mount.textContent).not.toContain('Learn & Practise')
       expect(mount.textContent).not.toContain('Drill mode')
       expect(mount.querySelector('input[type="radio"]')).toBeNull()
-      await act(async () => mount.querySelector<HTMLButtonElement>('[data-world-countries-playground]')?.click())
+      await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Back to guided home')?.click())
+      await act(async () => mount.querySelector<HTMLButtonElement>('[data-today-action="playground"]')?.click())
     }
   })
 })

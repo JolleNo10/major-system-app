@@ -57,7 +57,7 @@ export type WorldCountriesDrillInitialScope =
   | { kind: 'subregion'; subregionId: SubregionId }
 
 /** Coordinator for shared geography setup, recorded Drill, and non-recording Practice. */
-export function WorldCountriesDrill({ answerMode, onExit, initialActivity = { kind: 'drill' }, initialScope }: { answerMode: AnswerMode; onExit?: () => void; initialActivity?: WorldCountriesSetupActivity; initialScope?: WorldCountriesDrillInitialScope }) {
+export function WorldCountriesDrill({ answerMode, onExit, initialActivity = { kind: 'drill' }, initialScope, onOpenPlayground }: { answerMode: AnswerMode; onExit?: () => void; initialActivity?: WorldCountriesSetupActivity; initialScope?: WorldCountriesDrillInitialScope; onOpenPlayground?: () => void }) {
   const { settings } = useSettings()
   const activeCountries = useWorldCountriesPopulation()
   const geographyRevision = useWorldCountriesGeographyRevision()
@@ -309,6 +309,7 @@ export function WorldCountriesDrill({ answerMode, onExit, initialActivity = { ki
     onStart={initialActivity.kind === 'drill' ? startDrill : startPractice}
     onWorld={goToWorld}
     onExit={onExit}
+    onOpenPlayground={onOpenPlayground}
     onSelectContinent={selectContinent}
     onToggleWorld={toggleWorld}
     selectionMetadata={selectionMetadata}

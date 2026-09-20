@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
 import type { AnswerMode } from '@/core/types'
-import { useLayoutHeader } from '@/app/layout/PageLayoutContext'
 import { useSettings } from '@/app/settings/SettingsContext'
 import type { Continent } from './data/countries'
 import { countries } from './data/countries'
@@ -72,36 +71,13 @@ export function WorldCountries({ answerMode }: { answerMode: AnswerMode }) {
     openWorkflow(navigation.area)
   }
 
-  const header = useMemo(() => {
-    if (area === 'home' || area === 'continent') return null
-    const headerArea: string = area
-
-    return (
-      <nav aria-label="World Countries navigation" className="flex w-full min-w-0 items-center justify-between gap-3 py-2">
-        <button type="button" onClick={goHome} className="min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">
-          <span className="block truncate text-sm font-semibold text-zinc-100">World Countries</span>
-          <span className="block text-xs text-zinc-500">{continent && headerArea === 'continent' ? `World / ${continent}` : area === 'play' ? 'World / Playground' : 'Learn the world'}</span>
-        </button>
-        <button
-          type="button"
-          data-world-countries-playground
-          aria-current={area === 'play' ? 'page' : undefined}
-          onClick={area === 'play' ? goToScope : openPlay}
-          className={`shrink-0 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 ${area === 'play' ? 'border-cyan-500/60 bg-cyan-500/10 text-cyan-200' : 'border-zinc-700 text-zinc-300 hover:border-cyan-500 hover:text-zinc-100'}`}
-        >
-          {area === 'play' ? `Back to ${continent ?? 'World'}` : 'Playground'}
-        </button>
-      </nav>
-    )
-  }, [area, continent, goToScope])
-  useLayoutHeader(header)
 
   return (
     <WorldCountriesPopulationProvider countries={activeCountries}>
       {area === 'home' && <WorldCountriesToday answerMode={answerMode} onNavigate={openTodayNavigation} onSelectContinent={goToContinent} />}
       {area === 'continent' && continent && <WorldCountriesToday answerMode={answerMode} continent={continent} worldJourneyContinent={worldJourneyContinent} onNavigate={openTodayNavigation} onSelectContinent={goToContinent} onWorld={goHome} />}
       {area === 'play' && <WorldCountriesPlay scopeLabel={continent ?? 'World'} scopeContinent={continent ?? undefined} onBack={goToScope} onOpenRecite={() => openWorkflow('recite')} onOpenQuiz={() => openWorkflow('quiz')} onOpenPractice={mode => openDrillEntry({ activity: { kind: 'practice', mode } })} onOpenCustomDrill={() => openDrillEntry({ activity: { kind: 'drill' } })} />}
-      {area === 'drill' && <WorldCountriesDrill answerMode={answerMode} onExit={goToScope} initialActivity={drillEntry?.activity} initialScope={drillEntry?.initialScope} />}
+      {area === 'drill' && <WorldCountriesDrill answerMode={answerMode} onExit={goToScope} initialActivity={drillEntry?.activity} initialScope={drillEntry?.initialScope} onOpenPlayground={openPlay} />}
       {area === 'recite' && <WorldCountriesRecite answerMode={answerMode} onExit={goToScope} />}
       {area === 'quiz' && <WorldCountriesQuiz answerMode={answerMode} onExit={goToScope} />}
     </WorldCountriesPopulationProvider>
