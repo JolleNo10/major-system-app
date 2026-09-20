@@ -305,7 +305,7 @@ describe('DrillSetup activity boundary', () => {
   it('confirms a resolved Weak proficiency scope without changing launch eligibility', async () => {
     proficiencyScopeMock.mockReturnValue({ counts: { weak: 1, developing: 0 }, countryIds: ['NO'], countries: [scopeEntries[0]] } as never)
     const onStart = vi.fn()
-    const mount = renderSetup({ entries: scopeEntries, selection: createDrillSelection([], scopeEntries), proficiencySelection: ['weak'], onStart })
+    const mount = renderSetup({ entries: scopeEntries, selection: createDrillSelection([], scopeEntries), scopeSource: 'proficiency', proficiencySelection: ['weak'], onStart })
     await act(async () => { await Promise.resolve(); await Promise.resolve() })
     renderLatestRight()
 
@@ -318,7 +318,7 @@ describe('DrillSetup activity boundary', () => {
 
   it('confirms combined Weak and Developing proficiency using the resolved count', async () => {
     proficiencyScopeMock.mockReturnValue({ counts: { weak: 1, developing: 2 }, countryIds: ['NO', 'FR', 'IN'], countries: [scopeEntries[0], scopeEntries[2], scopeEntries[4]] } as never)
-    const mount = renderSetup({ entries: scopeEntries, selection: createDrillSelection([], scopeEntries), proficiencySelection: ['weak', 'developing'] })
+    const mount = renderSetup({ entries: scopeEntries, selection: createDrillSelection([], scopeEntries), scopeSource: 'proficiency', proficiencySelection: ['weak', 'developing'] })
     await act(async () => { await Promise.resolve(); await Promise.resolve() })
     renderLatestRight()
 
@@ -328,7 +328,7 @@ describe('DrillSetup activity boundary', () => {
   it('does not present a proficiency scope while loading', async () => {
     let resolveLoad: ((progress: Map<string, never>) => void) | undefined
     loadRecallProgressMock.mockImplementation(() => new Promise<Map<string, never>>(resolve => { resolveLoad = resolve }))
-    const loadingMount = renderSetup({ entries: scopeEntries, selection: createDrillSelection([], scopeEntries), proficiencySelection: ['weak'] })
+    const loadingMount = renderSetup({ entries: scopeEntries, selection: createDrillSelection([], scopeEntries), scopeSource: 'proficiency', proficiencySelection: ['weak'] })
     renderLatestRight()
     expect(loadingMount.querySelector('[aria-label="Drill scope"]')).toBeNull()
     const start = [...loadingMount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Loading proficiency…')
@@ -340,7 +340,7 @@ describe('DrillSetup activity boundary', () => {
   it('does not present a proficiency scope when no Countries match', async () => {
     loadRecallProgressMock.mockResolvedValue(new Map())
     proficiencyScopeMock.mockReturnValue({ counts: { weak: 0, developing: 0 }, countryIds: [], countries: [] } as never)
-    const noMatchMount = renderSetup({ entries: scopeEntries, selection: createDrillSelection([], scopeEntries), proficiencySelection: ['weak'] })
+    const noMatchMount = renderSetup({ entries: scopeEntries, selection: createDrillSelection([], scopeEntries), scopeSource: 'proficiency', proficiencySelection: ['weak'] })
     await act(async () => { await Promise.resolve(); await Promise.resolve() })
     renderLatestRight()
     expect(noMatchMount.querySelector('[aria-label="Drill scope"]')).toBeNull()
@@ -390,7 +390,7 @@ describe('DrillSetup activity boundary', () => {
   it('keeps fixed Practice start enabled for a matching proficiency scope', async () => {
     proficiencyScopeMock.mockReturnValue({ counts: { weak: 1, developing: 0 }, countryIds: ['albania'], countries: [{}] } as never)
     const onStart = vi.fn()
-    const mount = renderSetup({ activity: { kind: 'practice', mode: 'locate-countries' }, proficiencySelection: ['weak'], onStart })
+    const mount = renderSetup({ activity: { kind: 'practice', mode: 'locate-countries' }, scopeSource: 'proficiency', proficiencySelection: ['weak'], onStart })
     await act(async () => { await Promise.resolve() })
     const config = useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1][0] as { right: ReactNode }
     act(() => root?.render(config.right))
@@ -482,14 +482,16 @@ describe('DrillSetup activity boundary', () => {
     act(() => displayRoot.unmount())
   })
 
-  it('keeps proficiency filters independent and clears them when Geography is selected', () => {
+  it('shows one scope source at a time and keeps each selection across a switch', () => {
     const onSelectionChange = vi.fn()
     const onProficiencySelectionChange = vi.fn()
+    const onScopeSourceChange = vi.fn()
     const mount = renderSetup({
       selection: createDrillSelection([]),
-      proficiencySelection: ['weak'],
+      scopeSource: 'proficiency', proficiencySelection: ['weak'],
       onSelectionChange,
       onProficiencySelectionChange,
+      onScopeSourceChange,
     })
     const config = useRailsMock.mock.calls[0][0] as { left: ReactNode }
     act(() => root?.render(config.left))
@@ -500,11 +502,24 @@ describe('DrillSetup activity boundary', () => {
     act(() => checkboxes[1].click())
     expect(onProficiencySelectionChange).toHaveBeenLastCalledWith(['weak', 'developing'])
 
-    expect(mount.querySelector('[aria-labelledby="world-countries-drill-scope-heading"] [role="alert"]')).toBeNull()
+    // Needs work is shown instead of Geography, not alongside it.
+    expect(mount.querySelector('[aria-labelledby="world-countries-drill-scope-heading"]')).toBeNull()
+    expect(mount.querySelector('[data-scope-source="proficiency"]')?.getAttribute('aria-checked')).toBe('true')
 
+    act(() => mount.querySelector<HTMLButtonElement>('[data-scope-source="geography"]')?.click())
+    expect(onScopeSourceChange).toHaveBeenLastCalledWith('geography')
+    // Switching source never discards the other source's selection.
+    expect(onSelectionChange).not.toHaveBeenCalled()
+    expect(onProficiencySelectionChange).toHaveBeenLastCalledWith(['weak', 'developing'])
+
+    act(() => root?.render(createElement(DrillSetup, createSetupProps({ selection: createDrillSelection([]), onSelectionChange, onProficiencySelectionChange }))))
+    const geographyConfig = useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1][0] as { left: ReactNode }
+    act(() => root?.render(geographyConfig.left))
+    expect(mount.querySelector('[aria-labelledby="world-countries-drill-scope-heading"]')).not.toBeNull()
     const subregion = [...mount.querySelectorAll('button')].find(button => button.textContent?.includes('Northern Europe'))
     act(() => subregion?.click())
-    expect(onProficiencySelectionChange).toHaveBeenLastCalledWith([])
+    expect(onSelectionChange).toHaveBeenCalled()
+    expect(onProficiencySelectionChange).toHaveBeenLastCalledWith(['weak', 'developing'])
     expect(onSelectionChange).toHaveBeenLastCalledWith(expect.objectContaining({ subregionIds: ['northern-europe'] }))
   })
 

@@ -40,13 +40,13 @@ describe('World Countries Drill proficiency scope', () => {
       progressFor('SE', 'country-to-capital', false),
     ])
 
-    const scope = resolveDrillProficiencyScope(
-      'Europe',
-      ['weak', 'developing'],
-      progress,
-      { kind: 'drill', mode: 'countries' },
-      [sweden, norway],
-    )
+    const scope = resolveDrillProficiencyScope({
+      continent: 'Europe',
+      selection: ['weak', 'developing'],
+      recallProgress: progress,
+      activity: { kind: 'drill', mode: 'countries' },
+      entries: [sweden, norway],
+    })
 
     expect(scope.counts).toEqual({ weak: 1, developing: 1 })
     expect(scope.countryIds).toEqual(['SE', 'NO'])
@@ -63,13 +63,13 @@ describe('World Countries Drill proficiency scope', () => {
       progressFor('SE', 'country-to-capital', false),
     ])
 
-    const scope = resolveDrillProficiencyScope(
-      'Europe',
-      ['weak'],
-      progress,
-      { kind: 'practice', mode: 'capitals' },
-      [norway, sweden],
-    )
+    const scope = resolveDrillProficiencyScope({
+      continent: 'Europe',
+      selection: ['weak'],
+      recallProgress: progress,
+      activity: { kind: 'practice', mode: 'capitals' },
+      entries: [norway, sweden],
+    })
 
     expect(scope.countryIds).toEqual(['SE'])
     expect(scope.counts).toEqual({ weak: 1, developing: 1 })
@@ -86,13 +86,13 @@ describe('World Countries Drill proficiency scope', () => {
       progressFor('SE', 'capital-to-country', false),
     ])
 
-    const scope = resolveDrillProficiencyScope(
-      'Europe',
-      ['weak'],
-      progress,
-      { kind: 'practice', mode: 'countries-from-capitals' },
-      [norway, sweden],
-    )
+    const scope = resolveDrillProficiencyScope({
+      continent: 'Europe',
+      selection: ['weak'],
+      recallProgress: progress,
+      activity: { kind: 'practice', mode: 'countries-from-capitals' },
+      entries: [norway, sweden],
+    })
 
     expect(scope.countryIds).toEqual(['SE'])
   })
@@ -106,28 +106,52 @@ describe('World Countries Drill proficiency scope', () => {
       progressFor('SE', 'location-to-country', false),
     ])
 
-    const scope = resolveDrillProficiencyScope(
-      'Europe',
-      ['weak'],
-      progress,
-      { kind: 'drill', mode: 'countries' },
-      [norway, sweden],
-      [],
-      new Map([['NO', 'COUNTRIES_AND_CAPITALS_LEARNED'], ['SE', 'COUNTRIES_LEARNED']] as const),
-    )
+    const scope = resolveDrillProficiencyScope({
+      continent: 'Europe',
+      selection: ['weak'],
+      recallProgress: progress,
+      activity: { kind: 'drill', mode: 'countries' },
+      entries: [norway, sweden],
+      readinessByCountry: new Map([['NO', 'COUNTRIES_AND_CAPITALS_LEARNED'], ['SE', 'COUNTRIES_LEARNED']] as const),
+    })
 
     expect(scope.counts).toEqual({ weak: 1, developing: 0 })
     expect(scope.countryIds).toEqual(['NO'])
   })
 
+  it('searches the whole active population when no Continent is open', () => {
+    const india = {
+      id: 'IN', country: 'India', capital: 'New Delhi', continent: 'Asia' as const,
+      subregionId: 'south-asia' as const, subregion: 'South Asia',
+    }
+    const progress = deriveWorldCountriesRecallProgress({
+      countryIds: ['NO', 'IN'],
+      skills: ['location-to-country'],
+    }, [
+      progressFor('NO', 'location-to-country', false),
+      progressFor('IN', 'location-to-country', false),
+    ])
+
+    const scope = resolveDrillProficiencyScope({
+      continent: null,
+      selection: ['weak'],
+      recallProgress: progress,
+      activity: { kind: 'drill', mode: 'countries' },
+      entries: [norway, india],
+    })
+
+    expect(scope.counts.weak).toBe(2)
+    expect([...scope.countryIds].sort()).toEqual(['IN', 'NO'])
+  })
+
   it('does not classify Countries without relevant evidence', () => {
-    const scope = resolveDrillProficiencyScope(
-      'Europe',
-      ['weak', 'developing'],
-      deriveWorldCountriesRecallProgress({ countryIds: ['NO'], skills: ['location-to-country'] }, []),
-      { kind: 'practice', mode: 'locate-countries' },
-      [norway],
-    )
+    const scope = resolveDrillProficiencyScope({
+      continent: 'Europe',
+      selection: ['weak', 'developing'],
+      recallProgress: deriveWorldCountriesRecallProgress({ countryIds: ['NO'], skills: ['location-to-country'] }, []),
+      activity: { kind: 'practice', mode: 'locate-countries' },
+      entries: [norway],
+    })
 
     expect(scope.counts).toEqual({ weak: 0, developing: 0 })
     expect(scope.countryIds).toEqual([])
@@ -139,13 +163,13 @@ describe('World Countries Drill proficiency scope', () => {
       skills: ['shape-to-country'],
     }, [progressFor('NO', 'shape-to-country', false)])
 
-    const scope = resolveDrillProficiencyScope(
-      'Europe',
-      ['weak'],
-      progress,
-      { kind: 'practice', mode: 'country-from-shape' },
-      [norway, sweden],
-    )
+    const scope = resolveDrillProficiencyScope({
+      continent: 'Europe',
+      selection: ['weak'],
+      recallProgress: progress,
+      activity: { kind: 'practice', mode: 'country-from-shape' },
+      entries: [norway, sweden],
+    })
 
     expect(scope.countryIds).toEqual(['NO'])
   })

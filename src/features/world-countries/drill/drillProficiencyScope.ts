@@ -1,6 +1,10 @@
 import type { Continent, Country, CountryId } from '@/features/world-countries/data/countries'
-import { getContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
-import { getCountriesForDrillSelectionInEffectiveOrder, withAllDrillSubregions } from './drillSelection'
+import {
+  getCountriesForDrillSelectionInEffectiveOrder,
+  selectAllDrillSubregions,
+  withAllDrillSubregions,
+  type DrillSelectionMetadata,
+} from './drillSelection'
 import { getWorldCountriesWorstRecallHealth } from '@/features/world-countries/learning/countryStatusMap'
 import type { WorldCountriesLearningReadiness } from '@/features/world-countries/learning/learningReadiness'
 import type { RecallProgress } from '@/features/world-countries/learning/recallProgress'
@@ -8,7 +12,9 @@ import type { WorldCountriesProficiency } from '@/features/world-countries/learn
 import type { WorldCountriesRecallSkill } from '@/features/world-countries/learning/recallTargets'
 import { getSkillsForDrillMode, type WorldCountriesDrillMode } from './drillModes'
 import { getPracticeModeSkill, type WorldCountriesPracticeMode } from '@/features/world-countries/practice/practiceModes'
-import type { SubregionMetadata } from '@/features/world-countries/geography/subregionMetadata'
+
+/** Which source supplies the Countries a Drill or Practice run covers. */
+export type WorldCountriesDrillScopeSource = 'geography' | 'proficiency'
 
 export type WorldCountriesProficiencyFilter = 'weak' | 'developing'
 
@@ -24,32 +30,45 @@ export interface WorldCountriesProficiencyScope {
   countries: readonly Country[]
 }
 
-const PROFICIENCY_FILTERS: readonly WorldCountriesProficiencyFilter[] = ['weak', 'developing']
+export interface WorldCountriesProficiencyScopeInput {
+  /** The open setup Continent, or `null` for the whole active World population. */
+  continent: Continent | null
+  selection: WorldCountriesProficiencySelection
+  recallProgress: RecallProgress
+  activity: WorldCountriesProficiencyActivity
+  entries: readonly Country[]
+  selectionMetadata?: DrillSelectionMetadata
+  readinessByCountry?: ReadonlyMap<CountryId, WorldCountriesLearningReadiness>
+}
+
+export const WORLD_COUNTRIES_PROFICIENCY_FILTERS: readonly WorldCountriesProficiencyFilter[] = ['weak', 'developing']
 
 function getActivitySkills(activity: WorldCountriesProficiencyActivity): readonly WorldCountriesRecallSkill[] {
   return activity.kind === 'drill' ? getSkillsForDrillMode(activity.mode) : [getPracticeModeSkill(activity.mode)]
 }
 
-/** Derive current matching Countries without creating geography metadata or IDs. */
-export function resolveDrillProficiencyScope(
-  continent: Continent,
-  selection: WorldCountriesProficiencySelection,
-  recallProgress: RecallProgress,
-  activity: WorldCountriesProficiencyActivity,
-  entries: readonly Country[],
-  subregionMetadata: readonly { subregionId: SubregionMetadata['subregionId']; countryOrder: readonly CountryId[] }[] = [],
-  readinessByCountry: ReadonlyMap<CountryId, WorldCountriesLearningReadiness> = new Map(),
-): WorldCountriesProficiencyScope {
+/**
+ * Derive current matching Countries without creating geography metadata or IDs.
+ *
+ * The breadth follows the open setup level rather than a separate control: a
+ * Continent hub searches that Continent, World searches the whole active
+ * population. A third breadth picker was rejected because Geography already
+ * means "what this level shows".
+ */
+export function resolveDrillProficiencyScope({
+  continent,
+  selection,
+  recallProgress,
+  activity,
+  entries,
+  selectionMetadata = {},
+  readinessByCountry = new Map(),
+}: WorldCountriesProficiencyScopeInput): WorldCountriesProficiencyScope {
   const selected = new Set(selection)
-  const selectionMetadata = {
-    continents: [getContinentMetadata(continent)].filter((metadata): metadata is NonNullable<typeof metadata> => metadata !== null),
-    subregions: subregionMetadata,
-  }
-  const countriesInOrder = getCountriesForDrillSelectionInEffectiveOrder(
-    withAllDrillSubregions(continent, entries, selectionMetadata),
-    entries,
-    selectionMetadata,
-  )
+  const searchSelection = continent
+    ? withAllDrillSubregions(continent, entries, selectionMetadata)
+    : selectAllDrillSubregions(entries, selectionMetadata)
+  const countriesInOrder = getCountriesForDrillSelectionInEffectiveOrder(searchSelection, entries, selectionMetadata)
   const skills = getActivitySkills(activity)
   const stateByCountry = new Map<CountryId, WorldCountriesProficiency | null>(countriesInOrder.map(country => [
     country.id,
@@ -60,11 +79,8 @@ export function resolveDrillProficiencyScope(
       recallProgress,
     ),
   ]))
-  const counts = {
-    weak: 0,
-    developing: 0,
-  }
-  for (const filter of PROFICIENCY_FILTERS) {
+  const counts = { weak: 0, developing: 0 }
+  for (const filter of WORLD_COUNTRIES_PROFICIENCY_FILTERS) {
     counts[filter] = countriesInOrder.filter(country => stateByCountry.get(country.id) === filter).length
   }
   const countries = countriesInOrder.filter(country => {

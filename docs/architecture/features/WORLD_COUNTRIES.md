@@ -514,10 +514,18 @@ Capitals may span multiple Continents. Ordered Country membership follows the
 effective World Continent, Subregion, and Country order, and guided Learning
 advances between selected Subregions with each flow receiving its active
 Continent.
-Proficiency remains the mutually exclusive, Continent-scoped alternative
-scope source.
+Geography and proficiency are the two mutually exclusive scope sources, chosen
+by one explicit Scope control in the setup rail rather than inferred from which
+selection happens to be non-empty. Only the active source contributes to a
+launch, so each keeps its own selection across a switch; clearing the inactive
+source was rejected because it silently discarded work the learner had done and
+wrote that loss into persisted Drill preferences.
 
-At Continent setup, Geography and proficiency are alternative scope sources.
+Proficiency searches the breadth the open setup level already shows: a
+Continent hub searches that Continent, World searches the whole active
+population. A separate breadth picker was rejected as a third way to say
+something Geography already says.
+
 Weak/Developing proficiency scope reads the same shared status the map paints:
 the worst recall health across the skills the selected Drill mode or Practice
 activity exercises, and no reading at all until the Country has finished both

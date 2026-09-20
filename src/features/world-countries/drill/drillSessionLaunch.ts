@@ -22,7 +22,7 @@ export interface ResolveDrillSessionLaunchOptions {
   practiceMode?: WorldCountriesPracticeMode
   /** A transient Country subset for a retry; it never changes preferences. */
   countryIds?: readonly CountryId[]
-  /** The open setup Continent used only for the still-Continent-scoped proficiency activity. */
+  /** The open setup Continent, or null when proficiency searches the whole World. */
   proficiencyContinent?: Continent | null
   /** Effective geography metadata captured by the setup coordinator. */
   selectionMetadata?: DrillSelectionMetadata
@@ -78,8 +78,8 @@ export function resolveDrillSessionLaunch({
     const resolvedCountryIds = resolvedEntries.map(entry => entry.id)
     return {
       selection,
-      scopeLabel: proficiencySelection.length > 0 && proficiencyContinent
-        ? proficiencyContinent
+      scopeLabel: proficiencySelection.length > 0
+        ? proficiencyContinent ?? 'World'
         : getDrillSelectionScopeLabel(selection, activeCountries),
       entries: resolvedEntries,
       countryIds: resolvedCountryIds,
@@ -95,22 +95,21 @@ export function resolveDrillSessionLaunch({
   }
 
   if (!countryIds && proficiencySelection.length > 0) {
-    if (!proficiencyContinent) return null
     const proficiencySkills = skills ?? [...getSkillsForDrillMode(startPreferences.mode)]
     return loadWorldCountriesRecallProgress({
       countryIds: activeCountries.map(country => country.id),
       skills: proficiencySkills,
     }).then(progress => {
-      const proficiencyScope = resolveDrillProficiencyScope(
-        proficiencyContinent,
-        proficiencySelection,
-        progress,
-        activity === 'practice'
+      const proficiencyScope = resolveDrillProficiencyScope({
+        continent: proficiencyContinent,
+        selection: proficiencySelection,
+        recallProgress: progress,
+        activity: activity === 'practice'
           ? { kind: 'practice', mode: practiceMode ?? (interaction === 'location-click' ? 'locate-countries' : 'capitals') }
           : { kind: 'drill', mode: startPreferences.mode },
-        activeCountries,
-        selectionMetadata.subregions ?? [],
-      )
+        entries: activeCountries,
+        selectionMetadata,
+      })
       return finish(proficiencyScope.countries)
     })
   }

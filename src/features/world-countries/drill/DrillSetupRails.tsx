@@ -12,7 +12,7 @@ import { WORLD_COUNTRIES_MAIN_DRILL_MODE, WORLD_COUNTRIES_SUB_DRILL_MODES, type 
 import { getContinentSelectionState, getDrillSelectionCounts, type DrillSelectionMetadata, type WorldCountriesDrillSelection, type WorldCountriesDrillSelectionCounts } from './drillSelection'
 import type { WorldCountriesDrillOrder } from './drillOrder'
 import { getPracticeInteractionLabel, getPracticeModeDefinition, resolvePracticeInteraction, type WorldCountriesPracticeInteraction, type WorldCountriesPracticeMode } from '@/features/world-countries/practice/practiceModes'
-import type { WorldCountriesProficiencyScope, WorldCountriesProficiencySelection, WorldCountriesProficiencyFilter } from './drillProficiencyScope'
+import { WORLD_COUNTRIES_PROFICIENCY_FILTERS, type WorldCountriesDrillScopeSource, type WorldCountriesProficiencyScope, type WorldCountriesProficiencySelection, type WorldCountriesProficiencyFilter } from './drillProficiencyScope'
 import type { WorldCountriesSetupActivity } from './setupActivity'
 
 export function DrillSetupRails({
@@ -25,6 +25,8 @@ export function DrillSetupRails({
   activity,
   practiceInteraction,
   onPracticeInteractionChange,
+  scopeSource,
+  onScopeSourceChange,
   proficiencySelection,
   proficiencyScope,
   proficiencyLoading,
@@ -61,6 +63,8 @@ export function DrillSetupRails({
   activity: WorldCountriesSetupActivity
   practiceInteraction?: WorldCountriesPracticeInteraction
   onPracticeInteractionChange?: (interaction: WorldCountriesPracticeInteraction) => void
+  scopeSource: WorldCountriesDrillScopeSource
+  onScopeSourceChange: (source: WorldCountriesDrillScopeSource) => void
   proficiencySelection: WorldCountriesProficiencySelection
   proficiencyScope: WorldCountriesProficiencyScope
   proficiencyLoading: boolean
@@ -92,17 +96,20 @@ export function DrillSetupRails({
   const subregions = subregionOrder
   const modeGroupName = `world-countries-mode-${useId()}`
   const selectionCounts = getDrillSelectionCounts(selection, entries, selectionMetadata)
-  const proficiencySelected = proficiencySelection.length > 0
-  const canStart = proficiencySelected
-    ? !proficiencyLoading && proficiencyScope.countries.length > 0
+  const usesProficiency = scopeSource === 'proficiency'
+  const proficiencySelected = usesProficiency && proficiencySelection.length > 0
+  const canStart = usesProficiency
+    ? proficiencySelected && !proficiencyLoading && proficiencyScope.countries.length > 0
     : selectionCounts.countries > 0
   const noMatching = proficiencySelected && !proficiencyLoading && proficiencyScope.countries.length === 0
-  const disabledButtonLabel = proficiencySelected
-    ? proficiencyLoading
-      ? 'Loading proficiency…'
-      : noMatching
-        ? 'No matching Countries'
-        : 'Start Drill'
+  const disabledButtonLabel = usesProficiency
+    ? !proficiencySelected
+      ? 'Choose Weak or Developing'
+      : proficiencyLoading
+        ? 'Loading proficiency…'
+        : noMatching
+          ? 'No matching Countries'
+          : 'Start Drill'
     : canStart
       ? 'Start Drill'
       : getSelectionPrompt(level)
@@ -117,7 +124,8 @@ export function DrillSetupRails({
   const rails = useMemo(() => ({
     left: (
       <section className="space-y-4">
-        <GeographySelectionRail
+        <ScopeSourceSwitch source={scopeSource} onChange={onScopeSourceChange} />
+        {usesProficiency ? <ProficiencyScopePanel selection={proficiencySelection} scope={proficiencyScope} loading={proficiencyLoading} scopeLabel={continent ?? 'the World'} onChange={onProficiencySelectionChange} /> : <GeographySelectionRail
           level={level}
           setupContinent={continent}
           selection={selection}
@@ -139,14 +147,13 @@ export function DrillSetupRails({
           continentHeaderAction={editingOrder !== 'continent' && subregions.length > 1 ? <button type="button" onClick={() => onBeginOrderEdit('continent')} className="text-xs font-semibold text-cyan-300 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70">Edit order</button> : undefined}
           worldOrderContent={editingOrder === 'world' ? <InlineOrderEditor entries={worldOrder} getId={candidate => candidate} getLabel={candidate => candidate} onItemHover={candidate => onHoverGroup(getContinentHoverGroupId(candidate))} onItemLeave={() => onHoverGroup(null)} onDraftChanged={draft => onDraftWorldOrder(draft)} onSave={draft => onSaveWorldOrder(draft)} onCancel={onCancelOrderEdit} onResetCanonical={() => getContinents(entries)} /> : undefined}
           continentOrderContent={editingOrder === 'continent' ? <InlineOrderEditor entries={subregions} getId={subregion => subregion.id} getLabel={subregion => subregion.label} onItemHover={subregion => onHoverGroup(getSubregionHoverGroupId(subregion.label))} onItemLeave={() => onHoverGroup(null)} onDraftChanged={draft => onDraftSubregionOrder(draft)} onSave={draft => onSaveSubregionOrder(draft)} onCancel={onCancelOrderEdit} onResetCanonical={() => getSubregionDefinitionsForContinent(continent ?? 'Africa', entries)} autoOrder={{ label: 'Auto-order from map', pendingLabel: 'Reading map…', hint: 'Best effort; review before saving.', errorMessage: 'Map auto-ordering was unavailable. The draft is unchanged.', run: draft => sortSubregionsByMemoMapPosition(continent ?? 'Africa', draft) }} /> : undefined}
-        />
-        {level === 'continent' && <ProficiencyScopePanel selection={proficiencySelection} scope={proficiencyScope} loading={proficiencyLoading} onChange={onProficiencySelectionChange} />}
+        />}
       </section>
     ),
     right: <div className="space-y-3"><WorldCountriesPanel className="space-y-3">{activity.kind === 'drill' ? <CurrentDrillPanel mode={mode} order={order} groupName={modeGroupName} onModeChange={onModeChange} onOrderChange={onOrderChange} scopeSummary={scopeSummary} canStart={canStart} noMatching={noMatching} disabledButtonLabel={disabledButtonLabel} onStart={onStart} /> : <FixedPracticePanel mode={activity.mode} interaction={practiceInteraction} onInteractionChange={onPracticeInteractionChange} scopeSummary={scopeSummary} canStart={canStart} noMatching={noMatching} disabledButtonLabel={disabledButtonLabel} onStart={onStart} />}</WorldCountriesPanel>{onExit && <button type="button" onClick={onExit} className="w-full rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-300 hover:border-cyan-500 hover:text-zinc-100">Back to guided home</button>}</div>,
     leftLabel: 'Geography',
     rightLabel: activity.kind === 'drill' ? 'Drill' : 'Practice',
-  }), [activity, canStart, continent, disabledButtonLabel, onPracticeInteractionChange, practiceInteraction, editingOrder, entries, hoveredGroupId, level, mode, modeGroupName, noMatching, onBeginOrderEdit, onCancelOrderEdit, onDraftSubregionOrder, onDraftWorldOrder, onExit, onHoverGroup, onModeChange, onOrderChange, onProficiencySelectionChange, onSaveSubregionOrder, onSaveWorldOrder, onSelectContinent, onSelectEntireContinent, onStart, onToggleContinent, onToggleSubregion, onToggleWorld, onWorld, order, proficiencyLoading, proficiencyScope, proficiencySelected, proficiencySelection, scopeSummary, selection, selectionCounts, selectionMetadata, subregions, worldOrder])
+  }), [activity, canStart, continent, disabledButtonLabel, onPracticeInteractionChange, onScopeSourceChange, practiceInteraction, scopeSource, usesProficiency, editingOrder, entries, hoveredGroupId, level, mode, modeGroupName, noMatching, onBeginOrderEdit, onCancelOrderEdit, onDraftSubregionOrder, onDraftWorldOrder, onExit, onHoverGroup, onModeChange, onOrderChange, onProficiencySelectionChange, onSaveSubregionOrder, onSaveWorldOrder, onSelectContinent, onSelectEntireContinent, onStart, onToggleContinent, onToggleSubregion, onToggleWorld, onWorld, order, proficiencyLoading, proficiencyScope, proficiencySelected, proficiencySelection, scopeSummary, selection, selectionCounts, selectionMetadata, subregions, worldOrder])
   useRails(rails)
   return null
 }
@@ -182,9 +189,14 @@ function FixedPracticePanel({ mode, interaction, onInteractionChange, scopeSumma
   return <section className="space-y-3" aria-labelledby="world-countries-practice-heading"><div><p className="text-xs font-semibold uppercase tracking-wider text-violet-400">Practice</p><h2 id="world-countries-practice-heading" className="mt-1 text-lg font-bold text-zinc-100">{label}</h2><p className="mt-1 text-sm leading-relaxed text-zinc-400">{definition.description}</p></div>{definition.interactions.length > 1 && onInteractionChange && <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-3"><div className="flex items-center justify-between gap-3"><h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Answer with</h3><div className="inline-flex rounded-md border border-zinc-800 bg-zinc-950/60 p-0.5" role="radiogroup" aria-label="Answer with">{definition.interactions.map(candidate => <button key={candidate} type="button" role="radio" aria-checked={candidate === selectedInteraction} onClick={() => onInteractionChange(candidate)} className={`min-w-[4.25rem] rounded px-2 py-1 text-xs font-semibold ${candidate === selectedInteraction ? 'bg-cyan-600/40 text-cyan-100' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200'}`}>{getPracticeInteractionLabel(candidate)}</button>)}</div></div></div>}<p className="text-xs leading-relaxed text-zinc-500">Practice is non-recording and does not affect Learning, recall status, or evidence.</p>{noMatching && <p className="text-sm text-amber-300" role="alert">No Countries currently match the selected proficiency.</p>}{scopeSummary && <div role="group" aria-label="Practice scope" className="rounded-lg border border-zinc-800 bg-zinc-950/30 px-3 py-2"><h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Scope</h3><p className="mt-1 text-sm font-semibold text-zinc-200">{scopeSummary}</p></div>}<button type="button" disabled={!canStart} onClick={onStart} className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40">{canStart ? `Start ${label}` : disabledButtonLabel}</button></section>
 }
 
-function ProficiencyScopePanel({ selection, scope, loading, onChange }: { selection: WorldCountriesProficiencySelection; scope: WorldCountriesProficiencyScope; loading: boolean; onChange: (selection: WorldCountriesProficiencySelection) => void }) {
+/** The two scope sources, presented as the either/or they are. */
+function ScopeSourceSwitch({ source, onChange }: { source: WorldCountriesDrillScopeSource; onChange: (source: WorldCountriesDrillScopeSource) => void }) {
+  return <WorldCountriesPanel className="space-y-2" aria-labelledby="world-countries-scope-source-heading"><h2 id="world-countries-scope-source-heading" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Scope</h2><div role="radiogroup" aria-label="Scope source" className="grid grid-cols-2 gap-0.5 rounded-lg border border-zinc-800 bg-zinc-950/60 p-0.5">{([['geography', 'Geography'], ['proficiency', 'Needs work']] as const).map(([candidate, label]) => <button key={candidate} type="button" role="radio" data-scope-source={candidate} aria-checked={candidate === source} onClick={() => onChange(candidate)} className={`rounded px-2 py-1.5 text-xs font-semibold transition-colors ${candidate === source ? 'bg-cyan-600/40 text-cyan-100' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200'}`}>{label}</button>)}</div></WorldCountriesPanel>
+}
+
+function ProficiencyScopePanel({ selection, scope, loading, scopeLabel, onChange }: { selection: WorldCountriesProficiencySelection; scope: WorldCountriesProficiencyScope; loading: boolean; scopeLabel: string; onChange: (selection: WorldCountriesProficiencySelection) => void }) {
   const toggle = (filter: WorldCountriesProficiencyFilter) => onChange(selection.includes(filter) ? selection.filter(value => value !== filter) : [...selection, filter])
-  return <WorldCountriesPanel className="space-y-3" aria-labelledby="world-countries-proficiency-heading"><div><p className="text-xs font-semibold uppercase tracking-wider text-violet-400">Focus</p><h3 id="world-countries-proficiency-heading" className="mt-1 text-lg font-bold text-zinc-100">Proficiency</h3><p className="mt-1 text-sm leading-relaxed text-zinc-400">Focus Drill or non-recording Practice on Countries that currently need work.</p></div><fieldset className="space-y-2"><legend className="sr-only">Proficiency filters</legend>{(['weak', 'developing'] as const).map(filter => <label key={filter} className={`flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 text-sm transition-colors focus-within:ring-2 focus-within:ring-cyan-400/70 ${selection.includes(filter) ? 'border-cyan-500 bg-cyan-500/15 text-cyan-100' : 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-cyan-600'}`}><input type="checkbox" checked={selection.includes(filter)} onChange={() => toggle(filter)} className="h-4 w-4 accent-cyan-500" /><span className="min-w-0 flex-1 font-semibold">{filter === 'weak' ? 'Weak' : 'Developing'}</span><span className="text-xs tabular-nums text-zinc-500">{loading ? '…' : `${scope.counts[filter]} ${scope.counts[filter] === 1 ? 'Country' : 'Countries'}`}</span></label>)}</fieldset>{selection.length > 0 ? <p className="text-sm font-semibold text-zinc-200">{loading ? 'Loading proficiency…' : `${scope.countries.length} Countries selected by proficiency`}</p> : <p className="text-xs leading-relaxed text-zinc-500">Select Weak or Developing, or use Geography for complete Subregions.</p>}{selection.length > 0 && !loading && scope.countries.length === 0 && <p className="text-sm text-amber-300" role="alert">No Countries currently match the selected proficiency.</p>}</WorldCountriesPanel>
+  return <WorldCountriesPanel className="space-y-3" aria-labelledby="world-countries-proficiency-heading"><div><p className="text-xs font-semibold uppercase tracking-wider text-violet-400">Focus</p><h3 id="world-countries-proficiency-heading" className="mt-1 text-lg font-bold text-zinc-100">Needs work</h3><p className="mt-1 text-sm leading-relaxed text-zinc-400">Cover the Countries across {scopeLabel} whose recall is weakest right now.</p></div><fieldset className="space-y-2"><legend className="sr-only">Proficiency filters</legend>{WORLD_COUNTRIES_PROFICIENCY_FILTERS.map(filter => <label key={filter} className={`flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 text-sm transition-colors focus-within:ring-2 focus-within:ring-cyan-400/70 ${selection.includes(filter) ? 'border-cyan-500 bg-cyan-500/15 text-cyan-100' : 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-cyan-600'}`}><input type="checkbox" checked={selection.includes(filter)} onChange={() => toggle(filter)} className="h-4 w-4 accent-cyan-500" /><span className="min-w-0 flex-1 font-semibold">{filter === 'weak' ? 'Weak' : 'Developing'}</span><span className="text-xs tabular-nums text-zinc-500">{loading ? '…' : `${scope.counts[filter]} ${scope.counts[filter] === 1 ? 'Country' : 'Countries'}`}</span></label>)}</fieldset>{selection.length > 0 ? <p className="text-sm font-semibold text-zinc-200">{loading ? 'Loading proficiency…' : `${scope.countries.length} Countries selected by proficiency`}</p> : <p className="text-xs leading-relaxed text-zinc-500">Select Weak or Developing to build the scope.</p>}{selection.length > 0 && !loading && scope.countries.length === 0 && <p className="text-sm text-amber-300" role="alert">No Countries currently match the selected proficiency.</p>}</WorldCountriesPanel>
 }
 
 function getSelectionPrompt(_level: 'world' | 'continent'): string {

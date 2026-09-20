@@ -16,7 +16,7 @@ import { DrillSession } from './DrillSession'
 import { DrillSetup } from './DrillSetup'
 import type { WorldCountriesDrillMode } from './drillModes'
 import type { WorldCountriesDrillOrder } from './drillOrder'
-import { clearDrillSelection, getCountriesForDrillSelectionInEffectiveOrder, normalizeDrillSelection, selectAllDrillSubregions, type DrillSelectionMetadata, type WorldCountriesDrillSelection } from './drillSelection'
+import { getCountriesForDrillSelectionInEffectiveOrder, normalizeDrillSelection, selectAllDrillSubregions, type DrillSelectionMetadata, type WorldCountriesDrillSelection } from './drillSelection'
 import { toggleWorldScope } from '@/features/world-countries/geography/subregionScope'
 import {
   createDrillSession,
@@ -26,7 +26,7 @@ import {
   type DrillSessionState,
 } from './drillSessionState'
 import { loadDrillPreferences, saveDrillPreferences, type WorldCountriesDrillPreferences } from './drillPreferences'
-import type { WorldCountriesProficiencySelection } from './drillProficiencyScope'
+import type { WorldCountriesDrillScopeSource, WorldCountriesProficiencySelection } from './drillProficiencyScope'
 import { getRetryableFailedDrillCountryIds } from './drillResultSummary'
 import { resolveDrillSessionLaunch, type WorldCountriesDrillSessionLaunch } from './drillSessionLaunch'
 import type { WorldCountriesSetupActivity } from './setupActivity'
@@ -76,7 +76,15 @@ export function WorldCountriesDrill({ answerMode, onExit, initialActivity = { ki
       : loaded
   })
   const [phase, setPhase] = useState<DrillPhase>('setup')
+  const [scopeSource, setScopeSource] = useState<WorldCountriesDrillScopeSource>('geography')
   const [proficiencySelection, setProficiencySelection] = useState<WorldCountriesProficiencySelection>([])
+  /**
+   * Geography and proficiency are alternative scope sources, so only the
+   * active one contributes. Each keeps its own selection across a switch:
+   * the explicit source control already says which one counts, and clearing
+   * the other threw away work the learner had done.
+   */
+  const effectiveProficiencySelection = scopeSource === 'proficiency' ? proficiencySelection : []
   const [practiceInteraction, setPracticeInteraction] = useState<WorldCountriesPracticeInteraction>(
     () => initialActivity.kind === 'practice' ? getDefaultPracticeInteraction(initialActivity.mode) : 'recall',
   )
@@ -156,7 +164,7 @@ export function WorldCountriesDrill({ answerMode, onExit, initialActivity = { ki
     const launch = resolveDrillSessionLaunch({
       startPreferences,
       activeCountries,
-      proficiencySelection,
+      proficiencySelection: effectiveProficiencySelection,
       interaction,
       activity,
       skills,
@@ -167,7 +175,7 @@ export function WorldCountriesDrill({ answerMode, onExit, initialActivity = { ki
     })
     if (launch instanceof Promise) void launch.then(applyLaunch)
     else applyLaunch(launch)
-  }, [activeCountries, proficiencySelection, selectionMetadata, setupContinent])
+  }, [activeCountries, effectiveProficiencySelection, selectionMetadata, setupContinent])
 
   const startDrill = useCallback(() => startSession(effectivePreferences), [effectivePreferences, startSession])
 
@@ -250,26 +258,27 @@ export function WorldCountriesDrill({ answerMode, onExit, initialActivity = { ki
     setSetupContinent(null)
     setHoveredGroupId(null)
   }, [])
+  const handleScopeSourceChange = useCallback((source: WorldCountriesDrillScopeSource) => {
+    launchGeneration.current += 1
+    setScopeSource(source)
+  }, [])
   const handleSelectionChange = useCallback((selection: WorldCountriesDrillSelection) => {
-    setProficiencySelection([])
     updatePreferences({ ...selection, mode: preferences.mode, order: preferences.order })
   }, [preferences.mode, preferences.order, updatePreferences])
   const toggleWorld = useCallback(() => {
-    setProficiencySelection([])
     updatePreferences({ ...toggleWorldScope(effectivePreferences, activeCountries, selectionMetadata), mode: preferences.mode, order: preferences.order })
   }, [activeCountries, effectivePreferences, preferences.mode, preferences.order, selectionMetadata, updatePreferences])
   const handleProficiencySelectionChange = useCallback((selection: WorldCountriesProficiencySelection) => {
     launchGeneration.current += 1
     setProficiencySelection(selection)
-    if (selection.length > 0) updatePreferences({ ...clearDrillSelection(), mode: preferences.mode, order: preferences.order })
-  }, [preferences.mode, preferences.order, updatePreferences])
+  }, [])
   const handleModeChange = useCallback((mode: WorldCountriesDrillMode) => updatePreferences({ ...preferences, mode }), [preferences, updatePreferences])
   const handleOrderChange = useCallback((order: WorldCountriesDrillOrder) => updatePreferences({ ...preferences, order }), [preferences, updatePreferences])
   if ((phase === 'recall' || phase === 'practice') && activeRun && activeRunMatchesPopulation) {
     if (activeRun.activity === 'practice') {
-      return <PracticeSession answerMode={answerMode} fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching} state={activeRun.session} interaction={activeRun.interaction} learningStates={learningStates} proficiencySelection={proficiencySelection} selection={activeRun.selection} scopeLabel={activeRun.scopeLabel} entries={sessionEntries} activeCountries={activeCountries} onAnswer={answerPractice} onContinue={continueSession} onExit={exitToSetup} />
+      return <PracticeSession answerMode={answerMode} fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching} state={activeRun.session} interaction={activeRun.interaction} learningStates={learningStates} proficiencySelection={effectiveProficiencySelection} selection={activeRun.selection} scopeLabel={activeRun.scopeLabel} entries={sessionEntries} activeCountries={activeCountries} onAnswer={answerPractice} onContinue={continueSession} onExit={exitToSetup} />
     }
-    return <DrillSession answerMode={answerMode} fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching} state={activeRun.session} selection={activeRun.selection} scopeLabel={activeRun.scopeLabel} entries={sessionEntries} proficiencySelection={proficiencySelection} onAnswer={answer} onContinue={continueSession} onExit={exitToSetup} />
+    return <DrillSession answerMode={answerMode} fuzzyMatching={settings.worldCountriesFuzzyAnswerMatching} state={activeRun.session} selection={activeRun.selection} scopeLabel={activeRun.scopeLabel} entries={sessionEntries} proficiencySelection={effectiveProficiencySelection} onAnswer={answer} onContinue={continueSession} onExit={exitToSetup} />
   }
 
   if (phase === 'results' && activeRun) {
@@ -287,6 +296,8 @@ export function WorldCountriesDrill({ answerMode, onExit, initialActivity = { ki
     activity={initialActivity}
     practiceInteraction={practiceInteraction}
     onPracticeInteractionChange={setPracticeInteraction}
+    scopeSource={scopeSource}
+    onScopeSourceChange={handleScopeSourceChange}
     proficiencySelection={proficiencySelection}
     learningStates={learningStates}
     hoveredGroupId={hoveredGroupId}
