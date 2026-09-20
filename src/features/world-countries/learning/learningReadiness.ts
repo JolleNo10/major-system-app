@@ -154,46 +154,6 @@ export function getLearningReadinessBySubregion(
 }
 
 /**
- * Add the derived Drill signal used by the shared Practice setup. A Subregion's
- * Country learning is considered ready when every active Country has current
- * Location → Country proficiency of Developing or better. This does not write
- * or alter the durable Learning milestone.
- */
-export function getLearningReadinessBySubregionWithDrillEvidence(
-  entries: readonly Pick<Country, 'id' | 'subregionId'>[],
-  states: WorldCountriesLearningStates,
-  recallProgress: RecallProgress,
-): ReadonlyMap<SubregionId, WorldCountriesLearningReadiness> {
-  const readinessBySubregion = new Map(getLearningReadinessBySubregion(states))
-  const entriesBySubregion = new Map<SubregionId, Array<Pick<Country, 'id' | 'subregionId'>>>()
-
-  for (const entry of entries) {
-    const current = entriesBySubregion.get(entry.subregionId) ?? []
-    current.push(entry)
-    entriesBySubregion.set(entry.subregionId, current)
-  }
-
-  for (const [subregionId, subregionEntries] of entriesBySubregion) {
-    if (!readinessBySubregion.has(subregionId)) readinessBySubregion.set(subregionId, 'NOT_LEARNED')
-    const drillCountriesLearned = subregionEntries.every(entry => {
-      const proficiency = recallProgress.get(recallTargetIdFor(entry.id, 'location-to-country'))?.proficiency
-      return proficiency === 'developing' || proficiency === 'strong' || proficiency === 'mastered'
-    })
-    if (!drillCountriesLearned) continue
-
-    const state = Array.isArray(states)
-      ? states.find(candidate => candidate.subregionId === subregionId)
-      : (states as ReadonlyMap<SubregionId, SubregionLearningState>).get(subregionId)
-    readinessBySubregion.set(
-      subregionId,
-      deriveWorldCountriesLearningReadinessFromTracks(true, isSubregionCapitalsLearned(state)),
-    )
-  }
-
-  return readinessBySubregion
-}
-
-/**
  * A display/planning-only fallback for an already-known Country layer.
  *
  * This deliberately requires every location -> Country target to have

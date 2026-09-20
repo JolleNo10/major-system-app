@@ -101,7 +101,7 @@ function mapPoint(svg: SVGSVGElement, x: number, y: number): { clientX: number; 
 async function renderAndorraDrill(skill: 'location-to-country' | 'capital-to-country') {
   const onAnswer = vi.fn()
   const state = createDrillSession({
-    mode: skill === 'capital-to-country' ? 'countries-from-capitals' : 'countries',
+    mode: 'countries',
     skills: [skill],
     countryIds: [andorra.id],
   })

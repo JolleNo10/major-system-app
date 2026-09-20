@@ -55,7 +55,6 @@ export function DrillSession({
   onContinue,
   onExit,
   proficiencySelection = [],
-  activeCountries,
 }: {
   answerMode: AnswerMode
   fuzzyMatching: boolean
@@ -63,8 +62,6 @@ export function DrillSession({
   selection: WorldCountriesDrillSelection
   scopeLabel?: string
   entries: readonly Country[]
-  /** Full active population used for geographic feedback context. */
-  activeCountries?: readonly Country[]
   onAnswer: (record: DrillAnswerRecord) => void
   onContinue: (correct: boolean) => void
   onExit: () => void
@@ -109,24 +106,12 @@ export function DrillSession({
   const task: WorldCountriesRecallTaskPresentation = deriveRecallTaskPresentation(step.skill, country)
   const answerKind = task.answerKind
   const isLocationQuestion = step.skill === 'location-to-country'
-  const isShapeQuestion = step.skill === 'shape-to-country'
-  const isCapitalQuestion = step.skill === 'capital-to-country'
   const isTypedRecall = answerMode === 'typing'
   const scopeCountries = state.countryIds
     .map(countryId => countryById.get(countryId))
     .filter((entry): entry is Country => entry !== undefined)
-  const mapCountries = isShapeQuestion ? (activeCountries ?? entries) : entries
-  const currentContinentMapCountries = mapCountries.filter(entry => entry.continent === country.continent)
-  const shapeSubregionCountries = currentContinentMapCountries.filter(entry => entry.subregionId === country.subregionId)
-  const getShapeMapCountryIds = (outcome: string | null): readonly Country['id'][] | undefined => {
-    if (!isShapeQuestion) return undefined
-    return outcome === 'incorrect'
-      ? shapeSubregionCountries.map(entry => entry.id)
-      : [country.id]
-  }
-  const getMapCameraIntent = (outcome: string | null): WorldCountriesMapCameraIntent => isShapeQuestion
-    ? { kind: 'fit-countries', countryIds: getShapeMapCountryIds(outcome) ?? [country.id] }
-    : { kind: 'subregion-learning', subregionId: country.subregionId }
+  const currentContinentMapCountries = entries.filter(entry => entry.continent === country.continent)
+  const mapCameraIntent: WorldCountriesMapCameraIntent = { kind: 'subregion-learning', subregionId: country.subregionId }
   const now = () => typeof performance === 'undefined' ? Date.now() : performance.now()
 
   const submit = (answer: string) => {
@@ -159,14 +144,8 @@ export function DrillSession({
       : `The correct ${feedback.answerKind} is ${feedback.expectedAnswer}.`
     : null
   const displayedFeedback = feedback
-  const highlightedCountryId = isShapeQuestion
-    ? feedback ? country.id : null
-    : isCapitalQuestion ? (feedback ? country.id : null) : country.id
-  const namedCountryId = isShapeQuestion
-    ? feedback ? country.id : null
-    : isLocationQuestion || isCapitalQuestion
-    ? feedback ? country.id : null
-    : country.id
+  const highlightedCountryId = country.id
+  const namedCountryId = isLocationQuestion ? (feedback ? country.id : null) : country.id
   const resolvedScopeLabel = scopeLabel ?? getDrillSelectionScopeLabel(selection, entries)
   const progress = deriveDrillSessionProgress(state)
   const activityTask: WorldCountriesActivityTask = {
@@ -255,24 +234,13 @@ export function DrillSession({
                   scopeCountries={currentContinentMapCountries}
                   highlightFill={getWorldCountriesTaskHighlightFill(answerKind)}
                   taskTargetCountryId={isLocationQuestion ? country.id : null}
-                  highlightedCountryId={isShapeQuestion
-                    ? typed.outcome && typed.outcome !== 'wrong-kind' ? country.id : null
-                    : isCapitalQuestion ? (isWorldCountriesTypedAnswerResolved(typed.outcome) ? country.id : null) : country.id}
-                  namedCountryId={isShapeQuestion
-                    ? typed.outcome && typed.outcome !== 'wrong-kind' ? country.id : null
-                    : isLocationQuestion || isCapitalQuestion ? (isWorldCountriesTypedAnswerResolved(typed.outcome) ? country.id : null) : country.id}
-                  showHighlightedNames={isShapeQuestion
-                    ? Boolean(typed.outcome && typed.outcome !== 'wrong-kind')
-                    : isLocationQuestion || isCapitalQuestion ? isWorldCountriesTypedAnswerResolved(typed.outcome) : true}
-                  visibleCountryIds={getShapeMapCountryIds(typed.outcome)}
-                  cameraIntent={getMapCameraIntent(typed.outcome)}
-                  ariaLabel={isShapeQuestion && !typed.outcome
-                    ? 'Map showing the isolated Country shape without the Country name revealed'
-                    : isLocationQuestion && !typed.outcome
+                  highlightedCountryId={country.id}
+                  namedCountryId={isLocationQuestion ? (isWorldCountriesTypedAnswerResolved(typed.outcome) ? country.id : null) : country.id}
+                  showHighlightedNames={isLocationQuestion ? isWorldCountriesTypedAnswerResolved(typed.outcome) : true}
+                  cameraIntent={mapCameraIntent}
+                  ariaLabel={isLocationQuestion && !typed.outcome
                     ? 'Map showing the selected location for recall without the Country name revealed'
-                    : isCapitalQuestion && !typed.outcome
-                      ? 'Map of the selected geographic scope without the target Country revealed'
-                      : `Map with ${country.country} highlighted for Drill recall`}
+                    : `Map with ${country.country} highlighted for Drill recall`}
                 />
               )}
               feedbackOverlay={typed.feedbackOverlay}
@@ -303,17 +271,12 @@ export function DrillSession({
                     scopeCountries={currentContinentMapCountries}
                     highlightFill={getWorldCountriesTaskHighlightFill(answerKind)}
                     taskTargetCountryId={isLocationQuestion ? country.id : null}
-                    highlightedCountryId={isShapeQuestion ? feedback ? country.id : null : highlightedCountryId}
-                    namedCountryId={isShapeQuestion ? feedback ? country.id : null : namedCountryId}
-                    showHighlightedNames={isShapeQuestion ? Boolean(feedback) : Boolean(namedCountryId)}
-                    visibleCountryIds={getShapeMapCountryIds(feedback ? (feedback.correct ? 'correct' : 'incorrect') : null)}
-                    cameraIntent={getMapCameraIntent(feedback ? (feedback.correct ? 'correct' : 'incorrect') : null)}
-                    ariaLabel={isShapeQuestion && !feedback
-                      ? 'Map showing the isolated Country shape without the Country name revealed'
-                      : isLocationQuestion && !feedback
-                        ? 'Map showing the selected location for recall without the Country name revealed'
-                      : isCapitalQuestion && !feedback
-                        ? 'Map of the selected geographic scope without the target Country revealed'
+                    highlightedCountryId={highlightedCountryId}
+                    namedCountryId={namedCountryId}
+                    showHighlightedNames={Boolean(namedCountryId)}
+                    cameraIntent={mapCameraIntent}
+                    ariaLabel={isLocationQuestion && !feedback
+                      ? 'Map showing the selected location for recall without the Country name revealed'
                       : `Map with ${country.country} highlighted for Drill recall`}
                   />
                   {displayedFeedback && <RecallFeedback correct={displayedFeedback.correct} message={feedbackText} />}

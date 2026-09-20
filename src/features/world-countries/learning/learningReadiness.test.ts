@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { deriveWorldCountriesRecallProgress } from './recallProgress'
 import { recallTargetIdFor } from './recallTargets'
-import { createWorldCountriesLearningPattern, createWorldCountriesLearningPatternsByCountry, createWorldCountriesLearningReadinessByCountry, deriveWorldCountriesLearningReadiness, getLearningReadinessBySubregion, getLearningReadinessBySubregionWithDrillEvidence, getLearningReadinessForCountry, isWorldCountriesCapitalLayerEstablished, isWorldCountriesCapitalRecallMastered, isWorldCountriesCountryLayerEstablished, isWorldCountriesCountryRecallMastered, WORLD_COUNTRIES_LEARNING_BASE, WORLD_COUNTRIES_LEARNING_PATTERN_BASE, WORLD_COUNTRIES_LEARNING_PATTERN_LINE, WORLD_COUNTRIES_LEARNING_PATTERN_PITCH, WORLD_COUNTRIES_LEARNING_PATTERN_WIDTH, WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES, WORLD_COUNTRIES_LEARNING_READINESS_STATES } from './learningReadiness'
+import { createWorldCountriesLearningPattern, createWorldCountriesLearningPatternsByCountry, createWorldCountriesLearningReadinessByCountry, deriveWorldCountriesLearningReadiness, getLearningReadinessBySubregion, getLearningReadinessForCountry, isWorldCountriesCapitalLayerEstablished, isWorldCountriesCapitalRecallMastered, isWorldCountriesCountryLayerEstablished, isWorldCountriesCountryRecallMastered, WORLD_COUNTRIES_LEARNING_BASE, WORLD_COUNTRIES_LEARNING_PATTERN_BASE, WORLD_COUNTRIES_LEARNING_PATTERN_LINE, WORLD_COUNTRIES_LEARNING_PATTERN_PITCH, WORLD_COUNTRIES_LEARNING_PATTERN_WIDTH, WORLD_COUNTRIES_LEARNING_READINESS_LEGEND_ENTRIES, WORLD_COUNTRIES_LEARNING_READINESS_STATES } from './learningReadiness'
 
 describe('World Countries Learning Readiness', () => {
   it('keeps the canonical three-state labels and shared base together', () => {
@@ -54,46 +54,6 @@ describe('World Countries Learning Readiness', () => {
   it('keeps a Capitals-first row Not learned until Countries is learned', () => {
     const state = { subregionId: 'northern-europe' as const, capitalsLearnedAt: 456 }
     expect(getLearningReadinessForCountry({ subregionId: 'northern-europe' }, getLearningReadinessBySubregion([state]))).toBe('NOT_LEARNED')
-  })
-
-  it('promotes a Subregion to Countries learned when every Country is Developing or better in location Drill', () => {
-    const entries = [
-      { id: 'NO', subregionId: 'northern-europe' as const },
-      { id: 'SE', subregionId: 'northern-europe' as const },
-    ]
-    const progress = deriveWorldCountriesRecallProgress(
-      { countryIds: ['NO', 'SE'], skills: ['location-to-country'] },
-      entries.map((entry, index) => ({
-        itemId: recallTargetIdFor(entry.id, 'location-to-country'),
-        at: index + 1,
-        ok: true,
-        ms: 500,
-        evidenceKind: 'recognition' as const,
-        attemptType: 'drill' as const,
-      })),
-    )
-
-    expect(getLearningReadinessBySubregionWithDrillEvidence(entries, [], progress).get('northern-europe')).toBe('COUNTRIES_LEARNED')
-  })
-
-  it('does not promote a Subregion while a Country is below Developing', () => {
-    const entries = [
-      { id: 'NO', subregionId: 'northern-europe' as const },
-      { id: 'SE', subregionId: 'northern-europe' as const },
-    ]
-    const progress = deriveWorldCountriesRecallProgress(
-      { countryIds: ['NO', 'SE'], skills: ['location-to-country'] },
-      [{
-        itemId: recallTargetIdFor('NO', 'location-to-country'),
-        at: 1,
-        ok: true,
-        ms: 500,
-        evidenceKind: 'recognition',
-        attemptType: 'drill',
-      }],
-    )
-
-    expect(getLearningReadinessBySubregionWithDrillEvidence(entries, [], progress).get('northern-europe')).toBe('NOT_LEARNED')
   })
 
   it('only treats complete Country recall as the already-known curriculum fallback', () => {

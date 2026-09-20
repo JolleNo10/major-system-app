@@ -82,14 +82,14 @@ describe('World Countries Drill session launch resolution', () => {
       activeCountries: countries,
       proficiencySelection: [],
       activity: 'practice',
-      practiceMode: 'locate-capitals',
+      practiceMode: 'countries-from-capitals',
       skills: ['capital-to-country'],
       interaction: 'location-click',
     })
 
     if (!launch || launch instanceof Promise) throw new Error('Expected a synchronous launch')
     expect(launch.activity).toBe('practice')
-    expect(launch.practiceMode).toBe('locate-capitals')
+    expect(launch.practiceMode).toBe('countries-from-capitals')
   })
 
   it('rejects a Practice launch without an explicit Practice mode', () => {

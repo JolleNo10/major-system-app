@@ -1,15 +1,13 @@
 import type { Continent, Country, CountryId } from '@/features/world-countries/data/countries'
 import { getContinentMetadata } from '@/features/world-countries/geography/continentMetadataStore'
 import { getCountriesForDrillSelectionInEffectiveOrder, withAllDrillSubregions } from './drillSelection'
-import {
-  getDrillCountryProficiencyState,
-  getDrillCountrySkillProficiencyState,
-} from './drillProgressPresentation'
+import { getWorldCountriesWorstRecallHealth } from '@/features/world-countries/learning/countryStatusMap'
+import type { WorldCountriesLearningReadiness } from '@/features/world-countries/learning/learningReadiness'
 import type { RecallProgress } from '@/features/world-countries/learning/recallProgress'
-import type { WorldCountriesProgressState } from '@/features/world-countries/learning/progressPresentation'
+import type { WorldCountriesProficiency } from '@/features/world-countries/learning/recallMastery'
 import type { WorldCountriesRecallSkill } from '@/features/world-countries/learning/recallTargets'
-import type { WorldCountriesDrillMode } from './drillModes'
-import type { WorldCountriesPracticeMode } from '@/features/world-countries/practice/practiceModes'
+import { getSkillsForDrillMode, type WorldCountriesDrillMode } from './drillModes'
+import { getPracticeModeSkill, type WorldCountriesPracticeMode } from '@/features/world-countries/practice/practiceModes'
 import type { SubregionMetadata } from '@/features/world-countries/geography/subregionMetadata'
 
 export type WorldCountriesProficiencyFilter = 'weak' | 'developing'
@@ -28,10 +26,8 @@ export interface WorldCountriesProficiencyScope {
 
 const PROFICIENCY_FILTERS: readonly WorldCountriesProficiencyFilter[] = ['weak', 'developing']
 
-export function getPracticeSkill(mode: WorldCountriesPracticeMode): WorldCountriesRecallSkill {
-  if (mode === 'locate-countries') return 'location-to-country'
-  if (mode === 'locate-capitals') return 'capital-to-country'
-  return 'country-to-capital'
+function getActivitySkills(activity: WorldCountriesProficiencyActivity): readonly WorldCountriesRecallSkill[] {
+  return activity.kind === 'drill' ? getSkillsForDrillMode(activity.mode) : [getPracticeModeSkill(activity.mode)]
 }
 
 /** Derive current matching Countries without creating geography metadata or IDs. */
@@ -42,6 +38,7 @@ export function resolveDrillProficiencyScope(
   activity: WorldCountriesProficiencyActivity,
   entries: readonly Country[],
   subregionMetadata: readonly { subregionId: SubregionMetadata['subregionId']; countryOrder: readonly CountryId[] }[] = [],
+  readinessByCountry: ReadonlyMap<CountryId, WorldCountriesLearningReadiness> = new Map(),
 ): WorldCountriesProficiencyScope {
   const selected = new Set(selection)
   const selectionMetadata = {
@@ -53,21 +50,26 @@ export function resolveDrillProficiencyScope(
     entries,
     selectionMetadata,
   )
-  const matchingByFilter = new Map<WorldCountriesProficiencyFilter, Country[]>()
-  for (const filter of PROFICIENCY_FILTERS) matchingByFilter.set(filter, [])
-
-  for (const country of countriesInOrder) {
-    const state = getProficiencyState(country.id, recallProgress, activity)
-    if (state === 'weak' || state === 'developing') matchingByFilter.get(state)?.push(country)
-  }
-
+  const skills = getActivitySkills(activity)
+  const stateByCountry = new Map<CountryId, WorldCountriesProficiency | null>(countriesInOrder.map(country => [
+    country.id,
+    getWorldCountriesWorstRecallHealth(
+      country.id,
+      skills,
+      readinessByCountry.get(country.id) ?? 'COUNTRIES_AND_CAPITALS_LEARNED',
+      recallProgress,
+    ),
+  ]))
   const counts = {
-    weak: matchingByFilter.get('weak')?.length ?? 0,
-    developing: matchingByFilter.get('developing')?.length ?? 0,
-  } as const
+    weak: 0,
+    developing: 0,
+  }
+  for (const filter of PROFICIENCY_FILTERS) {
+    counts[filter] = countriesInOrder.filter(country => stateByCountry.get(country.id) === filter).length
+  }
   const countries = countriesInOrder.filter(country => {
-    const state = getProficiencyState(country.id, recallProgress, activity)
-    return state !== null && selected.has(state as WorldCountriesProficiencyFilter)
+    const state = stateByCountry.get(country.id)
+    return state !== null && state !== undefined && selected.has(state as WorldCountriesProficiencyFilter)
   })
 
   return {
@@ -75,14 +77,4 @@ export function resolveDrillProficiencyScope(
     countryIds: countries.map(country => country.id),
     countries,
   }
-}
-
-function getProficiencyState(
-  countryId: CountryId,
-  recallProgress: RecallProgress,
-  activity: WorldCountriesProficiencyActivity,
-): WorldCountriesProgressState | null {
-  return activity.kind === 'drill'
-    ? getDrillCountryProficiencyState(countryId, activity.mode, recallProgress)
-    : getDrillCountrySkillProficiencyState(countryId, getPracticeSkill(activity.mode), recallProgress)
 }

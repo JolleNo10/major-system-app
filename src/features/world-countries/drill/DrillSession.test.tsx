@@ -286,7 +286,7 @@ describe('DrillSession map presentation', () => {
     const railMount = document.createElement('div')
     document.body.append(mount, railMount)
 
-    for (const mode of ['countries', 'countries-capitals', 'countries-from-capitals'] as const) {
+    for (const mode of ['countries', 'countries-capitals', 'capitals'] as const) {
       await act(async () => {
         root = root ?? createRoot(mount)
         root.render(createElement(DrillSession, {
@@ -402,22 +402,23 @@ describe('DrillSession map presentation', () => {
     expect(mount.textContent).toContain('Name the highlighted country')
   })
 
-  it('isolates a shape prompt and reveals the full active Subregion after an incorrect answer', async () => {
+  it('isolates a Shape Practice prompt and reveals the full active Subregion after an incorrect answer', async () => {
     const mount = document.createElement('div')
     document.body.append(mount)
 
     await act(async () => {
       root = createRoot(mount)
-      root.render(createElement(DrillSession, {
+      root.render(createElement(PracticeSession, {
         answerMode: 'multiple-choice',
         fuzzyMatching: false,
-        state: createDrillSession({ mode: 'countries-from-shape', countryIds: ['NO', 'SE'] }),
+        state: createDrillSession({ mode: 'countries', countryIds: ['NO', 'SE'], skills: ['shape-to-country'] }),
         selection: createDrillSelection(['northern-europe']),
         entries: [norway, sweden],
         activeCountries: [norway, sweden, finland],
         onAnswer: vi.fn(),
         onContinue: vi.fn(),
         onExit: vi.fn(),
+        learningStates: [],
       }))
     })
 
@@ -444,22 +445,23 @@ describe('DrillSession map presentation', () => {
     })
   })
 
-  it('keeps a correct shape answer in the isolated view through feedback', async () => {
+  it('keeps a correct Shape Practice answer in the isolated view through feedback', async () => {
     const mount = document.createElement('div')
     document.body.append(mount)
 
     await act(async () => {
       root = createRoot(mount)
-      root.render(createElement(DrillSession, {
+      root.render(createElement(PracticeSession, {
         answerMode: 'multiple-choice',
         fuzzyMatching: false,
-        state: createDrillSession({ mode: 'countries-from-shape', countryIds: ['NO', 'SE'] }),
+        state: createDrillSession({ mode: 'countries', countryIds: ['NO', 'SE'], skills: ['shape-to-country'] }),
         selection: createDrillSelection(['northern-europe']),
         entries: [norway, sweden],
         activeCountries: [norway, sweden, finland],
         onAnswer: vi.fn(),
         onContinue: vi.fn(),
         onExit: vi.fn(),
+        learningStates: [],
       }))
     })
 
@@ -473,22 +475,23 @@ describe('DrillSession map presentation', () => {
     })
   })
 
-  it('uses active Subregion Countries when a shape session is narrowed to one Country', async () => {
+  it('uses active Subregion Countries when a Shape Practice session is narrowed to one Country', async () => {
     const mount = document.createElement('div')
     document.body.append(mount)
 
     await act(async () => {
       root = createRoot(mount)
-      root.render(createElement(DrillSession, {
+      root.render(createElement(PracticeSession, {
         answerMode: 'typing',
         fuzzyMatching: false,
-        state: createDrillSession({ mode: 'countries-from-shape', countryIds: ['NO'] }),
+        state: createDrillSession({ mode: 'countries', countryIds: ['NO'], skills: ['shape-to-country'] }),
         selection: createDrillSelection(['northern-europe']),
         entries: [norway],
         activeCountries: [norway, sweden, finland],
         onAnswer: vi.fn(),
         onContinue: vi.fn(),
         onExit: vi.fn(),
+        learningStates: [],
       }))
     })
 
@@ -560,7 +563,7 @@ describe('DrillSession map presentation', () => {
         answerMode: 'multiple-choice',
         fuzzyMatching: false,
         interaction: 'location-click',
-        state: createDrillSession({ mode: 'countries-from-capitals', countryIds: ['NO', 'SE'] }),
+        state: createDrillSession({ mode: 'countries', countryIds: ['NO', 'SE'], skills: ['capital-to-country'] }),
         selection: createDrillSelection(['northern-europe']),
         entries: [norway, sweden],
         onAnswer,
@@ -596,21 +599,23 @@ describe('DrillSession map presentation', () => {
     expect(mount.textContent).toContain('That was Sweden')
   })
 
-  it('keeps the selected scope neutral for Capital → Country until feedback', async () => {
+  it('keeps the selected scope neutral for typed Capital → Country Practice until feedback', async () => {
     const mount = document.createElement('div')
     document.body.append(mount)
 
     await act(async () => {
       root = createRoot(mount)
-      root.render(createElement(DrillSession, {
+      root.render(createElement(PracticeSession, {
         answerMode: 'multiple-choice',
         fuzzyMatching: false,
-        state: createDrillSession({ mode: 'countries-from-capitals', countryIds: ['NO'] }),
+        interaction: 'recall',
+        state: createDrillSession({ mode: 'countries', countryIds: ['NO'], skills: ['capital-to-country'] }),
         selection: createDrillSelection(['northern-europe']),
         entries: [norway],
         onAnswer: vi.fn(),
         onContinue: vi.fn(),
         onExit: vi.fn(),
+        learningStates: [],
       }))
     })
 

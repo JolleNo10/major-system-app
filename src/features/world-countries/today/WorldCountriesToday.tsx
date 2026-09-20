@@ -13,8 +13,6 @@ import { useWorldCountriesGeographyRevision } from '@/features/world-countries/g
 import { deriveWorldCountriesCountryProgress, deriveWorldCountriesRecallProgress, type RecallProgress } from '@/features/world-countries/learning/recallProgress'
 import {
   createWorldCountriesEstablishedLearningReadinessByCountry,
-  createWorldCountriesLearningPattern,
-  getWorldCountriesLearningReadinessLabel,
   getWorldCountriesLearningStateList,
   isWorldCountriesCountryLayerEstablished,
 } from '@/features/world-countries/learning/learningReadiness'
@@ -22,14 +20,13 @@ import { flattenWorldCountriesRecallHistory, loadWorldCountriesRecallHistory, ty
 import { WORLD_COUNTRIES_CORE_RECALL_SKILLS } from '@/features/world-countries/learning/recallTargets'
 import { deriveWorldCountriesScopeProgressForCountries } from '@/features/world-countries/learning/scopeProgress'
 import { deriveWorldCountriesScopeStatus } from '@/features/world-countries/learning/scopeStatus'
-import { getCountryProgressColor, WORLD_COUNTRIES_PROGRESS_LABELS } from '@/features/world-countries/learning/progressPresentation'
+import { createWorldCountriesStatusMapPresentation } from '@/features/world-countries/learning/countryStatusMap'
 import { CountryLearningFlow } from '@/features/world-countries/learning/flows/CountryLearningFlow'
 import { CapitalLearningFlow } from '@/features/world-countries/learning/flows/CapitalLearningFlow'
 import type { LearningCompletedRegionAction, LearningCompletionCelebration, LearningCompletionHandoff, LearningRegionCompletion } from '@/features/world-countries/learning/flows/LearningComplete'
 import { LearningMilestoneCelebration } from '@/features/world-countries/learning/flows/LearningCelebration'
 import type { LearningSetMaximum } from '@/features/world-countries/learning/stagedLearningPlan'
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
-import { WORLD_COUNTRIES_CAPITAL_INNER_GLOW } from '@/features/world-countries/maps/worldCountriesMapPalette'
 import { MapSurface } from '@/features/world-countries/ui/MapSurface'
 import { WorldCountriesMapLegend } from '@/features/world-countries/ui/WorldCountriesMapLegend'
 import { TodayReviewSession, type WorldCountriesTodayReviewCheckpoint, type WorldCountriesTodayReviewCompletion } from './TodayReviewSession'
@@ -377,23 +374,12 @@ export function WorldCountriesToday({
     ) : null,
     [continent, learningReadinessByCountry, recallProgress, scopedCountries],
   )
-  const countryColorsById = useMemo(() => new Map(scopedCountries.flatMap(country => {
-    if (learningReadinessByCountry.get(country.id) !== 'COUNTRIES_AND_CAPITALS_LEARNED') return []
-    const state = countryProgressById.get(country.id)?.skills.get('location-to-country')?.proficiency ?? 'learned'
-    return [[country.id, getCountryProgressColor(state)] as const]
-  })), [countryProgressById, learningReadinessByCountry, scopedCountries])
-  const countryInnerGlowsById = useMemo(() => new Map(scopedCountries.flatMap(country => {
-    if (learningReadinessByCountry.get(country.id) !== 'COUNTRIES_AND_CAPITALS_LEARNED') return []
-    const state = countryProgressById.get(country.id)?.skills.get('country-to-capital')?.proficiency ?? 'learned'
-    return [[country.id, { color: getCountryProgressColor(state), ...WORLD_COUNTRIES_CAPITAL_INNER_GLOW }] as const]
-  })), [countryProgressById, learningReadinessByCountry, scopedCountries])
-  const countryPatternsById = useMemo(() => new Map(scopedCountries.flatMap(country => (
-    worldLearningComplete
-      ? []
-      : learningReadinessByCountry.get(country.id) === 'COUNTRIES_LEARNED'
-        ? [[country.id, createWorldCountriesLearningPattern('diagonal')] as const]
-        : []
-  ))), [learningReadinessByCountry, scopedCountries, worldLearningComplete])
+  const statusMap = useMemo(() => createWorldCountriesStatusMapPresentation({
+    countries: scopedCountries,
+    readinessByCountry: learningReadinessByCountry,
+    recallProgress: recallProgress ?? new Map(),
+    learningComplete: worldLearningComplete,
+  }), [learningReadinessByCountry, recallProgress, scopedCountries, worldLearningComplete])
 
   const refreshAfterActivity = async () => {
     setRefreshing(true)
@@ -867,17 +853,6 @@ export function WorldCountriesToday({
       otherActions: [],
     }
   })()
-  const mapDescriptions = new Map(scopedCountries.map(country => {
-    const readiness = learningReadinessByCountry.get(country.id) ?? 'NOT_LEARNED'
-    if (readiness !== 'COUNTRIES_AND_CAPITALS_LEARNED') {
-      return [country.id, `Learning: ${getWorldCountriesLearningReadinessLabel(readiness)}.`] as const
-    }
-    const countryProgress = countryProgressById.get(country.id)
-    const countryState = countryProgress?.skills.get('location-to-country')?.proficiency ?? 'learned'
-    const capitalState = countryProgress?.skills.get('country-to-capital')?.proficiency ?? 'learned'
-    return [country.id, `Country recall: ${WORLD_COUNTRIES_PROGRESS_LABELS[countryState]}. Capital recall: ${WORLD_COUNTRIES_PROGRESS_LABELS[capitalState]}.`] as const
-  }))
-
   return (
     <>
       {journeySwitchPrompt && (
@@ -962,12 +937,12 @@ export function WorldCountriesToday({
                 level={continent ? 'continent' : 'world'}
                 continent={continent ?? undefined}
                 countryPopulation={scopedCountries}
-                countryColorsById={countryColorsById}
-                countryPatternsById={countryPatternsById}
-                countryInnerGlowsById={countryInnerGlowsById}
+                countryColorsById={statusMap.countryColorsById}
+                countryPatternsById={statusMap.countryPatternsById}
+                countryInnerGlowsById={statusMap.countryInnerGlowsById}
                 selectedSubregionIds={activeSubregionId ? [activeSubregionId] : undefined}
                 selectionPresentation="outline-only"
-                countryAccessibleDescriptionsById={mapDescriptions}
+                countryAccessibleDescriptionsById={statusMap.countryDescriptionsById}
                 interactive
                 onCountryClick={country => continent
                   ? setSelectedSubregionId(country.subregionId)

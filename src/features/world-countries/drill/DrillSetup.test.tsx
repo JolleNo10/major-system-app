@@ -75,7 +75,7 @@ describe('DrillSetup activity boundary', () => {
     expect(onToggleWorld).toHaveBeenCalledTimes(2)
   })
 
-  it('loads Countries + Capitals Drill status for the initial world map', async () => {
+  it('paints the setup map with the shared Country and Capital recall status', async () => {
     const norway = {
       id: 'NO', country: 'Norway', capital: 'Oslo', continent: 'Europe' as const,
       subregionId: 'northern-europe' as const, subregion: 'Northern Europe',
@@ -86,12 +86,41 @@ describe('DrillSetup activity boundary', () => {
       { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 1, ok: true, ms: 500, evidenceKind: 'recall', attemptType: 'drill' },
       { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 2, ok: false, ms: 500, evidenceKind: 'recall', attemptType: 'drill' },
     ]))
-    renderSetup({ level: 'world', mode: 'countries-capitals', entries: [norway] })
+    renderSetup({
+      level: 'world',
+      mode: 'countries-capitals',
+      entries: [norway],
+      learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: 1, capitalsLearnedAt: 2 }],
+    })
     await act(async () => { await Promise.resolve(); await Promise.resolve() })
 
     expect(loadRecallProgressMock).toHaveBeenCalledWith({ countryIds: ['NO'], skills: [...WORLD_COUNTRIES_RECALL_SKILLS] })
-    const latestMapProps = mapMock.mock.calls[mapMock.mock.calls.length - 1]?.[0] as { countryAccessibleDescriptionsById: Map<string, string> }
-    expect(latestMapProps.countryAccessibleDescriptionsById.get('NO')).toBe('Drill proficiency: Weak.')
+    const latestMapProps = mapMock.mock.calls[mapMock.mock.calls.length - 1]?.[0] as {
+      countryAccessibleDescriptionsById: Map<string, string>
+      countryColorsById: Map<string, string>
+      countryInnerGlowsById: Map<string, { color: string }>
+    }
+    expect(latestMapProps.countryAccessibleDescriptionsById.get('NO')).toBe('Country recall: Developing. Capital recall: Weak.')
+    expect(latestMapProps.countryColorsById.get('NO')).toBe('#B5A678')
+    expect(latestMapProps.countryInnerGlowsById.get('NO')?.color).toBe('#BC9C7B')
+  })
+
+  it('does not report recall health for a Country that has not finished Learning', async () => {
+    const norway = {
+      id: 'NO', country: 'Norway', capital: 'Oslo', continent: 'Europe' as const,
+      subregionId: 'northern-europe' as const, subregion: 'Northern Europe',
+    }
+    renderSetup({ level: 'world', mode: 'countries-capitals', entries: [norway] })
+    await act(async () => { await Promise.resolve(); await Promise.resolve() })
+
+    const latestMapProps = mapMock.mock.calls[mapMock.mock.calls.length - 1]?.[0] as {
+      countryAccessibleDescriptionsById: Map<string, string>
+      countryColorsById: Map<string, string>
+      countryInnerGlowsById: Map<string, unknown>
+    }
+    expect(latestMapProps.countryAccessibleDescriptionsById.get('NO')).toBe('Learning: Not learned.')
+    expect(latestMapProps.countryColorsById.get('NO')).toBeUndefined()
+    expect(latestMapProps.countryInnerGlowsById.get('NO')).toBeUndefined()
   })
 
   it('shows active World core mastery above the World map', async () => {
@@ -183,7 +212,7 @@ describe('DrillSetup activity boundary', () => {
       root?.render(createElement(DrillSetup, createSetupProps({
         level: 'world',
         entries: [...entries].reverse(),
-        mode: 'countries-from-capitals',
+        mode: 'capitals',
         activity: { kind: 'drill' },
       })))
     })
@@ -210,30 +239,34 @@ describe('DrillSetup activity boundary', () => {
     expect(mount.textContent).not.toContain('World mastery')
   })
 
-  it('exposes four Drill modes and keeps geography authoring in the rail', () => {
+  it('offers Countries + Capitals as the main Drill mode with two single-skill sub modes', () => {
     const mount = renderSetup()
     const config = useRailsMock.mock.calls[0][0] as { left: ReactNode; right: ReactNode }
     act(() => root?.render(createElement('div', null, config.left, config.right)))
     expect(mount.textContent).toContain('Countries + Capitals')
-    expect(mount.textContent).toContain('Countries from Capitals')
-    expect(mount.textContent).toContain('Country for Shape')
-    expect(mount.textContent).not.toContain('Learn Countries')
-    expect(mount.querySelectorAll('input[type="radio"]')).toHaveLength(4)
+    expect(mount.textContent).toContain('One skill at a time')
+    expect(mount.textContent).not.toContain('Countries from Capitals')
+    expect(mount.textContent).not.toContain('Country for Shape')
+    expect(mount.querySelectorAll('input[type="radio"]')).toHaveLength(3)
+    expect([...mount.querySelectorAll<HTMLInputElement>('input[type="radio"]')].map(input => input.value))
+      .toEqual(['countries-capitals', 'countries', 'capitals'])
     expect(mount.textContent).toContain('Edit order')
     expect(mount.textContent).toContain('Start Drill')
   })
 
-  it('explains the Learning Readiness fallback in the collapsed Drill legend', async () => {
-    const mount = renderSetup()
+  it.each([
+    ['drill', { kind: 'drill' }],
+    ['practice', { kind: 'practice', mode: 'locate-countries' }],
+  ] as const)('reads the same shared map legend in %s setup', async (_name, activity) => {
+    const mount = renderSetup({ activity })
     await act(async () => { await Promise.resolve(); await Promise.resolve() })
-    const legend = mount.querySelector('[aria-label="Durable progress legend"]')
+    const legend = mount.querySelector('[data-testid="world-countries-map-legend"]')
 
-    expect(legend?.querySelector('[data-progress-group="No Drill evidence"]')).not.toBeNull()
-    expect(legend?.querySelector('[data-progress-group="With Drill evidence"]')).not.toBeNull()
-    expect(legend?.querySelector('[data-progress-summary]')?.textContent).toBe('Learning Readiness is used until a Country has relevant evidence for this Drill mode.')
-    expect(legend?.querySelector('summary')?.textContent).toBe('How progress works')
-    expect(legend?.querySelector('[data-progress-group="No Drill evidence"] [data-progress-state="COUNTRIES_LEARNED"] i')?.getAttribute('style')).toContain('rgba(62, 55, 25, 0.46)')
-    expect(legend?.querySelector('[data-progress-group="No Drill evidence"] [data-progress-state="COUNTRIES_AND_CAPITALS_LEARNED"]')).toBeNull()
+    expect(legend).not.toBeNull()
+    expect(legend?.querySelector('[data-learning-state="COUNTRIES_LEARNED"]')).not.toBeNull()
+    expect(legend?.querySelector('[data-progress-state="weak"]')).not.toBeNull()
+    expect(legend?.querySelector('[data-progress-state="mastered"]')).not.toBeNull()
+    expect(legend?.querySelector('[data-map-status-cue]')?.textContent).toBe('Country = fill · Capital = inner edge')
   })
 
   it('confirms a single effective Subregion and keeps Start Drill enabled', () => {
@@ -378,26 +411,44 @@ describe('DrillSetup activity boundary', () => {
     expect(mount.textContent).not.toContain('Choose a Continent first')
   })
 
-  it('uses Learning Readiness instead of Drill status for Practice maps', () => {
+  it('keeps the Practice setup map on the same shared status as Drill', () => {
     const mount = renderSetup({ activity: { kind: 'practice', mode: 'locate-countries' } })
     expect(mapMock.mock.calls[mapMock.mock.calls.length - 1]?.[0].countryColorsById).toBeInstanceOf(Map)
-    expect(mount.textContent).toContain('Learning Readiness')
+    expect(mapMock.mock.calls[mapMock.mock.calls.length - 1]?.[0].countryInnerGlowsById).toBeInstanceOf(Map)
     const config = useRailsMock.mock.calls[0][0] as { right: ReactNode }
     act(() => root?.render(config.right))
     expect(mount.textContent).toContain('Practice')
+    expect(mount.textContent).not.toContain('Drill mode')
+  })
+
+  it('offers the typed and map answer options only for Countries from Capitals Practice', () => {
+    const onPracticeInteractionChange = vi.fn()
+    const mount = renderSetup({ activity: { kind: 'practice', mode: 'countries-from-capitals' }, practiceInteraction: 'location-click', onPracticeInteractionChange })
+    renderLatestRight()
+
+    const options = mount.querySelector('[role="radiogroup"][aria-label="Answer with"]')
+    expect(options).not.toBeNull()
+    expect([...options!.querySelectorAll('button')].map(button => button.textContent)).toEqual(['Click the map', 'Type the answer'])
+    act(() => [...options!.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Type the answer')?.click())
+    expect(onPracticeInteractionChange).toHaveBeenCalledWith('recall')
+
+    act(() => root?.render(createElement(DrillSetup, createSetupProps({ activity: { kind: 'practice', mode: 'locate-countries' }, onPracticeInteractionChange }))))
+    renderLatestRight()
+    expect(mount.querySelector('[role="radiogroup"][aria-label="Answer with"]')).toBeNull()
   })
 
   it('uses the shared Learning patterns for readiness fallback maps', async () => {
     renderSetup({ learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: 1 }] })
     await act(async () => { await Promise.resolve(); await Promise.resolve() })
     const mapProps = mapMock.mock.calls[mapMock.mock.calls.length - 1]?.[0] as { countryColorsById: Map<string, string>; countryPatternsById: Map<string, { kind: string; baseColor: string; lineColor: string }> }
-    expect(mapProps.countryColorsById.get('NO')).toBe('#5A5E66')
+    expect(mapProps.countryColorsById.get('NO')).toBeUndefined()
     expect(mapProps.countryPatternsById.get('NO')).toMatchObject({ kind: 'diagonal', baseColor: '#5A5E66', lineColor: '#3E3719', lineOpacity: 0.46 })
 
     act(() => root?.render(createElement(DrillSetup, createSetupProps({ learningStates: [{ subregionId: 'northern-europe', countriesLearnedAt: 1, capitalsLearnedAt: 2 }] }))))
     await act(async () => { await Promise.resolve(); await Promise.resolve() })
-    const completeMapProps = mapMock.mock.calls[mapMock.mock.calls.length - 1]?.[0] as { countryPatternsById: Map<string, { kind: string }> }
+    const completeMapProps = mapMock.mock.calls[mapMock.mock.calls.length - 1]?.[0] as { countryColorsById: Map<string, string>; countryPatternsById: Map<string, { kind: string }> }
     expect(completeMapProps.countryPatternsById.get('NO')).toBeUndefined()
+    expect(completeMapProps.countryColorsById.get('NO')).toBe('#90796F')
   })
 
   it('shows the Country count on each Subregion button', () => {

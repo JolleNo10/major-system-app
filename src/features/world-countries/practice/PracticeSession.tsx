@@ -9,6 +9,7 @@ import { deriveRecallTaskPresentation } from '@/features/world-countries/learnin
 import { getCurrentRecallStep, type WorldCountriesRecallSessionState } from '@/features/world-countries/learning/recallSession'
 import type { WorldCountriesRecallSkill } from '@/features/world-countries/learning/recallTargets'
 import type { WorldCountriesSubregionScope } from '@/features/world-countries/geography/subregionScope'
+import type { WorldCountriesPracticeInteraction } from './practiceModes'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import { PracticeSessionRails } from './PracticeSessionRails'
 import { TaskDock } from '@/features/world-countries/ui/MapSurface'
@@ -16,6 +17,7 @@ import { WorldCountriesMapActivitySurface, type WorldCountriesActivityTask } fro
 import { getWorldCountriesTaskHighlightFill } from '@/features/world-countries/ui/WorldCountriesAnswerSemantics'
 import { WorldCountriesTypedAnswer } from '@/features/world-countries/ui/WorldCountriesTypedAnswer'
 import type { LearningStates } from '@/features/world-countries/learning/learningProgress'
+import type { WorldCountriesMapCameraIntent } from '@/features/world-countries/maps/cameraIntent'
 
 const SUCCESS_FEEDBACK_DURATION_MS = 500
 const CORRECTION_FEEDBACK_DURATION_MS = 1800
@@ -27,7 +29,10 @@ export interface PracticeSessionAnswer {
   correct: boolean
 }
 
-export type PracticeSessionInteraction = 'recall' | 'location-click'
+export type PracticeSessionInteraction = WorldCountriesPracticeInteraction
+
+/** Whether the current prompt has been answered, and how. */
+type PracticeMapOutcome = 'correct' | 'incorrect' | null
 
 interface StepFeedback {
   answer: string
@@ -37,7 +42,7 @@ interface StepFeedback {
   answerKind: 'country' | 'capital'
 }
 
-export function PracticeSession({ answerMode, fuzzyMatching, state, selection, scopeLabel, entries, onAnswer, onContinue, onExit, interaction = 'recall', proficiencySelection = [], learningStates }: {
+export function PracticeSession({ answerMode, fuzzyMatching, state, selection, scopeLabel, entries, onAnswer, onContinue, onExit, interaction = 'recall', proficiencySelection = [], learningStates, activeCountries }: {
   answerMode: AnswerMode
   fuzzyMatching: boolean
   state: WorldCountriesRecallSessionState
@@ -50,6 +55,8 @@ export function PracticeSession({ answerMode, fuzzyMatching, state, selection, s
   interaction?: PracticeSessionInteraction
   proficiencySelection?: readonly string[]
   learningStates: LearningStates
+  /** Full active population; Shape → Country needs context beyond the session scope. */
+  activeCountries?: readonly Country[]
 }) {
   const step = getCurrentRecallStep(state)
   const [feedback, setFeedback] = useState<StepFeedback | null>(null)
@@ -83,9 +90,12 @@ export function PracticeSession({ answerMode, fuzzyMatching, state, selection, s
   const task = deriveRecallTaskPresentation(step.skill, country)
   const isLocationQuestion = step.skill === 'location-to-country'
   const isCapitalQuestion = step.skill === 'capital-to-country'
+  const isShapeQuestion = step.skill === 'shape-to-country'
   const isMapClickPractice = interaction === 'location-click'
   const isTypedRecall = answerMode === 'typing' && !isMapClickPractice
   const resolvedScopeLabel = scopeLabel ?? 'World'
+  const continentMapCountries = (isShapeQuestion ? activeCountries ?? entries : scopeCountries).filter(entry => entry.continent === country.continent)
+  const shapeSubregionCountries = continentMapCountries.filter(entry => entry.subregionId === country.subregionId)
 
   const submit = (answer: string) => {
     if (feedback) return
@@ -111,18 +121,38 @@ export function PracticeSession({ answerMode, fuzzyMatching, state, selection, s
     answerKind: task.answerKind,
     progress: { label: 'Country', current: Math.min(state.countryIndex + 1, state.countryOrder.length), total: state.countryOrder.length, percent: state.countryOrder.length ? Math.round((state.countryIndex / state.countryOrder.length) * 100) : 0 },
   }
-  const highlightedCountryId = isMapClickPractice ? (feedback ? country.id : null) : country.id
-  const namedCountryId = isMapClickPractice ? (feedback ? country.id : null) : country.id
   const feedbackText = feedback ? feedback.correct ? feedback.match === 'fuzzy' ? `Correct. The canonical answer is ${feedback.expectedAnswer}.` : 'Correct.' : `The correct ${feedback.answerKind} is ${feedback.expectedAnswer}.` : null
   const practiceFeedbackText = feedback ? feedback.correct ? 'Correct location.' : `That was ${feedback.answer} — ${country.country} is highlighted.` : null
-  const map = <div className="relative"><CountryLearningMap continent={country.continent} scopeCountries={scopeCountries.filter(entry => entry.continent === country.continent)} cameraIntent={{ kind: 'subregion-learning', subregionId: country.subregionId }} highlightFill={getWorldCountriesTaskHighlightFill(task.answerKind)} answerSelectionCountryIds={isMapClickPractice ? scopeCountries.map(entry => entry.id) : undefined} taskTargetCountryId={(!isMapClickPractice && isLocationQuestion) || (isMapClickPractice && Boolean(feedback)) ? country.id : null} highlightedCountryId={highlightedCountryId} namedCountryId={namedCountryId} showHighlightedNames={Boolean(namedCountryId)} onCountryClick={isMapClickPractice ? submitLocation : undefined} ariaLabel={isMapClickPractice ? isCapitalQuestion ? 'Map for clicking the Country whose Capital is shown' : 'Map for clicking the target Country' : `Map with ${country.country} highlighted for Practice recall`} />{feedback && <RecallFeedback correct={feedback.correct} message={isMapClickPractice ? practiceFeedbackText : feedbackText} />}</div>
+  const renderMap = (outcome: PracticeMapOutcome) => {
+    /** A prompt whose answer is the Country keeps it off the map until answered. */
+    const revealed = isShapeQuestion || isCapitalQuestion || isMapClickPractice ? outcome !== null : true
+    const revealedCountryId = revealed ? country.id : null
+    const shapeCountryIds = outcome === 'incorrect' ? shapeSubregionCountries.map(entry => entry.id) : [country.id]
+    const cameraIntent: WorldCountriesMapCameraIntent = isShapeQuestion
+      ? { kind: 'fit-countries', countryIds: shapeCountryIds }
+      : { kind: 'subregion-learning', subregionId: country.subregionId }
+    return <div className="relative"><CountryLearningMap continent={country.continent} scopeCountries={continentMapCountries} cameraIntent={cameraIntent} visibleCountryIds={isShapeQuestion ? shapeCountryIds : undefined} highlightFill={getWorldCountriesTaskHighlightFill(task.answerKind)} answerSelectionCountryIds={isMapClickPractice ? scopeCountries.map(entry => entry.id) : undefined} taskTargetCountryId={(!isMapClickPractice && isLocationQuestion) || (isMapClickPractice && revealed) ? country.id : null} highlightedCountryId={revealedCountryId} namedCountryId={revealedCountryId} showHighlightedNames={revealed} onCountryClick={isMapClickPractice ? submitLocation : undefined} ariaLabel={getPracticeMapAriaLabel({ isShapeQuestion, isMapClickPractice, isCapitalQuestion, revealed, countryName: country.country })} />{feedback && <RecallFeedback correct={feedback.correct} message={isMapClickPractice ? practiceFeedbackText : feedbackText} />}</div>
+  }
+  const map = renderMap(feedback ? (feedback.correct ? 'correct' : 'incorrect') : null)
   const dock = isMapClickPractice ? <p className="sr-only">Click a Country on the map to answer.</p> : <TaskDock variant={answerMode === 'typing' ? 'form' : 'navigation'}><section className="space-y-3">{answerMode === 'multiple-choice' ? <MultipleChoice key={stepKey} options={answerOptions} correctAnswer={expectedAnswer} onAnswer={submit} answered={feedback?.answer ?? null} /> : null}</section></TaskDock>
 
   if (isTypedRecall) {
     return <WorldCountriesTypedAnswer promptKey={`${step.countryId}-${step.skill}`} answerKind={task.answerKind} answerLabel={task.typedAnswerLabel} placeholder={task.typedPlaceholder} correctAnswer={expectedAnswer} allowIncorrectSpellingPractice evaluate={answer => { const match = classifyRecallAnswer(step.skill, answer, country, { fuzzy: fuzzyMatching, countryCandidates: scopeCountries, capitalCandidates: scopeCountries.map(entry => entry.capital) }); const outcome = match === 'wrong-kind' ? 'wrong-kind' : match === 'exact' ? 'exact' : match === 'fuzzy' ? 'fuzzy' : 'incorrect'; return { outcome, canonicalAnswer: expectedAnswer, answerKind: task.answerKind, message: outcome === 'wrong-kind' ? getRecallAnswerKindMistakeMessage(step.skill) : outcome === 'incorrect' ? `The correct ${task.answerKind} is ${expectedAnswer}.` : outcome === 'fuzzy' ? `Correct. The canonical answer is ${expectedAnswer}.` : 'Correct.' } }} onAnswer={(answer, evaluation) => onAnswer({ countryId: step.countryId, skill: step.skill, answer, correct: evaluation.outcome === 'exact' || evaluation.outcome === 'fuzzy' })} onTransition={result => onContinue(result.outcome !== 'incorrect')}>
-      {typed => <><PracticeSessionRails selection={selection} scopeLabel={resolvedScopeLabel} proficiencySelection={proficiencySelection} state={state} onExit={onExit} entries={entries} learningStates={learningStates} /><WorldCountriesMapActivitySurface task={activityTask} map={map} feedbackOverlay={typed.feedbackOverlay} dockPlacement="stacked" dock={<TaskDock variant="form" answerKind={typed.feedbackActive ? undefined : task.answerKind}><section className="space-y-3">{typed.input}</section></TaskDock>} /></>}
+      {typed => <><PracticeSessionRails selection={selection} scopeLabel={resolvedScopeLabel} proficiencySelection={proficiencySelection} state={state} onExit={onExit} entries={entries} learningStates={learningStates} /><WorldCountriesMapActivitySurface task={activityTask} map={renderMap(toPracticeMapOutcome(typed.outcome))} feedbackOverlay={typed.feedbackOverlay} dockPlacement="stacked" dock={<TaskDock variant="form" answerKind={typed.feedbackActive ? undefined : task.answerKind}><section className="space-y-3">{typed.input}</section></TaskDock>} /></>}
     </WorldCountriesTypedAnswer>
   }
 
   return <><PracticeSessionRails selection={selection} scopeLabel={resolvedScopeLabel} proficiencySelection={proficiencySelection} state={state} onExit={onExit} entries={entries} learningStates={learningStates} /><WorldCountriesMapActivitySurface task={activityTask} map={map} dockPlacement={answerMode === 'typing' && !isMapClickPractice ? 'stacked' : 'attached'} dock={dock} /></>
+}
+
+function toPracticeMapOutcome(outcome: string | null): PracticeMapOutcome {
+  if (!outcome || outcome === 'wrong-kind') return null
+  return outcome === 'incorrect' ? 'incorrect' : 'correct'
+}
+
+function getPracticeMapAriaLabel({ isShapeQuestion, isMapClickPractice, isCapitalQuestion, revealed, countryName }: { isShapeQuestion: boolean; isMapClickPractice: boolean; isCapitalQuestion: boolean; revealed: boolean; countryName: string }): string {
+  if (isShapeQuestion && !revealed) return 'Map showing the isolated Country shape without the Country name revealed'
+  if (isMapClickPractice && !revealed) return isCapitalQuestion ? 'Map for clicking the Country whose Capital is shown' : 'Map for clicking the target Country'
+  if (isCapitalQuestion && !revealed) return 'Map of the selected geographic scope without the target Country revealed'
+  return `Map with ${countryName} highlighted for Practice recall`
 }

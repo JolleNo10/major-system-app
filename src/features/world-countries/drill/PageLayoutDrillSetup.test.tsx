@@ -56,8 +56,9 @@ describe('World Countries activity boundary', () => {
     await act(async () => [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Playground')?.click())
     for (const [activity, label] of [
       ['locate-countries', 'Locate Countries'],
-      ['locate-capitals', 'Locate Capitals'],
-      ['capital-practice', 'Capital Practice'],
+      ['countries-from-capitals', 'Countries from Capitals'],
+      ['capitals', 'Capital Practice'],
+      ['country-from-shape', 'Country from Shape'],
     ] as const) {
       await act(async () => mount.querySelector<HTMLButtonElement>(`[data-play-activity="${activity}"]`)?.click())
       expect(mount.textContent).toContain(label)

@@ -2,11 +2,11 @@ import { useId, useMemo, useState } from 'react'
 import { countriesToSvgIds } from '@/features/world-countries/maps/countryMapIds'
 import { SvgMapView, type SvgMapCountry } from '@/features/world-countries/maps/SvgMapView'
 import type { Continent, Country, CountryId } from '@/features/world-countries/data/countries'
-import { createCountryColorsById, createCountryEdgeOutlines, createCountryOrderLabels, createCountryPatternsById, getCountryForSvgId, resolveCountriesToSvgIds, type SvgMapCountryEdgeTreatment } from '@/features/world-countries/maps/geographyMapAdapter'
+import { createCountryColorsById, createCountryEdgeOutlines, createCountryInnerGlowsById, createCountryOrderLabels, createCountryPatternsById, getCountryForSvgId, resolveCountriesToSvgIds, type SvgMapCountryEdgeTreatment } from '@/features/world-countries/maps/geographyMapAdapter'
 import { getMemoMapDefinition } from '@/features/world-countries/maps/mapDefinitions'
 import { getMapLearningAnchors } from '@/features/world-countries/maps/learningAnchors'
 import { getMapSyntheticDots } from '@/features/world-countries/maps/syntheticDots'
-import type { SvgMapCameraIntent, SvgMapCountryPattern, SvgMapLearningAnchor, SvgMapSyntheticDot } from '@/features/world-countries/maps/SvgMapController'
+import type { SvgMapCameraIntent, SvgMapCountryInnerGlow, SvgMapCountryPattern, SvgMapLearningAnchor, SvgMapSyntheticDot } from '@/features/world-countries/maps/SvgMapController'
 import {
   DEFAULT_WORLD_COUNTRIES_MAP_CAMERA_INTENT,
   getWorldCountriesMapCameraIntentSignature,
@@ -31,6 +31,8 @@ export interface CountryLearningMapProps {
   countryColorsById?: ReadonlyMap<string, string>
   /** Optional caller-owned neutral Learning patterns. */
   countryPatternsById?: ReadonlyMap<CountryId, SvgMapCountryPattern>
+  /** Optional caller-owned inner-edge treatments, used for Capital recall status. */
+  countryInnerGlowsById?: ReadonlyMap<CountryId, SvgMapCountryInnerGlow>
   /** Optional persistent Country Learning edge/halo treatments. */
   countryEdgeTreatmentsById?: ReadonlyMap<CountryId, SvgMapCountryEdgeTreatment>
   countryEdgeStroke?: string
@@ -76,6 +78,7 @@ export function CountryLearningMap({
   mapClassName,
   countryColorsById,
   countryPatternsById,
+  countryInnerGlowsById,
   countryEdgeTreatmentsById,
   countryEdgeStroke = '#22d3ee',
   countryEdgeStrokeWidth = '2px',
@@ -262,6 +265,12 @@ export function CountryLearningMap({
       : [],
     [countryPatternsById, discoveredIds, scopeCountries],
   )
+  const countryInnerGlows = useMemo(
+    () => countryInnerGlowsById
+      ? createCountryInnerGlowsById(scopeCountries, countryInnerGlowsById, discoveredIds)
+      : [],
+    [countryInnerGlowsById, discoveredIds, scopeCountries],
+  )
   const countryEdgeOutlines = useMemo(
     () => countryEdgeTreatmentsById
       ? createCountryEdgeOutlines(
@@ -298,6 +307,7 @@ export function CountryLearningMap({
         countryLabels={countryLabels}
         countryColors={countryColors}
         countryPatterns={countryPatterns}
+        countryInnerGlows={countryInnerGlows}
         groupOutlines={countryEdgeOutlines}
         taskAssistance={taskAssistance}
         camera={camera}

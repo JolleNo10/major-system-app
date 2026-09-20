@@ -3,14 +3,15 @@ import type { Country } from '@/features/world-countries/data/countries'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import { DrillResultStats } from './DrillResultStats'
 import { DrillResultsRails } from './DrillResultsRails'
-import { getDrillModeDefinition, getDrillSkillLabel, getSkillsForDrillMode, type WorldCountriesDrillMode } from './drillModes'
+import { getDrillModeDefinition, getDrillSkillLabel, type WorldCountriesDrillMode } from './drillModes'
 import type { DrillAnswerRecord } from './drillSessionState'
 import { summarizeDrillAnswers } from './drillResultSummary'
-import type { WorldCountriesProgressPerspective } from '@/features/world-countries/learning/progressPresentation'
 import { useWorldCountriesCountryColors } from '@/features/world-countries/learning/useWorldCountriesCountryColors'
-import { DrillProgressLegend } from './DrillProgressLegend'
+import { WorldCountriesMapLegend } from '@/features/world-countries/ui/WorldCountriesMapLegend'
 import { getAllSubregionLearningStates } from '@/features/world-countries/learning/subregionLearningStore'
-import { createDrillProgressColors, createDrillProgressDescriptions } from './drillProgressPresentation'
+import { createWorldCountriesEstablishedLearningReadinessByCountry } from '@/features/world-countries/learning/learningReadiness'
+import { createWorldCountriesStatusMapPresentation } from '@/features/world-countries/learning/countryStatusMap'
+import { WORLD_COUNTRIES_CORE_RECALL_SKILLS } from '@/features/world-countries/learning/recallTargets'
 import { useWorldCountriesPopulation } from '@/features/world-countries/WorldCountriesPopulationContext'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
 
@@ -34,26 +35,18 @@ export function DrillResults({
   const summary = summarizeDrillAnswers(answers)
   const definition = getDrillModeDefinition(mode)
   const activeCountries = useWorldCountriesPopulation()
-  const skills = getSkillsForDrillMode(mode)
-  const perspective: WorldCountriesProgressPerspective = mode === 'countries-capitals' ? 'core' : skills[0]
   const learningStates = useMemo(() => getAllSubregionLearningStates(activeCountries), [activeCountries])
   const { recallProgress } = useWorldCountriesCountryColors({
     countries: scopeCountries,
-    skills,
-    perspective,
+    skills: WORLD_COUNTRIES_CORE_RECALL_SKILLS,
   })
-  const countryColorsById = useMemo(
-    () => recallProgress
-      ? createDrillProgressColors({ mode, scopeCountries, recallProgress, learningStates })
-      : undefined,
-    [learningStates, mode, recallProgress, scopeCountries],
-  )
-  const countryAccessibleDescriptionsById = useMemo(
-    () => recallProgress
-      ? createDrillProgressDescriptions({ mode, scopeCountries, recallProgress, learningStates })
-      : undefined,
-    [learningStates, mode, recallProgress, scopeCountries],
-  )
+  const statusMap = useMemo(() => recallProgress
+    ? createWorldCountriesStatusMapPresentation({
+      countries: scopeCountries,
+      readinessByCountry: createWorldCountriesEstablishedLearningReadinessByCountry(scopeCountries, learningStates, recallProgress),
+      recallProgress,
+    })
+    : undefined, [learningStates, recallProgress, scopeCountries])
   const continentGroups = [...new Set(scopeCountries.map(country => country.continent))].map(continent => ({
     continent,
     countries: scopeCountries.filter(country => country.continent === continent),
@@ -85,11 +78,13 @@ export function DrillResults({
           continent={group.continent}
           scopeCountries={group.countries}
           showNames
-          countryColorsById={countryColorsById}
-          countryAccessibleDescriptionsById={countryAccessibleDescriptionsById}
+          countryColorsById={statusMap?.countryColorsById}
+          countryPatternsById={statusMap?.countryPatternsById}
+          countryInnerGlowsById={statusMap?.countryInnerGlowsById}
+          countryAccessibleDescriptionsById={statusMap?.countryDescriptionsById}
           ariaLabel={`Results map for ${scopeLabel} Drill Countries`}
         />)}
-        <DrillProgressLegend mode={mode} />
+        <WorldCountriesMapLegend />
 
         <DrillResultStats summary={summary} answerCount={answers.length} showCountryCount />
 

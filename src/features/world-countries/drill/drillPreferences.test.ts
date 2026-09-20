@@ -33,7 +33,7 @@ describe('World Countries Drill preferences', () => {
     })
   })
 
-  it('falls back legacy persisted Capitals Drill values to the normal Drill default', () => {
+  it('keeps a persisted Capitals selection now that Capitals is a Drill sub mode again', () => {
     setWorldContinentOrder(['europe', 'asia'])
     localStorage.setItem(DRILL_PREFERENCES_STORAGE_KEY, JSON.stringify({
       continent: 'Europe',
@@ -43,10 +43,22 @@ describe('World Countries Drill preferences', () => {
     }))
     expect(loadDrillPreferences()).toEqual({
       subregionIds: ['northern-europe', 'south-asia'],
-      mode: 'countries-capitals',
+      mode: 'capitals',
       order: 'random',
     })
   })
+
+  it.each(['countries-from-capitals', 'countries-from-shape'])(
+    'falls %s back to the main Drill mode now that it is Playground Practice',
+    mode => {
+      localStorage.setItem(DRILL_PREFERENCES_STORAGE_KEY, JSON.stringify({
+        subregionIds: ['northern-europe'],
+        mode,
+        order: 'ordered',
+      }))
+      expect(loadDrillPreferences()).toMatchObject({ mode: 'countries-capitals', order: 'ordered' })
+    },
+  )
 
   it('preserves valid legacy selection when stale IDs are mixed in', () => {
     localStorage.setItem(DRILL_PREFERENCES_STORAGE_KEY, JSON.stringify({

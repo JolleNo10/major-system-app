@@ -99,9 +99,10 @@ through the feature-owned geography subscription signal.
   adapters, backup behavior, read presentation, the reusable contextual
   Subregion mnemonic editor, and the feature-local mnemonic subscription over
   shared core mnemonic persistence.
-- `drill/` owns Drill selection, preferences, four Drill modes, recorded Drill
-  sessions, Drill results, and the shared World/Continent Geography and
-  proficiency setup used by recorded Drill and fixed Practice entries. It also
+- `drill/` owns Drill selection, preferences, the three core-skill Drill modes,
+  recorded Drill sessions, Drill results, and the shared World/Continent
+  Geography and proficiency setup used by recorded Drill and fixed Practice
+  entries. It also
   owns World/Continent order authoring in the existing Geography rails. It does
   not expose a Drill Subregion detail or Country-order editor; it delegates
   non-recording Practice execution and presentation to `practice/`.
@@ -441,17 +442,24 @@ Continent, Playground, and Progress are transient views within the Home
 composition. Playground selects the activity before entering the shared setup
 coordinator:
 
-- **Drill**: `Countries`, `Countries + Capitals`, `Countries from Capitals`,
-  and `Country for Shape`. These are the only `WorldCountriesDrillMode` values
-  and may write atomic Drill evidence according to their defined semantics.
-  Country for Shape uses the ordinary Country-name answer lifecycle while the
+- **Drill**: `Countries + Capitals` is the main mode; `Countries` and
+  `Capitals` are its single-skill sub modes. These are the only
+  `WorldCountriesDrillMode` values and they may write atomic Drill evidence
+  according to their defined semantics. Recorded Drill covers only the two core
+  recall skills: Shape → Country and Capital → Country moved to Playground
+  Practice, because offering them as peer Drill modes made recorded evidence
+  look like progress toward a finish line they never advanced.
+- **Practice**: `Locate Countries`, `Countries from Capitals`,
+  `Capital Practice`, and `Country from Shape` enter fixed non-recording
+  Practice setup intents. Practice retains only transient answers, accuracy,
+  progress, and results; it does not select or write Learning milestones.
+  Country from Shape uses the ordinary Country-name answer lifecycle while the
   map adapter isolates the target's source geometry and explicitly fits it;
   incorrect feedback reveals the active Countries in that target's Subregion
-  on the same mounted map and highlights the target.
-- **Practice**: `Locate Countries`, `Locate Capitals`, and `Capital Practice`
-  enter fixed non-recording Practice setup intents. Practice retains only
-  transient answers, accuracy, progress, and results; it does not select or
-  write Learning milestones.
+  on the same mounted map and highlights the target. Countries from Capitals
+  is one mode with a learner-chosen answer interaction, typed or map click; a
+  separate `Locate Capitals` mode was rejected because it described the same
+  prompt and the same skill and differed only in how the answer was given.
 
 - **Quiz**: a top-level non-recording Practice experience with three types:
   Capitals is randomized Country → Capital, Countries from Capitals is
@@ -510,8 +518,10 @@ Proficiency remains the mutually exclusive, Continent-scoped alternative
 scope source.
 
 At Continent setup, Geography and proficiency are alternative scope sources.
-Weak/Developing proficiency scope derives from the current Drill perspective,
-or from the skill exercised by the selected non-recording Practice activity.
+Weak/Developing proficiency scope reads the same shared status the map paints:
+the worst recall health across the skills the selected Drill mode or Practice
+activity exercises, and no reading at all until the Country has finished both
+Learning layers.
 The resolved Country membership is ordered through `geography/` and snapshotted
 into the active Drill/Practice session when it starts. Guided Learning resolves
 its own scope and milestone semantics through `today/` and `learning/flows/`.
@@ -1208,7 +1218,7 @@ flowchart TD
 - `src/features/world-countries/drill/DrillSetupRails.tsx`
 - `src/features/world-countries/ui/GeographySelectionRail.tsx`
 - `src/features/world-countries/drill/drillProficiencyScope.ts`
-- `src/features/world-countries/drill/drillProgressPresentation.ts`
+- `src/features/world-countries/learning/countryStatusMap.ts`
 - `src/features/world-countries/recite/WorldCountriesRecite.tsx`
 - `src/features/world-countries/practice/WorldCountriesQuiz.tsx`
 - `src/features/world-countries/practice/RecallQuizSession.tsx`
@@ -1280,6 +1290,13 @@ evidence, not a fresh opinion.
   mode-specific setup colouring must survive navigation and restarts. Reusing
   Drill attempts would make sequence practice indistinguishable from scheduled
   item recall and would move Drill proficiency.
+- **One Country status ladder, painted from one place.** Learning until both
+  layers are done, then recall health with the Country in the fill and the
+  Capital on the inner edge. Home, Drill setup, Practice setup, and Drill
+  results all read `learning/countryStatusMap.ts`. Per-activity ladders were
+  rejected: a Drill-mode-specific perspective made the same colour mean
+  different things on Home and in setup, and the learner had to relearn the
+  legend on every surface.
 - **Learning Readiness is cumulative, so there is no Capitals-only state.**
   Countries is the foundation and Countries + Capitals is the combined
   milestone. An early Capitals fact is preserved without displaying a fourth

@@ -3,6 +3,7 @@ import { useRails } from '@/app/layout/PageLayoutContext'
 import type { Continent } from './data/countries'
 import { GeographyBreadcrumbs } from '@/features/world-countries/ui/GeographyBreadcrumbs'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
+import { WORLD_COUNTRIES_PRACTICE_MODES, type WorldCountriesPracticeMode } from '@/features/world-countries/practice/practiceModes'
 
 export function WorldCountriesPlay({
   scopeLabel,
@@ -10,9 +11,7 @@ export function WorldCountriesPlay({
   onBack,
   onOpenRecite,
   onOpenQuiz,
-  onOpenLocateCountries,
-  onOpenLocateCapitals,
-  onOpenCapitalPractice,
+  onOpenPractice,
   onOpenCustomDrill,
 }: {
   scopeLabel: string
@@ -20,9 +19,7 @@ export function WorldCountriesPlay({
   onBack: () => void
   onOpenRecite: () => void
   onOpenQuiz: () => void
-  onOpenLocateCountries: () => void
-  onOpenLocateCapitals: () => void
-  onOpenCapitalPractice: () => void
+  onOpenPractice: (mode: WorldCountriesPracticeMode) => void
   onOpenCustomDrill: () => void
 }) {
   const rails = useMemo(() => ({
@@ -39,9 +36,9 @@ export function WorldCountriesPlay({
       <div className="grid gap-3 sm:grid-cols-2">
         <PlayCard activity="recite" title="Recite" description="Free recall across one or multiple Continents/Subregions, with all existing Recite modes." onClick={onOpenRecite} />
         <PlayCard activity="quiz" title="Quiz" description="Test Country → Capital, Capital → Country, or neighbouring Countries." onClick={onOpenQuiz} />
-        <PlayCard activity="locate-countries" title="Locate Countries" description="Use existing non-recording map-backed Country Practice." onClick={onOpenLocateCountries} />
-        <PlayCard activity="locate-capitals" title="Locate Capitals" description="Use existing non-recording map-backed Capital Practice." onClick={onOpenLocateCapitals} />
-        <PlayCard activity="capital-practice" title="Capital Practice" description="Use existing non-recording Country-to-Capital Practice." onClick={onOpenCapitalPractice} />
+        {WORLD_COUNTRIES_PRACTICE_MODES.map(practiceMode => (
+          <PlayCard key={practiceMode.id} activity={practiceMode.id} title={practiceMode.label} description={practiceMode.description} onClick={() => onOpenPractice(practiceMode.id)} />
+        ))}
         <PlayCard activity="custom-drill" title="Custom Drill" description="Configure recorded Drill scope and mode through the existing advanced setup." onClick={onOpenCustomDrill} wide />
       </div>
     </section>

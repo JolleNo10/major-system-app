@@ -75,7 +75,7 @@ describe('World Countries Drill proficiency scope', () => {
     expect(scope.counts).toEqual({ weak: 1, developing: 1 })
   })
 
-  it('uses Capital to Country proficiency for Locate Capitals Practice', () => {
+  it('uses Capital to Country proficiency for Countries from Capitals Practice', () => {
     const progress = deriveWorldCountriesRecallProgress({
       countryIds: ['NO', 'SE'],
       skills: ['location-to-country', 'capital-to-country'],
@@ -90,11 +90,34 @@ describe('World Countries Drill proficiency scope', () => {
       'Europe',
       ['weak'],
       progress,
-      { kind: 'practice', mode: 'locate-capitals' },
+      { kind: 'practice', mode: 'countries-from-capitals' },
       [norway, sweden],
     )
 
     expect(scope.countryIds).toEqual(['SE'])
+  })
+
+  it('gives no proficiency reading to a Country that has not finished Learning', () => {
+    const progress = deriveWorldCountriesRecallProgress({
+      countryIds: ['NO', 'SE'],
+      skills: ['location-to-country'],
+    }, [
+      progressFor('NO', 'location-to-country', false),
+      progressFor('SE', 'location-to-country', false),
+    ])
+
+    const scope = resolveDrillProficiencyScope(
+      'Europe',
+      ['weak'],
+      progress,
+      { kind: 'drill', mode: 'countries' },
+      [norway, sweden],
+      [],
+      new Map([['NO', 'COUNTRIES_AND_CAPITALS_LEARNED'], ['SE', 'COUNTRIES_LEARNED']] as const),
+    )
+
+    expect(scope.counts).toEqual({ weak: 1, developing: 0 })
+    expect(scope.countryIds).toEqual(['NO'])
   })
 
   it('does not classify Countries without relevant evidence', () => {
@@ -110,7 +133,7 @@ describe('World Countries Drill proficiency scope', () => {
     expect(scope.countryIds).toEqual([])
   })
 
-  it('uses shape-to-country as the Country for Shape proficiency perspective', () => {
+  it('uses shape-to-country as the Country from Shape proficiency perspective', () => {
     const progress = deriveWorldCountriesRecallProgress({
       countryIds: ['NO', 'SE'],
       skills: ['shape-to-country'],
@@ -120,7 +143,7 @@ describe('World Countries Drill proficiency scope', () => {
       'Europe',
       ['weak'],
       progress,
-      { kind: 'drill', mode: 'countries-from-shape' },
+      { kind: 'practice', mode: 'country-from-shape' },
       [norway, sweden],
     )
 
