@@ -515,11 +515,17 @@ effective World Continent, Subregion, and Country order, and guided Learning
 advances between selected Subregions with each flow receiving its active
 Continent.
 Geography and proficiency are the two mutually exclusive scope sources, chosen
-by one explicit Scope control in the setup rail rather than inferred from which
-selection happens to be non-empty. Only the active source contributes to a
-launch, so each keeps its own selection across a switch; clearing the inactive
-source was rejected because it silently discarded work the learner had done and
-wrote that loss into persisted Drill preferences.
+by one explicit Countries control rather than inferred from which selection
+happens to be non-empty. Only the active source contributes to a launch, so
+each keeps its own selection across a switch; clearing the inactive source was
+rejected because it silently discarded work the learner had done and wrote that
+loss into persisted Drill preferences.
+
+That control belongs in the Drill/Practice panel beside Drill mode and Drill
+order, not in the geography rail. The rail is also the World/Continent
+navigation, so a rail-level source switch either stacked a second scope picker
+under the one it excludes or hid the navigation while proficiency was active;
+both were tried and rejected.
 
 Proficiency searches the breadth the open setup level already shows: a
 Continent hub searches that Continent, World searches the whole active

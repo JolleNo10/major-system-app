@@ -247,9 +247,9 @@ describe('DrillSetup activity boundary', () => {
     expect(mount.textContent).toContain('One skill at a time')
     expect(mount.textContent).not.toContain('Countries from Capitals')
     expect(mount.textContent).not.toContain('Country for Shape')
-    expect(mount.querySelectorAll('input[type="radio"]')).toHaveLength(3)
-    expect([...mount.querySelectorAll<HTMLInputElement>('input[type="radio"]')].map(input => input.value))
-      .toEqual(['countries-capitals', 'countries', 'capitals'])
+    const modeInputs = [...mount.querySelectorAll<HTMLInputElement>('input[type="radio"]')].filter(input => !input.dataset.scopeSource)
+    expect(modeInputs).toHaveLength(3)
+    expect(modeInputs.map(input => input.value)).toEqual(['countries-capitals', 'countries', 'capitals'])
     expect(mount.textContent).toContain('Edit order')
     expect(mount.textContent).toContain('Start Drill')
   })
@@ -381,7 +381,8 @@ describe('DrillSetup activity boundary', () => {
     expect(mount.textContent).not.toContain('Learn Capitals')
     expect(mount.textContent).not.toContain('Locate Countries')
     expect(mount.textContent).not.toContain('Locate Capitals')
-    expect(mount.querySelector('input[type="radio"]')).toBeNull()
+    // The Country scope choice is the only radio group a fixed Practice offers.
+    expect([...mount.querySelectorAll<HTMLInputElement>('input[type="radio"]')].every(input => input.dataset.scopeSource)).toBe(true)
     const start = [...mount.querySelectorAll('button')].find(button => button.textContent === 'Start Capital Practice')
     act(() => start?.click())
     expect(onStart).toHaveBeenCalledTimes(1)
@@ -482,45 +483,55 @@ describe('DrillSetup activity boundary', () => {
     act(() => displayRoot.unmount())
   })
 
-  it('shows one scope source at a time and keeps each selection across a switch', () => {
-    const onSelectionChange = vi.fn()
+  it('chooses the Country scope beside the other Drill settings, not in the geography rail', () => {
     const onProficiencySelectionChange = vi.fn()
     const onScopeSourceChange = vi.fn()
     const mount = renderSetup({
       selection: createDrillSelection([]),
       scopeSource: 'proficiency', proficiencySelection: ['weak'],
-      onSelectionChange,
       onProficiencySelectionChange,
       onScopeSourceChange,
     })
-    const config = useRailsMock.mock.calls[0][0] as { left: ReactNode }
-    act(() => root?.render(config.left))
+    renderLatestRight()
 
+    // The scope choice lives with Drill mode and Drill order.
+    expect(mount.textContent).toContain('Countries')
+    expect(mount.querySelector('[data-scope-source="proficiency"]')).not.toBeNull()
     const checkboxes = [...mount.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')]
     expect(checkboxes).toHaveLength(2)
     expect(checkboxes[0].checked).toBe(true)
     act(() => checkboxes[1].click())
     expect(onProficiencySelectionChange).toHaveBeenLastCalledWith(['weak', 'developing'])
 
-    // Needs work is shown instead of Geography, not alongside it.
-    expect(mount.querySelector('[aria-labelledby="world-countries-drill-scope-heading"]')).toBeNull()
-    expect(mount.querySelector('[data-scope-source="proficiency"]')?.getAttribute('aria-checked')).toBe('true')
-
-    act(() => mount.querySelector<HTMLButtonElement>('[data-scope-source="geography"]')?.click())
+    act(() => mount.querySelector<HTMLInputElement>('[data-scope-source="geography"]')?.click())
     expect(onScopeSourceChange).toHaveBeenLastCalledWith('geography')
     // Switching source never discards the other source's selection.
-    expect(onSelectionChange).not.toHaveBeenCalled()
     expect(onProficiencySelectionChange).toHaveBeenLastCalledWith(['weak', 'developing'])
+  })
 
-    act(() => root?.render(createElement(DrillSetup, createSetupProps({ selection: createDrillSelection([]), onSelectionChange, onProficiencySelectionChange }))))
-    const geographyConfig = useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1][0] as { left: ReactNode }
-    act(() => root?.render(geographyConfig.left))
+  it('keeps the geography rail and its navigation while Needs work is the active source', () => {
+    const onSelectionChange = vi.fn()
+    const mount = renderSetup({
+      selection: createDrillSelection([]),
+      scopeSource: 'proficiency', proficiencySelection: ['weak'],
+      onSelectionChange,
+    })
+    renderLatestLeft()
+
     expect(mount.querySelector('[aria-labelledby="world-countries-drill-scope-heading"]')).not.toBeNull()
+    expect(mount.querySelector('[data-scope-source="proficiency"]')).toBeNull()
     const subregion = [...mount.querySelectorAll('button')].find(button => button.textContent?.includes('Northern Europe'))
     act(() => subregion?.click())
-    expect(onSelectionChange).toHaveBeenCalled()
-    expect(onProficiencySelectionChange).toHaveBeenLastCalledWith(['weak', 'developing'])
     expect(onSelectionChange).toHaveBeenLastCalledWith(expect.objectContaining({ subregionIds: ['northern-europe'] }))
+  })
+
+  it('offers the same Country scope choice in Practice setup', () => {
+    const mount = renderSetup({ activity: { kind: 'practice', mode: 'locate-countries' }, scopeSource: 'proficiency', proficiencySelection: ['weak'] })
+    renderLatestRight()
+
+    expect(mount.querySelector('[data-scope-source="geography"]')).not.toBeNull()
+    expect(mount.querySelector('[data-scope-source="proficiency"]')).not.toBeNull()
+    expect(mount.querySelectorAll('input[type="checkbox"]')).toHaveLength(2)
   })
 
   it('keeps the proficiency panel at Continent setup only', () => {
