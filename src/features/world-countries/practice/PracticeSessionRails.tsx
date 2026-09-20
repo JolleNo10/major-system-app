@@ -4,7 +4,8 @@ import type { Country } from '@/features/world-countries/data/countries'
 import { getSubregionDefinition } from '@/features/world-countries/data/subregions'
 import { getSubregionScopeLabel, type WorldCountriesSubregionScope } from '@/features/world-countries/geography/subregionScope'
 import { getRecallSkillLabel } from '@/features/world-countries/learning/recallLabels'
-import { getRecallSessionTotalSteps, type WorldCountriesRecallSessionState } from '@/features/world-countries/learning/recallSession'
+import type { WorldCountriesRecallSessionState } from '@/features/world-countries/learning/recallSession'
+import { deriveRecallSessionProgress } from '@/features/world-countries/learning/recallSessionProgress'
 import type { LearningStates } from '@/features/world-countries/learning/learningProgress'
 import { deriveWorldCountriesLearningReadiness, getWorldCountriesLearningReadinessLabel, getWorldCountriesLearningStateList } from '@/features/world-countries/learning/learningReadiness'
 import { GeographyBreadcrumbs } from '@/features/world-countries/ui/GeographyBreadcrumbs'
@@ -18,9 +19,7 @@ export function PracticeSessionRails({ selection, scopeLabel: providedScopeLabel
   entries: readonly Country[]
   learningStates: LearningStates
 }) {
-  const totalSteps = getRecallSessionTotalSteps(state)
-  const completedSteps = state.countryIndex * state.skills.length + state.stepIndex
-  const progressPercent = totalSteps ? Math.round((completedSteps / totalSteps) * 100) : 0
+  const { progressPercent } = deriveRecallSessionProgress(state)
   const subregions = useMemo(() => selection.subregionIds.map(getSubregionDefinition), [selection.subregionIds])
   const scopeLabel = providedScopeLabel ?? getSubregionScopeLabel(selection, entries)
   const stateList = useMemo(() => getWorldCountriesLearningStateList(learningStates), [learningStates])

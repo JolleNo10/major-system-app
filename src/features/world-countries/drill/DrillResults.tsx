@@ -14,6 +14,8 @@ import { createWorldCountriesStatusMapPresentation } from '@/features/world-coun
 import { WORLD_COUNTRIES_CORE_RECALL_SKILLS } from '@/features/world-countries/learning/recallTargets'
 import { useWorldCountriesPopulation } from '@/features/world-countries/WorldCountriesPopulationContext'
 import { WorldCountriesPanel } from '@/features/world-countries/ui/WorldCountriesPanel'
+import { groupCountriesByContinentWithLabel } from '@/features/world-countries/geography/continentGrouping'
+import { SkillResultCard } from '@/features/world-countries/ui/SkillResultCard'
 
 export function DrillResults({
   mode,
@@ -47,11 +49,7 @@ export function DrillResults({
       recallProgress,
     })
     : undefined, [learningStates, recallProgress, scopeCountries])
-  const continentGroups = [...new Set(scopeCountries.map(country => country.continent))].map(continent => ({
-    continent,
-    countries: scopeCountries.filter(country => country.continent === continent),
-  }))
-  const scopeLabel = continentGroups.length === 1 ? continentGroups[0]!.continent : 'World'
+  const { continentGroups, scopeLabel } = groupCountriesByContinentWithLabel(scopeCountries)
 
   return (
     <>
@@ -93,11 +91,7 @@ export function DrillResults({
             <h2 className="text-sm font-semibold text-zinc-200">Results by skill</h2>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               {[...summary.bySkill.entries()].map(([skill, result]) => (
-                <div key={skill} className="rounded-lg border border-zinc-800 bg-zinc-950/50 p-3">
-                  <p className="text-xs uppercase tracking-wider text-zinc-500">{getDrillSkillLabel(skill)}</p>
-                  <p className="mt-1 text-lg font-bold text-zinc-100">{result.correct}/{result.attempts}</p>
-                  <p className="text-xs text-zinc-500">{result.accuracy}% accuracy</p>
-                </div>
+                <SkillResultCard key={skill} skillLabel={getDrillSkillLabel(skill)} result={result} />
               ))}
             </div>
           </WorldCountriesPanel>

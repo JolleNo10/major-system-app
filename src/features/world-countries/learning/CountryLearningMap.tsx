@@ -201,9 +201,11 @@ export function CountryLearningMap({
       ),
     [discoveredIds, overviewCountries, scopeCountries, visibleCountryIds],
   )
-  const hiddenIds = visibleSvgIds === undefined
-    ? []
-    : discoveredIds.filter(id => !visibleSvgIds.includes(id))
+  const hiddenIds = useMemo(() => {
+    if (visibleSvgIds === undefined) return []
+    const visibleSet = new Set(visibleSvgIds)
+    return discoveredIds.filter(id => !visibleSet.has(id))
+  }, [discoveredIds, visibleSvgIds])
   const taskAssistance = useMemo(() => {
     if (answerSelectionCountryIds === undefined && taskTargetCountryId === null) return null
 
@@ -291,6 +293,10 @@ export function CountryLearningMap({
     [countryAccessibleDescriptionsById, scopeCountries],
   )
   const unmutedSvgIds = overviewCountries ? zoomScopeSvgIds : scopeSvgIds
+  const mutedIds = useMemo(() => {
+    const unmutedSet = new Set(unmutedSvgIds)
+    return discoveredIds.filter(id => !unmutedSet.has(id))
+  }, [discoveredIds, unmutedSvgIds])
   return (
     <div>
       <SvgMapView
@@ -300,7 +306,7 @@ export function CountryLearningMap({
         highlightedIds={highlightedSvgIds}
         hoveredId={hoveredSvgId}
         hoverableIds={onCountryClick ? interactionSvgIds : undefined}
-        mutedIds={discoveredIds.filter(id => !unmutedSvgIds.includes(id))}
+        mutedIds={mutedIds}
         hiddenIds={hiddenIds}
         namedIds={namedSvgIds}
         selectableIds={onCountryClick ? interactionSvgIds : []}

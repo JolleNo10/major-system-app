@@ -63,8 +63,13 @@ export function DrillSetup({
   const geographyRevision = useWorldCountriesGeographyRevision()
   const subregions = setupContinent ? getDrillSubregions(setupContinent, entries, selectionMetadata) : []
   const [recallProgress, setRecallProgress] = useState<RecallProgress | null>(null)
-  const activeCountryKey = [...new Set(entries.map(country => country.id))].sort().join('|')
-  const activeCountryIds = useMemo(() => activeCountryKey ? activeCountryKey.split('|') : [], [activeCountryKey])
+  // Sort-join produces a content-stable string: the same set of IDs in any order
+  // gives the same key, so activeCountryIds only changes when the set of IDs changes.
+  const activeCountryKey = useMemo(
+    () => [...new Set(entries.map(country => country.id))].sort().join('|'),
+    [entries],
+  )
+  const activeCountryIds = useMemo(() => activeCountryKey.split('|').filter(Boolean), [activeCountryKey])
   const [loadedCountryKey, setLoadedCountryKey] = useState<string | null>(null)
   const currentRecallProgress = loadedCountryKey === activeCountryKey ? recallProgress : null
   const allLearningStates = useMemo(() => getWorldCountriesLearningStateList(learningStates), [learningStates])

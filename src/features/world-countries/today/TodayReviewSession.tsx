@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import type { Country } from '@/features/world-countries/data/countries'
-import { classifyRecallAnswer, getRecallAnswerKindMistakeMessage } from '@/features/world-countries/learning/recallAnswerMatching'
+import { evaluateRecallAnswer } from '@/features/world-countries/learning/recallAnswerEvaluation'
 import { recordWorldCountriesAttempt } from '@/features/world-countries/learning/recallProgress'
 import type { WorldCountriesRecallSkill } from '@/features/world-countries/learning/recallTargets'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
@@ -135,26 +135,17 @@ export function TodayReviewSession({
         answerLabel={isLocationQuestion ? 'Type the Country name' : 'Type the capital'}
         placeholder={isLocationQuestion ? 'Type the Country…' : 'Type the capital…'}
         correctAnswer={expectedAnswer}
-        evaluate={answer => {
-          const match = classifyRecallAnswer(skill, answer, country, {
-            fuzzy: fuzzyMatching,
-            countryCandidates: activeCountries,
-            capitalCandidates: activeCountries.map(entry => entry.capital),
-          })
-          const outcome = match === 'wrong-kind' ? 'wrong-kind' : match === 'fuzzy' ? 'fuzzy' : match === 'exact' ? 'exact' : 'incorrect'
-          return {
-            outcome,
-            canonicalAnswer: expectedAnswer,
-            answerKind,
-            message: outcome === 'wrong-kind'
-              ? getRecallAnswerKindMistakeMessage(skill)
-              : outcome === 'incorrect'
-              ? `The correct answer is ${expectedAnswer}.`
-              : outcome === 'fuzzy'
-                ? `Correct. The canonical answer is ${expectedAnswer}.`
-                : 'Correct.',
-          } satisfies WorldCountriesTypedAnswerEvaluation
-        }}
+        evaluate={answer => evaluateRecallAnswer({
+          skill,
+          answer,
+          country,
+          fuzzy: fuzzyMatching,
+          expectedAnswer,
+          answerKind,
+          countryCandidates: activeCountries,
+          capitalCandidates: activeCountries.map(entry => entry.capital),
+          incorrectMessage: `The correct answer is ${expectedAnswer}.`,
+        })}
         onAnswer={(_answer, evaluation, latencyMs) => {
           const write = recordWorldCountriesAttempt(country.id, skill, {
             at: Date.now(),

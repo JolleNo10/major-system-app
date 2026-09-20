@@ -4,7 +4,8 @@ import { MultipleChoice } from '@/core/ui/MultipleChoice'
 import { RecallFeedback } from '@/core/ui/RecallFeedback'
 import { shuffle } from '@/core/scoring/quiz'
 import type { Country } from '@/features/world-countries/data/countries'
-import { classifyRecallAnswer, getRecallAnswerKindMistakeMessage, type RecallAnswerMatchKind } from '@/features/world-countries/learning/recallAnswerMatching'
+import { classifyRecallAnswer, type RecallAnswerMatchKind } from '@/features/world-countries/learning/recallAnswerMatching'
+import { evaluateRecallAnswer } from '@/features/world-countries/learning/recallAnswerEvaluation'
 import type { WorldCountriesRecallSkill } from '@/features/world-countries/learning/recallTargets'
 import { CountryLearningMap } from '@/features/world-countries/learning/CountryLearningMap'
 import type { WorldCountriesMapCameraIntent } from '@/features/world-countries/maps/cameraIntent'
@@ -23,9 +24,9 @@ import {
   type DrillAnswerRecord,
   type DrillSessionState,
 } from './drillSessionState'
+import { SUCCESS_FEEDBACK_DURATION_MS, CORRECTION_FEEDBACK_DURATION_MS } from '@/features/world-countries/ui/WorldCountriesAnswerFeedback'
 
-const SUCCESS_FEEDBACK_DURATION_MS = 500
-const CORRECTION_FEEDBACK_DURATION_MS = 1800
+const now = () => typeof performance === 'undefined' ? Date.now() : performance.now()
 
 interface StepFeedback {
   answer: string
@@ -71,7 +72,7 @@ export function DrillSession({
   const [feedback, setFeedback] = useState<StepFeedback | null>(null)
   const [mnemonicOpenFor, setMnemonicOpenFor] = useState<string | null>(null)
   const [assistedFor, setAssistedFor] = useState<string | null>(null)
-  const startedAtRef = useRef(typeof performance === 'undefined' ? Date.now() : performance.now())
+  const startedAtRef = useRef(now())
   const stepKey = step ? `${step.countryId}-${step.skill}` : null
   const mnemonicOpen = stepKey !== null && mnemonicOpenFor === stepKey
   const assisted = stepKey !== null && assistedFor === stepKey
@@ -80,7 +81,7 @@ export function DrillSession({
     setFeedback(null)
     setMnemonicOpenFor(null)
     setAssistedFor(null)
-    startedAtRef.current = typeof performance === 'undefined' ? Date.now() : performance.now()
+    startedAtRef.current = now()
   }, [stepKey])
 
   useEffect(() => {
@@ -94,6 +95,20 @@ export function DrillSession({
 
   const country = step ? entries.find(entry => entry.id === step.countryId) : undefined
   const countryById = useMemo(() => new Map(entries.map(entry => [entry.id, entry])), [entries])
+  const scopeCountries = useMemo(
+    () => state.countryIds
+      .map(countryId => countryById.get(countryId))
+      .filter((entry): entry is Country => entry !== undefined),
+    [state.countryIds, countryById],
+  )
+  const capitalCandidates = useMemo(
+    () => scopeCountries.map(entry => entry.capital),
+    [scopeCountries],
+  )
+  const currentContinentMapCountries = useMemo(
+    () => entries.filter(entry => entry.continent === country?.continent),
+    [entries, country],
+  )
   const answerOptions = useMemo(() => {
     if (!step) return []
     const expected = country && step.skill === 'country-to-capital' ? country.capital : country?.country
@@ -107,19 +122,14 @@ export function DrillSession({
   const answerKind = task.answerKind
   const isLocationQuestion = step.skill === 'location-to-country'
   const isTypedRecall = answerMode === 'typing'
-  const scopeCountries = state.countryIds
-    .map(countryId => countryById.get(countryId))
-    .filter((entry): entry is Country => entry !== undefined)
-  const currentContinentMapCountries = entries.filter(entry => entry.continent === country.continent)
   const mapCameraIntent: WorldCountriesMapCameraIntent = { kind: 'subregion-learning', subregionId: country.subregionId }
-  const now = () => typeof performance === 'undefined' ? Date.now() : performance.now()
 
   const submit = (answer: string) => {
     if (feedback) return
     const match = classifyRecallAnswer(step.skill, answer, country, {
       fuzzy: fuzzyMatching,
       countryCandidates: scopeCountries,
-      capitalCandidates: scopeCountries.map(entry => entry.capital),
+      capitalCandidates,
     })
     const correct = match === 'exact' || match === 'fuzzy'
     const elapsed = Math.max(0, now() - startedAtRef.current)
@@ -190,25 +200,16 @@ export function DrillSession({
         placeholder={task.typedPlaceholder}
         correctAnswer={expectedAnswer}
         allowIncorrectSpellingPractice={false}
-        evaluate={answer => {
-          const match = classifyRecallAnswer(step.skill, answer, country, {
-            fuzzy: fuzzyMatching,
-            countryCandidates: scopeCountries,
-            capitalCandidates: scopeCountries.map(entry => entry.capital),
-          })
-          return {
-            outcome: match === 'wrong-kind' ? 'wrong-kind' : match === 'exact' ? 'exact' : match === 'fuzzy' ? 'fuzzy' : 'incorrect',
-            canonicalAnswer: expectedAnswer,
-            answerKind,
-            message: match === 'wrong-kind'
-              ? getRecallAnswerKindMistakeMessage(step.skill)
-              : match === 'exact'
-              ? 'Correct.'
-              : match === 'fuzzy'
-                ? `Correct. The canonical answer is ${expectedAnswer}.`
-                : `The correct ${answerKind} is ${expectedAnswer}.`,
-          }
-        }}
+        evaluate={answer => evaluateRecallAnswer({
+          skill: step.skill,
+          answer,
+          country,
+          fuzzy: fuzzyMatching,
+          expectedAnswer,
+          answerKind,
+          countryCandidates: scopeCountries,
+          capitalCandidates,
+        })}
         onAnswer={(answer, evaluation, latencyMs) => {
           onAnswer({
             countryId: step.countryId,

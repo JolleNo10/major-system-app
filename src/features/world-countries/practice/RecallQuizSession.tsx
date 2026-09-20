@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useRails } from '@/app/layout/PageLayoutContext'
-import { classifyRecallAnswer, getRecallAnswerKindMistakeMessage } from '@/features/world-countries/learning/recallAnswerMatching'
+import { evaluateRecallAnswer } from '@/features/world-countries/learning/recallAnswerEvaluation'
 import { deriveRecallTaskPresentation } from '@/features/world-countries/learning/recallTaskPresentation'
 import { getCurrentRecallStep, getRecallSessionTotalSteps, type WorldCountriesRecallSessionState } from '@/features/world-countries/learning/recallSession'
 import { WorldCountriesTypedAnswer, type WorldCountriesTypedAnswerEvaluation, type WorldCountriesTypedAnswerResult } from '@/features/world-countries/ui/WorldCountriesTypedAnswer'
@@ -40,26 +40,16 @@ export function RecallQuizSession({ run, session, fuzzyMatching, correctCount, o
       answerLabel={task.typedAnswerLabel}
       placeholder={task.typedPlaceholder}
       correctAnswer={expectedAnswer}
-      evaluate={(answer): WorldCountriesTypedAnswerEvaluation => {
-        const match = classifyRecallAnswer(skill, answer, country, {
-          fuzzy: fuzzyMatching,
-          countryCandidates: run.countries,
-          capitalCandidates: run.countries.map(candidate => candidate.capital),
-        })
-        const outcome = match === 'wrong-kind' ? 'wrong-kind' : match === 'exact' ? 'exact' : match === 'fuzzy' ? 'fuzzy' : 'incorrect'
-        return {
-          outcome,
-          canonicalAnswer: expectedAnswer,
-          answerKind: task.answerKind,
-          message: outcome === 'wrong-kind'
-            ? getRecallAnswerKindMistakeMessage(skill)
-            : outcome === 'incorrect'
-            ? `The correct ${task.answerKind} is ${expectedAnswer}.`
-            : outcome === 'fuzzy'
-              ? `Correct. The canonical answer is ${expectedAnswer}.`
-              : 'Correct.',
-        }
-      }}
+      evaluate={(answer): WorldCountriesTypedAnswerEvaluation => evaluateRecallAnswer({
+        skill,
+        answer,
+        country,
+        fuzzy: fuzzyMatching,
+        expectedAnswer,
+        answerKind: task.answerKind,
+        countryCandidates: run.countries,
+        capitalCandidates: run.countries.map(candidate => candidate.capital),
+      })}
       onAnswer={(answer, evaluation) => {
         if (evaluation.outcome === 'wrong-kind') return
         onAnswer({ countryId: country.id, skill, outcome: evaluation.outcome, submittedAnswer: answer })

@@ -4,7 +4,8 @@ import { MultipleChoice } from '@/core/ui/MultipleChoice'
 import { RecallFeedback } from '@/core/ui/RecallFeedback'
 import { shuffle } from '@/core/scoring/quiz'
 import type { Country, CountryId } from '@/features/world-countries/data/countries'
-import { classifyRecallAnswer, getRecallAnswerKindMistakeMessage, type RecallAnswerMatchKind } from '@/features/world-countries/learning/recallAnswerMatching'
+import { classifyRecallAnswer, type RecallAnswerMatchKind } from '@/features/world-countries/learning/recallAnswerMatching'
+import { evaluateRecallAnswer } from '@/features/world-countries/learning/recallAnswerEvaluation'
 import { deriveRecallTaskPresentation } from '@/features/world-countries/learning/recallTaskPresentation'
 import { getCurrentRecallStep, type WorldCountriesRecallSessionState } from '@/features/world-countries/learning/recallSession'
 import type { WorldCountriesRecallSkill } from '@/features/world-countries/learning/recallTargets'
@@ -18,9 +19,7 @@ import { getWorldCountriesTaskHighlightFill } from '@/features/world-countries/u
 import { WorldCountriesTypedAnswer } from '@/features/world-countries/ui/WorldCountriesTypedAnswer'
 import type { LearningStates } from '@/features/world-countries/learning/learningProgress'
 import type { WorldCountriesMapCameraIntent } from '@/features/world-countries/maps/cameraIntent'
-
-const SUCCESS_FEEDBACK_DURATION_MS = 500
-const CORRECTION_FEEDBACK_DURATION_MS = 1800
+import { SUCCESS_FEEDBACK_DURATION_MS, CORRECTION_FEEDBACK_DURATION_MS } from '@/features/world-countries/ui/WorldCountriesAnswerFeedback'
 
 export interface PracticeSessionAnswer {
   countryId: CountryId
@@ -77,6 +76,7 @@ export function PracticeSession({ answerMode, fuzzyMatching, state, selection, s
 
   const country = step ? entries.find(entry => entry.id === step.countryId) : undefined
   const scopeCountries = useMemo(() => state.countryIds.map(countryId => entries.find(entry => entry.id === countryId)).filter((entry): entry is Country => entry !== undefined), [entries, state.countryIds])
+  const capitalCandidates = useMemo(() => scopeCountries.map(entry => entry.capital), [scopeCountries])
   const answerOptions = useMemo(() => {
     if (!step || !country) return []
     const expected = step.skill === 'country-to-capital' ? country.capital : country.country
@@ -99,7 +99,7 @@ export function PracticeSession({ answerMode, fuzzyMatching, state, selection, s
 
   const submit = (answer: string) => {
     if (feedback) return
-    const match = classifyRecallAnswer(step.skill, answer, country, { fuzzy: fuzzyMatching, countryCandidates: scopeCountries, capitalCandidates: scopeCountries.map(entry => entry.capital) })
+    const match = classifyRecallAnswer(step.skill, answer, country, { fuzzy: fuzzyMatching, countryCandidates: scopeCountries, capitalCandidates })
     const correct = match === 'exact' || match === 'fuzzy'
     setFeedback({ answer, correct, match, expectedAnswer, answerKind: task.answerKind })
     onAnswer({ countryId: step.countryId, skill: step.skill, answer, correct })
@@ -137,7 +137,7 @@ export function PracticeSession({ answerMode, fuzzyMatching, state, selection, s
   const dock = isMapClickPractice ? <p className="sr-only">Click a Country on the map to answer.</p> : <TaskDock variant={answerMode === 'typing' ? 'form' : 'navigation'}><section className="space-y-3">{answerMode === 'multiple-choice' ? <MultipleChoice key={stepKey} options={answerOptions} correctAnswer={expectedAnswer} onAnswer={submit} answered={feedback?.answer ?? null} /> : null}</section></TaskDock>
 
   if (isTypedRecall) {
-    return <WorldCountriesTypedAnswer promptKey={`${step.countryId}-${step.skill}`} answerKind={task.answerKind} answerLabel={task.typedAnswerLabel} placeholder={task.typedPlaceholder} correctAnswer={expectedAnswer} allowIncorrectSpellingPractice evaluate={answer => { const match = classifyRecallAnswer(step.skill, answer, country, { fuzzy: fuzzyMatching, countryCandidates: scopeCountries, capitalCandidates: scopeCountries.map(entry => entry.capital) }); const outcome = match === 'wrong-kind' ? 'wrong-kind' : match === 'exact' ? 'exact' : match === 'fuzzy' ? 'fuzzy' : 'incorrect'; return { outcome, canonicalAnswer: expectedAnswer, answerKind: task.answerKind, message: outcome === 'wrong-kind' ? getRecallAnswerKindMistakeMessage(step.skill) : outcome === 'incorrect' ? `The correct ${task.answerKind} is ${expectedAnswer}.` : outcome === 'fuzzy' ? `Correct. The canonical answer is ${expectedAnswer}.` : 'Correct.' } }} onAnswer={(answer, evaluation) => onAnswer({ countryId: step.countryId, skill: step.skill, answer, correct: evaluation.outcome === 'exact' || evaluation.outcome === 'fuzzy' })} onTransition={result => onContinue(result.outcome !== 'incorrect')}>
+    return <WorldCountriesTypedAnswer promptKey={`${step.countryId}-${step.skill}`} answerKind={task.answerKind} answerLabel={task.typedAnswerLabel} placeholder={task.typedPlaceholder} correctAnswer={expectedAnswer} allowIncorrectSpellingPractice evaluate={answer => evaluateRecallAnswer({ skill: step.skill, answer, country, fuzzy: fuzzyMatching, expectedAnswer, answerKind: task.answerKind, countryCandidates: scopeCountries, capitalCandidates })} onAnswer={(answer, evaluation) => onAnswer({ countryId: step.countryId, skill: step.skill, answer, correct: evaluation.outcome === 'exact' || evaluation.outcome === 'fuzzy' })} onTransition={result => onContinue(result.outcome !== 'incorrect')}>
       {typed => <><PracticeSessionRails selection={selection} scopeLabel={resolvedScopeLabel} proficiencySelection={proficiencySelection} state={state} onExit={onExit} entries={entries} learningStates={learningStates} /><WorldCountriesMapActivitySurface task={activityTask} map={renderMap(toPracticeMapOutcome(typed.outcome))} feedbackOverlay={typed.feedbackOverlay} dockPlacement="stacked" dock={<TaskDock variant="form" answerKind={typed.feedbackActive ? undefined : task.answerKind}><section className="space-y-3">{typed.input}</section></TaskDock>} /></>}
     </WorldCountriesTypedAnswer>
   }

@@ -476,7 +476,14 @@ function isFinitePositiveViewBox(bounds: SvgViewBoxRect): boolean {
     && bounds.height > 0
 }
 
-function copyGroup(group: SvgMapHoverGroup): SvgMapHoverGroup {
+/** Internal enriched hover group with a pre-built Set for O(1) membership checks. */
+interface SvgMapHoverGroupInternal {
+  id: string
+  countryIds: readonly string[]
+  countryIdSet: Set<string>
+}
+
+function copyGroup(group: SvgMapHoverGroupInternal): SvgMapHoverGroup {
   return { id: group.id, countryIds: [...group.countryIds] }
 }
 
@@ -522,7 +529,7 @@ export class SvgMapController {
   private selectableCountries: Set<string> | null = null
   private named = new Set<string>()
   private countryLabelOverrides = new Map<string, string>()
-  private hoverGroups: SvgMapHoverGroup[] = []
+  private hoverGroups: SvgMapHoverGroupInternal[] = []
   private groupOutlines: SvgMapGroupOutline[] = []
   private visibleGroupOutlines = new Set<string>()
   private transientVisibleGroupOutlines = new Set<string>()
@@ -1145,7 +1152,7 @@ export class SvgMapController {
   setHoverGroups(groups: readonly SvgMapHoverGroup[]): SvgMapHoverGroupResult {
     this.assertUsable()
     const unknownIds = new Set<string>()
-    const normalized = new Map<string, SvgMapHoverGroup>()
+    const normalized = new Map<string, SvgMapHoverGroupInternal>()
 
     for (const group of groups) {
       const groupId = group.id.trim()
@@ -1155,7 +1162,7 @@ export class SvgMapController {
         if (!known) unknownIds.add(id)
         return known
       })
-      normalized.set(groupId, { id: groupId, countryIds })
+      normalized.set(groupId, { id: groupId, countryIds, countryIdSet: new Set(countryIds) })
     }
 
     this.hoverGroups = [...normalized.values()]
@@ -1544,7 +1551,7 @@ export class SvgMapController {
     }
 
     for (const group of this.hoverGroups) {
-      if (!group.countryIds.includes(id)) continue
+      if (!group.countryIdSet.has(id)) continue
       for (const countryId of group.countryIds) {
         if (this.isHoverable(countryId)) this.hoveredIds.add(countryId)
       }
