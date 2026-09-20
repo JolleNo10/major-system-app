@@ -144,7 +144,9 @@ export function GeographyOverviewMap({
     [continent, focusedSubregionId, visibleCountries],
   )
   const selectedCountries = useMemo(() => {
-    if (level === 'continent' && selectedCountryIds !== undefined && continent) {
+    // An explicit Country selection is an instruction, not a Continent-level
+    // affordance: the World map honours it the same way a Continent map does.
+    if (selectedCountryIds !== undefined) {
       const selected = new Set(selectedCountryIds)
       return visibleCountries.filter(country => selected.has(country.id))
     }
