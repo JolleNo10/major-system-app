@@ -14,6 +14,7 @@ import { deriveWorldCountriesCountryProgress, deriveWorldCountriesRecallProgress
 import {
   createWorldCountriesEstablishedLearningReadinessByCountry,
   getWorldCountriesLearningStateList,
+  isWorldCountriesLearningComplete,
   isWorldCountriesCountryLayerEstablished,
 } from '@/features/world-countries/learning/learningReadiness'
 import { flattenWorldCountriesRecallHistory, loadWorldCountriesRecallHistory, type WorldCountriesRecallHistory } from '@/features/world-countries/learning/recallHistory'
@@ -28,7 +29,7 @@ import { LearningMilestoneCelebration } from '@/features/world-countries/learnin
 import type { LearningSetMaximum } from '@/features/world-countries/learning/stagedLearningPlan'
 import { GeographyOverviewMap } from '@/features/world-countries/maps/GeographyOverviewMap'
 import { MapSurface } from '@/features/world-countries/ui/MapSurface'
-import { WorldCountriesMapLegend } from '@/features/world-countries/ui/WorldCountriesMapLegend'
+import { WorldCountriesMapHeader } from '@/features/world-countries/ui/WorldCountriesMapHeader'
 import { TodayReviewSession, type WorldCountriesTodayReviewCheckpoint, type WorldCountriesTodayReviewCompletion } from './TodayReviewSession'
 import type { WorldCountriesGuidedRecallMode } from './TodayRails'
 import { GuidedHomeRails } from './GuidedHomeRails'
@@ -303,14 +304,8 @@ export function WorldCountriesToday({
     ),
     [learningStates, recallProgress, scopedCountries],
   )
-  const scopeLearningComplete = Boolean(
-    evidence.status === 'ready'
-    && scopedCountries.length > 0
-    && learningReadinessByCountry.size === scopedCountries.length
-    && [...learningReadinessByCountry.values()].every(
-      readiness => readiness === 'COUNTRIES_AND_CAPITALS_LEARNED',
-    )
-  )
+  const scopeLearningComplete = evidence.status === 'ready'
+    && isWorldCountriesLearningComplete(learningReadinessByCountry, scopedCountries.length)
   const continentLearningComplete = Boolean(continent && scopeLearningComplete)
   const worldLearningComplete = Boolean(!continent && scopeLearningComplete)
   useEffect(() => {
@@ -922,15 +917,12 @@ export function WorldCountriesToday({
         <div className="space-y-4">
           <MapSurface
             context={(
-              <div className="px-1">
-                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                  <h1 id="world-countries-today-heading" className="text-2xl font-black text-zinc-100">{continent ?? 'Your world'}</h1>
-                  {activeSubregionLabel && <p data-active-subregion className="text-sm font-semibold text-cyan-200">Focus: {activeSubregionLabel}</p>}
-                </div>
-                <div className="mt-1">
-                  <WorldCountriesMapLegend learningComplete={worldLearningComplete} />
-                </div>
-              </div>
+              <WorldCountriesMapHeader
+                headingId="world-countries-today-heading"
+                title={continent ?? 'Your world'}
+                qualifier={activeSubregionLabel ? <span data-active-subregion>Focus: {activeSubregionLabel}</span> : undefined}
+                learningComplete={worldLearningComplete}
+              />
             )}
             map={(
               <GeographyOverviewMap

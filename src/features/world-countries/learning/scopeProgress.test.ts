@@ -6,9 +6,9 @@ import {
 } from './recallProgress'
 import {
   deriveWorldCountriesScopeProgress,
+  deriveWorldCountriesScopeProgressForCountries,
   getWorldCountriesScopeDisplayedMasteryRatio,
   deriveWorldCountriesSubregionProgress,
-  deriveWorldCountriesWorldProgress,
 } from './scopeProgress'
 import { recallTargetIdFor, WORLD_COUNTRIES_RECALL_SKILLS } from './recallTargets'
 
@@ -109,7 +109,7 @@ describe('World Countries scope progress', () => {
       attempt('NO', 'capital-to-country', 3, true, '2026-08-12'),
     ])
 
-    const progress = deriveWorldCountriesWorldProgress(itemProgress, countries.filter(country => country.id === 'NO'))
+    const progress = deriveWorldCountriesScopeProgressForCountries('world', countries.filter(country => country.id === 'NO'), itemProgress)
 
     expect(progress.completeCountries).toBe(0)
     expect(progress.countryStateCounts.learned).toBe(1)
@@ -147,7 +147,7 @@ describe('World Countries scope progress', () => {
     }, attempts)
     const activeEntries = countries.filter(country => country.id === 'NO' || country.id === 'SE')
 
-    const progress = deriveWorldCountriesWorldProgress(itemProgress, activeEntries)
+    const progress = deriveWorldCountriesScopeProgressForCountries('world', activeEntries, itemProgress)
 
     expect(progress).toMatchObject({
       scopeId: 'world',
@@ -197,7 +197,7 @@ describe('World Countries scope progress', () => {
   })
 
   it('defaults missing Country and Capital evidence to separate learned buckets', () => {
-    const progress = deriveWorldCountriesWorldProgress(new Map(), countries.filter(country => country.id === 'NO'))
+    const progress = deriveWorldCountriesScopeProgressForCountries('world', countries.filter(country => country.id === 'NO'), new Map())
 
     expect(progress.locationToCountryStateCounts).toEqual({ NOT_LEARNED: 0, learned: 1, weak: 0, developing: 0, strong: 0, mastered: 0 })
     expect(progress.countryToCapitalStateCounts).toEqual({ NOT_LEARNED: 0, learned: 1, weak: 0, developing: 0, strong: 0, mastered: 0 })

@@ -14,7 +14,7 @@ const useRailsMock = vi.hoisted(() => vi.fn())
 const mapMock = vi.hoisted(() => vi.fn())
 const loadRecallProgressMock = vi.hoisted(() => vi.fn(async () => new Map()))
 const proficiencyScopeMock = vi.hoisted(() => vi.fn(() => ({ counts: { weak: 0, developing: 0 }, countryIds: [], countries: [] })))
-vi.mock('@/app/layout/PageLayoutContext', () => ({ useRails: useRailsMock }))
+vi.mock('@/app/layout/PageLayoutContext', () => ({ useRails: useRailsMock, usePageLayoutPresentation: vi.fn() }))
 vi.mock('@/features/world-countries/maps/GeographyOverviewMap', () => ({ GeographyOverviewMap: (props: Record<string, unknown>) => { mapMock(props); return createElement('div', { 'data-testid': 'map' }) } }))
 vi.mock('@/features/world-countries/learning/recallProgress', async importOriginal => ({ ...await importOriginal<typeof import('@/features/world-countries/learning/recallProgress')>(), loadWorldCountriesRecallProgress: loadRecallProgressMock }))
 vi.mock('./drillProficiencyScope', async importOriginal => ({ ...await importOriginal<typeof import('./drillProficiencyScope')>(), resolveDrillProficiencyScope: proficiencyScopeMock }))
@@ -50,6 +50,15 @@ function renderLatestLeft() {
   act(() => root?.render(config.left))
 }
 
+/** The scope confirmation and the primary action live in the centre dock. */
+function dockDescription(node: HTMLElement) {
+  return node.querySelector('[data-task-dock-message-description]')?.textContent
+}
+
+function startButton(node: HTMLElement) {
+  return node.querySelector<HTMLButtonElement>('[data-task-dock] [data-primary-action]')
+}
+
 describe('DrillSetup activity boundary', () => {
   it('uses one shared World toggle action for empty and complete scopes', () => {
     const onToggleWorld = vi.fn()
@@ -73,6 +82,19 @@ describe('DrillSetup activity boundary', () => {
     expect(mount.querySelector<HTMLButtonElement>('[aria-label="Clear world"]')).not.toBeNull()
     act(() => mount.querySelector<HTMLButtonElement>('[aria-label="Clear world"]')?.click())
     expect(onToggleWorld).toHaveBeenCalledTimes(2)
+  })
+
+  it('composes the centre as one map surface, like the Today map', () => {
+    const mount = renderSetup({ level: 'world', setupContinent: null })
+
+    const surface = mount.querySelector('[data-map-surface]')
+    expect(surface).not.toBeNull()
+    expect(mount.querySelectorAll('[data-map-surface]')).toHaveLength(1)
+    // The legend belongs above the map with the title, not stacked after it.
+    expect(surface?.querySelector('[data-map-surface-context] [data-testid="world-countries-map-legend"]')).not.toBeNull()
+    expect(mount.querySelector('h1')?.textContent).toBe('World')
+    // The layout header already says this; the centre must not repeat it.
+    expect(mount.textContent).not.toContain('World Countries')
   })
 
   it('paints the setup map with the shared Country and Capital recall status', async () => {
@@ -123,89 +145,13 @@ describe('DrillSetup activity boundary', () => {
     expect(latestMapProps.countryInnerGlowsById.get('NO')).toBeUndefined()
   })
 
-  it('shows active World core mastery above the World map', async () => {
-    const entries = [
-      { id: 'NO', country: 'Norway', capital: 'Oslo', continent: 'Europe' as const, subregionId: 'northern-europe' as const, subregion: 'Northern Europe' },
-      { id: 'SE', country: 'Sweden', capital: 'Stockholm', continent: 'Europe' as const, subregionId: 'northern-europe' as const, subregion: 'Northern Europe' },
-      { id: 'DK', country: 'Denmark', capital: 'Copenhagen', continent: 'Europe' as const, subregionId: 'northern-europe' as const, subregion: 'Northern Europe' },
-      { id: 'FI', country: 'Finland', capital: 'Helsinki', continent: 'Europe' as const, subregionId: 'northern-europe' as const, subregion: 'Northern Europe' },
-    ]
-    loadRecallProgressMock.mockResolvedValue(deriveWorldCountriesRecallProgress({
-      countryIds: entries.map(entry => entry.id),
-      skills: [...WORLD_COUNTRIES_RECALL_SKILLS],
-    }, [
-      { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 1, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10', attemptType: 'drill' },
-      { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 2, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-11', attemptType: 'drill' },
-      { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 3, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-12', attemptType: 'drill' },
-      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 4, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10', attemptType: 'drill' },
-      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 5, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-11', attemptType: 'drill' },
-      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 6, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-12', attemptType: 'drill' },
-      { itemId: recallTargetIdFor('SE', 'location-to-country'), at: 5, ok: false, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10', attemptType: 'drill' },
-      { itemId: recallTargetIdFor('DK', 'location-to-country'), at: 6, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10', attemptType: 'drill' },
-      { itemId: recallTargetIdFor('DK', 'country-to-capital'), at: 7, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10', attemptType: 'drill' },
-    ]))
-
-    const mount = renderSetup({ level: 'world', entries })
-    await act(async () => { await Promise.resolve(); await Promise.resolve() })
-
-    expect(mount.querySelector('[aria-labelledby="world-mastery-heading"]')).not.toBeNull()
-    expect(mount.textContent).toContain('World mastery')
-    expect(mount.textContent).toContain('1 / 4 Countries fully mastered')
-    expect(mount.textContent).toContain('25%')
-    expect(mount.textContent).toContain('Learned 1')
-    expect(mount.textContent).toContain('Weak 1')
-    expect(mount.textContent).toContain('Developing 1')
-    expect(mount.textContent).toContain('Strong 0')
-    expect(mount.textContent).toContain('Mastered 1')
-    expect(mount.textContent).toContain('Mastered requires both Location → Country and Country → Capital to be Mastered.')
-  })
-
-  it('keeps World mastery neutral while evidence is loading', async () => {
-    let resolveLoad: ((progress: Map<string, never>) => void) | undefined
-    loadRecallProgressMock.mockImplementation(() => new Promise<Map<string, never>>(resolve => { resolveLoad = resolve }))
-
-    const mount = renderSetup({ level: 'world' })
-
-    expect(mount.textContent).toContain('World mastery')
-    expect(mount.textContent).toContain('Loading mastery…')
-    expect(mount.textContent).not.toContain('0 / 195 complete')
-    await act(async () => {
-      resolveLoad?.(new Map<string, never>())
-      await Promise.resolve()
-    })
-  })
-
-  it('shows active Countries with no evidence at the Learned floor', async () => {
+  it('does not reload evidence when only the mode or Country order changes', async () => {
     const entries = [
       { id: 'NO', country: 'Norway', capital: 'Oslo', continent: 'Europe' as const, subregionId: 'northern-europe' as const, subregion: 'Northern Europe' },
       { id: 'SE', country: 'Sweden', capital: 'Stockholm', continent: 'Europe' as const, subregionId: 'northern-europe' as const, subregion: 'Northern Europe' },
     ]
-    const mount = renderSetup({ level: 'world', entries })
+    renderSetup({ level: 'world', entries, mode: 'countries' })
     await act(async () => { await Promise.resolve(); await Promise.resolve() })
-
-    expect(mount.textContent).toContain('0 / 2 Countries fully mastered')
-    expect(mount.textContent).toContain('0%')
-    expect(mount.textContent).toContain('Learned 2')
-    expect(mount.textContent).toContain('Mastered 0')
-  })
-
-  it('keeps the World summary stable across purpose, mode, and Country order changes', async () => {
-    const entries = [
-      { id: 'NO', country: 'Norway', capital: 'Oslo', continent: 'Europe' as const, subregionId: 'northern-europe' as const, subregion: 'Northern Europe' },
-      { id: 'SE', country: 'Sweden', capital: 'Stockholm', continent: 'Europe' as const, subregionId: 'northern-europe' as const, subregion: 'Northern Europe' },
-    ]
-    loadRecallProgressMock.mockResolvedValue(deriveWorldCountriesRecallProgress({
-      countryIds: entries.map(entry => entry.id),
-      skills: [...WORLD_COUNTRIES_RECALL_SKILLS],
-    }, [
-      { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 1, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10', attemptType: 'drill' },
-      { itemId: recallTargetIdFor('NO', 'location-to-country'), at: 2, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-11', attemptType: 'drill' },
-      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 3, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-10', attemptType: 'drill' },
-      { itemId: recallTargetIdFor('NO', 'country-to-capital'), at: 4, ok: true, ms: 500, evidenceKind: 'recall', localDate: '2026-08-11', attemptType: 'drill' },
-    ]))
-    const mount = renderSetup({ level: 'world', entries, mode: 'countries' })
-    await act(async () => { await Promise.resolve(); await Promise.resolve() })
-    const initialSummary = mount.querySelector('[data-testid="world-mastery-summary"]')?.textContent
     const initialLoadCount = loadRecallProgressMock.mock.calls.length
 
     act(() => {
@@ -217,26 +163,7 @@ describe('DrillSetup activity boundary', () => {
       })))
     })
 
-    expect(mount.querySelector('[data-testid="world-mastery-summary"]')?.textContent).toBe(initialSummary)
     expect(loadRecallProgressMock).toHaveBeenCalledTimes(initialLoadCount)
-  })
-
-  it('shows an explicit empty-population state without reporting completion', async () => {
-    const mount = renderSetup({ level: 'world', entries: [] })
-    await act(async () => { await Promise.resolve(); await Promise.resolve() })
-
-    expect(mount.textContent).toContain('0 Countries active')
-    expect(mount.textContent).toContain('0 / 0 Countries fully mastered')
-    expect(mount.textContent).toContain('0%')
-    expect(mount.textContent).toContain('Mastered 0')
-  })
-
-  it('does not show World mastery in Continent setup', async () => {
-    const mount = renderSetup({ level: 'continent' })
-    await act(async () => { await Promise.resolve(); await Promise.resolve() })
-
-    expect(mount.querySelector('[aria-labelledby="world-mastery-heading"]')).toBeNull()
-    expect(mount.textContent).not.toContain('World mastery')
   })
 
   it('offers Countries + Capitals as the main Drill mode with two single-skill sub modes', () => {
@@ -251,7 +178,8 @@ describe('DrillSetup activity boundary', () => {
     expect(modeInputs).toHaveLength(3)
     expect(modeInputs.map(input => input.value)).toEqual(['countries-capitals', 'countries', 'capitals'])
     expect(mount.textContent).toContain('Edit order')
-    expect(mount.textContent).toContain('Start Drill')
+    // The action lives in the centre dock, not the settings rail.
+    expect(mount.textContent).not.toContain('Start Drill')
   })
 
   it.each([
@@ -272,9 +200,8 @@ describe('DrillSetup activity boundary', () => {
   it('confirms a single effective Subregion and keeps Start Drill enabled', () => {
     const onStart = vi.fn()
     const mount = renderSetup({ entries: scopeEntries, selection: createDrillSelection(['northern-europe'], scopeEntries), onStart })
-    renderLatestRight()
 
-    expect(mount.querySelector('[aria-label="Drill scope"]')?.textContent).toContain('Northern Europe · 2 Countries')
+    expect(dockDescription(mount)).toContain('Northern Europe · 2 Countries')
     const start = [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Start Drill')
     expect(start?.disabled).toBe(false)
     act(() => start?.click())
@@ -283,23 +210,20 @@ describe('DrillSetup activity boundary', () => {
 
   it('confirms multiple geographic Subregions with an aggregate count', () => {
     const mount = renderSetup({ entries: scopeEntries, selection: createDrillSelection(['northern-europe', 'western-europe'], scopeEntries) })
-    renderLatestRight()
 
-    expect(mount.querySelector('[aria-label="Drill scope"]')?.textContent).toContain('2 Subregions · 3 Countries')
+    expect(dockDescription(mount)).toContain('2 Subregions · 3 Countries')
   })
 
   it('uses a Continent label when the entire effective Continent is selected', () => {
     const mount = renderSetup({ entries: scopeEntries, selection: createDrillSelection(['northern-europe', 'western-europe', 'southern-europe'], scopeEntries) })
-    renderLatestRight()
 
-    expect(mount.querySelector('[aria-label="Drill scope"]')?.textContent).toContain('Europe · 4 Countries')
+    expect(dockDescription(mount)).toContain('Europe · 4 Countries')
   })
 
   it('confirms World-level geographic scope with a compact aggregate', () => {
     const mount = renderSetup({ level: 'world', setupContinent: null, entries: scopeEntries, selection: createDrillSelection(['northern-europe', 'south-asia'], scopeEntries) })
-    renderLatestRight()
 
-    expect(mount.querySelector('[aria-label="Drill scope"]')?.textContent).toContain('2 Subregions · 3 Countries')
+    expect(dockDescription(mount)).toContain('2 Subregions · 3 Countries')
   })
 
   it('confirms a resolved Weak proficiency scope without changing launch eligibility', async () => {
@@ -307,9 +231,8 @@ describe('DrillSetup activity boundary', () => {
     const onStart = vi.fn()
     const mount = renderSetup({ entries: scopeEntries, selection: createDrillSelection([], scopeEntries), scopeSource: 'proficiency', proficiencySelection: ['weak'], onStart })
     await act(async () => { await Promise.resolve(); await Promise.resolve() })
-    renderLatestRight()
 
-    expect(mount.querySelector('[aria-label="Drill scope"]')?.textContent).toContain('Weak · 1 Country')
+    expect(dockDescription(mount)).toContain('Weak · 1 Country')
     const start = [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Start Drill')
     expect(start?.disabled).toBe(false)
     act(() => start?.click())
@@ -320,19 +243,16 @@ describe('DrillSetup activity boundary', () => {
     proficiencyScopeMock.mockReturnValue({ counts: { weak: 1, developing: 2 }, countryIds: ['NO', 'FR', 'IN'], countries: [scopeEntries[0], scopeEntries[2], scopeEntries[4]] } as never)
     const mount = renderSetup({ entries: scopeEntries, selection: createDrillSelection([], scopeEntries), scopeSource: 'proficiency', proficiencySelection: ['weak', 'developing'] })
     await act(async () => { await Promise.resolve(); await Promise.resolve() })
-    renderLatestRight()
 
-    expect(mount.querySelector('[aria-label="Drill scope"]')?.textContent).toContain('Weak + Developing · 3 Countries')
+    expect(dockDescription(mount)).toContain('Weak + Developing · 3 Countries')
   })
 
   it('does not present a proficiency scope while loading', async () => {
     let resolveLoad: ((progress: Map<string, never>) => void) | undefined
     loadRecallProgressMock.mockImplementation(() => new Promise<Map<string, never>>(resolve => { resolveLoad = resolve }))
     const loadingMount = renderSetup({ entries: scopeEntries, selection: createDrillSelection([], scopeEntries), scopeSource: 'proficiency', proficiencySelection: ['weak'] })
-    renderLatestRight()
-    expect(loadingMount.querySelector('[aria-label="Drill scope"]')).toBeNull()
-    const start = [...loadingMount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Loading proficiency…')
-    expect(start?.disabled).toBe(true)
+    expect(dockDescription(loadingMount)).toBe('Loading proficiency…')
+    expect(startButton(loadingMount)?.disabled).toBe(true)
     expect(loadingMount.textContent).not.toContain('Choose at least one Subregion')
     await act(async () => { resolveLoad?.(new Map<string, never>()); await Promise.resolve() })
   })
@@ -342,38 +262,30 @@ describe('DrillSetup activity boundary', () => {
     proficiencyScopeMock.mockReturnValue({ counts: { weak: 0, developing: 0 }, countryIds: [], countries: [] } as never)
     const noMatchMount = renderSetup({ entries: scopeEntries, selection: createDrillSelection([], scopeEntries), scopeSource: 'proficiency', proficiencySelection: ['weak'] })
     await act(async () => { await Promise.resolve(); await Promise.resolve() })
-    renderLatestRight()
-    expect(noMatchMount.querySelector('[aria-label="Drill scope"]')).toBeNull()
     expect(noMatchMount.textContent).toContain('No Countries currently match the selected proficiency.')
-    const start = [...noMatchMount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'No matching Countries')
-    expect(start?.disabled).toBe(true)
+    expect(startButton(noMatchMount)?.disabled).toBe(true)
     expect(noMatchMount.textContent).not.toContain('Choose at least one Subregion')
   })
 
   it('updates the scope confirmation when geographic selection changes', async () => {
-    renderSetup({ entries: scopeEntries, selection: createDrillSelection(['northern-europe'], scopeEntries) })
+    const mount = renderSetup({ entries: scopeEntries, selection: createDrillSelection(['northern-europe'], scopeEntries) })
     await act(async () => { await Promise.resolve(); await Promise.resolve() })
-    const display = document.createElement('div'); document.body.append(display)
-    const displayRoot = createRoot(display)
-    const renderDisplayedRight = () => {
-      const config = useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1]?.[0] as { right: ReactNode }
-      act(() => displayRoot.render(config.right))
-    }
-    renderDisplayedRight()
-    expect(display.querySelector('[aria-label="Drill scope"]')?.textContent).toContain('Northern Europe · 2 Countries')
+    expect(dockDescription(mount)).toContain('Northern Europe · 2 Countries')
 
     act(() => root?.render(createElement(DrillSetup, createSetupProps({ entries: scopeEntries, selection: createDrillSelection(['northern-europe', 'western-europe'], scopeEntries) }))))
     await act(async () => { await Promise.resolve(); await Promise.resolve() })
-    renderDisplayedRight()
-    expect(display.querySelector('[aria-label="Drill scope"]')?.textContent).toContain('2 Subregions · 3 Countries')
-    act(() => displayRoot.unmount())
+    expect(dockDescription(mount)).toContain('2 Subregions · 3 Countries')
   })
 
   it('shows a fixed Practice activity without alternate setup choices', () => {
     const onStart = vi.fn()
     const mount = renderSetup({ activity: { kind: 'practice', mode: 'capitals' }, onStart })
-    const config = useRailsMock.mock.calls[0][0] as { right: ReactNode }
-    act(() => root?.render(config.right))
+    const start = startButton(mount)
+    expect(start?.textContent).toBe('Start Capital Practice')
+    act(() => start?.click())
+    expect(onStart).toHaveBeenCalledTimes(1)
+
+    renderLatestRight()
     expect(mount.textContent).toContain('Capital Practice')
     expect(mount.textContent).toContain('non-recording')
     expect(mount.textContent).not.toContain('Drill order')
@@ -383,9 +295,6 @@ describe('DrillSetup activity boundary', () => {
     expect(mount.textContent).not.toContain('Locate Capitals')
     // The Country scope choice is the only radio group a fixed Practice offers.
     expect([...mount.querySelectorAll<HTMLInputElement>('input[type="radio"]')].every(input => input.dataset.scopeSource)).toBe(true)
-    const start = [...mount.querySelectorAll('button')].find(button => button.textContent === 'Start Capital Practice')
-    act(() => start?.click())
-    expect(onStart).toHaveBeenCalledTimes(1)
   })
 
   it('keeps fixed Practice start enabled for a matching proficiency scope', async () => {
@@ -393,10 +302,9 @@ describe('DrillSetup activity boundary', () => {
     const onStart = vi.fn()
     const mount = renderSetup({ activity: { kind: 'practice', mode: 'locate-countries' }, scopeSource: 'proficiency', proficiencySelection: ['weak'], onStart })
     await act(async () => { await Promise.resolve() })
-    const config = useRailsMock.mock.calls[useRailsMock.mock.calls.length - 1][0] as { right: ReactNode }
-    act(() => root?.render(config.right))
 
-    const start = [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Start Locate Countries')
+    const start = startButton(mount)
+    expect(start?.textContent).toBe('Start Locate Countries')
     expect(start?.disabled).toBe(false)
     act(() => start?.click())
     expect(onStart).toHaveBeenCalledTimes(1)
@@ -404,11 +312,9 @@ describe('DrillSetup activity boundary', () => {
 
   it('explains that a Continent needs a Subregion before Drill can start', () => {
     const mount = renderSetup({ selection: createDrillSelection([]) })
-    const config = useRailsMock.mock.calls[0][0] as { right: ReactNode }
-    act(() => root?.render(config.right))
 
-    expect(mount.textContent).toContain('Choose at least one Subregion')
-    expect(mount.querySelector('[aria-label="Drill scope"]')).toBeNull()
+    expect(dockDescription(mount)).toBe('Choose at least one Subregion')
+    expect(startButton(mount)?.disabled).toBe(true)
     expect(mount.textContent).not.toContain('Choose a Continent first')
   })
 
@@ -571,10 +477,9 @@ describe('DrillSetup activity boundary', () => {
 
   it('enables World-level Start for a non-empty geographic selection', () => {
     const mount = renderSetup({ level: 'world', setupContinent: null, selection: createDrillSelection(['northern-europe']) })
-    const config = useRailsMock.mock.calls[0][0] as { right: ReactNode }
-    act(() => root?.render(config.right))
 
-    const start = [...mount.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Start Drill')
+    const start = startButton(mount)
+    expect(start?.textContent).toBe('Start Drill')
     expect(start?.disabled).toBe(false)
   })
 

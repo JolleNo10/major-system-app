@@ -82,7 +82,7 @@ export function GeographySelectionRail({
             {worldHeaderAction}
           </div>
         </div>
-        <p className="text-sm leading-relaxed text-zinc-400">Select Subregions across the World, or open a Continent to inspect its map.</p>
+        <p className="text-sm leading-relaxed text-zinc-400">Select Subregions across the World, or open a Continent from this rail or the map.</p>
         <nav aria-label="Continents">
           {worldOrderContent !== undefined ? worldOrderContent : (
             <ol className="space-y-1.5">
@@ -127,7 +127,7 @@ export function GeographySelectionRail({
           <h3 id={headingId} className="text-lg font-bold text-zinc-100">Geography</h3>
           {continentHeaderAction}
         </div>
-        <p className="mt-1 text-sm text-zinc-400">Select Subregions from the rail or map.</p>
+        <p className="mt-1 text-sm text-zinc-400">Select Subregions from this rail, or click any Country on the map to select or deselect its Subregion.</p>
       </div>
       <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
         <div className="flex items-baseline justify-between gap-3 text-sm"><span className="text-zinc-500">Scope</span><span className="text-right font-semibold text-zinc-200">{continentCounts?.selectedSubregions ?? 0} {(continentCounts?.selectedSubregions ?? 0) === 1 ? 'Subregion' : 'Subregions'} selected</span></div>

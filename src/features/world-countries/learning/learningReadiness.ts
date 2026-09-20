@@ -275,6 +275,22 @@ export function createWorldCountriesLearningReadinessByCountry(
   return new Map(entries.map(country => [country.id, getLearningReadinessForCountry(country, readinessBySubregion)]))
 }
 
+/**
+ * Whether every Country in a scope has finished both Learning layers.
+ *
+ * Surfaces use this to drop the Learning half of the status legend once it can
+ * no longer say anything. It is shared so that two screens reading the same
+ * evidence cannot disagree about whether Learning is done.
+ */
+export function isWorldCountriesLearningComplete(
+  readinessByCountry: ReadonlyMap<CountryId, WorldCountriesLearningReadiness>,
+  countryCount: number,
+): boolean {
+  return countryCount > 0
+    && readinessByCountry.size === countryCount
+    && [...readinessByCountry.values()].every(readiness => readiness === 'COUNTRIES_AND_CAPITALS_LEARNED')
+}
+
 export function createWorldCountriesLearningPatternsByCountry(
   entries: readonly Pick<Country, 'id' | 'subregionId'>[],
   readinessByCountry: ReadonlyMap<CountryId, WorldCountriesLearningReadiness>,

@@ -356,11 +356,11 @@ percentage describes no actual set of Countries, so it cannot share the
 `n / total Countries fully mastered` count.
 
 `WorldMasterySummary` takes the rung as an optional prop and keeps the strict
-`min(Country, Capital)` headline when it is omitted. Drill setup omits it on
-purpose: its recall rungs would be gated behind guided-Learning milestones
-that Drill evidence never sets, so the card would read `Not learned` above its
-own `n / total Countries fully mastered`. That surface is pending rework;
-until then the gate stays a guided-curriculum concept.
+`min(Country, Capital)` headline when it is omitted. It belongs to surfaces
+whose subject is progress itself; Drill setup no longer renders it, because a
+configure-a-run screen's subject is the scope, and the card's recall rungs
+would in any case be gated behind guided-Learning milestones that Drill
+evidence never sets. The gate stays a guided-curriculum concept.
 
 ### Review spacing and recall projection
 
@@ -485,8 +485,8 @@ coordinator:
 
 ### World mastery overview
 
-World-level Drill setup exposes a compact, derived World mastery summary
-above the World map. It aggregates independent Country and Capital atomic
+The World mastery summary is a compact, derived overview rendered by the
+Progress view. It aggregates independent Country and Capital atomic
 recall states over the active Country population, so the population is both the
 denominator and the source of every displayed state count. Its primary
 `Mastery N%` is the lower of the Country and Capital mastered-Country ratios;
@@ -497,6 +497,21 @@ Mastered. Capital → Country remains an additional skill.
 The summary is non-persisted presentation state. It is independent of Drill
 purpose and mode, while activity-specific map progress, Learning Readiness, and
 Recite outcomes remain separate concepts.
+
+### One status-map composition
+
+Home and Drill setup read the same Country status, so they present it the same
+way: a single `MapSurface` whose context is `ui/WorldCountriesMapHeader`
+(scope title, an optional qualifier, the shared legend), the map itself, and an
+attached dock carrying that screen's action — Home's action menu, Drill setup's
+scope confirmation and Start. Drill setup keeps its settings in the rails and
+no primary action there.
+
+Two screens showing one status ladder must not disagree about how it reads, so
+the header and the `learningComplete` predicate behind the legend are shared
+rather than reimplemented per screen. A bespoke setup layout was rejected twice
+before this: it duplicated the layout header's title, gave the loudest slot to
+a progress card instead of the map, and pushed Start below the fold.
 
 Drill and Recite consume the same feature-local geography seam for a World-wide
 selection of stable `SubregionId` values.

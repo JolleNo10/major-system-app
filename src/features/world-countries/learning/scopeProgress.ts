@@ -203,11 +203,3 @@ export function deriveWorldCountriesContinentProgress(
     itemProgress,
   )
 }
-
-/** World progress is derived from every current canonical Country. */
-export function deriveWorldCountriesWorldProgress(
-  itemProgress: RecallProgress,
-  entries: readonly Country[] = countries,
-): WorldCountriesScopeProgress {
-  return deriveWorldCountriesScopeProgressForCountries('world', entries, itemProgress)
-}
