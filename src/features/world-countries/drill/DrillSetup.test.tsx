@@ -97,6 +97,14 @@ describe('DrillSetup activity boundary', () => {
     expect(mount.textContent).not.toContain('World Countries')
   })
 
+  it('states the whole configured run in the dock, not only its geography', () => {
+    const mount = renderSetup({ entries: scopeEntries, selection: createDrillSelection(['northern-europe'], scopeEntries), mode: 'countries-capitals', order: 'random' })
+
+    expect(mount.querySelector('[data-task-dock-message-header]')?.textContent).toBe('Ready to drill')
+    expect(dockDescription(mount)).toContain('Northern Europe · 2 Countries')
+    expect(mount.querySelector('[data-drill-setup-run]')?.textContent).toBe('Location → Country, then Country → Capital · Random order')
+  })
+
   it('paints the setup map with the shared Country and Capital recall status', async () => {
     const norway = {
       id: 'NO', country: 'Norway', capital: 'Oslo', continent: 'Europe' as const,
@@ -251,7 +259,7 @@ describe('DrillSetup activity boundary', () => {
     let resolveLoad: ((progress: Map<string, never>) => void) | undefined
     loadRecallProgressMock.mockImplementation(() => new Promise<Map<string, never>>(resolve => { resolveLoad = resolve }))
     const loadingMount = renderSetup({ entries: scopeEntries, selection: createDrillSelection([], scopeEntries), scopeSource: 'proficiency', proficiencySelection: ['weak'] })
-    expect(dockDescription(loadingMount)).toBe('Loading proficiency…')
+    expect(dockDescription(loadingMount)).toContain('Loading proficiency…')
     expect(startButton(loadingMount)?.disabled).toBe(true)
     expect(loadingMount.textContent).not.toContain('Choose at least one Subregion')
     await act(async () => { resolveLoad?.(new Map<string, never>()); await Promise.resolve() })
@@ -313,7 +321,7 @@ describe('DrillSetup activity boundary', () => {
   it('explains that a Continent needs a Subregion before Drill can start', () => {
     const mount = renderSetup({ selection: createDrillSelection([]) })
 
-    expect(dockDescription(mount)).toBe('Choose at least one Subregion')
+    expect(dockDescription(mount)).toContain('Choose at least one Subregion')
     expect(startButton(mount)?.disabled).toBe(true)
     expect(mount.textContent).not.toContain('Choose a Continent first')
   })

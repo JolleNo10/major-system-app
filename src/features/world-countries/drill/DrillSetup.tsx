@@ -21,7 +21,7 @@ import type { WorldCountriesDrillOrder } from './drillOrder'
 import { DrillSetupRails } from './DrillSetupRails'
 import type { WorldCountriesSetupActivity } from './setupActivity'
 import { getPracticeModeDefinition, type WorldCountriesPracticeInteraction } from '@/features/world-countries/practice/practiceModes'
-import { deriveDrillSetupLaunchState } from './drillSetupScope'
+import { deriveDrillSetupLaunchState, describeDrillSetupRun } from './drillSetupScope'
 import { resolveDrillProficiencyScope, type WorldCountriesDrillScopeSource, type WorldCountriesProficiencyActivity, type WorldCountriesProficiencyScope, type WorldCountriesProficiencySelection } from './drillProficiencyScope'
 
 const EMPTY_PROFICIENCY_SCOPE: WorldCountriesProficiencyScope = {
@@ -160,6 +160,7 @@ export function DrillSetup({
     ? `Drill · ${getDrillModeDefinition(mode).label}`
     : `Practice · ${getPracticeModeDefinition(activity.mode).label}`
   const startLabel = isDrill ? 'Start Drill' : `Start ${getPracticeModeDefinition(activity.mode).label}`
+  const runDescription = describeDrillSetupRun({ activity, mode, order, practiceInteraction })
   const selectGeography = (nextSelection: WorldCountriesDrillSelection) => onSelectionChange(nextSelection)
   const toggleEntireContinent = () => {
     if (!setupContinent) return
@@ -186,10 +187,17 @@ export function DrillSetup({
       dock={(
         <TaskDockMessage
           enableEnterPrimary
-          header="Scope"
-          description={launchState.noMatching
-            ? <span role="alert" className="text-amber-300">No Countries currently match the selected proficiency.</span>
-            : launchState.scopeSummary ?? launchState.disabledButtonLabel}
+          header={launchState.canStart ? (isDrill ? 'Ready to drill' : 'Ready to practise') : 'Not ready yet'}
+          description={(
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <span className={`text-base font-bold ${launchState.noMatching ? 'text-amber-300' : 'text-zinc-100'}`} {...(launchState.noMatching ? { role: 'alert' } : {})}>
+                {launchState.noMatching
+                  ? 'No Countries currently match the selected proficiency.'
+                  : launchState.scopeSummary ?? launchState.disabledButtonLabel}
+              </span>
+              <span data-drill-setup-run className="text-xs text-zinc-400">{runDescription}</span>
+            </div>
+          )}
           actions={<button type="button" data-primary-action disabled={!launchState.canStart} onClick={onStart} className="rounded-[9px] border border-cyan-500 bg-cyan-600 px-3.5 py-2.5 text-sm font-bold text-white hover:bg-cyan-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 disabled:cursor-not-allowed disabled:opacity-40">{startLabel}</button>}
         />
       )}

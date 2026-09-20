@@ -11,6 +11,16 @@ import type {
   WorldCountriesProficiencyScope,
   WorldCountriesProficiencySelection,
 } from './drillProficiencyScope'
+import { getSkillsForDrillMode, type WorldCountriesDrillMode } from './drillModes'
+import type { WorldCountriesDrillOrder } from './drillOrder'
+import type { WorldCountriesSetupActivity } from './setupActivity'
+import { getRecallSkillLabel } from '@/features/world-countries/learning/recallLabels'
+import {
+  getPracticeInteractionLabel,
+  getPracticeModeDefinition,
+  resolvePracticeInteraction,
+  type WorldCountriesPracticeInteraction,
+} from '@/features/world-countries/practice/practiceModes'
 
 /** Shown until a geography scope resolves; the prompt never varies by level. */
 const SELECTION_PROMPT = 'Choose at least one Subregion'
@@ -84,6 +94,37 @@ export function deriveDrillSetupLaunchState({
 
 export function formatCountryCount(count: number): string {
   return `${count} ${count === 1 ? 'Country' : 'Countries'}`
+}
+
+/**
+ * What the configured run will actually ask, in the learner's own terms.
+ *
+ * The scope line says which Countries; this says what happens to each of them,
+ * so the dock states the whole choice rather than only half of it. Only the
+ * settings the learner controls appear: Practice always randomises, so naming
+ * its order would imply a toggle that is not there.
+ */
+export function describeDrillSetupRun({
+  activity,
+  mode,
+  order,
+  practiceInteraction,
+}: {
+  activity: WorldCountriesSetupActivity
+  mode: WorldCountriesDrillMode
+  order: WorldCountriesDrillOrder
+  practiceInteraction?: WorldCountriesPracticeInteraction
+}): string {
+  if (activity.kind === 'practice') {
+    const definition = getPracticeModeDefinition(activity.mode)
+    const parts = [getRecallSkillLabel(definition.skill)]
+    if (definition.interactions.length > 1) {
+      parts.push(getPracticeInteractionLabel(resolvePracticeInteraction(activity.mode, practiceInteraction)))
+    }
+    return parts.join(' · ')
+  }
+  const skills = getSkillsForDrillMode(mode).map(getRecallSkillLabel).join(', then ')
+  return `${skills} · ${order === 'random' ? 'Random order' : 'In order'}`
 }
 
 function formatGeographyScopeSummary(
